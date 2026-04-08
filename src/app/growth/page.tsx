@@ -10,9 +10,18 @@ import GrowthProcess from "@/components/growth/growth-process";
 import GrowthCTA from "@/components/growth/growth-cta";
 
 export const metadata: Metadata = {
-  title: "Growth | Inovense",
+  title: "SEO, Content, and Paid Growth Systems",
   description:
-    "SEO infrastructure, content systems, paid media, and growth execution built to compound. Precision growth work from Inovense.",
+    "Structured SEO infrastructure, content systems, paid media, and growth execution built to compound. Inovense builds growth assets you own.",
+  alternates: {
+    canonical: "https://inovense.com/growth",
+  },
+  openGraph: {
+    url: "https://inovense.com/growth",
+    title: "SEO, Content, and Paid Growth Systems | Inovense",
+    description:
+      "Structured SEO infrastructure, content systems, paid media, and growth execution built to compound. Inovense builds growth assets you own.",
+  },
 };
 
 export default function GrowthPage() {

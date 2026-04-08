@@ -4,9 +4,18 @@ import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 
 export const metadata: Metadata = {
-  title: "Process | Inovense",
+  title: "Project Process and Client Delivery",
   description:
-    "How Inovense works. From your first brief to final handoff, here is what a project with us actually looks like.",
+    "From brief to handoff in eight steps. Learn exactly how Inovense structures every engagement: intake, proposal, payment, onboarding, execution, launch, and handoff.",
+  alternates: {
+    canonical: "https://inovense.com/process",
+  },
+  openGraph: {
+    url: "https://inovense.com/process",
+    title: "Project Process and Client Delivery | Inovense",
+    description:
+      "From brief to handoff in eight steps. Learn exactly how Inovense structures every engagement: intake, proposal, payment, onboarding, execution, launch, and handoff.",
+  },
 };
 
 /* ─── Shared primitives ─────────────────────────────────────────────────── */

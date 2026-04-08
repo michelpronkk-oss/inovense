@@ -3,9 +3,12 @@ import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 
 export const metadata: Metadata = {
-  title: "Terms of Use | Inovense",
+  title: "Terms of Use",
   description:
-    "The terms that govern your use of the Inovense Agency website.",
+    "The terms that govern your use of the Inovense website and services.",
+  alternates: {
+    canonical: "https://inovense.com/terms-of-use",
+  },
 };
 
 const sections = [

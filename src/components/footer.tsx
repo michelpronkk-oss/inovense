@@ -4,12 +4,12 @@ import Image from "next/image";
 const serviceLinks = [
   { label: "Build", href: "/build" },
   { label: "Systems", href: "/systems" },
-  { label: "Growth", href: "#growth" },
+  { label: "Growth", href: "/growth" },
 ];
 
 const companyLinks = [
   { label: "Start a project", href: "/intake" },
-  { label: "Work", href: "#work" },
+  { label: "Process", href: "/process" },
   { label: "Privacy Policy", href: "/privacy-policy" },
   { label: "Terms of Use", href: "/terms-of-use" },
 ];

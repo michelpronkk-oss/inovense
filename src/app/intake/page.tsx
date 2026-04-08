@@ -4,9 +4,18 @@ import Footer from "@/components/footer";
 import IntakeForm from "@/components/intake/intake-form";
 
 export const metadata: Metadata = {
-  title: "Start a Project | Inovense",
+  title: "Start a Project",
   description:
-    "Tell us about your project. We respond within 24 hours with a clear direction, not a proposal template.",
+    "Submit your brief. Inovense reviews every request personally and responds within 24 hours with a clear direction. Limited intake.",
+  alternates: {
+    canonical: "https://inovense.com/intake",
+  },
+  openGraph: {
+    url: "https://inovense.com/intake",
+    title: "Start a Project | Inovense",
+    description:
+      "Submit your brief. Inovense reviews every request personally and responds within 24 hours with a clear direction. Limited intake.",
+  },
 };
 
 export default function IntakePage() {

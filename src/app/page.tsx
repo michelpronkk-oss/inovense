@@ -1,4 +1,22 @@
+import type { Metadata } from "next";
 import Nav from "@/components/nav";
+
+export const metadata: Metadata = {
+  title: {
+    absolute: "Inovense | Digital Infrastructure for Operators",
+  },
+  description:
+    "Inovense builds conversion-focused websites, AI automation workflows, and structured growth systems for companies that compete on execution.",
+  alternates: {
+    canonical: "https://inovense.com",
+  },
+  openGraph: {
+    url: "https://inovense.com",
+    title: "Inovense | Digital Infrastructure for Operators",
+    description:
+      "Inovense builds conversion-focused websites, AI automation workflows, and structured growth systems for companies that compete on execution.",
+  },
+};
 import Footer from "@/components/footer";
 import Hero from "@/components/home/hero";
 import Trust from "@/components/home/trust";

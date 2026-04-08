@@ -3,9 +3,12 @@ import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Inovense",
+  title: "Privacy Policy",
   description:
-    "How Inovense Agency collects, uses, and protects your personal data.",
+    "How Inovense collects, uses, and protects your personal data.",
+  alternates: {
+    canonical: "https://inovense.com/privacy-policy",
+  },
 };
 
 const sections = [

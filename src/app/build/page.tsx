@@ -10,9 +10,18 @@ import BuildProcess from "@/components/build/build-process";
 import BuildCTA from "@/components/build/build-cta";
 
 export const metadata: Metadata = {
-  title: "Build | Inovense",
+  title: "Custom Website and Product Development",
   description:
-    "Conversion-focused websites, landing pages, e-commerce builds, and full-stack digital products. Precision execution from Inovense.",
+    "Premium website design, conversion-focused landing pages, e-commerce builds, and full-stack digital products. Built to perform, not just to launch.",
+  alternates: {
+    canonical: "https://inovense.com/build",
+  },
+  openGraph: {
+    url: "https://inovense.com/build",
+    title: "Custom Website and Product Development | Inovense",
+    description:
+      "Premium website design, conversion-focused landing pages, e-commerce builds, and full-stack digital products. Built to perform, not just to launch.",
+  },
 };
 
 export default function BuildPage() {
