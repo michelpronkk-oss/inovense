@@ -50,17 +50,16 @@ export async function sendLeadEmail(
     // For onboarding_sent: ensure a token exists, generate if missing
     let onboardingToken = lead.onboarding_token;
     if (emailType === "onboarding_sent") {
-      const onboardingUpdate: Record<string, unknown> = {
-        onboarding_status: "sent",
-        onboarding_sent_at: new Date().toISOString(),
-      };
       if (!onboardingToken) {
         onboardingToken = crypto.randomUUID();
-        onboardingUpdate.onboarding_token = onboardingToken;
       }
       await supabase
         .from("leads")
-        .update(onboardingUpdate)
+        .update({
+          onboarding_status: "sent",
+          onboarding_sent_at: new Date().toISOString(),
+          onboarding_token: onboardingToken,
+        })
         .eq("id", leadId);
     }
 
@@ -138,15 +137,14 @@ export async function sendLeadEmail(
     }
 
     // Update lead fields tied to this email type
-    const leadUpdates: Record<string, unknown> = {};
-    if (template.statusOnSend) {
-      leadUpdates.status = template.statusOnSend;
-    }
-    if (emailType === "proposal_sent") {
-      leadUpdates.proposal_sent_at = new Date().toISOString();
-    }
-    if (Object.keys(leadUpdates).length > 0) {
-      await supabase.from("leads").update(leadUpdates).eq("id", leadId);
+    const statusUpdate = template.statusOnSend ? { status: template.statusOnSend } : null;
+    const proposalUpdate = emailType === "proposal_sent" ? { proposal_sent_at: new Date().toISOString() } : null;
+
+    if (statusUpdate || proposalUpdate) {
+      await supabase
+        .from("leads")
+        .update({ ...statusUpdate, ...proposalUpdate })
+        .eq("id", leadId);
     }
 
     revalidatePath(`/admin/leads/${leadId}`);

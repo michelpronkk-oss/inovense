@@ -65,6 +65,43 @@ export type EmailLog = {
   sent_at: string;
 };
 
+type Database = {
+  public: {
+    Tables: {
+      leads: {
+        Row: Lead;
+        Insert: Partial<Lead> & {
+          full_name: string;
+          company_name: string;
+          work_email: string;
+          service_lane: string;
+          project_type: string;
+          budget_range: string;
+          timeline: string;
+          project_details: string;
+        };
+        Update: Partial<Lead>;
+        Relationships: [];
+      };
+      lead_email_log: {
+        Row: EmailLog;
+        Insert: {
+          lead_id: string;
+          email_type: string;
+          subject: string;
+          sent_to: string;
+          id?: string;
+          sent_at?: string;
+        };
+        Update: Partial<EmailLog>;
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+  };
+};
+
 export function createSupabaseServerClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -75,9 +112,5 @@ export function createSupabaseServerClient() {
     );
   }
 
-  return createClient<{ public: { Tables: { leads: { Row: Lead } } } }>(
-    url,
-    key,
-    { auth: { persistSession: false } }
-  );
+  return createClient<Database>(url, key, { auth: { persistSession: false } });
 }

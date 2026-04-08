@@ -37,7 +37,7 @@ export async function updateLeadStatus(
     const supabase = createSupabaseServerClient();
     const { error } = await supabase
       .from("leads")
-      .update({ status })
+      .update({ status: status as LeadStatus })
       .eq("id", id);
     if (error) throw error;
     revalidateLead(id);
@@ -220,7 +220,7 @@ export async function updateProjectStatus(
     const supabase = createSupabaseServerClient();
     const { error } = await supabase
       .from("leads")
-      .update({ project_status: projectStatus })
+      .update({ project_status: projectStatus as ProjectStatus })
       .eq("id", id);
     if (error) throw error;
     revalidateLead(id);
