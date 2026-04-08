@@ -1,47 +1,19 @@
 import { ImageResponse } from "next/og";
-import { readFileSync } from "fs";
-import { join } from "path";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
 export const runtime = "nodejs";
 export const alt = "Inovense | Digital Infrastructure for Operators";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-async function loadFigtreeSemiBold(): Promise<ArrayBuffer | null> {
-  try {
-    const css = await fetch(
-      "https://fonts.googleapis.com/css2?family=Figtree:wght@600&display=swap",
-      {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        },
-      }
-    ).then((r) => r.text());
-
-    // Google returns multiple @font-face blocks per unicode range.
-    // The latin subset is the last one.
-    const woff2Urls = [
-      ...css.matchAll(/url\((https:\/\/fonts\.gstatic\.com[^)]+)\)/g),
-    ].map((m) => m[1]);
-
-    const url = woff2Urls[woff2Urls.length - 1];
-    if (!url) return null;
-
-    return await fetch(url).then((r) => r.arrayBuffer());
-  } catch {
-    return null;
-  }
-}
-
-// Panel height / vertical math
+// Panel height and vertical alignment math
 const PANEL_H = 262;
-const PANEL_TOP = Math.round((630 - PANEL_H) / 2); // 184
+const PANEL_TOP = Math.round((630 - PANEL_H) / 2);
 
 export default async function Image() {
-  const logoBuffer = readFileSync(join(process.cwd(), "public/logo.png"));
+  const logoBuffer = await readFile(join(process.cwd(), "public/logo.png"));
   const logo = `data:image/png;base64,${logoBuffer.toString("base64")}`;
-  const fontData = await loadFigtreeSemiBold();
 
   return new ImageResponse(
     (
@@ -53,12 +25,11 @@ export default async function Image() {
           backgroundColor: "#09090b",
           position: "relative",
           overflow: "hidden",
-          fontFamily: fontData
-            ? "Figtree, sans-serif"
-            : "system-ui, -apple-system, sans-serif",
+          fontFamily:
+            "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
         }}
       >
-        {/* ── Subtle grid ──────────────────────────────────────────── */}
+        {/* Subtle grid */}
         <div
           style={{
             position: "absolute",
@@ -73,7 +44,7 @@ export default async function Image() {
           }}
         />
 
-        {/* ── Teal atmospheric glow (left-center) ──────────────────── */}
+        {/* Teal atmospheric glow */}
         <div
           style={{
             position: "absolute",
@@ -87,7 +58,7 @@ export default async function Image() {
           }}
         />
 
-        {/* ── Right panel: depth shadow card (rendered first = behind) ─ */}
+        {/* Right panel depth card */}
         <div
           style={{
             position: "absolute",
@@ -101,7 +72,7 @@ export default async function Image() {
           }}
         />
 
-        {/* ── Right panel: main card ────────────────────────────────── */}
+        {/* Right panel main card */}
         <div
           style={{
             position: "absolute",
@@ -117,7 +88,6 @@ export default async function Image() {
             padding: "24px",
           }}
         >
-          {/* Traffic-light dots */}
           <div style={{ display: "flex", gap: "7px", marginBottom: "22px" }}>
             {(["#1d1d24", "#1d1d24", "rgba(73,160,164,0.28)"] as const).map(
               (bg, i) => (
@@ -134,7 +104,6 @@ export default async function Image() {
             )}
           </div>
 
-          {/* Mock data rows: [label-width-px, fill-pct] */}
           {(
             [
               [30, 74],
@@ -153,7 +122,6 @@ export default async function Image() {
                 marginBottom: i < 4 ? "12px" : "0px",
               }}
             >
-              {/* Label stub */}
               <div
                 style={{
                   width: `${lw}px`,
@@ -163,7 +131,6 @@ export default async function Image() {
                   flexShrink: 0,
                 }}
               />
-              {/* Progress track */}
               <div
                 style={{
                   flex: 1,
@@ -185,7 +152,6 @@ export default async function Image() {
             </div>
           ))}
 
-          {/* Footer action area */}
           <div style={{ display: "flex", gap: "8px", marginTop: "auto" }}>
             <div
               style={{
@@ -208,7 +174,7 @@ export default async function Image() {
           </div>
         </div>
 
-        {/* ── Panel teal top accent ────────────────────────────────── */}
+        {/* Panel top accent */}
         <div
           style={{
             position: "absolute",
@@ -221,7 +187,7 @@ export default async function Image() {
           }}
         />
 
-        {/* ── Main content column ──────────────────────────────────── */}
+        {/* Main content column */}
         <div
           style={{
             position: "absolute",
@@ -235,9 +201,6 @@ export default async function Image() {
             paddingLeft: "82px",
           }}
         >
-          {/* Logo
-              Actual PNG: 1858 x 506 → ratio 3.672
-              At render width 126: height = 126 / 3.672 = 34.3 → 34px    */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={logo}
@@ -251,7 +214,6 @@ export default async function Image() {
             }}
           />
 
-          {/* Eyebrow */}
           <div
             style={{
               display: "flex",
@@ -266,13 +228,12 @@ export default async function Image() {
             Digital Infrastructure
           </div>
 
-          {/* Headline */}
           <div
             style={{
               display: "flex",
               color: "#fafafa",
               fontSize: "50px",
-              fontWeight: 600,
+              fontWeight: 700,
               lineHeight: 1.14,
               letterSpacing: "-0.026em",
               maxWidth: "548px",
@@ -281,7 +242,6 @@ export default async function Image() {
             We build the infrastructure serious operators run on.
           </div>
 
-          {/* Domain */}
           <div
             style={{
               display: "flex",
@@ -297,18 +257,7 @@ export default async function Image() {
       </div>
     ),
     {
-      width: 1200,
-      height: 630,
-      fonts: fontData
-        ? [
-            {
-              name: "Figtree",
-              data: fontData,
-              weight: 600,
-              style: "normal" as const,
-            },
-          ]
-        : [],
+      ...size,
     }
   );
 }
