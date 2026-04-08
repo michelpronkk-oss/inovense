@@ -11,9 +11,9 @@ import {
 
 const links = [
   { label: "Build", href: "/build" },
-  { label: "Systems", href: "#systems" },
-  { label: "Growth", href: "#growth" },
-  { label: "Work", href: "#work" },
+  { label: "Systems", href: "/systems" },
+  { label: "Growth", href: "/growth" },
+  { label: "Work", href: "/work" },
 ];
 
 export default function Nav() {

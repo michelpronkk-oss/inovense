@@ -2,6 +2,7 @@
 
 import { Resend } from "resend";
 import { intakeSchema, type IntakeFormData } from "./schema";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 /* ─── Email formatters ──────────────────────────────────────────────────── */
 
@@ -207,6 +208,32 @@ export async function submitIntake(
         success: false,
         error: "Email delivery failed. Please try again or contact us directly.",
       };
+    }
+
+    // Write lead to Supabase — awaited so the insert completes before the
+    // serverless function returns. Failures are logged but never block the user
+    // since the email notification already succeeded.
+    try {
+      const supabase = createSupabaseServerClient();
+      const { error: sbError } = await supabase.from("leads").insert({
+        full_name: parsed.data.fullName,
+        company_name: parsed.data.company,
+        work_email: parsed.data.email,
+        website_or_social: parsed.data.website || null,
+        service_lane: parsed.data.serviceLane,
+        project_type: parsed.data.projectType,
+        budget_range: parsed.data.budget,
+        timeline: parsed.data.timeline,
+        project_details: parsed.data.details,
+        status: "new",
+      });
+      if (sbError) {
+        console.error("[intake] Supabase insert error:", sbError.message, sbError);
+      } else {
+        console.log("[intake] Lead written to Supabase for:", parsed.data.email);
+      }
+    } catch (err) {
+      console.error("[intake] Supabase write failed:", err);
     }
 
     // Confirmation email to the submitter — fire and forget, non-blocking
