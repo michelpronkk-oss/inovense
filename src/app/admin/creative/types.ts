@@ -1,10 +1,20 @@
+export type CreativeMode = "Brand" | "Social" | "Ad";
+
 export type CreativeTemplateId =
-  | "square_post"
-  | "story_reel_cover"
-  | "landscape_ad"
-  | "quote_card"
+  | "silent_statement"
+  | "founder_signal"
+  | "brand_thesis"
+  | "authority_quote"
   | "case_spotlight"
-  | "offer_cta";
+  | "proof_card"
+  | "launch_post"
+  | "insight_post"
+  | "offer_ad"
+  | "pain_point_ad"
+  | "service_cta_ad"
+  | "landing_page_ad"
+  | "systems_ad"
+  | "growth_ad";
 
 export type CreativeFormatId = "square" | "portrait" | "story" | "landscape";
 
@@ -19,8 +29,15 @@ export interface CreativeFormatSpec {
   height: number;
 }
 
+export interface CreativeModeSpec {
+  id: CreativeMode;
+  label: string;
+  description: string;
+}
+
 export interface CreativeTemplateSpec {
   id: CreativeTemplateId;
+  mode: CreativeMode;
   label: string;
   description: string;
   defaultFormat: CreativeFormatId;
@@ -28,6 +45,7 @@ export interface CreativeTemplateSpec {
 }
 
 export interface CreativeState {
+  mode: CreativeMode;
   template: CreativeTemplateId;
   format: CreativeFormatId;
   title: string;
@@ -73,49 +91,143 @@ export const CREATIVE_FORMAT_SPECS: Record<CreativeFormatId, CreativeFormatSpec>
   },
 };
 
+export const CREATIVE_MODE_SPECS: Record<CreativeMode, CreativeModeSpec> = {
+  Brand: {
+    id: "Brand",
+    label: "Brand",
+    description: "Identity-driven, editorial, high signal statements.",
+  },
+  Social: {
+    id: "Social",
+    label: "Social",
+    description: "Authority and proof-first social publishing assets.",
+  },
+  Ad: {
+    id: "Ad",
+    label: "Ad",
+    description: "Campaign-ready ads with sharper commercial intent.",
+  },
+};
+
 export const CREATIVE_TEMPLATE_SPECS: Record<CreativeTemplateId, CreativeTemplateSpec> = {
-  square_post: {
-    id: "square_post",
-    label: "Square social post",
-    description: "Balanced founder posts and authority content.",
+  silent_statement: {
+    id: "silent_statement",
+    mode: "Brand",
+    label: "Silent statement",
+    description: "Minimal brand assertion with text-first gravity.",
     defaultFormat: "square",
-    supportedFormats: ["square", "portrait"],
+    supportedFormats: ["square", "portrait", "landscape"],
   },
-  story_reel_cover: {
-    id: "story_reel_cover",
-    label: "Vertical story / reel cover",
-    description: "Bold story covers for short form publishing.",
-    defaultFormat: "story",
-    supportedFormats: ["story", "portrait"],
+  founder_signal: {
+    id: "founder_signal",
+    mode: "Brand",
+    label: "Founder signal",
+    description: "Founder voice signal card with calm authority.",
+    defaultFormat: "portrait",
+    supportedFormats: ["portrait", "square", "landscape"],
   },
-  landscape_ad: {
-    id: "landscape_ad",
-    label: "Landscape ad",
-    description: "Campaign style ad visual for placements and hero banners.",
+  brand_thesis: {
+    id: "brand_thesis",
+    mode: "Brand",
+    label: "Brand thesis",
+    description: "Positioning thesis with structured narrative hierarchy.",
     defaultFormat: "landscape",
-    supportedFormats: ["landscape"],
+    supportedFormats: ["landscape", "square"],
   },
-  quote_card: {
-    id: "quote_card",
-    label: "Quote card",
-    description: "Editorial quote layout with high trust framing.",
+  authority_quote: {
+    id: "authority_quote",
+    mode: "Brand",
+    label: "Authority quote",
+    description: "Editorial quote composition for trust and gravitas.",
     defaultFormat: "square",
     supportedFormats: ["square", "portrait", "landscape"],
   },
   case_spotlight: {
     id: "case_spotlight",
+    mode: "Social",
     label: "Case spotlight",
-    description: "Credibility first case narrative with proof signal.",
+    description: "Narrative case card with concrete operating outcomes.",
+    defaultFormat: "landscape",
+    supportedFormats: ["landscape", "square", "portrait"],
+  },
+  proof_card: {
+    id: "proof_card",
+    mode: "Social",
+    label: "Proof card",
+    description: "Metric-led authority post with supporting proof points.",
+    defaultFormat: "square",
+    supportedFormats: ["square", "portrait", "landscape"],
+  },
+  launch_post: {
+    id: "launch_post",
+    mode: "Social",
+    label: "Launch post",
+    description: "Productized launch communication with rollout structure.",
+    defaultFormat: "portrait",
+    supportedFormats: ["portrait", "square", "story"],
+  },
+  insight_post: {
+    id: "insight_post",
+    mode: "Social",
+    label: "Insight post",
+    description: "Point-of-view post with concise strategic insight.",
+    defaultFormat: "square",
+    supportedFormats: ["square", "landscape", "portrait"],
+  },
+  offer_ad: {
+    id: "offer_ad",
+    mode: "Ad",
+    label: "Offer ad",
+    description: "High-intent offer creative with urgency and clear CTA.",
+    defaultFormat: "portrait",
+    supportedFormats: ["portrait", "landscape", "square", "story"],
+  },
+  pain_point_ad: {
+    id: "pain_point_ad",
+    mode: "Ad",
+    label: "Pain-point ad",
+    description: "Problem-to-outcome framing for direct response ads.",
+    defaultFormat: "landscape",
+    supportedFormats: ["landscape", "portrait", "square"],
+  },
+  service_cta_ad: {
+    id: "service_cta_ad",
+    mode: "Ad",
+    label: "Service CTA ad",
+    description: "Service-led conversion ad with offer clarity.",
+    defaultFormat: "landscape",
+    supportedFormats: ["landscape", "square", "portrait"],
+  },
+  landing_page_ad: {
+    id: "landing_page_ad",
+    mode: "Ad",
+    label: "Landing page ad",
+    description: "Preview-led ad to drive clicks to dedicated pages.",
     defaultFormat: "landscape",
     supportedFormats: ["landscape", "square"],
   },
-  offer_cta: {
-    id: "offer_cta",
-    label: "Offer / CTA card",
-    description: "Decisive conversion creative for paid and outbound.",
-    defaultFormat: "portrait",
-    supportedFormats: ["portrait", "square", "landscape"],
+  systems_ad: {
+    id: "systems_ad",
+    mode: "Ad",
+    label: "Systems ad",
+    description: "Workflow and automation ad for operations buyers.",
+    defaultFormat: "landscape",
+    supportedFormats: ["landscape", "portrait", "square"],
   },
+  growth_ad: {
+    id: "growth_ad",
+    mode: "Ad",
+    label: "Growth ad",
+    description: "Performance-driven ad with channel and outcome framing.",
+    defaultFormat: "landscape",
+    supportedFormats: ["landscape", "portrait", "square"],
+  },
+};
+
+export const TEMPLATES_BY_MODE: Record<CreativeMode, CreativeTemplateId[]> = {
+  Brand: ["silent_statement", "founder_signal", "brand_thesis", "authority_quote"],
+  Social: ["case_spotlight", "proof_card", "launch_post", "insight_post"],
+  Ad: ["offer_ad", "pain_point_ad", "service_cta_ad", "landing_page_ad", "systems_ad", "growth_ad"],
 };
 
 export const SERVICE_LANE_STYLES: Record<ServiceLane, ServiceLaneStyle> = {
@@ -137,6 +249,7 @@ export const SERVICE_LANE_STYLES: Record<ServiceLane, ServiceLaneStyle> = {
   },
 };
 
+export const CREATIVE_MODE_OPTIONS = Object.values(CREATIVE_MODE_SPECS);
 export const CREATIVE_TEMPLATE_OPTIONS = Object.values(CREATIVE_TEMPLATE_SPECS);
 export const CREATIVE_FORMAT_OPTIONS = Object.values(CREATIVE_FORMAT_SPECS);
 export const SERVICE_LANE_OPTIONS: ServiceLane[] = ["Build", "Systems", "Growth", "General"];
@@ -156,91 +269,228 @@ interface TemplatePreset {
 }
 
 export const CREATIVE_TEMPLATE_PRESETS: Record<CreativeTemplateId, TemplatePreset> = {
-  square_post: {
+  silent_statement: {
     format: "square",
-    title: "Execution quality is not a design preference. It is your moat.",
+    title: "Execution quality compounds quietly, then all at once.",
     subtitle:
-      "For operators, the fastest growth unlock usually comes from fixing decision speed and delivery rhythm.",
-    eyebrow: "Founder signal",
-    ctaText: "Build your operating edge",
+      "Most teams do not need more tactics. They need cleaner systems that remove drag from decision-making.",
+    eyebrow: "Inovense",
+    ctaText: "Read the thesis",
     serviceLane: "General",
     backgroundMode: "Grid",
     showLogo: true,
-    accentIntensity: 42,
-    proofBadge: "Operator playbook",
+    accentIntensity: 34,
+    proofBadge: "Brand statement",
   },
-  story_reel_cover: {
-    format: "story",
-    title: "Three systems we audit before we scale paid traffic.",
-    subtitle: "No guesswork. No channel chaos. Just controlled execution.",
-    eyebrow: "Inovense brief",
-    ctaText: "Watch the breakdown",
-    serviceLane: "Growth",
+  founder_signal: {
+    format: "portrait",
+    title: "Serious operators optimize for clarity before velocity.",
+    subtitle:
+      "Velocity without system clarity creates hidden cost. We design for controlled scale and calm execution.",
+    eyebrow: "Founder signal",
+    ctaText: "From the desk",
+    serviceLane: "General",
     backgroundMode: "Spotlight",
     showLogo: true,
-    accentIntensity: 56,
-    proofBadge: "Field notes",
+    accentIntensity: 42,
+    proofBadge: "Operator memo",
   },
-  landscape_ad: {
+  brand_thesis: {
     format: "landscape",
-    title: "Digital infrastructure for teams that move with intent.",
-    subtitle: "Web builds, automation architecture, and growth systems engineered as one stack.",
-    eyebrow: "Campaign creative",
-    ctaText: "Book strategic review",
+    title: "Brand thesis: infrastructure is the real growth multiplier.",
+    subtitle:
+      "A premium website without systems is decoration. Systems without growth logic is throughput without leverage.",
+    eyebrow: "Brand thesis",
+    ctaText: "See our approach",
     serviceLane: "Systems",
     backgroundMode: "Panel",
     showLogo: true,
-    accentIntensity: 44,
-    proofBadge: "Limited Q2 intake",
+    accentIntensity: 38,
+    proofBadge: "Identity architecture",
   },
-  quote_card: {
+  authority_quote: {
     format: "square",
-    title: "The bottleneck is rarely effort. It is usually system design.",
-    subtitle: "High-leverage operators structure decisions before they optimize output.",
-    eyebrow: "From the Inovense desk",
-    ctaText: "Read the full note",
+    title: "The market rewards teams that operationalize trust, not just claim it.",
+    subtitle:
+      "Authority is not a voice style. It is what your systems make consistently true.",
+    eyebrow: "Authority quote",
+    ctaText: "Share insight",
     serviceLane: "Systems",
     backgroundMode: "Grid",
     showLogo: true,
-    accentIntensity: 38,
-    proofBadge: "Authority signal",
+    accentIntensity: 36,
+    proofBadge: "Editorial",
   },
   case_spotlight: {
     format: "landscape",
-    title: "Case spotlight: from fragmented stack to integrated growth engine.",
+    title: "Case spotlight: from fragmented execution to one operating engine.",
     subtitle:
-      "In 8 weeks, the team consolidated channels, rebuilt conversion paths, and launched a repeatable operating cadence.",
+      "In 8 weeks, the team rebuilt web flows, aligned ops automation, and shipped an integrated commercial stack.",
     eyebrow: "Case spotlight",
-    ctaText: "See the breakdown",
+    ctaText: "See the full case",
     serviceLane: "Build",
     backgroundMode: "Panel",
     showLogo: true,
     accentIntensity: 48,
     proofBadge: "+62% qualified pipeline",
   },
-  offer_cta: {
-    format: "portrait",
-    title: "Q2 Infrastructure Sprint",
+  proof_card: {
+    format: "square",
+    title: "+38% faster lead response after systems consolidation.",
     subtitle:
-      "Two-week advisory plus implementation plan for leadership teams that need decisive execution.",
-    eyebrow: "Offer",
-    ctaText: "Apply for sprint",
+      "Channel intake, assignment, and follow-up were unified into one execution layer with measurable latency drops.",
+    eyebrow: "Proof card",
+    ctaText: "View methodology",
+    serviceLane: "Systems",
+    backgroundMode: "Grid",
+    showLogo: true,
+    accentIntensity: 46,
+    proofBadge: "Measured outcome",
+  },
+  launch_post: {
+    format: "portrait",
+    title: "Launch: Inovense Creative Engine v1 is now live internally.",
+    subtitle:
+      "A reusable visual system for founder content, ad production, and authority storytelling without design drag.",
+    eyebrow: "Launch post",
+    ctaText: "Preview templates",
     serviceLane: "Build",
     backgroundMode: "Spotlight",
     showLogo: true,
+    accentIntensity: 52,
+    proofBadge: "Now shipping",
+  },
+  insight_post: {
+    format: "square",
+    title: "Insight: paid performance usually mirrors operational discipline.",
+    subtitle:
+      "When routing, reporting, and message architecture are loose, media spend only amplifies inconsistency.",
+    eyebrow: "Insight post",
+    ctaText: "Read insight",
+    serviceLane: "Growth",
+    backgroundMode: "Grid",
+    showLogo: true,
+    accentIntensity: 44,
+    proofBadge: "Strategic note",
+  },
+  offer_ad: {
+    format: "portrait",
+    title: "Q2 Infrastructure Sprint",
+    subtitle:
+      "Two-week advisory and execution blueprint for teams that need commercial clarity and delivery speed.",
+    eyebrow: "Offer ad",
+    ctaText: "Apply now",
+    serviceLane: "Build",
+    backgroundMode: "Spotlight",
+    showLogo: true,
+    accentIntensity: 60,
+    proofBadge: "4 seats left",
+  },
+  pain_point_ad: {
+    format: "landscape",
+    title: "Leads are not the issue. Conversion friction is.",
+    subtitle:
+      "Patchwork web and ops systems quietly kill high-intent demand before sales can act.",
+    eyebrow: "Pain-point ad",
+    ctaText: "Fix the funnel",
+    serviceLane: "Growth",
+    backgroundMode: "Panel",
+    showLogo: true,
     accentIntensity: 58,
-    proofBadge: "4 seats available",
+    proofBadge: "Commercial urgency",
+  },
+  service_cta_ad: {
+    format: "landscape",
+    title: "Build + Systems + Growth. One operator-grade partner.",
+    subtitle:
+      "Cross-functional execution with one accountable team, one strategy, and one delivery rhythm.",
+    eyebrow: "Service CTA ad",
+    ctaText: "Book strategic call",
+    serviceLane: "General",
+    backgroundMode: "Panel",
+    showLogo: true,
+    accentIntensity: 56,
+    proofBadge: "Integrated delivery",
+  },
+  landing_page_ad: {
+    format: "landscape",
+    title: "Your landing page is live. Your system still is not.",
+    subtitle:
+      "Drive clicks to pages built with conversion architecture, proof hierarchy, and sales-ready routes.",
+    eyebrow: "Landing page ad",
+    ctaText: "Open preview",
+    serviceLane: "Build",
+    backgroundMode: "Grid",
+    showLogo: true,
+    accentIntensity: 54,
+    proofBadge: "Campaign-ready",
+  },
+  systems_ad: {
+    format: "landscape",
+    title: "Manual ops is slowing growth and burning margin.",
+    subtitle:
+      "Deploy workflow architecture that routes, qualifies, and follows up without operational bottlenecks.",
+    eyebrow: "Systems ad",
+    ctaText: "Audit systems",
+    serviceLane: "Systems",
+    backgroundMode: "Panel",
+    showLogo: true,
+    accentIntensity: 58,
+    proofBadge: "Ops upgrade",
+  },
+  growth_ad: {
+    format: "landscape",
+    title: "Scale growth with signal, not guesswork.",
+    subtitle:
+      "Channel strategy, content systems, and paid operations aligned to one measurable commercial model.",
+    eyebrow: "Growth ad",
+    ctaText: "Plan growth stack",
+    serviceLane: "Growth",
+    backgroundMode: "Spotlight",
+    showLogo: true,
+    accentIntensity: 62,
+    proofBadge: "Performance focus",
   },
 };
 
-export const DEFAULT_TEMPLATE_ID: CreativeTemplateId = "square_post";
+export const DEFAULT_TEMPLATE_ID: CreativeTemplateId = "silent_statement";
+
+export function getModeForTemplate(template: CreativeTemplateId): CreativeMode {
+  return CREATIVE_TEMPLATE_SPECS[template].mode;
+}
+
+export function getTemplatesForMode(mode: CreativeMode): CreativeTemplateId[] {
+  return TEMPLATES_BY_MODE[mode];
+}
+
+export function resolveTemplateForMode(
+  mode: CreativeMode,
+  preferredTemplate?: CreativeTemplateId,
+): CreativeTemplateId {
+  if (preferredTemplate && CREATIVE_TEMPLATE_SPECS[preferredTemplate].mode === mode) {
+    return preferredTemplate;
+  }
+
+  return TEMPLATES_BY_MODE[mode][0];
+}
 
 export function createCreativeState(template: CreativeTemplateId): CreativeState {
   const preset = CREATIVE_TEMPLATE_PRESETS[template];
+  const mode = getModeForTemplate(template);
+
   return {
+    mode,
     template,
     ...preset,
   };
+}
+
+export function createCreativeStateForMode(
+  mode: CreativeMode,
+  preferredTemplate?: CreativeTemplateId,
+): CreativeState {
+  const template = resolveTemplateForMode(mode, preferredTemplate);
+  return createCreativeState(template);
 }
 
 export const DEFAULT_CREATIVE_STATE: CreativeState = createCreativeState(DEFAULT_TEMPLATE_ID);

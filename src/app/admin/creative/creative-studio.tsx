@@ -11,11 +11,14 @@ import {
   BACKGROUND_MODE_OPTIONS,
   clampAccentIntensity,
   CREATIVE_FORMAT_SPECS,
-  CREATIVE_TEMPLATE_OPTIONS,
+  CREATIVE_MODE_OPTIONS,
+  CREATIVE_MODE_SPECS,
   CREATIVE_TEMPLATE_SPECS,
   DEFAULT_CREATIVE_STATE,
   type CreativeState,
   createCreativeState,
+  createCreativeStateForMode,
+  getTemplatesForMode,
   SERVICE_LANE_OPTIONS,
 } from "./types";
 
@@ -23,10 +26,15 @@ export function CreativeStudio() {
   const [state, setState] = useState<CreativeState>(DEFAULT_CREATIVE_STATE);
 
   const activeTemplate = CREATIVE_TEMPLATE_SPECS[state.template];
+  const activeMode = CREATIVE_MODE_SPECS[state.mode];
+
+  const templatesForMode = useMemo(
+    () => getTemplatesForMode(state.mode).map((id) => CREATIVE_TEMPLATE_SPECS[id]),
+    [state.mode],
+  );
 
   const supportedFormats = useMemo(
-    () =>
-      activeTemplate.supportedFormats.map((formatId) => CREATIVE_FORMAT_SPECS[formatId]),
+    () => activeTemplate.supportedFormats.map((id) => CREATIVE_FORMAT_SPECS[id]),
     [activeTemplate],
   );
 
@@ -37,9 +45,12 @@ export function CreativeStudio() {
     }));
   }
 
+  function handleModeChange(mode: CreativeState["mode"]) {
+    setState(createCreativeStateForMode(mode));
+  }
+
   function handleTemplateChange(templateId: CreativeState["template"]) {
-    const nextState = createCreativeState(templateId);
-    setState(nextState);
+    setState(createCreativeState(templateId));
   }
 
   function handleFormatChange(formatId: CreativeState["format"]) {
@@ -54,17 +65,17 @@ export function CreativeStudio() {
         <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">Internal creative engine</p>
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-100">Creative Studio</h1>
         <p className="max-w-3xl text-sm leading-relaxed text-zinc-500">
-          Build reusable premium visuals for ads, founder content, offers, and case authority. Layout logic is
-          componentized so this can evolve into Remotion scenes later.
+          Distinct creative families for brand identity, social authority, and campaign ads. Each mode uses a different
+          composition grammar so outputs do not collapse into one generic style.
         </p>
       </header>
 
-      <div className="grid gap-6 xl:grid-cols-[365px_minmax(0,1fr)]">
-        <aside className="rounded-2xl border border-zinc-800/80 bg-zinc-900/45 p-5 shadow-[0_18px_48px_rgba(0,0,0,0.28)] xl:sticky xl:top-20 xl:h-fit">
+      <div className="grid gap-6 xl:grid-cols-[372px_minmax(0,1fr)]">
+        <aside className="rounded-2xl border border-zinc-800/80 bg-zinc-900/45 p-5 shadow-[0_18px_48px_rgba(0,0,0,0.3)] xl:sticky xl:top-20 xl:h-fit">
           <div className="mb-5 flex items-center justify-between gap-3 border-b border-zinc-800/75 pb-4">
             <div>
               <h2 className="text-sm font-semibold text-zinc-200">Creative controls</h2>
-              <p className="text-xs text-zinc-500">Template and copy inputs</p>
+              <p className="text-xs text-zinc-500">Mode, template, and copy direction</p>
             </div>
             <Button
               size="sm"
@@ -77,13 +88,37 @@ export function CreativeStudio() {
           </div>
 
           <div className="space-y-4">
-            <ControlField label="Visual type">
+            <ControlField label="Content mode">
+              <div className="grid grid-cols-3 gap-2">
+                {CREATIVE_MODE_OPTIONS.map((mode) => {
+                  const active = state.mode === mode.id;
+                  return (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      onClick={() => handleModeChange(mode.id)}
+                      className={cn(
+                        "rounded-xl border px-2 py-2 text-xs font-semibold uppercase tracking-[0.13em] transition",
+                        active
+                          ? "border-brand/60 bg-brand/20 text-zinc-100"
+                          : "border-zinc-700/75 bg-zinc-950/70 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200",
+                      )}
+                    >
+                      {mode.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-1 text-xs text-zinc-500">{activeMode.description}</p>
+            </ControlField>
+
+            <ControlField label="Template family">
               <select
                 value={state.template}
                 onChange={(event) => handleTemplateChange(event.target.value as CreativeState["template"])}
                 className={fieldClassName}
               >
-                {CREATIVE_TEMPLATE_OPTIONS.map((template) => (
+                {templatesForMode.map((template) => (
                   <option key={template.id} value={template.id}>
                     {template.label}
                   </option>
@@ -111,7 +146,7 @@ export function CreativeStudio() {
                 value={state.title}
                 onChange={(event) => updateField("title", event.target.value)}
                 className="min-h-24 rounded-xl border-zinc-700/80 bg-zinc-950/70 text-zinc-100 placeholder:text-zinc-600"
-                placeholder="Primary headline"
+                placeholder="Primary message"
               />
             </ControlField>
 
@@ -235,11 +270,13 @@ export function CreativeStudio() {
           </div>
         </aside>
 
-        <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/45 p-4 shadow-[0_18px_54px_rgba(0,0,0,0.28)] lg:p-6">
+        <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/45 p-4 shadow-[0_18px_54px_rgba(0,0,0,0.3)] lg:p-6">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800/75 pb-4">
             <div>
               <h2 className="text-sm font-semibold text-zinc-200">Live branded preview</h2>
-              <p className="text-xs text-zinc-500">Premium dark composition with reusable template structure</p>
+              <p className="text-xs text-zinc-500">
+                Mode: {state.mode} · Template: {activeTemplate.label}
+              </p>
             </div>
             <div className="inline-flex items-center rounded-full border border-zinc-700/80 bg-zinc-950/70 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-zinc-400">
               {formatMeta.label}
@@ -248,7 +285,7 @@ export function CreativeStudio() {
 
           <AnimatePresence mode="wait">
             <motion.div
-              key={`${state.template}:${state.format}:${state.backgroundMode}`}
+              key={`${state.mode}:${state.template}:${state.format}:${state.backgroundMode}`}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
@@ -261,7 +298,7 @@ export function CreativeStudio() {
       </div>
 
       <div className="rounded-xl border border-zinc-800/70 bg-zinc-900/40 px-4 py-3 text-xs text-zinc-500">
-        Tip: switch templates to load tuned defaults, then adjust copy and intensity for each campaign variant.
+        Use Brand mode for identity narratives, Social mode for authority and proof, and Ad mode for sharper conversion-led campaign creative.
       </div>
     </section>
   );
