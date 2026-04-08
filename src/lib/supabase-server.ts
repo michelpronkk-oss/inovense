@@ -14,6 +14,7 @@ export type LeadStatus =
   | "lost";
 
 export type OnboardingStatus = "not_sent" | "sent" | "completed";
+export type ProposalDecision = "accepted" | "declined";
 
 export type ProjectStatus =
   | "not_started"
@@ -48,6 +49,10 @@ export type Lead = {
   proposal_url: string | null;
   proposal_body: string | null;
   proposal_notes: string | null;
+  proposal_price: number | null;
+  proposal_deposit: number | null;
+  proposal_decision: ProposalDecision | null;
+  proposal_decided_at: string | null;
   proposal_sent_at: string | null;
   // payment and project
   payment_link: string | null;

@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import {
   EMAIL_TEMPLATE_LIST,
   EMAIL_TEMPLATES,
+  applyPaymentAmountToBody,
   buildEmailHtml,
+  formatEuroAmount,
   type EmailTemplateType,
 } from "@/lib/email-templates";
 import { sendLeadEmail } from "./email-actions";
@@ -17,6 +19,8 @@ type Props = {
   workEmail: string;
   onboardingToken: string | null;
   proposalToken: string | null;
+  proposalDeposit: number | null;
+  paymentDepositAmount: number | null;
 };
 
 /* ─── Action buttons panel ──────────────────────────────────────────────── */
@@ -28,6 +32,8 @@ export function EmailActionsPanel({
   workEmail,
   onboardingToken,
   proposalToken,
+  proposalDeposit,
+  paymentDepositAmount,
 }: Props) {
   const [activeType, setActiveType] = useState<EmailTemplateType | null>(null);
 
@@ -80,6 +86,8 @@ export function EmailActionsPanel({
           workEmail={workEmail}
           onboardingToken={onboardingToken}
           proposalToken={proposalToken}
+          proposalDeposit={proposalDeposit}
+          paymentDepositAmount={paymentDepositAmount}
           templateType={activeType}
           onClose={() => setActiveType(null)}
         />
@@ -97,6 +105,8 @@ function EmailComposerModal({
   workEmail,
   onboardingToken,
   proposalToken,
+  proposalDeposit,
+  paymentDepositAmount,
   templateType,
   onClose,
 }: Props & {
@@ -120,6 +130,16 @@ function EmailComposerModal({
   useEffect(() => {
     setOrigin(window.location.origin);
   }, []);
+
+  const effectivePaymentAmount = paymentDepositAmount ?? proposalDeposit;
+  const paymentAmountReady = effectivePaymentAmount != null;
+
+  const previewBody = useMemo(() => {
+    if (templateType !== "payment_request" || effectivePaymentAmount == null) {
+      return body;
+    }
+    return applyPaymentAmountToBody(body, effectivePaymentAmount);
+  }, [body, effectivePaymentAmount, templateType]);
 
   // Close on Escape
   useEffect(() => {
@@ -156,15 +176,30 @@ function EmailComposerModal({
       buildEmailHtml({
         eyebrow: template.eyebrow,
         heading: template.heading(firstName),
-        body,
+        body: previewBody,
         cta: previewCta,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [body, template, firstName, origin, onboardingToken, proposalToken, templateType]
+    [
+      previewBody,
+      template,
+      firstName,
+      origin,
+      onboardingToken,
+      proposalToken,
+      templateType,
+    ]
   );
 
   function handleSend() {
     setSendError(null);
+    if (templateType === "payment_request" && !paymentAmountReady) {
+      setSendState("error");
+      setSendError(
+        "Set a proposal deposit or payment override before sending this email."
+      );
+      return;
+    }
     startTransition(async () => {
       const result = await sendLeadEmail(leadId, templateType, subject, body);
       if (result.success) {
@@ -275,6 +310,19 @@ function EmailComposerModal({
                     : "The onboarding link button appears automatically below your message."}
                 </p>
               )}
+              {templateType === "payment_request" && (
+                <p
+                  className={`mt-2 text-[11px] leading-relaxed ${
+                    paymentAmountReady ? "text-zinc-700" : "text-red-400"
+                  }`}
+                >
+                  {paymentAmountReady
+                    ? `This email will include deposit due: ${formatEuroAmount(
+                        Number(effectivePaymentAmount)
+                      )}.`
+                    : "Set a proposal deposit or payment override before sending this email."}
+                </p>
+              )}
             </div>
 
           </div>
@@ -303,7 +351,12 @@ function EmailComposerModal({
                 <>
                   <button
                     onClick={handleSend}
-                    disabled={isPending || !subject.trim() || !body.trim()}
+                    disabled={
+                      isPending ||
+                      !subject.trim() ||
+                      !body.trim() ||
+                      (templateType === "payment_request" && !paymentAmountReady)
+                    }
                     className={`rounded-lg px-4 py-2 text-xs font-medium transition-colors disabled:cursor-wait disabled:opacity-50 ${
                       isDecline
                         ? "border border-red-900/50 bg-red-950/30 text-red-400 hover:bg-red-950/50 hover:text-red-300"

@@ -85,6 +85,16 @@ function Section({
   );
 }
 
+function formatEuro(value: number) {
+  const hasDecimals = Math.round(value * 100) % 100 !== 0;
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
 export default async function LeadDetailPage({
   params,
 }: {
@@ -121,6 +131,7 @@ export default async function LeadDetailPage({
       : null;
 
   const firstName = lead.full_name.split(" ")[0];
+  const effectiveDepositAmount = lead.deposit_amount ?? lead.proposal_deposit;
 
   return (
     <>
@@ -191,14 +202,11 @@ export default async function LeadDetailPage({
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-4 text-xs text-zinc-600">
-                  {lead.deposit_amount != null && (
+                  {effectiveDepositAmount != null && (
                     <span>
                       <span className="mr-1 text-zinc-700">Deposit</span>
                       <span className="font-medium text-zinc-400">
-                        €{Number(lead.deposit_amount).toLocaleString("en-GB", {
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 2,
-                        })}
+                        {formatEuro(Number(effectiveDepositAmount))}
                       </span>
                     </span>
                   )}
@@ -294,6 +302,8 @@ export default async function LeadDetailPage({
               workEmail={lead.work_email}
               onboardingToken={lead.onboarding_token}
               proposalToken={lead.proposal_token}
+              proposalDeposit={lead.proposal_deposit}
+              paymentDepositAmount={lead.deposit_amount}
             />
           </Section>
 
@@ -303,6 +313,8 @@ export default async function LeadDetailPage({
               currentUrl={lead.proposal_url}
               currentBody={lead.proposal_body}
               currentNotes={lead.proposal_notes}
+              currentProposalPrice={lead.proposal_price}
+              currentProposalDeposit={lead.proposal_deposit}
               proposalToken={lead.proposal_token}
               proposalSentAt={lead.proposal_sent_at}
             />
@@ -313,6 +325,7 @@ export default async function LeadDetailPage({
               id={lead.id}
               currentPaymentLink={lead.payment_link}
               currentInvoiceReference={lead.invoice_reference}
+              proposalDeposit={lead.proposal_deposit}
               currentDepositAmount={lead.deposit_amount}
               depositPaidAt={lead.deposit_paid_at}
               currentProjectStartDate={lead.project_start_date}

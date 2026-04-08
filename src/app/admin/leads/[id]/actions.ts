@@ -24,6 +24,14 @@ function revalidateLead(id: string) {
   revalidatePath("/admin");
 }
 
+function parseCurrencyAmount(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const parsed = Number.parseFloat(trimmed);
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  return Math.round(parsed * 100) / 100;
+}
+
 /* ─── Status ────────────────────────────────────────────────────────────── */
 
 export async function updateLeadStatus(
@@ -122,8 +130,13 @@ export async function updateProposalFields(
   id: string,
   proposalUrl: string,
   proposalBody: string,
-  proposalNotes: string
+  proposalNotes: string,
+  proposalPrice: string,
+  proposalDeposit: string
 ): Promise<{ success: boolean; error?: string }> {
+  const price = parseCurrencyAmount(proposalPrice);
+  const deposit = parseCurrencyAmount(proposalDeposit);
+
   try {
     const supabase = createSupabaseServerClient();
     const { error } = await supabase
@@ -132,10 +145,12 @@ export async function updateProposalFields(
         proposal_url: proposalUrl.trim() || null,
         proposal_body: proposalBody.trim() || null,
         proposal_notes: proposalNotes.trim() || null,
+        proposal_price: price,
+        proposal_deposit: deposit,
       })
       .eq("id", id);
     if (error) throw error;
-    revalidatePath(`/admin/leads/${id}`);
+    revalidateLead(id);
     return { success: true };
   } catch (err) {
     console.error("[admin] updateProposalFields failed:", err);
@@ -173,11 +188,7 @@ export async function updatePaymentFields(
     projectStartDate: string;
   }
 ): Promise<{ success: boolean; error?: string }> {
-  const parsed = fields.depositAmount.trim()
-    ? parseFloat(fields.depositAmount)
-    : null;
-  const amount =
-    parsed !== null && !isNaN(parsed) && parsed >= 0 ? parsed : null;
+  const amount = parseCurrencyAmount(fields.depositAmount);
 
   try {
     const supabase = createSupabaseServerClient();
@@ -191,7 +202,7 @@ export async function updatePaymentFields(
       })
       .eq("id", id);
     if (error) throw error;
-    revalidatePath(`/admin/leads/${id}`);
+    revalidateLead(id);
     return { success: true };
   } catch (err) {
     console.error("[admin] updatePaymentFields failed:", err);

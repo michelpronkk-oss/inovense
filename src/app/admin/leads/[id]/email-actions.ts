@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import {
   EMAIL_TEMPLATES,
+  applyPaymentAmountToBody,
   buildEmailHtml,
   type EmailTemplateType,
 } from "@/lib/email-templates";
@@ -36,7 +37,7 @@ export async function sendLeadEmail(
     const { data: lead, error: fetchError } = await supabase
       .from("leads")
       .select(
-        "id, full_name, company_name, work_email, status, onboarding_token, onboarding_status, proposal_token"
+        "id, full_name, company_name, work_email, status, onboarding_token, onboarding_status, proposal_token, proposal_deposit, deposit_amount"
       )
       .eq("id", leadId)
       .single();
@@ -46,6 +47,24 @@ export async function sendLeadEmail(
     }
 
     const firstName = lead.full_name.split(" ")[0];
+    const effectiveDepositAmount = lead.deposit_amount ?? lead.proposal_deposit;
+    const normalizedDepositAmount =
+      effectiveDepositAmount != null && Number.isFinite(Number(effectiveDepositAmount))
+        ? Number(effectiveDepositAmount)
+        : null;
+
+    if (emailType === "payment_request" && normalizedDepositAmount == null) {
+      return {
+        success: false,
+        error:
+          "Set a proposal deposit or payment override before sending a payment request.",
+      };
+    }
+
+    const resolvedBody =
+      emailType === "payment_request" && normalizedDepositAmount != null
+        ? applyPaymentAmountToBody(body, normalizedDepositAmount)
+        : body;
 
     // For onboarding_sent: ensure a token exists, generate if missing
     let onboardingToken = lead.onboarding_token;
@@ -99,7 +118,7 @@ export async function sendLeadEmail(
     const html = buildEmailHtml({
       eyebrow: template.eyebrow,
       heading: template.heading(firstName),
-      body,
+      body: resolvedBody,
       cta,
       baseUrl,
     });
@@ -109,7 +128,7 @@ export async function sendLeadEmail(
       ``,
       `${template.heading(firstName)}`,
       ``,
-      body,
+      resolvedBody,
       cta ? `\n${cta.text}:\n${cta.href}` : "",
       ``,
       `Inovense`,

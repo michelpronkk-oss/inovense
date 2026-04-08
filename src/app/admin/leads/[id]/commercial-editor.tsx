@@ -24,6 +24,24 @@ function fmtDate(iso: string) {
   });
 }
 
+function formatEuro(value: number) {
+  const hasDecimals = Math.round(value * 100) % 100 !== 0;
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function parseDraftAmount(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const parsed = Number.parseFloat(trimmed);
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  return parsed;
+}
+
 function SaveRow({
   isPending,
   saveState,
@@ -71,6 +89,8 @@ export function ProposalEditor({
   currentUrl,
   currentBody,
   currentNotes,
+  currentProposalPrice,
+  currentProposalDeposit,
   proposalToken: initialToken,
   proposalSentAt,
 }: {
@@ -78,12 +98,20 @@ export function ProposalEditor({
   currentUrl: string | null;
   currentBody: string | null;
   currentNotes: string | null;
+  currentProposalPrice: number | null;
+  currentProposalDeposit: number | null;
   proposalToken: string | null;
   proposalSentAt: string | null;
 }) {
   const [url, setUrl] = useState(currentUrl ?? "");
   const [body, setBody] = useState(currentBody ?? "");
   const [notes, setNotes] = useState(currentNotes ?? "");
+  const [price, setPrice] = useState(
+    currentProposalPrice != null ? String(currentProposalPrice) : ""
+  );
+  const [deposit, setDeposit] = useState(
+    currentProposalDeposit != null ? String(currentProposalDeposit) : ""
+  );
   const [token, setToken] = useState<string | null>(initialToken);
   const [isPending, startTransition] = useTransition();
   const [tokenPending, startTokenTransition] = useTransition();
@@ -92,7 +120,14 @@ export function ProposalEditor({
   function handleSave() {
     setSaveState("idle");
     startTransition(async () => {
-      const result = await updateProposalFields(id, url, body, notes);
+      const result = await updateProposalFields(
+        id,
+        url,
+        body,
+        notes,
+        price,
+        deposit
+      );
       setSaveState(result.success ? "saved" : "error");
       if (result.success) setTimeout(() => setSaveState("idle"), 2500);
     });
@@ -106,9 +141,101 @@ export function ProposalEditor({
   }
 
   const proposalUrl = token ? `/proposal/${token}` : null;
+  const parsedPrice = parseDraftAmount(price);
+  const parsedDeposit = parseDraftAmount(deposit);
+  const depositShare =
+    parsedPrice != null && parsedPrice > 0 && parsedDeposit != null
+      ? Math.min(100, Math.max(0, (parsedDeposit / parsedPrice) * 100))
+      : null;
 
   return (
     <div className="space-y-4">
+      <div>
+        <Label>Commercial structure</Label>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="min-w-0">
+            <p className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+              Proposal price (EUR)
+            </p>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-zinc-600">
+                €
+              </span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={price}
+                onChange={(e) => {
+                  setPrice(e.target.value);
+                  setSaveState("idle");
+                }}
+                placeholder="7500.00"
+                className={inputCls(
+                  "pl-7 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                )}
+              />
+            </div>
+          </div>
+
+          <div className="min-w-0">
+            <p className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+              Proposal deposit (EUR)
+            </p>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-zinc-600">
+                €
+              </span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={deposit}
+                onChange={(e) => {
+                  setDeposit(e.target.value);
+                  setSaveState("idle");
+                }}
+                placeholder="3000.00"
+                className={inputCls(
+                  "pl-7 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                )}
+              />
+            </div>
+          </div>
+        </div>
+        <div className="mt-3 rounded-lg border border-zinc-800/70 bg-zinc-950/40 p-3.5">
+          <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+            Proposal summary
+          </p>
+          <div className="mt-2.5 grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
+                Total
+              </p>
+              <p className="mt-1 text-sm font-medium text-zinc-200">
+                {parsedPrice != null ? formatEuro(parsedPrice) : "Not set"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
+                Deposit
+              </p>
+              <p className="mt-1 text-sm font-medium text-zinc-200">
+                {parsedDeposit != null ? formatEuro(parsedDeposit) : "Not set"}
+              </p>
+            </div>
+          </div>
+          {depositShare != null && (
+            <p className="mt-2 text-[11px] text-zinc-600">
+              Deposit share: {depositShare.toFixed(1)}% of proposal price.
+            </p>
+          )}
+          <p className="mt-1 text-[11px] text-zinc-700">
+            Payment requests reuse the proposal deposit unless manually
+            overridden in Payment.
+          </p>
+        </div>
+      </div>
 
       {/* Proposal body (client-facing content) */}
       <div>
@@ -224,6 +351,7 @@ export function PaymentEditor({
   id,
   currentPaymentLink,
   currentInvoiceReference,
+  proposalDeposit,
   currentDepositAmount,
   depositPaidAt,
   currentProjectStartDate,
@@ -231,6 +359,7 @@ export function PaymentEditor({
   id: string;
   currentPaymentLink: string | null;
   currentInvoiceReference: string | null;
+  proposalDeposit: number | null;
   currentDepositAmount: number | null;
   depositPaidAt: string | null;
   currentProjectStartDate: string | null;
@@ -256,6 +385,9 @@ export function PaymentEditor({
   const [markPaidError, setMarkPaidError] = useState<string | null>(null);
   // Track deposit paid locally so the UI updates immediately after the action
   const [paidAt, setPaidAt] = useState<string | null>(depositPaidAt);
+  const overrideAmount = parseDraftAmount(amount);
+  const effectiveAmount = overrideAmount ?? proposalDeposit;
+  const usingOverride = overrideAmount != null;
 
   function handleSave() {
     setSaveState("idle");
@@ -287,6 +419,35 @@ export function PaymentEditor({
 
   return (
     <div className="space-y-4">
+      <div className="rounded-lg border border-zinc-800/70 bg-zinc-950/40 p-3.5">
+        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+          Payment amount source
+        </p>
+        <div className="mt-2.5 grid grid-cols-2 gap-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
+              Proposal deposit
+            </p>
+            <p className="mt-1 text-sm font-medium text-zinc-200">
+              {proposalDeposit != null ? formatEuro(proposalDeposit) : "Not set"}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
+              Payment request amount
+            </p>
+            <p className="mt-1 text-sm font-medium text-zinc-200">
+              {effectiveAmount != null ? formatEuro(effectiveAmount) : "Not set"}
+            </p>
+          </div>
+        </div>
+        <p className="mt-2 text-[11px] text-zinc-600">
+          {usingOverride
+            ? "Using manual override for payment requests."
+            : "Using proposal deposit as the payment request amount."}
+        </p>
+      </div>
+
       {/* Payment link */}
       <div>
         <Label>Payment link</Label>
@@ -330,7 +491,7 @@ export function PaymentEditor({
           />
         </div>
         <div className="min-w-0">
-          <Label>Deposit (€)</Label>
+          <Label>Payment override (EUR)</Label>
           <div className="relative">
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-zinc-600">
               €
@@ -347,6 +508,23 @@ export function PaymentEditor({
               placeholder="0.00"
               className={inputCls("pl-7 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none")}
             />
+          </div>
+          <div className="mt-1.5 flex items-center justify-between gap-2">
+            <p className="text-[11px] text-zinc-700">
+              Leave empty to use proposal deposit automatically.
+            </p>
+            {amount.trim().length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAmount("");
+                  setSaveState("idle");
+                }}
+                className="shrink-0 text-[11px] text-zinc-500 transition-colors hover:text-zinc-300"
+              >
+                Use proposal value
+              </button>
+            )}
           </div>
         </div>
       </div>

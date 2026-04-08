@@ -76,6 +76,39 @@ export const EMAIL_TEMPLATES: Record<EmailTemplateType, EmailTemplateDef> = {
 
 export const EMAIL_TEMPLATE_LIST = Object.values(EMAIL_TEMPLATES);
 
+export function formatEuroAmount(value: number): string {
+  const hasDecimals = Math.round(value * 100) % 100 !== 0;
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+export function applyPaymentAmountToBody(body: string, amount: number): string {
+  const formatted = formatEuroAmount(amount);
+  const trimmed = body.trim();
+
+  if (!trimmed) {
+    return `Deposit due: ${formatted}.`;
+  }
+
+  if (trimmed.includes("{{deposit_amount}}")) {
+    return trimmed.replaceAll("{{deposit_amount}}", formatted);
+  }
+
+  if (trimmed.includes("{{payment_amount}}")) {
+    return trimmed.replaceAll("{{payment_amount}}", formatted);
+  }
+
+  if (/deposit due:/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  return `Deposit due: ${formatted}.\n\n${trimmed}`;
+}
+
 /* ─── HTML builder ──────────────────────────────────────────────────────── */
 
 function esc(str: string): string {
