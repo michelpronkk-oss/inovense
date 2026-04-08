@@ -45,7 +45,7 @@ export function StatusUpdater({
             value={status}
             onChange={handleChange}
             disabled={isPending}
-            className="h-9 w-full appearance-none rounded-lg border border-zinc-700/80 bg-zinc-900 pl-3 pr-8 text-sm text-zinc-200 outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30 disabled:cursor-wait disabled:opacity-60 [&>option]:bg-zinc-900"
+            className="h-9 w-full appearance-none rounded-lg border border-zinc-700/80 bg-zinc-900 pl-3 pr-8 text-base text-zinc-200 outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30 disabled:cursor-wait disabled:opacity-60 sm:text-sm [&>option]:bg-zinc-900"
           >
             {ALL_STATUSES.map((s) => (
               <option key={s.value} value={s.value}>
@@ -126,7 +126,7 @@ export function NotesEditor({
         }}
         rows={5}
         placeholder="Add internal notes about this lead..."
-        className="w-full resize-none rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5 py-3 text-sm leading-relaxed text-zinc-300 placeholder-zinc-700 outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30"
+        className="w-full resize-none rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5 py-3 text-base leading-relaxed text-zinc-300 placeholder-zinc-700 outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30 sm:text-sm"
       />
       <div className="flex items-center gap-3">
         <button
@@ -187,7 +187,7 @@ export function NextStepEditor({
           }
         }}
         placeholder="e.g. Send proposal by Friday"
-        className="h-9 w-full rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5 text-sm text-zinc-300 placeholder-zinc-700 outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30"
+        className="h-9 w-full rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5 text-base text-zinc-300 placeholder-zinc-700 outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30 sm:text-sm"
       />
       <div className="flex items-center gap-3">
         <button
@@ -258,7 +258,7 @@ export function DeleteLeadButton({ id }: { id: string }) {
   return (
     <button
       onClick={() => setConfirming(true)}
-      className="text-xs text-zinc-700 transition-colors hover:text-red-400"
+      className="rounded-lg border border-red-900/30 bg-red-950/10 px-3 py-1.5 text-xs font-medium text-red-500/70 transition-colors hover:border-red-800/50 hover:bg-red-950/25 hover:text-red-400"
     >
       Delete lead
     </button>

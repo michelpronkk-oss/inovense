@@ -47,8 +47,10 @@ function formatConfirmationHtml(data: IntakeFormData): string {
           <tr>
             <td bgcolor="#18181b" style="background-color:#18181b;border:1px solid #27272a;border-top:none;border-radius:0 0 12px 12px;padding:36px 36px 32px 36px;">
 
-              <!-- Wordmark -->
-              <p style="margin:0 0 32px 0;font-size:11px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:#49A0A4;">Inovense</p>
+              <!-- Logo -->
+              <div style="margin:0 0 32px 0;">
+                <img src="https://inovense.com/logo.png" alt="Inovense" width="110" height="26" border="0" style="display:block;width:110px;height:26px;border:0;outline:none;text-decoration:none;" />
+              </div>
 
               <!-- Eyebrow -->
               <p style="margin:0 0 10px 0;font-size:10px;font-weight:500;letter-spacing:0.14em;text-transform:uppercase;color:#71717a;">Brief received</p>

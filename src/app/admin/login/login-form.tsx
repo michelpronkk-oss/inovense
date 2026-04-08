@@ -28,7 +28,7 @@ export default function LoginForm({ from }: { from: string }) {
           autoCapitalize="off"
           autoCorrect="off"
           spellCheck={false}
-          className="h-10 w-full rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5 text-sm text-zinc-200 placeholder-zinc-700 outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30"
+          className="h-10 w-full rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5 text-base text-zinc-200 placeholder-zinc-700 outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30 sm:text-sm"
         />
       </div>
 
@@ -45,7 +45,7 @@ export default function LoginForm({ from }: { from: string }) {
           type="password"
           required
           autoComplete="current-password"
-          className="h-10 w-full rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5 text-sm text-zinc-200 placeholder-zinc-700 outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30"
+          className="h-10 w-full rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5 text-base text-zinc-200 placeholder-zinc-700 outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30 sm:text-sm"
         />
       </div>
 

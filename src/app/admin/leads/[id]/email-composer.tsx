@@ -42,7 +42,7 @@ export function EmailActionsPanel({
               onClick={() => setActiveType(t.type)}
               className={`group flex w-full items-center justify-between rounded-lg border px-3.5 py-2.5 text-left text-xs font-medium transition-colors ${
                 isDecline
-                  ? "border-zinc-800 text-zinc-600 hover:border-red-900/50 hover:bg-red-950/20 hover:text-red-400/80"
+                  ? "border-red-900/30 bg-red-950/10 text-red-400/70 hover:border-red-800/50 hover:bg-red-950/30 hover:text-red-400"
                   : "border-zinc-700/80 text-zinc-400 hover:border-zinc-600 hover:bg-zinc-800/50 hover:text-zinc-200"
               }`}
             >
@@ -54,7 +54,7 @@ export function EmailActionsPanel({
                 fill="none"
                 aria-hidden
                 className={`shrink-0 transition-transform group-hover:translate-x-0.5 ${
-                  isDecline ? "text-zinc-700" : "text-zinc-700"
+                  isDecline ? "text-red-900/60 group-hover:text-red-500/60" : "text-zinc-700"
                 }`}
               >
                 <path

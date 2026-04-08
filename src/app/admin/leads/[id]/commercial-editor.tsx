@@ -52,7 +52,7 @@ function SaveRow({
 }
 
 function inputCls(extra?: string) {
-  return `h-9 w-full rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5 text-sm text-zinc-300 placeholder-zinc-700 outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30 ${extra ?? ""}`;
+  return `h-9 w-full rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5 text-base text-zinc-300 placeholder-zinc-700 outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30 sm:text-sm ${extra ?? ""}`;
 }
 
 function Label({ children }: { children: React.ReactNode }) {
@@ -130,7 +130,7 @@ export function ProposalEditor({
           }}
           rows={3}
           placeholder="Scope summary, version notes, key assumptions..."
-          className="w-full resize-none rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5 py-3 text-sm leading-relaxed text-zinc-300 placeholder-zinc-700 outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30"
+          className="w-full resize-none rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5 py-3 text-base leading-relaxed text-zinc-300 placeholder-zinc-700 outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30 sm:text-sm"
         />
       </div>
 
@@ -247,7 +247,7 @@ export function PaymentEditor({
 
       {/* Invoice ref + deposit amount */}
       <div className="grid grid-cols-2 gap-3">
-        <div>
+        <div className="min-w-0">
           <Label>Invoice ref.</Label>
           <input
             type="text"
@@ -260,7 +260,7 @@ export function PaymentEditor({
             className={inputCls()}
           />
         </div>
-        <div>
+        <div className="min-w-0">
           <Label>Deposit (€)</Label>
           <div className="relative">
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-zinc-600">
@@ -292,9 +292,7 @@ export function PaymentEditor({
             setStartDate(e.target.value);
             setSaveState("idle");
           }}
-          className={inputCls(
-            "text-zinc-300 [color-scheme:dark]"
-          )}
+          className="h-9 w-full max-w-[200px] rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5 text-base text-zinc-300 [color-scheme:dark] outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30 sm:text-sm"
         />
       </div>
 
@@ -395,7 +393,7 @@ export function ProjectStatusEditor({
             value={status}
             onChange={(e) => handleChange(e.target.value as ProjectStatus)}
             disabled={isPending}
-            className={`h-9 w-full rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5 text-sm outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30 disabled:cursor-wait disabled:opacity-50 ${PROJECT_STATUS_COLORS[status]}`}
+            className={`h-9 w-full rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5 text-base outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30 disabled:cursor-wait disabled:opacity-50 sm:text-sm ${PROJECT_STATUS_COLORS[status]}`}
           >
             {PROJECT_STATUS_OPTIONS.map((opt) => (
               <option
