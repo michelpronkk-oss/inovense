@@ -63,15 +63,18 @@ export async function sendLeadEmail(
         .eq("id", leadId);
     }
 
+    // Derive base URL from request headers (used for logo + onboarding CTA)
+    const headersList = await headers();
+    const host = headersList.get("host") ?? "inovense.com";
+    const proto = headersList.get("x-forwarded-proto") ?? "https";
+    const baseUrl = `${proto}://${host}`;
+
     // Build CTA for onboarding_sent
     let cta: { text: string; href: string } | undefined;
     if (emailType === "onboarding_sent" && onboardingToken) {
-      const headersList = await headers();
-      const host = headersList.get("host") ?? "inovense.com";
-      const proto = headersList.get("x-forwarded-proto") ?? "https";
       cta = {
         text: "Complete onboarding brief",
-        href: `${proto}://${host}/onboarding/${onboardingToken}`,
+        href: `${baseUrl}/onboarding/${onboardingToken}`,
       };
     }
 
@@ -81,6 +84,7 @@ export async function sendLeadEmail(
       heading: template.heading(firstName),
       body,
       cta,
+      baseUrl,
     });
 
     const plainText = [

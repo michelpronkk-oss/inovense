@@ -13,7 +13,7 @@ const links = [
   { label: "Build", href: "/build" },
   { label: "Systems", href: "/systems" },
   { label: "Growth", href: "/growth" },
-  { label: "Work", href: "/work" },
+  { label: "Process", href: "/process" },
 ];
 
 export default function Nav() {
