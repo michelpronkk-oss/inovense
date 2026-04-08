@@ -36,7 +36,7 @@ export async function sendLeadEmail(
     const { data: lead, error: fetchError } = await supabase
       .from("leads")
       .select(
-        "id, full_name, company_name, work_email, status, onboarding_token, onboarding_status"
+        "id, full_name, company_name, work_email, status, onboarding_token, onboarding_status, proposal_token"
       )
       .eq("id", leadId)
       .single();
@@ -63,18 +63,35 @@ export async function sendLeadEmail(
         .eq("id", leadId);
     }
 
-    // Derive base URL from request headers (used for logo + onboarding CTA)
+    // For proposal_sent: ensure a token exists, generate if missing
+    let proposalToken = lead.proposal_token;
+    if (emailType === "proposal_sent") {
+      if (!proposalToken) {
+        proposalToken = crypto.randomUUID();
+      }
+      await supabase
+        .from("leads")
+        .update({ proposal_token: proposalToken })
+        .eq("id", leadId);
+    }
+
+    // Derive base URL from request headers (used for logo + CTA links)
     const headersList = await headers();
     const host = headersList.get("host") ?? "inovense.com";
     const proto = headersList.get("x-forwarded-proto") ?? "https";
     const baseUrl = `${proto}://${host}`;
 
-    // Build CTA for onboarding_sent
+    // Build CTA per template type
     let cta: { text: string; href: string } | undefined;
     if (emailType === "onboarding_sent" && onboardingToken) {
       cta = {
         text: "Complete onboarding brief",
         href: `${baseUrl}/onboarding/${onboardingToken}`,
+      };
+    } else if (emailType === "proposal_sent" && proposalToken) {
+      cta = {
+        text: "View proposal",
+        href: `${baseUrl}/proposal/${proposalToken}`,
       };
     }
 
@@ -142,7 +159,10 @@ export async function sendLeadEmail(
 
     // Update lead fields tied to this email type
     const statusUpdate = template.statusOnSend ? { status: template.statusOnSend } : null;
-    const proposalUpdate = emailType === "proposal_sent" ? { proposal_sent_at: new Date().toISOString() } : null;
+    const proposalUpdate =
+      emailType === "proposal_sent"
+        ? { proposal_sent_at: new Date().toISOString(), proposal_token: proposalToken }
+        : null;
 
     if (statusUpdate || proposalUpdate) {
       await supabase

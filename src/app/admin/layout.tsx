@@ -3,11 +3,18 @@ import Image from "next/image";
 import { headers } from "next/headers";
 import { type ReactNode } from "react";
 import type { Metadata } from "next";
+import { cn } from "@/lib/utils";
 import { logout } from "./login/actions";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
+
+const ADMIN_NAV_LINKS = [
+  { href: "/admin", label: "Overview", exact: true },
+  { href: "/admin/leads", label: "Leads" },
+  { href: "/admin/creative", label: "Creative" },
+] as const;
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const headersList = await headers();
@@ -53,18 +60,26 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
           {/* Nav + sign out */}
           <div className="flex items-center gap-1">
-            <Link
-              href="/admin"
-              className="rounded-lg px-3 py-1.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-800/50 hover:text-zinc-200"
-            >
-              Overview
-            </Link>
-            <Link
-              href="/admin/leads"
-              className="rounded-lg px-3 py-1.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-800/50 hover:text-zinc-200"
-            >
-              Leads
-            </Link>
+            {ADMIN_NAV_LINKS.map((item) => {
+              const isActive = "exact" in item && item.exact
+                ? pathname === item.href
+                : pathname === item.href || pathname.startsWith(`${item.href}/`);
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "rounded-lg px-3 py-1.5 text-sm transition-colors",
+                    isActive
+                      ? "bg-zinc-800/70 text-zinc-100"
+                      : "text-zinc-500 hover:bg-zinc-800/50 hover:text-zinc-200",
+                  )}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
 
             <span className="mx-1.5 h-4 w-px bg-zinc-800" aria-hidden />
 

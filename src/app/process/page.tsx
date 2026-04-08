@@ -340,6 +340,7 @@ function OperatingPrinciples() {
 const laneNotes = [
   {
     lane: "Build",
+    href: "/build",
     color: "text-sky-400",
     border: "border-sky-400/20",
     bg: "bg-sky-400/5",
@@ -353,6 +354,7 @@ const laneNotes = [
   },
   {
     lane: "Systems",
+    href: "/systems",
     color: "text-violet-400",
     border: "border-violet-400/20",
     bg: "bg-violet-400/5",
@@ -366,6 +368,7 @@ const laneNotes = [
   },
   {
     lane: "Growth",
+    href: "/growth",
     color: "text-emerald-400",
     border: "border-emerald-400/20",
     bg: "bg-emerald-400/5",
@@ -400,11 +403,27 @@ function LaneNotes() {
               key={lane.lane}
               className={`rounded-xl border ${lane.border} ${lane.bg} p-7`}
             >
-              <p
-                className={`mb-6 text-xs font-semibold uppercase tracking-widest ${lane.color}`}
+              <Link
+                href={lane.href}
+                className={`mb-6 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest ${lane.color} transition-opacity hover:opacity-75`}
               >
                 {lane.lane}
-              </p>
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  aria-hidden
+                >
+                  <path
+                    d="M2.5 6h7M6.5 3l3 3-3 3"
+                    stroke="currentColor"
+                    strokeWidth="1.25"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </Link>
               <ul className="space-y-4">
                 {lane.points.map((point) => (
                   <li key={point} className="flex items-start gap-3">

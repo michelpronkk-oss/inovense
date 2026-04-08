@@ -44,7 +44,9 @@ export type Lead = {
   onboarding_data: Record<string, string> | null;
   internal_next_step: string | null;
   // proposal
+  proposal_token: string | null;
   proposal_url: string | null;
+  proposal_body: string | null;
   proposal_notes: string | null;
   proposal_sent_at: string | null;
   // payment and project

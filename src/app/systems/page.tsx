@@ -8,19 +8,20 @@ import SystemsStandard from "@/components/systems/systems-standard";
 import SystemsOutcomes from "@/components/systems/systems-outcomes";
 import SystemsProcess from "@/components/systems/systems-process";
 import SystemsCTA from "@/components/systems/systems-cta";
+import RelatedServices from "@/components/related-services";
 
 export const metadata: Metadata = {
-  title: "AI Automation and Business Systems",
+  title: "AI Automation and Business Process Systems",
   description:
-    "AI workflows, automation infrastructure, CRM logic, and operational systems that reduce friction and make your company run cleaner. Precision execution from Inovense.",
+    "AI automation, business process systems, CRM logic, and operational infrastructure that reduce friction and make your company run cleaner. Precision execution from Inovense.",
   alternates: {
     canonical: "https://inovense.com/systems",
   },
   openGraph: {
     url: "https://inovense.com/systems",
-    title: "AI Automation and Business Systems | Inovense",
+    title: "AI Automation and Business Process Systems | Inovense",
     description:
-      "AI workflows, automation infrastructure, CRM logic, and operational systems that reduce friction and make your company run cleaner. Precision execution from Inovense.",
+      "AI automation, business process systems, CRM logic, and operational infrastructure that reduce friction and make your company run cleaner. Precision execution from Inovense.",
   },
 };
 
@@ -35,6 +36,7 @@ export default function SystemsPage() {
         <SystemsStandard />
         <SystemsOutcomes />
         <SystemsProcess />
+        <RelatedServices current="systems" />
         <SystemsCTA />
       </main>
       <Footer />

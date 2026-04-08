@@ -39,6 +39,7 @@ export const EMAIL_TEMPLATES: Record<EmailTemplateType, EmailTemplateDef> = {
     defaultBody: (_, company) =>
       `We've put together a proposal for ${company} based on your brief. It covers scope, timeline, and investment in full.\n\nHave a read and let us know if anything needs adjusting. We're happy to walk through it on a call if that helps.`,
     statusOnSend: "proposal_sent",
+    hasCta: true,
   },
   payment_request: {
     type: "payment_request",

@@ -6,7 +6,7 @@ export const metadata: Metadata = {
     absolute: "Inovense | Digital Infrastructure for Operators",
   },
   description:
-    "Inovense builds conversion-focused websites, AI automation workflows, and structured growth systems for companies that compete on execution.",
+    "Premium digital infrastructure agency. We build conversion-focused websites, AI automation workflows, and structured growth systems for companies that compete on execution.",
   alternates: {
     canonical: "https://inovense.com",
   },
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     url: "https://inovense.com",
     title: "Inovense | Digital Infrastructure for Operators",
     description:
-      "Inovense builds conversion-focused websites, AI automation workflows, and structured growth systems for companies that compete on execution.",
+      "Premium digital infrastructure agency. We build conversion-focused websites, AI automation workflows, and structured growth systems for companies that compete on execution.",
   },
 };
 import Footer from "@/components/footer";

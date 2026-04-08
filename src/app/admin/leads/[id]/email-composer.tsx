@@ -16,6 +16,7 @@ type Props = {
   company: string;
   workEmail: string;
   onboardingToken: string | null;
+  proposalToken: string | null;
 };
 
 /* ─── Action buttons panel ──────────────────────────────────────────────── */
@@ -26,6 +27,7 @@ export function EmailActionsPanel({
   company,
   workEmail,
   onboardingToken,
+  proposalToken,
 }: Props) {
   const [activeType, setActiveType] = useState<EmailTemplateType | null>(null);
 
@@ -77,6 +79,7 @@ export function EmailActionsPanel({
           company={company}
           workEmail={workEmail}
           onboardingToken={onboardingToken}
+          proposalToken={proposalToken}
           templateType={activeType}
           onClose={() => setActiveType(null)}
         />
@@ -93,6 +96,7 @@ function EmailComposerModal({
   company,
   workEmail,
   onboardingToken,
+  proposalToken,
   templateType,
   onClose,
 }: Props & {
@@ -134,15 +138,18 @@ function EmailComposerModal({
     };
   }, []);
 
-  const previewCta =
-    template.hasCta && onboardingToken
-      ? {
-          text: "Complete onboarding brief",
-          href: `${origin}/onboarding/${onboardingToken}`,
-        }
-      : template.hasCta
-      ? { text: "Complete onboarding brief", href: "#" }
-      : undefined;
+  let previewCta: { text: string; href: string } | undefined;
+  if (template.hasCta) {
+    if (templateType === "proposal_sent") {
+      previewCta = proposalToken
+        ? { text: "View proposal", href: `${origin}/proposal/${proposalToken}` }
+        : { text: "View proposal", href: "#" };
+    } else if (templateType === "onboarding_sent") {
+      previewCta = onboardingToken
+        ? { text: "Complete onboarding brief", href: `${origin}/onboarding/${onboardingToken}` }
+        : { text: "Complete onboarding brief", href: "#" };
+    }
+  }
 
   const previewHtml = useMemo(
     () =>
@@ -153,7 +160,7 @@ function EmailComposerModal({
         cta: previewCta,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [body, template, firstName, origin, onboardingToken]
+    [body, template, firstName, origin, onboardingToken, proposalToken, templateType]
   );
 
   function handleSend() {
@@ -263,7 +270,9 @@ function EmailComposerModal({
               />
               {template.hasCta && (
                 <p className="mt-2 text-[11px] leading-relaxed text-zinc-700">
-                  The onboarding link button appears automatically below your message.
+                  {templateType === "proposal_sent"
+                    ? "A View proposal button is added automatically below your message."
+                    : "The onboarding link button appears automatically below your message."}
                 </p>
               )}
             </div>

@@ -8,19 +8,20 @@ import BuildStandard from "@/components/build/build-standard";
 import BuildWork from "@/components/build/build-work";
 import BuildProcess from "@/components/build/build-process";
 import BuildCTA from "@/components/build/build-cta";
+import RelatedServices from "@/components/related-services";
 
 export const metadata: Metadata = {
-  title: "Custom Website and Product Development",
+  title: "Custom Website Design and Development Agency",
   description:
-    "Premium website design, conversion-focused landing pages, e-commerce builds, and full-stack digital products. Built to perform, not just to launch.",
+    "Premium website design and development. Conversion-focused landing pages, e-commerce builds, and full-stack digital products. Built to perform, not just to launch.",
   alternates: {
     canonical: "https://inovense.com/build",
   },
   openGraph: {
     url: "https://inovense.com/build",
-    title: "Custom Website and Product Development | Inovense",
+    title: "Custom Website Design and Development Agency | Inovense",
     description:
-      "Premium website design, conversion-focused landing pages, e-commerce builds, and full-stack digital products. Built to perform, not just to launch.",
+      "Premium website design and development. Conversion-focused landing pages, e-commerce builds, and full-stack digital products. Built to perform, not just to launch.",
   },
 };
 
@@ -35,6 +36,7 @@ export default function BuildPage() {
         <BuildStandard />
         <BuildWork />
         <BuildProcess />
+        <RelatedServices current="build" />
         <BuildCTA />
       </main>
       <Footer />

@@ -293,6 +293,7 @@ export default async function LeadDetailPage({
               company={lead.company_name}
               workEmail={lead.work_email}
               onboardingToken={lead.onboarding_token}
+              proposalToken={lead.proposal_token}
             />
           </Section>
 
@@ -300,7 +301,9 @@ export default async function LeadDetailPage({
             <ProposalEditor
               id={lead.id}
               currentUrl={lead.proposal_url}
+              currentBody={lead.proposal_body}
               currentNotes={lead.proposal_notes}
+              proposalToken={lead.proposal_token}
               proposalSentAt={lead.proposal_sent_at}
             />
           </Section>

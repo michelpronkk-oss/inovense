@@ -8,6 +8,7 @@ import GrowthStandard from "@/components/growth/growth-standard";
 import GrowthOutcomes from "@/components/growth/growth-outcomes";
 import GrowthProcess from "@/components/growth/growth-process";
 import GrowthCTA from "@/components/growth/growth-cta";
+import RelatedServices from "@/components/related-services";
 
 export const metadata: Metadata = {
   title: "SEO, Content, and Paid Growth Systems",
@@ -35,6 +36,7 @@ export default function GrowthPage() {
         <GrowthStandard />
         <GrowthOutcomes />
         <GrowthProcess />
+        <RelatedServices current="growth" />
         <GrowthCTA />
       </main>
       <Footer />

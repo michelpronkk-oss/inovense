@@ -6,6 +6,7 @@ import {
   updatePaymentFields,
   markDepositPaid,
   updateProjectStatus,
+  generateProposalToken,
 } from "./actions";
 import type { ProjectStatus, OnboardingStatus } from "@/lib/supabase-server";
 
@@ -68,34 +69,101 @@ function Label({ children }: { children: React.ReactNode }) {
 export function ProposalEditor({
   id,
   currentUrl,
+  currentBody,
   currentNotes,
+  proposalToken: initialToken,
   proposalSentAt,
 }: {
   id: string;
   currentUrl: string | null;
+  currentBody: string | null;
   currentNotes: string | null;
+  proposalToken: string | null;
   proposalSentAt: string | null;
 }) {
   const [url, setUrl] = useState(currentUrl ?? "");
+  const [body, setBody] = useState(currentBody ?? "");
   const [notes, setNotes] = useState(currentNotes ?? "");
+  const [token, setToken] = useState<string | null>(initialToken);
   const [isPending, startTransition] = useTransition();
-  const [saveState, setSaveState] = useState<"idle" | "saved" | "error">(
-    "idle"
-  );
+  const [tokenPending, startTokenTransition] = useTransition();
+  const [saveState, setSaveState] = useState<"idle" | "saved" | "error">("idle");
 
   function handleSave() {
     setSaveState("idle");
     startTransition(async () => {
-      const result = await updateProposalFields(id, url, notes);
+      const result = await updateProposalFields(id, url, body, notes);
       setSaveState(result.success ? "saved" : "error");
       if (result.success) setTimeout(() => setSaveState("idle"), 2500);
     });
   }
 
+  function handleGenerateLink() {
+    startTokenTransition(async () => {
+      const result = await generateProposalToken(id);
+      if (result.success && result.token) setToken(result.token);
+    });
+  }
+
+  const proposalUrl = token ? `/proposal/${token}` : null;
+
   return (
     <div className="space-y-4">
+
+      {/* Proposal body (client-facing content) */}
       <div>
-        <Label>Proposal URL</Label>
+        <Label>Proposal content</Label>
+        <textarea
+          value={body}
+          onChange={(e) => {
+            setBody(e.target.value);
+            setSaveState("idle");
+          }}
+          rows={6}
+          placeholder="Scope, timeline, investment, and any key assumptions for the client..."
+          className="w-full resize-none rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5 py-3 text-base leading-relaxed text-zinc-300 placeholder-zinc-700 outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30 sm:text-sm"
+        />
+        <p className="mt-1.5 text-[11px] text-zinc-700">
+          This content is shown on the client-facing proposal page.
+        </p>
+      </div>
+
+      {/* Proposal link */}
+      <div>
+        <Label>Proposal link</Label>
+        {proposalUrl ? (
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 flex-1 items-center overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5">
+              <span className="truncate text-xs text-zinc-500 tabular-nums">
+                {typeof window !== "undefined" ? window.location.origin : ""}{proposalUrl}
+              </span>
+            </div>
+            <a
+              href={proposalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3 py-1.5 text-xs text-zinc-500 transition-colors hover:border-zinc-600 hover:text-zinc-300"
+            >
+              Open
+            </a>
+          </div>
+        ) : (
+          <button
+            onClick={handleGenerateLink}
+            disabled={tokenPending}
+            className="rounded-lg border border-zinc-700 bg-zinc-800/60 px-3.5 py-1.5 text-xs font-medium text-zinc-400 transition-colors hover:border-zinc-600 hover:bg-zinc-700/60 hover:text-zinc-200 disabled:cursor-wait disabled:opacity-50"
+          >
+            {tokenPending ? "Generating..." : "Generate proposal link"}
+          </button>
+        )}
+        <p className="mt-1.5 text-[11px] text-zinc-700">
+          This link is sent to the client as a CTA in the proposal email.
+        </p>
+      </div>
+
+      {/* External URL (optional fallback) */}
+      <div>
+        <Label>External URL (optional)</Label>
         <div className="flex items-center gap-2">
           <input
             type="text"
@@ -104,7 +172,7 @@ export function ProposalEditor({
               setUrl(e.target.value);
               setSaveState("idle");
             }}
-            placeholder="https://notion.so/..."
+            placeholder="https://notion.so/... (optional fallback)"
             className={inputCls("flex-1")}
           />
           {isUrl(url) && (
@@ -120,16 +188,17 @@ export function ProposalEditor({
         </div>
       </div>
 
+      {/* Internal notes */}
       <div>
-        <Label>Proposal notes</Label>
+        <Label>Internal notes</Label>
         <textarea
           value={notes}
           onChange={(e) => {
             setNotes(e.target.value);
             setSaveState("idle");
           }}
-          rows={3}
-          placeholder="Scope summary, version notes, key assumptions..."
+          rows={2}
+          placeholder="Version notes, assumptions, internal context..."
           className="w-full resize-none rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5 py-3 text-base leading-relaxed text-zinc-300 placeholder-zinc-700 outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30 sm:text-sm"
         />
       </div>

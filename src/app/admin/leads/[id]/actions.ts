@@ -121,6 +121,7 @@ export async function sendOnboarding(
 export async function updateProposalFields(
   id: string,
   proposalUrl: string,
+  proposalBody: string,
   proposalNotes: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
@@ -129,6 +130,7 @@ export async function updateProposalFields(
       .from("leads")
       .update({
         proposal_url: proposalUrl.trim() || null,
+        proposal_body: proposalBody.trim() || null,
         proposal_notes: proposalNotes.trim() || null,
       })
       .eq("id", id);
@@ -138,6 +140,25 @@ export async function updateProposalFields(
   } catch (err) {
     console.error("[admin] updateProposalFields failed:", err);
     return { success: false, error: "Failed to save." };
+  }
+}
+
+export async function generateProposalToken(
+  id: string
+): Promise<{ success: boolean; token?: string; error?: string }> {
+  try {
+    const token = crypto.randomUUID();
+    const supabase = createSupabaseServerClient();
+    const { error } = await supabase
+      .from("leads")
+      .update({ proposal_token: token })
+      .eq("id", id);
+    if (error) throw error;
+    revalidatePath(`/admin/leads/${id}`);
+    return { success: true, token };
+  } catch (err) {
+    console.error("[admin] generateProposalToken failed:", err);
+    return { success: false, error: "Failed to generate proposal link." };
   }
 }
 
