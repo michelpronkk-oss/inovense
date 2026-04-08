@@ -1,6 +1,6 @@
 "use server";
 
-import { createSupabaseServerClient, type LeadStatus } from "@/lib/supabase-server";
+import { createSupabaseServerClient, type LeadStatus, type ProjectStatus } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -196,6 +196,38 @@ export async function markDepositPaid(
   } catch (err) {
     console.error("[admin] markDepositPaid failed:", err);
     return { success: false, error: "Failed to mark deposit as paid." };
+  }
+}
+
+/* ─── Project status ────────────────────────────────────────────────────── */
+
+const VALID_PROJECT_STATUSES: ProjectStatus[] = [
+  "not_started",
+  "ready",
+  "active",
+  "paused",
+  "completed",
+];
+
+export async function updateProjectStatus(
+  id: string,
+  projectStatus: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!VALID_PROJECT_STATUSES.includes(projectStatus as ProjectStatus)) {
+    return { success: false, error: "Invalid project status." };
+  }
+  try {
+    const supabase = createSupabaseServerClient();
+    const { error } = await supabase
+      .from("leads")
+      .update({ project_status: projectStatus })
+      .eq("id", id);
+    if (error) throw error;
+    revalidateLead(id);
+    return { success: true };
+  } catch (err) {
+    console.error("[admin] updateProjectStatus failed:", err);
+    return { success: false, error: "Failed to update project status." };
   }
 }
 

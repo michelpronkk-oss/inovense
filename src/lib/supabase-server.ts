@@ -15,6 +15,13 @@ export type LeadStatus =
 
 export type OnboardingStatus = "not_sent" | "sent" | "completed";
 
+export type ProjectStatus =
+  | "not_started"
+  | "ready"
+  | "active"
+  | "paused"
+  | "completed";
+
 export type Lead = {
   id: string;
   created_at: string;
@@ -46,6 +53,7 @@ export type Lead = {
   deposit_amount: number | null;
   deposit_paid_at: string | null;
   project_start_date: string | null;
+  project_status: ProjectStatus;
 };
 
 export type EmailLog = {

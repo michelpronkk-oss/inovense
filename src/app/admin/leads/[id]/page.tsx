@@ -16,7 +16,7 @@ import {
   DeleteLeadButton,
 } from "./lead-editor";
 import { EmailActionsPanel } from "./email-composer";
-import { ProposalEditor, PaymentEditor } from "./commercial-editor";
+import { ProposalEditor, PaymentEditor, ProjectStatusEditor } from "./commercial-editor";
 import { getFieldsForLane } from "@/app/onboarding/fields";
 
 export const dynamic = "force-dynamic";
@@ -313,6 +313,16 @@ export default async function LeadDetailPage({
               currentDepositAmount={lead.deposit_amount}
               depositPaidAt={lead.deposit_paid_at}
               currentProjectStartDate={lead.project_start_date}
+            />
+          </Section>
+
+          <Section title="Project status">
+            <ProjectStatusEditor
+              id={lead.id}
+              currentProjectStatus={lead.project_status}
+              depositPaidAt={lead.deposit_paid_at}
+              onboardingStatus={lead.onboarding_status}
+              projectStartDate={lead.project_start_date}
             />
           </Section>
 

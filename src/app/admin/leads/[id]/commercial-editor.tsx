@@ -5,7 +5,9 @@ import {
   updateProposalFields,
   updatePaymentFields,
   markDepositPaid,
+  updateProjectStatus,
 } from "./actions";
+import type { ProjectStatus, OnboardingStatus } from "@/lib/supabase-server";
 
 /* ─── Shared helpers ────────────────────────────────────────────────────── */
 
@@ -327,6 +329,143 @@ export function PaymentEditor({
                 {markPaidError ?? "Something went wrong."}
               </p>
             )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Project status editor ─────────────────────────────────────────────── */
+
+const PROJECT_STATUS_OPTIONS: { value: ProjectStatus; label: string }[] = [
+  { value: "not_started", label: "Not started" },
+  { value: "ready", label: "Ready" },
+  { value: "active", label: "Active" },
+  { value: "paused", label: "Paused" },
+  { value: "completed", label: "Completed" },
+];
+
+const PROJECT_STATUS_COLORS: Record<ProjectStatus, string> = {
+  not_started: "text-zinc-500",
+  ready: "text-sky-400",
+  active: "text-emerald-400",
+  paused: "text-amber-400",
+  completed: "text-violet-400",
+};
+
+export function ProjectStatusEditor({
+  id,
+  currentProjectStatus,
+  depositPaidAt,
+  onboardingStatus,
+  projectStartDate,
+}: {
+  id: string;
+  currentProjectStatus: ProjectStatus;
+  depositPaidAt: string | null;
+  onboardingStatus: OnboardingStatus;
+  projectStartDate: string | null;
+}) {
+  const [status, setStatus] = useState<ProjectStatus>(currentProjectStatus);
+  const [isPending, startTransition] = useTransition();
+  const [saveState, setSaveState] = useState<"idle" | "saved" | "error">("idle");
+
+  const depositPaid = depositPaidAt != null;
+  const onboardingDone = onboardingStatus === "completed";
+  const readyToActivate = depositPaid && onboardingDone;
+
+  function handleChange(val: ProjectStatus) {
+    setStatus(val);
+    setSaveState("idle");
+    startTransition(async () => {
+      const result = await updateProjectStatus(id, val);
+      setSaveState(result.success ? "saved" : "error");
+      if (result.success) setTimeout(() => setSaveState("idle"), 2000);
+    });
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Status select */}
+      <div>
+        <Label>Project status</Label>
+        <div className="flex items-center gap-2">
+          <select
+            value={status}
+            onChange={(e) => handleChange(e.target.value as ProjectStatus)}
+            disabled={isPending}
+            className={`h-9 w-full rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5 text-sm outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30 disabled:cursor-wait disabled:opacity-50 ${PROJECT_STATUS_COLORS[status]}`}
+          >
+            {PROJECT_STATUS_OPTIONS.map((opt) => (
+              <option
+                key={opt.value}
+                value={opt.value}
+                className="bg-zinc-900 text-zinc-300"
+              >
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          {saveState === "saved" && (
+            <span className="shrink-0 text-xs text-emerald-400">Saved.</span>
+          )}
+          {saveState === "error" && (
+            <span className="shrink-0 text-xs text-red-400">Failed.</span>
+          )}
+        </div>
+      </div>
+
+      {/* Start date (read-only display) */}
+      {projectStartDate && (
+        <div>
+          <Label>Start date</Label>
+          <p className="text-sm tabular-nums text-zinc-400">
+            {new Date(projectStartDate + "T12:00:00").toLocaleDateString(
+              "en-GB",
+              { day: "numeric", month: "short", year: "numeric" }
+            )}
+          </p>
+        </div>
+      )}
+
+      {/* Activation readiness indicator */}
+      <div className="border-t border-zinc-800/60 pt-4">
+        <p className="mb-2.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+          Activation readiness
+        </p>
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2">
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${depositPaid ? "bg-emerald-500" : "bg-zinc-700"}`}
+            />
+            <span
+              className={`text-xs ${depositPaid ? "text-zinc-400" : "text-zinc-600"}`}
+            >
+              Deposit paid
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${onboardingDone ? "bg-emerald-500" : "bg-zinc-700"}`}
+            />
+            <span
+              className={`text-xs ${onboardingDone ? "text-zinc-400" : "text-zinc-600"}`}
+            >
+              Onboarding completed
+            </span>
+          </div>
+        </div>
+        {readyToActivate && status === "not_started" && (
+          <div className="mt-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
+            <p className="text-xs font-medium text-emerald-400">
+              Ready to activate. Set status to Active.
+            </p>
+          </div>
+        )}
+        {readyToActivate && status === "active" && (
+          <div className="mt-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
+            <p className="text-xs text-emerald-500/70">Project is live.</p>
           </div>
         )}
       </div>
