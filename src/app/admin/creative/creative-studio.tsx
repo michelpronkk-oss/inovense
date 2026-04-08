@@ -275,7 +275,7 @@ export function CreativeStudio() {
             <div>
               <h2 className="text-sm font-semibold text-zinc-200">Live branded preview</h2>
               <p className="text-xs text-zinc-500">
-                Mode: {state.mode} · Template: {activeTemplate.label}
+                Mode: {state.mode} &middot; Template: {activeTemplate.label}
               </p>
             </div>
             <div className="inline-flex items-center rounded-full border border-zinc-700/80 bg-zinc-950/70 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-zinc-400">
