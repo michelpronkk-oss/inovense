@@ -104,10 +104,6 @@ export default function Footer() {
           <p className="text-xs text-zinc-700">
             &copy; 2026 Inovense. All rights reserved.
           </p>
-          <div className="flex items-center gap-2">
-            <span className="h-1 w-1 rounded-full bg-brand/40" aria-hidden="true" />
-            <p className="text-xs text-zinc-700">Est. 2024</p>
-          </div>
         </div>
 
       </div>

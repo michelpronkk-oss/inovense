@@ -154,8 +154,6 @@ function InfrastructureMock() {
           <span className="text-[8px] tracking-wide text-zinc-700">Inovense</span>
           <div className="h-3 w-px bg-zinc-800" />
           <span className="text-[8px] text-zinc-700">Execution first</span>
-          <div className="h-3 w-px bg-zinc-800" />
-          <span className="text-[8px] text-zinc-700">Est. 2024</span>
           <div className="ml-auto flex items-center gap-1">
             <div className="h-1.5 w-1.5 rounded-full bg-brand/50" />
             <span className="text-[8px] text-zinc-600">Live</span>
@@ -317,7 +315,7 @@ export default function Hero() {
             >
               <div className="h-px w-8 bg-brand/40" />
               <span className="text-xs uppercase tracking-[0.2em] text-zinc-600">
-                Execution first &nbsp;·&nbsp; Est. 2024
+                Execution first
               </span>
             </motion.div>
           </motion.div>
