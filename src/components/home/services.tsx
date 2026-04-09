@@ -13,7 +13,6 @@ const services = [
       "E-commerce builds",
       "Full-stack web applications",
     ],
-    pricing: "From $3,500",
   },
   {
     id: "systems",
@@ -27,7 +26,6 @@ const services = [
       "CRM & ops setup",
       "Lead qualification systems",
     ],
-    pricing: "From $2,500",
   },
   {
     id: "growth",
@@ -41,7 +39,6 @@ const services = [
       "Paid media systems",
       "Social & authority building",
     ],
-    pricing: "From $1,500 / mo",
   },
 ];
 
@@ -71,11 +68,10 @@ export default function Services() {
               {/* Brand accent line: slides in from left on hover */}
               <div className="absolute inset-x-0 top-0 h-px origin-left scale-x-0 bg-brand transition-transform duration-500 ease-out group-hover:scale-x-100" />
 
-              <div className="mb-6 flex items-center justify-between">
+              <div className="mb-6">
                 <span className="text-xs font-medium uppercase tracking-widest text-brand">
                   {service.label}
                 </span>
-                <span className="text-xs text-zinc-600">{service.pricing}</span>
               </div>
 
               <p className="mb-4 text-lg font-medium leading-snug text-zinc-50">

@@ -144,12 +144,6 @@ export default function Work() {
               SilentSpend is live. Additional engagements are structured for upcoming case releases.
             </p>
           </div>
-          <Link
-            href="/work/silentspend"
-            className="self-start text-sm font-medium text-zinc-500 transition-colors hover:text-brand md:self-auto"
-          >
-            Open SilentSpend
-          </Link>
         </div>
 
         <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:pb-0">
