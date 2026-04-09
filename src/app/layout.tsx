@@ -12,21 +12,27 @@ export const metadata: Metadata = {
     template: "%s | Inovense",
   },
   description:
-    "Inovense builds conversion-focused websites, AI automation workflows, and structured growth systems for companies that compete on execution.",
+    "Inovense builds premium websites, AI automation systems, and growth infrastructure for operators and ambitious brands.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    apple: "/favicon.ico",
+  },
   openGraph: {
     type: "website",
     locale: "en_US",
     siteName: "Inovense",
     title: "Inovense | Digital Infrastructure for Operators",
     description:
-      "Inovense builds conversion-focused websites, AI automation workflows, and structured growth systems for companies that compete on execution.",
+      "Inovense builds premium websites, AI automation systems, and growth infrastructure for operators and ambitious brands.",
     url: "https://inovense.com",
   },
   twitter: {
     card: "summary_large_image",
     title: "Inovense | Digital Infrastructure for Operators",
     description:
-      "Inovense builds conversion-focused websites, AI automation workflows, and structured growth systems for companies that compete on execution.",
+      "Inovense builds premium websites, AI automation systems, and growth infrastructure for operators and ambitious brands.",
   },
   robots: {
     index: true,
