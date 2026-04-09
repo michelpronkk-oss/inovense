@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import type { ReactNode } from "react";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
@@ -35,7 +36,7 @@ function Hero() {
   const tags = ["Product", "Systems", "SaaS", "Intelligence"];
 
   return (
-    <section className="relative overflow-hidden pb-20 pt-32 md:pb-28 md:pt-44">
+    <section className="relative overflow-hidden pb-14 pt-24 md:pb-22 md:pt-40">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -80,7 +81,7 @@ function Hero() {
           Build lane
         </Link>
 
-        <div className="mb-8 flex flex-wrap items-center gap-2">
+        <div className="mb-6 flex flex-wrap items-center gap-2">
           {tags.map((tag) => (
             <span
               key={tag}
@@ -91,7 +92,7 @@ function Hero() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.6fr_1fr] lg:items-end">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.6fr_1fr] lg:items-end lg:gap-10">
           <div>
             <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-6xl md:leading-[1.05]">
               SilentSpend is a <span className="text-brand">global monetization layer</span>
@@ -105,7 +106,7 @@ function Hero() {
               across digital businesses.
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-7 flex flex-wrap gap-3">
               <a
                 href="https://www.silentspend.com"
                 target="_blank"
@@ -154,7 +155,7 @@ function Hero() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-wrap gap-x-10 gap-y-5">
+        <div className="mt-8 flex flex-wrap gap-x-8 gap-y-4 md:mt-10 md:gap-x-10 md:gap-y-5">
           {[
             { label: "Client", value: "SilentSpend" },
             { label: "Engagement", value: "Internal product design and build" },
@@ -168,6 +169,26 @@ function Hero() {
               <p className="text-sm font-medium text-zinc-300">{value}</p>
             </div>
           ))}
+        </div>
+
+        <div className="mt-10 md:mt-12">
+          <div className="overflow-hidden rounded-xl border border-zinc-800/70 bg-zinc-900/35">
+            <div className="flex items-center justify-between border-b border-zinc-800/70 px-4 py-2.5">
+              <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-zinc-500">
+                Live product view
+              </p>
+              <p className="text-[10px] text-zinc-600">SilentSpend interface</p>
+            </div>
+            <Image
+              src="/work/silentspend/hero.png"
+              alt="SilentSpend product interface showing monetization intelligence overview"
+              width={1457}
+              height={1097}
+              priority
+              sizes="(max-width: 768px) 100vw, 920px"
+              className="h-auto w-full"
+            />
+          </div>
         </div>
       </div>
     </section>
@@ -184,7 +205,7 @@ function WhatSilentSpendIs() {
   ];
 
   return (
-    <section className="py-24 md:py-32">
+    <section className="py-16 md:py-28">
       <div className="mx-auto max-w-5xl px-6">
         <div className="grid grid-cols-1 gap-14 md:grid-cols-[1fr_1.6fr]">
           <div>
@@ -246,9 +267,9 @@ function WhyLayerMatters() {
   ];
 
   return (
-    <section className="border-t border-zinc-800/60 py-24 md:py-32">
+    <section className="border-t border-zinc-800/60 py-16 md:py-28">
       <div className="mx-auto max-w-5xl px-6">
-        <div className="mb-14">
+        <div className="mb-10 md:mb-14">
           <Eyebrow>Why this matters</Eyebrow>
           <h2 className="max-w-2xl text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
             Why a global monetization layer is strategically valuable.
@@ -292,9 +313,9 @@ function Challenge() {
   ];
 
   return (
-    <section className="py-24 md:py-32">
+    <section className="py-16 md:py-28">
       <div className="mx-auto max-w-5xl px-6">
-        <div className="mb-14">
+        <div className="mb-10 md:mb-14">
           <Eyebrow>The challenge</Eyebrow>
           <h2 className="max-w-3xl text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
             Building a high-trust decision layer for complex monetization movement.
@@ -349,9 +370,9 @@ function WhatWasBuilt() {
   ];
 
   return (
-    <section className="border-t border-zinc-800/60 py-24 md:py-32">
+    <section className="border-t border-zinc-800/60 py-16 md:py-28">
       <div className="mx-auto max-w-5xl px-6">
-        <div className="mb-14">
+        <div className="mb-10 md:mb-14">
           <Eyebrow>What was built</Eyebrow>
           <h2 className="max-w-3xl text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
             Product, system, and workflow layers designed as one integrated build.
@@ -384,9 +405,9 @@ function ExecutionPrinciples() {
   ];
 
   return (
-    <section className="py-24 md:py-32">
+    <section className="py-16 md:py-28">
       <div className="mx-auto max-w-5xl px-6">
-        <div className="mb-14">
+        <div className="mb-10 md:mb-14">
           <Eyebrow>Execution principles</Eyebrow>
           <h2 className="max-w-2xl text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
             The standards used to keep this product credible under real use.
@@ -414,24 +435,36 @@ function ProductProof() {
     {
       label: "Signal Feed",
       title: "Pricing and packaging movement stream",
-      note: "Slot for approved screenshot of the monetization signal feed.",
+      note: "Live product screenshot from SilentSpend.",
+      src: "/work/silentspend/signal-feed.png",
+      width: 1108,
+      height: 926,
+      alt: "SilentSpend signal feed showing monetization movement tracking",
     },
     {
       label: "Evidence View",
       title: "Decision-ready evidence and context",
-      note: "Slot for approved screenshot of evidence detail and confidence structure.",
+      note: "Live product screenshot from SilentSpend.",
+      src: "/work/silentspend/evidence-view.png",
+      width: 849,
+      height: 908,
+      alt: "SilentSpend evidence view with context and decision support details",
     },
     {
       label: "Workflow",
       title: "Operator workspace and prioritization flow",
-      note: "Slot for approved screenshot of workflow architecture and action states.",
+      note: "Live product screenshot from SilentSpend.",
+      src: "/work/silentspend/workflow-view.png",
+      width: 891,
+      height: 628,
+      alt: "SilentSpend workflow view for operator prioritization and action",
     },
   ];
 
   return (
-    <section className="border-t border-zinc-800/60 py-24 md:py-32">
+    <section className="border-t border-zinc-800/60 py-16 md:py-28">
       <div className="mx-auto max-w-5xl px-6">
-        <div className="mb-14 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+        <div className="mb-10 flex flex-col gap-4 md:mb-14 md:flex-row md:items-end md:justify-between md:gap-5">
           <div>
             <Eyebrow>Product proof</Eyebrow>
             <h2 className="max-w-2xl text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
@@ -448,35 +481,29 @@ function ProductProof() {
           </a>
         </div>
 
-        <p className="mb-8 max-w-3xl text-sm leading-relaxed text-zinc-500">
-          No SilentSpend screenshot or logo assets are currently stored in this
-          repository. This gallery is intentionally built as a production-ready
-          placeholder system so approved visuals can be dropped in without
-          changing page structure.
+        <p className="mb-6 max-w-3xl text-sm leading-relaxed text-zinc-500 md:mb-8">
+          Real interface captures from SilentSpend. This section shows how the
+          product handles signal discovery, evidence review, and workflow decisions.
         </p>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
           {proofSlots.map((slot) => (
             <article
               key={slot.title}
-              className="rounded-xl border border-zinc-800/70 bg-zinc-900/25 p-5"
+              className="rounded-xl border border-zinc-800/70 bg-zinc-900/25 p-4 md:p-5"
             >
               <p className="mb-4 text-[10px] font-medium uppercase tracking-[0.15em] text-zinc-500">
                 {slot.label}
               </p>
-              <div
-                className="mb-4 flex h-40 items-center justify-center rounded-lg border border-dashed border-zinc-700/80 bg-zinc-900/80"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)",
-                  backgroundSize: "22px 22px",
-                }}
-              >
-                <p className="text-center text-xs leading-relaxed text-zinc-600">
-                  Screenshot slot
-                  <br />
-                  16:10 recommended
-                </p>
+              <div className="mb-4 overflow-hidden rounded-lg border border-zinc-800/80 bg-zinc-950">
+                <Image
+                  src={slot.src}
+                  alt={slot.alt}
+                  width={slot.width}
+                  height={slot.height}
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 340px"
+                  className="h-auto w-full"
+                />
               </div>
               <h3 className="mb-2 text-sm font-semibold text-zinc-100">{slot.title}</h3>
               <p className="text-xs leading-relaxed text-zinc-500">{slot.note}</p>
@@ -509,9 +536,9 @@ function WhyItMattersForClients() {
   ];
 
   return (
-    <section className="py-24 md:py-32">
+    <section className="py-16 md:py-28">
       <div className="mx-auto max-w-5xl px-6">
-        <div className="mb-14">
+        <div className="mb-10 md:mb-14">
           <Eyebrow>Why this matters for Inovense clients</Eyebrow>
           <h2 className="max-w-3xl text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
             Proof of execution for teams building serious product systems.
@@ -534,7 +561,7 @@ function WhyItMattersForClients() {
 
 function CTA() {
   return (
-    <section className="relative overflow-hidden border-t border-white/[0.06] py-24 md:py-32">
+    <section className="relative overflow-hidden border-t border-white/[0.06] py-16 md:py-24">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 flex justify-center"
