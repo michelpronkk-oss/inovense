@@ -1,4 +1,5 @@
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
 import {
   CREATIVE_FORMAT_SPECS,
@@ -68,6 +69,20 @@ function previewMaxWidth(format: CreativeFormatId) {
   return "max-w-[940px]";
 }
 
+const KONVA_TEMPLATE_IDS: ReadonlySet<CreativeTemplateId> = new Set([
+  "poster_scene",
+  "campaign_cta",
+  "proof_metric",
+]);
+
+const KonvaTemplateCanvas = dynamic(
+  () => import("./konva-template-canvas").then((mod) => mod.KonvaTemplateCanvas),
+  {
+    ssr: false,
+    loading: () => <div className="h-full w-full bg-zinc-950/65" />,
+  },
+);
+
 function defaultMetricFromTitle(title: string) {
   const match = title.match(/[+-]?\d+%/);
   return match?.[0] ?? "+38%";
@@ -77,6 +92,7 @@ export function CreativeCanvas({ state, className }: CreativeCanvasProps) {
   const format = CREATIVE_FORMAT_SPECS[state.format];
   const laneStyle = SERVICE_LANE_STYLES[state.serviceLane];
   const accentStrength = state.accentIntensity / 100;
+  const useKonvaRenderer = KONVA_TEMPLATE_IDS.has(state.template);
 
   return (
     <div className={cn("w-full", className)}>
@@ -85,38 +101,51 @@ export function CreativeCanvas({ state, className }: CreativeCanvasProps) {
           className="relative overflow-hidden rounded-[1.5rem] border border-zinc-700/70 bg-[#05060a] shadow-[0_34px_130px_rgba(0,0,0,0.72)]"
           style={{ aspectRatio: `${format.width} / ${format.height}` }}
         >
-          <CanvasBackdrop
-            mode={state.mode}
-            template={state.template}
-            accentRgb={laneStyle.accentRgb}
-            accentStrength={accentStrength}
-          />
-
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/18 to-transparent" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-black/45" />
-
-          <div className="relative z-10 flex h-full flex-col p-[clamp(0.95rem,2.15vw,2rem)]">
-            <FrameMeta state={state} laneStyle={laneStyle} accentStrength={accentStrength} />
-            <div className="mt-3.5 flex flex-1">
-              {renderTemplate({
-                state,
-                format: state.format,
-                laneStyle,
-                accentStrength,
-              })}
-            </div>
-          </div>
-
-          {state.showLogo && state.template !== "poster_scene" && (
-            <div className="pointer-events-none absolute bottom-[clamp(0.75rem,1.7vw,1.3rem)] right-[clamp(0.8rem,1.7vw,1.3rem)] z-20 opacity-95">
-              <Image
-                src="/logo.png"
-                alt="Inovense"
-                width={124}
-                height={28}
-                className="h-auto w-[clamp(74px,10vw,122px)]"
+          {useKonvaRenderer ? (
+            <div className="relative z-10 h-full w-full">
+              <KonvaTemplateCanvas
+                state={state}
+                format={state.format}
+                laneStyle={laneStyle}
+                accentStrength={accentStrength}
               />
             </div>
+          ) : (
+            <>
+              <CanvasBackdrop
+                mode={state.mode}
+                template={state.template}
+                accentRgb={laneStyle.accentRgb}
+                accentStrength={accentStrength}
+              />
+
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/18 to-transparent" />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-black/45" />
+
+              <div className="relative z-10 flex h-full flex-col p-[clamp(0.95rem,2.15vw,2rem)]">
+                <FrameMeta state={state} laneStyle={laneStyle} accentStrength={accentStrength} />
+                <div className="mt-3.5 flex flex-1">
+                  {renderTemplate({
+                    state,
+                    format: state.format,
+                    laneStyle,
+                    accentStrength,
+                  })}
+                </div>
+              </div>
+
+              {state.showLogo && state.template !== "poster_scene" && (
+                <div className="pointer-events-none absolute bottom-[clamp(0.75rem,1.7vw,1.3rem)] right-[clamp(0.8rem,1.7vw,1.3rem)] z-20 opacity-95">
+                  <Image
+                    src="/logo.png"
+                    alt="Inovense"
+                    width={124}
+                    height={28}
+                    className="h-auto w-[clamp(74px,10vw,122px)]"
+                  />
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
