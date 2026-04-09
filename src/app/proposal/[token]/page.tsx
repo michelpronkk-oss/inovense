@@ -47,20 +47,23 @@ export default async function ProposalPage({
     proposal_sent_at: string | null;
   } | null = null;
 
-  try {
-    const supabase = createSupabaseServerClient();
-    const { data } = await supabase
-      .from("leads")
-      .select(
-        "id, full_name, company_name, service_lane, proposal_body, proposal_price, proposal_deposit, proposal_decision, proposal_decided_at, proposal_sent_at"
-      )
-      .eq("proposal_token", token)
-      .single();
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("leads")
+    .select(
+      "id, full_name, company_name, service_lane, proposal_body, proposal_price, proposal_deposit, proposal_decision, proposal_decided_at, proposal_sent_at"
+    )
+    .eq("proposal_token", token)
+    .maybeSingle();
 
-    lead = data ?? null;
-  } catch {
-    lead = null;
+  // PGRST116 = "no rows returned" — that is the valid not-found case.
+  // Any other error is a real server/env problem; let it surface.
+  if (error && error.code !== "PGRST116") {
+    console.error("[proposal] query error:", error);
+    throw new Error(`Proposal query failed: ${error.message}`);
   }
+
+  lead = data ?? null;
 
   if (!lead) {
     return (

@@ -1,74 +1,63 @@
 # Inovense project instructions
 
-Always build for the current stack in this repository.
+## Stack
 
-Core stack:
-- Next.js 16 App Router
-- React 19
-- TypeScript
-- Tailwind CSS v4
-- shadcn/ui
-- Supabase
-- Vercel
+- Next.js 16 App Router, React 19, TypeScript
+- Tailwind CSS v4, shadcn/ui
+- Supabase, Resend, Vercel
+- Motion and Remotion available
 
-Project goals:
-- Build a premium, high-conviction agency site and internal operating layer for Inovense.
-- Prioritize clarity, premium UI, speed, and future extensibility.
-- Keep v1 lean. Do not add unnecessary abstractions or features.
+## Execution rules
 
-Rules:
-- Prefer Server Components by default.
-- Use Client Components only when needed for interactivity.
-- Keep components small, reusable, and production-ready.
-- Mobile-first always.
-- Avoid overdesigned agency fluff.
-- Focus on conversion, trust, hierarchy, and polish.
-- Do not rewrite large files unless necessary.
-- Make localized, low-risk changes.
-- Keep code copy-paste ready.
-- Use up-to-date Next.js patterns from the local AGENTS.md guidance.
+- Inspect existing files before writing anything.
+- Make the smallest correct change. Do not rewrite unrelated files.
+- Do not redesign working sections unless explicitly asked.
+- Prefer localized changes over broad refactors.
+- Return only affected files.
+- If a feature is partially implemented, continue from current state. Do not re-architect.
+- Prefer build-safe solutions over clever ones.
+- Include exact SQL only when the task requires schema changes.
 
-Current product direction:
-- 3 service lanes: Build, Systems, Growth
-- Guided intake flow
-- CRM basics for leads and clients
-- Strong homepage positioning
-- Premium but calm visual language
+## Architecture
 
-When asked to build:
-1. Inspect current files first
-2. Explain the smallest correct implementation path
-3. Then generate exact code
+- Prefer Server Components. Use Client Components only for interactivity.
+- Keep components small and production-ready.
+- Primary CTA routes to `/intake` unless there is a clear exception.
+- Forms must be validated and handled server-side where appropriate.
 
-Writing rule:
-- Never use em dashes in copy or UI text
-- Prefer periods, commas, colons, or clean sentence breaks
-- Writing must feel human, premium, and non-AI
+## CRM and operational flow
 
-Responsive rules:
-- Mobile-first always
-- Every page must feel premium on desktop, tablet, and mobile
-- iPhone Safari must be treated as a first-class target
-- No overflow, clipped effects, broken sticky behavior, or awkward spacing on smaller screens
-- Touch targets must be comfortable on mobile
-- Headline wrapping must be intentional across breakpoints
-- Visual polish must hold up on iOS Safari, not just desktop Chrome
+- The lead record is the single source of truth.
+- Proposals, payments, and onboarding state must stay attached to the lead.
+- Do not create disconnected subsystems unless explicitly asked.
+- Do not add automation that changes commercial state without explicit intent.
+- Operational correctness is more important than speculative features.
 
-Writing rules:
-- Never use em dashes in copy or UI text
-- Do not use —
-- Use periods, commas, colons, or standard hyphens only
-- Copy must feel human, premium, and non-AI
+## Design
 
-Form and conversion rules:
-- Primary CTA buttons should route to /intake unless there is a clear exception
-- Email is a secondary fallback, not the main conversion path
-- Forms must be production-ready, validated, and easy to extend into CRM storage
-- All user submissions should be handled server-side where appropriate
+- Premium, dark, calm, expensive, high-trust. Operator-grade feel.
+- Restrained use of `#49A0A4`.
+- Avoid generic SaaS visuals and startup fluff.
+- Mobile-first. iPhone Safari is a first-class target.
+- No overflow, broken sticky behavior, or awkward spacing on small screens.
+- Touch targets must be comfortable. Headline wrapping must be intentional.
 
-Email rules:
-- Transactional emails must feel branded, premium, and intentional
-- Avoid plain unstyled text emails unless absolutely necessary
-- Keep email layouts compatible with Gmail and iPhone Mail
-- Use restrained branding, clear hierarchy, and concise copy
-- Never use em dashes in email copy
+## Writing
+
+- Never use em dashes. Do not use ---.
+- Use periods, commas, colons, or standard hyphens only.
+- Copy must feel human, premium, and non-AI.
+- No generic agency fluff. No overexplaining.
+
+## Email
+
+- Transactional emails must be branded, premium, and intentional.
+- Compatible with Gmail and iPhone Mail.
+- Restrained branding, clear hierarchy, concise copy.
+- Never use em dashes in email copy.
+
+## Response style
+
+- Skip preamble. Lead with the implementation.
+- Keep notes short and implementation-focused.
+- Do not over-explain working code or decisions that are obvious from context.

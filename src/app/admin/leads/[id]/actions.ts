@@ -169,6 +169,19 @@ export async function generateProposalToken(
       .update({ proposal_token: token })
       .eq("id", id);
     if (error) throw error;
+
+    // Verify the token was actually persisted before reporting success.
+    const { data: verify } = await supabase
+      .from("leads")
+      .select("proposal_token")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (!verify || verify.proposal_token !== token) {
+      console.error("[admin] generateProposalToken: write did not persist for id", id);
+      return { success: false, error: "Failed to save proposal link." };
+    }
+
     revalidatePath(`/admin/leads/${id}`);
     return { success: true, token };
   } catch (err) {
