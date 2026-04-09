@@ -307,28 +307,6 @@ export default function Hero() {
               ))}
             </motion.div>
 
-            <motion.div
-              variants={itemVariants}
-              className="mt-9 rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-3.5"
-            >
-              <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-600">
-                Selected companies
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <span className="rounded-full border border-zinc-800/80 px-3 py-1 text-xs text-zinc-400">
-                  St. Regis Marriott
-                </span>
-                <span className="rounded-full border border-zinc-800/80 px-3 py-1 text-xs text-zinc-400">
-                  The Nude Bottle
-                </span>
-                <Link
-                  href="/work/silentspend"
-                  className="rounded-full border border-zinc-700/90 px-3 py-1 text-xs text-zinc-300 transition-colors hover:border-zinc-600 hover:text-zinc-100"
-                >
-                  SilentSpend
-                </Link>
-              </div>
-            </motion.div>
           </motion.div>
 
           {/* ── Right: Infrastructure mock, desktop only ── */}
