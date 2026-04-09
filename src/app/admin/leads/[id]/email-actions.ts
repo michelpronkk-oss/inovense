@@ -37,7 +37,7 @@ export async function sendLeadEmail(
     const { data: lead, error: fetchError } = await supabase
       .from("leads")
       .select(
-        "id, full_name, company_name, work_email, status, onboarding_token, onboarding_status, proposal_token, proposal_deposit, deposit_amount"
+        "id, full_name, company_name, work_email, status, onboarding_token, onboarding_status, proposal_token, proposal_deposit, deposit_amount, payment_link"
       )
       .eq("id", leadId)
       .single();
@@ -58,6 +58,13 @@ export async function sendLeadEmail(
         success: false,
         error:
           "Set a proposal deposit or payment override before sending a payment request.",
+      };
+    }
+
+    if (emailType === "payment_request" && !lead.payment_link) {
+      return {
+        success: false,
+        error: "Add a payment link to this lead before sending a payment request.",
       };
     }
 
@@ -111,6 +118,11 @@ export async function sendLeadEmail(
       cta = {
         text: "View proposal",
         href: `${baseUrl}/proposal/${proposalToken}`,
+      };
+    } else if (emailType === "payment_request" && lead.payment_link) {
+      cta = {
+        text: "Pay deposit",
+        href: lead.payment_link,
       };
     }
 

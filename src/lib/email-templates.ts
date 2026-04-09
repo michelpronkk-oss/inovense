@@ -50,6 +50,7 @@ export const EMAIL_TEMPLATES: Record<EmailTemplateType, EmailTemplateDef> = {
     defaultBody: (_, company) =>
       `We've prepared the invoice for ${company}'s project. Once the deposit is received, we'll lock in your start date and get things moving.\n\nIf you have any questions about the invoice or the next steps, just reply here.`,
     statusOnSend: "payment_requested",
+    hasCta: true,
   },
   onboarding_sent: {
     type: "onboarding_sent",
