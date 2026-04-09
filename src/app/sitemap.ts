@@ -77,6 +77,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.85,
     },
     {
+      url: `${BASE}/work/silentspend`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.85,
+    },
+    {
       url: `${BASE}/privacy-policy`,
       lastModified: new Date(),
       changeFrequency: "yearly",
