@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
+import ProcessHero from "./_hero";
 
 export const metadata: Metadata = {
   title: "Project Process and Client Delivery",
@@ -28,93 +29,6 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ─── Hero ──────────────────────────────────────────────────────────────── */
-
-function Hero() {
-  return (
-    <section className="relative overflow-hidden pb-24 pt-32 md:pb-32 md:pt-40">
-      {/* Grid texture */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px)
-          `,
-          backgroundSize: "80px 80px",
-        }}
-      />
-
-      {/* Ambient glow */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-0 h-[600px] w-[800px] -translate-x-1/2"
-        style={{
-          background:
-            "radial-gradient(ellipse 70% 60% at 50% 20%, rgba(73,160,164,0.12) 0%, transparent 70%)",
-        }}
-      />
-
-      {/* Bottom fade */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-32"
-        style={{
-          background:
-            "linear-gradient(to bottom, transparent, var(--background))",
-        }}
-      />
-
-      <div className="relative mx-auto max-w-4xl px-6 text-center">
-        <Eyebrow>How we work</Eyebrow>
-
-        <h1 className="text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-6xl md:leading-[1.06]">
-          Clarity, structure, and precision{" "}
-          <span className="text-brand">from day one.</span>
-        </h1>
-
-        <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-zinc-400 md:text-lg">
-          Every Inovense engagement follows the same structure. You always know
-          what is happening, what comes next, and exactly what you will have
-          when we are done.
-        </p>
-
-        <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-          <Link
-            href="/intake"
-            className="rounded-full bg-brand px-8 py-3 text-sm font-medium text-zinc-950 transition-colors hover:bg-brand/90"
-          >
-            Start a project
-          </Link>
-          <Link
-            href="#how-we-work"
-            className="rounded-full border border-zinc-700 px-8 py-3 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50"
-          >
-            See how it works
-          </Link>
-        </div>
-
-        {/* Trust strip */}
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-          {[
-            "24-hour response",
-            "No retainer required",
-            "Full ownership on delivery",
-          ].map((item) => (
-            <span
-              key={item}
-              className="flex items-center gap-2 text-xs text-zinc-700"
-            >
-              <span className="h-1 w-1 shrink-0 rounded-full bg-brand/50" />
-              {item}
-            </span>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
 
 /* ─── Workflow stages ───────────────────────────────────────────────────── */
 
@@ -530,7 +444,7 @@ export default function ProcessPage() {
     <>
       <Nav />
       <main className="flex flex-col">
-        <Hero />
+        <ProcessHero />
         <HowWeWork />
         <WhatYouGet />
         <OperatingPrinciples />
