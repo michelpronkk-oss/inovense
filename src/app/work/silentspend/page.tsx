@@ -94,16 +94,14 @@ function Hero() {
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.6fr_1fr] lg:items-end lg:gap-10">
           <div>
-            <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-6xl md:leading-[1.05]">
-              SilentSpend is a <span className="text-brand">global monetization layer</span>
-              , not a dashboard.
+            <h1 className="max-w-2xl text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-6xl md:leading-[1.05]">
+              SilentSpend is a <span className="text-brand">global monetization layer.</span>
             </h1>
 
             <p className="mt-6 max-w-2xl text-base leading-relaxed text-zinc-400 md:text-lg">
-              Inovense designed and built SilentSpend as a monetization intelligence and
-              decision system that tracks pricing changes, packaging shifts, trial and
-              free-tier movement, paywall changes, and monetization surface movement
-              across digital businesses.
+              Not a dashboard. A high-trust decision system for pricing movement,
+              packaging shifts, trial and free-tier changes, paywall changes, and
+              monetization surface movement across digital businesses.
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">
