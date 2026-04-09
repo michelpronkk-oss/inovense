@@ -68,7 +68,10 @@ export default async function ProposalPage({
     throw new Error(`Proposal query failed: ${error.message}`);
   }
 
-  lead = data ?? null;
+  // The Database type in supabase-server.ts predates the proposal schema
+  // columns added in migration (proposal_status, proposal_title, etc.).
+  // The columns exist at runtime; cast after the error path is guarded above.
+  lead = data as unknown as typeof lead;
 
   if (!lead || lead.proposal_status === "archived") {
     return (
