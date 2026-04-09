@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 
 export const metadata: Metadata = {
-  title: "SilentSpend Case Study",
+  title: "SilentSpend | Global Monetization Layer Case Study",
   description:
-    "How Inovense designed and built the SilentSpend product: a B2B spend visibility platform that surfaces hidden software costs and unused subscriptions across a business.",
+    "How Inovense designed and built SilentSpend as a global monetization intelligence and decision layer for operators, founders, pricing teams, growth, and product leaders.",
   alternates: {
     canonical: "https://inovense.com/work/silentspend",
   },
@@ -14,13 +15,11 @@ export const metadata: Metadata = {
     url: "https://inovense.com/work/silentspend",
     title: "SilentSpend Case Study | Inovense",
     description:
-      "How Inovense designed and built the SilentSpend product: a B2B spend visibility platform that surfaces hidden software costs and unused subscriptions across a business.",
+      "A flagship internal product case on designing and building SilentSpend as a high-trust monetization intelligence system.",
   },
 };
 
-/* ─── Primitives ────────────────────────────────────────────────────────── */
-
-function Eyebrow({ children }: { children: React.ReactNode }) {
+function Eyebrow({ children }: { children: ReactNode }) {
   return (
     <p className="mb-4 text-xs font-medium uppercase tracking-widest text-brand">
       {children}
@@ -32,48 +31,42 @@ function Divider() {
   return <div className="border-t border-zinc-800/60" />;
 }
 
-/* ─── Hero ──────────────────────────────────────────────────────────────── */
-
 function Hero() {
+  const tags = ["Product", "Systems", "SaaS", "Intelligence"];
+
   return (
-    <section className="relative overflow-hidden pb-24 pt-32 md:pb-32 md:pt-44">
-      {/* Grid texture */}
+    <section className="relative overflow-hidden pb-20 pt-32 md:pb-28 md:pt-44">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
         style={{
-          backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px)
-          `,
-          backgroundSize: "80px 80px",
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)",
+          backgroundSize: "82px 82px",
         }}
       />
 
-      {/* Ambient glow */}
       <div
         aria-hidden
-        className="pointer-events-none absolute left-1/2 top-0 h-[700px] w-[900px] -translate-x-1/2"
+        className="pointer-events-none absolute left-1/2 top-0 h-[700px] w-[920px] -translate-x-1/2"
         style={{
           background:
-            "radial-gradient(ellipse 70% 60% at 50% 10%, rgba(73,160,164,0.13) 0%, transparent 65%)",
+            "radial-gradient(ellipse 68% 58% at 50% 10%, rgba(73,160,164,0.16) 0%, transparent 68%)",
         }}
       />
 
-      {/* Bottom fade */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-40"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-36"
         style={{
           background: "linear-gradient(to bottom, transparent, var(--background))",
         }}
       />
 
       <div className="relative mx-auto max-w-5xl px-6">
-        {/* Back link */}
         <Link
-          href="/intake"
-          className="mb-10 inline-flex items-center gap-1.5 text-xs text-zinc-600 transition-colors hover:text-zinc-400"
+          href="/build"
+          className="mb-10 inline-flex items-center gap-2 text-xs text-zinc-600 transition-colors hover:text-zinc-400"
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
             <path
@@ -84,43 +77,89 @@ function Hero() {
               strokeLinejoin="round"
             />
           </svg>
-          Work
+          Build lane
         </Link>
 
-        {/* Tags */}
         <div className="mb-8 flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center rounded-full border border-brand/25 bg-brand/8 px-3 py-1 text-[11px] font-medium tracking-wide text-brand">
-            Build lane
-          </span>
-          <span className="inline-flex items-center rounded-full border border-zinc-700/60 px-3 py-1 text-[11px] font-medium text-zinc-500">
-            Product
-          </span>
-          <span className="inline-flex items-center rounded-full border border-zinc-700/60 px-3 py-1 text-[11px] font-medium text-zinc-500">
-            B2B SaaS
-          </span>
-          <span className="inline-flex items-center rounded-full border border-zinc-700/60 px-3 py-1 text-[11px] font-medium text-zinc-500">
-            Fintech
-          </span>
+          {tags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center rounded-full border border-zinc-700/70 px-3 py-1 text-[11px] font-medium text-zinc-400"
+            >
+              {tag}
+            </span>
+          ))}
         </div>
 
-        <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-6xl md:leading-[1.06]">
-          SilentSpend: spend visibility{" "}
-          <span className="text-brand">built to surface what accounting misses.</span>
-        </h1>
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.6fr_1fr] lg:items-end">
+          <div>
+            <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-6xl md:leading-[1.05]">
+              SilentSpend is a <span className="text-brand">global monetization layer</span>
+              , not a dashboard.
+            </h1>
 
-        <p className="mt-6 max-w-2xl text-base leading-relaxed text-zinc-400 md:text-lg">
-          A B2B platform that connects to a company&rsquo;s financial stack and
-          maps every recurring software cost, abandoned subscription, and
-          untracked vendor charge. Designed, built, and shipped by Inovense.
-        </p>
+            <p className="mt-6 max-w-2xl text-base leading-relaxed text-zinc-400 md:text-lg">
+              Inovense designed and built SilentSpend as a monetization intelligence and
+              decision system that tracks pricing changes, packaging shifts, trial and
+              free-tier movement, paywall changes, and monetization surface movement
+              across digital businesses.
+            </p>
 
-        {/* Key signals */}
+            <div className="mt-8 flex flex-wrap gap-3">
+              <a
+                href="https://www.silentspend.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-medium text-zinc-950 transition-colors hover:bg-brand/90"
+              >
+                Visit SilentSpend
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
+                  <path
+                    d="M3 9L9 3M9 3H4.5M9 3v4.5"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </a>
+              <Link
+                href="/intake"
+                className="inline-flex items-center rounded-full border border-zinc-700 px-6 py-2.5 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50"
+              >
+                Start a project
+              </Link>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/45 p-6">
+            <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500">
+              Product identifier
+            </p>
+            <p className="mt-4 text-2xl font-semibold tracking-tight text-zinc-100">
+              SilentSpend
+            </p>
+            <p className="mt-2 text-sm text-zinc-400">Monetization Intelligence Layer</p>
+            <div className="mt-6 space-y-2.5 border-t border-zinc-800/80 pt-4">
+              {[
+                "Tracks monetization movement across markets",
+                "Converts noisy changes into decision-ready signal",
+                "Built for operators, founders, pricing, growth, and product teams",
+              ].map((item) => (
+                <p key={item} className="text-xs leading-relaxed text-zinc-500">
+                  {item}
+                </p>
+              ))}
+            </div>
+          </div>
+        </div>
+
         <div className="mt-12 flex flex-wrap gap-x-10 gap-y-5">
           {[
             { label: "Client", value: "SilentSpend" },
-            { label: "Engagement type", value: "Product build" },
-            { label: "Lane", value: "Build" },
-            { label: "Stack", value: "Next.js, Supabase, Plaid API" },
+            { label: "Engagement", value: "Internal product design and build" },
+            { label: "Category", value: "Monetization intelligence" },
+            { label: "Focus", value: "Signal quality, trust, and decision workflows" },
           ].map(({ label, value }) => (
             <div key={label}>
               <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-600">
@@ -135,56 +174,53 @@ function Hero() {
   );
 }
 
-/* ─── Visual divider strip ──────────────────────────────────────────────── */
+function WhatSilentSpendIs() {
+  const movements = [
+    "Pricing changes",
+    "Packaging changes",
+    "Trial and free-tier updates",
+    "Paywall shifts",
+    "Monetization surface movement",
+  ];
 
-function VisualDivider() {
-  return (
-    <div className="relative mx-auto max-w-5xl px-6">
-      <div
-        className="h-px w-full"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent 0%, rgba(73,160,164,0.3) 30%, rgba(73,160,164,0.3) 70%, transparent 100%)",
-        }}
-      />
-    </div>
-  );
-}
-
-/* ─── Overview ──────────────────────────────────────────────────────────── */
-
-function Overview() {
   return (
     <section className="py-24 md:py-32">
       <div className="mx-auto max-w-5xl px-6">
-        <div className="grid grid-cols-1 gap-16 md:grid-cols-[1fr_1.6fr]">
+        <div className="grid grid-cols-1 gap-14 md:grid-cols-[1fr_1.6fr]">
           <div>
-            <Eyebrow>The product</Eyebrow>
+            <Eyebrow>What SilentSpend is</Eyebrow>
             <h2 className="text-2xl font-semibold leading-snug tracking-tight text-zinc-50 md:text-3xl">
-              What SilentSpend is and who it is for.
+              A decision layer for monetization teams that need trusted signal.
             </h2>
           </div>
-          <div className="space-y-5 text-base leading-relaxed text-zinc-400">
-            <p>
-              Most companies have software spend they cannot fully account for.
-              SaaS licenses tied to ex-employees, tools that auto-renewed
-              without review, shadow IT purchased on personal cards and
-              expensed months later. As headcount grows, the gap between what
-              finance thinks is being spent and what is actually going out widens.
+
+          <div className="space-y-6">
+            <p className="text-base leading-relaxed text-zinc-400">
+              SilentSpend is not financial admin tooling. It is a global monetization
+              layer that continuously observes monetization movement and structures it
+              into evidence teams can act on.
             </p>
-            <p>
-              SilentSpend is a B2B spend intelligence platform built for
-              finance and operations teams. It connects to a company&rsquo;s
-              banking and accounting data, identifies every recurring vendor
-              charge, and maps it against active headcount and tool usage.
-              The result is a single, always-current view of software spend
-              with clear flags for waste, duplication, and exposure.
-            </p>
-            <p>
-              The product was brought to Inovense at the idea-to-production
-              stage. No existing codebase. No design system. Just a clear
-              problem, a well-defined target buyer, and a founder who knew
-              exactly what they needed to build.
+
+            <div className="rounded-xl border border-zinc-800/70 bg-zinc-900/30 p-6">
+              <p className="mb-4 text-[10px] font-medium uppercase tracking-[0.15em] text-zinc-500">
+                Intelligence scope
+              </p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {movements.map((movement) => (
+                  <p
+                    key={movement}
+                    className="flex items-center gap-2 text-sm text-zinc-300"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-brand/60" aria-hidden />
+                    {movement}
+                  </p>
+                ))}
+              </div>
+            </div>
+
+            <p className="text-sm leading-relaxed text-zinc-500">
+              Primary users are operators, founders, pricing teams, growth leaders, and
+              product teams who need context before making monetization decisions.
             </p>
           </div>
         </div>
@@ -193,191 +229,178 @@ function Overview() {
   );
 }
 
-/* ─── Challenge ─────────────────────────────────────────────────────────── */
+function WhyLayerMatters() {
+  const reasons = [
+    {
+      title: "Monetization movement is often quiet",
+      body: "Critical pricing and packaging shifts rarely arrive as clean announcements. Teams need structured detection, not manual monitoring.",
+    },
+    {
+      title: "Signal quality determines decision quality",
+      body: "If evidence is noisy or fragmented, teams hesitate or make the wrong call. Trustworthy signal is the core product requirement.",
+    },
+    {
+      title: "Decision speed needs a shared layer",
+      body: "Pricing, growth, and product cannot operate from separate spreadsheets. A shared decision layer aligns teams around the same evidence.",
+    },
+  ];
+
+  return (
+    <section className="border-t border-zinc-800/60 py-24 md:py-32">
+      <div className="mx-auto max-w-5xl px-6">
+        <div className="mb-14">
+          <Eyebrow>Why this matters</Eyebrow>
+          <h2 className="max-w-2xl text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
+            Why a global monetization layer is strategically valuable.
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          {reasons.map((reason) => (
+            <article
+              key={reason.title}
+              className="rounded-xl border border-zinc-800/70 bg-zinc-900/30 p-7"
+            >
+              <h3 className="mb-3 text-sm font-semibold text-zinc-100">{reason.title}</h3>
+              <p className="text-sm leading-relaxed text-zinc-500">{reason.body}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 function Challenge() {
   const problems = [
     {
-      title: "Financial data is sensitive and structurally complex",
-      body: "Connecting to live banking data via Plaid, normalising transaction history across multiple accounts, and presenting it safely to business users required a carefully designed data layer with zero tolerance for leakage.",
+      title: "Fragmented monetization data",
+      body: "Signals are distributed across product surfaces, pricing pages, release notes, and in-product flows with inconsistent structure.",
     },
     {
-      title: "The core value is classification, not just aggregation",
-      body: "Raw transaction data is not the product. The platform needed to classify recurring charges reliably, match them against known vendors, flag anomalies, and do it without requiring manual tagging by the user.",
+      title: "Quiet pricing and packaging movement",
+      body: "Changes can be subtle but commercially meaningful, so detection logic and evidence framing need precision.",
     },
     {
-      title: "Finance teams have zero patience for noise",
-      body: "The target user is a CFO or Head of Finance. They do not want dashboards full of charts. They want signal: what is wasted, what needs review, what can be cut. The UI had to answer those questions immediately on load.",
+      title: "Low trust in noisy monitoring",
+      body: "Operators do not need more alerts. They need confidence in what changed, where it changed, and why it matters.",
     },
     {
-      title: "Trust had to be established before adoption would follow",
-      body: "Asking a business to connect their bank accounts to a new SaaS product is a high-trust ask. The onboarding flow, security messaging, and overall product feel needed to project the same confidence as an enterprise-grade tool, not a startup MVP.",
+      title: "Complexity of usable decision systems",
+      body: "The hard part is balancing depth with clarity so teams can move from raw observation to action without cognitive overload.",
     },
   ];
 
   return (
-    <section className="border-t border-zinc-800/60 py-24 md:py-32">
+    <section className="py-24 md:py-32">
       <div className="mx-auto max-w-5xl px-6">
-        <div className="mb-16">
+        <div className="mb-14">
           <Eyebrow>The challenge</Eyebrow>
-          <h2 className="max-w-2xl text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-            Four problems that made this build harder than most.
+          <h2 className="max-w-3xl text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
+            Building a high-trust decision layer for complex monetization movement.
           </h2>
-          <p className="mt-4 max-w-xl text-base leading-relaxed text-zinc-500">
-            The idea was clear. Executing it without cutting corners on data
-            integrity, classification quality, or buyer trust was the work.
-          </p>
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          {problems.map((item, i) => (
-            <div
-              key={item.title}
+          {problems.map((problem, index) => (
+            <article
+              key={problem.title}
               className="rounded-xl border border-zinc-800/70 bg-zinc-900/30 p-7"
             >
-              <span className="mb-5 inline-block font-mono text-xs font-semibold tracking-widest text-brand/50">
-                0{i + 1}
+              <span className="mb-5 inline-block text-xs font-semibold tracking-widest text-brand/60">
+                0{index + 1}
               </span>
-              <h3 className="mb-3 text-sm font-semibold text-zinc-100">
-                {item.title}
-              </h3>
-              <p className="text-sm leading-relaxed text-zinc-500">{item.body}</p>
-            </div>
+              <h3 className="mb-3 text-sm font-semibold text-zinc-100">{problem.title}</h3>
+              <p className="text-sm leading-relaxed text-zinc-500">{problem.body}</p>
+            </article>
           ))}
         </div>
       </div>
     </section>
   );
 }
-
-/* ─── What was built ────────────────────────────────────────────────────── */
 
 function WhatWasBuilt() {
-  const deliverables = [
+  const systems = [
     {
-      area: "Core product",
-      items: [
-        "Bank and accounting connection layer via Plaid Link integration",
-        "Transaction ingestion pipeline with recurring charge detection logic",
-        "Vendor classification engine against a curated SaaS vendor registry",
-        "Spend map view: all recurring costs by category, vendor, and seat count",
-        "Waste flagging: auto-identified charges with no active user match",
-        "Alert system for new recurring charges, price increases, and anomalies",
-      ],
+      title: "Monetization signal feed",
+      body: "A structured feed that surfaces pricing, packaging, trial, paywall, and surface movement without drowning users in noise.",
     },
     {
-      area: "Dashboard and UX",
-      items: [
-        "Finance team dashboard with signal-first information hierarchy",
-        "Per-vendor drill-down: cost history, renewal dates, usage signals",
-        "Exportable spend reports in CSV and structured PDF",
-        "Onboarding flow designed to establish trust and reduce friction on first connection",
-        "Admin settings for multi-entity and multi-currency support",
-      ],
+      title: "Evidence structure",
+      body: "Each signal is tied to verifiable context so teams can inspect confidence, source, and decision relevance before acting.",
     },
     {
-      area: "Infrastructure",
-      items: [
-        "Next.js 15 App Router with server components for secure data rendering",
-        "Supabase for data persistence, row-level security, and realtime updates",
-        "Encrypted credential storage with zero plaintext exposure",
-        "Role-based access: owner, finance admin, read-only viewer",
-        "Deployed on Vercel with environment-isolated staging and production",
-      ],
-    },
-  ];
-
-  return (
-    <section className="py-24 md:py-32">
-      <div className="mx-auto max-w-5xl px-6">
-        <div className="mb-16">
-          <Eyebrow>The build</Eyebrow>
-          <h2 className="max-w-2xl text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-            What Inovense designed and built, end to end.
-          </h2>
-          <p className="mt-4 max-w-xl text-base leading-relaxed text-zinc-500">
-            From data model to production deployment. Every layer owned and
-            delivered by a single team.
-          </p>
-        </div>
-
-        <div className="space-y-10">
-          {deliverables.map((section) => (
-            <div
-              key={section.area}
-              className="overflow-hidden rounded-xl border border-zinc-800/60"
-            >
-              <div className="border-b border-zinc-800/60 bg-zinc-900/50 px-6 py-3.5">
-                <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-zinc-500">
-                  {section.area}
-                </p>
-              </div>
-              <ul className="divide-y divide-zinc-800/40">
-                {section.items.map((item) => (
-                  <li
-                    key={item}
-                    className="flex items-start gap-3.5 px-6 py-4"
-                  >
-                    <span
-                      className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand/50"
-                      aria-hidden
-                    />
-                    <span className="text-sm leading-relaxed text-zinc-400">{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ─── Execution ─────────────────────────────────────────────────────────── */
-
-function Execution() {
-  const principles = [
-    {
-      title: "Data model first",
-      body: "Before any UI was designed, the entire data model was mapped, reviewed, and locked. Every downstream decision, from classification logic to report export, depended on getting the schema right at the start.",
+      title: "Decision workspace",
+      body: "Interaction patterns designed for prioritization, review, and handoff across operators, pricing, growth, and product stakeholders.",
     },
     {
-      title: "Security as a first-class constraint",
-      body: "Financial data handling informed every architectural decision. Row-level security was configured from day one. Plaid credentials were encrypted at rest. No shortcuts were made in exchange for faster delivery.",
+      title: "Workflow architecture",
+      body: "Clear progression from signal intake to evidence review to decision state, so teams can work in a repeatable cadence.",
     },
     {
-      title: "Signal-first UI direction",
-      body: "Design started from the question: what does a CFO need to see in the first 10 seconds? Every layout decision prioritised actionable signal over completeness. Charts and secondary data were surfaced only where they answered a specific question.",
+      title: "High-trust interaction model",
+      body: "Calm, precise UX built to reinforce confidence under ambiguity, with clarity over novelty in every core flow.",
     },
     {
-      title: "One structured feedback cycle per phase",
-      body: "The project ran across three defined phases: foundation, core product, and dashboard polish. Each phase had one structured review before moving forward. No open-ended iteration loops that erode scope and timeline.",
+      title: "Product-grade interface system",
+      body: "A durable UI language built for intelligence workflows, balancing scan speed, depth, and long-session usability.",
     },
   ];
 
   return (
     <section className="border-t border-zinc-800/60 py-24 md:py-32">
       <div className="mx-auto max-w-5xl px-6">
-        <div className="mb-16">
-          <Eyebrow>How we executed</Eyebrow>
-          <h2 className="max-w-2xl text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-            The principles that governed this project.
+        <div className="mb-14">
+          <Eyebrow>What was built</Eyebrow>
+          <h2 className="max-w-3xl text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
+            Product, system, and workflow layers designed as one integrated build.
           </h2>
         </div>
 
-        <div className="divide-y divide-zinc-800/60">
-          {principles.map((item) => (
-            <div
-              key={item.title}
-              className="group flex flex-col gap-4 py-8 md:flex-row md:items-start md:gap-12 md:py-10 md:-mx-4 md:rounded-xl md:px-4 transition-colors hover:bg-zinc-900/20"
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          {systems.map((system) => (
+            <article
+              key={system.title}
+              className="rounded-xl border border-zinc-800/70 bg-zinc-900/30 p-7"
             >
-              <h3 className="shrink-0 text-sm font-semibold text-zinc-100 md:w-[220px]">
-                {item.title}
-              </h3>
-              <p className="flex-1 text-sm leading-relaxed text-zinc-500 transition-colors group-hover:text-zinc-400">
-                {item.body}
-              </p>
+              <h3 className="mb-3 text-sm font-semibold text-zinc-100">{system.title}</h3>
+              <p className="text-sm leading-relaxed text-zinc-500">{system.body}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ExecutionPrinciples() {
+  const principles = [
+    "Clarity over noise",
+    "Trust over gimmicks",
+    "Signal quality before feature sprawl",
+    "Premium UX for complex systems",
+    "Operator-grade execution",
+  ];
+
+  return (
+    <section className="py-24 md:py-32">
+      <div className="mx-auto max-w-5xl px-6">
+        <div className="mb-14">
+          <Eyebrow>Execution principles</Eyebrow>
+          <h2 className="max-w-2xl text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
+            The standards used to keep this product credible under real use.
+          </h2>
+        </div>
+
+        <div className="overflow-hidden rounded-xl border border-zinc-800/70">
+          {principles.map((principle) => (
+            <div
+              key={principle}
+              className="flex items-center justify-between gap-4 border-b border-zinc-800/60 bg-zinc-900/25 px-6 py-4 last:border-b-0"
+            >
+              <p className="text-sm text-zinc-300">{principle}</p>
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand/60" aria-hidden />
             </div>
           ))}
         </div>
@@ -386,101 +409,78 @@ function Execution() {
   );
 }
 
-/* ─── Outcome ───────────────────────────────────────────────────────────── */
+function ProductProof() {
+  const proofSlots = [
+    {
+      label: "Signal Feed",
+      title: "Pricing and packaging movement stream",
+      note: "Slot for approved screenshot of the monetization signal feed.",
+    },
+    {
+      label: "Evidence View",
+      title: "Decision-ready evidence and context",
+      note: "Slot for approved screenshot of evidence detail and confidence structure.",
+    },
+    {
+      label: "Workflow",
+      title: "Operator workspace and prioritization flow",
+      note: "Slot for approved screenshot of workflow architecture and action states.",
+    },
+  ];
 
-function Outcome() {
   return (
-    <section className="py-24 md:py-32">
+    <section className="border-t border-zinc-800/60 py-24 md:py-32">
       <div className="mx-auto max-w-5xl px-6">
-        <div className="grid grid-cols-1 gap-16 md:grid-cols-[1fr_1.6fr]">
+        <div className="mb-14 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div>
-            <Eyebrow>The outcome</Eyebrow>
-            <h2 className="text-2xl font-semibold leading-snug tracking-tight text-zinc-50 md:text-3xl">
-              What SilentSpend launched with.
+            <Eyebrow>Product proof</Eyebrow>
+            <h2 className="max-w-2xl text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
+              Visual proof layer for real product artifacts.
             </h2>
           </div>
-          <div className="space-y-5 text-base leading-relaxed text-zinc-400">
-            <p>
-              SilentSpend launched with a fully functional product: bank
-              connections live, classification engine running, and a dashboard
-              their first users could navigate without a demo. The onboarding
-              flow connected accounts reliably and surfaced actionable spend
-              data on first load.
-            </p>
-            <p>
-              The data layer held clean across the first tranche of test
-              companies. Recurring charges were identified correctly at a rate
-              that made the core value proposition demonstrable immediately,
-              without manual curation or human review in the loop.
-            </p>
-            <p>
-              The founder went into their first customer conversations with a
-              product that looked and functioned like it had been in market for
-              longer than it had. The positioning held: finance teams understood
-              what SilentSpend was for and why they needed it within the first
-              minute of seeing it.
-            </p>
-            <p className="text-zinc-500">
-              We do not publish client revenue figures or growth metrics here.
-              What we can say is that SilentSpend shipped clean, on scope, and
-              with nothing deferred to a second phase that should have been
-              in the first.
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ─── Why it matters ────────────────────────────────────────────────────── */
-
-function WhyItMatters() {
-  const points = [
-    {
-      heading: "Product work requires real product thinking",
-      body: "Building a SaaS product is not the same as building a marketing site or an automation workflow. SilentSpend required architectural decisions that would hold at scale, not just work for the demo. That kind of thinking is what Inovense brings to build engagements.",
-    },
-    {
-      heading: "A partner who can hold the whole build",
-      body: "SilentSpend needed one team to own the data model, the integrations, the UI, and the deployment infrastructure. Not a developer, a designer, and a contractor managed separately. One clear scope, one point of accountability.",
-    },
-    {
-      heading: "Speed without compromising the foundation",
-      body: "The founder needed to move fast. We did not sacrifice data security, classification quality, or UX integrity to hit the timeline. The product that shipped was the product that was scoped, not a stripped-down version with technical debt built in.",
-    },
-    {
-      heading: "Handoff that means something",
-      body: "At completion, the founder had full ownership of the codebase, the Supabase project, the Vercel deployment, and the Plaid application. There was no ongoing dependency on Inovense to operate the product or update content.",
-    },
-  ];
-
-  return (
-    <section className="border-t border-zinc-800/60 py-24 md:py-32">
-      <div className="mx-auto max-w-5xl px-6">
-        <div className="mb-16">
-          <Eyebrow>What this means for you</Eyebrow>
-          <h2 className="max-w-2xl text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-            Why this engagement is relevant if you are building a product.
-          </h2>
-          <p className="mt-4 max-w-xl text-base leading-relaxed text-zinc-500">
-            SilentSpend is an example of what a full-stack product engagement
-            with Inovense looks like from intake to handoff.
-          </p>
+          <a
+            href="https://www.silentspend.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="self-start rounded-full border border-zinc-700 px-4 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-100"
+          >
+            Open silentspend.com
+          </a>
         </div>
 
-        <div className="grid grid-cols-1 gap-px bg-zinc-800/60 overflow-hidden rounded-xl sm:grid-cols-2">
-          {points.map((item) => (
-            <div
-              key={item.heading}
-              className="bg-zinc-950 p-7 transition-colors hover:bg-zinc-900/60"
+        <p className="mb-8 max-w-3xl text-sm leading-relaxed text-zinc-500">
+          No SilentSpend screenshot or logo assets are currently stored in this
+          repository. This gallery is intentionally built as a production-ready
+          placeholder system so approved visuals can be dropped in without
+          changing page structure.
+        </p>
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          {proofSlots.map((slot) => (
+            <article
+              key={slot.title}
+              className="rounded-xl border border-zinc-800/70 bg-zinc-900/25 p-5"
             >
-              <div className="mb-4 h-px w-8 bg-brand/40" />
-              <h3 className="mb-3 text-sm font-semibold text-zinc-100">
-                {item.heading}
-              </h3>
-              <p className="text-sm leading-relaxed text-zinc-500">{item.body}</p>
-            </div>
+              <p className="mb-4 text-[10px] font-medium uppercase tracking-[0.15em] text-zinc-500">
+                {slot.label}
+              </p>
+              <div
+                className="mb-4 flex h-40 items-center justify-center rounded-lg border border-dashed border-zinc-700/80 bg-zinc-900/80"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)",
+                  backgroundSize: "22px 22px",
+                }}
+              >
+                <p className="text-center text-xs leading-relaxed text-zinc-600">
+                  Screenshot slot
+                  <br />
+                  16:10 recommended
+                </p>
+              </div>
+              <h3 className="mb-2 text-sm font-semibold text-zinc-100">{slot.title}</h3>
+              <p className="text-xs leading-relaxed text-zinc-500">{slot.note}</p>
+            </article>
           ))}
         </div>
       </div>
@@ -488,12 +488,53 @@ function WhyItMatters() {
   );
 }
 
-/* ─── CTA ───────────────────────────────────────────────────────────────── */
+function WhyItMattersForClients() {
+  const points = [
+    {
+      title: "Premium SaaS product design",
+      body: "Interface systems that feel calm, intentional, and credible in high-stakes operating contexts.",
+    },
+    {
+      title: "Complex systems thinking",
+      body: "Architecture that connects fragmented data, evidence models, and decisions into one usable product layer.",
+    },
+    {
+      title: "Intelligence workflow design",
+      body: "Workflows built for signal review, prioritization, and action, not static reporting.",
+    },
+    {
+      title: "High-trust execution",
+      body: "Delivery discipline focused on product integrity, clarity, and operational readiness.",
+    },
+  ];
+
+  return (
+    <section className="py-24 md:py-32">
+      <div className="mx-auto max-w-5xl px-6">
+        <div className="mb-14">
+          <Eyebrow>Why this matters for Inovense clients</Eyebrow>
+          <h2 className="max-w-3xl text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
+            Proof of execution for teams building serious product systems.
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-xl bg-zinc-800/60 sm:grid-cols-2">
+          {points.map((point) => (
+            <article key={point.title} className="bg-zinc-950 p-7">
+              <div className="mb-4 h-px w-9 bg-brand/50" />
+              <h3 className="mb-3 text-sm font-semibold text-zinc-100">{point.title}</h3>
+              <p className="text-sm leading-relaxed text-zinc-500">{point.body}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 function CTA() {
   return (
     <section className="relative overflow-hidden border-t border-white/[0.06] py-24 md:py-32">
-      {/* Gradient line */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 flex justify-center"
@@ -507,7 +548,6 @@ function CTA() {
         />
       </div>
 
-      {/* Bottom glow */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 bottom-0 h-[500px]"
@@ -518,17 +558,15 @@ function CTA() {
       />
 
       <div className="relative mx-auto max-w-4xl px-6 text-center">
-        <Eyebrow>Start a build project</Eyebrow>
+        <Eyebrow>Build with Inovense</Eyebrow>
 
         <h2 className="text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-5xl">
-          Building something that matters.
-          <br className="hidden md:block" /> Let us scope it.
+          Need a product that turns complex signals into trusted decisions?
         </h2>
 
-        <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-zinc-400 md:text-lg">
-          Submit a brief through our intake form. We will review it within
-          24 hours and come back with a direct response on fit, scope, and
-          next steps.
+        <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-zinc-400 md:text-lg">
+          We design and build high-trust product systems for teams operating in
+          complex categories where signal quality matters.
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
@@ -539,34 +577,16 @@ function CTA() {
             Start a project
           </Link>
           <Link
-            href="/build"
+            href="/systems"
             className="rounded-full border border-zinc-700 px-8 py-3 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50"
           >
-            See the Build lane
+            Explore systems
           </Link>
-        </div>
-
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-          {[
-            "Limited intake",
-            "24-hour response",
-            "No pitch decks",
-          ].map((item) => (
-            <span
-              key={item}
-              className="flex items-center gap-2 text-xs text-zinc-700"
-            >
-              <span className="h-1 w-1 shrink-0 rounded-full bg-brand/50" />
-              {item}
-            </span>
-          ))}
         </div>
       </div>
     </section>
   );
 }
-
-/* ─── Page ──────────────────────────────────────────────────────────────── */
 
 export default function SilentSpendPage() {
   return (
@@ -574,13 +594,14 @@ export default function SilentSpendPage() {
       <Nav />
       <main className="flex flex-col">
         <Hero />
-        <VisualDivider />
-        <Overview />
+        <Divider />
+        <WhatSilentSpendIs />
+        <WhyLayerMatters />
         <Challenge />
         <WhatWasBuilt />
-        <Execution />
-        <Outcome />
-        <WhyItMatters />
+        <ExecutionPrinciples />
+        <ProductProof />
+        <WhyItMattersForClients />
         <CTA />
       </main>
       <Footer />
