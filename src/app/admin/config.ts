@@ -74,6 +74,30 @@ export const ALL_STATUSES: { value: LeadStatus; label: string }[] = [
 
 export const ALL_LANES = ["Build", "Systems", "Growth", "Not sure yet"];
 
+export const LEAD_SOURCE_OPTIONS = [
+  { value: "website", label: "Website" },
+  { value: "referral", label: "Referral" },
+  { value: "outbound", label: "Outbound" },
+  { value: "instagram", label: "Instagram" },
+  { value: "linkedin", label: "LinkedIn" },
+  { value: "whatsapp", label: "WhatsApp" },
+  { value: "personal_network", label: "Personal network" },
+  { value: "call", label: "Call" },
+  { value: "other", label: "Other" },
+] as const;
+
+export const LEAD_SOURCE_LABELS: Record<string, string> = {
+  website: "Website",
+  referral: "Referral",
+  outbound: "Outbound",
+  instagram: "Instagram",
+  linkedin: "LinkedIn",
+  whatsapp: "WhatsApp",
+  personal_network: "Personal network",
+  call: "Call",
+  other: "Other",
+};
+
 export const EMAIL_TYPE_LABELS: Record<string, string> = {
   fit_followup: "Fit follow-up",
   proposal_sent: "Proposal ready",

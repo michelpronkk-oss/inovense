@@ -65,6 +65,7 @@ export type Lead = {
   deposit_paid_at: string | null;
   project_start_date: string | null;
   project_status: ProjectStatus;
+  lead_source: string | null;
 };
 
 export type EmailLog = {

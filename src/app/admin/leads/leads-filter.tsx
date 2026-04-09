@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { ALL_STATUSES, ALL_LANES } from "@/app/admin/config";
+import { ALL_STATUSES, ALL_LANES, LEAD_SOURCE_OPTIONS } from "@/app/admin/config";
 
 export default function LeadsFilter() {
   const router = useRouter();
@@ -20,6 +20,7 @@ export default function LeadsFilter() {
 
   const currentStatus = searchParams.get("status") ?? "";
   const currentLane = searchParams.get("lane") ?? "";
+  const currentSource = searchParams.get("source") ?? "";
 
   const selectClass =
     "h-8 rounded-lg border border-zinc-700/80 bg-zinc-900 px-3 pr-8 text-sm text-zinc-300 appearance-none outline-none focus:border-brand/50 focus:ring-1 focus:ring-brand/30 transition-colors cursor-pointer";
@@ -58,7 +59,23 @@ export default function LeadsFilter() {
         <ChevronIcon />
       </div>
 
-      {(currentStatus || currentLane) && (
+      <div className="relative">
+        <select
+          value={currentSource}
+          onChange={(e) => update("source", e.target.value)}
+          className={selectClass}
+        >
+          <option value="">All sources</option>
+          {LEAD_SOURCE_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <ChevronIcon />
+      </div>
+
+      {(currentStatus || currentLane || currentSource) && (
         <button
           onClick={() => router.push(pathname)}
           className="text-xs text-zinc-600 transition-colors hover:text-zinc-400"

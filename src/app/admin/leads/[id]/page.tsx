@@ -7,7 +7,7 @@ import {
   type EmailLog,
 } from "@/lib/supabase-server";
 import { format } from "date-fns";
-import { STATUS_CONFIG, LANE_COLORS, EMAIL_TYPE_LABELS } from "@/app/admin/config";
+import { STATUS_CONFIG, LANE_COLORS, EMAIL_TYPE_LABELS, LEAD_SOURCE_LABELS } from "@/app/admin/config";
 import {
   StatusUpdater,
   NotesEditor,
@@ -165,7 +165,7 @@ export default async function LeadDetailPage({
               {format(new Date(lead.created_at), "MMM d, yyyy, h:mm a")}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span
               className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${
                 LANE_COLORS[lead.service_lane] ?? LANE_COLORS.default
@@ -180,6 +180,11 @@ export default async function LeadDetailPage({
             >
               {STATUS_CONFIG[lead.status]?.label ?? lead.status}
             </span>
+            {lead.lead_source && (
+              <span className="inline-flex items-center rounded-full border border-zinc-700/50 px-2.5 py-0.5 text-[11px] font-medium text-zinc-500">
+                {LEAD_SOURCE_LABELS[lead.lead_source] ?? lead.lead_source}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -370,6 +375,12 @@ export default async function LeadDetailPage({
                   {format(new Date(lead.created_at), "PPpp")}
                 </p>
               </Field>
+              {lead.lead_source && (
+                <Field
+                  label="Source"
+                  value={LEAD_SOURCE_LABELS[lead.lead_source] ?? lead.lead_source}
+                />
+              )}
               <Field label="Lead ID">
                 <p className="font-mono text-xs text-zinc-600">{lead.id}</p>
               </Field>

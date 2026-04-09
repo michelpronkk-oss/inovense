@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createSupabaseServerClient, type Lead, type LeadStatus } from "@/lib/supabase-server";
 import { format } from "date-fns";
-import { STATUS_CONFIG, LANE_COLORS } from "@/app/admin/config";
+import { STATUS_CONFIG, LANE_COLORS, LEAD_SOURCE_LABELS } from "@/app/admin/config";
 import LeadsFilter from "./leads-filter";
 import { Suspense } from "react";
 
@@ -15,7 +15,7 @@ export default async function LeadsPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const { status, lane } = await searchParams;
+  const { status, lane, source } = await searchParams;
 
   let leads: Lead[] = [];
   let error: string | null = null;
@@ -29,6 +29,7 @@ export default async function LeadsPage({
 
     if (status) query = query.eq("status", status as LeadStatus);
     if (lane) query = query.eq("service_lane", lane);
+    if (source) query = query.eq("lead_source", source);
 
     const { data, error: sbError } = await query;
     if (sbError) throw sbError;
@@ -37,7 +38,7 @@ export default async function LeadsPage({
     error = err instanceof Error ? err.message : "Failed to load leads.";
   }
 
-  const isFiltered = !!(status || lane);
+  const isFiltered = !!(status || lane || source);
 
   return (
     <>
@@ -50,9 +51,20 @@ export default async function LeadsPage({
               : `${leads.length} submission${leads.length !== 1 ? "s" : ""}${isFiltered ? " matching filters" : ""}`}
           </p>
         </div>
-        <Suspense>
-          <LeadsFilter />
-        </Suspense>
+        <div className="flex flex-wrap items-center gap-3">
+          <Suspense>
+            <LeadsFilter />
+          </Suspense>
+          <Link
+            href="/admin/leads/new"
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-brand/30 bg-brand/10 px-3 text-xs font-medium text-brand transition-colors hover:border-brand/50 hover:bg-brand/15"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
+              <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            Add lead
+          </Link>
+        </div>
       </div>
 
       {error && (
@@ -74,13 +86,14 @@ export default async function LeadsPage({
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-zinc-800/80">
-          <table className="w-full min-w-[900px] text-sm">
+          <table className="w-full min-w-[1020px] text-sm">
             <thead>
               <tr className="border-b border-zinc-800/80 bg-zinc-900/70">
                 {[
                   "Date",
                   "Name",
                   "Company",
+                  "Source",
                   "Lane",
                   "Type",
                   "Budget",
@@ -115,6 +128,9 @@ export default async function LeadsPage({
                   </td>
                   <td className="px-4 py-4 text-zinc-500">
                     {lead.company_name}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-4 text-xs text-zinc-600">
+                    {lead.lead_source ? (LEAD_SOURCE_LABELS[lead.lead_source] ?? lead.lead_source) : <span className="text-zinc-800">—</span>}
                   </td>
                   <td className="px-4 py-4">
                     <span
