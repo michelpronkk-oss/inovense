@@ -152,8 +152,6 @@ function InfrastructureMock() {
         {/* ── Footer ── */}
         <div className="flex items-center gap-3 border-t border-zinc-800/40 bg-zinc-950/40 px-4 py-2">
           <span className="text-[8px] tracking-wide text-zinc-700">Inovense</span>
-          <div className="h-3 w-px bg-zinc-800" />
-          <span className="text-[8px] text-zinc-700">Execution first</span>
           <div className="ml-auto flex items-center gap-1">
             <div className="h-1.5 w-1.5 rounded-full bg-brand/50" />
             <span className="text-[8px] text-zinc-600">Live</span>
@@ -311,12 +309,25 @@ export default function Hero() {
 
             <motion.div
               variants={itemVariants}
-              className="mt-10 flex items-center gap-4"
+              className="mt-9 rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-3.5"
             >
-              <div className="h-px w-8 bg-brand/40" />
-              <span className="text-xs uppercase tracking-[0.2em] text-zinc-600">
-                Execution first
-              </span>
+              <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-600">
+                Selected companies
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full border border-zinc-800/80 px-3 py-1 text-xs text-zinc-400">
+                  St. Regis Marriott
+                </span>
+                <span className="rounded-full border border-zinc-800/80 px-3 py-1 text-xs text-zinc-400">
+                  The Nude Bottle
+                </span>
+                <Link
+                  href="/work/silentspend"
+                  className="rounded-full border border-zinc-700/90 px-3 py-1 text-xs text-zinc-300 transition-colors hover:border-zinc-600 hover:text-zinc-100"
+                >
+                  SilentSpend
+                </Link>
+              </div>
             </motion.div>
           </motion.div>
 
