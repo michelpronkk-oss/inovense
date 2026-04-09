@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import IntakeForm from "@/components/intake/intake-form";
+import TrustpilotSignal from "@/components/trustpilot-signal";
 
 export const metadata: Metadata = {
   title: "Start a Project",
@@ -87,6 +88,10 @@ export default function IntakePage() {
                   {item}
                 </span>
               ))}
+            </div>
+
+            <div className="mt-6 flex justify-center">
+              <TrustpilotSignal note="Read client reviews" />
             </div>
           </div>
         </section>
