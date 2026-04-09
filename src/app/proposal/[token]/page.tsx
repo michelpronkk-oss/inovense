@@ -39,7 +39,12 @@ export default async function ProposalPage({
     full_name: string;
     company_name: string;
     service_lane: string;
-    proposal_body: string | null;
+    proposal_status: string | null;
+    proposal_title: string | null;
+    proposal_intro: string | null;
+    proposal_scope: string | null;
+    proposal_deliverables: string | null;
+    proposal_timeline: string | null;
     proposal_price: number | null;
     proposal_deposit: number | null;
     proposal_decision: "accepted" | "declined" | null;
@@ -51,7 +56,7 @@ export default async function ProposalPage({
   const { data, error } = await supabase
     .from("leads")
     .select(
-      "id, full_name, company_name, service_lane, proposal_body, proposal_price, proposal_deposit, proposal_decision, proposal_decided_at, proposal_sent_at"
+      "id, full_name, company_name, service_lane, proposal_status, proposal_title, proposal_intro, proposal_scope, proposal_deliverables, proposal_timeline, proposal_price, proposal_deposit, proposal_decision, proposal_decided_at, proposal_sent_at"
     )
     .eq("proposal_token", token)
     .maybeSingle();
@@ -65,12 +70,12 @@ export default async function ProposalPage({
 
   lead = data ?? null;
 
-  if (!lead) {
+  if (!lead || lead.proposal_status === "archived") {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center px-4">
         <div className="w-full max-w-md text-center">
           <p className="text-sm text-zinc-600">
-            This proposal link is invalid or has expired.
+            This proposal link is invalid or no longer available.
           </p>
           <p className="mt-2 text-xs text-zinc-700">
             If you believe this is a mistake, contact us at{" "}
@@ -81,6 +86,33 @@ export default async function ProposalPage({
               hello@inovense.com
             </a>
             .
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (lead.proposal_status === "draft") {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center px-4">
+        <div className="w-full max-w-md text-center">
+          <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.14em] text-brand">
+            Proposal
+          </p>
+          <h1 className="text-xl font-semibold tracking-tight text-zinc-100">
+            {lead.company_name}
+          </h1>
+          <p className="mt-4 text-sm text-zinc-500">
+            Your proposal is being prepared. We will be in touch shortly.
+          </p>
+          <p className="mt-3 text-xs text-zinc-700">
+            Questions?{" "}
+            <a
+              href="mailto:hello@inovense.com"
+              className="text-zinc-600 underline underline-offset-2 hover:text-zinc-400"
+            >
+              hello@inovense.com
+            </a>
           </p>
         </div>
       </div>
@@ -116,7 +148,7 @@ export default async function ProposalPage({
             Proposal
           </p>
           <h1 className="text-2xl font-semibold leading-tight tracking-tight text-zinc-50 sm:text-3xl">
-            {lead.company_name}
+            {lead.proposal_title ?? lead.company_name}
           </h1>
           {lead.proposal_sent_at && (
             <p className="mt-2 text-sm text-zinc-600">
@@ -157,17 +189,16 @@ export default async function ProposalPage({
         <div className="mb-10 h-px bg-zinc-800/60" />
 
         {/* Proposal content */}
-        {lead.proposal_body ? (
+        {[lead.proposal_intro, lead.proposal_scope, lead.proposal_deliverables, lead.proposal_timeline].some(Boolean) ? (
           <div className="space-y-5">
-            {lead.proposal_body
-              .split(/\n{2,}/)
-              .filter((p) => p.trim())
-              .map((paragraph, i) => (
+            {[lead.proposal_intro, lead.proposal_scope, lead.proposal_deliverables, lead.proposal_timeline]
+              .filter((block): block is string => typeof block === "string" && block.trim().length > 0)
+              .map((block, i) => (
                 <p
                   key={i}
                   className="text-sm leading-relaxed text-zinc-400 sm:text-base"
                 >
-                  {paragraph.trim()}
+                  {block.trim()}
                 </p>
               ))}
           </div>
