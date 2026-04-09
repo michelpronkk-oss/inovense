@@ -73,6 +73,8 @@ const KONVA_TEMPLATE_IDS: ReadonlySet<CreativeTemplateId> = new Set([
   "poster_scene",
   "campaign_cta",
   "proof_metric",
+  "editorial_frame",
+  "gradient_statement",
 ]);
 
 const KonvaTemplateCanvas = dynamic(
