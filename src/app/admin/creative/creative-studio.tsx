@@ -16,14 +16,53 @@ import {
   CREATIVE_TEMPLATE_SPECS,
   DEFAULT_CREATIVE_STATE,
   type CreativeState,
+  type CreativeTemplateId,
   createCreativeState,
   createCreativeStateForMode,
   getTemplatesForMode,
   SERVICE_LANE_OPTIONS,
 } from "./types";
 
+const DISTRIBUTION_PRESETS: {
+  label: string;
+  description: string;
+  template: CreativeTemplateId;
+}[] = [
+  {
+    label: "LinkedIn authority",
+    description: "Operator viewpoint with clear memo structure",
+    template: "operator_memo",
+  },
+  {
+    label: "Proof snippet",
+    description: "Outcome and evidence in one concise visual",
+    template: "proof_card",
+  },
+  {
+    label: "Case snippet",
+    description: "Before/after narrative for delivery proof",
+    template: "case_spotlight",
+  },
+  {
+    label: "Offer post",
+    description: "Offer-first layout with clear action",
+    template: "offer_panel",
+  },
+  {
+    label: "Trust visual",
+    description: "Review-led credibility block",
+    template: "trust_card",
+  },
+  {
+    label: "Ad visual",
+    description: "Campaign frame for paid distribution",
+    template: "ad_frame",
+  },
+];
+
 export function CreativeStudio() {
   const [state, setState] = useState<CreativeState>(DEFAULT_CREATIVE_STATE);
+  const [mobilePanel, setMobilePanel] = useState<"preview" | "controls">("preview");
 
   const activeTemplate = CREATIVE_TEMPLATE_SPECS[state.template];
   const activeMode = CREATIVE_MODE_SPECS[state.mode];
@@ -57,6 +96,11 @@ export function CreativeStudio() {
     updateField("format", formatId);
   }
 
+  function applyPreset(templateId: CreativeTemplateId) {
+    setState(createCreativeState(templateId));
+    setMobilePanel("preview");
+  }
+
   const formatMeta = CREATIVE_FORMAT_SPECS[state.format];
 
   return (
@@ -65,29 +109,97 @@ export function CreativeStudio() {
         <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">Internal creative engine</p>
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-100">Creative Studio</h1>
         <p className="max-w-3xl text-sm leading-relaxed text-zinc-500">
-          Distinct creative families for brand identity, social authority, and campaign ads. Each mode uses a different
-          composition grammar so outputs do not collapse into one generic style.
+          Brand, social, and ad families with distinct composition rules. Tuned for authority posts, proof snippets,
+          trust visuals, and campaign-ready ad frames.
         </p>
       </header>
 
-      <div className="grid gap-6 xl:grid-cols-[372px_minmax(0,1fr)]">
-        <aside className="rounded-2xl border border-zinc-800/80 bg-zinc-900/45 p-5 shadow-[0_18px_48px_rgba(0,0,0,0.3)] xl:sticky xl:top-20 xl:h-fit">
+      <div className="xl:hidden">
+        <div className="inline-flex w-full items-center rounded-xl border border-zinc-800/80 bg-zinc-900/55 p-1">
+          <button
+            type="button"
+            onClick={() => setMobilePanel("preview")}
+            className={cn(
+              "flex-1 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition",
+              mobilePanel === "preview"
+                ? "bg-zinc-800/90 text-zinc-100"
+                : "text-zinc-500 hover:text-zinc-300",
+            )}
+          >
+            Preview
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobilePanel("controls")}
+            className={cn(
+              "flex-1 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition",
+              mobilePanel === "controls"
+                ? "bg-zinc-800/90 text-zinc-100"
+                : "text-zinc-500 hover:text-zinc-300",
+            )}
+          >
+            Controls
+          </button>
+        </div>
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[372px_minmax(0,1fr)]">
+        <aside
+          className={cn(
+            "order-2 rounded-2xl border border-zinc-800/80 bg-zinc-900/45 p-4 shadow-[0_18px_48px_rgba(0,0,0,0.3)] sm:p-5 xl:order-1 xl:sticky xl:top-20 xl:h-fit",
+            mobilePanel === "controls" ? "block" : "hidden xl:block",
+          )}
+        >
           <div className="mb-5 flex items-center justify-between gap-3 border-b border-zinc-800/75 pb-4">
             <div>
               <h2 className="text-sm font-semibold text-zinc-200">Creative controls</h2>
-              <p className="text-xs text-zinc-500">Mode, template, and copy direction</p>
+              <p className="text-xs text-zinc-500">Family, intent, and copy direction</p>
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-zinc-700 bg-zinc-900/60 text-zinc-300 hover:bg-zinc-800/70 hover:text-zinc-100"
-              onClick={() => setState(DEFAULT_CREATIVE_STATE)}
-            >
-              Reset
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-zinc-700 bg-zinc-900/60 text-zinc-300 hover:bg-zinc-800/70 hover:text-zinc-100"
+                onClick={() => setState(DEFAULT_CREATIVE_STATE)}
+              >
+                Reset
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="xl:hidden border-zinc-700 bg-zinc-900/60 text-zinc-300 hover:bg-zinc-800/70 hover:text-zinc-100"
+                onClick={() => setMobilePanel("preview")}
+              >
+                Preview
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-4">
+            <ControlField label="Publishing intent">
+              <div className="-mx-0.5 flex gap-2 overflow-x-auto pb-1">
+                {DISTRIBUTION_PRESETS.map((preset) => {
+                  const active = state.template === preset.template;
+                  return (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => applyPreset(preset.template)}
+                      className={cn(
+                        "shrink-0 rounded-xl border px-3 py-2 text-left transition",
+                        active
+                          ? "border-brand/55 bg-brand/15 text-zinc-100"
+                          : "border-zinc-700/75 bg-zinc-950/72 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200",
+                      )}
+                    >
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">{preset.label}</p>
+                      <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">{preset.description}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </ControlField>
+
             <ControlField label="Content mode">
               <div className="grid grid-cols-3 gap-2">
                 {CREATIVE_MODE_OPTIONS.map((mode) => {
@@ -270,7 +382,12 @@ export function CreativeStudio() {
           </div>
         </aside>
 
-        <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/45 p-4 shadow-[0_18px_54px_rgba(0,0,0,0.3)] lg:p-6">
+        <div
+          className={cn(
+            "order-1 rounded-2xl border border-zinc-800/80 bg-zinc-900/45 p-4 shadow-[0_18px_54px_rgba(0,0,0,0.3)] lg:p-6 xl:order-2",
+            mobilePanel === "preview" ? "block" : "hidden xl:block",
+          )}
+        >
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800/75 pb-4">
             <div>
               <h2 className="text-sm font-semibold text-zinc-200">Live branded preview</h2>
@@ -278,8 +395,18 @@ export function CreativeStudio() {
                 Mode: {state.mode} &middot; Template: {activeTemplate.label}
               </p>
             </div>
-            <div className="inline-flex items-center rounded-full border border-zinc-700/80 bg-zinc-950/70 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-zinc-400">
-              {formatMeta.label}
+            <div className="flex items-center gap-2">
+              <div className="inline-flex items-center rounded-full border border-zinc-700/80 bg-zinc-950/70 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-zinc-400">
+                {formatMeta.label}
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="xl:hidden border-zinc-700 bg-zinc-900/60 text-zinc-300 hover:bg-zinc-800/70 hover:text-zinc-100"
+                onClick={() => setMobilePanel("controls")}
+              >
+                Controls
+              </Button>
             </div>
           </div>
 
@@ -298,7 +425,7 @@ export function CreativeStudio() {
       </div>
 
       <div className="rounded-xl border border-zinc-800/70 bg-zinc-900/40 px-4 py-3 text-xs text-zinc-500">
-        Use Brand mode for identity narratives, Social mode for authority and proof, and Ad mode for sharper conversion-led campaign creative.
+        Brand mode for authority statements, Social mode for proof distribution, and Ad mode for response-focused campaign creative.
       </div>
     </section>
   );
