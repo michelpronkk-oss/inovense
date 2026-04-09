@@ -2,13 +2,12 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import {
   CREATIVE_FORMAT_SPECS,
-  CREATIVE_MODE_SPECS,
   CREATIVE_TEMPLATE_SPECS,
   SERVICE_LANE_STYLES,
-  type BackgroundMode,
   type CreativeFormatId,
   type CreativeMode,
   type CreativeState,
+  type CreativeTemplateId,
   type ServiceLaneStyle,
 } from "./types";
 
@@ -25,17 +24,17 @@ interface TemplateProps {
 }
 
 const HEADLINE_SIZE: Record<CreativeFormatId, string> = {
-  square: "text-[clamp(1.55rem,4.8vw,3.1rem)] leading-[1.06]",
-  portrait: "text-[clamp(1.42rem,4.1vw,2.9rem)] leading-[1.08]",
-  story: "text-[clamp(1.75rem,5.5vw,3.5rem)] leading-[1.04]",
-  landscape: "text-[clamp(1.26rem,2.8vw,2.45rem)] leading-[1.08]",
+  square: "text-[clamp(1.55rem,4.8vw,3.2rem)] leading-[1.04]",
+  portrait: "text-[clamp(1.5rem,4.5vw,3rem)] leading-[1.05]",
+  story: "text-[clamp(1.9rem,6.2vw,3.85rem)] leading-[1.02]",
+  landscape: "text-[clamp(1.3rem,2.95vw,2.58rem)] leading-[1.06]",
 };
 
 const BODY_SIZE: Record<CreativeFormatId, string> = {
-  square: "text-[clamp(0.84rem,1.72vw,1.01rem)] leading-relaxed",
-  portrait: "text-[clamp(0.82rem,1.52vw,0.96rem)] leading-relaxed",
-  story: "text-[clamp(0.9rem,1.95vw,1.08rem)] leading-relaxed",
-  landscape: "text-[clamp(0.79rem,1.1vw,0.93rem)] leading-relaxed",
+  square: "text-[clamp(0.84rem,1.75vw,1.01rem)] leading-relaxed",
+  portrait: "text-[clamp(0.82rem,1.55vw,0.96rem)] leading-relaxed",
+  story: "text-[clamp(0.92rem,2vw,1.1rem)] leading-relaxed",
+  landscape: "text-[clamp(0.79rem,1.12vw,0.93rem)] leading-relaxed",
 };
 
 const CTA_SIZE: Record<CreativeFormatId, string> = {
@@ -50,55 +49,28 @@ function alphaColor(accentRgb: string, alpha: number) {
   return `rgba(${accentRgb} / ${clamped})`;
 }
 
-function modeChipStyles(mode: CreativeMode) {
-  switch (mode) {
-    case "Brand":
-      return "border-zinc-600/70 bg-zinc-900/80 text-zinc-200";
-    case "Social":
-      return "border-sky-300/35 bg-sky-300/10 text-sky-200";
-    case "Ad":
-      return "border-brand/45 bg-brand/18 text-zinc-100";
-    default:
-      return "border-zinc-600/70 bg-zinc-900/80 text-zinc-200";
-  }
-}
-
 function modeSubline(mode: CreativeMode) {
   switch (mode) {
     case "Brand":
-      return "Editorial authority system";
+      return "Editorial brand output";
     case "Social":
-      return "Proof-led distribution asset";
+      return "Publishing proof output";
     case "Ad":
-      return "Campaign conversion frame";
+      return "Campaign conversion output";
     default:
       return "Creative output";
   }
 }
 
-function modeFrameClass(mode: CreativeMode) {
-  switch (mode) {
-    case "Brand":
-      return "border-zinc-700/65 bg-zinc-950/34";
-    case "Social":
-      return "border-sky-900/35 bg-zinc-950/44";
-    case "Ad":
-      return "border-brand/30 bg-zinc-950/50";
-    default:
-      return "border-zinc-700/65 bg-zinc-950/38";
-  }
+function previewMaxWidth(format: CreativeFormatId) {
+  if (format === "story") return "max-w-[430px]";
+  if (format === "portrait") return "max-w-[560px]";
+  return "max-w-[940px]";
 }
 
-function modeHeadlineClass(mode: CreativeMode, format: CreativeFormatId) {
-  if (mode === "Brand") {
-    return cn("font-semibold tracking-tight text-zinc-50", HEADLINE_SIZE[format]);
-  }
-
-  if (mode === "Ad") {
-    return cn("font-semibold tracking-tight text-zinc-50", HEADLINE_SIZE[format]);
-  }
-
-  return cn("font-semibold tracking-tight text-zinc-50", HEADLINE_SIZE[format]);
+function defaultMetricFromTitle(title: string) {
+  const match = title.match(/[+-]?\d+%/);
+  return match?.[0] ?? "+38%";
 }
 
 export function CreativeCanvas({ state, className }: CreativeCanvasProps) {
@@ -108,22 +80,22 @@ export function CreativeCanvas({ state, className }: CreativeCanvasProps) {
 
   return (
     <div className={cn("w-full", className)}>
-      <div className="mx-auto w-full max-w-[920px]">
+      <div className={cn("mx-auto w-full", previewMaxWidth(state.format))}>
         <div
           className="relative overflow-hidden rounded-[1.5rem] border border-zinc-700/70 bg-[#05060a] shadow-[0_34px_130px_rgba(0,0,0,0.72)]"
           style={{ aspectRatio: `${format.width} / ${format.height}` }}
         >
           <CanvasBackdrop
             mode={state.mode}
-            backgroundMode={state.backgroundMode}
+            template={state.template}
             accentRgb={laneStyle.accentRgb}
             accentStrength={accentStrength}
           />
 
           <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/18 to-transparent" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-black/35" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-black/45" />
 
-          <div className="relative z-10 flex h-full flex-col p-[clamp(0.95rem,2.05vw,2rem)]">
+          <div className="relative z-10 flex h-full flex-col p-[clamp(0.95rem,2.15vw,2rem)]">
             <FrameMeta state={state} laneStyle={laneStyle} accentStrength={accentStrength} />
             <div className="mt-3.5 flex flex-1">
               {renderTemplate({
@@ -135,7 +107,7 @@ export function CreativeCanvas({ state, className }: CreativeCanvasProps) {
             </div>
           </div>
 
-          {state.showLogo && (
+          {state.showLogo && state.template !== "poster_scene" && (
             <div className="pointer-events-none absolute bottom-[clamp(0.75rem,1.7vw,1.3rem)] right-[clamp(0.8rem,1.7vw,1.3rem)] z-20 opacity-95">
               <Image
                 src="/logo.png"
@@ -154,103 +126,98 @@ export function CreativeCanvas({ state, className }: CreativeCanvasProps) {
 
 function CanvasBackdrop({
   mode,
-  backgroundMode,
+  template,
   accentRgb,
   accentStrength,
 }: {
   mode: CreativeMode;
-  backgroundMode: BackgroundMode;
+  template: CreativeTemplateId;
   accentRgb: string;
   accentStrength: number;
 }) {
-  const softGlow = 0.08 + accentStrength * 0.1;
-  const mediumGlow = 0.14 + accentStrength * 0.16;
+  const softGlow = 0.08 + accentStrength * 0.12;
+  const midGlow = 0.13 + accentStrength * 0.18;
 
   return (
     <>
       <div className="absolute inset-0 bg-[#05060a]" />
-      <div className="absolute inset-0 bg-[radial-gradient(130%_90%_at_50%_-12%,rgba(255,255,255,0.09)_0%,rgba(5,6,10,1)_58%)]" />
+
+      {template === "poster_scene" ? (
+        <>
+          <Image
+            src="/work/silentspend/hero.png"
+            alt=""
+            fill
+            sizes="(max-width: 768px) 100vw, 900px"
+            className="object-cover opacity-42 blur-[0.7px] scale-[1.08]"
+          />
+          <Image
+            src="/work/silentspend/evidence-view.png"
+            alt=""
+            fill
+            sizes="(max-width: 768px) 100vw, 900px"
+            className="object-cover opacity-16 mix-blend-screen scale-[1.2]"
+          />
+          <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_50%_8%,rgba(255,255,255,0.22)_0%,rgba(5,6,10,0.8)_58%,rgba(5,6,10,0.95)_100%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.1)_0%,rgba(0,0,0,0.56)_100%)]" />
+        </>
+      ) : template === "gradient_statement" ? (
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `
+              radial-gradient(110% 95% at 82% 8%, ${alphaColor(accentRgb, 0.26 + accentStrength * 0.2)} 0%, transparent 56%),
+              radial-gradient(95% 85% at 10% 88%, rgba(132, 109, 166, 0.36) 0%, transparent 60%),
+              radial-gradient(120% 95% at 50% 50%, rgba(17, 24, 39, 0.82) 0%, rgba(6, 8, 12, 1) 72%)
+            `,
+          }}
+        />
+      ) : template === "campaign_cta" ? (
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `
+              radial-gradient(95% 72% at 76% 18%, ${alphaColor(accentRgb, 0.28 + accentStrength * 0.2)} 0%, transparent 58%),
+              radial-gradient(90% 80% at 20% 84%, rgba(94, 51, 153, 0.24) 0%, transparent 58%),
+              linear-gradient(155deg, rgba(16, 14, 38, 0.96) 0%, rgba(5, 6, 12, 1) 68%)
+            `,
+          }}
+        />
+      ) : (
+        <div className="absolute inset-0 bg-[radial-gradient(130%_95%_at_50%_-10%,rgba(255,255,255,0.1)_0%,rgba(5,6,10,1)_58%)]" />
+      )}
 
       <div
-        className="absolute -left-[23%] top-[-44%] h-[95%] w-[90%] rounded-full blur-3xl"
+        className="absolute -left-[22%] top-[-36%] h-[86%] w-[88%] rounded-full blur-3xl"
         style={{
           background: `radial-gradient(circle, ${alphaColor(accentRgb, softGlow)} 0%, transparent 70%)`,
         }}
       />
+
       <div
-        className="absolute right-[-15%] top-[20%] h-[62%] w-[56%] rounded-full blur-3xl"
+        className="absolute right-[-12%] top-[22%] h-[62%] w-[58%] rounded-full blur-3xl"
         style={{
-          background: `radial-gradient(circle, ${alphaColor(accentRgb, softGlow * 0.84)} 0%, transparent 72%)`,
+          background: `radial-gradient(circle, ${alphaColor(accentRgb, midGlow)} 0%, transparent 68%)`,
         }}
       />
 
-      {backgroundMode === "Grid" && (
-        <div
-          className="absolute inset-0 opacity-60"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
-            backgroundSize: "58px 58px",
-          }}
-        />
-      )}
-
-      {backgroundMode === "Spotlight" && (
-        <div
-          className="absolute inset-0"
-          style={{
-            background: `radial-gradient(circle at 64% 32%, ${alphaColor(accentRgb, mediumGlow)} 0%, transparent 46%), radial-gradient(circle at 18% 74%, rgba(255,255,255,0.065) 0%, transparent 43%)`,
-          }}
-        />
-      )}
-
-      {backgroundMode === "Panel" && (
-        <>
-          <div
-            className="absolute inset-0 opacity-24"
-            style={{
-              backgroundImage:
-                "linear-gradient(114deg, transparent 0%, rgba(255,255,255,0.14) 49%, transparent 50%), linear-gradient(114deg, transparent 17%, rgba(255,255,255,0.085) 17.4%, transparent 17.8%)",
-              backgroundSize: "136% 132%",
-            }}
-          />
-          <div className="absolute left-[7%] top-[13%] h-[23%] w-[40%] rounded-2xl border border-zinc-700/50 bg-zinc-900/24" />
-          <div className="absolute right-[8%] bottom-[11%] h-[25%] w-[30%] rounded-2xl border border-zinc-700/50 bg-zinc-900/22" />
-        </>
-      )}
-
-      {mode === "Brand" && (
-        <>
-          <div className="absolute inset-y-0 left-[11%] w-px bg-white/[0.06]" />
-          <div className="absolute inset-y-0 right-[12%] w-px bg-white/[0.04]" />
-        </>
-      )}
-
-      {mode === "Social" && (
-        <>
-          <div className="absolute right-[6%] top-[12%] h-[42%] w-[22%] rounded-xl border border-sky-300/15 bg-sky-400/[0.03]" />
-          <div className="absolute right-[7.7%] top-[18%] h-px w-[18%] bg-sky-200/15" />
-          <div className="absolute right-[7.7%] top-[24%] h-px w-[14%] bg-sky-200/15" />
-          <div className="absolute right-[7.7%] top-[30%] h-px w-[16%] bg-sky-200/15" />
-        </>
-      )}
-
       {mode === "Ad" && (
-        <>
-          <div
-            className="absolute right-[-12%] top-[-24%] h-[75%] w-[52%] rotate-12"
-            style={{
-              background: `linear-gradient(180deg, ${alphaColor(accentRgb, 0.16 + accentStrength * 0.2)} 0%, transparent 74%)`,
-            }}
-          />
-          <div
-            className="absolute inset-x-0 top-0 h-[2px]"
-            style={{
-              background: `linear-gradient(90deg, transparent 0%, ${alphaColor(accentRgb, 0.52 + accentStrength * 0.3)} 50%, transparent 100%)`,
-            }}
-          />
-        </>
+        <div
+          className="absolute inset-x-0 top-0 h-[2px]"
+          style={{
+            background: `linear-gradient(90deg, transparent 0%, ${alphaColor(accentRgb, 0.54 + accentStrength * 0.25)} 50%, transparent 100%)`,
+          }}
+        />
       )}
+
+      <div
+        className="absolute inset-0 opacity-[0.055]"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 25% 20%, rgba(255,255,255,0.65) 0 1px, transparent 1px), radial-gradient(circle at 75% 80%, rgba(255,255,255,0.5) 0 1px, transparent 1px)",
+          backgroundSize: "3px 3px, 4px 4px",
+        }}
+      />
     </>
   );
 }
@@ -264,49 +231,31 @@ function FrameMeta({
   laneStyle: ServiceLaneStyle;
   accentStrength: number;
 }) {
-  const templateLabel = CREATIVE_TEMPLATE_SPECS[state.template].label;
   const proof = state.proofBadge.trim();
+  const showProofChip = proof && state.template !== "proof_metric" && state.template !== "campaign_cta" && state.template !== "poster_scene";
 
   return (
     <div className="flex items-start justify-between gap-3">
-      <div className="space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={cn(
-              "inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.15em]",
-              modeChipStyles(state.mode),
-            )}
-          >
-            {CREATIVE_MODE_SPECS[state.mode].label}
-          </span>
+      <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500">
+        {state.eyebrow || CREATIVE_TEMPLATE_SPECS[state.template].label}
+      </p>
 
-          <span
-            className={cn(
-              "inline-flex rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em]",
-              laneStyle.textColor,
-            )}
-            style={{
-              borderColor: alphaColor(laneStyle.accentRgb, 0.34 + accentStrength * 0.2),
-              backgroundColor: alphaColor(laneStyle.accentRgb, 0.09 + accentStrength * 0.11),
-            }}
-          >
-            {state.serviceLane}
-          </span>
-        </div>
-
-        <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500">
-          {state.eyebrow || templateLabel}
-        </p>
-      </div>
-
-      <div className="text-right">
-        <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500">{templateLabel}</p>
-        {proof && state.mode !== "Brand" ? (
-          <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-300">{proof}</p>
-        ) : (
-          <p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-zinc-600">{modeSubline(state.mode)}</p>
-        )}
-      </div>
+      {showProofChip ? (
+        <span
+          className={cn(
+            "inline-flex rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em]",
+            laneStyle.textColor,
+          )}
+          style={{
+            borderColor: alphaColor(laneStyle.accentRgb, 0.34 + accentStrength * 0.2),
+            backgroundColor: alphaColor(laneStyle.accentRgb, 0.09 + accentStrength * 0.11),
+          }}
+        >
+          {proof}
+        </span>
+      ) : (
+        <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-600">{modeSubline(state.mode)}</span>
+      )}
     </div>
   );
 }
@@ -334,13 +283,13 @@ function CtaPill({
       style={{
         borderColor: alphaColor(
           laneStyle.accentRgb,
-          strong ? 0.54 + accentStrength * 0.3 : 0.4 + accentStrength * 0.22,
+          strong ? 0.54 + accentStrength * 0.3 : 0.4 + accentStrength * 0.2,
         ),
         backgroundColor: alphaColor(
           laneStyle.accentRgb,
           strong ? 0.24 + accentStrength * 0.24 : 0.14 + accentStrength * 0.14,
         ),
-        boxShadow: `0 0 28px ${alphaColor(laneStyle.accentRgb, 0.17 + accentStrength * 0.2)}`,
+        boxShadow: `0 0 26px ${alphaColor(laneStyle.accentRgb, 0.15 + accentStrength * 0.2)}`,
       }}
     >
       {text || "Learn more"}
@@ -350,359 +299,240 @@ function CtaPill({
 
 function renderTemplate(props: TemplateProps) {
   switch (props.state.template) {
-    case "statement_card":
-      return <StatementCardTemplate {...props} />;
-    case "operator_memo":
-      return <OperatorMemoTemplate {...props} />;
-    case "quote_editorial":
-      return <QuoteEditorialTemplate {...props} />;
-    case "proof_card":
-      return <ProofCardTemplate {...props} />;
-    case "case_spotlight":
-      return <CaseSpotlightTemplate {...props} />;
-    case "trust_card":
-      return <TrustCardTemplate {...props} />;
-    case "offer_panel":
-      return <OfferPanelTemplate {...props} />;
-    case "ad_frame":
-      return <AdFrameTemplate {...props} />;
+    case "poster_scene":
+      return <PosterSceneTemplate {...props} />;
+    case "gradient_statement":
+      return <GradientStatementTemplate {...props} />;
+    case "campaign_cta":
+      return <CampaignCtaTemplate {...props} />;
+    case "proof_metric":
+      return <ProofMetricTemplate {...props} />;
+    case "editorial_frame":
+      return <EditorialFrameTemplate {...props} />;
     default:
       return null;
   }
 }
 
-function StatementCardTemplate({ state, format, laneStyle, accentStrength }: TemplateProps) {
-  return (
-    <section
-      className={cn(
-        "relative flex w-full flex-col justify-between rounded-[1.25rem] border p-[clamp(0.95rem,2.2vw,1.9rem)]",
-        modeFrameClass(state.mode),
-      )}
-    >
-      <div
-        className="pointer-events-none absolute left-0 top-[14%] h-[70%] w-[3px] rounded-r"
-        style={{
-          background: `linear-gradient(to bottom, ${alphaColor(laneStyle.accentRgb, 0.08)}, ${alphaColor(laneStyle.accentRgb, 0.62 + accentStrength * 0.24)}, ${alphaColor(laneStyle.accentRgb, 0.08)})`,
-        }}
-      />
-
-      <div>
-        <h2 className={modeHeadlineClass(state.mode, format)}>{state.title}</h2>
-        <p className={cn("mt-5 max-w-[88%] text-zinc-300", BODY_SIZE[format])}>{state.subtitle}</p>
-      </div>
-
-      <div className="mt-8 flex items-center justify-between border-t border-zinc-700/70 pt-4">
-        <span className="text-[10px] uppercase tracking-[0.15em] text-zinc-500">Positioning layer</span>
-        <span
-          className={cn(
-            "rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em]",
-            laneStyle.textColor,
-          )}
-          style={{
-            borderColor: alphaColor(laneStyle.accentRgb, 0.33 + accentStrength * 0.18),
-            backgroundColor: alphaColor(laneStyle.accentRgb, 0.1 + accentStrength * 0.09),
-          }}
-        >
-          {state.serviceLane}
-        </span>
-      </div>
-    </section>
-  );
-}
-
-function OperatorMemoTemplate({ state, format, laneStyle, accentStrength }: TemplateProps) {
-  return (
-    <section className="grid w-full grid-cols-[1.18fr_0.82fr] gap-3 max-[740px]:grid-cols-1">
-      <div className={cn("rounded-[1.2rem] border p-[clamp(0.95rem,2.1vw,1.8rem)]", modeFrameClass(state.mode))}>
-        <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-          <span>Operator memo</span>
-          <span>Internal note</span>
-        </div>
-
-        <h2 className={cn("mt-4", modeHeadlineClass(state.mode, format))}>{state.title}</h2>
-        <p className={cn("mt-4 max-w-[92%] text-zinc-300", BODY_SIZE[format])}>{state.subtitle}</p>
-      </div>
-
-      <aside className="flex flex-col justify-between rounded-[1.2rem] border border-zinc-700/65 bg-zinc-950/62 p-[clamp(0.9rem,1.8vw,1.45rem)]">
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.15em] text-zinc-500">Memo structure</p>
-          <div className="mt-3 space-y-2 text-[12px] text-zinc-300">
-            <div className="rounded-lg border border-zinc-700/55 bg-zinc-900/45 px-3 py-2">Observation</div>
-            <div className="rounded-lg border border-zinc-700/55 bg-zinc-900/45 px-3 py-2">Constraint</div>
-            <div className="rounded-lg border border-zinc-700/55 bg-zinc-900/45 px-3 py-2">Decision</div>
-          </div>
-        </div>
-
-        <CtaPill
-          text={state.ctaText || "Read memo"}
-          laneStyle={laneStyle}
-          accentStrength={accentStrength}
-          format={format}
-        />
-      </aside>
-    </section>
-  );
-}
-
-function QuoteEditorialTemplate({ state, format, laneStyle, accentStrength }: TemplateProps) {
-  return (
-    <section className={cn("relative flex w-full flex-col rounded-[1.25rem] border p-[clamp(1rem,2.2vw,1.9rem)]", modeFrameClass(state.mode))}>
-      <span
-        className="pointer-events-none absolute left-[clamp(0.6rem,1.2vw,1.2rem)] top-[clamp(0.15rem,0.6vw,0.6rem)] font-serif text-[clamp(4rem,11vw,7.5rem)] leading-none text-zinc-700/95"
-        aria-hidden
-      >
-        &quot;
-      </span>
-
-      <blockquote className="relative z-10 max-w-[95%]">
-        <p className={cn(modeHeadlineClass(state.mode, format), "font-medium text-zinc-100")}>{state.title}</p>
-        <p className={cn("mt-5 max-w-[87%] text-zinc-300", BODY_SIZE[format])}>{state.subtitle}</p>
-      </blockquote>
-
-      <div className="mt-auto flex items-center justify-between border-t border-zinc-700/65 pt-4">
-        <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">Editorial authority</span>
-        <CtaPill
-          text={state.ctaText || "Share quote"}
-          laneStyle={laneStyle}
-          accentStrength={accentStrength}
-          format={format}
-        />
-      </div>
-    </section>
-  );
-}
-
-function ProofCardTemplate({ state, format, laneStyle, accentStrength }: TemplateProps) {
-  const proof = state.proofBadge || "Measured outcome";
+function PosterSceneTemplate({ state, format, laneStyle, accentStrength }: TemplateProps) {
+  const boardWidthClass =
+    format === "landscape"
+      ? "w-[56%]"
+      : format === "story"
+        ? "w-[76%]"
+        : format === "square"
+          ? "w-[70%]"
+          : "w-[72%]";
 
   return (
-    <section className="grid w-full grid-cols-[1.06fr_0.94fr] gap-3 max-[740px]:grid-cols-1">
-      <div
-        className="flex flex-col justify-between rounded-[1.2rem] border px-[clamp(0.95rem,2vw,1.6rem)] py-[clamp(0.95rem,1.9vw,1.5rem)]"
-        style={{
-          borderColor: alphaColor(laneStyle.accentRgb, 0.45),
-          backgroundColor: alphaColor(laneStyle.accentRgb, 0.13 + accentStrength * 0.16),
-        }}
-      >
-        <span className="text-[10px] uppercase tracking-[0.15em] text-zinc-100/80">Measured proof</span>
-        <p className="mt-3 text-[clamp(1.25rem,3.2vw,2rem)] font-semibold tracking-tight text-zinc-50">{proof}</p>
-        <p className={cn("mt-4 max-w-[92%] text-zinc-100", BODY_SIZE[format])}>{state.title}</p>
-      </div>
+    <section className="relative w-full overflow-hidden rounded-[1.15rem] border border-black/35 bg-black/26">
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,6,10,0.14)_0%,rgba(5,6,10,0.56)_100%)]" />
 
-      <aside className="flex flex-col justify-between rounded-[1.2rem] border border-zinc-700/65 bg-zinc-950/62 p-[clamp(0.9rem,1.8vw,1.45rem)]">
-        <p className={cn("max-w-[95%] text-zinc-300", BODY_SIZE[format])}>{state.subtitle}</p>
+      <div className={cn("absolute left-[9%] top-[12%] max-w-[620px] rounded-[0.35rem] bg-[#f2f0ea] p-[clamp(0.7rem,1.8vw,1.3rem)] text-zinc-900 shadow-[0_18px_48px_rgba(0,0,0,0.4)]", boardWidthClass)}>
+        <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-600">{state.eyebrow || "Poster on scene"}</p>
+        <h2 className={cn("mt-2 font-semibold tracking-tight text-zinc-900", HEADLINE_SIZE[format])}>{state.title}</h2>
+        <p className={cn("mt-2.5 text-zinc-700", BODY_SIZE[format])}>{state.subtitle}</p>
 
-        <div className="mt-4 grid grid-cols-3 gap-2 text-[10px] uppercase tracking-[0.13em] text-zinc-500 max-[460px]:grid-cols-1">
-          <span className="rounded-lg border border-zinc-700/55 bg-zinc-900/45 px-2.5 py-2">Capture</span>
-          <span className="rounded-lg border border-zinc-700/55 bg-zinc-900/45 px-2.5 py-2">Routing</span>
-          <span className="rounded-lg border border-zinc-700/55 bg-zinc-900/45 px-2.5 py-2">Follow-up</span>
-        </div>
-
-        <div className="mt-4 border-t border-zinc-700/65 pt-4">
-          <CtaPill
-            text={state.ctaText || "See proof"}
-            laneStyle={laneStyle}
-            accentStrength={accentStrength}
-            format={format}
-          />
-        </div>
-      </aside>
-    </section>
-  );
-}
-
-function CaseSpotlightTemplate({ state, format, laneStyle, accentStrength }: TemplateProps) {
-  const stats = [
-    ["Timeline", "8 weeks"],
-    ["Focus", "Workflow redesign"],
-    ["Impact", state.proofBadge || "Measured lift"],
-  ];
-
-  return (
-    <section className="grid w-full grid-cols-[1.2fr_0.8fr] gap-3 max-[740px]:grid-cols-1">
-      <div className="rounded-[1.2rem] border border-zinc-700/60 bg-zinc-950/40 p-[clamp(0.95rem,2vw,1.7rem)]">
-        <p className="text-[10px] uppercase tracking-[0.15em] text-zinc-500">Case spotlight</p>
-        <h2 className={cn("mt-3", modeHeadlineClass(state.mode, format))}>{state.title}</h2>
-        <p className={cn("mt-4 max-w-[93%] text-zinc-300", BODY_SIZE[format])}>{state.subtitle}</p>
-
-        <div className="mt-5 grid grid-cols-3 gap-2 max-[460px]:grid-cols-1">
-          {stats.map(([key, value]) => (
-            <div key={key} className="rounded-lg border border-zinc-700/55 bg-zinc-900/45 px-3 py-2">
-              <p className="text-[10px] uppercase tracking-[0.13em] text-zinc-500">{key}</p>
-              <p className="mt-1 text-[12px] font-medium text-zinc-200">{value}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <aside className="flex flex-col justify-between rounded-[1.2rem] border border-zinc-700/65 bg-zinc-950/62 p-[clamp(0.9rem,1.8vw,1.45rem)]">
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.15em] text-zinc-500">Execution moves</p>
-          <ul className="mt-3 space-y-2 text-[12px] leading-relaxed text-zinc-300">
-            <li className="flex items-start gap-2">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand/70" />
-              Funnel architecture rebuilt for intent quality.
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand/62" />
-              Routing and handoff logic consolidated.
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand/55" />
-              Reporting layer aligned to commercial decisions.
-            </li>
-          </ul>
-        </div>
-
-        <CtaPill
-          text={state.ctaText || "Open case"}
-          laneStyle={laneStyle}
-          accentStrength={accentStrength}
-          format={format}
-        />
-      </aside>
-    </section>
-  );
-}
-
-function TrustCardTemplate({ state, format, laneStyle, accentStrength }: TemplateProps) {
-  const stars = Array.from({ length: 5 });
-
-  return (
-    <section className="grid w-full grid-cols-[1.1fr_0.9fr] gap-3 max-[740px]:grid-cols-1">
-      <div className="rounded-[1.2rem] border border-zinc-700/60 bg-zinc-950/40 p-[clamp(0.95rem,2vw,1.7rem)]">
-        <div className="flex items-center gap-1">
-          {stars.map((_, index) => (
-            <span key={index} className="text-[14px] leading-none text-amber-300/95">
-              &#9733;
+        <div className="mt-4 flex flex-wrap gap-2">
+          {[
+            "Scope",
+            "Strategy",
+            state.ctaText || "Apply now",
+          ].map((item, index) => (
+            <span
+              key={item}
+              className="rounded-full border px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.14em]"
+              style={{
+                borderColor:
+                  index === 2
+                    ? alphaColor(laneStyle.accentRgb, 0.62 + accentStrength * 0.2)
+                    : "rgba(24,24,27,0.28)",
+                backgroundColor:
+                  index === 2
+                    ? alphaColor(laneStyle.accentRgb, 0.2 + accentStrength * 0.12)
+                    : "rgba(255,255,255,0.44)",
+                color: index === 2 ? "rgb(9 23 24)" : "rgb(39 39 42)",
+              }}
+            >
+              {item}
             </span>
           ))}
         </div>
 
-        <h2 className={cn("mt-3", modeHeadlineClass(state.mode, format))}>{state.title}</h2>
-        <p className={cn("mt-4 max-w-[93%] text-zinc-300", BODY_SIZE[format])}>{state.subtitle}</p>
-
-        <p className="mt-5 text-[10px] uppercase tracking-[0.14em] text-zinc-500">Trustpilot review layer</p>
-      </div>
-
-      <aside className="flex flex-col justify-between rounded-[1.2rem] border border-zinc-700/65 bg-zinc-950/62 p-[clamp(0.9rem,1.8vw,1.45rem)]">
-        <div
-          className="rounded-lg border px-3 py-2"
-          style={{
-            borderColor: alphaColor(laneStyle.accentRgb, 0.4),
-            backgroundColor: alphaColor(laneStyle.accentRgb, 0.12 + accentStrength * 0.12),
-          }}
-        >
-          <p className="text-[10px] uppercase tracking-[0.13em] text-zinc-100/85">{state.proofBadge || "Verified reviews"}</p>
-        </div>
-
-        <div className="space-y-2 text-[12px] text-zinc-300">
-          <p className="rounded-lg border border-zinc-700/55 bg-zinc-900/45 px-3 py-2">Trusted by operators and founders</p>
-          <p className="rounded-lg border border-zinc-700/55 bg-zinc-900/45 px-3 py-2">Delivery quality called out by clients</p>
-        </div>
-
-        <CtaPill
-          text={state.ctaText || "Read reviews"}
-          laneStyle={laneStyle}
-          accentStrength={accentStrength}
-          format={format}
-          strong
-        />
-      </aside>
-    </section>
-  );
-}
-
-function OfferPanelTemplate({ state, format, laneStyle, accentStrength }: TemplateProps) {
-  return (
-    <section className="grid w-full grid-cols-[1.12fr_0.88fr] gap-3 max-[740px]:grid-cols-1">
-      <div className="rounded-[1.2rem] border border-zinc-700/60 bg-zinc-950/38 p-[clamp(0.95rem,2vw,1.72rem)]">
-        <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">Offer panel</p>
-        <h2 className={cn("mt-3", modeHeadlineClass(state.mode, format))}>{state.title}</h2>
-        <p className={cn("mt-4 max-w-[92%] text-zinc-300", BODY_SIZE[format])}>{state.subtitle}</p>
-      </div>
-
-      <aside
-        className="flex flex-col justify-between rounded-[1.2rem] border px-[clamp(0.9rem,1.8vw,1.45rem)] py-[clamp(0.9rem,1.8vw,1.45rem)]"
-        style={{
-          borderColor: alphaColor(laneStyle.accentRgb, 0.5 + accentStrength * 0.2),
-          backgroundColor: alphaColor(laneStyle.accentRgb, 0.18 + accentStrength * 0.2),
-        }}
-      >
-        <div
-          className="rounded-lg border px-3 py-2 text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-100"
-          style={{
-            borderColor: alphaColor(laneStyle.accentRgb, 0.56),
-            backgroundColor: alphaColor(laneStyle.accentRgb, 0.2 + accentStrength * 0.14),
-          }}
-        >
+        <p className="mt-3 border-t border-zinc-300/80 pt-2.5 text-[9px] uppercase tracking-[0.14em] text-zinc-500">
           {state.proofBadge || "Limited intake"}
-        </div>
+        </p>
+      </div>
 
-        <div className="space-y-2 text-[12px] text-zinc-100">
-          <p>Scoped strategy</p>
-          <p>Execution blueprint</p>
-          <p>Leadership handoff</p>
+      {state.showLogo && (
+        <div className="absolute bottom-[5%] right-[5%] opacity-90">
+          <Image src="/logo.png" alt="Inovense" width={100} height={22} className="h-auto w-[clamp(68px,10vw,100px)] brightness-200 contrast-125" />
         </div>
-
-        <CtaPill
-          text={state.ctaText || "Apply now"}
-          laneStyle={laneStyle}
-          accentStrength={accentStrength}
-          format={format}
-          strong
-        />
-      </aside>
+      )}
     </section>
   );
 }
 
-function AdFrameTemplate({ state, format, laneStyle, accentStrength }: TemplateProps) {
+function GradientStatementTemplate({ state, format, laneStyle, accentStrength }: TemplateProps) {
   return (
-    <section className="flex w-full flex-col overflow-hidden rounded-[1.2rem] border border-brand/25 bg-zinc-950/58">
-      <div className="border-b border-zinc-700/65 px-[clamp(0.95rem,2vw,1.65rem)] py-[clamp(0.85rem,1.7vw,1.25rem)]">
-        <p className="text-[10px] uppercase tracking-[0.15em] text-zinc-500">Campaign hook</p>
-        <h2 className={cn("mt-2", modeHeadlineClass(state.mode, format))}>{state.title}</h2>
-        <p className={cn("mt-3 max-w-[94%] text-zinc-300", BODY_SIZE[format])}>{state.subtitle}</p>
+    <section className="relative flex w-full flex-col justify-between rounded-[1.2rem] border border-zinc-700/55 bg-transparent px-[clamp(0.95rem,2.15vw,1.9rem)] py-[clamp(0.9rem,1.95vw,1.75rem)]">
+      <div>
+        <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-300/85">{state.eyebrow || "Gradient statement"}</p>
+        <h2 className={cn("mt-3 max-w-[90%] font-medium tracking-tight text-zinc-100", HEADLINE_SIZE[format])}>
+          {state.title}
+        </h2>
+        <p className={cn("mt-4 max-w-[80%] text-zinc-200/88", BODY_SIZE[format])}>{state.subtitle}</p>
       </div>
 
-      <div className="grid flex-1 grid-cols-[1fr_1fr] gap-3 px-[clamp(0.9rem,1.8vw,1.45rem)] py-[clamp(0.9rem,1.8vw,1.45rem)] max-[740px]:grid-cols-1">
-        <div className="rounded-xl border border-zinc-700/55 bg-zinc-900/45 p-3">
-          <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">Why this converts</p>
-          <div className="mt-3 space-y-2 text-[12px] text-zinc-300">
-            <p>Clear pain framing for high-intent buyers.</p>
-            <p>Proof signal anchored near the hook.</p>
-            <p>Single CTA with no decision noise.</p>
-          </div>
-        </div>
+      <div className="mt-8 flex flex-wrap items-end justify-between gap-3 border-t border-white/20 pt-4">
+        <span className="text-[10px] uppercase tracking-[0.15em] text-zinc-300/85">Inovense authority layer</span>
 
-        <div className="rounded-xl border border-zinc-700/55 bg-zinc-900/45 p-3">
-          <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">Ad-ready structure</p>
-          <div className="mt-3 space-y-2">
-            <div className="h-2.5 w-[72%] rounded-full bg-zinc-700/80" />
-            <div className="h-2.5 w-[90%] rounded-full bg-zinc-700/80" />
-            <div className="h-2.5 w-[62%] rounded-full bg-zinc-700/80" />
-            <div
-              className="mt-3 h-8 w-32 rounded-full border"
-              style={{
-                borderColor: alphaColor(laneStyle.accentRgb, 0.52),
-                backgroundColor: alphaColor(laneStyle.accentRgb, 0.18 + accentStrength * 0.16),
-              }}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between border-t border-zinc-700/65 px-[clamp(0.95rem,2vw,1.65rem)] py-[clamp(0.8rem,1.7vw,1.2rem)]">
-        <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">Campaign conversion frame</span>
         <CtaPill
-          text={state.ctaText || "Book audit"}
+          text={state.ctaText || "Open statement"}
           laneStyle={laneStyle}
           accentStrength={accentStrength}
           format={format}
-          strong
         />
       </div>
+    </section>
+  );
+}
+
+function CampaignCtaTemplate({ state, format, laneStyle, accentStrength }: TemplateProps) {
+  return (
+    <section className="relative flex w-full flex-col rounded-[1.2rem] border border-zinc-700/60 bg-black/28 px-[clamp(0.95rem,2.1vw,1.85rem)] py-[clamp(0.95rem,2.1vw,1.85rem)]">
+      <div className="flex items-center justify-between">
+        <span className="rounded-full border border-zinc-500/70 bg-zinc-950/65 px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-zinc-300">
+          {state.eyebrow || "Campaign CTA"}
+        </span>
+        <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">{state.proofBadge || "Limited intake"}</span>
+      </div>
+
+      <h2 className={cn("mt-5 max-w-[90%] font-semibold tracking-tight text-zinc-50", HEADLINE_SIZE[format])}>{state.title}</h2>
+      <p className={cn("mt-4 max-w-[76%] text-zinc-300", BODY_SIZE[format])}>{state.subtitle}</p>
+
+      <div className="mt-auto pt-7">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left"
+          style={{
+            borderColor: alphaColor(laneStyle.accentRgb, 0.6 + accentStrength * 0.18),
+            backgroundColor: alphaColor(laneStyle.accentRgb, 0.22 + accentStrength * 0.2),
+            boxShadow: `0 14px 34px ${alphaColor(laneStyle.accentRgb, 0.2 + accentStrength * 0.14)}`,
+          }}
+        >
+          <span className={cn("font-semibold uppercase tracking-[0.14em] text-zinc-100", CTA_SIZE[format])}>
+            {state.ctaText || "Book system audit"}
+          </span>
+          <span className={cn("font-semibold text-zinc-100", CTA_SIZE[format])}>{"->"}</span>
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function ProofMetricTemplate({ state, format, laneStyle, accentStrength }: TemplateProps) {
+  const metric = state.proofBadge || defaultMetricFromTitle(state.title);
+  const bars = [44, 52, 58, 63, 72, 79];
+
+  return (
+    <section className="relative flex w-full flex-col rounded-[1.2rem] border border-zinc-700/60 bg-zinc-950/44 px-[clamp(0.95rem,2.1vw,1.8rem)] py-[clamp(0.9rem,2vw,1.65rem)]">
+      <div className="grid grid-cols-[1.05fr_0.95fr] gap-4 max-[650px]:grid-cols-1">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">{state.eyebrow || "Proof metric"}</p>
+          <p
+            className="mt-2 font-semibold tracking-tight text-zinc-50"
+            style={{ fontSize: "clamp(2.1rem,7vw,5rem)", lineHeight: 0.95 }}
+          >
+            {metric}
+          </p>
+          <p className="mt-2 text-[11px] uppercase tracking-[0.14em] text-zinc-500">Outcome spotlight</p>
+          <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
+            <span className="rounded-lg border border-zinc-700/60 bg-zinc-900/55 px-2.5 py-2">Before: 6h avg</span>
+            <span className="rounded-lg border border-zinc-700/60 bg-zinc-900/55 px-2.5 py-2">After: 58m avg</span>
+          </div>
+        </div>
+
+        <div>
+          <h2 className={cn("font-semibold tracking-tight text-zinc-100", HEADLINE_SIZE[format])}>{state.title}</h2>
+          <p className={cn("mt-3 text-zinc-300", BODY_SIZE[format])}>{state.subtitle}</p>
+        </div>
+      </div>
+
+      <div className="mt-5 flex h-[clamp(40px,7vw,72px)] items-end gap-1.5 border-b border-zinc-700/70 pb-2">
+        {bars.map((value, index) => (
+          <div
+            key={index}
+            className="flex-1 rounded-sm"
+            style={{
+              height: `${value}%`,
+              background:
+                index >= bars.length - 2
+                  ? alphaColor(laneStyle.accentRgb, 0.72)
+                  : alphaColor(laneStyle.accentRgb, 0.35),
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">{state.serviceLane} lane</span>
+        <CtaPill
+          text={state.ctaText || "View methodology"}
+          laneStyle={laneStyle}
+          accentStrength={accentStrength}
+          format={format}
+        />
+      </div>
+    </section>
+  );
+}
+
+function EditorialFrameTemplate({ state, format, laneStyle, accentStrength }: TemplateProps) {
+  const isTall = format === "portrait" || format === "story";
+
+  return (
+    <section
+      className={cn(
+        "relative grid w-full gap-4 rounded-[1.2rem] border border-zinc-700/60 bg-zinc-950/40 px-[clamp(0.95rem,2.1vw,1.8rem)] py-[clamp(0.95rem,2.05vw,1.72rem)]",
+        isTall ? "grid-cols-1" : "grid-cols-[1.2fr_0.8fr]",
+      )}
+    >
+      {!isTall && <div className="pointer-events-none absolute bottom-[12%] left-[63%] top-[14%] w-px bg-zinc-700/65" />}
+
+      <div className={cn(!isTall && "pr-[clamp(0.7rem,1.8vw,1.35rem)]")}>
+        <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">{state.eyebrow || "Editorial frame"}</p>
+        <h2 className={cn("mt-3 max-w-[95%] font-medium tracking-tight text-zinc-100", HEADLINE_SIZE[format])}>{state.title}</h2>
+      </div>
+
+      <aside className={cn("flex flex-col justify-between", !isTall && "pl-[clamp(0.7rem,1.8vw,1.35rem)]")}>
+        <div className="relative mb-4 h-[clamp(92px,17vw,170px)] overflow-hidden rounded-xl border border-zinc-700/65 bg-zinc-900/45">
+          <Image
+            src="/work/silentspend/signal-feed.png"
+            alt=""
+            fill
+            sizes="(max-width: 768px) 100vw, 400px"
+            className="object-cover"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_0%,rgba(5,6,10,0.62)_100%)]" />
+          <span className="absolute bottom-2 left-2 rounded-full border border-zinc-600/75 bg-black/45 px-2 py-1 text-[9px] uppercase tracking-[0.14em] text-zinc-300">
+            SilentSpend
+          </span>
+        </div>
+
+        <p className={cn("max-w-[94%] text-zinc-300", BODY_SIZE[format])}>{state.subtitle}</p>
+
+        <div className="mt-5 flex items-center justify-between border-t border-zinc-700/65 pt-4">
+          <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">{state.proofBadge || "Operator perspective"}</span>
+          <CtaPill
+            text={state.ctaText || "Read note"}
+            laneStyle={laneStyle}
+            accentStrength={accentStrength}
+            format={format}
+            strong
+          />
+        </div>
+      </aside>
     </section>
   );
 }

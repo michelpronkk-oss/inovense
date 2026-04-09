@@ -1,20 +1,15 @@
 export type CreativeMode = "Brand" | "Social" | "Ad";
 
 export type CreativeTemplateId =
-  | "statement_card"
-  | "operator_memo"
-  | "quote_editorial"
-  | "proof_card"
-  | "case_spotlight"
-  | "trust_card"
-  | "offer_panel"
-  | "ad_frame";
+  | "poster_scene"
+  | "gradient_statement"
+  | "campaign_cta"
+  | "proof_metric"
+  | "editorial_frame";
 
 export type CreativeFormatId = "square" | "portrait" | "story" | "landscape";
 
 export type ServiceLane = "Build" | "Systems" | "Growth" | "General";
-
-export type BackgroundMode = "Grid" | "Spotlight" | "Panel";
 
 export interface CreativeFormatSpec {
   id: CreativeFormatId;
@@ -47,7 +42,6 @@ export interface CreativeState {
   eyebrow: string;
   ctaText: string;
   serviceLane: ServiceLane;
-  backgroundMode: BackgroundMode;
   showLogo: boolean;
   accentIntensity: number;
   proofBadge: string;
@@ -89,91 +83,67 @@ export const CREATIVE_MODE_SPECS: Record<CreativeMode, CreativeModeSpec> = {
   Brand: {
     id: "Brand",
     label: "Brand",
-    description: "Editorial authority, positioning clarity, and founder voice.",
+    description: "Editorial positioning and authority-led brand moments.",
   },
   Social: {
     id: "Social",
     label: "Social",
-    description: "Proof-led publishing assets for authority and trust.",
+    description: "Proof-led formats for publishing and credibility.",
   },
   Ad: {
     id: "Ad",
     label: "Ad",
-    description: "Campaign-grade conversion visuals with clear CTA framing.",
+    description: "Hard CTA campaign visuals for paid and offer distribution.",
   },
 };
 
 export const CREATIVE_TEMPLATE_SPECS: Record<CreativeTemplateId, CreativeTemplateSpec> = {
-  statement_card: {
-    id: "statement_card",
-    mode: "Brand",
-    label: "Statement card",
-    description: "Text-first positioning statement with high visual restraint.",
-    defaultFormat: "square",
-    supportedFormats: ["square", "portrait", "landscape"],
-  },
-  operator_memo: {
-    id: "operator_memo",
-    mode: "Brand",
-    label: "Operator memo",
-    description: "Founder or operator perspective with memo-style hierarchy.",
+  poster_scene: {
+    id: "poster_scene",
+    mode: "Social",
+    label: "Poster on scene",
+    description: "Photo-led scene with a poster board for punchy social creative.",
     defaultFormat: "portrait",
-    supportedFormats: ["portrait", "square", "landscape"],
+    supportedFormats: ["portrait", "square", "story"],
   },
-  quote_editorial: {
-    id: "quote_editorial",
+  gradient_statement: {
+    id: "gradient_statement",
     mode: "Brand",
-    label: "Quote/editorial card",
-    description: "Editorial quote frame for authority-led publishing.",
-    defaultFormat: "square",
-    supportedFormats: ["square", "portrait", "landscape"],
+    label: "Gradient statement",
+    description: "Minimal large-type statement on a premium gradient field.",
+    defaultFormat: "story",
+    supportedFormats: ["story", "portrait", "square", "landscape"],
   },
-  proof_card: {
-    id: "proof_card",
-    mode: "Social",
-    label: "Proof card",
-    description: "Result-focused post format with evidence and action context.",
-    defaultFormat: "square",
-    supportedFormats: ["square", "portrait", "landscape"],
-  },
-  case_spotlight: {
-    id: "case_spotlight",
-    mode: "Social",
-    label: "Case spotlight",
-    description: "Before and after case snippet with execution lens.",
-    defaultFormat: "landscape",
-    supportedFormats: ["landscape", "square", "portrait"],
-  },
-  trust_card: {
-    id: "trust_card",
-    mode: "Social",
-    label: "Trust card",
-    description: "Review and credibility visual for trust reinforcement.",
-    defaultFormat: "portrait",
-    supportedFormats: ["portrait", "square", "landscape", "story"],
-  },
-  offer_panel: {
-    id: "offer_panel",
+  campaign_cta: {
+    id: "campaign_cta",
     mode: "Ad",
-    label: "Offer panel",
-    description: "Offer-led ad layout with concise scope and direct CTA.",
-    defaultFormat: "portrait",
-    supportedFormats: ["portrait", "square", "landscape", "story"],
-  },
-  ad_frame: {
-    id: "ad_frame",
-    mode: "Ad",
-    label: "Ad frame",
-    description: "Hook, proof, and conversion CTA in a campaign frame.",
+    label: "Campaign CTA",
+    description: "Direct-response campaign frame with one dominant action.",
     defaultFormat: "landscape",
     supportedFormats: ["landscape", "portrait", "square", "story"],
+  },
+  proof_metric: {
+    id: "proof_metric",
+    mode: "Social",
+    label: "Proof metric",
+    description: "Outcome spotlight format with metric-first hierarchy.",
+    defaultFormat: "square",
+    supportedFormats: ["square", "landscape", "portrait"],
+  },
+  editorial_frame: {
+    id: "editorial_frame",
+    mode: "Brand",
+    label: "Editorial frame",
+    description: "Asymmetrical editorial composition for founder and case narratives.",
+    defaultFormat: "landscape",
+    supportedFormats: ["landscape", "portrait", "square"],
   },
 };
 
 export const TEMPLATES_BY_MODE: Record<CreativeMode, CreativeTemplateId[]> = {
-  Brand: ["statement_card", "operator_memo", "quote_editorial"],
-  Social: ["proof_card", "case_spotlight", "trust_card"],
-  Ad: ["offer_panel", "ad_frame"],
+  Brand: ["gradient_statement", "editorial_frame"],
+  Social: ["poster_scene", "proof_metric"],
+  Ad: ["campaign_cta"],
 };
 
 export const SERVICE_LANE_STYLES: Record<ServiceLane, ServiceLaneStyle> = {
@@ -199,7 +169,6 @@ export const CREATIVE_MODE_OPTIONS = Object.values(CREATIVE_MODE_SPECS);
 export const CREATIVE_TEMPLATE_OPTIONS = Object.values(CREATIVE_TEMPLATE_SPECS);
 export const CREATIVE_FORMAT_OPTIONS = Object.values(CREATIVE_FORMAT_SPECS);
 export const SERVICE_LANE_OPTIONS: ServiceLane[] = ["Build", "Systems", "Growth", "General"];
-export const BACKGROUND_MODE_OPTIONS: BackgroundMode[] = ["Grid", "Spotlight", "Panel"];
 
 interface TemplatePreset {
   format: CreativeFormatId;
@@ -208,120 +177,75 @@ interface TemplatePreset {
   eyebrow: string;
   ctaText: string;
   serviceLane: ServiceLane;
-  backgroundMode: BackgroundMode;
   showLogo: boolean;
   accentIntensity: number;
   proofBadge: string;
 }
 
 export const CREATIVE_TEMPLATE_PRESETS: Record<CreativeTemplateId, TemplatePreset> = {
-  statement_card: {
-    format: "square",
-    title: "Execution quality compounds quietly, then all at once.",
-    subtitle:
-      "The strongest brands in the category are built through consistent delivery, not louder messaging.",
-    eyebrow: "Brand statement",
-    ctaText: "Read the position",
-    serviceLane: "General",
-    backgroundMode: "Grid",
-    showLogo: true,
-    accentIntensity: 32,
-    proofBadge: "Positioning signal",
-  },
-  operator_memo: {
+  poster_scene: {
     format: "portrait",
-    title: "Operator memo: clarity before velocity.",
+    title: "Q2 Shopify Design Sprint. Build a premium store that converts.",
     subtitle:
-      "If qualification, routing, and reporting are misaligned, growth spend only amplifies inconsistency.",
-    eyebrow: "Operator memo",
-    ctaText: "Read the memo",
-    serviceLane: "Systems",
-    backgroundMode: "Panel",
+      "Focused conversion architecture, product storytelling, and operator-grade build quality for serious ecommerce brands.",
+    eyebrow: "Offer post",
+    ctaText: "Apply now",
+    serviceLane: "Build",
+    showLogo: true,
+    accentIntensity: 56,
+    proofBadge: "6 sprint slots",
+  },
+  gradient_statement: {
+    format: "story",
+    title: "Execution quality is the real growth moat.",
+    subtitle:
+      "Authority compounds when build, systems, and growth operate at one standard across every client touchpoint.",
+    eyebrow: "Authority statement",
+    ctaText: "Read the thesis",
+    serviceLane: "General",
     showLogo: true,
     accentIntensity: 40,
-    proofBadge: "Founder/operator",
+    proofBadge: "Inovense perspective",
   },
-  quote_editorial: {
-    format: "square",
-    title: "Authority is not a voice style. It is what your systems make repeatedly true.",
-    subtitle:
-      "Premium execution is visible in cadence, quality control, and measured operating outcomes.",
-    eyebrow: "Editorial",
-    ctaText: "Share perspective",
-    serviceLane: "General",
-    backgroundMode: "Spotlight",
-    showLogo: true,
-    accentIntensity: 36,
-    proofBadge: "Quote frame",
-  },
-  proof_card: {
-    format: "square",
-    title: "Proof: +38% faster response after lead-flow redesign.",
-    subtitle:
-      "Capture points, assignment logic, and follow-up timing were rebuilt into one operating system with measurable latency reduction.",
-    eyebrow: "Proof",
-    ctaText: "View method",
-    serviceLane: "Systems",
-    backgroundMode: "Panel",
-    showLogo: true,
-    accentIntensity: 48,
-    proofBadge: "+38% response speed",
-  },
-  case_spotlight: {
+  campaign_cta: {
     format: "landscape",
-    title: "Case spotlight: fragmented execution replaced by one commercial engine.",
+    title: "Your pipeline is active. Your conversion system still leaks.",
     subtitle:
-      "In 8 weeks the team aligned website flow, qualification logic, and performance reporting across one delivery stack.",
-    eyebrow: "Case spotlight",
-    ctaText: "Open case",
-    serviceLane: "Build",
-    backgroundMode: "Grid",
-    showLogo: true,
-    accentIntensity: 46,
-    proofBadge: "+62% qualified pipeline",
-  },
-  trust_card: {
-    format: "portrait",
-    title: "Rated 4.7 on Trustpilot.",
-    subtitle:
-      "Feedback from verified client engagements focused on delivery quality, communication clarity, and operating reliability.",
-    eyebrow: "Trust signal",
-    ctaText: "Read reviews",
-    serviceLane: "General",
-    backgroundMode: "Spotlight",
-    showLogo: true,
-    accentIntensity: 34,
-    proofBadge: "Verified reviews",
-  },
-  offer_panel: {
-    format: "portrait",
-    title: "Offer panel: Q2 systems sprint.",
-    subtitle:
-      "Two-week strategy and implementation scope for teams that need cleaner lead flow and tighter execution rhythm.",
-    eyebrow: "Offer panel",
-    ctaText: "Apply now",
+      "Deploy one operator-grade layer for lead capture, qualification, routing, and follow-up before the next spend cycle.",
+    eyebrow: "Ad visual",
+    ctaText: "Book 20 min audit",
     serviceLane: "Systems",
-    backgroundMode: "Panel",
     showLogo: true,
-    accentIntensity: 62,
-    proofBadge: "Limited intake",
+    accentIntensity: 66,
+    proofBadge: "Response in 24h",
   },
-  ad_frame: {
-    format: "landscape",
-    title: "Demand is active. Your conversion infrastructure is the bottleneck.",
+  proof_metric: {
+    format: "square",
+    title: "Qualified lead-to-call conversion improved after routing redesign.",
     subtitle:
-      "Deploy one system for capture, qualification, and follow-up so high-intent demand does not stall between tools.",
-    eyebrow: "Campaign frame",
-    ctaText: "Book audit",
-    serviceLane: "Growth",
-    backgroundMode: "Grid",
+      "Manual inbox triage was replaced with structured scoring and assignment logic across one systems layer.",
+    eyebrow: "Proof post",
+    ctaText: "View methodology",
+    serviceLane: "Systems",
     showLogo: true,
-    accentIntensity: 64,
-    proofBadge: "Campaign-ready",
+    accentIntensity: 50,
+    proofBadge: "+42%",
+  },
+  editorial_frame: {
+    format: "landscape",
+    title: "SilentSpend: global monetization intelligence built and shipped by Inovense.",
+    subtitle:
+      "Pricing shifts, paywall movement, packaging changes, and trial strategy tracked as one operator-grade decision layer.",
+    eyebrow: "Case snippet",
+    ctaText: "Open /work/silentspend",
+    serviceLane: "Systems",
+    showLogo: true,
+    accentIntensity: 44,
+    proofBadge: "Internal product case",
   },
 };
 
-export const DEFAULT_TEMPLATE_ID: CreativeTemplateId = "statement_card";
+export const DEFAULT_TEMPLATE_ID: CreativeTemplateId = "poster_scene";
 
 export function getModeForTemplate(template: CreativeTemplateId): CreativeMode {
   return CREATIVE_TEMPLATE_SPECS[template].mode;

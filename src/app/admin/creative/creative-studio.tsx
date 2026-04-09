@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { CreativeCanvas } from "./canvas";
 import {
-  BACKGROUND_MODE_OPTIONS,
   clampAccentIntensity,
   CREATIVE_FORMAT_SPECS,
   CREATIVE_MODE_OPTIONS,
@@ -29,34 +28,29 @@ const DISTRIBUTION_PRESETS: {
   template: CreativeTemplateId;
 }[] = [
   {
-    label: "LinkedIn authority",
-    description: "Operator viewpoint with clear memo structure",
-    template: "operator_memo",
-  },
-  {
-    label: "Proof snippet",
-    description: "Outcome and evidence in one concise visual",
-    template: "proof_card",
-  },
-  {
-    label: "Case snippet",
-    description: "Before/after narrative for delivery proof",
-    template: "case_spotlight",
-  },
-  {
     label: "Offer post",
-    description: "Offer-first layout with clear action",
-    template: "offer_panel",
+    description: "Poster-on-scene offer creative",
+    template: "poster_scene",
   },
   {
-    label: "Trust visual",
-    description: "Review-led credibility block",
-    template: "trust_card",
+    label: "Authority statement",
+    description: "Large-type editorial brand position",
+    template: "gradient_statement",
   },
   {
     label: "Ad visual",
-    description: "Campaign frame for paid distribution",
-    template: "ad_frame",
+    description: "Hard CTA campaign frame",
+    template: "campaign_cta",
+  },
+  {
+    label: "Proof post",
+    description: "Outcome-led metric spotlight",
+    template: "proof_metric",
+  },
+  {
+    label: "Case snippet",
+    description: "SilentSpend editorial case composition",
+    template: "editorial_frame",
   },
 ];
 
@@ -109,8 +103,8 @@ export function CreativeStudio() {
         <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">Internal creative engine</p>
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-100">Creative Studio</h1>
         <p className="max-w-3xl text-sm leading-relaxed text-zinc-500">
-          Brand, social, and ad families with distinct composition rules. Tuned for authority posts, proof snippets,
-          trust visuals, and campaign-ready ad frames.
+          V3 art-directed families for publish-ready social, editorial, and campaign creative. Built around stronger
+          composition systems, not more template noise.
         </p>
       </header>
 
@@ -153,7 +147,7 @@ export function CreativeStudio() {
           <div className="mb-5 flex items-center justify-between gap-3 border-b border-zinc-800/75 pb-4">
             <div>
               <h2 className="text-sm font-semibold text-zinc-200">Creative controls</h2>
-              <p className="text-xs text-zinc-500">Family, intent, and copy direction</p>
+              <p className="text-xs text-zinc-500">Intent, family, and copy direction</p>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -176,7 +170,7 @@ export function CreativeStudio() {
           </div>
 
           <div className="space-y-4">
-            <ControlField label="Publishing intent">
+            <ControlField label="Use case">
               <div className="-mx-0.5 flex gap-2 overflow-x-auto pb-1">
                 {DISTRIBUTION_PRESETS.map((preset) => {
                   const active = state.template === preset.template;
@@ -305,22 +299,6 @@ export function CreativeStudio() {
                   ))}
                 </select>
               </ControlField>
-
-              <ControlField label="Background mode">
-                <select
-                  value={state.backgroundMode}
-                  onChange={(event) =>
-                    updateField("backgroundMode", event.target.value as CreativeState["backgroundMode"])
-                  }
-                  className={fieldClassName}
-                >
-                  {BACKGROUND_MODE_OPTIONS.map((mode) => (
-                    <option key={mode} value={mode}>
-                      {mode}
-                    </option>
-                  ))}
-                </select>
-              </ControlField>
             </div>
 
             <ControlField label="Proof badge (optional)">
@@ -412,7 +390,7 @@ export function CreativeStudio() {
 
           <AnimatePresence mode="wait">
             <motion.div
-              key={`${state.mode}:${state.template}:${state.format}:${state.backgroundMode}`}
+              key={`${state.mode}:${state.template}:${state.format}`}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
@@ -425,7 +403,7 @@ export function CreativeStudio() {
       </div>
 
       <div className="rounded-xl border border-zinc-800/70 bg-zinc-900/40 px-4 py-3 text-xs text-zinc-500">
-        Brand mode for authority statements, Social mode for proof distribution, and Ad mode for response-focused campaign creative.
+        Brand mode for editorial authority, Social mode for proof and poster publishing, and Ad mode for hard CTA campaign outputs.
       </div>
     </section>
   );
