@@ -128,9 +128,9 @@ export async function sendOnboarding(
 
 export async function updateProposalFields(
   id: string,
-  proposalUrl: string,
-  proposalBody: string,
-  proposalNotes: string,
+  _proposalUrl: string,
+  proposalIntro: string,
+  _proposalNotes: string,
   proposalPrice: string,
   proposalDeposit: string
 ): Promise<{ success: boolean; error?: string }> {
@@ -142,9 +142,7 @@ export async function updateProposalFields(
     const { error } = await supabase
       .from("leads")
       .update({
-        proposal_url: proposalUrl.trim() || null,
-        proposal_body: proposalBody.trim() || null,
-        proposal_notes: proposalNotes.trim() || null,
+        proposal_intro: proposalIntro.trim() || null,
         proposal_price: price,
         proposal_deposit: deposit,
       })

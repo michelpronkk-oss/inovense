@@ -46,8 +46,12 @@ export type Lead = {
   internal_next_step: string | null;
   // proposal
   proposal_token: string | null;
-  proposal_url: string | null;
-  proposal_body: string | null;
+  proposal_status: string | null;
+  proposal_title: string | null;
+  proposal_intro: string | null;
+  proposal_scope: string | null;
+  proposal_deliverables: string | null;
+  proposal_timeline: string | null;
   proposal_notes: string | null;
   proposal_price: number | null;
   proposal_deposit: number | null;

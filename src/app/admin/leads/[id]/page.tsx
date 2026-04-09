@@ -310,9 +310,9 @@ export default async function LeadDetailPage({
           <Section title="Proposal">
             <ProposalEditor
               id={lead.id}
-              currentUrl={lead.proposal_url}
-              currentBody={lead.proposal_body}
-              currentNotes={lead.proposal_notes}
+              currentUrl={null}
+              currentBody={lead.proposal_intro ?? null}
+              currentNotes={lead.proposal_notes ?? null}
               currentProposalPrice={lead.proposal_price}
               currentProposalDeposit={lead.proposal_deposit}
               proposalToken={lead.proposal_token}

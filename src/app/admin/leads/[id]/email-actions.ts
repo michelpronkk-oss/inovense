@@ -180,7 +180,7 @@ export async function sendLeadEmail(
     const statusUpdate = template.statusOnSend ? { status: template.statusOnSend } : null;
     const proposalUpdate =
       emailType === "proposal_sent"
-        ? { proposal_sent_at: new Date().toISOString(), proposal_token: proposalToken }
+        ? { proposal_sent_at: new Date().toISOString(), proposal_token: proposalToken, proposal_status: "sent" }
         : null;
 
     if (statusUpdate || proposalUpdate) {
