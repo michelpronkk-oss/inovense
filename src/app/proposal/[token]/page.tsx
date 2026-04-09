@@ -34,7 +34,7 @@ export default async function ProposalPage({
 }) {
   const { token } = await params;
 
-  let lead: {
+  type ProposalLead = {
     id: string;
     full_name: string;
     company_name: string;
@@ -50,7 +50,7 @@ export default async function ProposalPage({
     proposal_decision: "accepted" | "declined" | null;
     proposal_decided_at: string | null;
     proposal_sent_at: string | null;
-  } | null = null;
+  };
 
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
@@ -68,10 +68,9 @@ export default async function ProposalPage({
     throw new Error(`Proposal query failed: ${error.message}`);
   }
 
-  // The Database type in supabase-server.ts predates the proposal schema
-  // columns added in migration (proposal_status, proposal_title, etc.).
-  // The columns exist at runtime; cast after the error path is guarded above.
-  lead = data as unknown as typeof lead;
+  // The Database type predates these proposal schema columns; cast explicitly
+  // after the error path is guarded above.
+  const lead: ProposalLead | null = data as unknown as ProposalLead | null;
 
   if (!lead || lead.proposal_status === "archived") {
     return (
