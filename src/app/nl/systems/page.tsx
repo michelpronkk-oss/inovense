@@ -15,6 +15,7 @@ export const metadata: Metadata = {
     title: "Systemen: AI Automatisering en Operationele Infrastructuur | Inovense",
     description:
       "AI-automatisering, workflow systemen, interne tools en operationele infrastructuur gebouwd rondom hoe jouw bedrijf echt werkt. Geen off-the-shelf, geen generieke tools.",
+    locale: "nl_NL",
   },
 };
 

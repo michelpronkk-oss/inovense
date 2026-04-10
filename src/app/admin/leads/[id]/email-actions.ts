@@ -5,9 +5,10 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import {
-  EMAIL_TEMPLATES,
   applyPaymentAmountToBody,
   buildEmailHtml,
+  getEmailTemplateLocaleForLeadSource,
+  getEmailTemplatesForLeadSource,
   type EmailTemplateType,
 } from "@/lib/email-templates";
 
@@ -22,11 +23,6 @@ export async function sendLeadEmail(
     return { success: false, error: "Email service is not configured." };
   }
 
-  const template = EMAIL_TEMPLATES[emailType];
-  if (!template) {
-    return { success: false, error: "Invalid email template." };
-  }
-
   if (!subject.trim() || !body.trim()) {
     return { success: false, error: "Subject and body are required." };
   }
@@ -37,7 +33,7 @@ export async function sendLeadEmail(
     const { data: lead, error: fetchError } = await supabase
       .from("leads")
       .select(
-        "id, full_name, company_name, work_email, status, onboarding_token, onboarding_status, proposal_token, proposal_deposit, deposit_amount, payment_link"
+        "id, full_name, company_name, work_email, status, onboarding_token, onboarding_status, proposal_token, proposal_deposit, deposit_amount, payment_link, lead_source"
       )
       .eq("id", leadId)
       .single();
@@ -47,6 +43,12 @@ export async function sendLeadEmail(
     }
 
     const firstName = lead.full_name.split(" ")[0];
+    const locale = getEmailTemplateLocaleForLeadSource(lead.lead_source);
+    const template = getEmailTemplatesForLeadSource(lead.lead_source)[emailType];
+    if (!template) {
+      return { success: false, error: "Invalid email template." };
+    }
+
     const effectiveDepositAmount = lead.deposit_amount ?? lead.proposal_deposit;
     const normalizedDepositAmount =
       effectiveDepositAmount != null && Number.isFinite(Number(effectiveDepositAmount))
@@ -70,7 +72,7 @@ export async function sendLeadEmail(
 
     const resolvedBody =
       emailType === "payment_request" && normalizedDepositAmount != null
-        ? applyPaymentAmountToBody(body, normalizedDepositAmount)
+        ? applyPaymentAmountToBody(body, normalizedDepositAmount, locale)
         : body;
 
     // For onboarding_sent: ensure a token exists, generate if missing
@@ -111,17 +113,17 @@ export async function sendLeadEmail(
     let cta: { text: string; href: string } | undefined;
     if (emailType === "onboarding_sent" && onboardingToken) {
       cta = {
-        text: "Complete onboarding brief",
+        text: template.ctaText ?? "Complete onboarding brief",
         href: `${baseUrl}/onboarding/${onboardingToken}`,
       };
     } else if (emailType === "proposal_sent" && proposalToken) {
       cta = {
-        text: "View proposal",
+        text: template.ctaText ?? "View proposal",
         href: `${baseUrl}/proposal/${proposalToken}`,
       };
     } else if (emailType === "payment_request" && lead.payment_link) {
       cta = {
-        text: "Pay deposit",
+        text: template.ctaText ?? "Pay deposit",
         href: lead.payment_link,
       };
     }
@@ -133,6 +135,7 @@ export async function sendLeadEmail(
       body: resolvedBody,
       cta,
       baseUrl,
+      lang: locale,
     });
 
     const plainText = [

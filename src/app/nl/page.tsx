@@ -15,6 +15,7 @@ export const metadata: Metadata = {
     title: "Inovense - Digitale infrastructuur voor serieuze operators",
     description:
       "Build, Systems en Growth voor operators die op uitvoering concurreren. Een Nederlandstalige conversielaag, gebouwd rond duidelijke lanes en een helder proces.",
+    locale: "nl_NL",
   },
 };
 

@@ -10,9 +10,9 @@ function formatNlConfirmationText(data: NlIntakeFormData): string {
   return `
 Hoi ${data.fullName},
 
-We hebben je aanvraag voor ${data.company} ontvangen. Iemand van het team beoordeelt hem persoonlijk en neemt binnen 24 uur contact met je op.
+We hebben je projectaanvraag voor ${data.company} ontvangen. Iemand van het team beoordeelt hem persoonlijk en neemt binnen 24 uur contact met je op.
 
-Als er een fit is, is de volgende stap meestal een kort voorstel of een inventarisatiegesprek. Als er iets verandert voor die tijd, kun je gewoon op dit bericht antwoorden.
+Als er een duidelijke fit is, plannen we een korte strategische call en bepalen we daarna de scherpste route voor scope, planning en investering. Als er iets verandert voor die tijd, kun je gewoon op dit bericht antwoorden.
 
 Inovense
 hello@inovense.com
@@ -59,7 +59,7 @@ function formatNlConfirmationHtml(data: NlIntakeFormData): string {
               <h1 style="margin:0 0 20px 0;font-size:24px;font-weight:600;line-height:1.25;letter-spacing:-0.02em;color:#fafafa;">We nemen contact op, ${firstName}.</h1>
 
               <!-- Body copy -->
-              <p style="margin:0 0 30px 0;font-size:14px;line-height:1.75;color:#a1a1aa;">Je aanvraag voor <span style="color:#fafafa;font-weight:500;">${data.company}</span> is bij ons. We beoordelen elk verzoek persoonlijk en nemen binnen 24 uur contact met je op. Als er een fit is, is de volgende stap meestal een kort voorstel of een inventarisatiegesprek.</p>
+              <p style="margin:0 0 30px 0;font-size:14px;line-height:1.75;color:#a1a1aa;">Je projectaanvraag voor <span style="color:#fafafa;font-weight:500;">${data.company}</span> is bij ons. We beoordelen elk verzoek persoonlijk en nemen binnen 24 uur contact met je op. Als er een duidelijke fit is, plannen we een korte strategische call en bepalen we daarna de scherpste route voor scope, planning en investering.</p>
 
               <!-- Hairline divider -->
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:24px;">
@@ -242,7 +242,7 @@ export async function submitNlIntake(
       from,
       to: parsed.data.email,
       replyTo: process.env.INTAKE_TO_EMAIL ?? "hello@inovense.com",
-      subject: `We hebben je aanvraag ontvangen, ${parsed.data.fullName.split(" ")[0]}.`,
+      subject: `Projectaanvraag ontvangen, ${parsed.data.fullName.split(" ")[0]}.`,
       text: formatNlConfirmationText(parsed.data),
       html: formatNlConfirmationHtml(parsed.data),
     }).catch((err) => {

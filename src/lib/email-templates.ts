@@ -7,6 +7,8 @@ export type EmailTemplateType =
   | "onboarding_sent"
   | "decline";
 
+export type EmailTemplateLocale = "en" | "nl";
+
 export type EmailTemplateDef = {
   type: EmailTemplateType;
   label: string;
@@ -15,18 +17,17 @@ export type EmailTemplateDef = {
   defaultSubject: (firstName: string, company: string) => string;
   defaultBody: (firstName: string, company: string) => string;
   statusOnSend?: LeadStatus;
-  /** Whether this template includes a CTA button (e.g. onboarding link). */
   hasCta?: boolean;
+  ctaText?: string;
 };
 
-export const EMAIL_TEMPLATES: Record<EmailTemplateType, EmailTemplateDef> = {
+const EMAIL_TEMPLATES_EN: Record<EmailTemplateType, EmailTemplateDef> = {
   fit_followup: {
     type: "fit_followup",
     label: "Fit follow-up",
     eyebrow: "Quick update",
     heading: (firstName) => `Good news, ${firstName}.`,
-    defaultSubject: (_, company) =>
-      `We've reviewed your brief for ${company}`,
+    defaultSubject: (_, company) => `We've reviewed your brief for ${company}`,
     defaultBody: (_, company) =>
       `We've reviewed your brief for ${company} and there's a clear fit here.\n\nBefore we put anything formal together, we'd like to ask a few quick questions to make sure we scope this correctly. Would you have 20 minutes this week for a short call? Just reply here and we'll send over a few times.`,
   },
@@ -40,6 +41,7 @@ export const EMAIL_TEMPLATES: Record<EmailTemplateType, EmailTemplateDef> = {
       `We've put together a proposal for ${company} based on your brief. It covers scope, timeline, and investment in full.\n\nHave a read and let us know if anything needs adjusting. We're happy to walk through it on a call if that helps.`,
     statusOnSend: "proposal_sent",
     hasCta: true,
+    ctaText: "View proposal",
   },
   payment_request: {
     type: "payment_request",
@@ -51,6 +53,7 @@ export const EMAIL_TEMPLATES: Record<EmailTemplateType, EmailTemplateDef> = {
       `We've prepared the invoice for ${company}'s project. Once the deposit is received, we'll lock in your start date and get things moving.\n\nIf you have any questions about the invoice or the next steps, just reply here.`,
     statusOnSend: "payment_requested",
     hasCta: true,
+    ctaText: "Pay deposit",
   },
   onboarding_sent: {
     type: "onboarding_sent",
@@ -62,6 +65,7 @@ export const EMAIL_TEMPLATES: Record<EmailTemplateType, EmailTemplateDef> = {
       `To make sure we hit the ground running, we've prepared a short onboarding brief for ${company}. It takes about 10 minutes and helps us deliver faster and more accurately.\n\nPlease complete it using the link below.`,
     statusOnSend: "onboarding_sent",
     hasCta: true,
+    ctaText: "Complete onboarding brief",
   },
   decline: {
     type: "decline",
@@ -75,11 +79,96 @@ export const EMAIL_TEMPLATES: Record<EmailTemplateType, EmailTemplateDef> = {
   },
 };
 
+const EMAIL_TEMPLATES_NL: Record<EmailTemplateType, EmailTemplateDef> = {
+  fit_followup: {
+    type: "fit_followup",
+    label: "Fit follow-up",
+    eyebrow: "Vervolg",
+    heading: (firstName) => `Er is een duidelijke fit, ${firstName}.`,
+    defaultSubject: (_, company) =>
+      `We hebben je projectaanvraag voor ${company} beoordeeld`,
+    defaultBody: (_, company) =>
+      `We hebben je projectaanvraag voor ${company} beoordeeld en zien een duidelijke fit.\n\nVoordat we de scope definitief maken, plannen we een korte strategische call van 20 minuten.\n\nAntwoord op deze mail met twee momenten die voor je werken. Dan bevestigen we direct.`,
+  },
+  proposal_sent: {
+    type: "proposal_sent",
+    label: "Proposal ready",
+    eyebrow: "Voorstel",
+    heading: (firstName) => `Je voorstel staat klaar, ${firstName}.`,
+    defaultSubject: (_, company) => `Voorstel voor ${company}`,
+    defaultBody: (_, company) =>
+      `Je voorstel voor ${company} staat klaar. Je vindt er scope, planning en investering in complete vorm.\n\nNeem het door en laat weten of je iets wilt aanscherpen. We kunnen het ook kort samen doornemen.`,
+    statusOnSend: "proposal_sent",
+    hasCta: true,
+    ctaText: "Bekijk voorstel",
+  },
+  payment_request: {
+    type: "payment_request",
+    label: "Payment request",
+    eyebrow: "Betaling",
+    heading: (firstName) => `Klaar om te starten, ${firstName}?`,
+    defaultSubject: (_, company) => `Aanbetaling voor ${company}`,
+    defaultBody: (_, company) =>
+      `De aanbetaling voor ${company} staat klaar.\n\nZodra de betaling binnen is, reserveren we de startdatum en zetten we onboarding direct live.\n\nVragen over de factuur of planning? Antwoord op deze mail.`,
+    statusOnSend: "payment_requested",
+    hasCta: true,
+    ctaText: "Betaal aanbetaling",
+  },
+  onboarding_sent: {
+    type: "onboarding_sent",
+    label: "Onboarding link",
+    eyebrow: "Onboarding",
+    heading: (firstName) => `Nog een stap en we starten, ${firstName}.`,
+    defaultSubject: (_, company) => `Onboarding voor ${company}`,
+    defaultBody: (_, company) =>
+      `Om scherp te starten staat de onboarding voor ${company} klaar.\n\nHet invullen duurt ongeveer 10 minuten en geeft ons alles om snel en nauwkeurig te leveren.\n\nOpen de link hieronder en rond hem af.`,
+    statusOnSend: "onboarding_sent",
+    hasCta: true,
+    ctaText: "Start onboarding",
+  },
+  decline: {
+    type: "decline",
+    label: "Decline",
+    eyebrow: "Update",
+    heading: (firstName) => `Een korte update, ${firstName}.`,
+    defaultSubject: (_, company) => `Update op je projectaanvraag voor ${company}`,
+    defaultBody: (_, company) =>
+      `Dank voor je projectaanvraag voor ${company}. Na een zorgvuldige beoordeling zien we op dit moment geen sterke match.\n\nWe nemen alleen projecten aan waar we volledig waarde kunnen leveren.\n\nWe wensen je veel succes met de juiste partner voor deze fase.`,
+    statusOnSend: "lost",
+  },
+};
+
+export const EMAIL_TEMPLATES = EMAIL_TEMPLATES_EN;
 export const EMAIL_TEMPLATE_LIST = Object.values(EMAIL_TEMPLATES);
 
-export function formatEuroAmount(value: number): string {
+export function isDutchLeadSource(leadSource: string | null | undefined): boolean {
+  return leadSource === "nl_web";
+}
+
+export function getEmailTemplateLocaleForLeadSource(
+  leadSource: string | null | undefined
+): EmailTemplateLocale {
+  return isDutchLeadSource(leadSource) ? "nl" : "en";
+}
+
+export function getEmailTemplatesForLeadSource(
+  leadSource: string | null | undefined
+): Record<EmailTemplateType, EmailTemplateDef> {
+  return isDutchLeadSource(leadSource) ? EMAIL_TEMPLATES_NL : EMAIL_TEMPLATES_EN;
+}
+
+export function getEmailTemplateListForLeadSource(
+  leadSource: string | null | undefined
+): EmailTemplateDef[] {
+  return Object.values(getEmailTemplatesForLeadSource(leadSource));
+}
+
+export function formatEuroAmount(
+  value: number,
+  locale: EmailTemplateLocale = "en"
+): string {
   const hasDecimals = Math.round(value * 100) % 100 !== 0;
-  return new Intl.NumberFormat("en-GB", {
+  return new Intl.NumberFormat(locale === "nl" ? "nl-NL" : "en-GB", {
     style: "currency",
     currency: "EUR",
     minimumFractionDigits: hasDecimals ? 2 : 0,
@@ -87,12 +176,17 @@ export function formatEuroAmount(value: number): string {
   }).format(value);
 }
 
-export function applyPaymentAmountToBody(body: string, amount: number): string {
-  const formatted = formatEuroAmount(amount);
+export function applyPaymentAmountToBody(
+  body: string,
+  amount: number,
+  locale: EmailTemplateLocale = "en"
+): string {
+  const formatted = formatEuroAmount(amount, locale);
   const trimmed = body.trim();
+  const prefix = locale === "nl" ? `Aanbetaling: ${formatted}.` : `Deposit due: ${formatted}.`;
 
   if (!trimmed) {
-    return `Deposit due: ${formatted}.`;
+    return prefix;
   }
 
   if (trimmed.includes("{{deposit_amount}}")) {
@@ -103,14 +197,12 @@ export function applyPaymentAmountToBody(body: string, amount: number): string {
     return trimmed.replaceAll("{{payment_amount}}", formatted);
   }
 
-  if (/deposit due:/i.test(trimmed)) {
+  if ((locale === "nl" ? /aanbetaling:/i : /deposit due:/i).test(trimmed)) {
     return trimmed;
   }
 
-  return `Deposit due: ${formatted}.\n\n${trimmed}`;
+  return `${prefix}\n\n${trimmed}`;
 }
-
-/* ─── HTML builder ──────────────────────────────────────────────────────── */
 
 function esc(str: string): string {
   return str
@@ -126,12 +218,14 @@ export function buildEmailHtml({
   body,
   cta,
   baseUrl = "https://inovense.com",
+  lang = "en",
 }: {
   eyebrow: string;
   heading: string;
   body: string;
   cta?: { text: string; href: string };
   baseUrl?: string;
+  lang?: EmailTemplateLocale;
 }): string {
   const paragraphs = body
     .split("\n\n")
@@ -159,7 +253,7 @@ export function buildEmailHtml({
     : "";
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${lang}">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -170,16 +264,12 @@ export function buildEmailHtml({
       <td align="center">
         <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:520px;">
 
-          <!-- Top accent bar -->
           <tr>
             <td bgcolor="#49A0A4" style="height:2px;background-color:#49A0A4;border-radius:2px 2px 0 0;font-size:0;line-height:0;">&nbsp;</td>
           </tr>
 
-          <!-- Card body -->
           <tr>
             <td bgcolor="#18181b" style="background-color:#18181b;border:1px solid #27272a;border-top:none;border-radius:0 0 12px 12px;padding:36px 36px 32px 36px;">
-
-              <!-- Logo -->
               <div style="margin:0 0 32px 0;">
                 <img
                   src="${baseUrl}/logo.png"
@@ -191,22 +281,13 @@ export function buildEmailHtml({
                 />
               </div>
 
-              <!-- Eyebrow -->
               <p style="margin:0 0 10px 0;font-size:10px;font-weight:500;letter-spacing:0.14em;text-transform:uppercase;color:#71717a;">${esc(eyebrow)}</p>
-
-              <!-- Heading -->
               <h1 style="margin:0 0 20px 0;font-size:24px;font-weight:600;line-height:1.25;letter-spacing:-0.02em;color:#fafafa;">${esc(heading)}</h1>
-
-              <!-- Body paragraphs -->
               ${paragraphs}
-
-              <!-- Optional CTA -->
               ${ctaBlock}
-
             </td>
           </tr>
 
-          <!-- Footer -->
           <tr>
             <td style="padding:20px 4px 0 4px;">
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%">

@@ -15,6 +15,7 @@ export const metadata: Metadata = {
     title: "Bouwen: Websites, E-commerce en Digitale Producten | Inovense",
     description:
       "Op maat gebouwde websites, Shopify-winkels, landingspagina's en digitale producten. Conversiegericht, performance-first, en gebouwd van brief tot browser.",
+    locale: "nl_NL",
   },
 };
 

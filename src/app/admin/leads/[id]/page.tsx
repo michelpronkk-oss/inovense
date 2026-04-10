@@ -305,6 +305,7 @@ export default async function LeadDetailPage({
               firstName={firstName}
               company={lead.company_name}
               workEmail={lead.work_email}
+              leadSource={lead.lead_source}
               onboardingToken={lead.onboarding_token}
               proposalToken={lead.proposal_token}
               proposalDeposit={lead.proposal_deposit}

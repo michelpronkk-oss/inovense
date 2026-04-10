@@ -15,6 +15,7 @@ export const metadata: Metadata = {
     title: "Project starten | Inovense",
     description:
       "Stuur je brief. Inovense beoordeelt elk verzoek persoonlijk en reageert binnen 24 uur met een duidelijke richting. Beperkte intake.",
+    locale: "nl_NL",
   },
 };
 

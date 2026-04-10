@@ -3,11 +3,12 @@
 import { useState, useEffect, useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  EMAIL_TEMPLATE_LIST,
-  EMAIL_TEMPLATES,
   applyPaymentAmountToBody,
   buildEmailHtml,
   formatEuroAmount,
+  getEmailTemplateListForLeadSource,
+  getEmailTemplateLocaleForLeadSource,
+  getEmailTemplatesForLeadSource,
   type EmailTemplateType,
 } from "@/lib/email-templates";
 import { sendLeadEmail } from "./email-actions";
@@ -17,6 +18,7 @@ type Props = {
   firstName: string;
   company: string;
   workEmail: string;
+  leadSource: string | null;
   onboardingToken: string | null;
   proposalToken: string | null;
   proposalDeposit: number | null;
@@ -30,6 +32,7 @@ export function EmailActionsPanel({
   firstName,
   company,
   workEmail,
+  leadSource,
   onboardingToken,
   proposalToken,
   proposalDeposit,
@@ -37,7 +40,10 @@ export function EmailActionsPanel({
 }: Props) {
   const [activeType, setActiveType] = useState<EmailTemplateType | null>(null);
 
-  const templates = EMAIL_TEMPLATE_LIST;
+  const templates = useMemo(
+    () => getEmailTemplateListForLeadSource(leadSource),
+    [leadSource]
+  );
 
   return (
     <>
@@ -84,6 +90,7 @@ export function EmailActionsPanel({
           firstName={firstName}
           company={company}
           workEmail={workEmail}
+          leadSource={leadSource}
           onboardingToken={onboardingToken}
           proposalToken={proposalToken}
           proposalDeposit={proposalDeposit}
@@ -103,6 +110,7 @@ function EmailComposerModal({
   firstName,
   company,
   workEmail,
+  leadSource,
   onboardingToken,
   proposalToken,
   proposalDeposit,
@@ -114,7 +122,8 @@ function EmailComposerModal({
   onClose: () => void;
 }) {
   const router = useRouter();
-  const template = EMAIL_TEMPLATES[templateType];
+  const locale = getEmailTemplateLocaleForLeadSource(leadSource);
+  const template = getEmailTemplatesForLeadSource(leadSource)[templateType];
 
   const [subject, setSubject] = useState(() =>
     template.defaultSubject(firstName, company)
@@ -138,8 +147,8 @@ function EmailComposerModal({
     if (templateType !== "payment_request" || effectivePaymentAmount == null) {
       return body;
     }
-    return applyPaymentAmountToBody(body, effectivePaymentAmount);
-  }, [body, effectivePaymentAmount, templateType]);
+    return applyPaymentAmountToBody(body, effectivePaymentAmount, locale);
+  }, [body, effectivePaymentAmount, locale, templateType]);
 
   // Close on Escape
   useEffect(() => {
@@ -162,12 +171,12 @@ function EmailComposerModal({
   if (template.hasCta) {
     if (templateType === "proposal_sent") {
       previewCta = proposalToken
-        ? { text: "View proposal", href: `${origin}/proposal/${proposalToken}` }
-        : { text: "View proposal", href: "#" };
+        ? { text: template.ctaText ?? "View proposal", href: `${origin}/proposal/${proposalToken}` }
+        : { text: template.ctaText ?? "View proposal", href: "#" };
     } else if (templateType === "onboarding_sent") {
       previewCta = onboardingToken
-        ? { text: "Complete onboarding brief", href: `${origin}/onboarding/${onboardingToken}` }
-        : { text: "Complete onboarding brief", href: "#" };
+        ? { text: template.ctaText ?? "Complete onboarding brief", href: `${origin}/onboarding/${onboardingToken}` }
+        : { text: template.ctaText ?? "Complete onboarding brief", href: "#" };
     }
   }
 
@@ -178,12 +187,14 @@ function EmailComposerModal({
         heading: template.heading(firstName),
         body: previewBody,
         cta: previewCta,
+        lang: locale,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       previewBody,
       template,
       firstName,
+      locale,
       origin,
       onboardingToken,
       proposalToken,
@@ -318,7 +329,8 @@ function EmailComposerModal({
                 >
                   {paymentAmountReady
                     ? `This email will include deposit due: ${formatEuroAmount(
-                        Number(effectivePaymentAmount)
+                        Number(effectivePaymentAmount),
+                        locale
                       )}.`
                     : "Set a proposal deposit or payment override before sending this email."}
                 </p>

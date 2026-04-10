@@ -15,6 +15,7 @@ export const metadata: Metadata = {
     title: "Groei: Leadgeneratie en Distributiesystemen | Inovense",
     description:
       "Growth als commercieel systeem. Van lead capture en kwalificatie tot distributie en follow-up. Gebouwd voor operators die op uitvoering concurreren.",
+    locale: "nl_NL",
   },
 };
 

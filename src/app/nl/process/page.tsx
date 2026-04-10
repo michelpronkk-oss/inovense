@@ -15,6 +15,7 @@ export const metadata: Metadata = {
     title: "Proces: Van intake tot overdracht | Inovense",
     description:
       "Het Inovense proces in duidelijke stappen. Intake, scope, uitvoering, lancering en overdracht zonder ruis.",
+    locale: "nl_NL",
   },
 };
 

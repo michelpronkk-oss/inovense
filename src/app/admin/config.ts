@@ -76,6 +76,7 @@ export const ALL_LANES = ["Build", "Systems", "Growth", "Not sure yet"];
 
 export const LEAD_SOURCE_OPTIONS = [
   { value: "website", label: "Website" },
+  { value: "nl_web", label: "Dutch website" },
   { value: "referral", label: "Referral" },
   { value: "outbound", label: "Outbound" },
   { value: "instagram", label: "Instagram" },
@@ -88,6 +89,7 @@ export const LEAD_SOURCE_OPTIONS = [
 
 export const LEAD_SOURCE_LABELS: Record<string, string> = {
   website: "Website",
+  nl_web: "Dutch website",
   referral: "Referral",
   outbound: "Outbound",
   instagram: "Instagram",
