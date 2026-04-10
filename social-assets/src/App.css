@@ -13,6 +13,7 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
+  overflow-y: auto;
 }
 
 .control-header {
@@ -98,6 +99,14 @@
   box-shadow: 0 0 0 1px rgba(73, 160, 164, 0.22) inset;
 }
 
+.chip.is-disabled {
+  opacity: 0.45;
+}
+
+.chip:disabled {
+  cursor: not-allowed;
+}
+
 .range-row {
   display: flex;
   align-items: center;
@@ -121,6 +130,19 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.helper-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(73, 160, 164, 0.32);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-family: "IBM Plex Mono", "SF Mono", Menlo, monospace;
+  font-size: 10px;
+  color: #49a0a4;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .text-link {
@@ -165,6 +187,104 @@
 
 .helper-text.is-error {
   color: #dc6363;
+}
+
+.saved-post-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  max-height: 220px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.saved-post-item {
+  text-align: left;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  color: #dce3e4;
+  padding: 9px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.saved-post-item:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.saved-post-item.is-active {
+  border-color: rgba(73, 160, 164, 0.48);
+  background: rgba(73, 160, 164, 0.12);
+  box-shadow: 0 0 0 1px rgba(73, 160, 164, 0.2) inset;
+}
+
+.saved-post-title {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: #ecfcfd;
+}
+
+.saved-post-meta {
+  font-size: 10px;
+  font-family: "IBM Plex Mono", "SF Mono", Menlo, monospace;
+  color: #8a9e9f;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.saved-post-guidance {
+  font-size: 11px;
+  color: #a5b6b7;
+  line-height: 1.35;
+}
+
+.saved-post-status {
+  font-size: 10px;
+  font-family: "IBM Plex Mono", "SF Mono", Menlo, monospace;
+  color: #49a0a4;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.usage-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.usage-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.usage-platform {
+  font-size: 11px;
+  color: #dce3e4;
+  font-weight: 500;
+}
+
+.usage-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #8a9e9f;
+}
+
+.usage-check input {
+  accent-color: #49a0a4;
 }
 
 .export-button {
@@ -263,5 +383,10 @@
 
   .json-editor {
     min-height: 170px;
+  }
+
+  .usage-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
 }

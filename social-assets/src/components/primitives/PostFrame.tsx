@@ -1,6 +1,7 @@
 import { forwardRef, type CSSProperties, type ReactNode } from 'react';
 import { brand } from '../../tokens/brand';
 import type { Format } from '../../utils/formats';
+import { NoiseOverlay } from './NoiseOverlay';
 
 interface PostFrameProps {
   format: Format;
@@ -27,6 +28,7 @@ export const PostFrame = forwardRef<HTMLDivElement, PostFrameProps>(
         }}
       >
         {children}
+        <NoiseOverlay />
       </div>
     );
   }

@@ -8,6 +8,7 @@ import { logout } from "./login/actions";
 const ADMIN_NAV_LINKS = [
   { href: "/admin", label: "Overview", exact: true },
   { href: "/admin/leads", label: "Leads" },
+  { href: "/admin/planner", label: "Planner" },
   { href: "/admin/docs", label: "Docs" },
 ] as const;
 

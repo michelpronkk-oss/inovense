@@ -23,6 +23,16 @@ export type ProjectStatus =
   | "paused"
   | "completed";
 
+export type PlannerStatus = "draft" | "ready" | "posted";
+export type PlannerPlatform = "instagram" | "facebook" | "linkedin";
+export type PlannerTemplateType =
+  | "authority"
+  | "service"
+  | "offer"
+  | "quote"
+  | "carousel"
+  | "custom";
+
 export type Lead = {
   id: string;
   created_at: string;
@@ -77,6 +87,32 @@ export type EmailLog = {
   sent_at: string;
 };
 
+export type PlannerPost = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  title: string;
+  week_label: string;
+  template_type: PlannerTemplateType;
+  best_for: PlannerPlatform;
+  platforms: PlannerPlatform[];
+  recommended_format: string;
+  format_variants: string[];
+  status: PlannerStatus;
+  instagram_exported: boolean;
+  instagram_posted: boolean;
+  instagram_posted_at: string | null;
+  facebook_exported: boolean;
+  facebook_posted: boolean;
+  facebook_posted_at: string | null;
+  linkedin_exported: boolean;
+  linkedin_posted: boolean;
+  linkedin_posted_at: string | null;
+  posted_at: string | null;
+  notes: string | null;
+  social_asset_key: string | null;
+};
+
 type Database = {
   public: {
     Tables: {
@@ -106,6 +142,16 @@ type Database = {
           sent_at?: string;
         };
         Update: Partial<EmailLog>;
+        Relationships: [];
+      };
+      planner_posts: {
+        Row: PlannerPost;
+        Insert: Omit<PlannerPost, "id" | "created_at" | "updated_at"> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<PlannerPost>;
         Relationships: [];
       };
     };

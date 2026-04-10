@@ -5,6 +5,14 @@ import { OfferPost, type OfferPostData } from './components/posts/OfferPost';
 import { QuotePost, type QuotePostData } from './components/posts/QuotePost';
 import { ServicePost, type ServicePostData } from './components/posts/ServicePost';
 import {
+  SAVED_POSTS,
+  SOCIAL_PLATFORMS,
+  WEEKLY_POST_SETS,
+  type SavedPost,
+  type SocialPlatform,
+  type TemplateKey,
+} from './data/content-library';
+import {
   activeSlideIndex,
   authorityPostSample,
   carouselSlides,
@@ -16,12 +24,20 @@ import { exportPost } from './utils/export';
 import { FORMATS, FORMAT_LIST, type FormatKey } from './utils/formats';
 import './App.css';
 
-type TemplateKey = 'authority' | 'service' | 'offer' | 'quote' | 'carousel';
-
 type ParseResult<T> = {
   data: T;
   error: string | null;
 };
+
+type PlatformFilter = 'all' | SocialPlatform;
+type UsageField = 'exported' | 'posted';
+type PlatformUsageState = {
+  exported: boolean;
+  posted: boolean;
+};
+type PostUsageMap = Record<string, Partial<Record<SocialPlatform, PlatformUsageState>>>;
+
+const POST_USAGE_STORAGE_KEY = 'inovense-social-assets-post-usage-v1';
 
 const templateOptions: Array<{ key: TemplateKey; label: string; description: string }> = [
   {
@@ -58,6 +74,22 @@ const defaultJsonByTemplate: Record<TemplateKey, string> = {
   quote: JSON.stringify(quotePostSample, null, 2),
   carousel: JSON.stringify(carouselSlides, null, 2),
 };
+
+const weekFilterOptions = [
+  {
+    id: 'all',
+    label: 'All saved posts',
+    focus: 'All weeks',
+  },
+  ...WEEKLY_POST_SETS,
+];
+
+const platformFilterOptions: Array<{ key: PlatformFilter; label: string }> = [
+  { key: 'all', label: 'All platforms' },
+  { key: 'Instagram', label: 'Instagram' },
+  { key: 'Facebook', label: 'Facebook' },
+  { key: 'LinkedIn', label: 'LinkedIn' },
+];
 
 const parseObjectData = <T extends object>(raw: string, fallback: T): ParseResult<T> => {
   try {
@@ -97,9 +129,51 @@ const parseArrayData = <T,>(raw: string, fallback: T[]): ParseResult<T[]> => {
   }
 };
 
+const getUsageState = (
+  usageByPost: PostUsageMap,
+  postId: string,
+  platform: SocialPlatform
+): PlatformUsageState => {
+  return usageByPost[postId]?.[platform] ?? { exported: false, posted: false };
+};
+
+const getSavedPostStatus = (
+  usageByPost: PostUsageMap,
+  postId: string,
+  platformFilter: PlatformFilter
+): string => {
+  if (platformFilter !== 'all') {
+    const usage = getUsageState(usageByPost, postId, platformFilter);
+    if (usage.posted) {
+      return `${platformFilter}: Posted`;
+    }
+    if (usage.exported) {
+      return `${platformFilter}: Exported`;
+    }
+    return `${platformFilter}: Ready`;
+  }
+
+  const postedCount = SOCIAL_PLATFORMS.filter(
+    (platform) => usageByPost[postId]?.[platform]?.posted
+  ).length;
+  const exportedCount = SOCIAL_PLATFORMS.filter(
+    (platform) => usageByPost[postId]?.[platform]?.exported
+  ).length;
+
+  if (!postedCount && !exportedCount) {
+    return 'Usage: Ready';
+  }
+
+  return `Usage: ${postedCount} posted, ${exportedCount} exported`;
+};
+
 function App() {
   const [templateKey, setTemplateKey] = useState<TemplateKey>('authority');
   const [formatKey, setFormatKey] = useState<FormatKey>('portrait');
+  const [selectedWeekId, setSelectedWeekId] = useState<string>('all');
+  const [selectedPlatform, setSelectedPlatform] = useState<PlatformFilter>('all');
+  const [activeSavedPostId, setActiveSavedPostId] = useState<string | null>(null);
+  const [usageByPost, setUsageByPost] = useState<PostUsageMap>({});
   const [jsonByTemplate, setJsonByTemplate] = useState<Record<TemplateKey, string>>(
     defaultJsonByTemplate
   );
@@ -112,6 +186,30 @@ function App() {
   const currentFormat = FORMATS[formatKey];
   const activeTemplateMeta = templateOptions.find((template) => template.key === templateKey);
   const activeJson = jsonByTemplate[templateKey];
+  const activeWeekMeta = weekFilterOptions.find((week) => week.id === selectedWeekId);
+  const weekScopedPosts = useMemo(() => {
+    if (selectedWeekId === 'all') {
+      return SAVED_POSTS;
+    }
+    const selectedSet = WEEKLY_POST_SETS.find((set) => set.id === selectedWeekId);
+    if (!selectedSet) {
+      return [];
+    }
+    const orderedPosts = selectedSet.postIds
+      .map((postId) => SAVED_POSTS.find((post) => post.id === postId))
+      .filter((post): post is SavedPost => !!post);
+    return orderedPosts;
+  }, [selectedWeekId]);
+  const visiblePosts = useMemo(() => {
+    if (selectedPlatform === 'all') {
+      return weekScopedPosts;
+    }
+    return weekScopedPosts.filter((post) => post.platforms.includes(selectedPlatform));
+  }, [selectedPlatform, weekScopedPosts]);
+  const activeSavedPost = useMemo(
+    () => SAVED_POSTS.find((post) => post.id === activeSavedPostId) ?? null,
+    [activeSavedPostId]
+  );
 
   const authorityParsed = useMemo(
     () => parseObjectData<AuthorityPostData>(jsonByTemplate.authority, authorityPostSample),
@@ -144,6 +242,42 @@ function App() {
       setCarouselIndex(carouselMaxIndex);
     }
   }, [templateKey, carouselIndex, carouselMaxIndex]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      const raw = window.localStorage.getItem(POST_USAGE_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+      const parsed = JSON.parse(raw) as unknown;
+      if (parsed && typeof parsed === 'object') {
+        setUsageByPost(parsed as PostUsageMap);
+      }
+    } catch {
+      setUsageByPost({});
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    window.localStorage.setItem(POST_USAGE_STORAGE_KEY, JSON.stringify(usageByPost));
+  }, [usageByPost]);
+
+  useEffect(() => {
+    if (!activeSavedPostId) {
+      return;
+    }
+    const isVisible = visiblePosts.some((post) => post.id === activeSavedPostId);
+    if (!isVisible) {
+      setActiveSavedPostId(null);
+    }
+  }, [activeSavedPostId, visiblePosts]);
 
   useEffect(() => {
     const viewport = stageViewportRef.current;
@@ -182,12 +316,17 @@ function App() {
         return null;
     }
   })();
+  const activePostVariantFormat =
+    activeSavedPost && activeSavedPost.formatVariants.includes(formatKey)
+      ? formatKey
+      : activeSavedPost?.recommendedFormat ?? formatKey;
 
   const handleJsonChange = (value: string) => {
     setJsonByTemplate((previous) => ({
       ...previous,
       [templateKey]: value,
     }));
+    setActiveSavedPostId(null);
   };
 
   const resetActiveTemplate = () => {
@@ -195,9 +334,54 @@ function App() {
       ...previous,
       [templateKey]: defaultJsonByTemplate[templateKey],
     }));
+    setActiveSavedPostId(null);
     if (templateKey === 'carousel') {
       setCarouselIndex(activeSlideIndex);
     }
+  };
+
+  const loadSavedPost = (post: SavedPost) => {
+    setJsonByTemplate((previous) => ({
+      ...previous,
+      [post.template]: JSON.stringify(post.content, null, 2),
+    }));
+    setTemplateKey(post.template);
+    setFormatKey(post.recommendedFormat);
+    setActiveSavedPostId(post.id);
+    if (post.template === 'carousel') {
+      setCarouselIndex(post.slideIndex ?? 0);
+    }
+  };
+
+  const setPostUsageFlag = (
+    postId: string,
+    platform: SocialPlatform,
+    field: UsageField,
+    checked: boolean
+  ) => {
+    setUsageByPost((previous) => {
+      const postUsage = previous[postId] ?? {};
+      const currentPlatformUsage = postUsage[platform] ?? { exported: false, posted: false };
+      const nextPlatformUsage: PlatformUsageState = {
+        ...currentPlatformUsage,
+        [field]: checked,
+      };
+
+      if (field === 'posted' && checked) {
+        nextPlatformUsage.exported = true;
+      }
+      if (field === 'exported' && !checked) {
+        nextPlatformUsage.posted = false;
+      }
+
+      return {
+        ...previous,
+        [postId]: {
+          ...postUsage,
+          [platform]: nextPlatformUsage,
+        },
+      };
+    });
   };
 
   const handleExport = async () => {
@@ -212,6 +396,9 @@ function App() {
         `inovense-${templateKey}-${formatKey}`,
         formatKey === 'story' ? 2 : 2.4
       );
+      if (activeSavedPostId && selectedPlatform !== 'all') {
+        setPostUsageFlag(activeSavedPostId, selectedPlatform, 'exported', true);
+      }
     } finally {
       setExporting(false);
     }
@@ -243,19 +430,160 @@ function App() {
         </div>
 
         <div className="control-group">
+          <div className="group-head">
+            <label htmlFor="week-select">Weekly post sets</label>
+            <span className="helper-chip">
+              {visiblePosts.length}/{weekScopedPosts.length} visible
+            </span>
+          </div>
+          <select
+            id="week-select"
+            className="select-field"
+            value={selectedWeekId}
+            onChange={(event) => setSelectedWeekId(event.target.value)}
+          >
+            {weekFilterOptions.map((week) => (
+              <option key={week.id} value={week.id}>
+                {week.label}
+              </option>
+            ))}
+          </select>
+          <label htmlFor="platform-filter-select">Platform filter</label>
+          <select
+            id="platform-filter-select"
+            className="select-field"
+            value={selectedPlatform}
+            onChange={(event) => setSelectedPlatform(event.target.value as PlatformFilter)}
+          >
+            {platformFilterOptions.map((platform) => (
+              <option key={platform.key} value={platform.key}>
+                {platform.label}
+              </option>
+            ))}
+          </select>
+          <p className="helper-text">
+            {activeWeekMeta?.focus ?? 'Load saved post content into the current editor.'}
+            {selectedPlatform === 'all' ? '' : ` Filtered for ${selectedPlatform}.`}
+          </p>
+          <div className="saved-post-list">
+            {visiblePosts.length ? (
+              visiblePosts.map((post) => (
+                <button
+                  key={post.id}
+                  type="button"
+                  className={`saved-post-item ${activeSavedPostId === post.id ? 'is-active' : ''}`}
+                  onClick={() => loadSavedPost(post)}
+                >
+                  <span className="saved-post-title">{post.title}</span>
+                  <span className="saved-post-meta">
+                    {templateOptions.find((template) => template.key === post.template)?.label} |{' '}
+                    {FORMATS[post.format].label}
+                  </span>
+                  <span className="saved-post-guidance">
+                    Best for {post.bestFor} | Recommended {FORMATS[post.recommendedFormat].label}
+                  </span>
+                  <span className="saved-post-status">
+                    {getSavedPostStatus(usageByPost, post.id, selectedPlatform)}
+                  </span>
+                </button>
+              ))
+            ) : (
+              <p className="helper-text">No posts match this week and platform filter.</p>
+            )}
+          </div>
+        </div>
+
+        {activeSavedPost ? (
+          <div className="control-group">
+            <div className="group-head">
+              <span>Post operations</span>
+              <span className="helper-chip">{activeSavedPost.bestFor}</span>
+            </div>
+            <p className="helper-text">
+              Recommended format: {FORMATS[activeSavedPost.recommendedFormat].label}
+            </p>
+            <label htmlFor="variant-select">Format variant</label>
+            <select
+              id="variant-select"
+              className="select-field"
+              value={activePostVariantFormat}
+              onChange={(event) => setFormatKey(event.target.value as FormatKey)}
+            >
+              {activeSavedPost.formatVariants.map((variant) => (
+                <option key={variant} value={variant}>
+                  {FORMATS[variant].label}
+                </option>
+              ))}
+            </select>
+            <div className="usage-grid">
+              {SOCIAL_PLATFORMS.map((platform) => {
+                const platformUsage = getUsageState(usageByPost, activeSavedPost.id, platform);
+                return (
+                  <div key={platform} className="usage-row">
+                    <span className="usage-platform">{platform}</span>
+                    <label className="usage-check">
+                      <input
+                        type="checkbox"
+                        checked={platformUsage.exported}
+                        onChange={(event) =>
+                          setPostUsageFlag(
+                            activeSavedPost.id,
+                            platform,
+                            'exported',
+                            event.target.checked
+                          )
+                        }
+                      />
+                      <span>Exported</span>
+                    </label>
+                    <label className="usage-check">
+                      <input
+                        type="checkbox"
+                        checked={platformUsage.posted}
+                        onChange={(event) =>
+                          setPostUsageFlag(
+                            activeSavedPost.id,
+                            platform,
+                            'posted',
+                            event.target.checked
+                          )
+                        }
+                      />
+                      <span>Posted</span>
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="control-group">
           <span>Format</span>
           <div className="chip-row">
-            {FORMAT_LIST.map((format) => (
-              <button
-                key={format.key}
-                type="button"
-                className={`chip ${format.key === formatKey ? 'is-active' : ''}`}
-                onClick={() => setFormatKey(format.key)}
-              >
-                {format.label}
-              </button>
-            ))}
+            {FORMAT_LIST.map((format) => {
+              const isAllowedForPost =
+                !activeSavedPost || activeSavedPost.formatVariants.includes(format.key);
+              return (
+                <button
+                  key={format.key}
+                  type="button"
+                  className={`chip ${format.key === formatKey ? 'is-active' : ''} ${
+                    isAllowedForPost ? '' : 'is-disabled'
+                  }`}
+                  onClick={() => setFormatKey(format.key)}
+                  disabled={!isAllowedForPost}
+                >
+                  {format.label}
+                </button>
+              );
+            })}
           </div>
+          {activeSavedPost ? (
+            <p className="helper-text">
+              Variants for this post: {activeSavedPost.formatVariants.map((key) => FORMATS[key].label).join(', ')}
+            </p>
+          ) : null}
         </div>
 
         {templateKey === 'carousel' ? (

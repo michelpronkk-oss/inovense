@@ -6,28 +6,26 @@ interface LogoProps {
 }
 
 const sizes = {
-  sm: { name: 13, handle: 10 },
-  md: { name: 15, handle: 11 },
-  lg: { name: 18, handle: 13 },
+  sm: { logoHeight: 20, handle: 10 },
+  md: { logoHeight: 24, handle: 11 },
+  lg: { logoHeight: 28, handle: 13 },
 };
 
 export function Logo({ size = 'md', showHandle = false }: LogoProps) {
   const s = sizes[size];
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <span
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <img
+        src="/logo.png"
+        alt="Inovense"
         style={{
-          fontFamily: brand.sans,
-          fontSize: s.name,
-          fontWeight: 600,
-          letterSpacing: '0.22em',
-          textTransform: 'uppercase',
-          color: brand.white,
-          lineHeight: 1,
+          display: 'block',
+          height: s.logoHeight,
+          width: 'auto',
+          objectFit: 'contain',
+          filter: 'drop-shadow(0 0 10px rgba(73, 160, 164, 0.14))',
         }}
-      >
-        INOVENSE
-      </span>
+      />
       {showHandle && (
         <span
           style={{

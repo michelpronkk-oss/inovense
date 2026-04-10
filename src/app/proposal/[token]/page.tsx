@@ -71,6 +71,11 @@ export default async function ProposalPage({
   // The Database type predates these proposal schema columns; cast explicitly
   // after the error path is guarded above.
   const lead: ProposalLead | null = data as unknown as ProposalLead | null;
+  const proposalBlocks = lead
+    ? [lead.proposal_intro, lead.proposal_scope, lead.proposal_deliverables, lead.proposal_timeline]
+        .filter((block): block is string => typeof block === "string" && block.trim().length > 0)
+    : [];
+  const hasProposalContent = proposalBlocks.length > 0;
 
   if (!lead || lead.proposal_status === "archived") {
     return (
@@ -94,7 +99,7 @@ export default async function ProposalPage({
     );
   }
 
-  if (lead.proposal_status === "draft") {
+  if (lead.proposal_status === "draft" && !hasProposalContent) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center px-4">
         <div className="w-full max-w-md text-center">
@@ -191,11 +196,9 @@ export default async function ProposalPage({
         <div className="mb-10 h-px bg-zinc-800/60" />
 
         {/* Proposal content */}
-        {[lead.proposal_intro, lead.proposal_scope, lead.proposal_deliverables, lead.proposal_timeline].some(Boolean) ? (
+        {hasProposalContent ? (
           <div className="space-y-5">
-            {[lead.proposal_intro, lead.proposal_scope, lead.proposal_deliverables, lead.proposal_timeline]
-              .filter((block): block is string => typeof block === "string" && block.trim().length > 0)
-              .map((block, i) => (
+            {proposalBlocks.map((block, i) => (
                 <p
                   key={i}
                   className="text-sm leading-relaxed text-zinc-400 sm:text-base"
