@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { submitIntake } from "@/app/intake/actions";
+import { submitNlIntake } from "@/app/nl/intake/actions";
 import { nlIntakeSchema, type NlIntakeFormData } from "@/app/nl/intake/nl-schema";
 
 /* ─── Select wrapper ────────────────────────────────────────────────────── */
@@ -204,7 +204,7 @@ export default function NlIntakeForm() {
     setStatus("loading");
     setServerError(null);
 
-    const result = await submitIntake(data);
+    const result = await submitNlIntake(data);
 
     if (result.success) {
       setSubmittedEmail(data.email);
@@ -316,7 +316,7 @@ export default function NlIntakeForm() {
               <option value="Digital product">Digitaal product</option>
               <option value="Automation">Automatisering</option>
               <option value="Internal system">Intern systeem</option>
-              <option value="Growth support">Groeiopdrach</option>
+              <option value="Growth support">Groeiopdracht</option>
               <option value="Other">Anders</option>
             </FormSelect>
             <FieldError message={errors.projectType?.message} />

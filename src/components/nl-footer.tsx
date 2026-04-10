@@ -2,13 +2,14 @@ import Link from "next/link";
 import Image from "next/image";
 
 const serviceLinks = [
-  { label: "Web Design", href: "/nl/web-design" },
-  { label: "AI Automatisering", href: "/nl/ai-automation" },
-  { label: "Shopify Design", href: "/nl/shopify-design" },
+  { label: "Bouwen", href: "/nl/build" },
+  { label: "Systemen", href: "/nl/systems" },
+  { label: "Groei", href: "/nl/growth" },
 ];
 
 const companyLinks = [
   { label: "Project starten", href: "/nl/intake" },
+  { label: "Proces", href: "/nl/process" },
   { label: "Privacybeleid", href: "/privacy-policy" },
   { label: "Gebruiksvoorwaarden", href: "/terms-of-use" },
 ];
@@ -61,7 +62,7 @@ export default function NlFooter() {
           {/* Services */}
           <div>
             <p className="mb-5 text-[11px] font-medium uppercase tracking-[0.15em] text-zinc-700">
-              Diensten
+              Lanes
             </p>
             <ul className="space-y-3.5">
               {serviceLinks.map(({ label, href }) => (

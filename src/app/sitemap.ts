@@ -89,19 +89,25 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     {
-      url: `${BASE}/nl/web-design`,
+      url: `${BASE}/nl/build`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.75,
     },
     {
-      url: `${BASE}/nl/ai-automation`,
+      url: `${BASE}/nl/systems`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.75,
     },
     {
-      url: `${BASE}/nl/shopify-design`,
+      url: `${BASE}/nl/growth`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.75,
+    },
+    {
+      url: `${BASE}/nl/process`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.75,

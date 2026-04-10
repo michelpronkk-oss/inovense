@@ -10,9 +10,10 @@ import {
 } from "@/components/ui/sheet";
 
 const links = [
-  { label: "Web Design", href: "/nl/web-design" },
-  { label: "AI Automatisering", href: "/nl/ai-automation" },
-  { label: "Shopify Design", href: "/nl/shopify-design" },
+  { label: "Bouwen", href: "/nl/build" },
+  { label: "Systemen", href: "/nl/systems" },
+  { label: "Groei", href: "/nl/growth" },
+  { label: "Proces", href: "/nl/process" },
 ];
 
 export default function NlNav() {

@@ -6,7 +6,7 @@ import NlFooter from "@/components/nl-footer";
 export const metadata: Metadata = {
   title: "Inovense - Digitale infrastructuur voor serieuze operators",
   description:
-    "Wij bouwen websites, automatisering en Shopify-winkels voor operators die op kwaliteit concurreren. Geen templates. Geen bureaugedoe.",
+    "Build, Systems en Growth voor operators die op uitvoering concurreren. Een Nederlandstalige conversielaag, gebouwd rond duidelijke lanes en een helder proces.",
   alternates: {
     canonical: "https://inovense.com/nl",
   },
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     url: "https://inovense.com/nl",
     title: "Inovense - Digitale infrastructuur voor serieuze operators",
     description:
-      "Wij bouwen websites, automatisering en Shopify-winkels voor operators die op kwaliteit concurreren. Geen templates. Geen bureaugedoe.",
+      "Build, Systems en Growth voor operators die op uitvoering concurreren. Een Nederlandstalige conversielaag, gebouwd rond duidelijke lanes en een helder proces.",
   },
 };
 
@@ -79,9 +79,9 @@ function Hero() {
         </h1>
 
         <p className="mt-6 max-w-2xl text-base leading-relaxed text-zinc-400 md:text-lg">
-          Websites, AI-automatisering en Shopify-winkels gebouwd op het niveau
-          dat jouw positionering vereist. Geen templates, geen bureaugedoe,
-          geen gerecycled werk.
+          Build, Systems en Growth uitgevoerd op het niveau dat jouw
+          positionering vereist. Geen templates, geen bureaugedoe, geen
+          gerecycled werk.
         </p>
 
         <div className="mt-10 flex flex-col gap-3 sm:flex-row">
@@ -92,7 +92,7 @@ function Hero() {
             Project starten
           </Link>
           <Link
-            href="/process"
+            href="/nl/process"
             className="inline-flex items-center justify-center rounded-full border border-zinc-700 px-8 py-3 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50"
           >
             Hoe wij werken
@@ -118,25 +118,25 @@ function Hero() {
 
 const services = [
   {
-    label: "Web Design",
-    href: "/nl/web-design",
-    headline: "Websites die de toets der kritiek doorstaan.",
-    body: "Conversiegericht, performance-first website design en development voor founders, operators en merken die op kwaliteit concurreren.",
+    label: "Build",
+    href: "/nl/build",
+    headline: "Digitale producten en websites gebouwd van brief tot browser.",
+    body: "Van merkwebsites tot productfront-ends en e-commerce. Conversiegericht, performance-first en volledig op maat gebouwd.",
     tags: ["Build lane", "Geen templates", "Volledige eigendom"],
   },
   {
-    label: "AI Automatisering",
-    href: "/nl/ai-automation",
-    headline: "Automatisering gebouwd rond hoe jouw bedrijf echt werkt.",
-    body: "Geen generieke tools die je moet aanpassen aan je proces. Wij analyseren jouw operationele stroom en bouwen automatisering die daadwerkelijk past.",
+    label: "Systems",
+    href: "/nl/systems",
+    headline: "Operationele systemen die meebewegen met hoe je team werkt.",
+    body: "Workflowautomatisering, interne tooling en AI-integraties die jouw operatie versnellen zonder extra complexiteit.",
     tags: ["Systems lane", "Op maat gebouwd", "Geen off-the-shelf"],
   },
   {
-    label: "Shopify Design",
-    href: "/nl/shopify-design",
-    headline: "Een Shopify-winkel die jouw merk echt weerspiegelt.",
-    body: "Merk-niveau afwerking, mobile-first, en gestructureerd om te converteren van productpagina tot kassa. Niet wat een standaard theme oplevert.",
-    tags: ["Build lane", "Merk-niveau afwerking", "Conversiegericht"],
+    label: "Growth",
+    href: "/nl/growth",
+    headline: "Groeisystemen voor leadflow, distributie en follow-up.",
+    body: "Van lead capture en routing tot performance content en paid support. Gebouwd als commercieel systeem, niet als losse tactieken.",
+    tags: ["Growth lane", "Commerciele focus", "Systeemdenken"],
   },
 ];
 
@@ -147,11 +147,12 @@ function Services() {
         <div className="mb-14">
           <Eyebrow>Wat wij bouwen</Eyebrow>
           <h2 className="max-w-lg text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-            Drie disciplines. Eén standaard.
+            Drie lanes. Een standaard.
           </h2>
           <p className="mt-4 max-w-lg text-sm leading-relaxed text-zinc-500">
-            Elk project wordt gebouwd vanuit jouw brief. Niets uit een theme,
-            niets twee keer gebouwd.
+            Deze laag is ontworpen voor snelle Nederlandse intake zonder
+            architectuurdrift. Elke route sluit aan op Build, Systems, Growth
+            en Proces.
           </p>
         </div>
 
