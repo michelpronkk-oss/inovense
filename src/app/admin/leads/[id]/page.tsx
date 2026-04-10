@@ -325,6 +325,27 @@ export default async function LeadDetailPage({
             />
           </Section>
 
+          <Section title="Contract">
+            <Link
+              href={`/admin/leads/${lead.id}/contract`}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-700/60 bg-zinc-800/30 px-4 py-2.5 text-xs font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-700/40 hover:text-zinc-100"
+            >
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden>
+                <path
+                  d="M7 1v8M4 6l3 3 3-3M2 11h10"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              Generate contract PDF
+            </Link>
+            <p className="mt-2 text-[10px] leading-relaxed text-zinc-600">
+              Project, retainer, or collaboration agreement.
+            </p>
+          </Section>
+
           <Section title="Payment">
             <PaymentEditor
               id={lead.id}
