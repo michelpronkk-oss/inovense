@@ -43,10 +43,10 @@ function EcosystemMock() {
           <div className="flex items-center gap-2">
             <div className="h-1.5 w-1.5 rounded-full bg-brand/80" />
             <span className="text-[10px] tracking-wide text-zinc-500">
-              Inovense NL
+              Digitale infrastructuur
             </span>
           </div>
-          <span className="text-[9px] text-zinc-700">Conversielaag actief</span>
+          <span className="text-[9px] text-zinc-700">3 lanes actief</span>
         </div>
 
         <div className="px-4 pb-3.5 pt-3">
@@ -75,7 +75,7 @@ function EcosystemMock() {
 
         <div className="px-4 pb-3.5 pt-3">
           <p className="mb-2.5 text-[9px] font-medium uppercase tracking-widest text-zinc-700">
-            Signalering
+            Werkwijze
           </p>
           <div className="flex flex-wrap gap-1.5">
             {proofItems.map((item) => (
@@ -92,8 +92,8 @@ function EcosystemMock() {
         <div className="flex items-center gap-5 border-t border-zinc-800/40 bg-zinc-950/40 px-4 py-2">
           {[
             { label: "Lanes", value: "3" },
-            { label: "Route", value: "NL" },
-            { label: "Status", value: "Live" },
+            { label: "Uitvoering", value: "Op maat" },
+            { label: "Status", value: "Actief" },
           ].map(({ label, value }) => (
             <div key={label} className="flex items-center gap-1.5">
               <span className="text-[8px] tracking-wide text-zinc-600">
@@ -170,7 +170,7 @@ export default function NlHomeHero() {
                 variant="outline"
                 className="border-brand/30 bg-brand/10 px-3 py-1 text-xs font-medium tracking-wide text-brand"
               >
-                Inovense NL | Conversielaag
+                Q2 2026 projecten beschikbaar
               </Badge>
             </motion.div>
 

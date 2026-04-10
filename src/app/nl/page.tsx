@@ -48,7 +48,7 @@ function Trust() {
       <div className="mx-auto max-w-6xl px-6">
         <div className="flex flex-col items-start gap-3 md:flex-row md:items-center md:justify-between">
           <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-600">
-            Verified signal
+            Geverifieerd
           </p>
           <TrustpilotSignal note="Lees geverifieerde klantreviews" />
         </div>
