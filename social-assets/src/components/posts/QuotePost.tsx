@@ -2,6 +2,7 @@ import { forwardRef } from 'react';
 import { PostFrame } from '../primitives/PostFrame';
 import { GridOverlay } from '../primitives/GridOverlay';
 import { GlowAccent } from '../primitives/GlowAccent';
+import { NoiseOverlay } from '../primitives/NoiseOverlay';
 import { Logo } from '../primitives/Logo';
 import { brand } from '../../tokens/brand';
 import type { Format } from '../../utils/formats';
@@ -27,7 +28,14 @@ export const QuotePost = forwardRef<HTMLDivElement, QuotePostProps>(
     return (
       <PostFrame ref={ref} format={format}>
         <GridOverlay opacity={0.055} spacing={52} />
-        <GlowAccent x="50%" y="50%" size={isStory ? 1300 : 1000} opacity={0.08} />
+        <GlowAccent x="50%" y="50%" size={isStory ? 1360 : 1060} opacity={0.072} />
+        <GlowAccent x="48%" y="52%" size={isStory ? 1100 : 860} opacity={0.042} />
+        <NoiseOverlay
+          opacity={0.016}
+          mixBlendMode="overlay"
+          backgroundSize="112px 112px, 180px 180px"
+          backgroundPosition="17px 23px, 59px 41px"
+        />
 
         {/* Decorative large quote mark */}
         <div
