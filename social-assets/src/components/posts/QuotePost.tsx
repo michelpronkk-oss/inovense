@@ -31,10 +31,10 @@ export const QuotePost = forwardRef<HTMLDivElement, QuotePostProps>(
         <GlowAccent x="50%" y="50%" size={isStory ? 1360 : 1060} opacity={0.072} />
         <GlowAccent x="48%" y="52%" size={isStory ? 1100 : 860} opacity={0.042} />
         <NoiseOverlay
-          opacity={0.016}
-          mixBlendMode="overlay"
-          backgroundSize="112px 112px, 180px 180px"
-          backgroundPosition="17px 23px, 59px 41px"
+          opacity={0.009}
+          mixBlendMode="soft-light"
+          backgroundSize="208px 208px, 136px 136px, 312px 312px"
+          backgroundPosition="13px 29px, 47px 61px, 91px 23px"
         />
 
         {/* Decorative large quote mark */}

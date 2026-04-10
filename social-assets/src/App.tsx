@@ -458,10 +458,15 @@ function App() {
         setShowSafeGuides(false);
         await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
       }
+      const exportPixelRatio = isBannerTemplate
+        ? 3.4
+        : formatKey === 'story'
+          ? 3.3
+          : 3.5;
       await exportPost(
         canvasRef.current,
         `inovense-${templateKey}-${formatKey}`,
-        formatKey === 'story' ? 2 : 2.4
+        exportPixelRatio
       );
       if (activeSavedPostId && selectedPlatform !== 'all') {
         setPostUsageFlag(activeSavedPostId, selectedPlatform, 'exported', true);
