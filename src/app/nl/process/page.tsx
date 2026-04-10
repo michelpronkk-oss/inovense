@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import NlNav from "@/components/nl-nav";
 import NlFooter from "@/components/nl-footer";
+import NlProcessHero from "@/components/nl/nl-process-hero";
 
 export const metadata: Metadata = {
-  title: "Proces: Van intake tot overdracht | Inovense",
+  title: "Proces: Van intake tot overdracht",
   description:
     "Het Inovense proces in duidelijke stappen. Intake, scope, uitvoering, lancering en overdracht zonder ruis.",
   alternates: {
@@ -28,76 +29,7 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 }
 
 function Hero() {
-  return (
-    <section className="relative overflow-hidden pb-24 pt-32 md:pb-32 md:pt-44">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px)
-          `,
-          backgroundSize: "80px 80px",
-        }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-0 h-[700px] w-[900px] -translate-x-1/2"
-        style={{
-          background:
-            "radial-gradient(ellipse 70% 60% at 50% 10%, rgba(73,160,164,0.13) 0%, transparent 65%)",
-        }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-40"
-        style={{
-          background: "linear-gradient(to bottom, transparent, var(--background))",
-        }}
-      />
-
-      <div className="relative mx-auto max-w-5xl px-6">
-        <div className="mb-8 flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center rounded-full border border-brand/25 bg-brand/8 px-3 py-1 text-[11px] font-medium tracking-wide text-brand">
-            Proces
-          </span>
-          <span className="inline-flex items-center rounded-full border border-zinc-700/60 px-3 py-1 text-[11px] font-medium text-zinc-500">
-            Duidelijke stappen
-          </span>
-          <span className="inline-flex items-center rounded-full border border-zinc-700/60 px-3 py-1 text-[11px] font-medium text-zinc-500">
-            Geen ruis
-          </span>
-        </div>
-
-        <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-6xl md:leading-[1.06]">
-          Van intake tot overdracht.{" "}
-          <span className="text-brand">Zonder improvisatie.</span>
-        </h1>
-
-        <p className="mt-6 max-w-2xl text-base leading-relaxed text-zinc-400 md:text-lg">
-          Elke samenwerking volgt een vaste structuur met duidelijke momenten
-          voor scope, feedback en oplevering. Dat beschermt kwaliteit, tempo en
-          budget.
-        </p>
-
-        <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-          <Link
-            href="/nl/intake"
-            className="inline-flex items-center justify-center rounded-full bg-brand px-8 py-3 text-sm font-medium text-zinc-950 transition-colors hover:bg-brand/90"
-          >
-            Project starten
-          </Link>
-          <Link
-            href="/nl/build"
-            className="inline-flex items-center justify-center rounded-full border border-zinc-700 px-8 py-3 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50"
-          >
-            Bekijk Build
-          </Link>
-        </div>
-      </div>
-    </section>
-  );
+  return <NlProcessHero />;
 }
 
 const stages = [
@@ -141,7 +73,7 @@ const stages = [
 
 function Workflow() {
   return (
-    <section className="border-t border-white/[0.06] py-24 md:py-32">
+    <section id="workflow" className="border-t border-white/[0.06] py-24 md:py-32">
       <div className="mx-auto max-w-5xl px-6">
         <div className="mb-14">
           <Eyebrow>Projectstappen</Eyebrow>
