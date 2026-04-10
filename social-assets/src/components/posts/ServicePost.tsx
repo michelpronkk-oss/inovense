@@ -173,7 +173,7 @@ export const ServicePost = forwardRef<HTMLDivElement, ServicePostProps>(
                   letterSpacing: '-0.01em',
                 }}
               >
-                {data.cta} →
+                {data.cta} {'->'}
               </span>
             )}
           </div>
