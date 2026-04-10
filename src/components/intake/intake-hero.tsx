@@ -19,7 +19,7 @@ const item = {
   },
 };
 
-export default function NlIntakeHero() {
+export default function IntakeHero() {
   return (
     <section className="relative overflow-hidden pb-14 pt-32">
 
@@ -73,16 +73,16 @@ export default function NlIntakeHero() {
             variants={item}
             className="text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-5xl"
           >
-            Vertel ons wat je bouwt.
+            Tell us what you&apos;re building.
           </motion.h1>
 
           <motion.p
             variants={item}
             className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-zinc-400"
           >
-            Vul de brief hieronder in. We beoordelen elke inzending persoonlijk
-            en reageren binnen 24 uur met een duidelijke volgende stap, geen
-            voorsteltemplate.
+            Fill in the brief below. We review every submission personally and
+            respond within 24 hours with a clear next step, not a proposal
+            template.
           </motion.p>
 
           <motion.div
@@ -94,7 +94,7 @@ export default function NlIntakeHero() {
               size="lg"
               className="rounded-full bg-brand px-8 text-white hover:bg-brand/90"
             >
-              <Link href="#nl-intake-form">Projectaanvraag starten</Link>
+              <Link href="#intake-form">Start your project</Link>
             </Button>
             <Button
               asChild
@@ -102,7 +102,7 @@ export default function NlIntakeHero() {
               size="lg"
               className="rounded-full border-zinc-700 bg-transparent px-8 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50"
             >
-              <Link href="/nl/process">Hoe wij werken</Link>
+              <Link href="/process">How we work</Link>
             </Button>
           </motion.div>
 
@@ -111,7 +111,7 @@ export default function NlIntakeHero() {
             variants={item}
             className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2"
           >
-            {["Beperkte intake", "Reactie binnen 24 uur", "Geen pitch decks"].map((label) => (
+            {["Limited intake", "24-hour response", "No pitch decks"].map((label) => (
               <span key={label} className="flex items-center gap-2 text-xs text-zinc-600">
                 <span className="h-1 w-1 shrink-0 rounded-full bg-brand/50" />
                 {label}
@@ -120,7 +120,7 @@ export default function NlIntakeHero() {
           </motion.div>
 
           <motion.div variants={item} className="mt-6">
-            <TrustpilotSignal note="Bekijk klantreviews" />
+            <TrustpilotSignal note="Read client reviews" />
           </motion.div>
         </motion.div>
       </div>
