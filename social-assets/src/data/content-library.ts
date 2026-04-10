@@ -5,7 +5,14 @@ import type { QuotePostData } from '../components/posts/QuotePost';
 import type { ServicePostData } from '../components/posts/ServicePost';
 import type { FormatKey } from '../utils/formats';
 
-export type TemplateKey = 'authority' | 'service' | 'offer' | 'quote' | 'carousel';
+export type TemplateKey =
+  | 'authority'
+  | 'service'
+  | 'offer'
+  | 'quote'
+  | 'carousel'
+  | 'facebook_banner'
+  | 'linkedin_banner';
 export type SocialPlatform = 'Instagram' | 'Facebook' | 'LinkedIn';
 
 export const SOCIAL_PLATFORMS: SocialPlatform[] = ['Instagram', 'Facebook', 'LinkedIn'];

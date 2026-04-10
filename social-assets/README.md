@@ -11,7 +11,10 @@ Static social post system for premium Inovense creative production.
   - Offer Post
   - Quote Post
   - Carousel Slide
+  - Facebook Cover Banner
+  - LinkedIn Company Banner
 - Export-ready 1080x1350, 1080x1080, and 1080x1920 output.
+  - Plus safe-area-aware Facebook and LinkedIn cover dimensions.
 
 ## Run locally
 
@@ -33,9 +36,10 @@ pnpm --dir social-assets build
 - Edit the `Content JSON` panel.
 - Use `Reset` to return to default sample content.
 - For carousel templates, adjust the `Slide` control.
+- For banner templates, use `Banner safe guides` during positioning.
 
 ## Export
 
 - Click `Export PNG`.
 - The app downloads a high-resolution PNG with a template and format filename.
-
+- Banner safe guides are hidden automatically during export.

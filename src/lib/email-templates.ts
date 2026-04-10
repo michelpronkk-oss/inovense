@@ -1,4 +1,9 @@
 import type { LeadStatus } from "./supabase-server";
+import {
+  getClientLocaleForLeadSource,
+  isDutchClientLeadSource,
+  type ClientLocale,
+} from "./client-locale";
 
 export type EmailTemplateType =
   | "fit_followup"
@@ -7,7 +12,7 @@ export type EmailTemplateType =
   | "onboarding_sent"
   | "decline";
 
-export type EmailTemplateLocale = "en" | "nl";
+export type EmailTemplateLocale = ClientLocale;
 
 export type EmailTemplateDef = {
   type: EmailTemplateType;
@@ -142,13 +147,13 @@ export const EMAIL_TEMPLATES = EMAIL_TEMPLATES_EN;
 export const EMAIL_TEMPLATE_LIST = Object.values(EMAIL_TEMPLATES);
 
 export function isDutchLeadSource(leadSource: string | null | undefined): boolean {
-  return leadSource === "nl_web";
+  return isDutchClientLeadSource(leadSource);
 }
 
 export function getEmailTemplateLocaleForLeadSource(
   leadSource: string | null | undefined
 ): EmailTemplateLocale {
-  return isDutchLeadSource(leadSource) ? "nl" : "en";
+  return getClientLocaleForLeadSource(leadSource);
 }
 
 export function getEmailTemplatesForLeadSource(

@@ -6,6 +6,8 @@ export type FieldDef = {
   placeholder?: string;
 };
 
+type OnboardingLocale = "en" | "nl";
+
 export const BUILD_FIELDS: FieldDef[] = [
   {
     key: "businessSummary",
@@ -228,9 +230,105 @@ export const GROWTH_FIELDS: FieldDef[] = [
   },
 ];
 
-export function getFieldsForLane(lane: string): FieldDef[] {
+const NL_FIELD_LABELS: Record<string, string> = {
+  "Build.businessSummary": "Bedrijfssamenvatting",
+  "Build.websiteOrSocial": "Website of social links",
+  "Build.projectGoals": "Projectdoelen",
+  "Build.primaryCta": "Primaire call-to-action",
+  "Build.targetAudience": "Doelgroep",
+  "Build.requestedPagesFeatures": "Gewenste paginas of features",
+  "Build.deadline": "Gewenste deadline",
+  "Build.brandAssets": "Merkassets en voorkeuren",
+  "Build.contentAvailability": "Beschikbaarheid van content",
+  "Build.requiredAccessTools": "Benodigde toegang of tools",
+  "Build.notes": "Aanvullende notities",
+  "Systems.teamProcessOverview": "Team- en procesoverzicht",
+  "Systems.currentTools": "Huidige tools",
+  "Systems.currentWorkflow": "Huidige workflow",
+  "Systems.painPoints": "Knelpunten",
+  "Systems.manualWork": "Handmatig werk dat nu gebeurt",
+  "Systems.desiredOutcome": "Gewenste uitkomst van automatisering",
+  "Systems.usersStakeholders": "Gebruikers en stakeholders",
+  "Systems.logicDataRequirements": "Logica- en data-eisen",
+  "Systems.requiredAccessTools": "Benodigde toegang of tools",
+  "Systems.constraintsNotes": "Randvoorwaarden, risico's of notities",
+  "Growth.offerSummary": "Aanbodsamenvatting",
+  "Growth.targetMarket": "Doelmarkt",
+  "Growth.currentTrafficChannels": "Huidig verkeer en kanalen",
+  "Growth.seoStatus": "SEO-status",
+  "Growth.paidStatus": "Status paid ads",
+  "Growth.contentStatus": "Contentstatus",
+  "Growth.growthGoals": "Groeidoelen",
+  "Growth.kpiPriorities": "KPI-prioriteiten",
+  "Growth.currentAssetsPages": "Huidige assets en pagina's",
+  "Growth.requiredAccessTools": "Benodigde toegang of tools",
+  "Growth.budgetContext": "Budgetcontext",
+  "Growth.constraintsNotes": "Randvoorwaarden of notities",
+};
+
+const NL_FIELD_PLACEHOLDERS: Record<string, string> = {
+  "Build.businessSummary": "Beschrijf je bedrijf en wat jullie doen.",
+  "Build.websiteOrSocial": "https://...",
+  "Build.projectGoals": "Wat moet dit project opleveren?",
+  "Build.primaryCta": "Bijv. Plan een call, Koop nu, Vraag een offerte aan",
+  "Build.targetAudience": "Voor wie is dit bedoeld? Beschrijf dit zo concreet mogelijk.",
+  "Build.requestedPagesFeatures":
+    "Noem de paginas, secties of functionaliteiten die je nodig hebt.",
+  "Build.deadline": "Bijv. eind mei 2026",
+  "Build.brandAssets": "Logo, kleuren, lettertypes, stijlreferenties of moodboard-links.",
+  "Build.contentAvailability": "Bijv. Copy klaar, Copywriting nodig, Gedeeltelijk",
+  "Build.requiredAccessTools": "CMS, hosting, analytics, integraties, accounts...",
+  "Build.notes": "Alles wat we moeten weten voor de start.",
+  "Systems.teamProcessOverview": "Beschrijf je team en hoe jullie nu werken.",
+  "Systems.currentTools": "Noem de software en tools die je team dagelijks gebruikt.",
+  "Systems.currentWorkflow": "Neem ons stap voor stap mee door het huidige proces.",
+  "Systems.painPoints": "Wat loopt nu vast, traag of handmatig?",
+  "Systems.manualWork":
+    "Welke taken worden nu handmatig gedaan die geautomatiseerd moeten worden?",
+  "Systems.desiredOutcome": "Hoe ziet de ideale situatie eruit als dit staat?",
+  "Systems.usersStakeholders": "Wie gebruikt dit systeem of wordt hierdoor geraakt?",
+  "Systems.logicDataRequirements":
+    "Businessregels, voorwaarden, datavelden en edge cases.",
+  "Systems.requiredAccessTools": "CRM's, databases, API's, inloggegevens, accounts...",
+  "Systems.constraintsNotes":
+    "Deadlines, budgetgrenzen, compliance-eisen of andere context.",
+  "Growth.offerSummary": "Wat verkoop je en voor wie?",
+  "Growth.targetMarket": "Beschrijf je ideale klant zo concreet mogelijk.",
+  "Growth.currentTrafficChannels": "Waar komen je verkeer of leads nu vandaan?",
+  "Growth.seoStatus": "Bijv. Niet gestart, Actief bezig, Audit nodig",
+  "Growth.paidStatus": "Bijv. Google Ads actief, Niet actief, Budget beschikbaar",
+  "Growth.contentStatus": "Bijv. Regelmatig content, Nog geen content, Strategie nodig",
+  "Growth.growthGoals": "Hoe ziet succes eruit over 90 dagen?",
+  "Growth.kpiPriorities": "Omzet, leads, aanmeldingen, verkeer, rankings...",
+  "Growth.currentAssetsPages":
+    "Landingspagina's, funnels, lead magnets, bestaande content.",
+  "Growth.requiredAccessTools":
+    "Analytics, advertentie-accounts, CMS, Search Console, accounts...",
+  "Growth.budgetContext": "Maandelijks budget voor ads, tools of content (optioneel)",
+  "Growth.constraintsNotes": "Alles wat ons helpt om snel en scherp te starten.",
+};
+
+function getBaseFieldsForLane(lane: string): FieldDef[] {
   if (lane === "Build") return BUILD_FIELDS;
   if (lane === "Systems") return SYSTEMS_FIELDS;
   if (lane === "Growth") return GROWTH_FIELDS;
   return BUILD_FIELDS;
+}
+
+function localizeField(field: FieldDef, lane: string, locale: OnboardingLocale): FieldDef {
+  if (locale !== "nl") {
+    return field;
+  }
+
+  const key = `${lane}.${field.key}`;
+  return {
+    ...field,
+    label: NL_FIELD_LABELS[key] ?? field.label,
+    placeholder: NL_FIELD_PLACEHOLDERS[key] ?? field.placeholder,
+  };
+}
+
+export function getFieldsForLane(lane: string, locale: OnboardingLocale = "en"): FieldDef[] {
+  const baseFields = getBaseFieldsForLane(lane);
+  return baseFields.map((field) => localizeField(field, lane, locale));
 }

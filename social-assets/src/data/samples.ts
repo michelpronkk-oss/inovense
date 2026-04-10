@@ -3,6 +3,7 @@ import type { ServicePostData } from '../components/posts/ServicePost';
 import type { OfferPostData } from '../components/posts/OfferPost';
 import type { QuotePostData } from '../components/posts/QuotePost';
 import type { CarouselSlideData } from '../components/posts/CarouselSlide';
+import type { BrandBannerData } from '../components/banners/BrandBanners';
 
 // --- AuthorityPost ---
 // Edit: tag, headline, sub, proofPoints (2-4 items)
@@ -90,3 +91,19 @@ export const carouselSlides: CarouselSlideData[] = [
 
 // Active slide index (0-based) - change this to preview different slides
 export const activeSlideIndex = 0;
+
+// --- Facebook Cover Banner ---
+// Keep critical copy in the center-safe zone. Use safe guides in preview only.
+export const facebookCoverBannerSample: BrandBannerData = {
+  strapline: 'Websites. Systems. Growth.',
+  headline: 'Premium digital execution for modern businesses.',
+  subline: 'Built for clarity, trust, and operational performance.',
+};
+
+// --- LinkedIn Company Banner ---
+// Keep copy concise for the short vertical canvas height.
+export const linkedInCompanyBannerSample: BrandBannerData = {
+  strapline: 'Websites. Systems. Growth.',
+  headline: 'Premium digital execution for modern businesses.',
+  subline: 'Inovense builds website, system, and growth layers that move brands forward.',
+};

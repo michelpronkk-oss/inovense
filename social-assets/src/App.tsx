@@ -1,4 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  FacebookPageCoverBanner,
+  LinkedInCompanyBanner,
+  type BrandBannerData,
+} from './components/banners/BrandBanners';
 import { AuthorityPost, type AuthorityPostData } from './components/posts/AuthorityPost';
 import { CarouselSlide, type CarouselSlideData } from './components/posts/CarouselSlide';
 import { OfferPost, type OfferPostData } from './components/posts/OfferPost';
@@ -16,6 +21,8 @@ import {
   activeSlideIndex,
   authorityPostSample,
   carouselSlides,
+  facebookCoverBannerSample,
+  linkedInCompanyBannerSample,
   offerPostSample,
   quotePostSample,
   servicePostSample,
@@ -65,6 +72,16 @@ const templateOptions: Array<{ key: TemplateKey; label: string; description: str
     label: 'Carousel Slide',
     description: 'Step-based educational carousel with sequence progress.',
   },
+  {
+    key: 'facebook_banner',
+    label: 'Facebook Cover Banner',
+    description: 'Safe-area-aware Facebook page cover asset.',
+  },
+  {
+    key: 'linkedin_banner',
+    label: 'LinkedIn Company Banner',
+    description: 'Safe-area-aware LinkedIn company header asset.',
+  },
 ];
 
 const defaultJsonByTemplate: Record<TemplateKey, string> = {
@@ -73,7 +90,21 @@ const defaultJsonByTemplate: Record<TemplateKey, string> = {
   offer: JSON.stringify(offerPostSample, null, 2),
   quote: JSON.stringify(quotePostSample, null, 2),
   carousel: JSON.stringify(carouselSlides, null, 2),
+  facebook_banner: JSON.stringify(facebookCoverBannerSample, null, 2),
+  linkedin_banner: JSON.stringify(linkedInCompanyBannerSample, null, 2),
 };
+
+const TEMPLATE_ALLOWED_FORMATS: Record<TemplateKey, FormatKey[]> = {
+  authority: ['portrait', 'square', 'story'],
+  service: ['portrait', 'square', 'story'],
+  offer: ['portrait', 'square', 'story'],
+  quote: ['portrait', 'square', 'story'],
+  carousel: ['portrait', 'square', 'story'],
+  facebook_banner: ['facebook_cover'],
+  linkedin_banner: ['linkedin_banner'],
+};
+
+const BANNER_TEMPLATE_KEYS: TemplateKey[] = ['facebook_banner', 'linkedin_banner'];
 
 const weekFilterOptions = [
   {
@@ -178,6 +209,7 @@ function App() {
     defaultJsonByTemplate
   );
   const [carouselIndex, setCarouselIndex] = useState(activeSlideIndex);
+  const [showSafeGuides, setShowSafeGuides] = useState(true);
   const [scale, setScale] = useState(1);
   const [exporting, setExporting] = useState(false);
 
@@ -185,6 +217,8 @@ function App() {
   const stageViewportRef = useRef<HTMLDivElement>(null);
   const currentFormat = FORMATS[formatKey];
   const activeTemplateMeta = templateOptions.find((template) => template.key === templateKey);
+  const allowedFormatsForTemplate = TEMPLATE_ALLOWED_FORMATS[templateKey];
+  const isBannerTemplate = BANNER_TEMPLATE_KEYS.includes(templateKey);
   const activeJson = jsonByTemplate[templateKey];
   const activeWeekMeta = weekFilterOptions.find((week) => week.id === selectedWeekId);
   const weekScopedPosts = useMemo(() => {
@@ -210,6 +244,8 @@ function App() {
     () => SAVED_POSTS.find((post) => post.id === activeSavedPostId) ?? null,
     [activeSavedPostId]
   );
+  const activeSavedPostForTemplate =
+    activeSavedPost && activeSavedPost.template === templateKey ? activeSavedPost : null;
 
   const authorityParsed = useMemo(
     () => parseObjectData<AuthorityPostData>(jsonByTemplate.authority, authorityPostSample),
@@ -231,6 +267,22 @@ function App() {
     () => parseArrayData<CarouselSlideData>(jsonByTemplate.carousel, carouselSlides),
     [jsonByTemplate.carousel]
   );
+  const facebookBannerParsed = useMemo(
+    () =>
+      parseObjectData<BrandBannerData>(
+        jsonByTemplate.facebook_banner,
+        facebookCoverBannerSample
+      ),
+    [jsonByTemplate.facebook_banner]
+  );
+  const linkedInBannerParsed = useMemo(
+    () =>
+      parseObjectData<BrandBannerData>(
+        jsonByTemplate.linkedin_banner,
+        linkedInCompanyBannerSample
+      ),
+    [jsonByTemplate.linkedin_banner]
+  );
 
   const carouselMaxIndex = Math.max(0, carouselParsed.data.length - 1);
   const clampedCarouselIndex = Math.min(carouselIndex, carouselMaxIndex);
@@ -242,6 +294,12 @@ function App() {
       setCarouselIndex(carouselMaxIndex);
     }
   }, [templateKey, carouselIndex, carouselMaxIndex]);
+
+  useEffect(() => {
+    if (!allowedFormatsForTemplate.includes(formatKey)) {
+      setFormatKey(allowedFormatsForTemplate[0]);
+    }
+  }, [allowedFormatsForTemplate, formatKey]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -312,14 +370,18 @@ function App() {
         return quoteParsed.error;
       case 'carousel':
         return carouselParsed.error;
+      case 'facebook_banner':
+        return facebookBannerParsed.error;
+      case 'linkedin_banner':
+        return linkedInBannerParsed.error;
       default:
         return null;
     }
   })();
   const activePostVariantFormat =
-    activeSavedPost && activeSavedPost.formatVariants.includes(formatKey)
+    activeSavedPostForTemplate && activeSavedPostForTemplate.formatVariants.includes(formatKey)
       ? formatKey
-      : activeSavedPost?.recommendedFormat ?? formatKey;
+      : activeSavedPostForTemplate?.recommendedFormat ?? formatKey;
 
   const handleJsonChange = (value: string) => {
     setJsonByTemplate((previous) => ({
@@ -390,7 +452,12 @@ function App() {
     }
 
     setExporting(true);
+    const shouldHideGuidesForExport = isBannerTemplate && showSafeGuides;
     try {
+      if (shouldHideGuidesForExport) {
+        setShowSafeGuides(false);
+        await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+      }
       await exportPost(
         canvasRef.current,
         `inovense-${templateKey}-${formatKey}`,
@@ -400,6 +467,9 @@ function App() {
         setPostUsageFlag(activeSavedPostId, selectedPlatform, 'exported', true);
       }
     } finally {
+      if (shouldHideGuidesForExport) {
+        setShowSafeGuides(true);
+      }
       setExporting(false);
     }
   };
@@ -419,7 +489,10 @@ function App() {
             id="template-select"
             className="select-field"
             value={templateKey}
-            onChange={(event) => setTemplateKey(event.target.value as TemplateKey)}
+            onChange={(event) => {
+              setTemplateKey(event.target.value as TemplateKey);
+              setActiveSavedPostId(null);
+            }}
           >
             {templateOptions.map((template) => (
               <option key={template.key} value={template.key}>
@@ -493,14 +566,14 @@ function App() {
           </div>
         </div>
 
-        {activeSavedPost ? (
+        {activeSavedPostForTemplate ? (
           <div className="control-group">
             <div className="group-head">
               <span>Post operations</span>
-              <span className="helper-chip">{activeSavedPost.bestFor}</span>
+              <span className="helper-chip">{activeSavedPostForTemplate.bestFor}</span>
             </div>
             <p className="helper-text">
-              Recommended format: {FORMATS[activeSavedPost.recommendedFormat].label}
+              Recommended format: {FORMATS[activeSavedPostForTemplate.recommendedFormat].label}
             </p>
             <label htmlFor="variant-select">Format variant</label>
             <select
@@ -509,7 +582,7 @@ function App() {
               value={activePostVariantFormat}
               onChange={(event) => setFormatKey(event.target.value as FormatKey)}
             >
-              {activeSavedPost.formatVariants.map((variant) => (
+              {activeSavedPostForTemplate.formatVariants.map((variant) => (
                 <option key={variant} value={variant}>
                   {FORMATS[variant].label}
                 </option>
@@ -517,7 +590,11 @@ function App() {
             </select>
             <div className="usage-grid">
               {SOCIAL_PLATFORMS.map((platform) => {
-                const platformUsage = getUsageState(usageByPost, activeSavedPost.id, platform);
+                const platformUsage = getUsageState(
+                  usageByPost,
+                  activeSavedPostForTemplate.id,
+                  platform
+                );
                 return (
                   <div key={platform} className="usage-row">
                     <span className="usage-platform">{platform}</span>
@@ -527,7 +604,7 @@ function App() {
                         checked={platformUsage.exported}
                         onChange={(event) =>
                           setPostUsageFlag(
-                            activeSavedPost.id,
+                            activeSavedPostForTemplate.id,
                             platform,
                             'exported',
                             event.target.checked
@@ -542,7 +619,7 @@ function App() {
                         checked={platformUsage.posted}
                         onChange={(event) =>
                           setPostUsageFlag(
-                            activeSavedPost.id,
+                            activeSavedPostForTemplate.id,
                             platform,
                             'posted',
                             event.target.checked
@@ -562,29 +639,52 @@ function App() {
           <span>Format</span>
           <div className="chip-row">
             {FORMAT_LIST.map((format) => {
+              const isAllowedForTemplate = allowedFormatsForTemplate.includes(format.key);
               const isAllowedForPost =
-                !activeSavedPost || activeSavedPost.formatVariants.includes(format.key);
+                !activeSavedPostForTemplate ||
+                activeSavedPostForTemplate.formatVariants.includes(format.key);
+              const isAllowed = isAllowedForTemplate && isAllowedForPost;
               return (
                 <button
                   key={format.key}
                   type="button"
                   className={`chip ${format.key === formatKey ? 'is-active' : ''} ${
-                    isAllowedForPost ? '' : 'is-disabled'
+                    isAllowed ? '' : 'is-disabled'
                   }`}
                   onClick={() => setFormatKey(format.key)}
-                  disabled={!isAllowedForPost}
+                  disabled={!isAllowed}
                 >
                   {format.label}
                 </button>
               );
             })}
           </div>
-          {activeSavedPost ? (
+          {activeSavedPostForTemplate ? (
             <p className="helper-text">
-              Variants for this post: {activeSavedPost.formatVariants.map((key) => FORMATS[key].label).join(', ')}
+              Variants for this post:{' '}
+              {activeSavedPostForTemplate.formatVariants
+                .map((key) => FORMATS[key].label)
+                .join(', ')}
             </p>
           ) : null}
         </div>
+
+        {isBannerTemplate ? (
+          <div className="control-group">
+            <span>Banner safe guides</span>
+            <label className="usage-check">
+              <input
+                type="checkbox"
+                checked={showSafeGuides}
+                onChange={(event) => setShowSafeGuides(event.target.checked)}
+              />
+              <span>Show safe areas in preview only</span>
+            </label>
+            <p className="helper-text">
+              Guides are hidden automatically during export.
+            </p>
+          </div>
+        ) : null}
 
         {templateKey === 'carousel' ? (
           <div className="control-group">
@@ -660,6 +760,22 @@ function App() {
             ) : null}
             {templateKey === 'carousel' ? (
               <CarouselSlide ref={canvasRef} data={activeCarouselSlide} format={currentFormat} />
+            ) : null}
+            {templateKey === 'facebook_banner' ? (
+              <FacebookPageCoverBanner
+                ref={canvasRef}
+                data={facebookBannerParsed.data}
+                format={currentFormat}
+                showSafeGuides={showSafeGuides}
+              />
+            ) : null}
+            {templateKey === 'linkedin_banner' ? (
+              <LinkedInCompanyBanner
+                ref={canvasRef}
+                data={linkedInBannerParsed.data}
+                format={currentFormat}
+                showSafeGuides={showSafeGuides}
+              />
             ) : null}
           </div>
         </div>

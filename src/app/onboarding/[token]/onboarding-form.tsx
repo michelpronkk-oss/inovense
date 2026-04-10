@@ -3,21 +3,91 @@
 import { useState, useTransition } from "react";
 import { submitOnboarding } from "./actions";
 import { getFieldsForLane } from "@/app/onboarding/fields";
+import type { ClientLocale } from "@/lib/client-locale";
 
 type Props = {
   token: string;
   companyName: string;
   fullName: string;
   serviceLane: string;
+  locale: ClientLocale;
 };
+
+type OnboardingFormCopy = {
+  briefLabel: string;
+  welcomePrefix: string;
+  introPrefix: string;
+  introDetail: string;
+  requiredFieldsLine: string;
+  validationPrefix: string;
+  genericError: string;
+  successTitle: string;
+  successMessage: string;
+  submitIdle: string;
+  submitPending: string;
+  submittedLine: string;
+};
+
+const ONBOARDING_FORM_COPY: Record<ClientLocale, OnboardingFormCopy> = {
+  en: {
+    briefLabel: "Onboarding brief",
+    welcomePrefix: "Welcome",
+    introPrefix: "This brief is for",
+    introDetail: "Fill in as much as you can. The more detail you provide, the faster we can move.",
+    requiredFieldsLine: "Required fields are marked with an asterisk.",
+    validationPrefix: "Please fill in",
+    genericError: "Something went wrong. Please try again.",
+    successTitle: "Onboarding brief received.",
+    successMessage:
+      "We have everything we need to get started. You will hear from us shortly with next steps.",
+    submitIdle: "Submit onboarding brief",
+    submitPending: "Submitting...",
+    submittedLine: "Submitted directly to the Inovense team.",
+  },
+  nl: {
+    briefLabel: "Onboarding",
+    welcomePrefix: "Welkom",
+    introPrefix: "Deze onboarding is voor",
+    introDetail:
+      "Vul in wat je al weet. Hoe concreter je input, hoe sneller we kunnen starten.",
+    requiredFieldsLine: "Verplichte velden zijn gemarkeerd met een asterisk.",
+    validationPrefix: "Vul in",
+    genericError: "Er ging iets mis. Probeer het opnieuw.",
+    successTitle: "Onboarding ontvangen.",
+    successMessage:
+      "We hebben alles om te starten. Je ontvangt snel de volgende stap van ons team.",
+    submitIdle: "Onboarding versturen",
+    submitPending: "Versturen...",
+    submittedLine: "Wordt direct naar het Inovense team verstuurd.",
+  },
+};
+
+function formatLaneLabel(serviceLane: string, locale: ClientLocale): string {
+  if (locale === "en") {
+    return serviceLane;
+  }
+  if (serviceLane === "Build") {
+    return "Build";
+  }
+  if (serviceLane === "Systems") {
+    return "Systems";
+  }
+  if (serviceLane === "Growth") {
+    return "Growth";
+  }
+  return serviceLane;
+}
 
 export default function OnboardingForm({
   token,
   companyName,
   fullName,
   serviceLane,
+  locale,
 }: Props) {
-  const fields = getFieldsForLane(serviceLane);
+  const copy = ONBOARDING_FORM_COPY[locale];
+  const fields = getFieldsForLane(serviceLane, locale);
+  const laneLabel = formatLaneLabel(serviceLane, locale);
   const firstName = fullName.split(" ")[0];
 
   const [values, setValues] = useState<Record<string, string>>(
@@ -38,7 +108,7 @@ export default function OnboardingForm({
     const requiredFields = fields.filter((f) => f.required);
     for (const f of requiredFields) {
       if (!values[f.key]?.trim()) {
-        setError(`Please fill in: ${f.label}`);
+        setError(`${copy.validationPrefix}: ${f.label}`);
         return;
       }
     }
@@ -53,7 +123,7 @@ export default function OnboardingForm({
       if (result.success) {
         setDone(true);
       } else {
-        setError(result.error ?? "Something went wrong. Please try again.");
+        setError(result.error ?? copy.genericError);
       }
     });
   }
@@ -79,11 +149,10 @@ export default function OnboardingForm({
           </svg>
         </div>
         <h2 className="mb-3 text-xl font-semibold text-zinc-50">
-          Onboarding brief received.
+          {copy.successTitle}
         </h2>
         <p className="mx-auto max-w-sm text-sm leading-relaxed text-zinc-500">
-          We have everything we need to get started. You will hear from us
-          shortly with next steps.
+          {copy.successMessage}
         </p>
       </div>
     );
@@ -95,18 +164,16 @@ export default function OnboardingForm({
       <div className="mb-8">
         <div className="mb-4 flex items-center gap-2">
           <span className="inline-flex items-center rounded-full border border-brand/25 bg-brand/10 px-2.5 py-0.5 text-[11px] font-medium text-brand">
-            {serviceLane}
+            {laneLabel}
           </span>
-          <span className="text-[11px] text-zinc-600">Onboarding brief</span>
+          <span className="text-[11px] text-zinc-600">{copy.briefLabel}</span>
         </div>
         <h1 className="mb-2 text-2xl font-semibold tracking-tight text-zinc-50">
-          Welcome, {firstName}.
+          {copy.welcomePrefix}, {firstName}.
         </h1>
         <p className="text-sm leading-relaxed text-zinc-500">
-          This brief is for{" "}
-          <span className="text-zinc-300">{companyName}</span>. Fill in as much
-          as you can - the more detail you provide, the faster we can move.
-          Required fields are marked with an asterisk.
+          {copy.introPrefix} <span className="text-zinc-300">{companyName}</span>.{" "}
+          {copy.introDetail} {copy.requiredFieldsLine}
         </p>
       </div>
 
@@ -157,10 +224,10 @@ export default function OnboardingForm({
             disabled={isPending}
             className="rounded-lg bg-brand px-6 py-2.5 text-sm font-medium text-zinc-950 transition-colors hover:bg-brand/90 disabled:cursor-wait disabled:opacity-60"
           >
-            {isPending ? "Submitting..." : "Submit onboarding brief"}
+            {isPending ? copy.submitPending : copy.submitIdle}
           </button>
           <p className="text-xs text-zinc-700">
-            Submitted directly to the Inovense team.
+            {copy.submittedLine}
           </p>
         </div>
       </form>
