@@ -1,0 +1,31 @@
+{
+  "opener": {
+    "kicker": "Service teaser",
+    "headline": "Three lanes. One execution standard.",
+    "subline": "Built for teams that need clarity, speed, and quality.",
+    "accentText": "execution"
+  },
+  "services": [
+    {
+      "name": "Build",
+      "detail": "SaaS and Shopify experiences engineered for trust.",
+      "metric": "01"
+    },
+    {
+      "name": "Systems",
+      "detail": "Internal software and AI workflows teams use every day.",
+      "metric": "02"
+    },
+    {
+      "name": "Growth",
+      "detail": "Lead generation systems with clean routing and follow-up.",
+      "metric": "03"
+    }
+  ],
+  "outro": {
+    "headline": "Choose your lane. Keep one standard.",
+    "subline": "Inovense keeps strategy, design, and execution in one system.",
+    "action": "Book intake"
+  }
+}
+

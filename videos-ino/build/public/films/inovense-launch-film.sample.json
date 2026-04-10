@@ -1,0 +1,43 @@
+{
+  "opener": {
+    "kicker": "Launch film",
+    "headline": "Premium digital products need premium motion systems.",
+    "subline": "Inovense creates campaigns that feel as strong as the product itself.",
+    "accentText": "premium"
+  },
+  "statement": {
+    "kicker": "Quality benchmark",
+    "headline": "Design language, product logic, and storytelling in sync.",
+    "subline": "One direction from landing page to paid creative.",
+    "accentText": "sync"
+  },
+  "caseBeat": {
+    "kicker": "Case signal",
+    "headline": "SilentSpend. Global monetization intelligence.",
+    "subline": "A high-trust decision layer for pricing movement, packaging shifts, and paywall change signals.",
+    "accentText": "SilentSpend"
+  },
+  "services": [
+    {
+      "name": "Poster scenes",
+      "detail": "Image-led compositions with oversized type and cleaner hierarchy.",
+      "metric": "A1"
+    },
+    {
+      "name": "Campaign CTA",
+      "detail": "Hard offer frames for paid creative and direct response moments.",
+      "metric": "A2"
+    },
+    {
+      "name": "Proof visuals",
+      "detail": "Result-first layouts that turn outcomes into premium trust assets.",
+      "metric": "A3"
+    }
+  ],
+  "outro": {
+    "headline": "Ship your next flagship campaign with Inovense.",
+    "subline": "From concept to launch film. One premium execution layer.",
+    "action": "Start at inovense.com/intake"
+  }
+}
+

@@ -3,6 +3,7 @@ import Link from "next/link";
 import NlNav from "@/components/nl-nav";
 import NlFooter from "@/components/nl-footer";
 import NlSystemsHero from "@/components/nl/nl-systems-hero";
+import NlRelatedServices from "@/components/nl/nl-related-services";
 
 export const metadata: Metadata = {
   title: "Systemen: AI Automatisering en Operationele Infrastructuur",
@@ -212,7 +213,7 @@ function OurApproach() {
     <section className="border-t border-white/[0.06] py-24 md:py-32">
       <div className="mx-auto max-w-5xl px-6">
         <div className="mb-14">
-          <Eyebrow>Onze aanpak</Eyebrow>
+          <Eyebrow>Het verschil</Eyebrow>
           <h2 className="max-w-lg text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
             Systemen die werken zoals jouw bedrijf werkt.
           </h2>
@@ -238,6 +239,234 @@ function OurApproach() {
                   </p>
                 </div>
               </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Systems Standard ──────────────────────────────────────────────────── */
+
+function SystemsStandard() {
+  return (
+    <section className="relative overflow-hidden border-y border-white/[0.06] py-28 md:py-40">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px)
+          `,
+          backgroundSize: "60px 60px",
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(73,160,164,0.07) 0%, transparent 65%)",
+        }}
+      />
+
+      <div className="relative mx-auto max-w-4xl px-6 text-center">
+        <div className="mb-14 flex items-center justify-center gap-5">
+          <div className="h-px w-16 bg-zinc-800" />
+          <span className="text-[10px] font-medium uppercase tracking-[0.25em] text-brand/60">
+            Systems Standaard
+          </span>
+          <div className="h-px w-16 bg-zinc-800" />
+        </div>
+
+        <p className="text-3xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-4xl lg:text-5xl">
+          &ldquo;Geen plakband. Geen AI-experimenten.
+          <br />
+          <span className="text-brand">
+            Alleen systemen die werken.&rdquo;
+          </span>
+        </p>
+
+        <p className="mx-auto mt-10 max-w-xl text-base leading-relaxed text-zinc-400 md:text-lg">
+          Wij plakken geen automatisering op gebroken processen. Wij verkopen
+          geen vage AI-capaciteit. Wij ontwerpen operationele infrastructuur
+          die past bij jouw bedrijf, betrouwbaar draait en jouw team sneller
+          maakt zonder nieuwe complexiteit toe te voegen.
+        </p>
+
+        <div className="mt-14 flex items-center justify-center gap-5">
+          <div className="h-px max-w-[120px] flex-1 bg-zinc-800" />
+          <span className="text-[10px] font-medium uppercase tracking-[0.25em] text-zinc-700">
+            Inovense
+          </span>
+          <div className="h-px max-w-[120px] flex-1 bg-zinc-800" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Systems Outcomes ──────────────────────────────────────────────────── */
+
+const outcomes = [
+  {
+    client: "E-commerce operator",
+    category: "AI-workflows en CRM-sync",
+    outcome:
+      "Post-purchase flows, CRM-sync en lead routing draaien zonder handmatige input. Het team verschoof van dagelijks admin naar beslissingen die echt mensen vereisen.",
+    result: "3 handmatige processen verwijderd · Volledige post-purchase flow geautomatiseerd · CRM-sync live",
+    tags: ["AI-workflows", "CRM-logica", "Ops Automatisering"],
+  },
+  {
+    client: "Professioneel dienstverlener",
+    category: "Pipeline logica en rapportage",
+    outcome:
+      "Pipeline-zichtbaarheid ging van chaotisch naar helder. Voorstel-triggers, follow-up sequenties en wekelijkse rapportage draaien nu op schema. Geen achtervolgen, geen gemiste stappen.",
+    result: "Pipeline geherstructureerd · Auto-rapportage live · Follow-up sequenties actief",
+    tags: ["CRM-logica", "Rapportage Flows", "Automatisering"],
+  },
+  {
+    client: "Snelgroeiende SaaS",
+    category: "Lead routing en onboarding",
+    outcome:
+      "Inbound kwalificeert, scoort en wijst zichzelf toe. Onboarding-triggers vuren op de juiste condities. Het salesteam besteedt tijd aan gesprekken, niet aan admin.",
+    result: "Lead scoring gebouwd · Routing logica deployed · Onboarding sequenties live",
+    tags: ["Lead Routing", "AI-workflows", "Onboarding"],
+  },
+];
+
+function SystemsOutcomes() {
+  return (
+    <section
+      id="systems-werk"
+      className="border-t border-white/[0.06] bg-zinc-900/15 py-24 md:py-32"
+    >
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="mb-16 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="mb-4 text-xs font-medium uppercase tracking-widest text-brand">
+              Uitkomsten
+            </p>
+            <h2 className="text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
+              Geselecteerde Systems-uitkomsten.
+            </h2>
+          </div>
+          <Link
+            href="/nl/intake"
+            className="self-start text-sm font-medium text-zinc-500 transition-colors hover:text-brand md:self-auto"
+          >
+            Start je systeemproject →
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          {outcomes.map((o) => (
+            <div
+              key={o.client}
+              className="group relative flex flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50 p-8 transition-all duration-300 hover:border-zinc-700 hover:bg-zinc-900"
+            >
+              <div className="absolute inset-x-0 top-0 h-px origin-left scale-x-0 bg-brand/60 transition-transform duration-500 ease-out group-hover:scale-x-100" />
+
+              <span className="mb-6 text-xs font-medium uppercase tracking-widest text-zinc-600 transition-colors group-hover:text-brand/70">
+                {o.category}
+              </span>
+
+              <h3 className="mb-4 text-xl font-semibold text-zinc-50">
+                {o.client}
+              </h3>
+
+              <p className="mb-6 text-sm leading-relaxed text-zinc-500">
+                {o.outcome}
+              </p>
+
+              <p className="mb-6 text-xs leading-relaxed text-zinc-600">
+                {o.result}
+              </p>
+
+              <div className="mt-auto flex flex-wrap gap-2 border-t border-zinc-800 pt-6">
+                {o.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full border border-zinc-800 px-3 py-1 text-xs text-zinc-600 transition-colors group-hover:border-zinc-700 group-hover:text-zinc-500"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Systems Process ───────────────────────────────────────────────────── */
+
+const processSteps = [
+  {
+    number: "01",
+    title: "Audit en analyse",
+    body: "We brengen jouw huidige processen, tools en handmatige workflows in kaart voor we iets aanraken. We moeten begrijpen wat er daadwerkelijk bestaat voor we ontwerpen wat er komt.",
+    note: "Helderheid voor ontwerp",
+  },
+  {
+    number: "02",
+    title: "Systeemontwerp",
+    body: "We ontwerpen de logica, flow-architectuur en integratiestructuur samen met jou. Geen black boxes. Je begrijpt wat we bouwen, waarom het zo werkt en wat het verbindt.",
+    note: "Geen verrassingen in productie",
+  },
+  {
+    number: "03",
+    title: "Bouwen en testen",
+    body: "Productie-grade implementatie met real-world edge-case testing. We stress-testen faaltoestanden, timing-problemen en data-integriteit voor iets in de buurt van je live omgeving komt.",
+    note: "Betrouwbaar vanaf dag een",
+  },
+  {
+    number: "04",
+    title: "Deployen en overdragen",
+    body: "Heldere deployment met volledige documentatie, operatortraining waar nodig en monitoring na lancering. Je vertrekt met volledig eigendom van je systemen en alles wat nodig is om ze te draaien.",
+    note: "Volledige eigendom, geen lock-in",
+  },
+];
+
+function SystemsProcess() {
+  return (
+    <section className="py-24 md:py-32">
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="mb-16">
+          <p className="mb-4 text-xs font-medium uppercase tracking-widest text-brand">
+            Systems proces
+          </p>
+          <h2 className="max-w-md text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
+            Van brief tot live infrastructuur.
+          </h2>
+        </div>
+
+        <div className="divide-y divide-zinc-800/70">
+          {processSteps.map((step) => (
+            <div
+              key={step.number}
+              className="group flex flex-col gap-6 py-8 transition-colors hover:bg-zinc-900/20 md:flex-row md:items-start md:gap-0 md:py-10 md:-mx-6 md:px-6 md:rounded-xl"
+            >
+              <div className="flex shrink-0 items-center gap-4 md:w-16 md:flex-col md:items-start md:gap-0">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full border border-brand/35 bg-brand/10 font-mono text-xs font-semibold text-brand">
+                  {step.number}
+                </span>
+              </div>
+              <div className="shrink-0 md:w-[220px] md:pr-8 md:pt-1.5">
+                <h3 className="mb-1.5 text-base font-semibold text-zinc-50">
+                  {step.title}
+                </h3>
+                <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-600">
+                  {step.note}
+                </span>
+              </div>
+              <p className="flex-1 text-sm leading-relaxed text-zinc-500 transition-colors group-hover:text-zinc-400 md:pt-1.5">
+                {step.body}
+              </p>
             </div>
           ))}
         </div>
@@ -374,7 +603,11 @@ export default function NlSystemsPage() {
         <WhoThisIsFor />
         <WhatWeBuild />
         <OurApproach />
+        <SystemsStandard />
+        <SystemsOutcomes />
+        <SystemsProcess />
         <FAQ />
+        <NlRelatedServices current="systems" />
         <PageCTA />
       </main>
       <NlFooter />

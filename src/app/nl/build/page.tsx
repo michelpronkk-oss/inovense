@@ -3,6 +3,7 @@ import Link from "next/link";
 import NlNav from "@/components/nl-nav";
 import NlFooter from "@/components/nl-footer";
 import NlBuildHero from "@/components/nl/nl-build-hero";
+import NlRelatedServices from "@/components/nl/nl-related-services";
 
 export const metadata: Metadata = {
   title: "Bouwen: Websites, E-commerce en Digitale Producten",
@@ -263,6 +264,162 @@ function OurApproach() {
   );
 }
 
+/* ─── Build Standard ────────────────────────────────────────────────────── */
+
+function BuildStandard() {
+  return (
+    <section className="relative overflow-hidden border-y border-white/[0.06] py-28 md:py-40">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px)
+          `,
+          backgroundSize: "60px 60px",
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(73,160,164,0.07) 0%, transparent 65%)",
+        }}
+      />
+
+      <div className="relative mx-auto max-w-4xl px-6 text-center">
+        <div className="mb-14 flex items-center justify-center gap-5">
+          <div className="h-px w-16 bg-zinc-800" />
+          <span className="text-[10px] font-medium uppercase tracking-[0.25em] text-brand/60">
+            Build Standaard
+          </span>
+          <div className="h-px w-16 bg-zinc-800" />
+        </div>
+
+        <p className="text-3xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-4xl lg:text-5xl">
+          &ldquo;Elk pixel verdient zijn plek.
+          <br />
+          <span className="text-brand">
+            Elke build gaat productie-klaar live.&rdquo;
+          </span>
+        </p>
+
+        <p className="mx-auto mt-10 max-w-xl text-base leading-relaxed text-zinc-400 md:text-lg">
+          Wij reskinnen geen themes. Wij leveren geen werk dat slechts voldoende
+          is. Wij bouwen vanuit eerste principes: performance-first,
+          conversiegericht en gehouden aan een standaard waar we onze naam
+          onder zetten.
+        </p>
+
+        <div className="mt-14 flex items-center justify-center gap-5">
+          <div className="h-px flex-1 max-w-[120px] bg-zinc-800" />
+          <span className="text-[10px] font-medium uppercase tracking-[0.25em] text-zinc-700">
+            Inovense
+          </span>
+          <div className="h-px flex-1 max-w-[120px] bg-zinc-800" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Build Work / Proof ────────────────────────────────────────────────── */
+
+const projects = [
+  {
+    client: "St. Regis Marriott",
+    category: "Websiteontwikkeling",
+    outcome:
+      "Complete digitale herbouw gericht op merkvertrouwen en directe boekingen. Ontworpen op het luxeniveau van de accommodatie en performend op elk apparaat.",
+    result: "Volledig redesign · Conversie-architectuur · Performance-audit",
+    tags: ["Web Design", "Development", "SEO"],
+  },
+  {
+    client: "Barb's Home Kitchen",
+    category: "E-commerce en merk",
+    outcome:
+      "End-to-end e-commerce build met merkvernieuwing voor een groeiend foodbedrijf. Mobile-first, conversie-geoptimaliseerd en gebouwd rond productverhaal.",
+    result: "E-commerce build · Merkidentiteit · Mobile-first",
+    tags: ["E-commerce", "Brand", "Shopify"],
+  },
+  {
+    client: "AP Consultants",
+    category: "Merkwebsite",
+    outcome:
+      "Merkidentiteit en digitale aanwezigheid voor een professioneel dienstverlener. Ontworpen om autoriteit uit te stralen en betere gesprekken aan te trekken.",
+    result: "Merkidentiteit · Webpresence · Positionering",
+    tags: ["Branding", "Web Design", "Development"],
+  },
+];
+
+function BuildWork() {
+  return (
+    <section
+      id="build-werk"
+      className="border-t border-white/[0.06] bg-zinc-900/15 py-24 md:py-32"
+    >
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="mb-16 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="mb-4 text-xs font-medium uppercase tracking-widest text-brand">
+              Build werk
+            </p>
+            <h2 className="text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
+              Geselecteerde Build-uitkomsten.
+            </h2>
+          </div>
+          <Link
+            href="/nl/intake"
+            className="self-start text-sm font-medium text-zinc-500 transition-colors hover:text-brand md:self-auto"
+          >
+            Start je bouwproject →
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          {projects.map((project) => (
+            <div
+              key={project.client}
+              className="group relative flex flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50 p-8 transition-all duration-300 hover:border-zinc-700 hover:bg-zinc-900"
+            >
+              <div className="absolute inset-x-0 top-0 h-px origin-left scale-x-0 bg-brand/60 transition-transform duration-500 ease-out group-hover:scale-x-100" />
+
+              <span className="mb-6 text-xs font-medium uppercase tracking-widest text-zinc-600 transition-colors group-hover:text-brand/70">
+                {project.category}
+              </span>
+
+              <h3 className="mb-4 text-xl font-semibold text-zinc-50">
+                {project.client}
+              </h3>
+
+              <p className="mb-6 text-sm leading-relaxed text-zinc-500">
+                {project.outcome}
+              </p>
+
+              <p className="mb-6 text-xs leading-relaxed text-zinc-600">
+                {project.result}
+              </p>
+
+              <div className="mt-auto flex flex-wrap gap-2 border-t border-zinc-800 pt-6">
+                {project.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full border border-zinc-800 px-3 py-1 text-xs text-zinc-600 transition-colors group-hover:border-zinc-700 group-hover:text-zinc-500"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ─── How it works ──────────────────────────────────────────────────────── */
 
 const steps = [
@@ -477,8 +634,11 @@ export default function NlBuildPage() {
         <WhoThisIsFor />
         <WhatWeBuild />
         <OurApproach />
+        <BuildStandard />
+        <BuildWork />
         <HowItWorks />
         <FAQ />
+        <NlRelatedServices current="build" />
         <PageCTA />
       </main>
       <NlFooter />

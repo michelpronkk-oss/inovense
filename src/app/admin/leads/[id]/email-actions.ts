@@ -1,7 +1,6 @@
 "use server";
 
 import { Resend } from "resend";
-import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import {
@@ -103,11 +102,9 @@ export async function sendLeadEmail(
         .eq("id", leadId);
     }
 
-    // Derive base URL from request headers (used for logo + CTA links)
-    const headersList = await headers();
-    const host = headersList.get("host") ?? "inovense.com";
-    const proto = headersList.get("x-forwarded-proto") ?? "https";
-    const baseUrl = `${proto}://${host}`;
+    // Always use the canonical public URL — never derive from request headers,
+    // which would produce localhost or Vercel preview URLs in client emails.
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://inovense.com";
 
     // Build CTA per template type
     let cta: { text: string; href: string } | undefined;

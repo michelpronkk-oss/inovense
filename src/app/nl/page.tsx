@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import NlNav from "@/components/nl-nav";
 import NlFooter from "@/components/nl-footer";
 import NlHomeHero from "@/components/nl/nl-home-hero";
+import TrustpilotSignal from "@/components/trustpilot-signal";
 
 export const metadata: Metadata = {
   title: {
     absolute: "Inovense | Digitale infrastructuur voor serieuze operators",
   },
   description:
-    "Build, Systems en Growth voor operators die op uitvoering concurreren. Een Nederlandstalige conversielaag, gebouwd rond duidelijke lanes en een helder proces.",
+    "Build, Systems en Growth voor operators die op uitvoering concurreren. Websites, AI-automatisering en groeisystemen gebouwd op de standaard die jouw bedrijf verdient.",
   alternates: {
     canonical: "https://inovense.com/nl",
   },
@@ -17,7 +19,7 @@ export const metadata: Metadata = {
     url: "https://inovense.com/nl",
     title: "Inovense | Digitale infrastructuur voor serieuze operators",
     description:
-      "Build, Systems en Growth voor operators die op uitvoering concurreren. Een Nederlandstalige conversielaag, gebouwd rond duidelijke lanes en een helder proces.",
+      "Build, Systems en Growth voor operators die op uitvoering concurreren. Websites, AI-automatisering en groeisystemen gebouwd op de standaard die jouw bedrijf verdient.",
     locale: "nl_NL",
   },
 };
@@ -36,6 +38,23 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 
 function Hero() {
   return <NlHomeHero />;
+}
+
+/* ─── Trust ─────────────────────────────────────────────────────────────── */
+
+function Trust() {
+  return (
+    <section className="border-y border-white/[0.06] bg-zinc-950/75 py-7 md:py-8">
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="flex flex-col items-start gap-3 md:flex-row md:items-center md:justify-between">
+          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-600">
+            Verified signal
+          </p>
+          <TrustpilotSignal note="Lees geverifieerde klantreviews" />
+        </div>
+      </div>
+    </section>
+  );
 }
 
 /* ─── Services ──────────────────────────────────────────────────────────── */
@@ -74,9 +93,8 @@ function Services() {
             Drie lanes. Een standaard.
           </h2>
           <p className="mt-4 max-w-lg text-sm leading-relaxed text-zinc-500">
-            Deze laag is ontworpen voor snelle Nederlandse intake zonder
-            architectuurdrift. Elke route sluit aan op Build, Systems, Growth
-            en Proces.
+            Build, Systems en Growth als gekoppeld systeem. Geen losse diensten,
+            geen generieke aanpak. Elke lane levert productie-uitkomsten.
           </p>
         </div>
 
@@ -184,6 +202,242 @@ function WhyInovense() {
   );
 }
 
+/* ─── Process preview ───────────────────────────────────────────────────── */
+
+const steps = [
+  {
+    number: "01",
+    title: "Strategiegesprek",
+    body: "We begrijpen jouw doelen, context en huidige positie. We vertellen je eerlijk of we de juiste match zijn. Als dat niet zo is, wijzen we je in de juiste richting.",
+  },
+  {
+    number: "02",
+    title: "Concreet voorstel",
+    body: "Een helder document met exacte deliverables, tijdlijn en prijs. Geen glijdende scope, geen verrassende facturen. Je weet wat je krijgt voor we beginnen.",
+  },
+  {
+    number: "03",
+    title: "Bouwen en uitvoeren",
+    body: "We werken met precisie. Regelmatige updates, heldere mijlpalen en geen verdwijnacts. Je blijft op de hoogte zonder te hoeven achtervolgen.",
+  },
+  {
+    number: "04",
+    title: "Lancering en oplevering",
+    body: "Heldere overdracht met volledige eigendom. We verdwijnen niet bij lancering. We meten, verfijnen en zorgen dat alles werkt zoals verwacht.",
+  },
+];
+
+function ProcessPreview() {
+  return (
+    <section className="py-24 md:py-32">
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="mb-16">
+          <Eyebrow>Hoe wij werken</Eyebrow>
+          <h2 className="max-w-md text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
+            Van eerste gesprek tot resultaat dat aanhoudt.
+          </h2>
+        </div>
+
+        <div className="relative grid grid-cols-1 gap-0 md:grid-cols-4">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute top-5 hidden h-px bg-zinc-800 md:block"
+            style={{ left: "1.25rem", right: "calc(25% - 1.25rem)" }}
+          />
+
+          {steps.map((step, i) => (
+            <div key={step.number} className="relative flex flex-col">
+              <div className="pr-8 pb-10 md:pb-0">
+                <div className="mb-5 flex items-center">
+                  <span className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-brand/40 bg-zinc-950 text-xs font-semibold text-brand ring-4 ring-zinc-950">
+                    {step.number}
+                  </span>
+                </div>
+                <h3 className="mb-3 text-base font-semibold text-zinc-50">
+                  {step.title}
+                </h3>
+                <p className="text-sm leading-relaxed text-zinc-500">
+                  {step.body}
+                </p>
+              </div>
+              {i < steps.length - 1 && (
+                <div className="mb-10 ml-5 h-10 w-px bg-zinc-800 md:hidden" />
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-14 flex items-center gap-4">
+          <Link
+            href="/nl/process"
+            className="text-sm font-medium text-zinc-400 transition-colors hover:text-zinc-50"
+          >
+            Volledig proces bekijken
+            <span aria-hidden> →</span>
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Selected work ─────────────────────────────────────────────────────── */
+
+type WorkCase = {
+  title: string;
+  lane: string;
+  summary: string;
+  tags: string[];
+  status: string;
+  href?: string;
+  imageSrc?: string;
+};
+
+const workCases: WorkCase[] = [
+  {
+    title: "SilentSpend",
+    lane: "Product intelligence",
+    summary:
+      "Globale monetisatielaag gebouwd als een high-trust beslissysteem voor pricing en packaging.",
+    tags: ["Product", "Systems"],
+    status: "Live case",
+    href: "/work/silentspend",
+    imageSrc: "/work/silentspend/hero.png",
+  },
+  {
+    title: "St. Regis Marriott",
+    lane: "Luxe digitale infrastructuur",
+    summary:
+      "Hospitality platform met focus op premium UX en conversie-grade fundamenten.",
+    tags: ["Build", "Luxury"],
+    status: "Binnenkort gepubliceerd",
+  },
+  {
+    title: "The Nude Bottle",
+    lane: "Commerce en merksystemen",
+    summary:
+      "Commerce en merksysteem voor helderdere positionering en growth-ready productverhaal.",
+    tags: ["Commerce", "Brand"],
+    status: "Binnenkort gepubliceerd",
+  },
+];
+
+function CaseCard({ item }: { item: WorkCase }) {
+  const content = (
+    <>
+      <div className="border-b border-zinc-800/80 px-5 py-3">
+        <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-600">
+          {item.lane}
+        </p>
+      </div>
+
+      <div className="relative aspect-[16/10] border-b border-zinc-800/80 bg-zinc-950/80">
+        {item.imageSrc ? (
+          <Image
+            src={item.imageSrc}
+            alt={`${item.title} case preview`}
+            fill
+            sizes="(max-width: 768px) 86vw, (max-width: 1024px) 68vw, 33vw"
+            className="h-full w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-[1.015]"
+          />
+        ) : (
+          <div
+            className="flex h-full items-end p-5"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px)",
+              backgroundSize: "26px 26px",
+            }}
+          >
+            <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-600">
+              {item.status}
+            </p>
+          </div>
+        )}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(to top, rgba(9,9,11,0.30) 0%, rgba(9,9,11,0) 45%)",
+          }}
+        />
+      </div>
+
+      <div className="flex min-h-[216px] flex-col p-5 md:min-h-[230px]">
+        <h3 className="text-lg font-semibold tracking-tight text-zinc-50 md:text-xl">
+          {item.title}
+        </h3>
+        <p className="mt-2.5 text-sm leading-relaxed text-zinc-500">{item.summary}</p>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {item.tags.map((tag) => (
+            <span
+              key={tag}
+              className="rounded-full border border-zinc-800/80 px-2.5 py-1 text-[11px] text-zinc-500"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+
+        <div className="mt-auto flex items-center justify-between pt-5">
+          <p className="text-xs text-zinc-600">{item.status}</p>
+          {item.href ? (
+            <span className="text-xs text-zinc-500 transition-colors group-hover:text-zinc-300">
+              Case bekijken
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </>
+  );
+
+  const baseClassName =
+    "group block min-w-[88%] snap-start overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/55 sm:min-w-[68%] md:min-w-0 md:h-full";
+
+  if (item.href) {
+    return (
+      <Link href={item.href} className={baseClassName}>
+        {content}
+      </Link>
+    );
+  }
+
+  return <article className={baseClassName}>{content}</article>;
+}
+
+function Work() {
+  return (
+    <section
+      id="werk"
+      className="border-t border-white/[0.06] bg-zinc-900/20 py-20 md:py-28"
+    >
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="mb-10 flex flex-col gap-5 md:mb-12 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="mb-4 text-xs font-medium uppercase tracking-widest text-brand">
+              Geselecteerd werk
+            </p>
+            <h2 className="max-w-3xl text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
+              Product en systeemcases.
+            </h2>
+            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-zinc-500 md:text-base">
+              SilentSpend is live. Aanvullende engagements worden voorbereid voor publicatie.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:pb-0">
+          {workCases.slice(0, 3).map((item) => (
+            <CaseCard key={item.title} item={item} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ─── CTA ───────────────────────────────────────────────────────────────── */
 
 function PageCTA() {
@@ -262,8 +516,11 @@ export default function NlPage() {
       <NlNav />
       <main className="flex flex-col">
         <Hero />
+        <Trust />
         <Services />
         <WhyInovense />
+        <ProcessPreview />
+        <Work />
         <PageCTA />
       </main>
       <NlFooter />

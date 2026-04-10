@@ -1,0 +1,37 @@
+{
+  "opener": {
+    "kicker": "Inovense",
+    "headline": "Digital infrastructure with cinematic execution.",
+    "subline": "Built for brands and operators that value precision.",
+    "accentText": "cinematic"
+  },
+  "statement": {
+    "kicker": "Motion system",
+    "headline": "From strategy to launch, every frame carries intent.",
+    "subline": "No generic content templates. Just premium typography, system rhythm, and controlled motion.",
+    "accentText": "intent"
+  },
+  "services": [
+    {
+      "name": "Build",
+      "detail": "Premium web systems and conversion architecture.",
+      "metric": "01"
+    },
+    {
+      "name": "Systems",
+      "detail": "Operator-grade internal tooling and intelligence workflows.",
+      "metric": "02"
+    },
+    {
+      "name": "Growth",
+      "detail": "Commercial engines with stronger tracking and better handoff.",
+      "metric": "03"
+    }
+  ],
+  "outro": {
+    "headline": "Ready for your next launch film.",
+    "subline": "Inovense designs and ships premium digital systems.",
+    "action": "inovense.com/intake"
+  }
+}
+
