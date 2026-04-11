@@ -255,19 +255,17 @@ export default function Hero() {
               variants={itemVariants}
               className="text-5xl font-semibold leading-[1.08] tracking-tight text-zinc-50 lg:text-6xl"
             >
-              We build the infrastructure
-              <br className="hidden sm:block" />{" "}
-              <em className="not-italic text-brand">serious operators</em>{" "}
-              run on.
+              Web, systems, and growth
+              <br className="hidden sm:block" /> built to{" "}
+              <span className="text-brand">perform.</span>
             </motion.h1>
 
             <motion.p
               variants={itemVariants}
-              className="mt-6 max-w-[440px] text-lg leading-relaxed text-zinc-400"
+              className="mt-6 max-w-[520px] text-lg leading-relaxed text-zinc-400"
             >
-              Conversion-focused web builds, AI workflows, and growth
-              systems. Precision execution for ambitious companies who
-              compete on execution.
+              Conversion-focused websites, AI workflows, and growth systems for ambitious
+              companies that compete on execution.
             </motion.p>
 
             <motion.div

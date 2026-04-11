@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 export const runtime = "nodejs";
-export const alt = "Inovense | Digital Infrastructure for Operators";
+export const alt = "Inovense | Web, Systems, and Growth Built to Perform";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -222,14 +222,14 @@ export default async function Image() {
             style={{
               display: "flex",
               color: "#fafafa",
-              fontSize: "50px",
+              fontSize: "47px",
               fontWeight: 700,
               lineHeight: 1.14,
               letterSpacing: "-0.026em",
               maxWidth: "548px",
             }}
           >
-            We build the infrastructure serious operators run on.
+            Web, systems, and growth built to perform.
           </div>
 
           <div

@@ -3,10 +3,10 @@ import Nav from "@/components/nav";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Inovense | Web Design, AI Automation & Growth Systems",
+    absolute: "Inovense | Web, Systems, and Growth Built to Perform",
   },
   description:
-    "Inovense builds high-performance websites, AI automation workflows, and growth systems for operators and ambitious brands.",
+    "Conversion-focused websites, AI workflows, and growth systems for ambitious companies that compete on execution.",
   alternates: {
     canonical: "https://inovense.com",
     languages: {
@@ -17,9 +17,27 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com",
-    title: "Inovense | Web Design, AI Automation & Growth Systems",
+    title: "Inovense | Web, Systems, and Growth Built to Perform",
     description:
-      "Inovense builds high-performance websites, AI automation workflows, and growth systems for operators and ambitious brands.",
+      "Conversion-focused websites, AI workflows, and growth systems for ambitious companies that compete on execution.",
+    images: [
+      {
+        url: "/opengraph-image",
+        alt: "Inovense | Web, Systems, and Growth Built to Perform",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Inovense | Web, Systems, and Growth Built to Perform",
+    description:
+      "Conversion-focused websites, AI workflows, and growth systems for ambitious companies that compete on execution.",
+    images: [
+      {
+        url: "/opengraph-image",
+        alt: "Inovense | Web, Systems, and Growth Built to Perform",
+      },
+    ],
   },
 };
 import Footer from "@/components/footer";
