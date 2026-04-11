@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { STATUS_CONFIG, LANE_COLORS, LEAD_SOURCE_LABELS } from "@/app/admin/config";
 import LeadsFilter from "./leads-filter";
 import { Suspense } from "react";
+import { derivePaymentState, fmtEur } from "@/lib/payment-utils";
 
 export const metadata: Metadata = { title: "Leads | Inovense CRM" };
 
@@ -40,6 +41,31 @@ export default async function LeadsPage({
 
   const isFiltered = !!(status || lane || source);
 
+  /* ─── Revenue metrics (always computed across all loaded leads) ─────────── */
+  let cashCollected = 0;
+  let completedRevenue = 0;
+  let outstandingBalance = 0;
+  let activeLeadsWithPrice = 0;
+
+  for (const lead of leads) {
+    const ps = derivePaymentState(lead);
+    const total = ps.kind !== "no_price" ? ps.total : 0;
+
+    if (ps.kind === "fully_paid") {
+      cashCollected += total;
+      if (lead.project_status === "completed") completedRevenue += total;
+    } else if (ps.kind === "deposit_paid") {
+      cashCollected += ps.paid;
+      outstandingBalance += ps.remaining;
+      activeLeadsWithPrice++;
+    } else if (ps.kind === "unpaid" && total > 0) {
+      outstandingBalance += total;
+      activeLeadsWithPrice++;
+    }
+  }
+
+  const showMetrics = leads.length > 0 && !error;
+
   return (
     <>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -66,6 +92,30 @@ export default async function LeadsPage({
           </Link>
         </div>
       </div>
+
+      {showMetrics && (
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { label: "Cash collected", value: fmtEur(cashCollected), sub: "Deposits + full payments" },
+            { label: "Completed revenue", value: fmtEur(completedRevenue), sub: "Fully paid + project complete" },
+            { label: "Outstanding", value: fmtEur(outstandingBalance), sub: `Across ${activeLeadsWithPrice} lead${activeLeadsWithPrice !== 1 ? "s" : ""}` },
+            { label: "Total leads", value: String(leads.length), sub: isFiltered ? "Filtered view" : "All time" },
+          ].map((m) => (
+            <div
+              key={m.label}
+              className="rounded-xl border border-zinc-800/80 bg-zinc-900/30 px-4 py-3.5"
+            >
+              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+                {m.label}
+              </p>
+              <p className="mt-1.5 text-lg font-semibold tabular-nums text-zinc-100">
+                {m.value}
+              </p>
+              <p className="mt-0.5 text-[10px] text-zinc-700">{m.sub}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {error && (
         <div className="mb-6 rounded-xl border border-red-500/20 bg-red-500/8 px-4 py-3 text-sm text-red-400">

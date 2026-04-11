@@ -76,6 +76,7 @@ export type Lead = {
   invoice_reference: string | null;
   deposit_amount: number | null;
   deposit_paid_at: string | null;
+  final_payment_paid_at: string | null;
   project_start_date: string | null;
   project_status: ProjectStatus;
   lead_source: string | null;

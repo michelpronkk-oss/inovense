@@ -251,6 +251,24 @@ export async function markDepositPaid(
   }
 }
 
+export async function markFinalPaymentPaid(
+  id: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = createSupabaseServerClient();
+    const { error } = await supabase
+      .from("leads")
+      .update({ final_payment_paid_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) throw error;
+    revalidateLead(id);
+    return { success: true };
+  } catch (err) {
+    console.error("[admin] markFinalPaymentPaid failed:", err);
+    return { success: false, error: "Failed to mark final payment." };
+  }
+}
+
 /* ─── Project status ────────────────────────────────────────────────────── */
 
 const VALID_PROJECT_STATUSES: ProjectStatus[] = [

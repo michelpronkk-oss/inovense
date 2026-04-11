@@ -18,9 +18,8 @@ import {
 import { EmailActionsPanel } from "./email-composer";
 import { ProposalEditor, PaymentEditor, ProjectStatusEditor } from "./commercial-editor";
 import { getFieldsForLane } from "@/app/onboarding/fields";
-import { ResearchAuditCard } from "./research-audit-card";
-import { ProposalAngleCard } from "./proposal-angle-card";
-import { ProposalWriterCard } from "./proposal-writer-card";
+import { IntelligencePanel } from "./intelligence-panel";
+import { RevenueCard } from "./revenue-card";
 import type { LeadResearchOutput } from "@/lib/agents/lead-research/schema";
 import type { ProposalAngleOutput } from "@/lib/agents/proposal-angle/schema";
 import type { ProposalWriterOutput } from "@/lib/agents/proposal-writer/schema";
@@ -301,32 +300,14 @@ export default async function LeadDetailPage({
         {/* Right: actions */}
         <div className="flex flex-col gap-4">
 
-          <Section title="Lead research">
-            <ResearchAuditCard
-              leadId={lead.id}
-              initialAudit={lead.research_audit as LeadResearchOutput | null}
-              auditAt={lead.research_audit_at ?? null}
-            />
-          </Section>
-
-          <Section title="Proposal angle">
-            <ProposalAngleCard
-              leadId={lead.id}
-              hasResearchAudit={lead.research_audit !== null}
-              initialAngle={lead.proposal_angle as ProposalAngleOutput | null}
-              appliedAt={lead.proposal_angle_applied_at ?? null}
-            />
-          </Section>
-
-          <Section title="Proposal writer">
-            <ProposalWriterCard
-              leadId={lead.id}
-              hasResearchAudit={lead.research_audit !== null}
-              hasProposalAngle={lead.proposal_angle !== null}
-              initialWriter={lead.proposal_writer as ProposalWriterOutput | null}
-              appliedAt={lead.proposal_writer_applied_at ?? null}
-            />
-          </Section>
+          <RevenueCard
+            leadId={lead.id}
+            proposalPrice={lead.proposal_price}
+            proposalDeposit={lead.proposal_deposit}
+            depositAmount={lead.deposit_amount}
+            depositPaidAt={lead.deposit_paid_at ?? null}
+            initialFinalPaymentPaidAt={lead.final_payment_paid_at ?? null}
+          />
 
           <Section title="Status">
             <StatusUpdater id={lead.id} currentStatus={lead.status} />
@@ -351,6 +332,15 @@ export default async function LeadDetailPage({
               }
             />
           </Section>
+
+          <IntelligencePanel
+            leadId={lead.id}
+            research={(lead.research_audit as LeadResearchOutput | null) ?? null}
+            angle={(lead.proposal_angle as ProposalAngleOutput | null) ?? null}
+            writer={(lead.proposal_writer as ProposalWriterOutput | null) ?? null}
+            angleAppliedAt={lead.proposal_angle_applied_at ?? null}
+            writerAppliedAt={lead.proposal_writer_applied_at ?? null}
+          />
 
           <Section title="Proposal">
             <ProposalEditor
