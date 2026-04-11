@@ -1,6 +1,6 @@
 export type CurrencySource = "manual" | "inferred" | "legacy_default";
 
-export const DEFAULT_LOCAL_CURRENCY_CODE = "EUR";
+export const DEFAULT_LOCAL_CURRENCY_CODE = "USD";
 export const USD_CURRENCY_CODE = "USD";
 
 function roundMoney(value: number): number {

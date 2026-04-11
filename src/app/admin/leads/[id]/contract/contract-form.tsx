@@ -17,6 +17,7 @@ interface ContractFormProps {
   initialScope: string;
   initialTotalValue: string;
   initialDeposit: string;
+  initialCurrencyCode: string;
 }
 
 /* ─── Contract type cards ───────────────────────────────────────────────── */
@@ -63,6 +64,7 @@ export function ContractForm({
   initialScope,
   initialTotalValue,
   initialDeposit,
+  initialCurrencyCode,
 }: ContractFormProps) {
   const [contractType, setContractType] = useState<ContractType>("project");
   const [engagementTitle, setEngagementTitle] = useState(initialTitle);
@@ -230,7 +232,7 @@ export function ContractForm({
             className={inputCls}
             value={totalValue}
             onChange={(e) => setTotalValue(e.target.value)}
-            placeholder="e.g. EUR 2,500"
+            placeholder={`e.g. ${initialCurrencyCode} 2,500`}
           />
         </div>
         <div>
@@ -239,7 +241,7 @@ export function ContractForm({
             className={inputCls}
             value={depositAmount}
             onChange={(e) => setDepositAmount(e.target.value)}
-            placeholder="e.g. EUR 1,000"
+            placeholder={`e.g. ${initialCurrencyCode} 1,000`}
           />
         </div>
         <div>

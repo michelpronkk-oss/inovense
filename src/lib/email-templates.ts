@@ -207,7 +207,14 @@ export function formatMoneyAmount(
 ): string {
   const hasDecimals = Math.round(value * 100) % 100 !== 0;
   const resolvedCurrencyCode = normalizeCurrencyCode(currencyCode);
-  return new Intl.NumberFormat(locale === "nl" ? "nl-NL" : "en-GB", {
+  const resolvedLocale =
+    locale === "nl"
+      ? "nl-NL"
+      : resolvedCurrencyCode === "USD"
+        ? "en-US"
+        : "en-GB";
+
+  return new Intl.NumberFormat(resolvedLocale, {
     style: "currency",
     currency: resolvedCurrencyCode,
     minimumFractionDigits: hasDecimals ? 2 : 0,
@@ -215,18 +222,11 @@ export function formatMoneyAmount(
   }).format(value);
 }
 
-export function formatEuroAmount(
-  value: number,
-  locale: EmailTemplateLocale = "en"
-): string {
-  return formatMoneyAmount(value, "EUR", locale);
-}
-
 export function applyPaymentAmountToBody(
   body: string,
   amount: number,
   locale: EmailTemplateLocale = "en",
-  currencyCode: string | null | undefined = "EUR"
+  currencyCode?: string | null
 ): string {
   const formatted = formatMoneyAmount(amount, currencyCode, locale);
   const trimmed = body.trim();

@@ -685,7 +685,7 @@ export function PaymentEditor({
               setSaveState("idle");
             }}
             maxLength={3}
-            placeholder="EUR"
+            placeholder={normalizeCurrencyCode(localCurrencyCode)}
             className={inputCls("uppercase")}
           />
         </div>

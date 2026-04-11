@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { formatCurrencyAmount, normalizeCurrencyCode } from "@/lib/currency";
 import { ContractForm } from "./contract-form";
 
 export const dynamic = "force-dynamic";
@@ -57,8 +58,12 @@ export default async function ContractPage({
     : new Date().toISOString().split("T")[0];
   const initialStartDate = rawStartDate;
 
+  const localCurrencyCode = normalizeCurrencyCode(lead.local_currency_code);
+  const amountLocale = localCurrencyCode === "USD" ? "en-US" : "en-GB";
   const formatAmount = (val: number | null) =>
-    val ? `EUR ${val.toLocaleString("en-GB")}` : "";
+    val != null
+      ? formatCurrencyAmount(val, localCurrencyCode, amountLocale)
+      : "";
 
   const initialTotalValue = formatAmount(lead.proposal_price);
   const initialDeposit = formatAmount(
@@ -114,6 +119,7 @@ export default async function ContractPage({
             initialScope={initialScope.slice(0, 1200)}
             initialTotalValue={initialTotalValue}
             initialDeposit={initialDeposit}
+            initialCurrencyCode={localCurrencyCode}
           />
         </div>
 
