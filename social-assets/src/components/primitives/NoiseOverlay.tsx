@@ -29,7 +29,7 @@ interface NoiseOverlayProps {
 }
 
 export function NoiseOverlay({
-  opacity = 0.026,
+  opacity = 0.02,
   mixBlendMode = 'soft-light',
   zIndex = 0,
   backgroundSize = '241px 229px, 157px 149px, 367px 353px',

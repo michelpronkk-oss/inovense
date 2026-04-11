@@ -154,7 +154,7 @@ export const FacebookPageCoverBanner = forwardRef<HTMLDivElement, BannerProps>(
             inset: 0,
             zIndex: 0,
             background:
-              'linear-gradient(116deg, rgba(6,10,11,0.88) 0%, rgba(6,10,11,0.34) 56%, rgba(6,10,11,0.86) 100%)',
+              'linear-gradient(116deg, rgba(10,16,17,0.78) 0%, rgba(10,16,17,0.24) 56%, rgba(10,16,17,0.74) 100%)',
           }}
         />
 
@@ -261,7 +261,7 @@ export const LinkedInCompanyBanner = forwardRef<HTMLDivElement, BannerProps>(
             inset: 0,
             zIndex: 0,
             background:
-              'linear-gradient(108deg, rgba(6,10,11,0.9) 0%, rgba(6,10,11,0.4) 55%, rgba(6,10,11,0.88) 100%)',
+              'linear-gradient(108deg, rgba(10,16,17,0.8) 0%, rgba(10,16,17,0.26) 55%, rgba(10,16,17,0.76) 100%)',
           }}
         />
 

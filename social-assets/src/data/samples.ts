@@ -4,6 +4,11 @@ import type { OfferPostData } from '../components/posts/OfferPost';
 import type { QuotePostData } from '../components/posts/QuotePost';
 import type { CarouselSlideData } from '../components/posts/CarouselSlide';
 import type { BrandBannerData } from '../components/banners/BrandBanners';
+import type {
+  BuildFlowExplainerData,
+  ProcessCarouselSlideData,
+  SystemsExplainerData,
+} from '../components/posts/explainer-types';
 
 // --- AuthorityPost ---
 // Edit: tag, headline, sub, proofPoints (2-4 items)
@@ -88,6 +93,91 @@ export const carouselSlides: CarouselSlideData[] = [
     isLast: true,
   },
 ];
+
+// --- ProcessCarousel ---
+// Edit each slide: slideNumber, totalSlides, tag, title, subtitle, steps (4-5), cta
+export const processCarouselSlidesSample: ProcessCarouselSlideData[] = [
+  {
+    slideNumber: 1,
+    totalSlides: 3,
+    tag: 'Website Process',
+    title: 'From strategy to launch,\nwithout chaos.',
+    subtitle: 'A clean five-step execution flow for premium website delivery.',
+    steps: [
+      { icon: 'strategy', title: 'Strategy', detail: 'Positioning and offer clarity' },
+      { icon: 'structure', title: 'Structure', detail: 'Information architecture and flow' },
+      { icon: 'design', title: 'Design', detail: 'Interface system and visual direction' },
+      { icon: 'build', title: 'Build', detail: 'Production implementation and QA' },
+      { icon: 'launch', title: 'Launch', detail: 'Go-live, tracking, and handoff' },
+    ],
+    cta: 'Start a project',
+  },
+  {
+    slideNumber: 2,
+    totalSlides: 3,
+    tag: 'Systems Automation',
+    title: 'Automation should\nreduce decisions,\nnot add tools.',
+    subtitle: 'A practical systems flow for internal commercial operations.',
+    steps: [
+      { icon: 'capture', title: 'Capture', detail: 'Intake and lead signal collection' },
+      { icon: 'route', title: 'Route', detail: 'Owner assignment and lane logic' },
+      { icon: 'automate', title: 'Automate', detail: 'Trigger-based operational actions' },
+      { icon: 'notify', title: 'Notify', detail: 'Critical visibility at decision points' },
+      { icon: 'review', title: 'Review', detail: 'Weekly optimization loop' },
+    ],
+    cta: 'Build your system',
+  },
+  {
+    slideNumber: 3,
+    totalSlides: 3,
+    tag: 'Growth System',
+    title: 'Traffic only matters\nwhen the system\nconverts.',
+    subtitle: 'A growth loop that connects acquisition to CRM follow-through.',
+    steps: [
+      { icon: 'traffic', title: 'Traffic', detail: 'Qualified acquisition inputs' },
+      { icon: 'landing', title: 'Landing', detail: 'Clear conversion architecture' },
+      { icon: 'crm', title: 'CRM', detail: 'Pipeline and lifecycle mapping' },
+      { icon: 'follow_up', title: 'Follow-up', detail: 'Automated but contextual outreach' },
+      { icon: 'report', title: 'Report', detail: 'Operator-grade performance review' },
+    ],
+    cta: 'inovense.com',
+    isLast: true,
+  },
+];
+
+// --- SystemsExplainer ---
+// Edit: tag, title, subtitle, steps (4-5), cta
+export const systemsExplainerSample: SystemsExplainerData = {
+  tag: 'Systems Explainer',
+  title: 'How the\nsystems layer\nactually works.',
+  subtitle:
+    'We connect capture, routing, automation, and reporting into one coherent operating rhythm.',
+  steps: [
+    { icon: 'capture', title: 'Capture', detail: 'Forms, channels, and inbound events' },
+    { icon: 'route', title: 'Route', detail: 'Lead ownership and priority logic' },
+    { icon: 'automate', title: 'Automate', detail: 'Status, reminders, and handoff triggers' },
+    { icon: 'notify', title: 'Notify', detail: 'Real-time visibility for key actions' },
+    { icon: 'review', title: 'Review', detail: 'Weekly KPI loop and workflow tuning' },
+  ],
+  cta: 'Discuss your systems',
+};
+
+// --- BuildFlowExplainer ---
+// Edit: tag, title, subtitle, steps (4-5), cta
+export const buildFlowExplainerSample: BuildFlowExplainerData = {
+  tag: 'Build Explainer',
+  title: 'The website build\nflow we run\nin production.',
+  subtitle:
+    'A structured build process that keeps strategy, design, and engineering aligned from kickoff to launch.',
+  steps: [
+    { icon: 'strategy', title: 'Strategy', detail: 'Goals, audience, and conversion intent' },
+    { icon: 'structure', title: 'Structure', detail: 'Page system and information layout' },
+    { icon: 'design', title: 'Design', detail: 'Interface direction and brand consistency' },
+    { icon: 'build', title: 'Build', detail: 'Implementation, integrations, and QA' },
+    { icon: 'launch', title: 'Launch', detail: 'Deployment, analytics, and handoff' },
+  ],
+  cta: 'Start a build project',
+};
 
 // Active slide index (0-based) - change this to preview different slides
 export const activeSlideIndex = 0;

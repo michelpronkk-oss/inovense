@@ -168,9 +168,14 @@ export const ServicePost = forwardRef<HTMLDivElement, ServicePostProps>(
                 style={{
                   fontFamily: brand.sans,
                   fontSize: 13,
-                  fontWeight: 500,
-                  color: brand.teal,
+                  fontWeight: 600,
+                  color: brand.white,
                   letterSpacing: '-0.01em',
+                  padding: '6px 12px',
+                  borderRadius: 999,
+                  border: `1px solid ${brand.tealBorder}`,
+                  background: brand.tealFaint,
+                  boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.03)',
                 }}
               >
                 {data.cta} {'->'}

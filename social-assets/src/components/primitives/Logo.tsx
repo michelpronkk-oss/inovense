@@ -23,7 +23,7 @@ export function Logo({ size = 'md', showHandle = false }: LogoProps) {
           height: s.logoHeight,
           width: 'auto',
           objectFit: 'contain',
-          filter: 'drop-shadow(0 0 10px rgba(73, 160, 164, 0.14))',
+          filter: 'brightness(1.04) saturate(1.02) drop-shadow(0 0 12px rgba(73, 160, 164, 0.2))',
         }}
       />
       {showHandle && (

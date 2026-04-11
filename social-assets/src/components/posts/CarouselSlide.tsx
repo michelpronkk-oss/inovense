@@ -157,8 +157,8 @@ export const CarouselSlide = forwardRef<HTMLDivElement, CarouselSlideProps>(
                   style={{
                     fontFamily: brand.sans,
                     fontSize: 13,
-                    fontWeight: 400,
-                    color: brand.secondary,
+                    fontWeight: 500,
+                    color: brand.white,
                   }}
                 >
                   Next

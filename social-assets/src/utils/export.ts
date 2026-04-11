@@ -38,7 +38,7 @@ export async function exportPost(
         cacheBust: true,
         skipFonts: false,
         skipAutoScale: true,
-        backgroundColor: '#080A0B',
+        backgroundColor: '#0A1113',
       });
       break;
     } catch (error) {

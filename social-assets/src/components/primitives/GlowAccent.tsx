@@ -17,15 +17,16 @@ export function GlowAccent({
   color = '73,160,164',
   blendMode = 'screen',
 }: GlowAccentProps) {
-  const baseOpacity = Math.max(0, Math.min(opacity, 0.24));
-  const coreOpacity = (baseOpacity * 0.74).toFixed(4);
-  const midOpacity = (baseOpacity * 0.49).toFixed(4);
-  const edgeOpacity = (baseOpacity * 0.27).toFixed(4);
-  const tailOpacity = (baseOpacity * 0.14).toFixed(4);
-  const sheenOpacity = (baseOpacity * 0.17).toFixed(4);
-  const depthOpacity = (baseOpacity * 0.12).toFixed(4);
-  const hazeOpacity = (baseOpacity * 0.08).toFixed(4);
-  const veilOpacity = (baseOpacity * 0.06).toFixed(4);
+  const liftedOpacity = opacity * 1.14;
+  const baseOpacity = Math.max(0, Math.min(liftedOpacity, 0.28));
+  const coreOpacity = (baseOpacity * 0.78).toFixed(4);
+  const midOpacity = (baseOpacity * 0.53).toFixed(4);
+  const edgeOpacity = (baseOpacity * 0.3).toFixed(4);
+  const tailOpacity = (baseOpacity * 0.16).toFixed(4);
+  const sheenOpacity = (baseOpacity * 0.19).toFixed(4);
+  const depthOpacity = (baseOpacity * 0.14).toFixed(4);
+  const hazeOpacity = (baseOpacity * 0.1).toFixed(4);
+  const veilOpacity = (baseOpacity * 0.075).toFixed(4);
 
   return (
     <div
@@ -46,7 +47,7 @@ export function GlowAccent({
         ].join(', '),
         pointerEvents: 'none',
         mixBlendMode: blendMode,
-        filter: 'blur(0.24px)',
+        filter: 'blur(0.16px)',
         zIndex: 0,
       }}
     />

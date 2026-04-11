@@ -5,10 +5,18 @@ import {
   type BrandBannerData,
 } from './components/banners/BrandBanners';
 import { AuthorityPost, type AuthorityPostData } from './components/posts/AuthorityPost';
+import { BuildFlowExplainer } from './components/posts/BuildFlowExplainer';
 import { CarouselSlide, type CarouselSlideData } from './components/posts/CarouselSlide';
 import { OfferPost, type OfferPostData } from './components/posts/OfferPost';
+import { ProcessCarousel } from './components/posts/ProcessCarousel';
 import { QuotePost, type QuotePostData } from './components/posts/QuotePost';
 import { ServicePost, type ServicePostData } from './components/posts/ServicePost';
+import { SystemsExplainer } from './components/posts/SystemsExplainer';
+import type {
+  BuildFlowExplainerData,
+  ProcessCarouselSlideData,
+  SystemsExplainerData,
+} from './components/posts/explainer-types';
 import {
   SAVED_POSTS,
   SOCIAL_PLATFORMS,
@@ -19,13 +27,16 @@ import {
 } from './data/content-library';
 import {
   activeSlideIndex,
+  buildFlowExplainerSample,
   authorityPostSample,
   carouselSlides,
   facebookCoverBannerSample,
   linkedInCompanyBannerSample,
   offerPostSample,
+  processCarouselSlidesSample,
   quotePostSample,
   servicePostSample,
+  systemsExplainerSample,
 } from './data/samples';
 import { exportPost } from './utils/export';
 import { FORMATS, FORMAT_LIST, type FormatKey } from './utils/formats';
@@ -73,6 +84,21 @@ const templateOptions: Array<{ key: TemplateKey; label: string; description: str
     description: 'Step-based educational carousel with sequence progress.',
   },
   {
+    key: 'process_carousel',
+    label: 'Process Carousel',
+    description: 'Icon-led process carousel for service and workflow explainers.',
+  },
+  {
+    key: 'systems_explainer',
+    label: 'Systems Explainer',
+    description: 'Single-slide systems logic explainer with icon-led process blocks.',
+  },
+  {
+    key: 'build_flow_explainer',
+    label: 'Build Flow Explainer',
+    description: 'Icon-led build process template for website and delivery flows.',
+  },
+  {
     key: 'facebook_banner',
     label: 'Facebook Cover Banner',
     description: 'Safe-area-aware Facebook page cover asset.',
@@ -90,6 +116,9 @@ const defaultJsonByTemplate: Record<TemplateKey, string> = {
   offer: JSON.stringify(offerPostSample, null, 2),
   quote: JSON.stringify(quotePostSample, null, 2),
   carousel: JSON.stringify(carouselSlides, null, 2),
+  process_carousel: JSON.stringify(processCarouselSlidesSample, null, 2),
+  systems_explainer: JSON.stringify(systemsExplainerSample, null, 2),
+  build_flow_explainer: JSON.stringify(buildFlowExplainerSample, null, 2),
   facebook_banner: JSON.stringify(facebookCoverBannerSample, null, 2),
   linkedin_banner: JSON.stringify(linkedInCompanyBannerSample, null, 2),
 };
@@ -100,6 +129,9 @@ const TEMPLATE_ALLOWED_FORMATS: Record<TemplateKey, FormatKey[]> = {
   offer: ['portrait', 'square', 'story'],
   quote: ['portrait', 'square', 'story'],
   carousel: ['portrait', 'square', 'story'],
+  process_carousel: ['portrait', 'square', 'story'],
+  systems_explainer: ['portrait', 'square', 'story'],
+  build_flow_explainer: ['portrait', 'square', 'story'],
   facebook_banner: ['facebook_cover'],
   linkedin_banner: ['linkedin_banner'],
 };
@@ -141,13 +173,17 @@ const parseObjectData = <T extends object>(raw: string, fallback: T): ParseResul
   }
 };
 
-const parseArrayData = <T,>(raw: string, fallback: T[]): ParseResult<T[]> => {
+const parseArrayData = <T,>(
+  raw: string,
+  fallback: T[],
+  templateLabel = 'Carousel'
+): ParseResult<T[]> => {
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) {
       return {
         data: fallback,
-        error: 'Carousel JSON must be an array of slides.',
+        error: `${templateLabel} JSON must be an array.`,
       };
     }
 
@@ -264,8 +300,33 @@ function App() {
     [jsonByTemplate.quote]
   );
   const carouselParsed = useMemo(
-    () => parseArrayData<CarouselSlideData>(jsonByTemplate.carousel, carouselSlides),
+    () => parseArrayData<CarouselSlideData>(jsonByTemplate.carousel, carouselSlides, 'Carousel'),
     [jsonByTemplate.carousel]
+  );
+  const processCarouselParsed = useMemo(
+    () =>
+      parseArrayData<ProcessCarouselSlideData>(
+        jsonByTemplate.process_carousel,
+        processCarouselSlidesSample,
+        'Process carousel'
+      ),
+    [jsonByTemplate.process_carousel]
+  );
+  const systemsExplainerParsed = useMemo(
+    () =>
+      parseObjectData<SystemsExplainerData>(
+        jsonByTemplate.systems_explainer,
+        systemsExplainerSample
+      ),
+    [jsonByTemplate.systems_explainer]
+  );
+  const buildFlowExplainerParsed = useMemo(
+    () =>
+      parseObjectData<BuildFlowExplainerData>(
+        jsonByTemplate.build_flow_explainer,
+        buildFlowExplainerSample
+      ),
+    [jsonByTemplate.build_flow_explainer]
   );
   const facebookBannerParsed = useMemo(
     () =>
@@ -284,16 +345,25 @@ function App() {
     [jsonByTemplate.linkedin_banner]
   );
 
-  const carouselMaxIndex = Math.max(0, carouselParsed.data.length - 1);
-  const clampedCarouselIndex = Math.min(carouselIndex, carouselMaxIndex);
+  const sequenceMaxIndex =
+    templateKey === 'process_carousel'
+      ? Math.max(0, processCarouselParsed.data.length - 1)
+      : Math.max(0, carouselParsed.data.length - 1);
+  const clampedCarouselIndex = Math.min(carouselIndex, sequenceMaxIndex);
   const activeCarouselSlide =
     carouselParsed.data[clampedCarouselIndex] ?? carouselSlides[Math.min(activeSlideIndex, carouselSlides.length - 1)];
+  const activeProcessCarouselSlide =
+    processCarouselParsed.data[clampedCarouselIndex] ??
+    processCarouselSlidesSample[Math.min(activeSlideIndex, processCarouselSlidesSample.length - 1)];
 
   useEffect(() => {
-    if (templateKey === 'carousel' && carouselIndex > carouselMaxIndex) {
-      setCarouselIndex(carouselMaxIndex);
+    if (
+      (templateKey === 'carousel' || templateKey === 'process_carousel') &&
+      carouselIndex > sequenceMaxIndex
+    ) {
+      setCarouselIndex(sequenceMaxIndex);
     }
-  }, [templateKey, carouselIndex, carouselMaxIndex]);
+  }, [templateKey, carouselIndex, sequenceMaxIndex]);
 
   useEffect(() => {
     if (!allowedFormatsForTemplate.includes(formatKey)) {
@@ -370,6 +440,12 @@ function App() {
         return quoteParsed.error;
       case 'carousel':
         return carouselParsed.error;
+      case 'process_carousel':
+        return processCarouselParsed.error;
+      case 'systems_explainer':
+        return systemsExplainerParsed.error;
+      case 'build_flow_explainer':
+        return buildFlowExplainerParsed.error;
       case 'facebook_banner':
         return facebookBannerParsed.error;
       case 'linkedin_banner':
@@ -397,7 +473,7 @@ function App() {
       [templateKey]: defaultJsonByTemplate[templateKey],
     }));
     setActiveSavedPostId(null);
-    if (templateKey === 'carousel') {
+    if (templateKey === 'carousel' || templateKey === 'process_carousel') {
       setCarouselIndex(activeSlideIndex);
     }
   };
@@ -410,7 +486,7 @@ function App() {
     setTemplateKey(post.template);
     setFormatKey(post.recommendedFormat);
     setActiveSavedPostId(post.id);
-    if (post.template === 'carousel') {
+    if (post.template === 'carousel' || post.template === 'process_carousel') {
       setCarouselIndex(post.slideIndex ?? 0);
     }
   };
@@ -691,7 +767,7 @@ function App() {
           </div>
         ) : null}
 
-        {templateKey === 'carousel' ? (
+        {templateKey === 'carousel' || templateKey === 'process_carousel' ? (
           <div className="control-group">
             <label htmlFor="carousel-index">Slide</label>
             <div className="range-row">
@@ -699,12 +775,12 @@ function App() {
                 id="carousel-index"
                 type="range"
                 min={0}
-                max={carouselMaxIndex}
+                max={sequenceMaxIndex}
                 value={clampedCarouselIndex}
                 onChange={(event) => setCarouselIndex(Number(event.target.value))}
               />
               <span>
-                {clampedCarouselIndex + 1} / {carouselMaxIndex + 1}
+                {clampedCarouselIndex + 1} / {sequenceMaxIndex + 1}
               </span>
             </div>
           </div>
@@ -765,6 +841,23 @@ function App() {
             ) : null}
             {templateKey === 'carousel' ? (
               <CarouselSlide ref={canvasRef} data={activeCarouselSlide} format={currentFormat} />
+            ) : null}
+            {templateKey === 'process_carousel' ? (
+              <ProcessCarousel ref={canvasRef} data={activeProcessCarouselSlide} format={currentFormat} />
+            ) : null}
+            {templateKey === 'systems_explainer' ? (
+              <SystemsExplainer
+                ref={canvasRef}
+                data={systemsExplainerParsed.data}
+                format={currentFormat}
+              />
+            ) : null}
+            {templateKey === 'build_flow_explainer' ? (
+              <BuildFlowExplainer
+                ref={canvasRef}
+                data={buildFlowExplainerParsed.data}
+                format={currentFormat}
+              />
             ) : null}
             {templateKey === 'facebook_banner' ? (
               <FacebookPageCoverBanner
