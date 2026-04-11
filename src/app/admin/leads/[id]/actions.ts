@@ -3,6 +3,7 @@
 import { createSupabaseServerClient, type LeadStatus, type ProjectStatus } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { sendDepositPaidConfirmationEmail } from "./email-actions";
 
 const VALID_STATUSES: LeadStatus[] = [
   "new",
@@ -232,19 +233,75 @@ export async function updatePaymentFields(
 
 export async function markDepositPaid(
   id: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{
+  success: boolean;
+  alreadyPaid?: boolean;
+  paidAt?: string;
+  emailWarning?: string;
+  error?: string;
+}> {
   try {
     const supabase = createSupabaseServerClient();
-    const { error } = await supabase
+    const paidAt = new Date().toISOString();
+    const { data: updatedLead, error: updateError } = await supabase
       .from("leads")
       .update({
-        deposit_paid_at: new Date().toISOString(),
+        deposit_paid_at: paidAt,
         status: "deposit_paid",
       })
-      .eq("id", id);
-    if (error) throw error;
+      .eq("id", id)
+      .is("deposit_paid_at", null)
+      .select("id, deposit_paid_at")
+      .maybeSingle();
+
+    if (updateError) throw updateError;
+
+    // No row updated means already marked or missing lead.
+    if (!updatedLead) {
+      const { data: existingLead, error: existingLeadError } = await supabase
+        .from("leads")
+        .select("id, deposit_paid_at")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (existingLeadError || !existingLead) {
+        return { success: false, error: "Failed to mark deposit as paid." };
+      }
+
+      if (existingLead.deposit_paid_at) {
+        revalidateLead(id);
+        return {
+          success: true,
+          alreadyPaid: true,
+          paidAt: existingLead.deposit_paid_at ?? undefined,
+        };
+      }
+
+      return { success: false, error: "Failed to mark deposit as paid." };
+    }
+
+    const emailResult = await sendDepositPaidConfirmationEmail(id);
     revalidateLead(id);
-    return { success: true };
+
+    if (!emailResult.success) {
+      return {
+        success: true,
+        paidAt: updatedLead.deposit_paid_at ?? undefined,
+        emailWarning:
+          emailResult.error ??
+          "Deposit marked as paid, but confirmation email could not be sent.",
+      };
+    }
+
+    if (emailResult.warning) {
+      return {
+        success: true,
+        paidAt: updatedLead.deposit_paid_at ?? undefined,
+        emailWarning: emailResult.warning,
+      };
+    }
+
+    return { success: true, paidAt: updatedLead.deposit_paid_at ?? undefined };
   } catch (err) {
     console.error("[admin] markDepositPaid failed:", err);
     return { success: false, error: "Failed to mark deposit as paid." };

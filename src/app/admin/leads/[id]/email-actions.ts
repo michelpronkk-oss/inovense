@@ -6,10 +6,143 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import {
   applyPaymentAmountToBody,
   buildEmailHtml,
+  getDepositPaidConfirmationTemplateForLeadSource,
   getEmailTemplateLocaleForLeadSource,
   getEmailTemplatesForLeadSource,
   type EmailTemplateType,
 } from "@/lib/email-templates";
+
+const DEPOSIT_PAID_CONFIRMATION_EMAIL_TYPE = "deposit_paid_confirmation";
+
+export async function sendDepositPaidConfirmationEmail(
+  leadId: string
+): Promise<{
+  success: boolean;
+  alreadySent?: boolean;
+  warning?: string;
+  error?: string;
+}> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    return { success: false, error: "Email service is not configured." };
+  }
+
+  try {
+    const supabase = createSupabaseServerClient();
+
+    const { data: lead, error: fetchError } = await supabase
+      .from("leads")
+      .select("id, full_name, company_name, work_email, lead_source")
+      .eq("id", leadId)
+      .single();
+
+    if (fetchError || !lead) {
+      return { success: false, error: "Lead not found." };
+    }
+
+    const { data: existingLog, error: existingLogError } = await supabase
+      .from("lead_email_log")
+      .select("id")
+      .eq("lead_id", leadId)
+      .eq("email_type", DEPOSIT_PAID_CONFIRMATION_EMAIL_TYPE)
+      .limit(1);
+
+    if (existingLogError) {
+      console.error(
+        "[crm-email] Failed to verify deposit confirmation history:",
+        existingLogError.message
+      );
+    }
+
+    if ((existingLog ?? []).length > 0) {
+      return { success: true, alreadySent: true };
+    }
+
+    const firstName = lead.full_name.split(" ")[0];
+    const locale = getEmailTemplateLocaleForLeadSource(lead.lead_source);
+    const template = getDepositPaidConfirmationTemplateForLeadSource(
+      lead.lead_source
+    );
+    const subject = template.subject(lead.company_name);
+    const body = template.body(lead.company_name);
+
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://inovense.com";
+
+    const html = buildEmailHtml({
+      eyebrow: template.eyebrow,
+      heading: template.heading(firstName),
+      body,
+      baseUrl,
+      lang: locale,
+    });
+
+    const plainText = [
+      template.eyebrow.toUpperCase(),
+      "",
+      template.heading(firstName),
+      "",
+      body,
+      "",
+      "Inovense",
+      "hello@inovense.com",
+    ]
+      .join("\n")
+      .trim();
+
+    const resend = new Resend(apiKey);
+    const from =
+      process.env.RESEND_FROM_EMAIL ?? "Inovense <onboarding@resend.dev>";
+    const replyTo = process.env.INTAKE_TO_EMAIL ?? "hello@inovense.com";
+
+    const { error: sendError } = await resend.emails.send({
+      from,
+      to: lead.work_email,
+      replyTo,
+      subject,
+      html,
+      text: plainText,
+    });
+
+    if (sendError) {
+      console.error("[crm-email] Resend error:", sendError);
+      return {
+        success: false,
+        error: "Email delivery failed. Please try again.",
+      };
+    }
+
+    const { error: logError } = await supabase.from("lead_email_log").insert({
+      lead_id: leadId,
+      email_type: DEPOSIT_PAID_CONFIRMATION_EMAIL_TYPE,
+      subject,
+      sent_to: lead.work_email,
+    });
+
+    if (logError) {
+      console.error("[crm-email] Failed to write email log:", logError.message);
+      return {
+        success: true,
+        warning: "Email sent, but logging failed.",
+      };
+    }
+
+    revalidatePath(`/admin/leads/${leadId}`);
+    revalidatePath("/admin/leads");
+    revalidatePath("/admin");
+
+    console.log(
+      `[crm-email] Sent ${DEPOSIT_PAID_CONFIRMATION_EMAIL_TYPE} to ${lead.work_email} for lead ${leadId}`
+    );
+
+    return { success: true };
+  } catch (err) {
+    console.error("[crm-email] sendDepositPaidConfirmationEmail failed:", err);
+    return {
+      success: false,
+      error: "Something went wrong. Please try again.",
+    };
+  }
+}
 
 export async function sendLeadEmail(
   leadId: string,

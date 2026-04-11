@@ -104,6 +104,7 @@ export const EMAIL_TYPE_LABELS: Record<string, string> = {
   fit_followup: "Fit follow-up",
   proposal_sent: "Proposal ready",
   payment_request: "Payment request",
+  deposit_paid_confirmation: "Deposit confirmation",
   onboarding_sent: "Onboarding link",
   decline: "Decline",
 };

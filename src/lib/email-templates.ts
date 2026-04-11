@@ -26,6 +26,29 @@ export type EmailTemplateDef = {
   ctaText?: string;
 };
 
+export type DepositPaidConfirmationTemplate = {
+  eyebrow: string;
+  heading: (firstName: string) => string;
+  subject: (company: string) => string;
+  body: (company: string) => string;
+};
+
+const DEPOSIT_PAID_CONFIRMATION_TEMPLATE_EN: DepositPaidConfirmationTemplate = {
+  eyebrow: "Payment confirmed",
+  heading: (firstName) => `Deposit received, ${firstName}.`,
+  subject: (company) => `Deposit confirmed for ${company}`,
+  body: (company) =>
+    `We've received the deposit for ${company}, and your project slot is now secured.\n\nWe'll move into onboarding and kickoff preparation next. If there is anything you want us to factor in before kickoff, just reply to this email.`,
+};
+
+const DEPOSIT_PAID_CONFIRMATION_TEMPLATE_NL: DepositPaidConfirmationTemplate = {
+  eyebrow: "Betaling bevestigd",
+  heading: (firstName) => `Aanbetaling ontvangen, ${firstName}.`,
+  subject: (company) => `Aanbetaling bevestigd voor ${company}`,
+  body: (company) =>
+    `We hebben de aanbetaling voor ${company} ontvangen en je projectslot is nu bevestigd.\n\nHierna gaan we door naar onboarding en kickoffvoorbereiding. Als je vooraf nog context wilt delen, kun je gewoon op deze e-mail reageren.`,
+};
+
 const EMAIL_TEMPLATES_EN: Record<EmailTemplateType, EmailTemplateDef> = {
   fit_followup: {
     type: "fit_followup",
@@ -166,6 +189,14 @@ export function getEmailTemplateListForLeadSource(
   leadSource: string | null | undefined
 ): EmailTemplateDef[] {
   return Object.values(getEmailTemplatesForLeadSource(leadSource));
+}
+
+export function getDepositPaidConfirmationTemplateForLeadSource(
+  leadSource: string | null | undefined
+): DepositPaidConfirmationTemplate {
+  return isDutchLeadSource(leadSource)
+    ? DEPOSIT_PAID_CONFIRMATION_TEMPLATE_NL
+    : DEPOSIT_PAID_CONFIRMATION_TEMPLATE_EN;
 }
 
 export function formatEuroAmount(

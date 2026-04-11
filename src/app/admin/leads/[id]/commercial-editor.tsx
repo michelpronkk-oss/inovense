@@ -464,6 +464,7 @@ export function PaymentEditor({
     "idle" | "error"
   >("idle");
   const [markPaidError, setMarkPaidError] = useState<string | null>(null);
+  const [markPaidWarning, setMarkPaidWarning] = useState<string | null>(null);
   // Track deposit paid locally so the UI updates immediately after the action
   const [paidAt, setPaidAt] = useState<string | null>(depositPaidAt);
   const overrideAmount = parseDraftAmount(amount);
@@ -487,10 +488,12 @@ export function PaymentEditor({
   function handleMarkPaid() {
     setMarkPaidState("idle");
     setMarkPaidError(null);
+    setMarkPaidWarning(null);
     startMarkPaidTransition(async () => {
       const result = await markDepositPaid(id);
       if (result.success) {
-        setPaidAt(new Date().toISOString());
+        setPaidAt(result.paidAt ?? new Date().toISOString());
+        setMarkPaidWarning(result.emailWarning ?? null);
       } else {
         setMarkPaidState("error");
         setMarkPaidError(result.error ?? "Failed.");
@@ -633,13 +636,18 @@ export function PaymentEditor({
       {/* Deposit paid */}
       <div className="border-t border-zinc-800/60 pt-4">
         {paidAt ? (
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-400">
-              Deposit paid
-            </span>
-            <span className="text-[11px] text-zinc-600">
-              {fmtDate(paidAt)}
-            </span>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-400">
+                Deposit paid
+              </span>
+              <span className="text-[11px] text-zinc-600">
+                {fmtDate(paidAt)}
+              </span>
+            </div>
+            {markPaidWarning && (
+              <p className="text-xs text-amber-400">{markPaidWarning}</p>
+            )}
           </div>
         ) : (
           <div className="space-y-2">
