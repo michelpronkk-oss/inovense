@@ -27,9 +27,11 @@ const LEAD_FLOW_STEPS = [
   { step: "Proposal sent", status: "proposal_sent", trigger: "Proposal email sent from CRM" },
   { step: "Decision captured", status: "payment_requested or lost", trigger: "Accept/decline recorded on proposal flow" },
   { step: "Deposit confirmed", status: "deposit_paid", trigger: "Mark deposit as paid action in CRM" },
+  { step: "Final payment confirmed", status: "final_payment_paid_at set", trigger: "Mark final payment action in CRM" },
   { step: "Onboarding sent", status: "onboarding_sent", trigger: "Onboarding email/link sent" },
   { step: "Onboarding submitted", status: "onboarding_completed", trigger: "Client submits onboarding form" },
   { step: "Delivery in progress", status: "active", trigger: "Operator moves to active once delivery starts" },
+  { step: "Delivery complete", status: "project_status = completed", trigger: "Operator marks Completed after handoff is done" },
   { step: "Engagement closed", status: "won or lost", trigger: "Operator closes lifecycle state" },
 ];
 
@@ -39,6 +41,140 @@ const PROJECT_STATUS_REFERENCE = [
   { value: "Active", meaning: "Delivery is currently in progress." },
   { value: "Paused", meaning: "Delivery is intentionally paused." },
   { value: "Completed", meaning: "Delivery and handoff are actually complete." },
+];
+
+const CONTROL_MODEL = [
+  {
+    title: "Manual By Design",
+    body: "Lead status decisions, project status transitions, and final delivery completion stay operator-owned.",
+  },
+  {
+    title: "Automated Events",
+    body: "Proposal acceptance, onboarding submit, and first successful payment transitions trigger bounded automations.",
+  },
+  {
+    title: "Strict Separation",
+    body: "Payment state tracks money. project_status tracks delivery. Never use one as a proxy for the other.",
+  },
+];
+
+const MANUAL_AUTOMATION_REFERENCE = [
+  {
+    area: "Lead lifecycle status",
+    automation: "Mixed",
+    manual: "Most status movement is operator-controlled.",
+    auto: "Proposal accept and onboarding submit can move lifecycle states.",
+  },
+  {
+    area: "Project status",
+    automation: "Manual",
+    manual: "Operator sets Not started, Ready, Active, Paused, Completed.",
+    auto: "No payment event should set project_status automatically.",
+  },
+  {
+    area: "Payment events",
+    automation: "Mixed",
+    manual: "Operator confirms cleared deposit/final payment.",
+    auto: "First successful mark can trigger payment confirmation email once.",
+  },
+  {
+    area: "Client emails",
+    automation: "Mixed",
+    manual: "Operator reviews and sends proposal/payment/onboarding emails.",
+    auto: "Deposit and final payment confirmations auto-send on first valid transition.",
+  },
+];
+
+const ACTION_EVENT_MATRIX = [
+  {
+    action: "Send proposal email",
+    trigger: "Operator sends Proposal ready email",
+    state: "proposal_sent + proposal_sent_at",
+    email: "proposal_sent",
+    next: "Wait for client decision, then capture accept/decline truth.",
+  },
+  {
+    action: "Proposal accepted",
+    trigger: "Client accepts proposal page",
+    state: "Can move lead status to payment_requested",
+    email: "No auto email by default",
+    next: "Send payment request with correct deposit and payment link.",
+  },
+  {
+    action: "Send payment request",
+    trigger: "Operator sends Payment request email",
+    state: "payment_requested status on send",
+    email: "payment_request",
+    next: "Wait for cleared funds, then mark deposit paid.",
+  },
+  {
+    action: "Mark deposit as paid",
+    trigger: "Operator confirms cleared deposit and clicks action",
+    state: "deposit_paid_at set (first transition only)",
+    email: "deposit_paid_confirmation auto on first transition",
+    next: "Proceed with onboarding and kickoff prep.",
+  },
+  {
+    action: "Mark final payment as paid",
+    trigger: "Operator confirms remaining balance received",
+    state: "final_payment_paid_at set (first transition only)",
+    email: "final_payment_received_confirmation auto on first transition",
+    next: "Keep project_status unchanged until delivery is complete.",
+  },
+  {
+    action: "Send onboarding",
+    trigger: "Operator sends onboarding email/link",
+    state: "onboarding_sent + onboarding_status sent",
+    email: "onboarding_sent",
+    next: "Wait for onboarding submit and review data before activation.",
+  },
+  {
+    action: "Onboarding submitted",
+    trigger: "Client submits onboarding form",
+    state: "onboarding_completed + onboarding_status completed",
+    email: "No auto email",
+    next: "Set project_status and lifecycle to active only when work starts.",
+  },
+  {
+    action: "Mark project Completed",
+    trigger: "Operator confirms delivery and handoff done",
+    state: "project_status completed",
+    email: "None by default",
+    next: "Close lifecycle state when commercially appropriate.",
+  },
+];
+
+const SCENARIO_PLAYBOOKS = [
+  {
+    title: "Proposal accepted, no payment yet",
+    meaning: "Commercial intent exists, but no cleared funds.",
+    next: "Keep project_status unchanged. Send or follow up payment request.",
+  },
+  {
+    title: "Deposit paid, project not started",
+    meaning: "Client commitment is secured; delivery may still be pending.",
+    next: "Run onboarding and kickoff prep. Move to Active only when work begins.",
+  },
+  {
+    title: "Final payment received, project not completed",
+    meaning: "Payment side is settled; delivery truth is separate.",
+    next: "Do not set Completed yet. Update project_status only after handoff.",
+  },
+  {
+    title: "Dutch lead vs global lead",
+    meaning: "Locale, templates, and client currency follow lead context.",
+    next: "Validate lead_source and local_currency_code before sending client comms.",
+  },
+  {
+    title: "FX missing for internal USD comparison",
+    meaning: "Local amounts are still valid; USD comparison cannot be locked yet.",
+    next: "Show local truth and add/update usd_fx_rate_locked when available.",
+  },
+  {
+    title: "Proposal Writer output vs client proposal",
+    meaning: "Agent output is draft input, not auto-approved client text.",
+    next: "Review, apply intentionally, and verify commercial values before send.",
+  },
 ];
 
 const SECTIONS: HandbookSection[] = [
@@ -95,6 +231,7 @@ const SECTIONS: HandbookSection[] = [
         items: [
           "Dutch locale resolves for lead_source values like nl_web, nl_*, nl, or values containing dutch/nederland.",
           "All other lead sources default to English locale behavior.",
+          "Client currency defaults follow market inference: NL => EUR, UK => GBP, otherwise USD unless explicitly set.",
           "Manual leads must have lead_source set correctly to avoid wrong-language output.",
         ],
       },
@@ -204,29 +341,30 @@ const SECTIONS: HandbookSection[] = [
   },
   {
     id: "payment-and-confirmation",
-    title: "Payment Flow And Deposit Confirmation",
+    title: "Payment Events And Confirmation Emails",
     tag: "Commercial",
     automation: "Mixed",
     summary:
-      "Mark deposit as paid is a business event. First transition records payment state and triggers one premium confirmation email.",
+      "Deposit received and final payment received are separate business events with separate email semantics.",
     blocks: [
       {
         title: "Current behavior",
         tone: "reference",
         items: [
-          "Mark deposit as paid sets deposit_paid_at and lead status deposit_paid.",
-          "Server-side idempotency only allows first-time transition when deposit_paid_at was null.",
-          "On first successful transition, CRM sends a branded deposit confirmation email automatically.",
+          "Mark deposit as paid sets deposit_paid_at, snapshots deposit amount when needed, and sets lead status to deposit_paid.",
+          "Mark final payment as paid sets final_payment_paid_at only; it does not auto-change project_status.",
+          "Server-side idempotency only allows first-time transitions when paid-at fields are null.",
+          "On first successful transition, CRM sends a branded event-specific confirmation email automatically.",
           "Email language follows lead locale logic from lead_source.",
-          "Email is logged as deposit_paid_confirmation in lead_email_log.",
+          "Email logs use separate event types: deposit_paid_confirmation and final_payment_received_confirmation.",
         ],
       },
       {
         title: "Duplicate-send protection",
         tone: "guardrail",
         items: [
-          "Repeated clicks after paid state do not resend the confirmation email.",
-          "Email helper also checks existing lead_email_log for deposit_paid_confirmation before sending.",
+          "Repeated clicks after paid state do not resend event emails.",
+          "Email helpers check existing lead_email_log event type before sending.",
           "If email send fails after payment state changes, payment remains correct and warning is surfaced.",
         ],
       },
@@ -246,6 +384,45 @@ const SECTIONS: HandbookSection[] = [
           "Do not mark paid speculatively.",
           "Do not manually spam confirmation emails for duplicate clicks.",
           "Do not link payment state to project completion state.",
+          "Do not use deposit wording for final payment communication.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "currency-and-market-handling",
+    title: "Currency And Market Handling",
+    tag: "Locale",
+    automation: "Mixed",
+    summary:
+      "Internal CRM compares in USD where available, while client-facing proposal and payment communication stays local/original currency.",
+    blocks: [
+      {
+        title: "Operational model",
+        tone: "reference",
+        items: [
+          "Lead stores local_currency_code as source-of-truth for client-facing amount rendering.",
+          "Internal admin can show USD-primary plus local-secondary when usd_fx_rate_locked is available.",
+          "If local currency is USD, no FX conversion is required to show USD values.",
+          "Country and currency defaults can be inferred from lead_source, then manually corrected when needed.",
+        ],
+      },
+      {
+        title: "Operator actions",
+        tone: "do",
+        items: [
+          "Confirm local_currency_code before sending proposal/payment emails.",
+          "Lock usd_fx_rate_locked when a non-USD lead needs reliable internal USD comparison.",
+          "Use country_code only when grounded by explicit data or deterministic source mapping.",
+        ],
+      },
+      {
+        title: "Do not do this",
+        tone: "avoid",
+        items: [
+          "Do not force client-facing proposals or payment emails into USD for local leads.",
+          "Do not guess country from weak signals.",
+          "Do not rewrite historical local amounts during currency updates.",
         ],
       },
     ],
@@ -263,7 +440,8 @@ const SECTIONS: HandbookSection[] = [
         tone: "reference",
         items: [
           "Revenue card state is derived from proposal_price, proposal_deposit, deposit_amount, deposit_paid_at, and final_payment_paid_at.",
-          "Overview and Leads pages aggregate cash collected, outstanding, and completed revenue.",
+          "Overview and Leads pages aggregate cash collected, outstanding, and completed revenue in USD-primary internal view.",
+          "Lead detail can show USD primary with local secondary, or local fallback when FX is unavailable.",
           "Completed revenue depends on fully paid plus project_status = completed.",
         ],
       },
@@ -426,6 +604,25 @@ const AUTOMATION_STYLES: Record<HandbookSection["automation"], string> = {
   Automated: "border-emerald-500/40 text-emerald-400",
 };
 
+const CORE_NAV_ITEMS = [
+  { id: "control-model", title: "Control Model" },
+  { id: "manual-vs-automatic", title: "Manual vs Automatic" },
+  { id: "action-event-map", title: "Action Event Map" },
+  { id: "flow-reference", title: "Lifecycle Reference" },
+  { id: "scenario-playbooks", title: "Scenario Playbooks" },
+  { id: "project-status-reference", title: "Project Status Reference" },
+];
+
+type NavItem = { id: string; title: string };
+
+function getNavItems(): NavItem[] {
+  const sectionItems = SECTIONS.map((section) => ({
+    id: section.id,
+    title: section.title,
+  }));
+  return [...CORE_NAV_ITEMS, ...sectionItems];
+}
+
 function SectionTag({ label }: { label: HandbookSection["tag"] }) {
   return (
     <span
@@ -494,7 +691,86 @@ function HandbookSectionCard({ section }: { section: HandbookSection }) {
   );
 }
 
+function ActionEventMap() {
+  return (
+    <section id="action-event-map" className="scroll-mt-24">
+      <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
+        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <SectionTag label="Ops" />
+            <AutomationTag label="Mixed" />
+          </div>
+          <h2 className="text-lg font-semibold text-zinc-100">Action Event Map</h2>
+          <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+            Use this map to verify what each critical action writes, which email event fires, and what
+            the next operator decision should be.
+          </p>
+        </div>
+        <div className="space-y-2 p-5">
+          {ACTION_EVENT_MATRIX.map((row) => (
+            <article
+              key={row.action}
+              className="grid gap-2 rounded-xl border border-zinc-800/70 bg-zinc-950/35 p-3.5 md:grid-cols-[1.4fr_1.2fr_1.4fr_1.4fr]"
+            >
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Action</p>
+                <p className="mt-1 text-sm font-medium text-zinc-200">{row.action}</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-500">{row.trigger}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">State Change</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-300">{row.state}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Email Event</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-300">{row.email}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Correct Next Action</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-400">{row.next}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ScenarioPlaybooks() {
+  return (
+    <section id="scenario-playbooks" className="scroll-mt-24">
+      <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
+        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <SectionTag label="Ops" />
+            <AutomationTag label="Manual" />
+          </div>
+          <h2 className="text-lg font-semibold text-zinc-100">Scenario Playbooks</h2>
+          <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+            Fast guidance for frequent edge cases so operators can move without guessing.
+          </p>
+        </div>
+        <div className="grid gap-3 p-5 md:grid-cols-2">
+          {SCENARIO_PLAYBOOKS.map((scenario) => (
+            <article
+              key={scenario.title}
+              className="rounded-xl border border-zinc-800/70 bg-zinc-950/35 p-3.5"
+            >
+              <p className="text-sm font-medium text-zinc-200">{scenario.title}</p>
+              <p className="mt-1 text-xs leading-relaxed text-zinc-500">{scenario.meaning}</p>
+              <p className="mt-2 text-xs leading-relaxed text-zinc-300">{scenario.next}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function DocsPage() {
+  const navItems = getNavItems();
+
   return (
     <div className="mx-auto max-w-6xl space-y-7">
       <header className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/35">
@@ -525,8 +801,8 @@ export default function DocsPage() {
               <p className="mt-1 text-sm font-medium text-zinc-200">Assist content, no auto-send</p>
             </div>
             <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
-              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Payment Event</p>
-              <p className="mt-1 text-sm font-medium text-zinc-200">First paid mark auto-confirms by email</p>
+              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Payment Events</p>
+              <p className="mt-1 text-sm font-medium text-zinc-200">Deposit and final payment have separate email events</p>
             </div>
             <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
               <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Project Status</p>
@@ -543,16 +819,16 @@ export default function DocsPage() {
               Jump To
             </p>
             <ol className="space-y-1.5">
-              {SECTIONS.map((section, index) => (
-                <li key={section.id}>
+              {navItems.map((item, index) => (
+                <li key={item.id}>
                   <a
-                    href={`#${section.id}`}
+                    href={`#${item.id}`}
                     className="group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-800/60 hover:text-zinc-200"
                   >
                     <span className="w-5 text-right text-[11px] text-zinc-700 group-hover:text-zinc-500">
                       {index + 1}.
                     </span>
-                    <span className="leading-tight">{section.title}</span>
+                    <span className="leading-tight">{item.title}</span>
                   </a>
                 </li>
               ))}
@@ -571,6 +847,73 @@ export default function DocsPage() {
         </aside>
 
         <div className="space-y-6">
+          <section id="control-model" className="scroll-mt-24">
+            <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
+              <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <SectionTag label="Ops" />
+                  <AutomationTag label="Mixed" />
+                </div>
+                <h2 className="text-lg font-semibold text-zinc-100">Control Model</h2>
+                <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+                  Keep operator ownership and automation boundaries explicit at every stage.
+                </p>
+              </div>
+              <div className="grid gap-3 p-5 md:grid-cols-3">
+                {CONTROL_MODEL.map((card) => (
+                  <article
+                    key={card.title}
+                    className="rounded-xl border border-zinc-800/70 bg-zinc-950/35 p-3.5"
+                  >
+                    <p className="text-sm font-medium text-zinc-200">{card.title}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-zinc-500">{card.body}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section id="manual-vs-automatic" className="scroll-mt-24">
+            <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
+              <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <SectionTag label="Ops" />
+                  <AutomationTag label="Mixed" />
+                </div>
+                <h2 className="text-lg font-semibold text-zinc-100">Manual vs Automatic</h2>
+                <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+                  Quick reference for what operators own directly and what the CRM updates automatically.
+                </p>
+              </div>
+              <div className="space-y-2 p-5">
+                {MANUAL_AUTOMATION_REFERENCE.map((item) => (
+                  <article
+                    key={item.area}
+                    className="grid gap-2 rounded-xl border border-zinc-800/70 bg-zinc-950/35 p-3.5 md:grid-cols-[1fr_1.4fr_1.4fr]"
+                  >
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Area</p>
+                      <p className="mt-1 text-sm font-medium text-zinc-200">{item.area}</p>
+                      <span className="mt-2 inline-flex items-center rounded-full border border-zinc-700/70 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-zinc-400">
+                        {item.automation}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Manual truth</p>
+                      <p className="mt-1 text-xs leading-relaxed text-zinc-300">{item.manual}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Automated behavior</p>
+                      <p className="mt-1 text-xs leading-relaxed text-zinc-400">{item.auto}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <ActionEventMap />
+
           <section id="flow-reference" className="scroll-mt-24">
             <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
               <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
@@ -604,6 +947,8 @@ export default function DocsPage() {
               </div>
             </div>
           </section>
+
+          <ScenarioPlaybooks />
 
           <section id="project-status-reference" className="scroll-mt-24">
             <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
