@@ -4,6 +4,7 @@ const services = [
   {
     id: "build",
     label: "Build",
+    href: "/build",
     tagline: "Websites & digital products engineered to convert.",
     description:
       "From landing pages to full-stack builds. Every decision is made with performance and conversion in mind. No template shortcuts.",
@@ -17,6 +18,7 @@ const services = [
   {
     id: "systems",
     label: "Systems",
+    href: "/systems",
     tagline: "AI automation and tooling that multiplies your output.",
     description:
       "We design and build AI workflows, process automation, and internal tooling that remove bottlenecks and compound over time.",
@@ -30,6 +32,7 @@ const services = [
   {
     id: "growth",
     label: "Growth",
+    href: "/growth",
     tagline: "Content, SEO, and paid infrastructure built to compound.",
     description:
       "Growth systems that build pipeline over time. Not monthly reports. Content that ranks, converts, and compounds regardless of market.",
@@ -57,11 +60,12 @@ export default function Services() {
           </h2>
         </div>
 
-        {/* Cards */}
+        {/* Cards — each card links to its own service page for sitelink-readiness */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {services.map((service) => (
-            <div
+            <Link
               key={service.id}
+              href={service.href}
               id={service.id}
               className="group relative flex flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50 p-8 transition-all duration-300 hover:border-zinc-700 hover:bg-zinc-900"
             >
@@ -91,11 +95,8 @@ export default function Services() {
                 ))}
               </ul>
 
-              <Link
-                href="/intake"
-                className="mt-8 flex items-center gap-1.5 text-sm font-medium text-zinc-500 transition-colors hover:text-brand group-hover:text-zinc-400"
-              >
-                Start a project
+              <div className="mt-8 flex items-center gap-1.5 text-sm font-medium text-zinc-500 transition-colors group-hover:text-brand">
+                Explore {service.label}
                 <svg
                   width="14"
                   height="14"
@@ -111,8 +112,8 @@ export default function Services() {
                     strokeLinejoin="round"
                   />
                 </svg>
-              </Link>
-            </div>
+              </div>
+            </Link>
           ))}
         </div>
 

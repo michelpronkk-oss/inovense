@@ -10,6 +10,11 @@ export const metadata: Metadata = {
     "Custom website design built for conversion, performance, and brand. No templates. No bloat. Designed and built from brief to browser by Inovense.",
   alternates: {
     canonical: "https://inovense.com/web-design",
+    languages: {
+      en: "https://inovense.com/web-design",
+      nl: "https://inovense.com/nl/web-design",
+      "x-default": "https://inovense.com/web-design",
+    },
   },
   openGraph: {
     url: "https://inovense.com/web-design",

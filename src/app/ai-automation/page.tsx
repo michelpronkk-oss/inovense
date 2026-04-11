@@ -5,17 +5,22 @@ import Footer from "@/components/footer";
 import TrustpilotSignal from "@/components/trustpilot-signal";
 
 export const metadata: Metadata = {
-  title: "AI Automation and Business Workflow Systems",
+  title: "AI Automation for Lead Flow and Business Operations",
   description:
-    "Practical AI automation, lead routing, and operational workflow systems for companies that need real internal leverage. Not vague AI magic. Systems that run.",
+    "AI-powered automation for lead routing, qualification, follow-up, and internal operations. Real workflow leverage, not vague AI promises. Inovense builds systems that handle the work.",
   alternates: {
     canonical: "https://inovense.com/ai-automation",
+    languages: {
+      en: "https://inovense.com/ai-automation",
+      nl: "https://inovense.com/nl/ai-automation",
+      "x-default": "https://inovense.com/ai-automation",
+    },
   },
   openGraph: {
     url: "https://inovense.com/ai-automation",
-    title: "AI Automation and Business Workflow Systems | Inovense",
+    title: "AI Automation for Lead Flow and Business Operations | Inovense",
     description:
-      "Practical AI automation, lead routing, and operational workflow systems for companies that need real internal leverage. Not vague AI magic. Systems that run.",
+      "AI-powered automation for lead routing, qualification, follow-up, and internal operations. Real workflow leverage, not vague AI promises. Inovense builds systems that handle the work.",
   },
 };
 

@@ -11,17 +11,22 @@ import SystemsCTA from "@/components/systems/systems-cta";
 import RelatedServices from "@/components/related-services";
 
 export const metadata: Metadata = {
-  title: "AI Automation and Business Process Systems",
+  title: "Business Operations Systems and Internal Tooling",
   description:
-    "AI automation, business process systems, CRM logic, and operational infrastructure that reduce friction and make your company run cleaner. Precision execution from Inovense.",
+    "Custom CRM logic, internal tooling, operational workflows, and business process infrastructure designed around how your team actually works. Built for the long-term, not stitched together.",
   alternates: {
     canonical: "https://inovense.com/systems",
+    languages: {
+      en: "https://inovense.com/systems",
+      nl: "https://inovense.com/nl/systems",
+      "x-default": "https://inovense.com/systems",
+    },
   },
   openGraph: {
     url: "https://inovense.com/systems",
-    title: "AI Automation and Business Process Systems | Inovense",
+    title: "Business Operations Systems and Internal Tooling | Inovense",
     description:
-      "AI automation, business process systems, CRM logic, and operational infrastructure that reduce friction and make your company run cleaner. Precision execution from Inovense.",
+      "Custom CRM logic, internal tooling, operational workflows, and business process infrastructure designed around how your team actually works. Built for the long-term, not stitched together.",
   },
 };
 

@@ -11,6 +11,11 @@ export const metadata: Metadata = {
     "AI-automatisering, workflow systemen, interne tools en operationele infrastructuur gebouwd rondom hoe jouw bedrijf echt werkt. Geen off-the-shelf, geen generieke tools.",
   alternates: {
     canonical: "https://inovense.com/nl/systems",
+    languages: {
+      en: "https://inovense.com/systems",
+      nl: "https://inovense.com/nl/systems",
+      "x-default": "https://inovense.com/systems",
+    },
   },
   openGraph: {
     url: "https://inovense.com/nl/systems",

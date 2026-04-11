@@ -8,18 +8,23 @@ import TrustpilotSignal from "@/components/trustpilot-signal";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Inovense | Digitale infrastructuur voor serieuze operators",
+    absolute: "Inovense | Websitebouw, AI-automatisering en groeisystemen",
   },
   description:
-    "Build, Systems en Growth voor operators die op uitvoering concurreren. Websites, AI-automatisering en groeisystemen gebouwd op de standaard die jouw bedrijf verdient.",
+    "Inovense bouwt premium websites, AI-workflows en groeisystemen voor operators en ambitieuze merken.",
   alternates: {
     canonical: "https://inovense.com/nl",
+    languages: {
+      en: "https://inovense.com",
+      nl: "https://inovense.com/nl",
+      "x-default": "https://inovense.com",
+    },
   },
   openGraph: {
     url: "https://inovense.com/nl",
-    title: "Inovense | Digitale infrastructuur voor serieuze operators",
+    title: "Inovense | Websitebouw, AI-automatisering en groeisystemen",
     description:
-      "Build, Systems en Growth voor operators die op uitvoering concurreren. Websites, AI-automatisering en groeisystemen gebouwd op de standaard die jouw bedrijf verdient.",
+      "Inovense bouwt premium websites, AI-workflows en groeisystemen voor operators en ambitieuze merken.",
     locale: "nl_NL",
   },
 };

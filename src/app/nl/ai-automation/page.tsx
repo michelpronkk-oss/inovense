@@ -10,6 +10,11 @@ export const metadata: Metadata = {
     "Praktische AI-automatisering, lead routing en operationele workflows voor bedrijven die echte interne hefboomwerking nodig hebben. Geen vage AI-beloften. Systemen die draaien.",
   alternates: {
     canonical: "https://inovense.com/nl/ai-automation",
+    languages: {
+      en: "https://inovense.com/ai-automation",
+      nl: "https://inovense.com/nl/ai-automation",
+      "x-default": "https://inovense.com/ai-automation",
+    },
   },
   openGraph: {
     url: "https://inovense.com/nl/ai-automation",

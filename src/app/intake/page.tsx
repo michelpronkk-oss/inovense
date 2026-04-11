@@ -5,17 +5,22 @@ import IntakeHero from "@/components/intake/intake-hero";
 import IntakeForm from "@/components/intake/intake-form";
 
 export const metadata: Metadata = {
-  title: "Start a Project",
+  title: "Start Your Project",
   description:
-    "Submit your brief. Inovense reviews every request personally and responds within 24 hours with a clear direction. Limited intake.",
+    "Tell us what you're building. Inovense reviews every brief personally and responds within 24 hours with a clear direction, not a pitch deck. Limited intake.",
   alternates: {
     canonical: "https://inovense.com/intake",
+    languages: {
+      en: "https://inovense.com/intake",
+      nl: "https://inovense.com/nl/intake",
+      "x-default": "https://inovense.com/intake",
+    },
   },
   openGraph: {
     url: "https://inovense.com/intake",
-    title: "Start a Project | Inovense",
+    title: "Start Your Project | Inovense",
     description:
-      "Submit your brief. Inovense reviews every request personally and responds within 24 hours with a clear direction. Limited intake.",
+      "Tell us what you're building. Inovense reviews every brief personally and responds within 24 hours with a clear direction, not a pitch deck. Limited intake.",
   },
 };
 

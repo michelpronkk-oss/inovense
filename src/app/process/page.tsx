@@ -10,6 +10,11 @@ export const metadata: Metadata = {
     "From brief to handoff in eight steps. Learn exactly how Inovense structures every engagement: intake, proposal, payment, onboarding, execution, launch, and handoff.",
   alternates: {
     canonical: "https://inovense.com/process",
+    languages: {
+      en: "https://inovense.com/process",
+      nl: "https://inovense.com/nl/process",
+      "x-default": "https://inovense.com/process",
+    },
   },
   openGraph: {
     url: "https://inovense.com/process",

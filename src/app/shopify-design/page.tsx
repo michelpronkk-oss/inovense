@@ -10,6 +10,11 @@ export const metadata: Metadata = {
     "Custom Shopify themes, product pages, and ecommerce design for brands that have outgrown a stock template. Conversion-focused, brand-level execution, mobile-first.",
   alternates: {
     canonical: "https://inovense.com/shopify-design",
+    languages: {
+      en: "https://inovense.com/shopify-design",
+      nl: "https://inovense.com/nl/shopify-design",
+      "x-default": "https://inovense.com/shopify-design",
+    },
   },
   openGraph: {
     url: "https://inovense.com/shopify-design",

@@ -7,15 +7,20 @@ import NlIntakeHero from "@/components/nl/nl-intake-hero";
 export const metadata: Metadata = {
   title: "Project starten",
   description:
-    "Stuur je brief. Inovense beoordeelt elk verzoek persoonlijk en reageert binnen 24 uur met een duidelijke richting. Beperkte intake.",
+    "Vertel ons wat je bouwt. Inovense beoordeelt elke brief persoonlijk en reageert binnen 24 uur met een duidelijke richting, geen salesverhaal. Beperkte intake.",
   alternates: {
     canonical: "https://inovense.com/nl/intake",
+    languages: {
+      en: "https://inovense.com/intake",
+      nl: "https://inovense.com/nl/intake",
+      "x-default": "https://inovense.com/intake",
+    },
   },
   openGraph: {
     url: "https://inovense.com/nl/intake",
     title: "Project starten | Inovense",
     description:
-      "Stuur je brief. Inovense beoordeelt elk verzoek persoonlijk en reageert binnen 24 uur met een duidelijke richting. Beperkte intake.",
+      "Vertel ons wat je bouwt. Inovense beoordeelt elke brief persoonlijk en reageert binnen 24 uur met een duidelijke richting, geen salesverhaal. Beperkte intake.",
     locale: "nl_NL",
   },
 };

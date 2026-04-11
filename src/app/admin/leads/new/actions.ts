@@ -58,13 +58,19 @@ export async function createManualLead(fields: {
         country_code: marketSeed.country_code,
         country_source: marketSeed.country_source,
         status: "new",
+        project_status: "not_started",
       })
       .select("id")
       .single();
 
     if (error || !data) {
       console.error("[admin] createManualLead failed:", error?.message);
-      return { success: false, error: "Failed to create lead. Please try again." };
+      return {
+        success: false,
+        error: error?.message
+          ? `DB error: ${error.message}`
+          : "Failed to create lead. Please try again.",
+      };
     }
 
     revalidatePath("/admin/leads");

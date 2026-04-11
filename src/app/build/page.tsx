@@ -16,6 +16,11 @@ export const metadata: Metadata = {
     "Premium website design and development. Conversion-focused landing pages, e-commerce builds, and full-stack digital products. Built to perform, not just to launch.",
   alternates: {
     canonical: "https://inovense.com/build",
+    languages: {
+      en: "https://inovense.com/build",
+      nl: "https://inovense.com/nl/build",
+      "x-default": "https://inovense.com/build",
+    },
   },
   openGraph: {
     url: "https://inovense.com/build",

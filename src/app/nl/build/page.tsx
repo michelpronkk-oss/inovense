@@ -11,6 +11,11 @@ export const metadata: Metadata = {
     "Op maat gebouwde websites, Shopify-winkels, landingspagina's en digitale producten. Conversiegericht, performance-first, en gebouwd van brief tot browser.",
   alternates: {
     canonical: "https://inovense.com/nl/build",
+    languages: {
+      en: "https://inovense.com/build",
+      nl: "https://inovense.com/nl/build",
+      "x-default": "https://inovense.com/build",
+    },
   },
   openGraph: {
     url: "https://inovense.com/nl/build",

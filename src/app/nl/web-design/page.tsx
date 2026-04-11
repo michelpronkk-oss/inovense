@@ -10,6 +10,11 @@ export const metadata: Metadata = {
     "Maatwerk website design gebouwd voor conversie, performance en merk. Geen templates. Geen ballast. Ontworpen en gebouwd van brief tot browser door Inovense.",
   alternates: {
     canonical: "https://inovense.com/nl/web-design",
+    languages: {
+      en: "https://inovense.com/web-design",
+      nl: "https://inovense.com/nl/web-design",
+      "x-default": "https://inovense.com/web-design",
+    },
   },
   openGraph: {
     url: "https://inovense.com/nl/web-design",

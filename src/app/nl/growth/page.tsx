@@ -11,6 +11,11 @@ export const metadata: Metadata = {
     "Growth als commercieel systeem. Van lead capture en kwalificatie tot distributie en follow-up. Gebouwd voor operators die op uitvoering concurreren.",
   alternates: {
     canonical: "https://inovense.com/nl/growth",
+    languages: {
+      en: "https://inovense.com/growth",
+      nl: "https://inovense.com/nl/growth",
+      "x-default": "https://inovense.com/growth",
+    },
   },
   openGraph: {
     url: "https://inovense.com/nl/growth",

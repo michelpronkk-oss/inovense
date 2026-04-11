@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Figtree } from "next/font/google";
+import { headers } from "next/headers";
 import React from "react";
 import "./globals.css";
 
@@ -8,11 +9,11 @@ const figtree = Figtree({ subsets: ["latin"], variable: "--font-sans" });
 export const metadata: Metadata = {
   metadataBase: new URL("https://inovense.com"),
   title: {
-    default: "Inovense | Digital Infrastructure for Operators",
+    default: "Inovense | Web Design, AI Automation & Growth Systems",
     template: "%s | Inovense",
   },
   description:
-    "Inovense builds premium websites, AI automation systems, and growth infrastructure for operators and ambitious brands.",
+    "Inovense builds high-performance websites, AI automation workflows, and growth systems for operators and ambitious brands.",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
@@ -23,16 +24,16 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     siteName: "Inovense",
-    title: "Inovense | Digital Infrastructure for Operators",
+    title: "Inovense | Web Design, AI Automation & Growth Systems",
     description:
-      "Inovense builds premium websites, AI automation systems, and growth infrastructure for operators and ambitious brands.",
+      "Inovense builds high-performance websites, AI automation workflows, and growth systems for operators and ambitious brands.",
     url: "https://inovense.com",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Inovense | Digital Infrastructure for Operators",
+    title: "Inovense | Web Design, AI Automation & Growth Systems",
     description:
-      "Inovense builds premium websites, AI automation systems, and growth infrastructure for operators and ambitious brands.",
+      "Inovense builds high-performance websites, AI automation workflows, and growth systems for operators and ambitious brands.",
   },
   robots: {
     index: true,
@@ -53,7 +54,7 @@ const orgSchema = {
   url: "https://inovense.com",
   logo: "https://inovense.com/logo.png",
   description:
-    "Digital infrastructure for operators who compete on execution. Inovense builds websites, automation systems, and growth infrastructure.",
+    "Inovense builds high-performance websites, AI automation workflows, and growth systems for operators and ambitious brands.",
   email: "hello@inovense.com",
   foundingDate: "2024",
   knowsAbout: [
@@ -71,17 +72,24 @@ const websiteSchema = {
   name: "Inovense",
   url: "https://inovense.com",
   description:
-    "Digital infrastructure for operators who compete on execution.",
+    "Inovense builds high-performance websites, AI automation workflows, and growth systems for operators and ambitious brands.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Middleware sets x-pathname for all routes so server components can detect
+  // the active segment. Use it here to apply the correct html lang attribute
+  // without a client-side hack.
+  const headersList = await headers();
+  const pathname = headersList.get("x-pathname") ?? "";
+  const lang = pathname.startsWith("/nl") ? "nl" : "en";
+
   return (
     <html
-      lang="en"
+      lang={lang}
       className={`dark h-full antialiased ${figtree.variable} font-sans`}
     >
       <head>

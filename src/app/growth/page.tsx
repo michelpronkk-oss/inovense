@@ -16,6 +16,11 @@ export const metadata: Metadata = {
     "Structured SEO infrastructure, content systems, paid media, and growth execution built to compound. Inovense builds growth assets you own.",
   alternates: {
     canonical: "https://inovense.com/growth",
+    languages: {
+      en: "https://inovense.com/growth",
+      nl: "https://inovense.com/nl/growth",
+      "x-default": "https://inovense.com/growth",
+    },
   },
   openGraph: {
     url: "https://inovense.com/growth",

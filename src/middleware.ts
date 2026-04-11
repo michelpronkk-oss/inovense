@@ -29,5 +29,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  // Run on all navigable routes. Static assets, _next internals, and
+  // files with extensions are excluded so they bypass the middleware.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|woff2?|ttf)).*)"],
 };

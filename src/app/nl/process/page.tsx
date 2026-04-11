@@ -10,6 +10,11 @@ export const metadata: Metadata = {
     "Het Inovense proces in acht duidelijke stappen. Intake, scope, voorstel, aanbetaling, onboarding, uitvoering, lancering en overdracht zonder ruis.",
   alternates: {
     canonical: "https://inovense.com/nl/process",
+    languages: {
+      en: "https://inovense.com/process",
+      nl: "https://inovense.com/nl/process",
+      "x-default": "https://inovense.com/process",
+    },
   },
   openGraph: {
     url: "https://inovense.com/nl/process",

@@ -3,18 +3,23 @@ import Nav from "@/components/nav";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Inovense | Digital Infrastructure for Operators",
+    absolute: "Inovense | Web Design, AI Automation & Growth Systems",
   },
   description:
-    "Websites, AI automation, and growth infrastructure for operators who compete on execution. Inovense builds systems that perform.",
+    "Inovense builds high-performance websites, AI automation workflows, and growth systems for operators and ambitious brands.",
   alternates: {
     canonical: "https://inovense.com",
+    languages: {
+      en: "https://inovense.com",
+      nl: "https://inovense.com/nl",
+      "x-default": "https://inovense.com",
+    },
   },
   openGraph: {
     url: "https://inovense.com",
-    title: "Inovense | Digital Infrastructure for Operators",
+    title: "Inovense | Web Design, AI Automation & Growth Systems",
     description:
-      "Websites, AI automation, and growth infrastructure for operators who compete on execution. Inovense builds systems that perform.",
+      "Inovense builds high-performance websites, AI automation workflows, and growth systems for operators and ambitious brands.",
   },
 };
 import Footer from "@/components/footer";
