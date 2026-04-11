@@ -1,4 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
+import type { LeadResearchOutput } from "@/lib/agents/lead-research/schema";
+import type { ProposalAngleOutput } from "@/lib/agents/proposal-angle/schema";
+import type { ProposalWriterOutput } from "@/lib/agents/proposal-writer/schema";
 
 export type LeadStatus =
   | "new"
@@ -76,6 +79,17 @@ export type Lead = {
   project_start_date: string | null;
   project_status: ProjectStatus;
   lead_source: string | null;
+  // Agent 1: Lead Research Audit
+  research_audit: LeadResearchOutput | null;
+  research_audit_at: string | null;
+  // Agent 2: Proposal Angle
+  proposal_angle: ProposalAngleOutput | null;
+  proposal_angle_at: string | null;
+  proposal_angle_applied_at: string | null;
+  // Proposal Writer
+  proposal_writer: ProposalWriterOutput | null;
+  proposal_writer_at: string | null;
+  proposal_writer_applied_at: string | null;
 };
 
 export type EmailLog = {

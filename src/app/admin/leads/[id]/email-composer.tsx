@@ -23,6 +23,7 @@ type Props = {
   proposalToken: string | null;
   proposalDeposit: number | null;
   paymentDepositAmount: number | null;
+  proposalWriterDraft?: { subject: string; body: string } | null;
 };
 
 /* ─── Action buttons panel ──────────────────────────────────────────────── */
@@ -37,6 +38,7 @@ export function EmailActionsPanel({
   proposalToken,
   proposalDeposit,
   paymentDepositAmount,
+  proposalWriterDraft,
 }: Props) {
   const [activeType, setActiveType] = useState<EmailTemplateType | null>(null);
 
@@ -95,6 +97,7 @@ export function EmailActionsPanel({
           proposalToken={proposalToken}
           proposalDeposit={proposalDeposit}
           paymentDepositAmount={paymentDepositAmount}
+          proposalWriterDraft={proposalWriterDraft}
           templateType={activeType}
           onClose={() => setActiveType(null)}
         />
@@ -115,6 +118,7 @@ function EmailComposerModal({
   proposalToken,
   proposalDeposit,
   paymentDepositAmount,
+  proposalWriterDraft,
   templateType,
   onClose,
 }: Props & {
@@ -298,12 +302,27 @@ function EmailComposerModal({
 
             {/* Body */}
             <div className="flex flex-1 flex-col">
-              <label
-                htmlFor="email-body"
-                className="mb-1.5 block text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600"
-              >
-                Body
-              </label>
+              <div className="mb-1.5 flex items-center justify-between gap-2">
+                <label
+                  htmlFor="email-body"
+                  className="block text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600"
+                >
+                  Body
+                </label>
+                {templateType === "proposal_sent" && proposalWriterDraft && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSubject(proposalWriterDraft.subject);
+                      setBody(proposalWriterDraft.body);
+                      setSendState("idle");
+                    }}
+                    className="rounded-md border border-brand/25 bg-brand/8 px-2 py-0.5 text-[10px] font-medium text-brand transition-colors hover:bg-brand/15"
+                  >
+                    Use Proposal Writer draft
+                  </button>
+                )}
+              </div>
               <textarea
                 id="email-body"
                 value={body}

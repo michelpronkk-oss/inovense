@@ -87,7 +87,11 @@ function Label({ children }: { children: React.ReactNode }) {
 export function ProposalEditor({
   id,
   currentUrl,
+  currentTitle,
   currentBody,
+  currentScope,
+  currentDeliverables,
+  currentTimeline,
   currentNotes,
   currentProposalPrice,
   currentProposalDeposit,
@@ -96,7 +100,11 @@ export function ProposalEditor({
 }: {
   id: string;
   currentUrl: string | null;
+  currentTitle: string | null;
   currentBody: string | null;
+  currentScope: string | null;
+  currentDeliverables: string | null;
+  currentTimeline: string | null;
   currentNotes: string | null;
   currentProposalPrice: number | null;
   currentProposalDeposit: number | null;
@@ -104,7 +112,11 @@ export function ProposalEditor({
   proposalSentAt: string | null;
 }) {
   const [url, setUrl] = useState(currentUrl ?? "");
+  const [title, setTitle] = useState(currentTitle ?? "");
   const [body, setBody] = useState(currentBody ?? "");
+  const [scope, setScope] = useState(currentScope ?? "");
+  const [deliverables, setDeliverables] = useState(currentDeliverables ?? "");
+  const [timeline, setTimeline] = useState(currentTimeline ?? "");
   const [notes, setNotes] = useState(currentNotes ?? "");
   const [price, setPrice] = useState(
     currentProposalPrice != null ? String(currentProposalPrice) : ""
@@ -123,7 +135,11 @@ export function ProposalEditor({
       const result = await updateProposalFields(
         id,
         url,
+        title,
         body,
+        scope,
+        deliverables,
+        timeline,
         notes,
         price,
         deposit
@@ -237,21 +253,86 @@ export function ProposalEditor({
         </div>
       </div>
 
-      {/* Proposal body (client-facing content) */}
-      <div>
+      {/* Proposal content fields (client-facing) */}
+      <div className="space-y-3">
         <Label>Proposal content</Label>
-        <textarea
-          value={body}
-          onChange={(e) => {
-            setBody(e.target.value);
-            setSaveState("idle");
-          }}
-          rows={6}
-          placeholder="Scope, timeline, investment, and any key assumptions for the client..."
-          className="w-full resize-none rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5 py-3 text-base leading-relaxed text-zinc-300 placeholder-zinc-700 outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30 sm:text-sm"
-        />
-        <p className="mt-1.5 text-[11px] text-zinc-700">
-          This content is shown on the client-facing proposal page.
+        <div>
+          <p className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+            Title
+          </p>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setSaveState("idle");
+            }}
+            placeholder="E.g. Growth plan for Acme"
+            className={inputCls()}
+          />
+        </div>
+        <div>
+          <p className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+            Intro
+          </p>
+          <textarea
+            value={body}
+            onChange={(e) => {
+              setBody(e.target.value);
+              setSaveState("idle");
+            }}
+            rows={3}
+            placeholder="Opening paragraph for the client..."
+            className="w-full resize-none rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5 py-3 text-base leading-relaxed text-zinc-300 placeholder-zinc-700 outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30 sm:text-sm"
+          />
+        </div>
+        <div>
+          <p className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+            Scope
+          </p>
+          <textarea
+            value={scope}
+            onChange={(e) => {
+              setScope(e.target.value);
+              setSaveState("idle");
+            }}
+            rows={3}
+            placeholder="What is in scope..."
+            className="w-full resize-none rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5 py-3 text-base leading-relaxed text-zinc-300 placeholder-zinc-700 outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30 sm:text-sm"
+          />
+        </div>
+        <div>
+          <p className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+            Deliverables
+          </p>
+          <textarea
+            value={deliverables}
+            onChange={(e) => {
+              setDeliverables(e.target.value);
+              setSaveState("idle");
+            }}
+            rows={3}
+            placeholder="Specific deliverables..."
+            className="w-full resize-none rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5 py-3 text-base leading-relaxed text-zinc-300 placeholder-zinc-700 outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30 sm:text-sm"
+          />
+        </div>
+        <div>
+          <p className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+            Timeline
+          </p>
+          <textarea
+            value={timeline}
+            onChange={(e) => {
+              setTimeline(e.target.value);
+              setSaveState("idle");
+            }}
+            rows={2}
+            placeholder="Timeline description..."
+            className="w-full resize-none rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-3.5 py-3 text-base leading-relaxed text-zinc-300 placeholder-zinc-700 outline-none transition-colors focus:border-brand/50 focus:ring-1 focus:ring-brand/30 sm:text-sm"
+          />
+        </div>
+        <p className="text-[11px] text-zinc-700">
+          These fields are shown on the client-facing proposal page.
         </p>
       </div>
 
