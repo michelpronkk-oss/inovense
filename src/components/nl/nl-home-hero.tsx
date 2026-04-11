@@ -178,16 +178,16 @@ export default function NlHomeHero() {
               variants={itemVariants}
               className="text-5xl font-semibold leading-[1.08] tracking-tight text-zinc-50 lg:text-6xl"
             >
-              Wij bouwen de digitale infrastructuur{" "}
-              <em className="not-italic text-brand">waarop serieuze operators groeien.</em>
+              Websites, webshops en systemen{" "}
+              <span className="text-brand">die echt presteren</span>
             </motion.h1>
 
             <motion.p
               variants={itemVariants}
-              className="mt-6 max-w-[460px] text-lg leading-relaxed text-zinc-400"
+              className="mt-6 max-w-[560px] text-lg leading-relaxed text-zinc-400"
             >
-              Build, Systems en Growth uitgevoerd op premium niveau.
-              Geen templates, geen bureaugedoe, geen gerecycled werk.
+              Voor bedrijven die strakker willen bouwen, beter willen converteren en slimmer
+              willen werken.
             </motion.p>
 
             <motion.div
