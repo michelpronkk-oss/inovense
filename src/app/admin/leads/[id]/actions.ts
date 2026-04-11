@@ -39,6 +39,31 @@ function parseCurrencyAmount(raw: string): number | null {
   return Math.round(parsed * 100) / 100;
 }
 
+function normalizeMoneyValue(value: number | null | undefined): number | null {
+  if (value == null) return null;
+  const num = Number(value);
+  if (!Number.isFinite(num) || num < 0) return null;
+  return Math.round(num * 100) / 100;
+}
+
+function isMissingFinalPaymentColumnError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+
+  const maybeError = error as {
+    code?: string | null;
+    message?: string | null;
+    details?: string | null;
+  };
+  const haystack = `${maybeError.code ?? ""} ${maybeError.message ?? ""} ${maybeError.details ?? ""}`
+    .toLowerCase();
+
+  return (
+    haystack.includes("final_payment_paid_at") ||
+    (haystack.includes("column") && haystack.includes("does not exist")) ||
+    (maybeError.code ?? "").toLowerCase() === "pgrst204"
+  );
+}
+
 /* ─── Status ────────────────────────────────────────────────────────────── */
 
 export async function updateLeadStatus(
@@ -290,13 +315,48 @@ export async function markDepositPaid(
 }> {
   try {
     const supabase = createSupabaseServerClient();
+
+    const { data: currentLead, error: currentLeadError } = await supabase
+      .from("leads")
+      .select("id, deposit_paid_at, deposit_amount, proposal_deposit")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (currentLeadError || !currentLead) {
+      return { success: false, error: "Failed to mark deposit as paid." };
+    }
+
+    if (currentLead.deposit_paid_at) {
+      revalidateLead(id);
+      return {
+        success: true,
+        alreadyPaid: true,
+        paidAt: currentLead.deposit_paid_at ?? undefined,
+      };
+    }
+
+    const snapshotAmount = normalizeMoneyValue(
+      currentLead.deposit_amount ?? currentLead.proposal_deposit
+    );
     const paidAt = new Date().toISOString();
+    const payload: {
+      deposit_paid_at: string;
+      status: LeadStatus;
+      deposit_amount?: number;
+    } = {
+      deposit_paid_at: paidAt,
+      status: "deposit_paid",
+    };
+
+    // Snapshot deposit amount on first paid transition so proposal edits later
+    // cannot rewrite historical paid/remaining values.
+    if (currentLead.deposit_amount == null && snapshotAmount != null) {
+      payload.deposit_amount = snapshotAmount;
+    }
+
     const { data: updatedLead, error: updateError } = await supabase
       .from("leads")
-      .update({
-        deposit_paid_at: paidAt,
-        status: "deposit_paid",
-      })
+      .update(payload)
       .eq("id", id)
       .is("deposit_paid_at", null)
       .select("id, deposit_paid_at")
@@ -304,7 +364,7 @@ export async function markDepositPaid(
 
     if (updateError) throw updateError;
 
-    // No row updated means already marked or missing lead.
+    // No row updated means a concurrent request marked it first or lead is missing.
     if (!updatedLead) {
       const { data: existingLead, error: existingLeadError } = await supabase
         .from("leads")
@@ -358,16 +418,86 @@ export async function markDepositPaid(
 
 export async function markFinalPaymentPaid(
   id: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{
+  success: boolean;
+  alreadyPaid?: boolean;
+  paidAt?: string;
+  error?: string;
+}> {
   try {
     const supabase = createSupabaseServerClient();
-    const { error } = await supabase
+
+    const { data: currentLead, error: currentLeadError } = await supabase
       .from("leads")
-      .update({ final_payment_paid_at: new Date().toISOString() })
-      .eq("id", id);
-    if (error) throw error;
+      .select("id, deposit_paid_at, final_payment_paid_at")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (currentLeadError || !currentLead) {
+      return { success: false, error: "Failed to mark final payment." };
+    }
+
+    if (currentLead.final_payment_paid_at) {
+      revalidateLead(id);
+      return {
+        success: true,
+        alreadyPaid: true,
+        paidAt: currentLead.final_payment_paid_at ?? undefined,
+      };
+    }
+
+    if (!currentLead.deposit_paid_at) {
+      return {
+        success: false,
+        error: "Mark deposit as paid before confirming final payment.",
+      };
+    }
+
+    const paidAt = new Date().toISOString();
+    const { data: updatedLead, error: updateError } = await supabase
+      .from("leads")
+      .update({ final_payment_paid_at: paidAt })
+      .eq("id", id)
+      .is("final_payment_paid_at", null)
+      .select("id, final_payment_paid_at")
+      .maybeSingle();
+
+    if (updateError) {
+      if (isMissingFinalPaymentColumnError(updateError)) {
+        return {
+          success: false,
+          error:
+            "Final payment field is missing in the database. Run the latest Supabase migrations and try again.",
+        };
+      }
+      throw updateError;
+    }
+
+    if (!updatedLead) {
+      const { data: existingLead, error: existingLeadError } = await supabase
+        .from("leads")
+        .select("id, final_payment_paid_at")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (existingLeadError || !existingLead) {
+        return { success: false, error: "Failed to mark final payment." };
+      }
+
+      if (existingLead.final_payment_paid_at) {
+        revalidateLead(id);
+        return {
+          success: true,
+          alreadyPaid: true,
+          paidAt: existingLead.final_payment_paid_at ?? undefined,
+        };
+      }
+
+      return { success: false, error: "Failed to mark final payment." };
+    }
+
     revalidateLead(id);
-    return { success: true };
+    return { success: true, paidAt: updatedLead.final_payment_paid_at ?? undefined };
   } catch (err) {
     console.error("[admin] markFinalPaymentPaid failed:", err);
     return { success: false, error: "Failed to mark final payment." };

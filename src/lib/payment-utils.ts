@@ -27,14 +27,20 @@ export function derivePaymentState(lead: {
   deposit_paid_at: string | null;
   final_payment_paid_at: string | null;
 }): PaymentState {
-  const total =
+  const totalRaw =
     lead.proposal_price != null ? Number(lead.proposal_price) : null;
-  if (!total) return { kind: "no_price" };
+  if (totalRaw == null || !Number.isFinite(totalRaw) || totalRaw <= 0) {
+    return { kind: "no_price" };
+  }
+  const total = totalRaw;
   if (!lead.deposit_paid_at) return { kind: "unpaid", total };
 
-  const effectivePaid = Number(
-    lead.deposit_amount ?? lead.proposal_deposit ?? 0
-  );
+  const effectivePaidRaw = lead.deposit_amount ?? lead.proposal_deposit;
+  const effectivePaidUnclamped =
+    effectivePaidRaw != null && Number.isFinite(Number(effectivePaidRaw))
+      ? Number(effectivePaidRaw)
+      : 0;
+  const effectivePaid = Math.min(total, Math.max(0, effectivePaidUnclamped));
   const isFull = lead.final_payment_paid_at != null || effectivePaid >= total;
 
   if (isFull) {
@@ -49,7 +55,7 @@ export function derivePaymentState(lead: {
     kind: "deposit_paid",
     total,
     paid: effectivePaid,
-    remaining: total - effectivePaid,
+    remaining: Math.max(0, total - effectivePaid),
     paidAt: lead.deposit_paid_at,
   };
 }

@@ -123,7 +123,7 @@ export function RevenueCard({
     startTransition(async () => {
       const result = await markFinalPaymentPaid(leadId);
       if (result.success) {
-        setFinalPaidAt(new Date().toISOString());
+        setFinalPaidAt(result.paidAt ?? new Date().toISOString());
       } else {
         setError(result.error ?? "Failed.");
       }
