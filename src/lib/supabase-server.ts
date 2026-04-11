@@ -18,6 +18,12 @@ export type LeadStatus =
 
 export type OnboardingStatus = "not_sent" | "sent" | "completed";
 export type ProposalDecision = "accepted" | "declined";
+export type CurrencySource = "manual" | "inferred" | "legacy_default";
+export type CountrySource =
+  | "manual"
+  | "lead_source_inferred"
+  | "unknown"
+  | "legacy_default";
 
 export type ProjectStatus =
   | "not_started"
@@ -80,6 +86,12 @@ export type Lead = {
   project_start_date: string | null;
   project_status: ProjectStatus;
   lead_source: string | null;
+  local_currency_code: string | null;
+  usd_fx_rate_locked: number | null;
+  usd_fx_rate_locked_at: string | null;
+  currency_source: CurrencySource | null;
+  country_code: string | null;
+  country_source: CountrySource | null;
   // Agent 1: Lead Research Audit
   research_audit: LeadResearchOutput | null;
   research_audit_at: string | null;

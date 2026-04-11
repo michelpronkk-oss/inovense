@@ -5,7 +5,11 @@ import { format } from "date-fns";
 import { STATUS_CONFIG, LANE_COLORS, LEAD_SOURCE_LABELS } from "@/app/admin/config";
 import LeadsFilter from "./leads-filter";
 import { Suspense } from "react";
-import { derivePaymentState, fmtEur } from "@/lib/payment-utils";
+import {
+  convertLeadLocalAmountToUsd,
+  derivePaymentState,
+  fmtUsd,
+} from "@/lib/payment-utils";
 
 export const metadata: Metadata = { title: "Leads | Inovense CRM" };
 
@@ -42,27 +46,45 @@ export default async function LeadsPage({
   const isFiltered = !!(status || lane || source);
 
   /* ─── Revenue metrics (always computed across all loaded leads) ─────────── */
-  let cashCollected = 0;
-  let completedRevenue = 0;
-  let outstandingBalance = 0;
+  let cashCollectedUsd = 0;
+  let completedRevenueUsd = 0;
+  let outstandingBalanceUsd = 0;
   let activeLeadsWithPrice = 0;
+  const missingFxLeadIds = new Set<string>();
+
+  function convertForMetric(lead: Lead, amountLocal: number): number | null {
+    const amountUsd = convertLeadLocalAmountToUsd(lead, amountLocal);
+    if (amountUsd == null && amountLocal > 0) {
+      missingFxLeadIds.add(lead.id);
+    }
+    return amountUsd;
+  }
 
   for (const lead of leads) {
     const ps = derivePaymentState(lead);
     const total = ps.kind !== "no_price" ? ps.total : 0;
 
     if (ps.kind === "fully_paid") {
-      cashCollected += total;
-      if (lead.project_status === "completed") completedRevenue += total;
+      const totalUsd = convertForMetric(lead, total);
+      if (totalUsd != null) {
+        cashCollectedUsd += totalUsd;
+        if (lead.project_status === "completed") {
+          completedRevenueUsd += totalUsd;
+        }
+      }
     } else if (ps.kind === "deposit_paid") {
-      cashCollected += ps.paid;
-      outstandingBalance += ps.remaining;
+      const paidUsd = convertForMetric(lead, ps.paid);
+      const remainingUsd = convertForMetric(lead, ps.remaining);
+      if (paidUsd != null) cashCollectedUsd += paidUsd;
+      if (remainingUsd != null) outstandingBalanceUsd += remainingUsd;
       activeLeadsWithPrice++;
     } else if (ps.kind === "unpaid" && total > 0) {
-      outstandingBalance += total;
+      const totalUsd = convertForMetric(lead, total);
+      if (totalUsd != null) outstandingBalanceUsd += totalUsd;
       activeLeadsWithPrice++;
     }
   }
+  const missingFxLeadCount = missingFxLeadIds.size;
 
   const showMetrics = leads.length > 0 && !error;
 
@@ -94,26 +116,53 @@ export default async function LeadsPage({
       </div>
 
       {showMetrics && (
-        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            { label: "Cash collected", value: fmtEur(cashCollected), sub: "Deposits + full payments" },
-            { label: "Completed revenue", value: fmtEur(completedRevenue), sub: "Fully paid + project complete" },
-            { label: "Outstanding", value: fmtEur(outstandingBalance), sub: `Across ${activeLeadsWithPrice} lead${activeLeadsWithPrice !== 1 ? "s" : ""}` },
-            { label: "Total leads", value: String(leads.length), sub: isFiltered ? "Filtered view" : "All time" },
-          ].map((m) => (
-            <div
-              key={m.label}
-              className="rounded-xl border border-zinc-800/80 bg-zinc-900/30 px-4 py-3.5"
-            >
-              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
-                {m.label}
-              </p>
-              <p className="mt-1.5 text-lg font-semibold tabular-nums text-zinc-100">
-                {m.value}
-              </p>
-              <p className="mt-0.5 text-[10px] text-zinc-700">{m.sub}</p>
+        <div className="mb-6 space-y-3">
+          {missingFxLeadCount > 0 && (
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/8 px-3 py-2 text-[11px] text-amber-300">
+              Conversion unavailable for {missingFxLeadCount} lead
+              {missingFxLeadCount !== 1 ? "s" : ""}. Set locked USD FX rates
+              in lead Payment settings to include them in USD totals.
             </div>
-          ))}
+          )}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              {
+                label: "Cash collected",
+                value: fmtUsd(cashCollectedUsd),
+                sub: "USD deposits + full payments",
+              },
+              {
+                label: "Completed revenue",
+                value: fmtUsd(completedRevenueUsd),
+                sub: "USD fully paid + project complete",
+              },
+              {
+                label: "Outstanding",
+                value: fmtUsd(outstandingBalanceUsd),
+                sub: `USD across ${activeLeadsWithPrice} lead${
+                  activeLeadsWithPrice !== 1 ? "s" : ""
+                }`,
+              },
+              {
+                label: "Total leads",
+                value: String(leads.length),
+                sub: isFiltered ? "Filtered view" : "All time",
+              },
+            ].map((m) => (
+              <div
+                key={m.label}
+                className="rounded-xl border border-zinc-800/80 bg-zinc-900/30 px-4 py-3.5"
+              >
+                <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+                  {m.label}
+                </p>
+                <p className="mt-1.5 text-lg font-semibold tabular-nums text-zinc-100">
+                  {m.value}
+                </p>
+                <p className="mt-0.5 text-[10px] text-zinc-700">{m.sub}</p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

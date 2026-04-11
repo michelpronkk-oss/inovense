@@ -2,6 +2,7 @@
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
+import { getLeadMarketSeedFromLeadSource } from "@/lib/market";
 
 export async function createManualLead(fields: {
   full_name: string;
@@ -37,6 +38,7 @@ export async function createManualLead(fields: {
 
   try {
     const supabase = createSupabaseServerClient();
+    const marketSeed = getLeadMarketSeedFromLeadSource(fields.lead_source);
 
     const { data, error } = await supabase
       .from("leads")
@@ -51,6 +53,10 @@ export async function createManualLead(fields: {
         timeline: fields.timeline.trim() || "",
         project_details: fields.project_details.trim() || "",
         lead_source: fields.lead_source,
+        local_currency_code: marketSeed.local_currency_code,
+        currency_source: marketSeed.currency_source,
+        country_code: marketSeed.country_code,
+        country_source: marketSeed.country_source,
         status: "new",
       })
       .select("id")

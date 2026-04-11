@@ -51,7 +51,7 @@ export async function triggerProposalWriter(leadId: string): Promise<
   const { data: lead, error: fetchError } = await supabase
     .from("leads")
     .select(
-      "id, company_name, lead_source, service_lane, project_type, budget_range, timeline, project_details, research_audit, research_audit_at, proposal_angle, proposal_angle_at, proposal_title, proposal_intro, proposal_scope, proposal_deliverables, proposal_timeline, proposal_notes, proposal_price, proposal_deposit"
+      "id, company_name, lead_source, service_lane, project_type, budget_range, timeline, project_details, research_audit, research_audit_at, proposal_angle, proposal_angle_at, proposal_title, proposal_intro, proposal_scope, proposal_deliverables, proposal_timeline, proposal_notes, proposal_price, proposal_deposit, local_currency_code"
     )
     .eq("id", leadId)
     .single();
@@ -96,6 +96,7 @@ export async function triggerProposalWriter(leadId: string): Promise<
         lead.proposal_price != null ? Number(lead.proposal_price) : null,
       proposal_deposit:
         lead.proposal_deposit != null ? Number(lead.proposal_deposit) : null,
+      local_currency_code: lead.local_currency_code ?? null,
     },
     email_template_defaults: {
       proposal_sent_subject: proposalSentTemplate.defaultSubject(

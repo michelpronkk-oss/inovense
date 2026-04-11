@@ -4,6 +4,12 @@ import { createSupabaseServerClient, type LeadStatus, type ProjectStatus } from 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { sendDepositPaidConfirmationEmail } from "./email-actions";
+import {
+  parseCurrencyCodeInput,
+  parseUsdFxRate,
+  USD_CURRENCY_CODE,
+} from "@/lib/currency";
+import { parseCountryCodeInput } from "@/lib/market";
 
 const VALID_STATUSES: LeadStatus[] = [
   "new",
@@ -207,9 +213,42 @@ export async function updatePaymentFields(
     invoiceReference: string;
     depositAmount: string;
     projectStartDate: string;
+    localCurrencyCode: string;
+    usdFxRateLocked: string;
+    countryCode: string;
   }
 ): Promise<{ success: boolean; error?: string }> {
   const amount = parseCurrencyAmount(fields.depositAmount);
+  const localCurrencyCode = parseCurrencyCodeInput(fields.localCurrencyCode);
+  if (!localCurrencyCode) {
+    return {
+      success: false,
+      error: "Use a valid 3-letter local currency code.",
+    };
+  }
+
+  const trimmedFx = fields.usdFxRateLocked.trim();
+  const usdFxRateLocked = parseUsdFxRate(trimmedFx);
+  if (trimmedFx && usdFxRateLocked == null) {
+    return {
+      success: false,
+      error: "Use a valid positive USD FX rate.",
+    };
+  }
+
+  const countryCode = parseCountryCodeInput(fields.countryCode);
+  if (fields.countryCode.trim() && !countryCode) {
+    return {
+      success: false,
+      error: "Use a valid 2-letter country code or leave it empty.",
+    };
+  }
+
+  const usdFxRateLockedAt =
+    usdFxRateLocked != null ? new Date().toISOString() : null;
+  const countrySource = countryCode ? "manual" : "unknown";
+  const normalizedUsdFxRate =
+    localCurrencyCode === USD_CURRENCY_CODE ? 1 : usdFxRateLocked;
 
   try {
     const supabase = createSupabaseServerClient();
@@ -220,6 +259,15 @@ export async function updatePaymentFields(
         invoice_reference: fields.invoiceReference.trim() || null,
         deposit_amount: amount,
         project_start_date: fields.projectStartDate || null,
+        local_currency_code: localCurrencyCode,
+        usd_fx_rate_locked: normalizedUsdFxRate,
+        usd_fx_rate_locked_at:
+          localCurrencyCode === USD_CURRENCY_CODE
+            ? new Date().toISOString()
+            : usdFxRateLockedAt,
+        currency_source: "manual",
+        country_code: countryCode,
+        country_source: countrySource,
       })
       .eq("id", id);
     if (error) throw error;

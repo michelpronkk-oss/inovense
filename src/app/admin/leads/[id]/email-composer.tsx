@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   applyPaymentAmountToBody,
   buildEmailHtml,
-  formatEuroAmount,
+  formatMoneyAmount,
   getEmailTemplateListForLeadSource,
   getEmailTemplateLocaleForLeadSource,
   getEmailTemplatesForLeadSource,
@@ -23,6 +23,7 @@ type Props = {
   proposalToken: string | null;
   proposalDeposit: number | null;
   paymentDepositAmount: number | null;
+  localCurrencyCode: string | null;
   proposalWriterDraft?: { subject: string; body: string } | null;
 };
 
@@ -38,6 +39,7 @@ export function EmailActionsPanel({
   proposalToken,
   proposalDeposit,
   paymentDepositAmount,
+  localCurrencyCode,
   proposalWriterDraft,
 }: Props) {
   const [activeType, setActiveType] = useState<EmailTemplateType | null>(null);
@@ -97,6 +99,7 @@ export function EmailActionsPanel({
           proposalToken={proposalToken}
           proposalDeposit={proposalDeposit}
           paymentDepositAmount={paymentDepositAmount}
+          localCurrencyCode={localCurrencyCode}
           proposalWriterDraft={proposalWriterDraft}
           templateType={activeType}
           onClose={() => setActiveType(null)}
@@ -118,6 +121,7 @@ function EmailComposerModal({
   proposalToken,
   proposalDeposit,
   paymentDepositAmount,
+  localCurrencyCode,
   proposalWriterDraft,
   templateType,
   onClose,
@@ -151,8 +155,13 @@ function EmailComposerModal({
     if (templateType !== "payment_request" || effectivePaymentAmount == null) {
       return body;
     }
-    return applyPaymentAmountToBody(body, effectivePaymentAmount, locale);
-  }, [body, effectivePaymentAmount, locale, templateType]);
+    return applyPaymentAmountToBody(
+      body,
+      effectivePaymentAmount,
+      locale,
+      localCurrencyCode
+    );
+  }, [body, effectivePaymentAmount, locale, localCurrencyCode, templateType]);
 
   // Close on Escape
   useEffect(() => {
@@ -347,8 +356,9 @@ function EmailComposerModal({
                   }`}
                 >
                   {paymentAmountReady
-                    ? `This email will include deposit due: ${formatEuroAmount(
+                    ? `This email will include deposit due: ${formatMoneyAmount(
                         Number(effectivePaymentAmount),
+                        localCurrencyCode,
                         locale
                       )}.`
                     : "Set a proposal deposit or payment override before sending this email."}

@@ -5,725 +5,464 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
-interface Section {
+type HandbookSection = {
   id: string;
   title: string;
-  tag?: string;
-  blocks: Block[];
-}
+  tag: "Flow" | "Locale" | "AI" | "Commercial" | "Delivery" | "Ops";
+  automation: "Manual" | "Mixed" | "Automated";
+  summary: string;
+  blocks: SectionBlock[];
+};
 
-type Block =
-  | { type: "text"; content: string }
-  | { type: "list"; items: string[] }
-  | { type: "field"; label: string; value: string }
-  | { type: "rule"; label: string; items: string[] }
-  | { type: "divider" };
+type SectionBlock = {
+  title: string;
+  tone: "do" | "avoid" | "reference" | "guardrail";
+  items: string[];
+};
 
-// ── Content ──────────────────────────────────────────────────────────────────
+const LEAD_FLOW_STEPS = [
+  { step: "Lead enters CRM", status: "new", trigger: "Intake form or manual lead creation" },
+  { step: "Initial review", status: "reviewing", trigger: "Operator starts qualification work" },
+  { step: "Qualified for commercial work", status: "qualified", trigger: "Lane and scope are clear enough for proposal" },
+  { step: "Proposal sent", status: "proposal_sent", trigger: "Proposal email sent from CRM" },
+  { step: "Decision captured", status: "payment_requested or lost", trigger: "Accept/decline recorded on proposal flow" },
+  { step: "Deposit confirmed", status: "deposit_paid", trigger: "Mark deposit as paid action in CRM" },
+  { step: "Onboarding sent", status: "onboarding_sent", trigger: "Onboarding email/link sent" },
+  { step: "Onboarding submitted", status: "onboarding_completed", trigger: "Client submits onboarding form" },
+  { step: "Delivery in progress", status: "active", trigger: "Operator moves to active once delivery starts" },
+  { step: "Engagement closed", status: "won or lost", trigger: "Operator closes lifecycle state" },
+];
 
-const SECTIONS: Section[] = [
+const PROJECT_STATUS_REFERENCE = [
+  { value: "Not started", meaning: "Delivery has not started yet." },
+  { value: "Ready", meaning: "Preconditions are met and work can start." },
+  { value: "Active", meaning: "Delivery is currently in progress." },
+  { value: "Paused", meaning: "Delivery is intentionally paused." },
+  { value: "Completed", meaning: "Delivery and handoff are actually complete." },
+];
+
+const SECTIONS: HandbookSection[] = [
   {
-    id: "operating-flow",
-    title: "Operating Flow",
-    tag: "Reference",
+    id: "lead-operating-flow",
+    title: "Lead Operating Flow",
+    tag: "Flow",
+    automation: "Mixed",
+    summary:
+      "Use lead status to represent commercial lifecycle truth. Do not skip stages just to move faster.",
     blocks: [
       {
-        type: "text",
-        content:
-          "Every client engagement follows the same sequence from intake to active project. Each step maps to a specific lead status in the CRM. The flow is the same whether a lead enters through the intake form or is created manually.",
-      },
-      {
-        type: "rule",
-        label: "The standard sequence",
+        title: "Operator actions",
+        tone: "do",
         items: [
-          "1. Lead enters CRM. Status: new.",
-          "2. Lead is reviewed and evaluated. Status: reviewing.",
-          "3. Lead is qualified. Scope and budget are clear. Status: qualified.",
-          "4. Proposal is prepared and sent. Status: proposal_sent.",
-          "5. Proposal is accepted. Mark the decision on the lead record.",
-          "6. Contract is generated and sent. Log as a note on the lead record.",
-          "7. Payment request is sent. Status: payment_requested.",
-          "8. Deposit is received and confirmed. Status: deposit_paid.",
-          "9. Onboarding is sent. Status: onboarding_sent.",
-          "10. Onboarding is completed. Status: onboarding_completed.",
-          "11. Project is active. Status: active.",
+          "Keep lead status aligned with reality at every handoff point.",
+          "Capture proposal decisions before moving forward with payment or closeout.",
+          "Use notes for material decisions, exceptions, and client confirmations.",
+          "Use one lead record per company engagement unless there is a valid separate deal.",
         ],
       },
       {
-        type: "field",
-        label: "Contracts",
-        value: "Contracts are recommended for all engagements above a basic scope. For very small or informal arrangements, moving directly from accepted proposal to payment request is acceptable. Use judgement and log the decision.",
+        title: "Do not do this",
+        tone: "avoid",
+        items: [
+          "Do not treat status as a cosmetic badge. It is pipeline state.",
+          "Do not move to deposit_paid before cleared funds are confirmed.",
+          "Do not move to active before onboarding is complete and delivery is actually starting.",
+          "Do not use project_status as a replacement for lead status.",
+        ],
       },
       {
-        type: "field",
-        label: "Manual leads",
-        value: "Leads from referrals, DMs, calls, or direct contact are created manually in the CRM. They enter at status new and follow the same flow from that point forward.",
+        title: "Automation boundaries",
+        tone: "reference",
+        items: [
+          "Proposal acceptance can move lead status to payment_requested.",
+          "Onboarding submission moves lead status to onboarding_completed automatically.",
+          "Lead status does not auto-progress to active or won. Those remain operator decisions.",
+        ],
       },
     ],
   },
   {
-    id: "dutch-layer",
-    title: "Dutch Conversion Layer",
-    tag: "Strategy",
+    id: "locale-and-language",
+    title: "Locale And Language Handling",
+    tag: "Locale",
+    automation: "Automated",
+    summary:
+      "Lead source drives locale behavior across CRM email templates, client pages, and agent output language.",
     blocks: [
       {
-        type: "text",
-        content:
-          "The Inovense brand operates English-first. The Dutch layer is a focused conversion addition, not a full bilingual site. It targets Dutch-speaking visitors and supports Dutch-market conversion without duplicating the entire site or brand system in Dutch.",
-      },
-      {
-        type: "rule",
-        label: "What the Dutch layer is",
+        title: "How locale resolves",
+        tone: "reference",
         items: [
-          "A focused set of Dutch-language pages under /nl covering three service lanes and a dedicated intake path.",
-          "Designed to improve conversion for Dutch visitors who prefer to engage in Dutch.",
-          "Not a translation of the full site. English pages remain the primary brand layer.",
-          "Public socials, case studies, and brand communications remain English-first.",
+          "Dutch locale resolves for lead_source values like nl_web, nl_*, nl, or values containing dutch/nederland.",
+          "All other lead sources default to English locale behavior.",
+          "Manual leads must have lead_source set correctly to avoid wrong-language output.",
         ],
       },
       {
-        type: "rule",
-        label: "Dutch layer routes",
+        title: "Operator actions",
+        tone: "do",
         items: [
-          "/nl: Dutch hub and brand entry point.",
-          "/nl/web-design: Dutch web design service page.",
-          "/nl/ai-automation: Dutch AI automation service page.",
-          "/nl/shopify-design: Dutch Shopify design service page.",
-          "/nl/intake: Dutch intake form. Feeds the same CRM as the English intake.",
+          "Set lead_source correctly at lead creation for referrals and manual entries.",
+          "If language preference differs from source, log that decision in notes and keep communication consistent.",
+          "Verify locale-sensitive emails in preview before sending high-stakes comms.",
         ],
       },
       {
-        type: "rule",
-        label: "When to use Dutch",
+        title: "Do not do this",
+        tone: "avoid",
         items: [
-          "When a lead entered through /nl/intake and has communicated in Dutch.",
-          "When direct outreach or a referral is with a Dutch-speaking contact who responds better in Dutch.",
-          "When running a Dutch-specific campaign or targeting Dutch-market channels.",
-          "Do not force Dutch on leads who have engaged in English. Follow their lead.",
+          "Do not force Dutch or English based on personal preference. Follow lead context.",
+          "Do not create a separate process tree for Dutch leads.",
         ],
-      },
-      {
-        type: "rule",
-        label: "What stays English-only",
-        items: [
-          "The main site and all English routes: /, /web-design, /ai-automation, /shopify-design, /intake, and all others.",
-          "Public socials. Socials remain English-first unless a Dutch campaign is explicitly planned.",
-          "Proposals, contracts, and formal documents. Default to English. Dutch only if the client has communicated exclusively in Dutch and Dutch is clearly preferred.",
-          "CRM email templates. Templates are English. Use the custom composer for Dutch-language emails.",
-        ],
-      },
-      {
-        type: "rule",
-        label: "Handling Dutch leads operationally",
-        items: [
-          "Dutch leads enter the CRM identically to English leads. Status flow, proposal, contract, and payment steps are the same.",
-          "Note on the lead record if the client prefers Dutch communication. Set it early.",
-          "When writing a proposal or email to a Dutch lead, use Dutch in the body if the relationship warrants it.",
-          "Contracts remain in English by default. English is the standard contract language.",
-          "Do not create a parallel Dutch CRM flow. One flow, one record. Language is a communication preference, not a separate system.",
-        ],
-      },
-      {
-        type: "field",
-        label: "Coherence rule",
-        value: "If a visitor enters through /nl, keep them in the Dutch path through intake and initial contact. Once they are in the CRM, route them through the standard flow. Language preference is a note on the record, not a branching system.",
       },
     ],
   },
   {
-    id: "lead-flow",
-    title: "Lead Flow",
-    tag: "Intake",
+    id: "agent-stack",
+    title: "AI Agent Stack In CRM",
+    tag: "AI",
+    automation: "Mixed",
+    summary:
+      "Agents accelerate proposal quality, but they do not send client emails and they do not change lifecycle status.",
     blocks: [
       {
-        type: "text",
-        content:
-          "A lead enters through the /intake form, the /nl/intake Dutch form, or is created manually in the CRM. A record is created in Supabase with status new. For form submissions, a confirmation email goes to the prospect and a notification email goes to the team.",
-      },
-      {
-        type: "rule",
-        label: "Status progression",
+        title: "Lead Research Agent",
+        tone: "reference",
         items: [
-          "new: lead has just entered. Review within 24 hours.",
-          "reviewing: you have looked at the lead and are evaluating fit.",
-          "qualified: scope, lane, and budget are clear. Ready for proposal.",
-          "lost: lead is not a fit or has gone cold. Add a brief note explaining why.",
+          "Runs from lead context and website data.",
+          "Writes research_audit and research_audit_at on the lead record.",
+          "Does not change lead status or send emails.",
         ],
       },
       {
-        type: "rule",
-        label: "What to do",
+        title: "Proposal Angle Agent",
+        tone: "reference",
         items: [
-          "Move status to reviewing when you start evaluating. Do not leave leads sitting at new.",
-          "Move to qualified only when you have enough to write a real proposal.",
-          "Set the service lane and source on the record before moving past reviewing.",
-          "Add a note any time there is meaningful contact or a decision point.",
+          "Requires Lead Research output first.",
+          "Writes proposal_angle and proposal_angle_at.",
+          "Apply action can write proposal prefill fields and proposal_angle_applied_at.",
+          "Does not send emails or change status.",
         ],
       },
       {
-        type: "rule",
-        label: "What not to do",
+        title: "Proposal Writer Agent",
+        tone: "reference",
         items: [
-          "Do not skip statuses. The funnel only works if stages reflect reality.",
-          "Do not create a second record for the same company. One lead per company.",
-          "Do not leave a lead at new for more than 24 hours without reviewing it.",
+          "Requires both Lead Research and Proposal Angle output.",
+          "Writes proposal_writer and proposal_writer_at.",
+          "Apply action writes proposal content fields and proposal_writer_applied_at.",
+          "Includes server-side safety checks to block internal strategy leakage in client-facing fields.",
         ],
       },
       {
-        type: "field",
-        label: "What happens next",
-        value: "A qualified lead moves to proposal preparation. A lead that is not a fit is marked lost with a note. No lead should be left in an ambiguous state.",
+        title: "Proposal email draft flow",
+        tone: "do",
+        items: [
+          "Proposal Writer produces proposal_email_prefill (subject + body).",
+          "In Send email > Proposal ready, use the Use Proposal Writer draft action.",
+          "Review before send. Draft assist does not equal auto-send.",
+        ],
       },
     ],
   },
   {
-    id: "proposal-flow",
-    title: "Proposal Flow",
+    id: "proposal-and-commercial",
+    title: "Proposal And Commercial Workflow",
     tag: "Commercial",
+    automation: "Mixed",
+    summary:
+      "Proposal content, price, deposit, and send timing must stay synchronized. Drift here causes downstream errors.",
     blocks: [
       {
-        type: "text",
-        content:
-          "Proposals are sent from within the lead record using the email composer. Set the lane and commercial fields before sending. The proposal email template pulls from the CRM fields.",
-      },
-      {
-        type: "rule",
-        label: "When to send",
+        title: "Operator actions",
+        tone: "do",
         items: [
-          "After a lead is qualified and scope is reasonably clear.",
-          "When the prospect has asked for pricing.",
-          "After a discovery call where you have confirmed the lane and fit.",
+          "Set proposal price and proposal deposit before sending proposal/payment communications.",
+          "Use proposal apply actions carefully because they overwrite client-facing proposal content fields.",
+          "Send proposal from CRM so logs and status updates remain accurate.",
+          "After acceptance, confirm the payment step promptly.",
         ],
       },
       {
-        type: "rule",
-        label: "What to do",
+        title: "Do not do this",
+        tone: "avoid",
         items: [
-          "Set the lane (Build, Systems, or Growth) on the lead record before sending.",
-          "Set the total value and deposit in the commercial section. Not just a monthly rate.",
-          "Use the proposal email template. Do not improvise pricing in a plain email.",
-          "Move the lead to status proposal_sent immediately after sending.",
-          "Follow up within 3 to 5 days if no response.",
-          "When the proposal is accepted: mark the decision as accepted on the lead record before proceeding.",
+          "Do not let proposal body and commercial amounts diverge.",
+          "Do not treat AI outputs as auto-approved without review.",
+          "Do not skip proposal decision capture before payment follow-through.",
         ],
       },
       {
-        type: "rule",
-        label: "What not to do",
+        title: "Reference",
+        tone: "reference",
         items: [
-          "Do not send a proposal without setting lane and commercial fields on the record.",
-          "Do not negotiate pricing outside the CRM. Log any agreed changes as a note.",
-          "Do not send a revised proposal without updating the commercial fields first.",
-          "Do not move to contract or payment before the proposal decision is logged.",
+          "Payment request emails use proposal_deposit unless deposit_amount override is set.",
+          "Proposal acceptance can route lead status to payment_requested in the proposal action flow.",
         ],
-      },
-      {
-        type: "field",
-        label: "What happens next",
-        value: "Accepted proposal moves to contract generation. Declined or expired proposals are marked lost with a note. If the scope changes after acceptance, send a revised proposal and re-log the decision.",
       },
     ],
   },
   {
-    id: "contract-generation",
-    title: "Contract Generation",
+    id: "payment-and-confirmation",
+    title: "Payment Flow And Deposit Confirmation",
     tag: "Commercial",
+    automation: "Mixed",
+    summary:
+      "Mark deposit as paid is a business event. First transition records payment state and triggers one premium confirmation email.",
     blocks: [
       {
-        type: "text",
-        content:
-          "Contracts are generated as PDF documents directly from the lead record. Fields are pre-filled from CRM data and reviewed before downloading. Current version is PDF generation only. E-sign is not yet part of the flow.",
-      },
-      {
-        type: "rule",
-        label: "When to generate a contract",
+        title: "Current behavior",
+        tone: "reference",
         items: [
-          "After the proposal has been accepted and the decision is logged on the lead record.",
-          "Before sending the payment request.",
-          "For any engagement where scope, IP, or commercial terms need to be formally documented.",
-          "Always for collaboration or partner arrangements.",
+          "Mark deposit as paid sets deposit_paid_at and lead status deposit_paid.",
+          "Server-side idempotency only allows first-time transition when deposit_paid_at was null.",
+          "On first successful transition, CRM sends a branded deposit confirmation email automatically.",
+          "Email language follows lead locale logic from lead_source.",
+          "Email is logged as deposit_paid_confirmation in lead_email_log.",
         ],
       },
       {
-        type: "rule",
-        label: "Which contract type to use",
+        title: "Duplicate-send protection",
+        tone: "guardrail",
         items: [
-          "Project Agreement: one-time build with defined scope, deliverables, and end point. Use for Build lane and scoped Systems projects.",
-          "Retainer Agreement: ongoing monthly engagement. Use for Growth lane and Systems retainers.",
-          "Collaboration Agreement: partner or referral arrangement. Use when working with another party rather than a direct client.",
+          "Repeated clicks after paid state do not resend the confirmation email.",
+          "Email helper also checks existing lead_email_log for deposit_paid_confirmation before sending.",
+          "If email send fails after payment state changes, payment remains correct and warning is surfaced.",
         ],
       },
       {
-        type: "rule",
-        label: "Fields to confirm before generating",
+        title: "Operator actions",
+        tone: "do",
         items: [
-          "Engagement title: must reflect what was agreed, not just the raw CRM project type.",
-          "Start date: the actual agreed start date, not a placeholder.",
-          "Scope summary: edit to match exactly what was accepted. Remove raw intake text.",
-          "Total value and deposit: must match the accepted proposal exactly.",
-          "Payment terms: default is 7 days from invoice. Update if otherwise agreed.",
-          "Effective date: the date the agreement becomes active. Usually today or the start date.",
+          "Use Mark deposit as paid only after payment is confirmed as cleared.",
+          "Treat email warnings as follow-up tasks, not as reasons to revert payment state.",
+          "Keep payment_link, invoice_reference, and deposit override maintained in Payment section.",
         ],
       },
       {
-        type: "rule",
-        label: "After generating",
+        title: "Do not do this",
+        tone: "avoid",
         items: [
-          "Review the PDF before sending. Check all fields are correct.",
-          "Send via email. Use the email composer or send directly from your mail client.",
-          "Log a note on the lead record: contract sent, date, and contract type.",
-          "When the signed copy is returned, store it and log receipt as a note.",
+          "Do not mark paid speculatively.",
+          "Do not manually spam confirmation emails for duplicate clicks.",
+          "Do not link payment state to project completion state.",
         ],
-      },
-      {
-        type: "field",
-        label: "What happens next",
-        value: "Once the contract is sent and agreed, move to the payment request step. Do not send the payment link before the contract is in place for material engagements.",
       },
     ],
   },
   {
-    id: "payment-flow",
-    title: "Payment Flow",
+    id: "revenue-visibility",
+    title: "Revenue Visibility",
     tag: "Commercial",
+    automation: "Automated",
+    summary:
+      "Revenue views derive from stored payment fields and project status. Metrics are only trustworthy when data discipline is maintained.",
     blocks: [
       {
-        type: "text",
-        content:
-          "Payment is collected via Stripe. Send the Stripe payment link from within the lead record. Do not collect payment outside of the standard flow.",
-      },
-      {
-        type: "rule",
-        label: "When to send the payment request",
+        title: "Reference",
+        tone: "reference",
         items: [
-          "After the proposal has been accepted and the contract has been sent.",
-          "Before any onboarding, access requests, or delivery work begins.",
-          "If skipping the contract for a small engagement, send after the proposal is accepted.",
+          "Revenue card state is derived from proposal_price, proposal_deposit, deposit_amount, deposit_paid_at, and final_payment_paid_at.",
+          "Overview and Leads pages aggregate cash collected, outstanding, and completed revenue.",
+          "Completed revenue depends on fully paid plus project_status = completed.",
         ],
       },
       {
-        type: "rule",
-        label: "What to do",
+        title: "Operator actions",
+        tone: "do",
         items: [
-          "Send the Stripe link from the commercial section of the lead record.",
-          "Move the lead to status payment_requested immediately after sending the link.",
-          "Confirm receipt of payment before starting any work.",
-          "Move to deposit_paid only after payment is confirmed.",
+          "Keep proposal price and payment fields accurate so dashboards remain usable.",
+          "Use final payment mark when remaining balance is actually received.",
+          "Use project_status completed only when delivery is truly complete.",
         ],
-      },
-      {
-        type: "rule",
-        label: "What not to do",
-        items: [
-          "Do not begin work before deposit is confirmed.",
-          "Do not accept payment via bank transfer or external method without logging it in the CRM.",
-          "Do not mark deposit_paid until the payment has actually cleared.",
-          "Do not send the payment link before the contract is in place for material engagements.",
-        ],
-      },
-      {
-        type: "field",
-        label: "What happens next",
-        value: "Once deposit is confirmed and the status is deposit_paid, proceed to sending the onboarding link.",
       },
     ],
   },
   {
-    id: "onboarding-flow",
-    title: "Onboarding Flow",
+    id: "project-status-semantics",
+    title: "Project Status Semantics",
     tag: "Delivery",
+    automation: "Manual",
+    summary:
+      "Project status is a delivery tracker, separate from commercial and payment lifecycle state.",
     blocks: [
       {
-        type: "text",
-        content:
-          "Onboarding begins after the deposit is confirmed. The lead moves from deposit_paid to onboarding_sent when the onboarding link is sent, and to onboarding_completed when the client submits their brief. The project becomes active after onboarding completes.",
-      },
-      {
-        type: "rule",
-        label: "Status progression",
+        title: "Hard rule",
+        tone: "guardrail",
         items: [
-          "deposit_paid: payment confirmed. Ready to send onboarding.",
-          "onboarding_sent: onboarding link has been sent to the client.",
-          "onboarding_completed: client has submitted the onboarding form.",
-          "active: project is running. Deliverables are in progress.",
+          "Project status remains manual.",
+          "Completed means delivered and complete, not merely paid.",
+          "No payment event should auto-set project_status.",
         ],
       },
       {
-        type: "rule",
-        label: "Standard onboarding checklist",
+        title: "Operator actions",
+        tone: "do",
         items: [
-          "Send the onboarding welcome email and the onboarding link from the lead record.",
-          "Move lead to onboarding_sent immediately after sending.",
-          "Once the client submits: review their onboarding brief in the lead record.",
-          "Collect any outstanding brand assets: logo, colors, fonts, tone guidance.",
-          "Set up their Notion workspace or shared folder if applicable.",
-          "Schedule the kickoff call if the lane warrants it.",
-          "Confirm primary contact and preferred communication channel.",
-          "Move to active and begin the first deliverable within the agreed window.",
+          "Use Ready when prerequisites are satisfied and delivery can start.",
+          "Use Active only when work is actively underway.",
+          "Use Paused explicitly when delivery stops intentionally.",
+          "Set Completed only after deliverables and handoff are done.",
         ],
       },
       {
-        type: "rule",
-        label: "What not to do",
+        title: "Do not do this",
+        tone: "avoid",
         items: [
-          "Do not begin deliverables before the onboarding form is submitted and assets are received.",
-          "Do not rely on verbal-only briefs. Get everything confirmed in the onboarding form or Notion.",
-          "Do not skip the welcome email. It sets the tone for the engagement.",
-          "Do not mark active before onboarding is genuinely complete.",
+          "Do not infer Completed from deposit_paid_at or final_payment_paid_at.",
+          "Do not rely on lead status alone to represent delivery state.",
         ],
-      },
-      {
-        type: "field",
-        label: "What happens next",
-        value: "Client transitions to steady-state delivery. Lead status stays active. Recurring check-ins and decisions are logged as notes on the lead record.",
       },
     ],
   },
   {
-    id: "client-access",
-    title: "Client Access Management",
+    id: "onboarding-and-activation",
+    title: "Onboarding And Activation",
     tag: "Delivery",
+    automation: "Mixed",
+    summary:
+      "Onboarding has a clear transition boundary: send link, receive brief, review, then activate delivery manually.",
     blocks: [
       {
-        type: "text",
-        content:
-          "Every project that touches a client platform requires access. How that access is obtained, stored, and closed out reflects directly on how professional the engagement is. Default to the safest method available. Treat credentials as temporary by design.",
-      },
-      {
-        type: "rule",
-        label: "Access hierarchy: prefer in this order",
+        title: "Current behavior",
+        tone: "reference",
         items: [
-          "Partner or collaborator access: platform-native, role-scoped, revocable without a password change.",
-          "Invite-based access: a named user account with the minimum role needed.",
-          "Temporary credentials with a clear plan for rotation after delivery.",
-          "Direct password sharing: only if the platform offers nothing else. Treat as exceptional.",
+          "Onboarding link send sets onboarding_status sent and lead status onboarding_sent.",
+          "Client submit sets onboarding_status completed and lead status onboarding_completed automatically.",
+          "Activation readiness indicator combines deposit paid and onboarding completed signals.",
         ],
       },
       {
-        type: "rule",
-        label: "When to request partner or collaborator access",
+        title: "Operator actions",
+        tone: "do",
         items: [
-          "Shopify: use the collaborator access request. Never ask for the owner login.",
-          "Meta Business Suite: request access to the ad account or page by role via Business Manager. Do not ask for personal Facebook login.",
-          "Google Analytics: add as an Editor or Viewer via the property access settings.",
-          "Google Search Console: add as a Full User or Restricted User via Settings.",
-          "Ad accounts (Google Ads, Meta Ads): user-level access only. Not the master account login.",
-          "Never request ownership or admin transfer unless the project scope explicitly requires it.",
+          "Review onboarding data before moving into delivery.",
+          "Move lead lifecycle status to active when delivery actually starts.",
+          "Set project_status to match real delivery state.",
         ],
       },
       {
-        type: "rule",
-        label: "When invite-based access is the right method",
+        title: "Do not do this",
+        tone: "avoid",
         items: [
-          "The platform supports named users with role-based permissions.",
-          "You are working alongside the client rather than acting as them.",
-          "Access needs to be scoped to a specific workspace, project, or view.",
-          "Typical platforms: Notion, Figma, Google Workspace, Klaviyo, Mailchimp, HubSpot, most modern CRMs.",
-          "Request the minimum role needed. Viewer access where write access is not required.",
-        ],
-      },
-      {
-        type: "rule",
-        label: "If credentials must be shared directly",
-        items: [
-          "Request only the login needed for the specific task. Avoid blanket admin access.",
-          "Never store passwords in email threads, Slack messages, or plain-text notes.",
-          "Ask the client to share via a secure method: 1Password share link, a secure note, or a temporary password they intend to rotate.",
-          "Log that credentials were received, which platform, and what they are used for in the lead record notes.",
-          "Plan for rotation: flag at project close that the client should change the password on any shared account.",
-        ],
-      },
-      {
-        type: "rule",
-        label: "Keeping access organized",
-        items: [
-          "Log every access grant in the lead record: platform, access type, date received, purpose.",
-          "Keep access notes on the lead record, not in email threads or personal notes.",
-          "Do not forward access or credentials to third parties without explicit client consent.",
-          "If a subcontractor needs access, confirm with the client first and log who has it.",
-        ],
-      },
-      {
-        type: "rule",
-        label: "Access revocation and cleanup",
-        items: [
-          "At project close, review what access is still active and flag anything that should be removed.",
-          "For collaborator or partner access: remind the client to revoke it if they want to after handoff.",
-          "For invite-based access: remove yourself from the workspace or request removal.",
-          "For shared credentials: note in the lead record that the client should rotate the password on that account.",
-          "Log the cleanup action and date in the lead record. Do not rely on memory.",
-        ],
-      },
-      {
-        type: "rule",
-        label: "Platform quick reference",
-        items: [
-          "Shopify: Settings > Users > Collaborator requests. Assign staff permissions, not owner access.",
-          "Meta Business Suite: Business Settings > Partners or Users. Request by email with appropriate role.",
-          "Google Analytics 4: Admin > Property Access Management. Editor for active work, Viewer for reporting only.",
-          "Google Search Console: Settings > Users and Permissions. Full User or Restricted User.",
-          "Notion: Invite via workspace or specific page. Guest access for external collaborators.",
-          "Klaviyo / Mailchimp: Invite as Manager or Editor. Not account owner.",
-          "Ecommerce admin panels: staff account with scoped permissions where the platform supports it.",
-          "Custom CRM or internal tools: request a named user account with the role relevant to the task.",
+          "Do not start deliverables on incomplete onboarding context.",
+          "Do not treat onboarding completion as automatic project completion.",
         ],
       },
     ],
   },
   {
-    id: "email-usage",
-    title: "Email Usage",
-    tag: "Comms",
+    id: "operator-qa",
+    title: "Operator QA And Edge Cases",
+    tag: "Ops",
+    automation: "Manual",
+    summary:
+      "Use this as the final pass before you move a record to the next critical stage.",
     blocks: [
       {
-        type: "text",
-        content:
-          "All client-facing emails are sent from the CRM using Resend. Templates are available for each stage of the flow. Do not send client emails outside the CRM unless the system is down.",
-      },
-      {
-        type: "rule",
-        label: "Available templates",
+        title: "Stage gate checks",
+        tone: "do",
         items: [
-          "Intake confirmation - auto-sent on form submit.",
-          "Team notification - auto-sent on form submit.",
-          "Proposal - sent manually from the lead record.",
-          "Payment link - sent manually from the commercial section.",
-          "Onboarding welcome - sent manually after payment clears.",
-          "Custom - freeform composer for anything outside the templates.",
+          "Before proposal send: lane, price, and deposit are set and current.",
+          "Before deposit mark: payment has cleared and payment metadata is complete.",
+          "Before active: onboarding is complete and delivery start is real.",
+          "Before completed: delivery and handoff are done, not just invoiced.",
         ],
       },
       {
-        type: "rule",
-        label: "Dutch communication",
+        title: "Common failures to prevent",
+        tone: "avoid",
         items: [
-          "CRM email templates are English. For Dutch leads who prefer Dutch, use the custom composer and write in Dutch.",
-          "Proposals to Dutch leads may be written in Dutch if the client relationship has been conducted in Dutch.",
-          "Contracts default to English regardless of lead language. English is the standard contract language.",
-          "Log language preference on the lead record so it carries forward to every subsequent communication.",
+          "Locale mismatch caused by missing or wrong lead_source.",
+          "Proposal content overwrite without checking existing edits.",
+          "Confusing lead status with project_status when reporting outcomes.",
+          "Skipping logs and notes for key commercial decisions.",
         ],
       },
       {
-        type: "rule",
-        label: "Rules",
+        title: "Escalation hints",
+        tone: "reference",
         items: [
-          "Always log sent emails in the lead record.",
-          "Never use em dashes in copy. Use hyphens or periods.",
-          "Keep tone premium and direct. No filler phrases.",
-          "Test templates in a staging environment before changing them.",
-        ],
-      },
-    ],
-  },
-  {
-    id: "lane-playbooks",
-    title: "Lane Playbooks",
-    tag: "Delivery",
-    blocks: [
-      {
-        type: "text",
-        content:
-          "Each service lane has a distinct scope, cadence, and deliverable standard. Assign the correct lane at qualification and confirm before sending a proposal.",
-      },
-      {
-        type: "rule",
-        label: "Build",
-        items: [
-          "Scope: website, landing page, or product build using Next.js, Framer, or Webflow.",
-          "Cadence: project-based, typically 2-6 weeks.",
-          "Deliverables: design, development, deployment, handoff.",
-          "Pricing: one-time or milestone-based.",
-          "Typical client: new brand, pre-launch, or rebrand situation.",
-        ],
-      },
-      {
-        type: "rule",
-        label: "Systems",
-        items: [
-          "Scope: CRM, automation, operational infrastructure, or internal tooling.",
-          "Cadence: project-based with optional retainer for maintenance.",
-          "Deliverables: working system, documentation, access handoff.",
-          "Pricing: project fee or monthly retainer.",
-          "Typical client: growing business with broken ops or manual workflows.",
-        ],
-      },
-      {
-        type: "rule",
-        label: "Growth",
-        items: [
-          "Scope: content strategy, organic posting, short-form video, LinkedIn or Instagram presence.",
-          "Cadence: monthly retainer.",
-          "Deliverables: content plan, post drafts, scheduling, reporting.",
-          "Pricing: monthly flat rate.",
-          "Typical client: established brand with no consistent content output.",
-        ],
-      },
-    ],
-  },
-  {
-    id: "pricing-notes",
-    title: "Pricing Notes",
-    tag: "Commercial",
-    blocks: [
-      {
-        type: "text",
-        content:
-          "Pricing is set by lane and scope. Standard ranges are noted below. These are internal reference only - do not share this page with clients.",
-      },
-      {
-        type: "rule",
-        label: "Build",
-        items: [
-          "Landing page or simple site: from 1,200.",
-          "Full website with CMS: from 2,500.",
-          "Custom product or app: scoped individually, typically 4,000+.",
-        ],
-      },
-      {
-        type: "rule",
-        label: "Systems",
-        items: [
-          "CRM setup or automation build: from 1,500.",
-          "Full ops infrastructure: scoped individually.",
-          "Maintenance retainer: from 300/month.",
-        ],
-      },
-      {
-        type: "rule",
-        label: "Growth",
-        items: [
-          "Content retainer: from 800/month.",
-          "Full content + strategy: from 1,500/month.",
-        ],
-      },
-      {
-        type: "rule",
-        label: "Discount policy",
-        items: [
-          "Do not discount without a clear reason.",
-          "Multi-lane or long-term commitments can justify 10-15% off.",
-          "Log any discount in the lead record with a note explaining why.",
-        ],
-      },
-    ],
-  },
-  {
-    id: "creative-usage",
-    title: "Creative and Posting",
-    tag: "Operations",
-    blocks: [
-      {
-        type: "text",
-        content:
-          "The Creative section in admin is for generating branded social content using canvas templates. It is used for both Inovense's own posts and for client deliverables under the Growth lane.",
-      },
-      {
-        type: "rule",
-        label: "When to use",
-        items: [
-          "Generating post visuals for Inovense social output.",
-          "Producing client deliverables in the Growth lane.",
-          "Creating testimonial or case study graphics.",
-        ],
-      },
-      {
-        type: "rule",
-        label: "What to do",
-        items: [
-          "Select the correct template for the content type.",
-          "Export at correct dimensions for the target platform.",
-          "Store exports in the client folder or Notion before posting.",
-          "Log posted content in the client's content tracker.",
-        ],
-      },
-      {
-        type: "rule",
-        label: "What not to do",
-        items: [
-          "Do not post without a copy review.",
-          "Do not use placeholder or lorem text in any export.",
-          "Do not post client content without sign-off if the contract requires it.",
-        ],
-      },
-    ],
-  },
-  {
-    id: "troubleshooting",
-    title: "Troubleshooting and Edge Cases",
-    tag: "Operations",
-    blocks: [
-      {
-        type: "rule",
-        label: "Lead submitted but no email received",
-        items: [
-          "Check Resend dashboard for delivery status.",
-          "Check the lead record to confirm it was created.",
-          "Verify the RESEND_API_KEY env variable is set in Vercel.",
-          "Check spam folder on the receiving end.",
-        ],
-      },
-      {
-        type: "rule",
-        label: "Stripe link not working",
-        items: [
-          "Regenerate the link from the Stripe dashboard.",
-          "Confirm the product and price are active in Stripe.",
-          "Check that the STRIPE_SECRET_KEY is set correctly in Vercel.",
-        ],
-      },
-      {
-        type: "rule",
-        label: "Lead record showing stale data",
-        items: [
-          "Hard refresh the page.",
-          "If still stale, check the Supabase table directly.",
-          "If the update did not save, check for a server action error in the logs.",
-        ],
-      },
-      {
-        type: "rule",
-        label: "Client wants to change lanes mid-engagement",
-        items: [
-          "Update the lane field on the lead record.",
-          "Add a note with the reason and date.",
-          "If pricing changes, send a revised proposal email.",
-          "Do not backdate any payment records.",
-        ],
-      },
-      {
-        type: "rule",
-        label: "Client wants to pause or cancel",
-        items: [
-          "Update the lead status to paused or churned as appropriate.",
-          "Add a detailed note with the reason.",
-          "Cancel or pause the Stripe subscription if applicable.",
-          "Do not delete the lead record.",
+          "If email delivery fails, verify Resend key and inspect lead_email_log.",
+          "If status looks stale, refresh and confirm write success in lead record.",
+          "If payment state is wrong, correct payment fields first before downstream status edits.",
         ],
       },
     ],
   },
 ];
 
-// ── Components ───────────────────────────────────────────────────────────────
+const TONE_STYLES: Record<SectionBlock["tone"], { label: string; cls: string }> = {
+  do: {
+    label: "Do",
+    cls: "border-emerald-500/20 bg-emerald-500/5 text-emerald-300",
+  },
+  avoid: {
+    label: "Avoid",
+    cls: "border-red-500/20 bg-red-500/5 text-red-300",
+  },
+  reference: {
+    label: "Reference",
+    cls: "border-zinc-700/60 bg-zinc-900/30 text-zinc-300",
+  },
+  guardrail: {
+    label: "Guardrail",
+    cls: "border-brand/30 bg-brand/10 text-brand",
+  },
+};
 
-function Tag({ label }: { label: string }) {
+const TAG_STYLES: Record<HandbookSection["tag"], string> = {
+  Flow: "border-sky-500/30 bg-sky-500/10 text-sky-300",
+  Locale: "border-indigo-500/30 bg-indigo-500/10 text-indigo-300",
+  AI: "border-violet-500/30 bg-violet-500/10 text-violet-300",
+  Commercial: "border-amber-500/30 bg-amber-500/10 text-amber-300",
+  Delivery: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+  Ops: "border-zinc-700/60 bg-zinc-800/40 text-zinc-300",
+};
+
+const AUTOMATION_STYLES: Record<HandbookSection["automation"], string> = {
+  Manual: "border-zinc-700/70 text-zinc-400",
+  Mixed: "border-brand/40 text-brand",
+  Automated: "border-emerald-500/40 text-emerald-400",
+};
+
+function SectionTag({ label }: { label: HandbookSection["tag"] }) {
   return (
-    <span className="inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-widest text-[#49A0A4] ring-1 ring-[#49A0A4]/30">
+    <span
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em] ${TAG_STYLES[label]}`}
+    >
       {label}
     </span>
   );
 }
 
-function RuleBlock({ label, items }: { label: string; items: string[] }) {
+function AutomationTag({ label }: { label: HandbookSection["automation"] }) {
   return (
-    <div>
-      <p className="mb-2 text-xs font-medium uppercase tracking-widest text-zinc-500">{label}</p>
-      <ul className="space-y-1.5">
-        {items.map((item, i) => (
-          <li key={i} className="flex items-start gap-2.5 text-sm text-zinc-300">
-            <span className="mt-[5px] h-1 w-1 shrink-0 rounded-full bg-zinc-600" />
-            {item}
+    <span
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em] ${AUTOMATION_STYLES[label]}`}
+    >
+      {label}
+    </span>
+  );
+}
+
+function BlockCard({ block }: { block: SectionBlock }) {
+  const tone = TONE_STYLES[block.tone];
+  return (
+    <div className={`rounded-xl border p-4 ${tone.cls}`}>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-[10px] font-medium uppercase tracking-[0.13em] opacity-80">
+          {tone.label}
+        </p>
+        <span className="text-[10px] uppercase tracking-[0.12em] opacity-70">
+          {block.title}
+        </span>
+      </div>
+      <ul className="space-y-1.5 text-sm leading-relaxed">
+        {block.items.map((item, index) => (
+          <li key={`${block.title}-${index}`} className="flex items-start gap-2.5">
+            <span className="mt-[6px] h-1 w-1 shrink-0 rounded-full bg-current opacity-70" />
+            <span>{item}</span>
           </li>
         ))}
       </ul>
@@ -731,106 +470,178 @@ function RuleBlock({ label, items }: { label: string; items: string[] }) {
   );
 }
 
-function SectionCard({ section }: { section: Section }) {
+function HandbookSectionCard({ section }: { section: HandbookSection }) {
   return (
     <section id={section.id} className="scroll-mt-24">
-      <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/50 p-6 md:p-8">
-        {/* Header */}
-        <div className="mb-6 flex items-start justify-between gap-4">
+      <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
+        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <SectionTag label={section.tag} />
+            <AutomationTag label={section.automation} />
+          </div>
           <h2 className="text-lg font-semibold text-zinc-100">{section.title}</h2>
-          {section.tag && <Tag label={section.tag} />}
+          <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-zinc-400">
+            {section.summary}
+          </p>
         </div>
-
-        {/* Blocks */}
-        <div className="space-y-6">
-          {section.blocks.map((block, i) => {
-            if (block.type === "text") {
-              return (
-                <p key={i} className="text-sm leading-relaxed text-zinc-400">
-                  {block.content}
-                </p>
-              );
-            }
-            if (block.type === "list") {
-              return (
-                <ul key={i} className="space-y-1.5">
-                  {block.items.map((item, j) => (
-                    <li key={j} className="flex items-start gap-2.5 text-sm text-zinc-300">
-                      <span className="mt-[5px] h-1 w-1 shrink-0 rounded-full bg-zinc-600" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              );
-            }
-            if (block.type === "field") {
-              return (
-                <div key={i}>
-                  <p className="mb-1 text-xs font-medium uppercase tracking-widest text-zinc-500">
-                    {block.label}
-                  </p>
-                  <p className="text-sm text-zinc-300">{block.value}</p>
-                </div>
-              );
-            }
-            if (block.type === "rule") {
-              return <RuleBlock key={i} label={block.label} items={block.items} />;
-            }
-            if (block.type === "divider") {
-              return <hr key={i} className="border-zinc-800" />;
-            }
-            return null;
-          })}
+        <div className="grid gap-3 p-5 md:grid-cols-2">
+          {section.blocks.map((block) => (
+            <BlockCard key={`${section.id}-${block.title}`} block={block} />
+          ))}
         </div>
       </div>
     </section>
   );
 }
 
-// ── Page ─────────────────────────────────────────────────────────────────────
-
 export default function DocsPage() {
   return (
-    <div className="mx-auto max-w-3xl">
-      {/* Page header */}
-      <div className="mb-10">
-        <h1 className="text-2xl font-semibold text-zinc-100">Documentation</h1>
-        <p className="mt-2 text-sm text-zinc-500">
-          Internal operating guide for the Inovense workflow. Not client-facing.
-        </p>
-      </div>
+    <div className="mx-auto max-w-6xl space-y-7">
+      <header className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/35">
+        <div className="bg-[radial-gradient(1200px_300px_at_-5%_-50%,rgba(73,160,164,0.22),transparent)] px-6 py-6 md:px-7">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center rounded-full border border-brand/30 bg-brand/10 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.13em] text-brand">
+              Internal
+            </span>
+            <span className="inline-flex items-center rounded-full border border-zinc-700/70 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-500">
+              Operating Handbook
+            </span>
+          </div>
+          <h1 className="mt-3 text-2xl font-semibold tracking-tight text-zinc-100">
+            Inovense CRM Command Reference
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-400">
+            This is the source of truth for how we run lead lifecycle, commercial flow,
+            AI-assisted proposal work, payment confirmation, and delivery state.
+            Keep records precise. Keep automation boundaries strict.
+          </p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Lead Flow</p>
+              <p className="mt-1 text-sm font-medium text-zinc-200">Status-driven and stage-true</p>
+            </div>
+            <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Agents</p>
+              <p className="mt-1 text-sm font-medium text-zinc-200">Assist content, no auto-send</p>
+            </div>
+            <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Payment Event</p>
+              <p className="mt-1 text-sm font-medium text-zinc-200">First paid mark auto-confirms by email</p>
+            </div>
+            <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Project Status</p>
+              <p className="mt-1 text-sm font-medium text-zinc-200">Manual. Completed means delivered.</p>
+            </div>
+          </div>
+        </div>
+      </header>
 
-      {/* Jump links */}
-      <nav className="mb-10 rounded-xl border border-zinc-800/80 bg-zinc-900/30 p-5">
-        <p className="mb-3 text-[10px] font-medium uppercase tracking-widest text-zinc-600">
-          Contents
-        </p>
-        <ol className="space-y-1.5">
-          {SECTIONS.map((s, i) => (
-            <li key={s.id}>
-              <a
-                href={`#${s.id}`}
-                className="flex items-center gap-3 text-sm text-zinc-500 transition-colors hover:text-zinc-200"
-              >
-                <span className="w-5 text-right text-xs text-zinc-700">{i + 1}.</span>
-                {s.title}
-              </a>
-            </li>
+      <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+        <aside className="space-y-4 lg:sticky lg:top-24 lg:h-fit">
+          <nav className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-4">
+            <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-600">
+              Jump To
+            </p>
+            <ol className="space-y-1.5">
+              {SECTIONS.map((section, index) => (
+                <li key={section.id}>
+                  <a
+                    href={`#${section.id}`}
+                    className="group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-800/60 hover:text-zinc-200"
+                  >
+                    <span className="w-5 text-right text-[11px] text-zinc-700 group-hover:text-zinc-500">
+                      {index + 1}.
+                    </span>
+                    <span className="leading-tight">{section.title}</span>
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </nav>
+
+          <div className="rounded-2xl border border-brand/25 bg-brand/10 p-4">
+            <p className="text-[10px] font-medium uppercase tracking-[0.13em] text-brand">
+              Hard Rule
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-zinc-200">
+              Payment confirmation and project completion are separate truths.
+              Paid does not mean delivered.
+            </p>
+          </div>
+        </aside>
+
+        <div className="space-y-6">
+          <section id="flow-reference" className="scroll-mt-24">
+            <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
+              <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <SectionTag label="Flow" />
+                  <AutomationTag label="Mixed" />
+                </div>
+                <h2 className="text-lg font-semibold text-zinc-100">Lifecycle Reference</h2>
+                <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+                  Use this flow as the operational spine. Status should mirror actual progression.
+                </p>
+              </div>
+              <div className="space-y-2 p-5">
+                {LEAD_FLOW_STEPS.map((item, index) => (
+                  <div
+                    key={item.step}
+                    className="grid gap-2 rounded-xl border border-zinc-800/70 bg-zinc-950/35 p-3.5 md:grid-cols-[28px_1fr_auto]"
+                  >
+                    <span className="text-sm font-semibold tabular-nums text-zinc-500">
+                      {index + 1}
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium text-zinc-200">{item.step}</p>
+                      <p className="mt-0.5 text-xs text-zinc-500">{item.trigger}</p>
+                    </div>
+                    <span className="inline-flex h-fit items-center rounded-full border border-zinc-700/70 bg-zinc-900/50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400">
+                      {item.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section id="project-status-reference" className="scroll-mt-24">
+            <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
+              <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <SectionTag label="Delivery" />
+                  <AutomationTag label="Manual" />
+                </div>
+                <h2 className="text-lg font-semibold text-zinc-100">Project Status Reference</h2>
+                <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+                  Project status is delivery tracking only. Keep it separate from lifecycle and payment states.
+                </p>
+              </div>
+              <div className="grid gap-3 p-5 md:grid-cols-2">
+                {PROJECT_STATUS_REFERENCE.map((item) => (
+                  <div
+                    key={item.value}
+                    className="rounded-xl border border-zinc-800/70 bg-zinc-950/35 p-3.5"
+                  >
+                    <p className="text-sm font-medium text-zinc-200">{item.value}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-zinc-500">{item.meaning}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {SECTIONS.map((section) => (
+            <HandbookSectionCard key={section.id} section={section} />
           ))}
-        </ol>
-      </nav>
-
-      {/* Sections */}
-      <div className="space-y-6">
-        {SECTIONS.map((section) => (
-          <SectionCard key={section.id} section={section} />
-        ))}
+        </div>
       </div>
 
-      {/* Footer note */}
-      <p className="mt-10 text-center text-xs text-zinc-700">
-        Internal use only. Keep this page current as the operating flow evolves.
-      </p>
+      <footer className="pb-1">
+        <p className="text-center text-xs text-zinc-700">
+          Internal only. Treat outdated workflow documentation as a system bug.
+        </p>
+      </footer>
     </div>
   );
 }

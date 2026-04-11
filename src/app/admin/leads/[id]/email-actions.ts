@@ -165,7 +165,7 @@ export async function sendLeadEmail(
     const { data: lead, error: fetchError } = await supabase
       .from("leads")
       .select(
-        "id, full_name, company_name, work_email, status, onboarding_token, onboarding_status, proposal_token, proposal_deposit, deposit_amount, payment_link, lead_source"
+        "id, full_name, company_name, work_email, status, onboarding_token, onboarding_status, proposal_token, proposal_deposit, deposit_amount, payment_link, lead_source, local_currency_code"
       )
       .eq("id", leadId)
       .single();
@@ -204,7 +204,12 @@ export async function sendLeadEmail(
 
     const resolvedBody =
       emailType === "payment_request" && normalizedDepositAmount != null
-        ? applyPaymentAmountToBody(body, normalizedDepositAmount, locale)
+        ? applyPaymentAmountToBody(
+            body,
+            normalizedDepositAmount,
+            locale,
+            lead.local_currency_code
+          )
         : body;
 
     // For onboarding_sent: ensure a token exists, generate if missing

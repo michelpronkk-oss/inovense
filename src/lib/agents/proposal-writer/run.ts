@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { getClientLocaleForLeadSource } from "@/lib/client-locale";
+import { normalizeCurrencyCode } from "@/lib/currency";
 import {
   ProposalWriterInputSchema,
   ProposalWriterOutputSchema,
@@ -144,14 +145,17 @@ function buildUserPrompt(
     resolution.output_language === "nl"
       ? "Write all client-facing text in Dutch (Nederlands). JSON keys remain in English."
       : "Write all client-facing text in English. JSON keys remain in English.";
+  const proposalCurrencyCode = normalizeCurrencyCode(
+    input.existing_proposal.local_currency_code
+  );
 
   const priceCtx =
     input.existing_proposal.proposal_price != null
-      ? `Proposal price: EUR ${input.existing_proposal.proposal_price}`
+      ? `Proposal price: ${proposalCurrencyCode} ${input.existing_proposal.proposal_price}`
       : "Proposal price: not set";
   const depositCtx =
     input.existing_proposal.proposal_deposit != null
-      ? `Deposit: EUR ${input.existing_proposal.proposal_deposit}`
+      ? `Deposit: ${proposalCurrencyCode} ${input.existing_proposal.proposal_deposit}`
       : "Deposit: not set";
 
   const existingCtx = [

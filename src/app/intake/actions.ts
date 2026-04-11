@@ -3,6 +3,7 @@
 import { Resend } from "resend";
 import { intakeSchema, type IntakeFormData } from "./schema";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { getLeadMarketSeedFromLeadSource } from "@/lib/market";
 
 /* ─── Email formatters ──────────────────────────────────────────────────── */
 
@@ -216,6 +217,8 @@ export async function submitIntake(
     // serverless function returns. Failures are logged but never block the user
     // since the email notification already succeeded.
     try {
+      const leadSource = "website";
+      const marketSeed = getLeadMarketSeedFromLeadSource(leadSource);
       const supabase = createSupabaseServerClient();
       const { error: sbError } = await supabase.from("leads").insert({
         full_name: parsed.data.fullName,
@@ -228,6 +231,11 @@ export async function submitIntake(
         timeline: parsed.data.timeline,
         project_details: parsed.data.details,
         status: "new",
+        lead_source: leadSource,
+        local_currency_code: marketSeed.local_currency_code,
+        currency_source: marketSeed.currency_source,
+        country_code: marketSeed.country_code,
+        country_source: marketSeed.country_source,
       });
       if (sbError) {
         console.error("[intake] Supabase insert error:", sbError.message, sbError);

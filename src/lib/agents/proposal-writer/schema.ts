@@ -27,6 +27,7 @@ export const ProposalWriterInputSchema = z.object({
     proposal_notes: z.string().nullable(),
     proposal_price: z.number().nullable(),
     proposal_deposit: z.number().nullable(),
+    local_currency_code: z.string().nullable(),
   }),
 
   email_template_defaults: z.object({

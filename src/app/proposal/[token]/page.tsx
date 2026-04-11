@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { getClientLocaleForLeadSource, type ClientLocale } from "@/lib/client-locale";
 import { acceptProposal, declineProposal } from "./actions";
+import { formatCurrencyAmount, normalizeCurrencyCode } from "@/lib/currency";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ type ProposalLead = {
   proposal_timeline: string | null;
   proposal_price: number | null;
   proposal_deposit: number | null;
+  local_currency_code: string | null;
   proposal_decision: "accepted" | "declined" | null;
   proposal_decided_at: string | null;
   proposal_sent_at: string | null;
@@ -111,14 +113,16 @@ function formatDate(iso: string, locale: ClientLocale) {
   });
 }
 
-function formatEuro(value: number, locale: ClientLocale) {
-  const hasDecimals = Math.round(value * 100) % 100 !== 0;
-  return new Intl.NumberFormat(locale === "nl" ? "nl-NL" : "en-GB", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: hasDecimals ? 2 : 0,
-    maximumFractionDigits: 2,
-  }).format(value);
+function formatLocalAmount(
+  value: number,
+  currencyCode: string | null | undefined,
+  locale: ClientLocale
+) {
+  return formatCurrencyAmount(
+    value,
+    normalizeCurrencyCode(currencyCode),
+    locale === "nl" ? "nl-NL" : "en-GB"
+  );
 }
 
 async function getProposalLeadByToken(token: string): Promise<ProposalLead | null> {
@@ -126,7 +130,7 @@ async function getProposalLeadByToken(token: string): Promise<ProposalLead | nul
   const { data, error } = await supabase
     .from("leads")
     .select(
-      "id, full_name, company_name, service_lane, lead_source, proposal_status, proposal_title, proposal_intro, proposal_scope, proposal_deliverables, proposal_timeline, proposal_price, proposal_deposit, proposal_decision, proposal_decided_at, proposal_sent_at"
+      "id, full_name, company_name, service_lane, lead_source, proposal_status, proposal_title, proposal_intro, proposal_scope, proposal_deliverables, proposal_timeline, proposal_price, proposal_deposit, local_currency_code, proposal_decision, proposal_decided_at, proposal_sent_at"
     )
     .eq("proposal_token", token)
     .maybeSingle();
@@ -264,7 +268,13 @@ export default async function ProposalPage({
                 {copy.priceLabel}
               </p>
               <p className="mt-1.5 text-xl font-semibold tracking-tight text-zinc-100">
-                {hasPrice ? formatEuro(Number(lead.proposal_price), locale) : copy.notSet}
+                {hasPrice
+                  ? formatLocalAmount(
+                      Number(lead.proposal_price),
+                      lead.local_currency_code,
+                      locale
+                    )
+                  : copy.notSet}
               </p>
             </div>
             <div className="rounded-xl border border-brand/25 bg-brand/10 px-4 py-3.5">
@@ -272,7 +282,13 @@ export default async function ProposalPage({
                 {copy.depositLabel}
               </p>
               <p className="mt-1.5 text-xl font-semibold tracking-tight text-zinc-100">
-                {hasDeposit ? formatEuro(Number(lead.proposal_deposit), locale) : copy.notSet}
+                {hasDeposit
+                  ? formatLocalAmount(
+                      Number(lead.proposal_deposit),
+                      lead.local_currency_code,
+                      locale
+                    )
+                  : copy.notSet}
               </p>
               {depositShare != null ? (
                 <p className="mt-1.5 text-[11px] text-brand/70">

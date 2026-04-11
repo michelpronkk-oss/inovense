@@ -3,6 +3,7 @@
 import { Resend } from "resend";
 import { nlIntakeSchema, type NlIntakeFormData } from "./nl-schema";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { getLeadMarketSeedFromLeadSource } from "@/lib/market";
 
 /* ─── Email formatters ──────────────────────────────────────────────────── */
 
@@ -214,6 +215,8 @@ export async function submitNlIntake(
 
     // Write lead to Supabase with nl_web source
     try {
+      const leadSource = "nl_web";
+      const marketSeed = getLeadMarketSeedFromLeadSource(leadSource);
       const supabase = createSupabaseServerClient();
       const { error: sbError } = await supabase.from("leads").insert({
         full_name: parsed.data.fullName,
@@ -226,7 +229,11 @@ export async function submitNlIntake(
         timeline: parsed.data.timeline,
         project_details: parsed.data.details,
         status: "new",
-        lead_source: "nl_web",
+        lead_source: leadSource,
+        local_currency_code: marketSeed.local_currency_code,
+        currency_source: marketSeed.currency_source,
+        country_code: marketSeed.country_code,
+        country_source: marketSeed.country_source,
       });
       if (sbError) {
         console.error("[nl-intake] Supabase insert error:", sbError.message, sbError);

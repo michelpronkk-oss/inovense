@@ -23,6 +23,7 @@ import { RevenueCard } from "./revenue-card";
 import type { LeadResearchOutput } from "@/lib/agents/lead-research/schema";
 import type { ProposalAngleOutput } from "@/lib/agents/proposal-angle/schema";
 import type { ProposalWriterOutput } from "@/lib/agents/proposal-writer/schema";
+import { formatUsdPrimaryWithLocalSecondary } from "@/lib/currency";
 
 export const dynamic = "force-dynamic";
 
@@ -90,16 +91,6 @@ function Section({
   );
 }
 
-function formatEuro(value: number) {
-  const hasDecimals = Math.round(value * 100) % 100 !== 0;
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: hasDecimals ? 2 : 0,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
 export default async function LeadDetailPage({
   params,
 }: {
@@ -137,6 +128,11 @@ export default async function LeadDetailPage({
 
   const firstName = lead.full_name.split(" ")[0];
   const effectiveDepositAmount = lead.deposit_amount ?? lead.proposal_deposit;
+  const effectiveDepositDisplay = formatUsdPrimaryWithLocalSecondary({
+    amountLocal: effectiveDepositAmount,
+    localCurrencyCode: lead.local_currency_code,
+    usdFxRateLocked: lead.usd_fx_rate_locked,
+  });
 
   return (
     <>
@@ -215,8 +211,17 @@ export default async function LeadDetailPage({
                   {effectiveDepositAmount != null && (
                     <span>
                       <span className="mr-1 text-zinc-700">Deposit</span>
-                      <span className="font-medium text-zinc-400">
-                        {formatEuro(Number(effectiveDepositAmount))}
+                      <span
+                        className={`font-medium ${
+                          effectiveDepositDisplay.conversionUnavailable
+                            ? "text-amber-300"
+                            : "text-zinc-400"
+                        }`}
+                      >
+                        {effectiveDepositDisplay.primary}
+                      </span>
+                      <span className="ml-1 text-[11px] text-zinc-600">
+                        {effectiveDepositDisplay.secondary}
                       </span>
                     </span>
                   )}
@@ -307,6 +312,8 @@ export default async function LeadDetailPage({
             depositAmount={lead.deposit_amount}
             depositPaidAt={lead.deposit_paid_at ?? null}
             initialFinalPaymentPaidAt={lead.final_payment_paid_at ?? null}
+            localCurrencyCode={lead.local_currency_code}
+            usdFxRateLocked={lead.usd_fx_rate_locked}
           />
 
           <Section title="Status">
@@ -324,6 +331,7 @@ export default async function LeadDetailPage({
               proposalToken={lead.proposal_token}
               proposalDeposit={lead.proposal_deposit}
               paymentDepositAmount={lead.deposit_amount}
+              localCurrencyCode={lead.local_currency_code}
               proposalWriterDraft={
                 lead.proposal_writer
                   ? (lead.proposal_writer as ProposalWriterOutput)
@@ -354,6 +362,8 @@ export default async function LeadDetailPage({
               currentNotes={lead.proposal_notes ?? null}
               currentProposalPrice={lead.proposal_price}
               currentProposalDeposit={lead.proposal_deposit}
+              localCurrencyCode={lead.local_currency_code}
+              usdFxRateLocked={lead.usd_fx_rate_locked}
               proposalToken={lead.proposal_token}
               proposalSentAt={lead.proposal_sent_at}
             />
@@ -387,6 +397,9 @@ export default async function LeadDetailPage({
               currentInvoiceReference={lead.invoice_reference}
               proposalDeposit={lead.proposal_deposit}
               currentDepositAmount={lead.deposit_amount}
+              currentLocalCurrencyCode={lead.local_currency_code}
+              currentUsdFxRateLocked={lead.usd_fx_rate_locked}
+              currentCountryCode={lead.country_code}
               depositPaidAt={lead.deposit_paid_at}
               currentProjectStartDate={lead.project_start_date}
             />

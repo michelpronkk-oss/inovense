@@ -3,7 +3,11 @@ import Link from "next/link";
 import { createSupabaseServerClient, type Lead } from "@/lib/supabase-server";
 import { format } from "date-fns";
 import { STATUS_CONFIG, LANE_COLORS } from "@/app/admin/config";
-import { derivePaymentState, fmtEur } from "@/lib/payment-utils";
+import {
+  convertLeadLocalAmountToUsd,
+  derivePaymentState,
+  fmtUsd,
+} from "@/lib/payment-utils";
 
 export const metadata: Metadata = { title: "Overview | Inovense CRM" };
 
@@ -39,11 +43,20 @@ export default async function AdminOverviewPage() {
   };
 
   /* ─── Revenue metrics ─────────────────────────────────────────────────────── */
-  let cashCollected = 0;
-  let depositsCollected = 0;
-  let completedRevenue = 0;
-  let outstandingBalance = 0;
+  let cashCollectedUsd = 0;
+  let depositsCollectedUsd = 0;
+  let completedRevenueUsd = 0;
+  let outstandingBalanceUsd = 0;
   let leadsWithPrices = 0;
+  const missingFxLeadIds = new Set<string>();
+
+  function convertForMetric(lead: Lead, amountLocal: number): number | null {
+    const amountUsd = convertLeadLocalAmountToUsd(lead, amountLocal);
+    if (amountUsd == null && amountLocal > 0) {
+      missingFxLeadIds.add(lead.id);
+    }
+    return amountUsd;
+  }
 
   for (const lead of leads) {
     const ps = derivePaymentState(lead);
@@ -53,19 +66,32 @@ export default async function AdminOverviewPage() {
     leadsWithPrices++;
 
     if (ps.kind === "fully_paid") {
-      cashCollected += ps.total;
-      depositsCollected += ps.total; // full payment encompasses deposit
-      if (lead.project_status === "completed") {
-        completedRevenue += ps.total;
+      const totalUsd = convertForMetric(lead, ps.total);
+      if (totalUsd != null) {
+        cashCollectedUsd += totalUsd;
+        depositsCollectedUsd += totalUsd; // full payment encompasses deposit
+      }
+      if (lead.project_status === "completed" && totalUsd != null) {
+        completedRevenueUsd += totalUsd;
       }
     } else if (ps.kind === "deposit_paid") {
-      cashCollected += ps.paid;
-      depositsCollected += ps.paid;
-      outstandingBalance += ps.remaining;
+      const paidUsd = convertForMetric(lead, ps.paid);
+      const remainingUsd = convertForMetric(lead, ps.remaining);
+      if (paidUsd != null) {
+        cashCollectedUsd += paidUsd;
+        depositsCollectedUsd += paidUsd;
+      }
+      if (remainingUsd != null) {
+        outstandingBalanceUsd += remainingUsd;
+      }
     } else if (ps.kind === "unpaid") {
-      outstandingBalance += ps.total;
+      const totalUsd = convertForMetric(lead, ps.total);
+      if (totalUsd != null) {
+        outstandingBalanceUsd += totalUsd;
+      }
     }
   }
+  const missingFxLeadCount = missingFxLeadIds.size;
 
   const recent = leads.slice(0, 6);
   const hasData = leads.length > 0 && !error;
@@ -122,42 +148,51 @@ export default async function AdminOverviewPage() {
             </p>
             {leadsWithPrices > 0 && (
               <p className="text-[10px] text-zinc-700">
-                {leadsWithPrices} lead{leadsWithPrices !== 1 ? "s" : ""} with price set
+                USD internal reporting across{" "}
+                {leadsWithPrices} lead{leadsWithPrices !== 1 ? "s" : ""} with
+                price set
               </p>
             )}
           </div>
+          {missingFxLeadCount > 0 && (
+            <div className="mb-3 rounded-lg border border-amber-500/20 bg-amber-500/8 px-3 py-2 text-[11px] text-amber-300">
+              Conversion unavailable for {missingFxLeadCount} lead
+              {missingFxLeadCount !== 1 ? "s" : ""}. Set a locked USD FX rate
+              on each lead to include them in USD totals.
+            </div>
+          )}
           <div className="mb-10 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <RevenueMetric
               label="Cash collected"
-              value={fmtEur(cashCollected)}
-              sub="Deposits + full payments in"
+              value={fmtUsd(cashCollectedUsd)}
+              sub="USD, deposits + full payments"
               accent="border-t-emerald-500/40"
               valueColor="text-emerald-300"
-              empty={cashCollected === 0}
+              empty={cashCollectedUsd === 0}
             />
             <RevenueMetric
               label="Completed revenue"
-              value={fmtEur(completedRevenue)}
-              sub="Fully paid + project complete"
+              value={fmtUsd(completedRevenueUsd)}
+              sub="USD, fully paid + project complete"
               accent="border-t-violet-500/30"
               valueColor="text-violet-300"
-              empty={completedRevenue === 0}
+              empty={completedRevenueUsd === 0}
             />
             <RevenueMetric
               label="Outstanding"
-              value={fmtEur(outstandingBalance)}
-              sub="Unpaid balances across pipeline"
+              value={fmtUsd(outstandingBalanceUsd)}
+              sub="USD unpaid balances across pipeline"
               accent="border-t-amber-500/30"
               valueColor="text-amber-300"
-              empty={outstandingBalance === 0}
+              empty={outstandingBalanceUsd === 0}
             />
             <RevenueMetric
               label="Deposits collected"
-              value={fmtEur(depositsCollected)}
-              sub="All deposit-stage payments"
+              value={fmtUsd(depositsCollectedUsd)}
+              sub="USD, all deposit-stage payments"
               accent="border-t-zinc-600/60"
               valueColor="text-zinc-200"
-              empty={depositsCollected === 0}
+              empty={depositsCollectedUsd === 0}
             />
           </div>
         </>

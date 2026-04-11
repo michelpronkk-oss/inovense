@@ -2,16 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { markFinalPaymentPaid } from "./actions";
-import {
-  derivePaymentState,
-  fmtEur,
-  type PaymentState,
-} from "@/lib/payment-utils";
+import { derivePaymentState, type PaymentState } from "@/lib/payment-utils";
+import { formatUsdPrimaryWithLocalSecondary } from "@/lib/currency";
 
 export type { PaymentState };
 export { derivePaymentState };
-
-/* ─── Helpers ────────────────────────────────────────────────────────────── */
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -21,8 +16,6 @@ function fmtDate(iso: string) {
   });
 }
 
-/* ─── Revenue card ───────────────────────────────────────────────────────── */
-
 export function RevenueCard({
   leadId,
   proposalPrice,
@@ -30,6 +23,8 @@ export function RevenueCard({
   depositAmount,
   depositPaidAt,
   initialFinalPaymentPaidAt,
+  localCurrencyCode,
+  usdFxRateLocked,
 }: {
   leadId: string;
   proposalPrice: number | null;
@@ -37,6 +32,8 @@ export function RevenueCard({
   depositAmount: number | null;
   depositPaidAt: string | null;
   initialFinalPaymentPaidAt: string | null;
+  localCurrencyCode: string | null;
+  usdFxRateLocked: number | null;
 }) {
   const [finalPaidAt, setFinalPaidAt] = useState<string | null>(
     initialFinalPaymentPaidAt
@@ -52,23 +49,6 @@ export function RevenueCard({
     deposit_paid_at: depositPaidAt,
     final_payment_paid_at: finalPaidAt,
   });
-
-  function handleMarkFinal() {
-    if (!confirm) {
-      setConfirm(true);
-      return;
-    }
-    setError(null);
-    setConfirm(false);
-    startTransition(async () => {
-      const result = await markFinalPaymentPaid(leadId);
-      if (result.success) {
-        setFinalPaidAt(new Date().toISOString());
-      } else {
-        setError(result.error ?? "Failed.");
-      }
-    });
-  }
 
   if (state.kind === "no_price") {
     return (
@@ -87,9 +67,71 @@ export function RevenueCard({
     );
   }
 
+  const totalDisplay = formatUsdPrimaryWithLocalSecondary({
+    amountLocal: state.total,
+    localCurrencyCode,
+    usdFxRateLocked,
+  });
+  const paidDisplay =
+    state.kind === "deposit_paid"
+      ? formatUsdPrimaryWithLocalSecondary({
+          amountLocal: state.paid,
+          localCurrencyCode,
+          usdFxRateLocked,
+        })
+      : null;
+  const remainingDisplay =
+    state.kind === "deposit_paid"
+      ? formatUsdPrimaryWithLocalSecondary({
+          amountLocal: state.remaining,
+          localCurrencyCode,
+          usdFxRateLocked,
+        })
+      : null;
+  const receivedDisplay =
+    state.kind === "fully_paid"
+      ? formatUsdPrimaryWithLocalSecondary({
+          amountLocal: state.total,
+          localCurrencyCode,
+          usdFxRateLocked,
+        })
+      : null;
+  const outstandingDisplay =
+    state.kind === "unpaid"
+      ? formatUsdPrimaryWithLocalSecondary({
+          amountLocal: state.total,
+          localCurrencyCode,
+          usdFxRateLocked,
+        })
+      : null;
+
+  const showConversionWarning = [
+    totalDisplay,
+    paidDisplay,
+    remainingDisplay,
+    receivedDisplay,
+    outstandingDisplay,
+  ].some((entry) => entry?.conversionUnavailable);
+
+  function handleMarkFinal() {
+    if (!confirm) {
+      setConfirm(true);
+      return;
+    }
+    setError(null);
+    setConfirm(false);
+    startTransition(async () => {
+      const result = await markFinalPaymentPaid(leadId);
+      if (result.success) {
+        setFinalPaidAt(new Date().toISOString());
+      } else {
+        setError(result.error ?? "Failed.");
+      }
+    });
+  }
+
   return (
     <div className="overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/30">
-      {/* Header + state badge */}
       <div className="flex items-center justify-between gap-2 border-b border-zinc-800/60 bg-zinc-900/60 px-4 py-3">
         <h2 className="text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-600">
           Revenue
@@ -114,63 +156,101 @@ export function RevenueCard({
       </div>
 
       <div className="space-y-3 px-4 py-3">
-        {/* Metrics */}
-        <div className="grid grid-cols-3 gap-x-3">
-          {/* Total — always shown */}
+        <div className="grid grid-cols-3 gap-x-3 gap-y-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
               Total
             </p>
-            <p className="mt-0.5 text-sm font-semibold tabular-nums text-zinc-200">
-              {fmtEur(state.total)}
+            <p
+              className={`mt-0.5 text-sm font-semibold tabular-nums ${
+                totalDisplay.conversionUnavailable ? "text-amber-300" : "text-zinc-200"
+              }`}
+            >
+              {totalDisplay.primary}
+            </p>
+            <p className="mt-0.5 text-[11px] text-zinc-600">
+              {totalDisplay.secondary}
             </p>
           </div>
 
-          {state.kind === "deposit_paid" && (
+          {state.kind === "deposit_paid" && paidDisplay && remainingDisplay && (
             <>
               <div>
                 <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
                   Paid
                 </p>
-                <p className="mt-0.5 text-sm font-semibold tabular-nums text-brand">
-                  {fmtEur(state.paid)}
+                <p
+                  className={`mt-0.5 text-sm font-semibold tabular-nums ${
+                    paidDisplay.conversionUnavailable ? "text-amber-300" : "text-brand"
+                  }`}
+                >
+                  {paidDisplay.primary}
+                </p>
+                <p className="mt-0.5 text-[11px] text-zinc-600">
+                  {paidDisplay.secondary}
                 </p>
               </div>
               <div>
                 <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
                   Remaining
                 </p>
-                <p className="mt-0.5 text-sm font-semibold tabular-nums text-zinc-400">
-                  {fmtEur(state.remaining)}
+                <p
+                  className={`mt-0.5 text-sm font-semibold tabular-nums ${
+                    remainingDisplay.conversionUnavailable
+                      ? "text-amber-300"
+                      : "text-zinc-400"
+                  }`}
+                >
+                  {remainingDisplay.primary}
+                </p>
+                <p className="mt-0.5 text-[11px] text-zinc-600">
+                  {remainingDisplay.secondary}
                 </p>
               </div>
             </>
           )}
 
-          {state.kind === "fully_paid" && (
+          {state.kind === "fully_paid" && receivedDisplay && (
             <div>
               <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
                 Received
               </p>
-              <p className="mt-0.5 text-sm font-semibold tabular-nums text-emerald-400">
-                {fmtEur(state.total)}
+              <p
+                className={`mt-0.5 text-sm font-semibold tabular-nums ${
+                  receivedDisplay.conversionUnavailable
+                    ? "text-amber-300"
+                    : "text-emerald-400"
+                }`}
+              >
+                {receivedDisplay.primary}
+              </p>
+              <p className="mt-0.5 text-[11px] text-zinc-600">
+                {receivedDisplay.secondary}
               </p>
             </div>
           )}
 
-          {state.kind === "unpaid" && (
+          {state.kind === "unpaid" && outstandingDisplay && (
             <div>
               <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
                 Outstanding
               </p>
-              <p className="mt-0.5 text-sm font-semibold tabular-nums text-zinc-500">
-                {fmtEur(state.total)}
+              <p
+                className={`mt-0.5 text-sm font-semibold tabular-nums ${
+                  outstandingDisplay.conversionUnavailable
+                    ? "text-amber-300"
+                    : "text-zinc-500"
+                }`}
+              >
+                {outstandingDisplay.primary}
+              </p>
+              <p className="mt-0.5 text-[11px] text-zinc-600">
+                {outstandingDisplay.secondary}
               </p>
             </div>
           )}
         </div>
 
-        {/* Date line */}
         {(state.kind === "deposit_paid" || state.kind === "fully_paid") && (
           <p className="text-[11px] tabular-nums text-zinc-700">
             {state.kind === "deposit_paid"
@@ -179,13 +259,23 @@ export function RevenueCard({
           </p>
         )}
 
-        {/* Final payment action — only when deposit paid but not fully paid */}
-        {state.kind === "deposit_paid" && (
+        {showConversionWarning && (
+          <p className="text-[11px] text-amber-400">
+            USD conversion unavailable for part of this lead. Local amounts are
+            shown as source of truth.
+          </p>
+        )}
+
+        {state.kind === "deposit_paid" && remainingDisplay && (
           <div className="border-t border-zinc-800/50 pt-3">
             {confirm ? (
               <div className="space-y-2">
                 <p className="text-[11px] text-amber-500/80">
-                  Mark {fmtEur(state.remaining)} as received? Cannot be undone.
+                  Mark{" "}
+                  {remainingDisplay.conversionUnavailable
+                    ? remainingDisplay.secondary
+                    : `${remainingDisplay.primary} (${remainingDisplay.secondary})`}{" "}
+                  as received? Cannot be undone.
                 </p>
                 <div className="flex gap-2">
                   <button

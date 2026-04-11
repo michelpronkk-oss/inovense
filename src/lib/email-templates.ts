@@ -4,6 +4,7 @@ import {
   isDutchClientLeadSource,
   type ClientLocale,
 } from "./client-locale";
+import { normalizeCurrencyCode } from "./currency";
 
 export type EmailTemplateType =
   | "fit_followup"
@@ -199,25 +200,35 @@ export function getDepositPaidConfirmationTemplateForLeadSource(
     : DEPOSIT_PAID_CONFIRMATION_TEMPLATE_EN;
 }
 
-export function formatEuroAmount(
+export function formatMoneyAmount(
   value: number,
+  currencyCode: string | null | undefined,
   locale: EmailTemplateLocale = "en"
 ): string {
   const hasDecimals = Math.round(value * 100) % 100 !== 0;
+  const resolvedCurrencyCode = normalizeCurrencyCode(currencyCode);
   return new Intl.NumberFormat(locale === "nl" ? "nl-NL" : "en-GB", {
     style: "currency",
-    currency: "EUR",
+    currency: resolvedCurrencyCode,
     minimumFractionDigits: hasDecimals ? 2 : 0,
     maximumFractionDigits: 2,
   }).format(value);
 }
 
+export function formatEuroAmount(
+  value: number,
+  locale: EmailTemplateLocale = "en"
+): string {
+  return formatMoneyAmount(value, "EUR", locale);
+}
+
 export function applyPaymentAmountToBody(
   body: string,
   amount: number,
-  locale: EmailTemplateLocale = "en"
+  locale: EmailTemplateLocale = "en",
+  currencyCode: string | null | undefined = "EUR"
 ): string {
-  const formatted = formatEuroAmount(amount, locale);
+  const formatted = formatMoneyAmount(amount, currencyCode, locale);
   const trimmed = body.trim();
   const prefix = locale === "nl" ? `Aanbetaling: ${formatted}.` : `Deposit due: ${formatted}.`;
 

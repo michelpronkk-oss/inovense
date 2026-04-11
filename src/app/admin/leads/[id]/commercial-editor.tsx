@@ -9,8 +9,14 @@ import {
   generateProposalToken,
 } from "./actions";
 import type { ProjectStatus, OnboardingStatus } from "@/lib/supabase-server";
+import {
+  parseUsdFxRate,
+  formatUsdPrimaryWithLocalSecondary,
+  normalizeCurrencyCode,
+} from "@/lib/currency";
+import { parseCountryCodeInput } from "@/lib/market";
 
-/* ─── Shared helpers ────────────────────────────────────────────────────── */
+/* Shared helpers */
 
 function isUrl(str: string) {
   return str.startsWith("http://") || str.startsWith("https://");
@@ -22,16 +28,6 @@ function fmtDate(iso: string) {
     month: "short",
     year: "numeric",
   });
-}
-
-function formatEuro(value: number) {
-  const hasDecimals = Math.round(value * 100) % 100 !== 0;
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: hasDecimals ? 2 : 0,
-    maximumFractionDigits: 2,
-  }).format(value);
 }
 
 function parseDraftAmount(raw: string): number | null {
@@ -82,7 +78,7 @@ function Label({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ─── Proposal editor ───────────────────────────────────────────────────── */
+/* Proposal editor */
 
 export function ProposalEditor({
   id,
@@ -95,6 +91,8 @@ export function ProposalEditor({
   currentNotes,
   currentProposalPrice,
   currentProposalDeposit,
+  localCurrencyCode,
+  usdFxRateLocked,
   proposalToken: initialToken,
   proposalSentAt,
 }: {
@@ -108,9 +106,12 @@ export function ProposalEditor({
   currentNotes: string | null;
   currentProposalPrice: number | null;
   currentProposalDeposit: number | null;
+  localCurrencyCode: string | null;
+  usdFxRateLocked: number | null;
   proposalToken: string | null;
   proposalSentAt: string | null;
 }) {
+  const resolvedLocalCurrencyCode = normalizeCurrencyCode(localCurrencyCode);
   const [url, setUrl] = useState(currentUrl ?? "");
   const [title, setTitle] = useState(currentTitle ?? "");
   const [body, setBody] = useState(currentBody ?? "");
@@ -163,6 +164,16 @@ export function ProposalEditor({
     parsedPrice != null && parsedPrice > 0 && parsedDeposit != null
       ? Math.min(100, Math.max(0, (parsedDeposit / parsedPrice) * 100))
       : null;
+  const priceDisplay = formatUsdPrimaryWithLocalSecondary({
+    amountLocal: parsedPrice,
+    localCurrencyCode: resolvedLocalCurrencyCode,
+    usdFxRateLocked,
+  });
+  const depositDisplay = formatUsdPrimaryWithLocalSecondary({
+    amountLocal: parsedDeposit,
+    localCurrencyCode: resolvedLocalCurrencyCode,
+    usdFxRateLocked,
+  });
 
   return (
     <div className="space-y-4">
@@ -171,11 +182,11 @@ export function ProposalEditor({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="min-w-0">
             <p className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
-              Proposal price (EUR)
+              Proposal price ({resolvedLocalCurrencyCode})
             </p>
             <div className="relative">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-zinc-600">
-                €
+                {normalizeCurrencyCode(localCurrencyCode)}
               </span>
               <input
                 type="number"
@@ -196,11 +207,11 @@ export function ProposalEditor({
 
           <div className="min-w-0">
             <p className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
-              Proposal deposit (EUR)
+              Proposal deposit ({resolvedLocalCurrencyCode})
             </p>
             <div className="relative">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-zinc-600">
-                €
+                {normalizeCurrencyCode(localCurrencyCode)}
               </span>
               <input
                 type="number"
@@ -228,17 +239,39 @@ export function ProposalEditor({
               <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
                 Total
               </p>
-              <p className="mt-1 text-sm font-medium text-zinc-200">
-                {parsedPrice != null ? formatEuro(parsedPrice) : "Not set"}
+              <p
+                className={`mt-1 text-sm font-medium ${
+                  priceDisplay.conversionUnavailable && parsedPrice != null
+                    ? "text-amber-300"
+                    : "text-zinc-200"
+                }`}
+              >
+                {priceDisplay.primary}
               </p>
+              {parsedPrice != null && (
+                <p className="mt-0.5 text-[11px] text-zinc-600">
+                  {priceDisplay.secondary}
+                </p>
+              )}
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
                 Deposit
               </p>
-              <p className="mt-1 text-sm font-medium text-zinc-200">
-                {parsedDeposit != null ? formatEuro(parsedDeposit) : "Not set"}
+              <p
+                className={`mt-1 text-sm font-medium ${
+                  depositDisplay.conversionUnavailable && parsedDeposit != null
+                    ? "text-amber-300"
+                    : "text-zinc-200"
+                }`}
+              >
+                {depositDisplay.primary}
               </p>
+              {parsedDeposit != null && (
+                <p className="mt-0.5 text-[11px] text-zinc-600">
+                  {depositDisplay.secondary}
+                </p>
+              )}
             </div>
           </div>
           {depositShare != null && (
@@ -246,6 +279,14 @@ export function ProposalEditor({
               Deposit share: {depositShare.toFixed(1)}% of proposal price.
             </p>
           )}
+          {(priceDisplay.conversionUnavailable ||
+            depositDisplay.conversionUnavailable) &&
+            (parsedPrice != null || parsedDeposit != null) && (
+              <p className="mt-1 text-[11px] text-amber-400">
+                USD conversion unavailable for this lead. Set local currency and
+                USD FX rate in Payment.
+              </p>
+            )}
           <p className="mt-1 text-[11px] text-zinc-700">
             Payment requests reuse the proposal deposit unless manually
             overridden in Payment.
@@ -426,7 +467,7 @@ export function ProposalEditor({
   );
 }
 
-/* ─── Payment editor ────────────────────────────────────────────────────── */
+/* Payment editor */
 
 export function PaymentEditor({
   id,
@@ -434,6 +475,9 @@ export function PaymentEditor({
   currentInvoiceReference,
   proposalDeposit,
   currentDepositAmount,
+  currentLocalCurrencyCode,
+  currentUsdFxRateLocked,
+  currentCountryCode,
   depositPaidAt,
   currentProjectStartDate,
 }: {
@@ -442,9 +486,19 @@ export function PaymentEditor({
   currentInvoiceReference: string | null;
   proposalDeposit: number | null;
   currentDepositAmount: number | null;
+  currentLocalCurrencyCode: string | null;
+  currentUsdFxRateLocked: number | null;
+  currentCountryCode: string | null;
   depositPaidAt: string | null;
   currentProjectStartDate: string | null;
 }) {
+  const [localCurrencyCode, setLocalCurrencyCode] = useState(
+    normalizeCurrencyCode(currentLocalCurrencyCode)
+  );
+  const [usdFxRateLocked, setUsdFxRateLocked] = useState(
+    currentUsdFxRateLocked != null ? String(currentUsdFxRateLocked) : ""
+  );
+  const [countryCode, setCountryCode] = useState(currentCountryCode ?? "");
   const [paymentLink, setPaymentLink] = useState(currentPaymentLink ?? "");
   const [invoiceRef, setInvoiceRef] = useState(
     currentInvoiceReference ?? ""
@@ -470,6 +524,17 @@ export function PaymentEditor({
   const overrideAmount = parseDraftAmount(amount);
   const effectiveAmount = overrideAmount ?? proposalDeposit;
   const usingOverride = overrideAmount != null;
+  const parsedUsdFxRateLocked = parseUsdFxRate(usdFxRateLocked);
+  const proposalDepositDisplay = formatUsdPrimaryWithLocalSecondary({
+    amountLocal: proposalDeposit,
+    localCurrencyCode,
+    usdFxRateLocked: parsedUsdFxRateLocked,
+  });
+  const paymentAmountDisplay = formatUsdPrimaryWithLocalSecondary({
+    amountLocal: effectiveAmount,
+    localCurrencyCode,
+    usdFxRateLocked: parsedUsdFxRateLocked,
+  });
 
   function handleSave() {
     setSaveState("idle");
@@ -479,6 +544,9 @@ export function PaymentEditor({
         invoiceReference: invoiceRef,
         depositAmount: amount,
         projectStartDate: startDate,
+        localCurrencyCode,
+        usdFxRateLocked,
+        countryCode,
       });
       setSaveState(result.success ? "saved" : "error");
       if (result.success) setTimeout(() => setSaveState("idle"), 2500);
@@ -507,22 +575,46 @@ export function PaymentEditor({
         <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
           Payment amount source
         </p>
-        <div className="mt-2.5 grid grid-cols-2 gap-3">
+        <div className="mt-2.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
-              Proposal deposit
+              Proposal deposit (USD primary)
             </p>
-            <p className="mt-1 text-sm font-medium text-zinc-200">
-              {proposalDeposit != null ? formatEuro(proposalDeposit) : "Not set"}
+            <p
+              className={`mt-1 text-sm font-medium ${
+                proposalDepositDisplay.conversionUnavailable &&
+                proposalDeposit != null
+                  ? "text-amber-300"
+                  : "text-zinc-200"
+              }`}
+            >
+              {proposalDepositDisplay.primary}
             </p>
+            {proposalDeposit != null && (
+              <p className="mt-0.5 text-[11px] text-zinc-600">
+                {proposalDepositDisplay.secondary}
+              </p>
+            )}
           </div>
           <div>
             <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
-              Payment request amount
+              Payment request amount (USD primary)
             </p>
-            <p className="mt-1 text-sm font-medium text-zinc-200">
-              {effectiveAmount != null ? formatEuro(effectiveAmount) : "Not set"}
+            <p
+              className={`mt-1 text-sm font-medium ${
+                paymentAmountDisplay.conversionUnavailable &&
+                effectiveAmount != null
+                  ? "text-amber-300"
+                  : "text-zinc-200"
+              }`}
+            >
+              {paymentAmountDisplay.primary}
             </p>
+            {effectiveAmount != null && (
+              <p className="mt-0.5 text-[11px] text-zinc-600">
+                {paymentAmountDisplay.secondary}
+              </p>
+            )}
           </div>
         </div>
         <p className="mt-2 text-[11px] text-zinc-600">
@@ -530,6 +622,14 @@ export function PaymentEditor({
             ? "Using manual override for payment requests."
             : "Using proposal deposit as the payment request amount."}
         </p>
+        {(proposalDepositDisplay.conversionUnavailable ||
+          paymentAmountDisplay.conversionUnavailable) &&
+          (proposalDeposit != null || effectiveAmount != null) && (
+            <p className="mt-1 text-[11px] text-amber-400">
+              USD conversion unavailable for this lead. Set a local currency
+              and locked USD FX rate below.
+            </p>
+          )}
       </div>
 
       {/* Payment link */}
@@ -560,7 +660,7 @@ export function PaymentEditor({
       </div>
 
       {/* Invoice ref + deposit amount */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="min-w-0">
           <Label>Invoice ref.</Label>
           <input
@@ -575,10 +675,12 @@ export function PaymentEditor({
           />
         </div>
         <div className="min-w-0">
-          <Label>Payment override (EUR)</Label>
+          <Label>
+            Payment override ({normalizeCurrencyCode(localCurrencyCode)})
+          </Label>
           <div className="relative">
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-zinc-600">
-              €
+              {normalizeCurrencyCode(localCurrencyCode)}
             </span>
             <input
               type="number"
@@ -612,6 +714,61 @@ export function PaymentEditor({
           </div>
         </div>
       </div>
+
+      {/* Currency and market metadata */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="min-w-0">
+          <Label>Local currency</Label>
+          <input
+            type="text"
+            value={localCurrencyCode}
+            onChange={(e) => {
+              setLocalCurrencyCode(e.target.value.toUpperCase());
+              setSaveState("idle");
+            }}
+            maxLength={3}
+            placeholder="EUR"
+            className={inputCls("uppercase")}
+          />
+        </div>
+        <div className="min-w-0">
+          <Label>USD FX rate (locked)</Label>
+          <input
+            type="number"
+            min="0"
+            step="0.0001"
+            value={usdFxRateLocked}
+            onChange={(e) => {
+              setUsdFxRateLocked(e.target.value);
+              setSaveState("idle");
+            }}
+            placeholder="e.g. 1.08"
+            className={inputCls(
+              "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            )}
+          />
+        </div>
+        <div className="min-w-0">
+          <Label>Country code (optional)</Label>
+          <input
+            type="text"
+            value={countryCode}
+            onChange={(e) => {
+              setCountryCode(e.target.value.toUpperCase());
+              setSaveState("idle");
+            }}
+            maxLength={2}
+            placeholder="NL"
+            className={inputCls("uppercase")}
+          />
+        </div>
+      </div>
+      {countryCode.trim().length > 0 &&
+        parseCountryCodeInput(countryCode) == null && (
+          <p className="text-[11px] text-amber-400">
+            Country code must be a 2-letter ISO code (for example NL, GB, US).
+          </p>
+        )}
 
       {/* Project start date */}
       <div>
@@ -670,7 +827,7 @@ export function PaymentEditor({
   );
 }
 
-/* ─── Project status editor ─────────────────────────────────────────────── */
+/* Project status editor */
 
 const PROJECT_STATUS_OPTIONS: { value: ProjectStatus; label: string }[] = [
   { value: "not_started", label: "Not started" },
@@ -806,3 +963,6 @@ export function ProjectStatusEditor({
     </div>
   );
 }
+
+
+
