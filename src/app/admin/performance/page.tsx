@@ -145,6 +145,9 @@ export default async function AdminPerformancePage() {
           <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-700">
             Traffic + Lead Capture
           </p>
+          <p className="mt-1 text-[11px] text-zinc-600">
+            Lead = submitted intake inquiry or manual CRM lead record only.
+          </p>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
           <MetricCard label="Sessions today" value={sessionsTodayValue} />
@@ -158,7 +161,11 @@ export default async function AdminPerformancePage() {
           <MetricCard
             label="Leads captured (30d)"
             value={leads30dValue}
-            sub={performance.query.leadsFailed ? "Lead metrics unavailable" : "Leads created in 30d window"}
+            sub={
+              performance.query.leadsFailed
+                ? "Lead metrics unavailable"
+                : "Submitted inquiries + manual leads in 30d window"
+            }
             trend={leadsTrend}
           />
           <MetricCard

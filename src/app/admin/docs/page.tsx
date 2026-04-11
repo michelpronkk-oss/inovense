@@ -21,7 +21,11 @@ type SectionBlock = {
 };
 
 const LEAD_FLOW_STEPS = [
-  { step: "Lead enters CRM", status: "new", trigger: "Intake form or manual lead creation" },
+  {
+    step: "Lead enters CRM",
+    status: "new",
+    trigger: "Submitted intake (/intake or /nl/intake) or manual lead creation (/admin/leads/new)",
+  },
   { step: "Initial review", status: "reviewing", trigger: "Operator starts qualification work" },
   { step: "Qualified for commercial work", status: "qualified", trigger: "Lane and scope are clear enough for proposal" },
   { step: "Proposal sent", status: "proposal_sent", trigger: "Proposal email sent from CRM" },
@@ -530,6 +534,54 @@ const SECTIONS: HandbookSection[] = [
     ],
   },
   {
+    id: "traffic-and-performance-definitions",
+    title: "Traffic And Performance Definitions",
+    tag: "Ops",
+    automation: "Automated",
+    summary:
+      "Performance reporting is strict by design: sessions come from traffic_sessions, and leads come only from real CRM lead records.",
+    blocks: [
+      {
+        title: "Canonical entities",
+        tone: "reference",
+        items: [
+          "Session = tracked public traffic session row in traffic_sessions.",
+          "Lead = submitted inquiry (EN/NL intake submit) or manual CRM lead record from /admin/leads/new.",
+          "Won = lead.status = won.",
+          "Deposit Paid = lead with payment state deposit_paid or fully_paid.",
+          "Completed = lead with project_status = completed (delivered), independent from payment timestamps.",
+        ],
+      },
+      {
+        title: "Metric semantics in Performance",
+        tone: "reference",
+        items: [
+          "Session -> Lead uses leads.created_at in the same window divided by traffic_sessions.first_seen_at in the same window.",
+          "Lead -> Won uses won leads divided by lead cohort count for that window.",
+          "Won -> Deposit Paid uses won leads with cleared deposit/full payment divided by won leads.",
+          "Deposit Paid -> Completed uses deposit-paid lead cohort divided by project_status = completed.",
+        ],
+      },
+      {
+        title: "Guardrails",
+        tone: "avoid",
+        items: [
+          "Do not count anonymous traffic, page hits, tracker pings, or partial form interactions as leads.",
+          "Do not blend Session -> Lead with later commercial or delivery stages into one fake conversion metric.",
+          "Do not treat paid as completed.",
+        ],
+      },
+      {
+        title: "Navigation and visibility",
+        tone: "reference",
+        items: [
+          "Performance is visible in top nav as /admin/performance.",
+          "Planner route and code remain active at /admin/planner but are intentionally hidden from visible top navigation.",
+        ],
+      },
+    ],
+  },
+  {
     id: "operator-qa",
     title: "Operator QA And Edge Cases",
     tag: "Ops",
@@ -788,10 +840,11 @@ export default function DocsPage() {
           </h1>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-400">
             This is the source of truth for how we run lead lifecycle, commercial flow,
-            AI-assisted proposal work, payment confirmation, and delivery state.
+            AI-assisted proposal work, payment confirmation, delivery state, and
+            traffic-to-lead performance semantics.
             Keep records precise. Keep automation boundaries strict.
           </p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
               <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Lead Flow</p>
               <p className="mt-1 text-sm font-medium text-zinc-200">Status-driven and stage-true</p>
@@ -807,6 +860,10 @@ export default function DocsPage() {
             <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
               <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Project Status</p>
               <p className="mt-1 text-sm font-medium text-zinc-200">Manual. Completed means delivered.</p>
+            </div>
+            <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Performance</p>
+              <p className="mt-1 text-sm font-medium text-zinc-200">Lead means submitted or manual only.</p>
             </div>
           </div>
         </div>
@@ -841,7 +898,7 @@ export default function DocsPage() {
             </p>
             <p className="mt-2 text-sm leading-relaxed text-zinc-200">
               Payment confirmation and project completion are separate truths.
-              Paid does not mean delivered.
+              Paid does not mean delivered. Session activity does not mean lead creation.
             </p>
           </div>
         </aside>

@@ -11,6 +11,9 @@ type SessionRow = Pick<TrafficSession, "first_seen_at" | "first_touch_source" | 
 type LeadRow = Pick<
   Lead,
   | "created_at"
+  | "full_name"
+  | "company_name"
+  | "work_email"
   | "status"
   | "project_status"
   | "first_touch_source"
@@ -180,6 +183,16 @@ function isDepositPaid(lead: LeadRow): boolean {
   return paymentState.kind === "deposit_paid" || paymentState.kind === "fully_paid";
 }
 
+function isCountableLead(lead: LeadRow): boolean {
+  const name = typeof lead.full_name === "string" ? lead.full_name.trim() : "";
+  const company = typeof lead.company_name === "string" ? lead.company_name.trim() : "";
+  const email = typeof lead.work_email === "string" ? lead.work_email.trim() : "";
+
+  const hasIdentity = Boolean(name && company && email);
+  const hasValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  return hasIdentity && hasValidEmail;
+}
+
 export function formatSourceLabel(source: string): string {
   if (!source || source === "unknown") return "Unknown";
   return source.charAt(0).toUpperCase() + source.slice(1);
@@ -211,7 +224,7 @@ export async function getAdminPerformanceSnapshot(): Promise<AdminPerformanceSna
       supabase
         .from("leads")
         .select(
-          "created_at, status, project_status, first_touch_source, landing_path, proposal_price, proposal_deposit, deposit_amount, deposit_paid_at, final_payment_paid_at"
+          "created_at, full_name, company_name, work_email, status, project_status, first_touch_source, landing_path, proposal_price, proposal_deposit, deposit_amount, deposit_paid_at, final_payment_paid_at"
         )
         .gte("created_at", previousWindowStart),
     ]);
@@ -225,7 +238,9 @@ export async function getAdminPerformanceSnapshot(): Promise<AdminPerformanceSna
     if (leadResult.error) {
       leadsFailed = true;
     } else {
-      leads = (leadResult.data ?? []) as LeadRow[];
+      // Performance lead metrics intentionally count only real CRM lead records.
+      // Sessions, page hits, and partial interactions never enter this array.
+      leads = ((leadResult.data ?? []) as LeadRow[]).filter(isCountableLead);
     }
   } catch {
     sessionsFailed = true;

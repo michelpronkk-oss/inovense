@@ -26,7 +26,7 @@ export async function TrafficAttributionBlock() {
   const sessionToLeadSub =
     performance.query.sessionsFailed || performance.query.leadsFailed
       ? "Awaiting complete performance data"
-      : `${performance.leads.captured30d} lead${
+      : `${performance.leads.captured30d} submitted/manual lead${
           performance.leads.captured30d !== 1 ? "s" : ""
         } captured`;
 
@@ -63,9 +63,14 @@ export async function TrafficAttributionBlock() {
   return (
     <div className="mb-8">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-700">
-          Performance Snapshot
-        </p>
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-700">
+            Performance Snapshot
+          </p>
+          <p className="mt-1 text-[11px] text-zinc-600">
+            Lead = submitted inquiry or manual CRM lead.
+          </p>
+        </div>
         <Link
           href="/admin/performance"
           className="text-[11px] text-zinc-600 transition-colors hover:text-brand"
