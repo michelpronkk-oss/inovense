@@ -24,6 +24,7 @@ import type { LeadResearchOutput } from "@/lib/agents/lead-research/schema";
 import type { ProposalAngleOutput } from "@/lib/agents/proposal-angle/schema";
 import type { ProposalWriterOutput } from "@/lib/agents/proposal-writer/schema";
 import { formatUsdPrimaryWithLocalSecondary } from "@/lib/currency";
+import { MarketMarker } from "@/app/admin/market-marker";
 
 export const dynamic = "force-dynamic";
 
@@ -157,9 +158,16 @@ export default async function LeadDetailPage({
         {/* Lead header */}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold text-zinc-50">
-              {lead.full_name}
-            </h1>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-xl font-semibold text-zinc-50">
+                {lead.full_name}
+              </h1>
+              <MarketMarker
+                countryCode={lead.country_code}
+                countrySource={lead.country_source}
+                leadSource={lead.lead_source}
+              />
+            </div>
             <p className="mt-1 text-sm text-zinc-500">
               {lead.company_name}
               <span className="mx-2 text-zinc-700">&middot;</span>
@@ -190,120 +198,17 @@ export default async function LeadDetailPage({
         </div>
       </div>
 
+      {/*
+        Grid layout:
+        - Mobile: single column, actions column first (Revenue/Status/Email visible immediately)
+        - Desktop: data left (2 cols), actions right (1 col)
+        Achieved by placing actions div first in DOM with lg:col-start-3,
+        and data div second with lg:col-span-2 lg:col-start-1.
+      */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
 
-        {/* Left: data */}
-        <div className="flex flex-col gap-4 lg:col-span-2">
-
-          {/* Active project banner */}
-          {(lead.status === "active" || lead.status === "won") && (
-            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-5 py-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-medium uppercase tracking-[0.13em] text-emerald-600">
-                    {lead.status === "won" ? "Project complete" : "Active project"}
-                  </p>
-                  <p className="mt-1 text-sm font-medium text-emerald-400">
-                    {lead.company_name} &middot; {lead.service_lane}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-4 text-xs text-zinc-600">
-                  {effectiveDepositAmount != null && (
-                    <span>
-                      <span className="mr-1 text-zinc-700">Deposit</span>
-                      <span
-                        className={`font-medium ${
-                          effectiveDepositDisplay.conversionUnavailable
-                            ? "text-amber-300"
-                            : "text-zinc-400"
-                        }`}
-                      >
-                        {effectiveDepositDisplay.primary}
-                      </span>
-                      <span className="ml-1 text-[11px] text-zinc-600">
-                        {effectiveDepositDisplay.secondary}
-                      </span>
-                    </span>
-                  )}
-                  {lead.project_start_date && (
-                    <span>
-                      <span className="mr-1 text-zinc-700">Started</span>
-                      <span className="font-medium text-zinc-400 tabular-nums">
-                        {format(
-                          new Date(lead.project_start_date + "T12:00:00"),
-                          "MMM d, yyyy"
-                        )}
-                      </span>
-                    </span>
-                  )}
-                  {lead.deposit_paid_at && (
-                    <span className="inline-flex items-center gap-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/60" />
-                      <span className="text-emerald-600/80">Deposit paid</span>
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <Section title="Contact">
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <Field label="Full name" value={lead.full_name} />
-              <Field label="Company" value={lead.company_name} />
-              <Field label="Work email">
-                <a
-                  href={`mailto:${lead.work_email}`}
-                  className="text-sm text-brand transition-colors hover:text-brand/80"
-                >
-                  {lead.work_email}
-                </a>
-              </Field>
-              <Field label="Website or social" value={lead.website_or_social} />
-            </div>
-          </Section>
-
-          <Section title="Project">
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <Field label="Service lane" value={lead.service_lane} />
-              <Field label="Project type" value={lead.project_type} />
-              <Field label="Budget range" value={lead.budget_range} />
-              <Field label="Timeline" value={lead.timeline} />
-            </div>
-          </Section>
-
-          <Section title="Project brief">
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-400">
-              {lead.project_details}
-            </p>
-          </Section>
-
-          {/* Onboarding brief — visible when completed */}
-          {onboardingFields && lead.onboarding_data && (
-            <Section title="Onboarding brief">
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                {onboardingFields.map((field) => {
-                  const value = lead.onboarding_data![field.key];
-                  if (!value) return null;
-                  return (
-                    <div
-                      key={field.key}
-                      className={
-                        field.type === "textarea" ? "sm:col-span-2" : ""
-                      }
-                    >
-                      <Field label={field.label} value={value} />
-                    </div>
-                  );
-                })}
-              </div>
-            </Section>
-          )}
-
-        </div>
-
-        {/* Right: actions */}
-        <div className="flex flex-col gap-4">
+        {/* ── Actions (mobile: top, desktop: right column) ───────────────── */}
+        <div className="flex flex-col gap-4 lg:col-start-3 lg:row-start-1">
 
           <RevenueCard
             leadId={lead.id}
@@ -458,7 +363,6 @@ export default async function LeadDetailPage({
             </div>
           </Section>
 
-          {/* Email log — visible once emails have been sent */}
           {emailLogs.length > 0 && (
             <Section title="Emails sent">
               <ul className="space-y-3">
@@ -480,7 +384,110 @@ export default async function LeadDetailPage({
               </ul>
             </Section>
           )}
+        </div>
 
+        {/* ── Data (mobile: below actions, desktop: left 2-col span) ─────── */}
+        <div className="flex flex-col gap-4 lg:col-span-2 lg:col-start-1 lg:row-start-1">
+
+          {/* Active project banner */}
+          {(lead.status === "active" || lead.status === "won") && (
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3.5 sm:px-5 sm:py-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-medium uppercase tracking-[0.13em] text-emerald-600">
+                    {lead.status === "won" ? "Project complete" : "Active project"}
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-emerald-400">
+                    {lead.company_name} &middot; {lead.service_lane}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-600 sm:gap-4">
+                  {effectiveDepositAmount != null && (
+                    <span>
+                      <span className="mr-1 text-zinc-700">Deposit</span>
+                      <span className="font-medium text-zinc-400">
+                        {effectiveDepositDisplay.primary}
+                      </span>
+                      {!effectiveDepositDisplay.conversionUnavailable && (
+                        <span className="ml-1 text-[11px] text-zinc-600">
+                          {effectiveDepositDisplay.secondary}
+                        </span>
+                      )}
+                    </span>
+                  )}
+                  {lead.project_start_date && (
+                    <span>
+                      <span className="mr-1 text-zinc-700">Started</span>
+                      <span className="font-medium text-zinc-400 tabular-nums">
+                        {format(
+                          new Date(lead.project_start_date + "T12:00:00"),
+                          "MMM d, yyyy"
+                        )}
+                      </span>
+                    </span>
+                  )}
+                  {lead.deposit_paid_at && (
+                    <span className="inline-flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/60" />
+                      <span className="text-emerald-600/80">Deposit paid</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <Section title="Contact">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <Field label="Full name" value={lead.full_name} />
+              <Field label="Company" value={lead.company_name} />
+              <Field label="Work email">
+                <a
+                  href={`mailto:${lead.work_email}`}
+                  className="text-sm text-brand transition-colors hover:text-brand/80"
+                >
+                  {lead.work_email}
+                </a>
+              </Field>
+              <Field label="Website or social" value={lead.website_or_social} />
+            </div>
+          </Section>
+
+          <Section title="Project">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <Field label="Service lane" value={lead.service_lane} />
+              <Field label="Project type" value={lead.project_type} />
+              <Field label="Budget range" value={lead.budget_range} />
+              <Field label="Timeline" value={lead.timeline} />
+            </div>
+          </Section>
+
+          <Section title="Project brief">
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-400">
+              {lead.project_details}
+            </p>
+          </Section>
+
+          {onboardingFields && lead.onboarding_data && (
+            <Section title="Onboarding brief">
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                {onboardingFields.map((field) => {
+                  const value = lead.onboarding_data![field.key];
+                  if (!value) return null;
+                  return (
+                    <div
+                      key={field.key}
+                      className={
+                        field.type === "textarea" ? "sm:col-span-2" : ""
+                      }
+                    >
+                      <Field label={field.label} value={value} />
+                    </div>
+                  );
+                })}
+              </div>
+            </Section>
+          )}
         </div>
       </div>
     </>

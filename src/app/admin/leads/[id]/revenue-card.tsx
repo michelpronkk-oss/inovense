@@ -105,7 +105,7 @@ export function RevenueCard({
         })
       : null;
 
-  const showConversionWarning = [
+  const showUsdNotLocked = [
     totalDisplay,
     paidDisplay,
     remainingDisplay,
@@ -156,16 +156,12 @@ export function RevenueCard({
       </div>
 
       <div className="space-y-3 px-4 py-3">
-        <div className="grid grid-cols-3 gap-x-3 gap-y-3">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
               Total
             </p>
-            <p
-              className={`mt-0.5 text-sm font-semibold tabular-nums ${
-                totalDisplay.conversionUnavailable ? "text-amber-300" : "text-zinc-200"
-              }`}
-            >
+            <p className="mt-0.5 text-sm font-semibold tabular-nums text-zinc-200">
               {totalDisplay.primary}
             </p>
             <p className="mt-0.5 text-[11px] text-zinc-600">
@@ -179,11 +175,7 @@ export function RevenueCard({
                 <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
                   Paid
                 </p>
-                <p
-                  className={`mt-0.5 text-sm font-semibold tabular-nums ${
-                    paidDisplay.conversionUnavailable ? "text-amber-300" : "text-brand"
-                  }`}
-                >
+                <p className="mt-0.5 text-sm font-semibold tabular-nums text-brand">
                   {paidDisplay.primary}
                 </p>
                 <p className="mt-0.5 text-[11px] text-zinc-600">
@@ -194,13 +186,7 @@ export function RevenueCard({
                 <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
                   Remaining
                 </p>
-                <p
-                  className={`mt-0.5 text-sm font-semibold tabular-nums ${
-                    remainingDisplay.conversionUnavailable
-                      ? "text-amber-300"
-                      : "text-zinc-400"
-                  }`}
-                >
+                <p className="mt-0.5 text-sm font-semibold tabular-nums text-zinc-400">
                   {remainingDisplay.primary}
                 </p>
                 <p className="mt-0.5 text-[11px] text-zinc-600">
@@ -215,13 +201,7 @@ export function RevenueCard({
               <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
                 Received
               </p>
-              <p
-                className={`mt-0.5 text-sm font-semibold tabular-nums ${
-                  receivedDisplay.conversionUnavailable
-                    ? "text-amber-300"
-                    : "text-emerald-400"
-                }`}
-              >
+              <p className="mt-0.5 text-sm font-semibold tabular-nums text-emerald-400">
                 {receivedDisplay.primary}
               </p>
               <p className="mt-0.5 text-[11px] text-zinc-600">
@@ -235,13 +215,7 @@ export function RevenueCard({
               <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
                 Outstanding
               </p>
-              <p
-                className={`mt-0.5 text-sm font-semibold tabular-nums ${
-                  outstandingDisplay.conversionUnavailable
-                    ? "text-amber-300"
-                    : "text-zinc-500"
-                }`}
-              >
+              <p className="mt-0.5 text-sm font-semibold tabular-nums text-zinc-500">
                 {outstandingDisplay.primary}
               </p>
               <p className="mt-0.5 text-[11px] text-zinc-600">
@@ -259,10 +233,9 @@ export function RevenueCard({
           </p>
         )}
 
-        {showConversionWarning && (
-          <p className="text-[11px] text-amber-400">
-            USD conversion unavailable for part of this lead. Local amounts are
-            shown as source of truth.
+        {showUsdNotLocked && (
+          <p className="text-[11px] text-zinc-700">
+            USD reporting unavailable. Lock a USD FX rate in Payment to enable it.
           </p>
         )}
 

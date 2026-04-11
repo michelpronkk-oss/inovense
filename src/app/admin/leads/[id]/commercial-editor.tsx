@@ -239,13 +239,7 @@ export function ProposalEditor({
               <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
                 Total
               </p>
-              <p
-                className={`mt-1 text-sm font-medium ${
-                  priceDisplay.conversionUnavailable && parsedPrice != null
-                    ? "text-amber-300"
-                    : "text-zinc-200"
-                }`}
-              >
+              <p className="mt-1 text-sm font-medium text-zinc-200">
                 {priceDisplay.primary}
               </p>
               {parsedPrice != null && (
@@ -258,13 +252,7 @@ export function ProposalEditor({
               <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
                 Deposit
               </p>
-              <p
-                className={`mt-1 text-sm font-medium ${
-                  depositDisplay.conversionUnavailable && parsedDeposit != null
-                    ? "text-amber-300"
-                    : "text-zinc-200"
-                }`}
-              >
+              <p className="mt-1 text-sm font-medium text-zinc-200">
                 {depositDisplay.primary}
               </p>
               {parsedDeposit != null && (
@@ -279,14 +267,6 @@ export function ProposalEditor({
               Deposit share: {depositShare.toFixed(1)}% of proposal price.
             </p>
           )}
-          {(priceDisplay.conversionUnavailable ||
-            depositDisplay.conversionUnavailable) &&
-            (parsedPrice != null || parsedDeposit != null) && (
-              <p className="mt-1 text-[11px] text-amber-400">
-                USD conversion unavailable for this lead. Set local currency and
-                USD FX rate in Payment.
-              </p>
-            )}
           <p className="mt-1 text-[11px] text-zinc-700">
             Payment requests reuse the proposal deposit unless manually
             overridden in Payment.
@@ -578,16 +558,9 @@ export function PaymentEditor({
         <div className="mt-2.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
-              Proposal deposit (USD primary)
+              Proposal deposit
             </p>
-            <p
-              className={`mt-1 text-sm font-medium ${
-                proposalDepositDisplay.conversionUnavailable &&
-                proposalDeposit != null
-                  ? "text-amber-300"
-                  : "text-zinc-200"
-              }`}
-            >
+            <p className="mt-1 text-sm font-medium text-zinc-200">
               {proposalDepositDisplay.primary}
             </p>
             {proposalDeposit != null && (
@@ -598,16 +571,9 @@ export function PaymentEditor({
           </div>
           <div>
             <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
-              Payment request amount (USD primary)
+              Payment request amount
             </p>
-            <p
-              className={`mt-1 text-sm font-medium ${
-                paymentAmountDisplay.conversionUnavailable &&
-                effectiveAmount != null
-                  ? "text-amber-300"
-                  : "text-zinc-200"
-              }`}
-            >
+            <p className="mt-1 text-sm font-medium text-zinc-200">
               {paymentAmountDisplay.primary}
             </p>
             {effectiveAmount != null && (
@@ -622,14 +588,6 @@ export function PaymentEditor({
             ? "Using manual override for payment requests."
             : "Using proposal deposit as the payment request amount."}
         </p>
-        {(proposalDepositDisplay.conversionUnavailable ||
-          paymentAmountDisplay.conversionUnavailable) &&
-          (proposalDeposit != null || effectiveAmount != null) && (
-            <p className="mt-1 text-[11px] text-amber-400">
-              USD conversion unavailable for this lead. Set a local currency
-              and locked USD FX rate below.
-            </p>
-          )}
       </div>
 
       {/* Payment link */}

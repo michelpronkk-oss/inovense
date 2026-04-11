@@ -10,6 +10,7 @@ import {
   derivePaymentState,
   fmtUsd,
 } from "@/lib/payment-utils";
+import { MarketMarker } from "@/app/admin/market-marker";
 
 export const metadata: Metadata = { title: "Leads | Inovense CRM" };
 
@@ -45,7 +46,7 @@ export default async function LeadsPage({
 
   const isFiltered = !!(status || lane || source);
 
-  /* ─── Revenue metrics (always computed across all loaded leads) ─────────── */
+  /* ─── Revenue metrics ─────────────────────────────────────────────────── */
   let cashCollectedUsd = 0;
   let completedRevenueUsd = 0;
   let outstandingBalanceUsd = 0;
@@ -118,11 +119,9 @@ export default async function LeadsPage({
       {showMetrics && (
         <div className="mb-6 space-y-3">
           {missingFxLeadCount > 0 && (
-            <div className="rounded-lg border border-amber-500/20 bg-amber-500/8 px-3 py-2 text-[11px] text-amber-300">
-              Conversion unavailable for {missingFxLeadCount} lead
-              {missingFxLeadCount !== 1 ? "s" : ""}. Set locked USD FX rates
-              in lead Payment settings to include them in USD totals.
-            </div>
+            <p className="text-[11px] text-zinc-700">
+              USD reporting excludes {missingFxLeadCount} lead{missingFxLeadCount !== 1 ? "s" : ""} without a locked FX rate.
+            </p>
           )}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
@@ -151,12 +150,12 @@ export default async function LeadsPage({
             ].map((m) => (
               <div
                 key={m.label}
-                className="rounded-xl border border-zinc-800/80 bg-zinc-900/30 px-4 py-3.5"
+                className="rounded-xl border border-zinc-800/80 bg-zinc-900/30 px-3 py-3 sm:px-4 sm:py-3.5"
               >
                 <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
                   {m.label}
                 </p>
-                <p className="mt-1.5 text-lg font-semibold tabular-nums text-zinc-100">
+                <p className="mt-1.5 text-base font-semibold tabular-nums text-zinc-100 sm:text-lg">
                   {m.value}
                 </p>
                 <p className="mt-0.5 text-[10px] text-zinc-700">{m.sub}</p>
@@ -184,54 +183,32 @@ export default async function LeadsPage({
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-zinc-800/80">
-          <table className="w-full min-w-[1020px] text-sm">
-            <thead>
-              <tr className="border-b border-zinc-800/80 bg-zinc-900/70">
-                {[
-                  "Date",
-                  "Name",
-                  "Company",
-                  "Source",
-                  "Lane",
-                  "Type",
-                  "Budget",
-                  "Timeline",
-                  "Status",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className="px-4 py-3 text-left text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-800/40">
-              {leads.map((lead) => (
-                <tr
-                  key={lead.id}
-                  className="transition-colors hover:bg-zinc-800/20"
-                >
-                  <td className="whitespace-nowrap px-4 py-4 text-xs tabular-nums text-zinc-600">
-                    {format(new Date(lead.created_at), "MMM d, yyyy")}
-                  </td>
-                  <td className="px-4 py-4">
+        <div className="rounded-xl border border-zinc-800/80">
+
+          {/* Mobile: stacked lead cards */}
+          <div className="divide-y divide-zinc-800/40 md:hidden">
+            {leads.map((lead) => (
+              <div key={lead.id} className="px-4 py-3.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
                     <Link
                       href={`/admin/leads/${lead.id}`}
                       className="font-medium text-zinc-200 transition-colors hover:text-brand"
                     >
                       {lead.full_name}
                     </Link>
-                  </td>
-                  <td className="px-4 py-4 text-zinc-500">
-                    {lead.company_name}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-4 text-xs text-zinc-600">
-                    {lead.lead_source ? (LEAD_SOURCE_LABELS[lead.lead_source] ?? lead.lead_source) : <span className="text-zinc-800">—</span>}
-                  </td>
-                  <td className="px-4 py-4">
+                    <p className="mt-0.5 truncate text-xs text-zinc-500">
+                      {lead.company_name}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                        STATUS_CONFIG[lead.status]?.color ?? STATUS_CONFIG.new.color
+                      }`}
+                    >
+                      {STATUS_CONFIG[lead.status]?.label ?? lead.status}
+                    </span>
                     <span
                       className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
                         LANE_COLORS[lead.service_lane] ?? LANE_COLORS.default
@@ -239,30 +216,125 @@ export default async function LeadsPage({
                     >
                       {lead.service_lane}
                     </span>
-                  </td>
-                  <td className="px-4 py-4 text-xs text-zinc-600">
-                    {lead.project_type}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-4 text-xs text-zinc-600">
-                    {lead.budget_range}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-4 text-xs text-zinc-600">
-                    {lead.timeline}
-                  </td>
-                  <td className="px-4 py-4">
-                    <span
-                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
-                        STATUS_CONFIG[lead.status]?.color ??
-                        STATUS_CONFIG.new.color
-                      }`}
+                  </div>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-zinc-600">
+                  <MarketMarker
+                    countryCode={lead.country_code}
+                    countrySource={lead.country_source}
+                    leadSource={lead.lead_source}
+                  />
+                  {lead.lead_source && (
+                    <>
+                      <span className="text-zinc-800">&middot;</span>
+                      <span>{LEAD_SOURCE_LABELS[lead.lead_source] ?? lead.lead_source}</span>
+                    </>
+                  )}
+                  {lead.budget_range && (
+                    <>
+                      <span className="text-zinc-800">&middot;</span>
+                      <span>{lead.budget_range}</span>
+                    </>
+                  )}
+                  <span className="text-zinc-800">&middot;</span>
+                  <span className="tabular-nums">
+                    {format(new Date(lead.created_at), "MMM d, yyyy")}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop: full table */}
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full min-w-[1020px] text-sm">
+              <thead>
+                <tr className="border-b border-zinc-800/80 bg-zinc-900/70">
+                  {[
+                    "Date",
+                    "Name",
+                    "Company",
+                    "Source",
+                    "Lane",
+                    "Type",
+                    "Budget",
+                    "Timeline",
+                    "Status",
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      className="px-4 py-3 text-left text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600"
                     >
-                      {STATUS_CONFIG[lead.status]?.label ?? lead.status}
-                    </span>
-                  </td>
+                      {h}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-zinc-800/40">
+                {leads.map((lead) => (
+                  <tr
+                    key={lead.id}
+                    className="transition-colors hover:bg-zinc-800/20"
+                  >
+                    <td className="whitespace-nowrap px-4 py-4 text-xs tabular-nums text-zinc-600">
+                      {format(new Date(lead.created_at), "MMM d, yyyy")}
+                    </td>
+                    <td className="px-4 py-4">
+                      <Link
+                        href={`/admin/leads/${lead.id}`}
+                        className="font-medium text-zinc-200 transition-colors hover:text-brand"
+                      >
+                        {lead.full_name}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-4 text-zinc-500">
+                      {lead.company_name}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-4">
+                      <div className="flex items-center gap-1.5 text-xs text-zinc-600">
+                        {lead.lead_source
+                          ? (LEAD_SOURCE_LABELS[lead.lead_source] ?? lead.lead_source)
+                          : <span className="text-zinc-800">—</span>}
+                        <MarketMarker
+                          countryCode={lead.country_code}
+                          countrySource={lead.country_source}
+                          leadSource={lead.lead_source}
+                        />
+                      </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                          LANE_COLORS[lead.service_lane] ?? LANE_COLORS.default
+                        }`}
+                      >
+                        {lead.service_lane}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-xs text-zinc-600">
+                      {lead.project_type}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-4 text-xs text-zinc-600">
+                      {lead.budget_range}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-4 text-xs text-zinc-600">
+                      {lead.timeline}
+                    </td>
+                    <td className="px-4 py-4">
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                          STATUS_CONFIG[lead.status]?.color ??
+                          STATUS_CONFIG.new.color
+                        }`}
+                      >
+                        {STATUS_CONFIG[lead.status]?.label ?? lead.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </>

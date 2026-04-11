@@ -144,9 +144,12 @@ export function formatUsdPrimaryWithLocalSecondary(input: {
   );
 
   if (usdAmount == null) {
+    // Show the local amount as the primary value; secondary notes that USD is not locked.
+    // This avoids a broken-state feel when FX is simply not configured yet.
+    void unavailableLabel; // kept in signature for callers that pass it; no longer used as primary
     return {
-      primary: unavailableLabel,
-      secondary,
+      primary: formatCurrencyAmount(normalizedLocalAmount, normalizedLocalCurrency, locale),
+      secondary: "USD not locked",
       usdAmount: null,
       localAmount: normalizedLocalAmount,
       localCurrencyCode: normalizedLocalCurrency,
