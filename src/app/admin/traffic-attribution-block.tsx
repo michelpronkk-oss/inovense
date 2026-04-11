@@ -1,8 +1,8 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import type { TrafficSession } from "@/lib/supabase-server";
 
-type SourceRow = { source: string | null; count: number };
-type PathRow = { path: string | null; count: number };
+type SourceRow = { source: string; count: number };
+type PathRow = { path: string; count: number };
 
 function startOf(daysAgo: number): string {
   const d = new Date();
@@ -16,20 +16,21 @@ function fmtPct(num: number, den: number): string {
   return `${((num / den) * 100).toFixed(1)}%`;
 }
 
-function fmtSource(source: string | null): string {
-  if (!source) return "Unknown";
+function fmtSource(source: string): string {
+  if (!source || source === "unknown") return "Unknown";
   return source.charAt(0).toUpperCase() + source.slice(1);
 }
 
-function fmtPath(path: string | null): string {
+function fmtPath(path: string): string {
   if (!path || path === "/") return "/";
-  return path.length > 32 ? path.slice(0, 30) + "…" : path;
+  return path.length > 32 ? path.slice(0, 30) + "..." : path;
 }
 
 export async function TrafficAttributionBlock() {
   let sessions: Pick<TrafficSession, "first_seen_at" | "first_touch_source" | "landing_path">[] = [];
   let recentLeads: { first_touch_source: string | null; landing_path: string | null; created_at: string }[] = [];
-  let error = false;
+  let sessionsQueryFailed = false;
+  let leadsQueryFailed = false;
 
   try {
     const supabase = createSupabaseServerClient();
@@ -47,15 +48,21 @@ export async function TrafficAttributionBlock() {
         .gte("created_at", thirtyDaysAgo),
     ]);
 
-    if (sessionResult.error) throw sessionResult.error;
-    sessions = sessionResult.data ?? [];
-    recentLeads = leadResult.data ?? [];
-  } catch {
-    error = true;
-  }
+    if (sessionResult.error) {
+      sessionsQueryFailed = true;
+    } else {
+      sessions = sessionResult.data ?? [];
+    }
 
-  if (error) return null;
-  if (sessions.length === 0 && recentLeads.length === 0) return null;
+    if (leadResult.error) {
+      leadsQueryFailed = true;
+    } else {
+      recentLeads = leadResult.data ?? [];
+    }
+  } catch {
+    sessionsQueryFailed = true;
+    leadsQueryFailed = true;
+  }
 
   const todayStart = startOf(0);
   const sevenDaysAgo = startOf(7);
@@ -64,8 +71,10 @@ export async function TrafficAttributionBlock() {
   const sessions7d = sessions.filter((s) => s.first_seen_at >= sevenDaysAgo).length;
   const sessions30d = sessions.length;
   const leads30d = recentLeads.length;
+  const hasTrafficData = sessions30d > 0;
+  const hasLeadData = leads30d > 0;
+  const hasAnyData = hasTrafficData || hasLeadData;
 
-  // Top sources by session count
   const sourceMap = new Map<string, number>();
   for (const s of sessions) {
     const key = s.first_touch_source ?? "unknown";
@@ -76,7 +85,6 @@ export async function TrafficAttributionBlock() {
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
 
-  // Top landing pages by session count
   const pathMap = new Map<string, number>();
   for (const s of sessions) {
     const key = s.landing_path ?? "/";
@@ -88,6 +96,45 @@ export async function TrafficAttributionBlock() {
     .slice(0, 5);
 
   const conversionRate = fmtPct(leads30d, sessions30d);
+  const showSessionBreakdowns = topSources.length > 0 || topPaths.length > 0;
+
+  const sessionsTodayValue: string | number = sessionsQueryFailed ? "--" : sessionsToday;
+  const sessions7dValue: string | number = sessionsQueryFailed ? "--" : sessions7d;
+  const sessions30dValue: string | number = sessionsQueryFailed ? "--" : sessions30d;
+  const conversionValue: string | number =
+    sessionsQueryFailed || leadsQueryFailed ? "--" : conversionRate;
+
+  const conversionSub =
+    sessionsQueryFailed || leadsQueryFailed
+      ? "Awaiting complete attribution data"
+      : `${leads30d} lead${leads30d !== 1 ? "s" : ""}`;
+
+  const sessionBreakdownScale = Math.max(sessions30d, 1);
+
+  let stateTitle: string | null = null;
+  let stateBody: string | null = null;
+
+  if (sessionsQueryFailed && leadsQueryFailed) {
+    stateTitle = "Traffic data is temporarily unavailable";
+    stateBody =
+      "This panel stays visible so the team can verify status quickly. Check the latest traffic migration and access policies.";
+  } else if (sessionsQueryFailed) {
+    stateTitle = "Session stream is unavailable";
+    stateBody =
+      "Lead attribution fields are readable, but traffic session rows are not. Verify migration and RLS/service-role access.";
+  } else if (leadsQueryFailed) {
+    stateTitle = "Lead attribution fields are unavailable";
+    stateBody =
+      "Traffic session rows are readable, but lead attribution columns are not. Verify migration and column permissions.";
+  } else if (!hasAnyData) {
+    stateTitle = "No tracked sessions in the last 30 days";
+    stateBody =
+      "Once visitors land on tracked pages, top sources and landing pages will populate here automatically.";
+  } else if (!hasTrafficData && hasLeadData) {
+    stateTitle = "Leads detected, sessions pending";
+    stateBody =
+      "Recent leads exist, but there are no tracked session rows in the last 30 days yet.";
+  }
 
   return (
     <div className="mb-8">
@@ -97,20 +144,21 @@ export async function TrafficAttributionBlock() {
         </p>
       </div>
 
-      {/* Session counts */}
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Sessions today" value={sessionsToday} />
-        <StatCard label="Sessions 7d" value={sessions7d} />
-        <StatCard label="Sessions 30d" value={sessions30d} />
-        <StatCard
-          label="Conversion 30d"
-          value={conversionRate}
-          sub={`${leads30d} lead${leads30d !== 1 ? "s" : ""}`}
-        />
+        <StatCard label="Sessions today" value={sessionsTodayValue} />
+        <StatCard label="Sessions 7d" value={sessions7dValue} />
+        <StatCard label="Sessions 30d" value={sessions30dValue} />
+        <StatCard label="Conversion 30d" value={conversionValue} sub={conversionSub} />
       </div>
 
-      {/* Sources + Landing pages */}
-      {(topSources.length > 0 || topPaths.length > 0) && (
+      {stateTitle && stateBody && (
+        <div className="mb-3 rounded-xl border border-zinc-800/80 bg-zinc-900/30 px-4 py-3.5">
+          <p className="text-xs font-medium text-zinc-300">{stateTitle}</p>
+          <p className="mt-1.5 text-[11px] text-zinc-600">{stateBody}</p>
+        </div>
+      )}
+
+      {showSessionBreakdowns && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {topSources.length > 0 && (
             <div className="overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/30">
@@ -121,13 +169,13 @@ export async function TrafficAttributionBlock() {
               </div>
               <ul className="divide-y divide-zinc-800/40">
                 {topSources.map(({ source, count }) => (
-                  <li key={source ?? "unknown"} className="flex items-center justify-between px-4 py-2.5">
+                  <li key={source} className="flex items-center justify-between px-4 py-2.5">
                     <span className="text-xs text-zinc-400">{fmtSource(source)}</span>
                     <div className="flex items-center gap-2.5">
                       <div className="h-1 w-16 overflow-hidden rounded-full bg-zinc-800">
                         <div
                           className="h-full rounded-full bg-brand/50"
-                          style={{ width: `${Math.round((count / sessions30d) * 100)}%` }}
+                          style={{ width: `${Math.round((count / sessionBreakdownScale) * 100)}%` }}
                         />
                       </div>
                       <span className="w-7 text-right text-xs tabular-nums text-zinc-600">
@@ -149,13 +197,13 @@ export async function TrafficAttributionBlock() {
               </div>
               <ul className="divide-y divide-zinc-800/40">
                 {topPaths.map(({ path, count }) => (
-                  <li key={path ?? "/"} className="flex items-center justify-between px-4 py-2.5">
+                  <li key={path} className="flex items-center justify-between px-4 py-2.5">
                     <span className="font-mono text-[11px] text-zinc-400">{fmtPath(path)}</span>
                     <div className="flex items-center gap-2.5">
                       <div className="h-1 w-16 overflow-hidden rounded-full bg-zinc-800">
                         <div
                           className="h-full rounded-full bg-brand/50"
-                          style={{ width: `${Math.round((count / sessions30d) * 100)}%` }}
+                          style={{ width: `${Math.round((count / sessionBreakdownScale) * 100)}%` }}
                         />
                       </div>
                       <span className="w-7 text-right text-xs tabular-nums text-zinc-600">
@@ -182,7 +230,7 @@ function StatCard({
   value: string | number;
   sub?: string;
 }) {
-  const isEmpty = value === 0 || value === "0%";
+  const isEmpty = value === 0 || value === "0%" || value === "--";
   return (
     <div className="rounded-xl border border-zinc-800 border-t-2 border-t-zinc-700/60 bg-zinc-900/50 px-4 py-3.5">
       <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.15em] text-zinc-600">
