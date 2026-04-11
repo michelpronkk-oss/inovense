@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { submitNlIntake } from "@/app/nl/intake/actions";
 import { nlIntakeSchema, type NlIntakeFormData } from "@/app/nl/intake/nl-schema";
+import { readStoredAttribution } from "@/lib/attribution";
 
 /* ─── Select wrapper ────────────────────────────────────────────────────── */
 
@@ -204,7 +205,8 @@ export default function NlIntakeForm() {
     setStatus("loading");
     setServerError(null);
 
-    const result = await submitNlIntake(data);
+    const attribution = readStoredAttribution();
+    const result = await submitNlIntake(data, attribution);
 
     if (result.success) {
       setSubmittedEmail(data.email);

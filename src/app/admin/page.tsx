@@ -9,6 +9,7 @@ import {
   fmtUsd,
 } from "@/lib/payment-utils";
 import { MarketMarker } from "@/app/admin/market-marker";
+import { TrafficAttributionBlock } from "@/app/admin/traffic-attribution-block";
 
 export const metadata: Metadata = { title: "Overview | Inovense CRM" };
 
@@ -139,6 +140,9 @@ export default async function AdminOverviewPage() {
           </div>
         ))}
       </div>
+
+      {/* ── Traffic + Attribution ────────────────────────────────────────── */}
+      <TrafficAttributionBlock />
 
       {/* ── Revenue ──────────────────────────────────────────────────────── */}
       {hasData && (

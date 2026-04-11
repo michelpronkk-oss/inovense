@@ -3,6 +3,7 @@ import { Figtree } from "next/font/google";
 import { headers } from "next/headers";
 import React from "react";
 import "./globals.css";
+import TrafficAttributionTracker from "@/components/analytics/traffic-attribution-tracker";
 
 const figtree = Figtree({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -86,6 +87,10 @@ export default async function RootLayout({
   const headersList = await headers();
   const pathname = headersList.get("x-pathname") ?? "";
   const lang = pathname.startsWith("/nl") ? "nl" : "en";
+  const isPrivateRoute =
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/proposal") ||
+    pathname.startsWith("/onboarding");
 
   return (
     <html
@@ -103,6 +108,7 @@ export default async function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        {!isPrivateRoute && <TrafficAttributionTracker />}
         {children}
       </body>
     </html>

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { submitIntake } from "@/app/intake/actions";
 import { intakeSchema, type IntakeFormData } from "@/app/intake/schema";
+import { readStoredAttribution } from "@/lib/attribution";
 
 /* ─── Select wrapper ────────────────────────────────────────────────────── */
 
@@ -204,7 +205,8 @@ export default function IntakeForm() {
     setStatus("loading");
     setServerError(null);
 
-    const result = await submitIntake(data);
+    const attribution = readStoredAttribution();
+    const result = await submitIntake(data, attribution);
 
     if (result.success) {
       setSubmittedEmail(data.email);

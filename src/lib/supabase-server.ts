@@ -103,6 +103,36 @@ export type Lead = {
   proposal_writer: ProposalWriterOutput | null;
   proposal_writer_at: string | null;
   proposal_writer_applied_at: string | null;
+  // Attribution
+  landing_path: string | null;
+  referrer: string | null;
+  referrer_host: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  utm_content: string | null;
+  utm_term: string | null;
+  first_touch_source: string | null;
+  last_touch_source: string | null;
+  attribution_session_key: string | null;
+  attribution_captured_at: string | null;
+};
+
+export type TrafficSession = {
+  session_key: string;
+  first_seen_at: string;
+  last_seen_at: string;
+  landing_path: string | null;
+  last_path: string | null;
+  referrer_host: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  utm_content: string | null;
+  utm_term: string | null;
+  first_touch_source: string | null;
+  last_touch_source: string | null;
+  pageviews: number;
 };
 
 export type EmailLog = {
@@ -169,6 +199,12 @@ type Database = {
           sent_at?: string;
         };
         Update: Partial<EmailLog>;
+        Relationships: [];
+      };
+      traffic_sessions: {
+        Row: TrafficSession;
+        Insert: Partial<TrafficSession> & { session_key: string };
+        Update: Partial<TrafficSession>;
         Relationships: [];
       };
       planner_posts: {

@@ -363,6 +363,72 @@ export default async function LeadDetailPage({
             </div>
           </Section>
 
+          {/* Attribution context — only shown when at least one field is present */}
+          {(lead.first_touch_source ||
+            lead.landing_path ||
+            lead.referrer_host ||
+            lead.utm_source) && (
+            <Section title="Attribution">
+              <div className="space-y-3.5">
+                {lead.first_touch_source && (
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-600">
+                      First touch
+                    </p>
+                    <p className="text-xs text-zinc-400 capitalize">{lead.first_touch_source}</p>
+                  </div>
+                )}
+                {lead.last_touch_source &&
+                  lead.last_touch_source !== lead.first_touch_source && (
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-600">
+                        Last touch
+                      </p>
+                      <p className="text-xs text-zinc-400 capitalize">{lead.last_touch_source}</p>
+                    </div>
+                  )}
+                {lead.landing_path && (
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-600">
+                      Landing page
+                    </p>
+                    <p className="font-mono text-[11px] text-zinc-500">{lead.landing_path}</p>
+                  </div>
+                )}
+                {lead.referrer_host && (
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-600">
+                      Referrer
+                    </p>
+                    <p className="font-mono text-[11px] text-zinc-500">{lead.referrer_host}</p>
+                  </div>
+                )}
+                {lead.utm_source && (
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-600">
+                      UTM
+                    </p>
+                    <p className="text-right font-mono text-[11px] text-zinc-500">
+                      {[lead.utm_source, lead.utm_medium, lead.utm_campaign]
+                        .filter(Boolean)
+                        .join(" / ")}
+                    </p>
+                  </div>
+                )}
+                {lead.attribution_captured_at && (
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-600">
+                      Captured
+                    </p>
+                    <p className="text-[11px] tabular-nums text-zinc-600">
+                      {format(new Date(lead.attribution_captured_at), "MMM d, yyyy, h:mm a")}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </Section>
+          )}
+
           {emailLogs.length > 0 && (
             <Section title="Emails sent">
               <ul className="space-y-3">

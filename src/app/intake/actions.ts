@@ -4,6 +4,7 @@ import { Resend } from "resend";
 import { intakeSchema, type IntakeFormData } from "./schema";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { getLeadMarketSeedFromLeadSource } from "@/lib/market";
+import type { AttributionSnapshot } from "@/lib/attribution";
 
 /* ─── Email formatters ──────────────────────────────────────────────────── */
 
@@ -171,7 +172,8 @@ Submitted via inovense.com/intake
 /* ─── Action ────────────────────────────────────────────────────────────── */
 
 export async function submitIntake(
-  data: unknown
+  data: unknown,
+  attribution: AttributionSnapshot | null = null
 ): Promise<{ success: boolean; error?: string }> {
   const parsed = intakeSchema.safeParse(data);
 
@@ -236,6 +238,18 @@ export async function submitIntake(
         currency_source: marketSeed.currency_source,
         country_code: marketSeed.country_code,
         country_source: marketSeed.country_source,
+        // Attribution — all nullable, never blocks lead creation
+        landing_path: attribution?.landingPath ?? null,
+        referrer_host: attribution?.referrerHost ?? null,
+        utm_source: attribution?.utmSource ?? null,
+        utm_medium: attribution?.utmMedium ?? null,
+        utm_campaign: attribution?.utmCampaign ?? null,
+        utm_content: attribution?.utmContent ?? null,
+        utm_term: attribution?.utmTerm ?? null,
+        first_touch_source: attribution?.firstTouchSource ?? null,
+        last_touch_source: attribution?.lastTouchSource ?? null,
+        attribution_session_key: attribution?.sessionKey ?? null,
+        attribution_captured_at: attribution?.capturedAt ?? null,
       });
       if (sbError) {
         console.error("[intake] Supabase insert error:", sbError.message, sbError);
