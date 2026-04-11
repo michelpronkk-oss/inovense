@@ -4,7 +4,7 @@ import {
   isDutchClientLeadSource,
   type ClientLocale,
 } from "./client-locale";
-import { normalizeCurrencyCode } from "./currency";
+import { resolveClientFacingCurrencyCode } from "./market";
 
 export type EmailTemplateType =
   | "fit_followup"
@@ -35,19 +35,42 @@ export type DepositPaidConfirmationTemplate = {
 };
 
 const DEPOSIT_PAID_CONFIRMATION_TEMPLATE_EN: DepositPaidConfirmationTemplate = {
-  eyebrow: "Payment confirmed",
+  eyebrow: "Deposit received",
   heading: (firstName) => `Deposit received, ${firstName}.`,
   subject: (company) => `Deposit confirmed for ${company}`,
   body: (company) =>
-    `We've received the deposit for ${company}, and your project slot is now secured.\n\nWe'll move into onboarding and kickoff preparation next. If there is anything you want us to factor in before kickoff, just reply to this email.`,
+    `We've received the deposit for ${company}, and your project slot is now secured.\n\nNext, we will move into onboarding and kickoff preparation. If there is anything you want us to factor in before kickoff, just reply to this email.`,
 };
 
 const DEPOSIT_PAID_CONFIRMATION_TEMPLATE_NL: DepositPaidConfirmationTemplate = {
-  eyebrow: "Betaling bevestigd",
+  eyebrow: "Aanbetaling ontvangen",
   heading: (firstName) => `Aanbetaling ontvangen, ${firstName}.`,
   subject: (company) => `Aanbetaling bevestigd voor ${company}`,
   body: (company) =>
     `We hebben de aanbetaling voor ${company} ontvangen en je projectslot is nu bevestigd.\n\nHierna gaan we door naar onboarding en kickoffvoorbereiding. Als je vooraf nog context wilt delen, kun je gewoon op deze e-mail reageren.`,
+};
+
+export type FinalPaymentReceivedTemplate = {
+  eyebrow: string;
+  heading: (firstName: string) => string;
+  subject: (company: string) => string;
+  body: (company: string) => string;
+};
+
+const FINAL_PAYMENT_RECEIVED_TEMPLATE_EN: FinalPaymentReceivedTemplate = {
+  eyebrow: "Final payment received",
+  heading: (firstName) => `Final payment received, ${firstName}.`,
+  subject: (company) => `Final payment confirmed for ${company}`,
+  body: (company) =>
+    `We've received the final payment for ${company}. Your project balance is now fully settled on the payment side.\n\nThank you for the smooth process. If you need anything from us on billing or delivery handoff, just reply to this email.`,
+};
+
+const FINAL_PAYMENT_RECEIVED_TEMPLATE_NL: FinalPaymentReceivedTemplate = {
+  eyebrow: "Slotbetaling ontvangen",
+  heading: (firstName) => `Slotbetaling ontvangen, ${firstName}.`,
+  subject: (company) => `Slotbetaling bevestigd voor ${company}`,
+  body: (company) =>
+    `We hebben de slotbetaling voor ${company} ontvangen. De betaling voor het project is daarmee volledig afgerond.\n\nDank voor de prettige samenwerking. Als je nog iets nodig hebt rondom facturatie of oplevering, kun je gewoon op deze e-mail reageren.`,
 };
 
 const EMAIL_TEMPLATES_EN: Record<EmailTemplateType, EmailTemplateDef> = {
@@ -200,13 +223,25 @@ export function getDepositPaidConfirmationTemplateForLeadSource(
     : DEPOSIT_PAID_CONFIRMATION_TEMPLATE_EN;
 }
 
+export function getFinalPaymentReceivedTemplateForLeadSource(
+  leadSource: string | null | undefined
+): FinalPaymentReceivedTemplate {
+  return isDutchLeadSource(leadSource)
+    ? FINAL_PAYMENT_RECEIVED_TEMPLATE_NL
+    : FINAL_PAYMENT_RECEIVED_TEMPLATE_EN;
+}
+
 export function formatMoneyAmount(
   value: number,
   currencyCode: string | null | undefined,
-  locale: EmailTemplateLocale = "en"
+  locale: EmailTemplateLocale = "en",
+  leadSource?: string | null
 ): string {
   const hasDecimals = Math.round(value * 100) % 100 !== 0;
-  const resolvedCurrencyCode = normalizeCurrencyCode(currencyCode);
+  const resolvedCurrencyCode = resolveClientFacingCurrencyCode({
+    localCurrencyCode: currencyCode,
+    leadSource,
+  });
   const resolvedLocale =
     locale === "nl"
       ? "nl-NL"
@@ -226,9 +261,10 @@ export function applyPaymentAmountToBody(
   body: string,
   amount: number,
   locale: EmailTemplateLocale = "en",
-  currencyCode?: string | null
+  currencyCode?: string | null,
+  leadSource?: string | null
 ): string {
-  const formatted = formatMoneyAmount(amount, currencyCode, locale);
+  const formatted = formatMoneyAmount(amount, currencyCode, locale, leadSource);
   const trimmed = body.trim();
   const prefix = locale === "nl" ? `Aanbetaling: ${formatted}.` : `Deposit due: ${formatted}.`;
 
@@ -293,7 +329,7 @@ export function buildEmailHtml({
       <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
         <tr>
           <td bgcolor="#49A0A4" style="border-radius:8px;">
-            <a href="${esc(cta.href)}" style="display:inline-block;padding:12px 24px;font-size:13px;font-weight:600;color:#09090b;text-decoration:none;letter-spacing:0.01em;">${esc(cta.text)}</a>
+            <a href="${esc(cta.href)}" style="display:inline-block;padding:12px 24px;font-size:13px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.01em;">${esc(cta.text)}</a>
           </td>
         </tr>
       </table>`

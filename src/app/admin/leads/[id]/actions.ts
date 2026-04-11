@@ -3,7 +3,10 @@
 import { createSupabaseServerClient, type LeadStatus, type ProjectStatus } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { sendDepositPaidConfirmationEmail } from "./email-actions";
+import {
+  sendDepositPaidConfirmationEmail,
+  sendFinalPaymentReceivedEmail,
+} from "./email-actions";
 import {
   parseCurrencyCodeInput,
   parseUsdFxRate,
@@ -422,6 +425,7 @@ export async function markFinalPaymentPaid(
   success: boolean;
   alreadyPaid?: boolean;
   paidAt?: string;
+  emailWarning?: string;
   error?: string;
 }> {
   try {
@@ -496,7 +500,27 @@ export async function markFinalPaymentPaid(
       return { success: false, error: "Failed to mark final payment." };
     }
 
+    const emailResult = await sendFinalPaymentReceivedEmail(id);
     revalidateLead(id);
+
+    if (!emailResult.success) {
+      return {
+        success: true,
+        paidAt: updatedLead.final_payment_paid_at ?? undefined,
+        emailWarning:
+          emailResult.error ??
+          "Final payment marked as received, but confirmation email could not be sent.",
+      };
+    }
+
+    if (emailResult.warning) {
+      return {
+        success: true,
+        paidAt: updatedLead.final_payment_paid_at ?? undefined,
+        emailWarning: emailResult.warning,
+      };
+    }
+
     return { success: true, paidAt: updatedLead.final_payment_paid_at ?? undefined };
   } catch (err) {
     console.error("[admin] markFinalPaymentPaid failed:", err);

@@ -159,9 +159,10 @@ function EmailComposerModal({
       body,
       effectivePaymentAmount,
       locale,
-      localCurrencyCode
+      localCurrencyCode,
+      leadSource
     );
-  }, [body, effectivePaymentAmount, locale, localCurrencyCode, templateType]);
+  }, [body, effectivePaymentAmount, locale, localCurrencyCode, leadSource, templateType]);
 
   // Close on Escape
   useEffect(() => {
@@ -359,7 +360,8 @@ function EmailComposerModal({
                     ? `This email will include deposit due: ${formatMoneyAmount(
                         Number(effectivePaymentAmount),
                         localCurrencyCode,
-                        locale
+                        locale,
+                        leadSource
                       )}.`
                     : "Set a proposal deposit or payment override before sending this email."}
                 </p>
@@ -401,7 +403,7 @@ function EmailComposerModal({
                     className={`rounded-lg px-4 py-2 text-xs font-medium transition-colors disabled:cursor-wait disabled:opacity-50 ${
                       isDecline
                         ? "border border-red-900/50 bg-red-950/30 text-red-400 hover:bg-red-950/50 hover:text-red-300"
-                        : "bg-brand text-zinc-950 hover:bg-brand/90"
+                        : "bg-brand text-white hover:bg-brand/90"
                     }`}
                   >
                     {isPending ? "Sending..." : "Send email"}

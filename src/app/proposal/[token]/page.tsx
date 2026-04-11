@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { getClientLocaleForLeadSource, type ClientLocale } from "@/lib/client-locale";
 import { acceptProposal, declineProposal } from "./actions";
-import { formatCurrencyAmount, normalizeCurrencyCode } from "@/lib/currency";
+import { formatCurrencyAmount } from "@/lib/currency";
+import { resolveClientFacingCurrencyCode } from "@/lib/market";
 
 export const dynamic = "force-dynamic";
 
@@ -116,11 +117,17 @@ function formatDate(iso: string, locale: ClientLocale) {
 function formatLocalAmount(
   value: number,
   currencyCode: string | null | undefined,
+  leadSource: string | null | undefined,
   locale: ClientLocale
 ) {
+  const resolvedCurrencyCode = resolveClientFacingCurrencyCode({
+    localCurrencyCode: currencyCode,
+    leadSource,
+  });
+
   return formatCurrencyAmount(
     value,
-    normalizeCurrencyCode(currencyCode),
+    resolvedCurrencyCode,
     locale === "nl" ? "nl-NL" : "en-GB"
   );
 }
@@ -272,6 +279,7 @@ export default async function ProposalPage({
                   ? formatLocalAmount(
                       Number(lead.proposal_price),
                       lead.local_currency_code,
+                      lead.lead_source,
                       locale
                     )
                   : copy.notSet}
@@ -286,6 +294,7 @@ export default async function ProposalPage({
                   ? formatLocalAmount(
                       Number(lead.proposal_deposit),
                       lead.local_currency_code,
+                      lead.lead_source,
                       locale
                     )
                   : copy.notSet}
@@ -358,7 +367,7 @@ export default async function ProposalPage({
                 <form action={acceptAction} className="w-full sm:w-auto">
                   <button
                     type="submit"
-                    className="w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-zinc-950 transition-colors hover:bg-brand/90"
+                    className="w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand/90"
                   >
                     {copy.acceptButton}
                   </button>

@@ -1,8 +1,12 @@
 import {
   DEFAULT_LOCAL_CURRENCY_CODE,
+  parseCurrencyCodeInput,
   type CurrencySource,
 } from "@/lib/currency";
-import { isDutchClientLeadSource } from "@/lib/client-locale";
+import {
+  getClientLocaleForLeadSource,
+  isDutchClientLeadSource,
+} from "@/lib/client-locale";
 
 export type CountrySource =
   | "manual"
@@ -96,4 +100,19 @@ export function getLeadMarketSeedFromLeadSource(
     country_code: null,
     country_source: "unknown",
   };
+}
+
+export function resolveClientFacingCurrencyCode(input: {
+  localCurrencyCode: string | null | undefined;
+  leadSource: string | null | undefined;
+}): string {
+  const explicit = parseCurrencyCodeInput(input.localCurrencyCode);
+  if (explicit) return explicit;
+
+  const inferred = inferLeadMarketFromLeadSource(input.leadSource)
+    .local_currency_code;
+  if (inferred) return inferred;
+
+  const locale = getClientLocaleForLeadSource(input.leadSource);
+  return locale === "nl" ? "EUR" : "USD";
 }

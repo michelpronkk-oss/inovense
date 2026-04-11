@@ -40,6 +40,7 @@ export function RevenueCard({
   );
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [emailWarning, setEmailWarning] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(false);
 
   const state = derivePaymentState({
@@ -119,11 +120,13 @@ export function RevenueCard({
       return;
     }
     setError(null);
+    setEmailWarning(null);
     setConfirm(false);
     startTransition(async () => {
       const result = await markFinalPaymentPaid(leadId);
       if (result.success) {
         setFinalPaidAt(result.paidAt ?? new Date().toISOString());
+        setEmailWarning(result.emailWarning ?? null);
       } else {
         setError(result.error ?? "Failed.");
       }
@@ -237,6 +240,10 @@ export function RevenueCard({
           <p className="text-[11px] text-zinc-700">
             USD reporting unavailable. Lock a USD FX rate in Payment to enable it.
           </p>
+        )}
+
+        {emailWarning && (
+          <p className="text-[11px] text-amber-400">{emailWarning}</p>
         )}
 
         {state.kind === "deposit_paid" && remainingDisplay && (

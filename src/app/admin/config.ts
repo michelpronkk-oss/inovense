@@ -105,6 +105,7 @@ export const EMAIL_TYPE_LABELS: Record<string, string> = {
   proposal_sent: "Proposal ready",
   payment_request: "Payment request",
   deposit_paid_confirmation: "Deposit confirmation",
+  final_payment_received_confirmation: "Final payment confirmation",
   onboarding_sent: "Onboarding link",
   decline: "Decline",
 };
