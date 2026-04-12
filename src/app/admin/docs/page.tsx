@@ -155,7 +155,8 @@ type LanePricingAnchor = {
   tiers: Array<{
     tier: string;
     range: string;
-    includes: string;
+    scope: string;
+    useWhen: string;
     moveUpWhen: string;
   }>;
   retainerPath: string;
@@ -164,102 +165,102 @@ type LanePricingAnchor = {
 const LANE_PRICING_ANCHORS: LanePricingAnchor[] = [
   {
     lane: "Build",
-    pricingModel: "Productized one-off build with clean upgrade path",
-    quoteFirst: "Framework tier for a high-quality launch scope with clear conversion intent.",
+    pricingModel: "Productized premium builds with clear scope boundaries.",
+    quoteFirst: "Start with Framework for most standard website projects.",
     tiers: [
       {
         tier: "Framework",
-        range: "$4.5k-$7.5k",
-        includes:
-          "Core website scope, premium UI direction, production build, and clean handoff.",
+        range: "$3.5k-$5.5k",
+        scope: "Core site architecture, premium UI direction, production implementation, clean handoff.",
+        useWhen: "Use for focused website scopes with limited integration complexity.",
         moveUpWhen:
-          "Move to Extended when page count, integrations, or revision complexity expands meaningfully.",
+          "Move to Extended when page count, content depth, or integration needs expand.",
       },
       {
         tier: "Extended",
-        range: "$8k-$14k",
-        includes:
-          "Expanded architecture, deeper conversion structure, and broader implementation complexity.",
+        range: "$6k-$9k",
+        scope: "Broader page system, stronger conversion structure, and deeper implementation scope.",
+        useWhen: "Use when delivery needs more architecture depth and cross-page strategy.",
         moveUpWhen:
-          "Move to Custom/Premium when multi-system dependency, accelerated timelines, or high-risk delivery conditions exist.",
+          "Move to Custom/Premium when dependency, risk, or timeline pressure becomes high.",
       },
       {
         tier: "Custom / Premium",
-        range: "$15k-$35k+",
-        includes:
-          "High-complexity builds with deeper product logic, custom integrations, and elevated execution demands.",
+        range: "$10k-$18k+",
+        scope: "High-complexity builds with advanced integrations, custom logic, and elevated execution risk.",
+        useWhen: "Use when the project is clearly beyond reusable framework delivery.",
         moveUpWhen:
-          "Only use as default when complexity is truly premium, not for routine delivery.",
+          "Do not use as default for routine builds.",
       },
     ],
     retainerPath:
-      "After launch, offer support/optimization retainer when monthly iteration, CRO tests, or dependency on ongoing changes is clear.",
+      "Offer support/optimization retainer post-launch when monthly updates or CRO iteration is expected.",
   },
   {
     lane: "Systems",
-    pricingModel: "Framework-first systems build with recurring evolution path",
-    quoteFirst: "Framework tier for core workflow architecture and first automation layer.",
+    pricingModel: "Framework-first systems delivery with recurring evolution potential.",
+    quoteFirst: "Start with Framework for first production workflow layer.",
     tiers: [
       {
         tier: "Framework",
-        range: "$5k-$9k",
-        includes:
-          "Lead/workflow mapping, core automation structure, and stable operational baseline.",
+        range: "$4k-$7k",
+        scope: "Workflow mapping, core automation setup, and stable operational baseline.",
+        useWhen: "Use for first systems layer and cleaner internal execution rhythm.",
         moveUpWhen:
-          "Move to Extended when number of flows, integrations, or stakeholders increases.",
+          "Move to Extended when number of flows, integrations, or teams increases.",
       },
       {
         tier: "Extended",
-        range: "$10k-$18k",
-        includes:
-          "Multiple workflow tracks, deeper automations, and stronger reporting/visibility layers.",
+        range: "$8k-$12k",
+        scope: "Multiple flows, deeper automations, and stronger reporting/visibility structure.",
+        useWhen: "Use when systems scope spans multiple functions and operational owners.",
         moveUpWhen:
-          "Move to Custom/Premium for advanced dependency chains, complex integrations, or high business criticality.",
+          "Move to Custom/Premium for complex orchestration, integrations, or high criticality.",
       },
       {
         tier: "Custom / Premium",
-        range: "$20k-$45k+",
-        includes:
-          "Mission-critical systems with complex orchestration, higher risk tolerance needs, and bespoke logic.",
+        range: "$15k-$25k+",
+        scope: "Mission-critical systems with bespoke logic and high dependency requirements.",
+        useWhen: "Use when framework patterns are insufficient for business-critical delivery.",
         moveUpWhen:
-          "Use only when requirement depth clearly exceeds framework and extended lanes.",
+          "Do not position as default for standard systems engagements.",
       },
     ],
     retainerPath:
-      "Systems retainers become strong once workflows keep evolving and the business depends on continuous optimization.",
+      "Move to recurring retainer when workflows keep evolving and uptime/iteration becomes business-critical.",
   },
   {
     lane: "Growth",
-    pricingModel: "Retainer-first growth operating model",
-    quoteFirst: "Foundation Retainer tied to clear monthly execution scope and KPI loop.",
+    pricingModel: "Retainer-first growth model with clear scaling tiers.",
+    quoteFirst: "Start with Foundation Retainer for focused monthly execution.",
     tiers: [
       {
         tier: "Foundation Retainer",
-        range: "$1.8k-$3k/mo",
-        includes:
-          "Core growth operating rhythm, baseline reporting, and focused execution priorities.",
+        range: "$1.5k-$2.5k/mo",
+        scope: "Core growth cadence, baseline reporting, and focused execution priorities.",
+        useWhen: "Use for lean growth operations with one core execution track.",
         moveUpWhen:
-          "Move to Operator Retainer when channel count, content cadence, or experiment volume grows.",
+          "Move to Operator when channels, experiments, or content velocity grow.",
       },
       {
         tier: "Operator Retainer",
-        range: "$3.2k-$5.5k/mo",
-        includes:
-          "Broader weekly execution, tighter optimization loops, and stronger pipeline ownership.",
+        range: "$3k-$4.5k/mo",
+        scope: "Broader weekly execution with tighter optimization and pipeline accountability.",
+        useWhen: "Use when growth requires continuous testing and cross-channel coordination.",
         moveUpWhen:
-          "Move to Scale Retainer when growth becomes multi-channel and execution depth expands.",
+          "Move to Scale when execution depth and volume become materially higher.",
       },
       {
         tier: "Scale Retainer",
-        range: "$6k-$11k+/mo",
-        includes:
-          "High-frequency operating support with deeper experimentation and performance control.",
+        range: "$5k-$8k+/mo",
+        scope: "High-frequency growth operations with deeper experimentation and performance control.",
+        useWhen: "Use when growth is a major operating priority with sustained execution load.",
         moveUpWhen:
-          "Use when commercial upside and execution requirements justify expanded monthly delivery.",
+          "Do not force for low-complexity or low-volume clients.",
       },
     ],
     retainerPath:
-      "Use one-off growth projects only for narrow audits/setup phases. Serious growth execution should usually remain retainer-based.",
+      "Keep one-off growth work limited to audits/setup. Ongoing growth should usually remain retainer-based.",
   },
 ];
 
@@ -267,7 +268,7 @@ const PRICING_GUARDRAILS = [
   "Start with the lane Framework tier unless clear complexity signals justify a higher tier.",
   "If budget is below floor, reduce scope depth and protect delivery quality.",
   "No random discounting. Any concession must be paired with explicit scope reduction.",
-  "Keep proposal price and deposit consistent with selected lane tier before send.",
+  "Keep proposal price and deposit aligned with selected lane tier before send.",
   "Record quote rationale in notes: lane, tier, complexity signals, and upgrade reason.",
 ];
 
@@ -291,7 +292,7 @@ const QUOTE_FLOW_RULES = [
   "Upgrade to Extended only when complexity signals are real and documented.",
   "Use Custom/Premium only when complexity, risk, or dependency truly warrants it.",
   "For Growth, propose retainer tiers as default progression: Foundation -> Operator -> Scale.",
-  "When upselling, tie tier changes to concrete outcomes and execution load, not vague prestige.",
+  "When upselling, tie tier changes to execution load and outcome potential, not prestige language.",
 ];
 
 const SCENARIO_PLAYBOOKS = [
@@ -949,9 +950,9 @@ function PricingFramework() {
             Pricing Framework
           </h2>
           <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
-            Framework-first internal pricing in USD with clear upgrade paths.
-            Convert to local client currency for client-facing proposals and
-            payment requests.
+            English-first internal USD anchors with framework tiers and clean
+            upgrade logic. Convert to local client currency for client-facing
+            proposal/payment communication where needed.
           </p>
         </div>
 
@@ -996,7 +997,11 @@ function PricingFramework() {
                       {tier.range}
                     </p>
                     <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-                      {tier.includes}
+                      {tier.scope}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                      <span className="text-zinc-400">Use when: </span>
+                      {tier.useWhen}
                     </p>
                     <p className="mt-1 text-xs leading-relaxed text-zinc-500">
                       <span className="text-zinc-400">Move up when: </span>
@@ -1123,7 +1128,7 @@ export default function DocsPage() {
             </div>
             <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
               <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Pricing</p>
-              <p className="mt-1 text-sm font-medium text-zinc-200">Framework tiers with clear upgrade paths.</p>
+              <p className="mt-1 text-sm font-medium text-zinc-200">Framework tiers with realistic USD anchors.</p>
             </div>
             <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
               <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Performance</p>
