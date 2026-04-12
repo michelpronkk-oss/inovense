@@ -9,6 +9,20 @@ export interface ProofSnippetPostData {
   cta?: string;
 }
 
+export interface CaseSnapshotPostData {
+  tag: string;
+  headline: string;
+  summary?: string;
+  context: string;
+  beforeLabel?: string;
+  beforeValue: string;
+  afterLabel?: string;
+  afterValue: string;
+  interventions: string[];
+  timeframe?: string;
+  cta?: string;
+}
+
 export interface ProofCarouselSlideData {
   slideNumber: number;
   totalSlides: number;
@@ -22,4 +36,3 @@ export interface ProofCarouselSlideData {
   cta?: string;
   isLast?: boolean;
 }
-

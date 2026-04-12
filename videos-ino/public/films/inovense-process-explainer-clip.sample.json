@@ -1,0 +1,30 @@
+{
+  "tag": "Process",
+  "headline": "From strategy to launch,\none clear operating flow.",
+  "subline": "Built for clean handoff and repeatable quality.",
+  "steps": [
+    {
+      "title": "Strategy",
+      "detail": "Positioning and offer clarity."
+    },
+    {
+      "title": "Structure",
+      "detail": "Information architecture and flow."
+    },
+    {
+      "title": "Design",
+      "detail": "Interface direction and trust layers."
+    },
+    {
+      "title": "Build",
+      "detail": "Production implementation and QA."
+    },
+    {
+      "title": "Launch",
+      "detail": "Go-live, reporting, and iteration loop."
+    }
+  ],
+  "endHeadline": "Process quality is product quality.",
+  "endSubline": "No chaos. No guesswork. No loose handoffs.",
+  "cta": "Start a project"
+}

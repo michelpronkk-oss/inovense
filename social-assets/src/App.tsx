@@ -6,7 +6,10 @@ import {
 } from './components/banners/BrandBanners';
 import { AuthorityPost, type AuthorityPostData } from './components/posts/AuthorityPost';
 import { BuildFlowExplainer } from './components/posts/BuildFlowExplainer';
+import { CaseSnapshotPost } from './components/posts/CaseSnapshotPost';
 import { CarouselSlide, type CarouselSlideData } from './components/posts/CarouselSlide';
+import { HumanEditorialPost } from './components/posts/HumanEditorialPost';
+import { MotionStatementPost } from './components/posts/MotionStatementPost';
 import { OfferPost, type OfferPostData } from './components/posts/OfferPost';
 import { ProcessCarousel } from './components/posts/ProcessCarousel';
 import { ProofCarousel } from './components/posts/ProofCarousel';
@@ -19,7 +22,10 @@ import type {
   ProcessCarouselSlideData,
   SystemsExplainerData,
 } from './components/posts/explainer-types';
+import type { HumanEditorialPostData } from './components/posts/human-editorial-types';
+import type { MotionStatementPostData } from './components/posts/motion-types';
 import type {
+  CaseSnapshotPostData,
   ProofCarouselSlideData,
   ProofSnippetPostData,
 } from './components/posts/proof-types';
@@ -35,11 +41,14 @@ import {
 import {
   activeSlideIndex,
   buildFlowExplainerSample,
+  caseSnapshotSample,
   authorityPostSample,
   carouselSlides,
   facebookCoverBannerSample,
+  humanEditorialSample,
   localePresetsByTemplate,
   linkedInCompanyBannerSample,
+  motionStatementSample,
   offerPostSample,
   proofCarouselSlidesSample,
   proofSnippetSample,
@@ -95,6 +104,16 @@ const templateOptions: Array<{ key: TemplateKey; label: string; description: str
     description: 'Step-based educational carousel with sequence progress.',
   },
   {
+    key: 'human_editorial',
+    label: 'Human Editorial',
+    description: 'Portrait-led editorial template with restrained overlays and operator tone.',
+  },
+  {
+    key: 'motion_statement',
+    label: 'Motion Statement',
+    description: 'Motion-ready statement scene with beat blocks for short-form clips.',
+  },
+  {
     key: 'process_carousel',
     label: 'Process Carousel',
     description: 'Icon-led process carousel for service and workflow explainers.',
@@ -108,6 +127,11 @@ const templateOptions: Array<{ key: TemplateKey; label: string; description: str
     key: 'build_flow_explainer',
     label: 'Build Flow Explainer',
     description: 'Icon-led build process template for website and delivery flows.',
+  },
+  {
+    key: 'case_snapshot',
+    label: 'Case Snapshot',
+    description: 'Proof-focused before/after snapshot for compact credibility posts.',
   },
   {
     key: 'proof_snippet',
@@ -136,10 +160,13 @@ const defaultJsonByTemplate: Record<TemplateKey, string> = {
   service: JSON.stringify(servicePostSample, null, 2),
   offer: JSON.stringify(offerPostSample, null, 2),
   quote: JSON.stringify(quotePostSample, null, 2),
+  human_editorial: JSON.stringify(humanEditorialSample, null, 2),
+  motion_statement: JSON.stringify(motionStatementSample, null, 2),
   carousel: JSON.stringify(carouselSlides, null, 2),
   process_carousel: JSON.stringify(processCarouselSlidesSample, null, 2),
   systems_explainer: JSON.stringify(systemsExplainerSample, null, 2),
   build_flow_explainer: JSON.stringify(buildFlowExplainerSample, null, 2),
+  case_snapshot: JSON.stringify(caseSnapshotSample, null, 2),
   proof_snippet: JSON.stringify(proofSnippetSample, null, 2),
   proof_carousel: JSON.stringify(proofCarouselSlidesSample, null, 2),
   facebook_banner: JSON.stringify(facebookCoverBannerSample, null, 2),
@@ -151,10 +178,13 @@ const TEMPLATE_ALLOWED_FORMATS: Record<TemplateKey, FormatKey[]> = {
   service: ['portrait', 'square', 'story'],
   offer: ['portrait', 'square', 'story'],
   quote: ['portrait', 'square', 'story'],
+  human_editorial: ['portrait', 'square', 'story'],
+  motion_statement: ['portrait', 'square', 'story'],
   carousel: ['portrait', 'square', 'story'],
   process_carousel: ['portrait', 'square', 'story'],
   systems_explainer: ['portrait', 'square', 'story'],
   build_flow_explainer: ['portrait', 'square', 'story'],
+  case_snapshot: ['portrait', 'square', 'story'],
   proof_snippet: ['portrait', 'square', 'story'],
   proof_carousel: ['portrait', 'square', 'story'],
   facebook_banner: ['facebook_cover'],
@@ -338,6 +368,22 @@ function App() {
     () => parseObjectData<QuotePostData>(jsonByTemplate.quote, quotePostSample),
     [jsonByTemplate.quote]
   );
+  const humanEditorialParsed = useMemo(
+    () =>
+      parseObjectData<HumanEditorialPostData>(
+        jsonByTemplate.human_editorial,
+        humanEditorialSample
+      ),
+    [jsonByTemplate.human_editorial]
+  );
+  const motionStatementParsed = useMemo(
+    () =>
+      parseObjectData<MotionStatementPostData>(
+        jsonByTemplate.motion_statement,
+        motionStatementSample
+      ),
+    [jsonByTemplate.motion_statement]
+  );
   const carouselParsed = useMemo(
     () => parseArrayData<CarouselSlideData>(jsonByTemplate.carousel, carouselSlides, 'Carousel'),
     [jsonByTemplate.carousel]
@@ -374,6 +420,14 @@ function App() {
         proofSnippetSample
       ),
     [jsonByTemplate.proof_snippet]
+  );
+  const caseSnapshotParsed = useMemo(
+    () =>
+      parseObjectData<CaseSnapshotPostData>(
+        jsonByTemplate.case_snapshot,
+        caseSnapshotSample
+      ),
+    [jsonByTemplate.case_snapshot]
   );
   const proofCarouselParsed = useMemo(
     () =>
@@ -501,6 +555,10 @@ function App() {
         return offerParsed.error;
       case 'quote':
         return quoteParsed.error;
+      case 'human_editorial':
+        return humanEditorialParsed.error;
+      case 'motion_statement':
+        return motionStatementParsed.error;
       case 'carousel':
         return carouselParsed.error;
       case 'process_carousel':
@@ -509,6 +567,8 @@ function App() {
         return systemsExplainerParsed.error;
       case 'build_flow_explainer':
         return buildFlowExplainerParsed.error;
+      case 'case_snapshot':
+        return caseSnapshotParsed.error;
       case 'proof_snippet':
         return proofSnippetParsed.error;
       case 'proof_carousel':
@@ -967,6 +1027,20 @@ function App() {
             {templateKey === 'quote' ? (
               <QuotePost ref={canvasRef} data={quoteParsed.data} format={currentFormat} />
             ) : null}
+            {templateKey === 'human_editorial' ? (
+              <HumanEditorialPost
+                ref={canvasRef}
+                data={humanEditorialParsed.data}
+                format={currentFormat}
+              />
+            ) : null}
+            {templateKey === 'motion_statement' ? (
+              <MotionStatementPost
+                ref={canvasRef}
+                data={motionStatementParsed.data}
+                format={currentFormat}
+              />
+            ) : null}
             {templateKey === 'carousel' ? (
               <CarouselSlide ref={canvasRef} data={activeCarouselSlide} format={currentFormat} />
             ) : null}
@@ -984,6 +1058,13 @@ function App() {
               <BuildFlowExplainer
                 ref={canvasRef}
                 data={buildFlowExplainerParsed.data}
+                format={currentFormat}
+              />
+            ) : null}
+            {templateKey === 'case_snapshot' ? (
+              <CaseSnapshotPost
+                ref={canvasRef}
+                data={caseSnapshotParsed.data}
                 format={currentFormat}
               />
             ) : null}

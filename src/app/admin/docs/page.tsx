@@ -64,6 +64,12 @@ const CONTROL_MODEL = [
 
 const MANUAL_AUTOMATION_REFERENCE = [
   {
+    area: "Outbound prospects",
+    automation: "Manual",
+    manual: "Prospects are operator-managed targets with explicit next-step discipline.",
+    auto: "No auto-send, no bulk outreach, and no automatic prospect-to-lead conversion.",
+  },
+  {
     area: "Lead lifecycle status",
     automation: "Mixed",
     manual: "Most status movement is operator-controlled.",
@@ -401,6 +407,52 @@ const SECTIONS: HandbookSection[] = [
         items: [
           "Do not force Dutch or English based on personal preference. Follow lead context.",
           "Do not create a separate process tree for Dutch leads.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "outbound-prospects",
+    title: "Outbound Prospects Layer",
+    tag: "Ops",
+    automation: "Manual",
+    summary:
+      "Prospects are pre-lead outbound targets. Keep outreach disciplined, convert intentionally, and keep lead semantics clean.",
+    blocks: [
+      {
+        title: "Prospect vs lead",
+        tone: "guardrail",
+        items: [
+          "Prospect = researched target not yet in active commercial flow.",
+          "Lead = submitted inquiry or manually qualified lead record in CRM lifecycle.",
+          "Do not count prospects as leads in performance reporting.",
+        ],
+      },
+      {
+        title: "Operator workflow",
+        tone: "do",
+        items: [
+          "Track company, channel, lane fit, status, opening angle, and next_follow_up_at for every outbound target.",
+          "Use NL/EN snippet library for first-touch and follow-up support, then personalize before send.",
+          "Maintain next-step discipline: if status changes, update follow-up date or close as not fit.",
+        ],
+      },
+      {
+        title: "Convert to lead rule",
+        tone: "reference",
+        items: [
+          "Convert only when conversation is commercially real and qualified for proposal/payment flow.",
+          "Conversion should carry core fields into leads while preserving locale/currency defaults.",
+          "After conversion, continue execution in the normal lead detail flow.",
+        ],
+      },
+      {
+        title: "What this layer is not",
+        tone: "avoid",
+        items: [
+          "Not a bulk sender, campaign builder, or inbox automation suite.",
+          "Do not auto-send outreach from CRM templates without human review.",
+          "Do not blur prospect statuses with lead lifecycle statuses.",
         ],
       },
     ],
@@ -809,6 +861,7 @@ const CORE_NAV_ITEMS = [
   { id: "action-event-map", title: "Action Event Map" },
   { id: "pricing-framework", title: "Pricing Framework" },
   { id: "flow-reference", title: "Lifecycle Reference" },
+  { id: "outbound-prospects", title: "Outbound Prospects" },
   { id: "scenario-playbooks", title: "Scenario Playbooks" },
   { id: "project-status-reference", title: "Project Status Reference" },
 ];

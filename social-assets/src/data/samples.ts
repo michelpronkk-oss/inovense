@@ -1,8 +1,14 @@
 import type { BrandBannerData } from '../components/banners/BrandBanners';
 import type { AuthorityPostData } from '../components/posts/AuthorityPost';
 import type { CarouselSlideData } from '../components/posts/CarouselSlide';
+import type { HumanEditorialPostData } from '../components/posts/human-editorial-types';
+import type { MotionStatementPostData } from '../components/posts/motion-types';
 import type { OfferPostData } from '../components/posts/OfferPost';
-import type { ProofCarouselSlideData, ProofSnippetPostData } from '../components/posts/proof-types';
+import type {
+  CaseSnapshotPostData,
+  ProofCarouselSlideData,
+  ProofSnippetPostData,
+} from '../components/posts/proof-types';
 import type { QuotePostData } from '../components/posts/QuotePost';
 import type { ServicePostData } from '../components/posts/ServicePost';
 import type {
@@ -10,6 +16,7 @@ import type {
   ProcessCarouselSlideData,
   SystemsExplainerData,
 } from '../components/posts/explainer-types';
+import { MOTION_SCENE_PRESETS } from '../motion/scene-presets';
 
 export type LocalePreset = 'en' | 'nl';
 
@@ -103,6 +110,60 @@ export const quotePostNlSample: QuotePostData = {
     'De meeste teams missen geen capaciteit. Ze missen een systeem dat capaciteit omzet in resultaat.',
   author: 'Inovense',
   title: 'Build. Systems. Growth.',
+};
+
+export const humanEditorialSample: HumanEditorialPostData = {
+  tag: 'Founder Memo',
+  headline: 'Execution wins\nwhen leadership\nstays close to ops.',
+  sub: 'People trust systems more when they can see the operator behind the standard.',
+  personName: 'Founder, Inovense',
+  personRole: 'Build. Systems. Growth.',
+  imageSrc: '/editorial/founder-operator.jpg',
+  imageAlt: 'Founder portrait in studio environment',
+  cta: 'Start a project',
+  layout: 'founder_portrait',
+};
+
+export const humanEditorialNlSample: HumanEditorialPostData = {
+  tag: 'Operator Memo',
+  headline: 'Sterke uitvoering\nbegint bij\noperationele rust.',
+  sub: 'Gebruik deze editorial template voor founder of team posts met meer menselijk signaal.',
+  personName: 'Inovense Operator',
+  personRole: 'Build. Systems. Growth.',
+  imageSrc: '/editorial/operator-portrait.jpg',
+  imageAlt: 'Operator portrait in premium work environment',
+  cta: 'Project starten',
+  layout: 'walking_hook',
+};
+
+export const motionStatementSample: MotionStatementPostData = {
+  tag: 'Motion Statement',
+  headline: 'The brand is not\nwhat you say.\nIt is how you execute.',
+  sub: 'Scene-ready structure for short-form hooks, overlays, and sequence-based voiceovers.',
+  beats: [
+    'Hook: execution quality is a growth multiplier.',
+    'Shift: remove handoff leakage across the lifecycle.',
+    'Proof: show process and movement, not vague promises.',
+    'CTA: start a project.',
+  ],
+  activeBeat: 0,
+  timeline: MOTION_SCENE_PRESETS.statement,
+  cta: 'Start a project',
+};
+
+export const motionStatementNlSample: MotionStatementPostData = {
+  tag: 'Motion Hook',
+  headline: 'Groei zonder\nsysteem is\nfrictie op schaal.',
+  sub: 'Motion-ready poststructuur voor reels en korte explainers.',
+  beats: [
+    'Hook: de bottleneck zit meestal in de workflow.',
+    'Shift: minder handoff-ruis, meer eigenaarschap.',
+    'Proof: laat proces en resultaat samen zien.',
+    'CTA: bekijk onze aanpak.',
+  ],
+  activeBeat: 1,
+  timeline: MOTION_SCENE_PRESETS.process_hook,
+  cta: 'Hoe wij werken',
 };
 
 export const carouselSlides: CarouselSlideData[] = [
@@ -298,6 +359,42 @@ export const buildFlowExplainerNlSample: BuildFlowExplainerData = {
   cta: 'Start een build project',
 };
 
+export const caseSnapshotSample: CaseSnapshotPostData = {
+  tag: 'Proof Snapshot',
+  headline: 'A compact case\nsurface that\nshows movement.',
+  summary: 'Use this format when one card must show context, shift, and practical execution.',
+  context: 'B2B service pipeline with strong demand but weak decision-point follow-through.',
+  beforeLabel: 'Before',
+  beforeValue: '14% call-book rate',
+  afterLabel: 'After',
+  afterValue: '27% call-book rate',
+  interventions: [
+    'Offer hierarchy and first-fold conversion structure rebuilt',
+    'Lead routing ownership clarified across sales and ops',
+    'Proposal and payment events tied to follow-up actions',
+  ],
+  timeframe: '8-week change window',
+  cta: 'Build your systems',
+};
+
+export const caseSnapshotNlSample: CaseSnapshotPostData = {
+  tag: 'Proof Snapshot',
+  headline: 'Compact bewijs\ndat beweging\nzichtbaar maakt.',
+  summary: 'Gebruik dit format om context, interventie en resultaat in een post te laten landen.',
+  context: 'Dienstverlener met genoeg vraag maar te veel ruis in opvolging en handoff.',
+  beforeLabel: 'Voor',
+  beforeValue: '12% call-book rate',
+  afterLabel: 'Na',
+  afterValue: '24% call-book rate',
+  interventions: [
+    'Intake en eigenaarschap per lane strakgezet',
+    'Beslispunt-automatisering op voorstel en betaling',
+    'Wekelijkse review op bron, snelheid en conversie',
+  ],
+  timeframe: '7-week transitie',
+  cta: 'Bouw je systeem',
+};
+
 export const proofSnippetSample: ProofSnippetPostData = {
   tag: 'Case Snippet',
   headline: 'Stop scaling\nmanual workflows.',
@@ -444,13 +541,15 @@ export const localePresetsByTemplate = {
   service: { en: servicePostSample, nl: servicePostNlSample },
   offer: { en: offerPostSample, nl: offerPostNlSample },
   quote: { en: quotePostSample, nl: quotePostNlSample },
+  human_editorial: { en: humanEditorialSample, nl: humanEditorialNlSample },
+  motion_statement: { en: motionStatementSample, nl: motionStatementNlSample },
   carousel: { en: carouselSlides, nl: carouselSlidesNlSample },
   process_carousel: { en: processCarouselSlidesSample, nl: processCarouselSlidesNlSample },
   systems_explainer: { en: systemsExplainerSample, nl: systemsExplainerNlSample },
   build_flow_explainer: { en: buildFlowExplainerSample, nl: buildFlowExplainerNlSample },
+  case_snapshot: { en: caseSnapshotSample, nl: caseSnapshotNlSample },
   proof_snippet: { en: proofSnippetSample, nl: proofSnippetNlSample },
   proof_carousel: { en: proofCarouselSlidesSample, nl: proofCarouselSlidesNlSample },
   facebook_banner: { en: facebookCoverBannerSample, nl: facebookCoverBannerNlSample },
   linkedin_banner: { en: linkedInCompanyBannerSample, nl: linkedInCompanyBannerNlSample },
 } as const;
-

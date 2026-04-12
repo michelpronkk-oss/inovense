@@ -10,12 +10,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@remotion/bundler": "4.0.448",
+    "@remotion/cli": "4.0.448",
+    "@remotion/player": "4.0.448",
+    "@remotion/renderer": "4.0.448",
     "@tailwindcss/vite": "^4.2.2",
     "clsx": "^2.1.1",
     "html-to-image": "^1.11.13",
     "lucide-react": "^1.7.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "remotion": "4.0.448",
     "tailwindcss": "^4.2.2",
     "zod": "^4.3.6"
   },

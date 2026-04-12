@@ -1,7 +1,13 @@
 import type { AuthorityPostData } from '../components/posts/AuthorityPost';
 import type { CarouselSlideData } from '../components/posts/CarouselSlide';
+import type { HumanEditorialPostData } from '../components/posts/human-editorial-types';
+import type { MotionStatementPostData } from '../components/posts/motion-types';
 import type { OfferPostData } from '../components/posts/OfferPost';
-import type { ProofCarouselSlideData, ProofSnippetPostData } from '../components/posts/proof-types';
+import type {
+  CaseSnapshotPostData,
+  ProofCarouselSlideData,
+  ProofSnippetPostData,
+} from '../components/posts/proof-types';
 import type { QuotePostData } from '../components/posts/QuotePost';
 import type { ServicePostData } from '../components/posts/ServicePost';
 import type {
@@ -16,10 +22,13 @@ export type TemplateKey =
   | 'service'
   | 'offer'
   | 'quote'
+  | 'human_editorial'
+  | 'motion_statement'
   | 'carousel'
   | 'process_carousel'
   | 'systems_explainer'
   | 'build_flow_explainer'
+  | 'case_snapshot'
   | 'proof_snippet'
   | 'proof_carousel'
   | 'facebook_banner'
@@ -30,6 +39,8 @@ export type PostLocale = 'EN' | 'NL';
 export type PostFamily =
   | 'Authority'
   | 'Service'
+  | 'Editorial'
+  | 'Motion'
   | 'Explainer'
   | 'Offer'
   | 'Proof'
@@ -68,6 +79,14 @@ export type SavedPost =
       content: QuotePostData;
     })
   | (SavedPostBase & {
+      template: 'human_editorial';
+      content: HumanEditorialPostData;
+    })
+  | (SavedPostBase & {
+      template: 'motion_statement';
+      content: MotionStatementPostData;
+    })
+  | (SavedPostBase & {
       template: 'carousel';
       content: CarouselSlideData[];
       slideIndex?: number;
@@ -84,6 +103,10 @@ export type SavedPost =
   | (SavedPostBase & {
       template: 'build_flow_explainer';
       content: BuildFlowExplainerData;
+    })
+  | (SavedPostBase & {
+      template: 'case_snapshot';
+      content: CaseSnapshotPostData;
     })
   | (SavedPostBase & {
       template: 'proof_snippet';
@@ -131,6 +154,21 @@ export const WEEKLY_POST_SETS: WeeklyPostSet[] = [
       'w20-authority-nl',
       'w20-service-nl',
       'w20-proof-nl',
+    ],
+  },
+  {
+    id: 'week-21',
+    label: 'Week 21',
+    focus: 'Editorial + motion + case-proof mix',
+    postIds: [
+      'w21-human-founder',
+      'w21-human-walking',
+      'w21-motion-statement',
+      'w21-motion-process',
+      'w21-proof-snapshot',
+      'w21-proof-build',
+      'w21-proof-systems',
+      'w21-proof-growth',
     ],
   },
 ];
@@ -627,5 +665,232 @@ export const SAVED_POSTS: SavedPost[] = [
       cta: 'inovense.com',
     },
   },
+  {
+    id: 'w21-human-founder',
+    weekId: 'week-21',
+    family: 'Editorial',
+    locale: 'EN',
+    title: 'Founder editorial portrait',
+    template: 'human_editorial',
+    format: 'portrait',
+    bestFor: 'LinkedIn',
+    platforms: ['LinkedIn', 'Instagram', 'Facebook'],
+    recommendedFormat: 'portrait',
+    formatVariants: ['portrait', 'square', 'story'],
+    content: {
+      tag: 'Founder Memo',
+      headline: 'Execution wins\nwhen leadership\nstays close to ops.',
+      sub: 'People trust systems more when they can see the operator behind the standard.',
+      personName: 'Founder, Inovense',
+      personRole: 'Build. Systems. Growth.',
+      imageSrc: '/editorial/founder-operator.jpg',
+      imageAlt: 'Founder portrait in studio environment',
+      cta: 'Start a project',
+      layout: 'founder_portrait',
+    },
+  },
+  {
+    id: 'w21-human-walking',
+    weekId: 'week-21',
+    family: 'Editorial',
+    locale: 'EN',
+    title: 'Walking hook cover',
+    template: 'human_editorial',
+    format: 'story',
+    bestFor: 'Instagram',
+    platforms: ['Instagram', 'LinkedIn', 'Facebook'],
+    recommendedFormat: 'story',
+    formatVariants: ['story', 'portrait'],
+    content: {
+      tag: 'Operator Hook',
+      headline: 'Stop fixing\nhandoff chaos\nwith more tools.',
+      sub: 'Use this as a reel cover or clip opener for process-led educational content.',
+      personName: 'Inovense Operator',
+      personRole: 'Systems architecture and execution',
+      imageSrc: '/editorial/walking-hook-cover.jpg',
+      imageAlt: 'Operator walking through a modern workspace',
+      cta: 'See our process',
+      layout: 'walking_hook',
+    },
+  },
+  {
+    id: 'w21-motion-statement',
+    weekId: 'week-21',
+    family: 'Motion',
+    locale: 'EN',
+    title: 'Motion statement post',
+    template: 'motion_statement',
+    format: 'portrait',
+    bestFor: 'Instagram',
+    platforms: ['Instagram', 'LinkedIn', 'Facebook'],
+    recommendedFormat: 'portrait',
+    formatVariants: ['portrait', 'story', 'square'],
+    content: {
+      tag: 'Motion Statement',
+      headline: 'The brand is not\njust what you say.\nIt is how you execute.',
+      sub: 'Scene-ready structure for short-form statement clips and founder voice moments.',
+      beats: [
+        'Hook: most brands have a consistency problem, not a visibility problem.',
+        'Shift: remove handoff leakage across build, systems, and growth.',
+        'Proof: show process, not promise.',
+        'CTA: start a project.',
+      ],
+      activeBeat: 0,
+      timeline: {
+        beatDurationMs: 900,
+        transition: 'fade',
+        totalDurationMs: 5600,
+      },
+      cta: 'Start a project',
+    },
+  },
+  {
+    id: 'w21-motion-process',
+    weekId: 'week-21',
+    family: 'Motion',
+    locale: 'EN',
+    title: 'Motion process hook',
+    template: 'motion_statement',
+    format: 'story',
+    bestFor: 'Instagram',
+    platforms: ['Instagram', 'Facebook', 'LinkedIn'],
+    recommendedFormat: 'story',
+    formatVariants: ['story', 'portrait'],
+    content: {
+      tag: 'Process Hook',
+      headline: 'Strategy. Structure.\nDesign. Build.\nLaunch.',
+      sub: 'Five beats designed to map directly into a Remotion scene timeline.',
+      beats: [
+        'Open with buyer and offer context.',
+        'Show structure decisions and conversion architecture.',
+        'Reveal design systems and trust layers.',
+        'Show build quality and systems integrations.',
+        'Close on launch confidence and operator visibility.',
+      ],
+      activeBeat: 1,
+      timeline: {
+        beatDurationMs: 780,
+        transition: 'slide',
+        totalDurationMs: 5200,
+      },
+      cta: 'How we work',
+    },
+  },
+  {
+    id: 'w21-proof-snapshot',
+    weekId: 'week-21',
+    family: 'Proof',
+    locale: 'EN',
+    title: 'Proof snapshot post',
+    template: 'case_snapshot',
+    format: 'portrait',
+    bestFor: 'LinkedIn',
+    platforms: ['LinkedIn', 'Instagram', 'Facebook'],
+    recommendedFormat: 'portrait',
+    formatVariants: ['portrait', 'square', 'story'],
+    content: {
+      tag: 'Proof Snapshot',
+      headline: 'A compact case\nsurface that\nshows movement.',
+      summary: 'Use this when the goal is credibility in one scroll-stopping frame.',
+      context: 'B2B services pipeline with strong demand but weak decision-point follow-through.',
+      beforeLabel: 'Before',
+      beforeValue: '14% call-book rate',
+      afterLabel: 'After',
+      afterValue: '27% call-book rate',
+      interventions: [
+        'Offer hierarchy and first-fold conversion structure rebuilt',
+        'Lead routing ownership clarified across sales and ops',
+        'Proposal and payment events tied to email and follow-up actions',
+      ],
+      timeframe: '8-week change window',
+      cta: 'Build your systems',
+    },
+  },
+  {
+    id: 'w21-proof-build',
+    weekId: 'week-21',
+    family: 'Proof',
+    locale: 'EN',
+    title: 'Build proof post',
+    template: 'case_snapshot',
+    format: 'square',
+    bestFor: 'LinkedIn',
+    platforms: ['LinkedIn', 'Instagram'],
+    recommendedFormat: 'square',
+    formatVariants: ['square', 'portrait'],
+    content: {
+      tag: 'Build Proof',
+      headline: 'Premium build\nquality should\nmove outcomes.',
+      summary: 'A proof surface for web and ecommerce delivery outcomes.',
+      context: 'Site rebuilt for a campaign-heavy operator needing stronger conversion consistency.',
+      beforeLabel: 'Before',
+      beforeValue: '1.9% CVR',
+      afterLabel: 'After',
+      afterValue: '3.4% CVR',
+      interventions: [
+        'Positioning and page hierarchy rebuilt around buying intent',
+        'Proof density and CTA transitions increased across key templates',
+        'Technical performance and QA tightened before launch',
+      ],
+      timeframe: '6 weeks post-launch',
+      cta: 'See our build lane',
+    },
+  },
+  {
+    id: 'w21-proof-systems',
+    weekId: 'week-21',
+    family: 'Proof',
+    locale: 'EN',
+    title: 'Systems proof post',
+    template: 'proof_snippet',
+    format: 'portrait',
+    bestFor: 'LinkedIn',
+    platforms: ['LinkedIn', 'Instagram', 'Facebook'],
+    recommendedFormat: 'portrait',
+    formatVariants: ['portrait', 'square'],
+    content: {
+      tag: 'Systems Proof',
+      headline: 'From pipeline\nfriction to\noperating rhythm.',
+      sub: 'Execution proof for teams moving from ad-hoc to repeatable systems.',
+      outcomeLabel: 'Result in 7 weeks',
+      outcome: '-34% response lag',
+      context: 'Agency pipeline with inconsistent proposal follow-up and owner confusion.',
+      whatChanged: [
+        'Lead-source routing and ownership rebuilt in CRM',
+        'Decision-point automations added for proposal and payment moments',
+        'Weekly operator review loop with clear KPI baseline',
+      ],
+      cta: 'Discuss systems',
+    },
+  },
+  {
+    id: 'w21-proof-growth',
+    weekId: 'week-21',
+    family: 'Proof',
+    locale: 'EN',
+    title: 'Growth proof post',
+    template: 'case_snapshot',
+    format: 'portrait',
+    bestFor: 'Instagram',
+    platforms: ['Instagram', 'LinkedIn', 'Facebook'],
+    recommendedFormat: 'portrait',
+    formatVariants: ['portrait', 'story'],
+    content: {
+      tag: 'Growth Proof',
+      headline: 'Traffic worked\nonly after the\nsystem was fixed.',
+      summary: 'Shows why growth outcomes depend on conversion architecture and follow-through.',
+      context: 'Growth lane engagement across paid, landing pages, CRM, and follow-up.',
+      beforeLabel: 'Before',
+      beforeValue: '9% lead-to-call',
+      afterLabel: 'After',
+      afterValue: '19% lead-to-call',
+      interventions: [
+        'Offer messaging and landing structure rebuilt for intent clarity',
+        'Lead attribution and lifecycle visibility integrated in CRM',
+        'Follow-up logic tuned weekly with source-to-close reporting',
+      ],
+      timeframe: '10-week sprint cycle',
+      cta: 'Discuss growth',
+    },
+  },
 ];
-
