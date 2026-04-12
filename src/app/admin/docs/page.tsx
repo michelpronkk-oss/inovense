@@ -148,6 +148,74 @@ const ACTION_EVENT_MATRIX = [
   },
 ];
 
+type LanePricingAnchor = {
+  lane: "Build" | "Systems" | "Growth";
+  pricingModel: string;
+  quoteFirst: string;
+  from: string;
+  typical: string;
+  premium: string;
+  retainerFit: string;
+};
+
+const LANE_PRICING_ANCHORS: LanePricingAnchor[] = [
+  {
+    lane: "Build",
+    pricingModel: "Primarily scoped one-off project",
+    quoteFirst: "Scoped build with clear deliverables, timeline, and conversion intent.",
+    from: "$6k-$9k",
+    typical: "$10k-$22k",
+    premium: "$25k-$60k+",
+    retainerFit:
+      "Add monthly support/optimization after launch when updates, CRO iterations, or uptime dependency become ongoing.",
+  },
+  {
+    lane: "Systems",
+    pricingModel: "Scoped build, often evolving into ongoing iteration",
+    quoteFirst:
+      "Core workflow architecture and first production automation layer.",
+    from: "$8k-$14k",
+    typical: "$15k-$35k",
+    premium: "$40k-$90k+",
+    retainerFit:
+      "Retainer is usually justified once the business depends on the system and weekly/monthly iteration is required.",
+  },
+  {
+    lane: "Growth",
+    pricingModel: "Usually recurring retainer, not one-off",
+    quoteFirst:
+      "Monthly operating scope tied to pipeline and execution cadence.",
+    from: "$2.5k/mo",
+    typical: "$4k-$8k/mo",
+    premium: "$9k-$20k+/mo",
+    retainerFit:
+      "Default model for serious growth work. Use one-off only for narrow audits or setup phases with a defined handoff.",
+  },
+];
+
+const PRICING_GUARDRAILS = [
+  "Quote in stable lane anchors first, then adjust by complexity and risk.",
+  "If budget is below lane floor, reduce scope depth; do not slash quality pricing.",
+  "No random discounting. Any price concession must be paired with explicit scope reduction.",
+  "Record quote rationale in lead notes: scope, urgency, complexity, and dependency risk.",
+  "Keep proposal price and deposit aligned with this framework before sending.",
+];
+
+const RETAINER_DECISION_RULES = [
+  "Use one-off delivery when scope is finite, handoff is clean, and client can operate without continuous iteration.",
+  "Move Build into retainer when post-launch velocity, testing, and optimization are expected monthly.",
+  "Move Systems into retainer when automations are business-critical and workflows will keep changing.",
+  "Default Growth to retainer when outcomes require ongoing execution, experimentation, and reporting loops.",
+  "Do not force retainers for very small/simple clients with low change frequency.",
+];
+
+const PRICING_ANTI_PATTERNS = [
+  "Do not improvise pricing from scratch on each lead.",
+  "Do not overscope small budgets to 'win' work that will not be profitable.",
+  "Do not frame retainers as mandatory when a clean one-off outcome is enough.",
+  "Do not position premium pricing without premium scope clarity.",
+];
+
 const SCENARIO_PLAYBOOKS = [
   {
     title: "Proposal accepted, no payment yet",
@@ -660,6 +728,7 @@ const CORE_NAV_ITEMS = [
   { id: "control-model", title: "Control Model" },
   { id: "manual-vs-automatic", title: "Manual vs Automatic" },
   { id: "action-event-map", title: "Action Event Map" },
+  { id: "pricing-framework", title: "Pricing Framework" },
   { id: "flow-reference", title: "Lifecycle Reference" },
   { id: "scenario-playbooks", title: "Scenario Playbooks" },
   { id: "project-status-reference", title: "Project Status Reference" },
@@ -789,6 +858,107 @@ function ActionEventMap() {
   );
 }
 
+function PricingFramework() {
+  return (
+    <section id="pricing-framework" className="scroll-mt-24">
+      <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
+        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <SectionTag label="Commercial" />
+            <AutomationTag label="Manual" />
+          </div>
+          <h2 className="text-lg font-semibold text-zinc-100">
+            Pricing Framework
+          </h2>
+          <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+            Internal quoting anchors in USD for consistency. Convert to local
+            client currency for client-facing proposals and payment requests.
+          </p>
+        </div>
+
+        <div className="space-y-3 p-5">
+          {LANE_PRICING_ANCHORS.map((lane) => (
+            <article
+              key={lane.lane}
+              className="rounded-xl border border-zinc-800/70 bg-zinc-950/35 p-3.5"
+            >
+              <div className="grid gap-2 md:grid-cols-[1.2fr_1fr_1fr_1fr]">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">
+                    Lane
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-zinc-200">
+                    {lane.lane}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                    {lane.pricingModel}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">
+                    From
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-zinc-200">
+                    {lane.from}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">
+                    Typical
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-zinc-200">
+                    {lane.typical}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">
+                    Premium/Custom
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-zinc-200">
+                    {lane.premium}
+                  </p>
+                </div>
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-zinc-400">
+                <span className="text-zinc-300">Quote first: </span>
+                {lane.quoteFirst}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                <span className="text-zinc-300">Retainer fit: </span>
+                {lane.retainerFit}
+              </p>
+            </article>
+          ))}
+        </div>
+
+        <div className="grid gap-3 border-t border-zinc-800/70 p-5 md:grid-cols-3">
+          <BlockCard
+            block={{
+              title: "Anti-chaos quoting rules",
+              tone: "guardrail",
+              items: PRICING_GUARDRAILS,
+            }}
+          />
+          <BlockCard
+            block={{
+              title: "Retainer decision rules",
+              tone: "do",
+              items: RETAINER_DECISION_RULES,
+            }}
+          />
+          <BlockCard
+            block={{
+              title: "What not to do",
+              tone: "avoid",
+              items: PRICING_ANTI_PATTERNS,
+            }}
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function ScenarioPlaybooks() {
   return (
     <section id="scenario-playbooks" className="scroll-mt-24">
@@ -844,7 +1014,7 @@ export default function DocsPage() {
             traffic-to-lead performance semantics.
             Keep records precise. Keep automation boundaries strict.
           </p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
             <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
               <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Lead Flow</p>
               <p className="mt-1 text-sm font-medium text-zinc-200">Status-driven and stage-true</p>
@@ -860,6 +1030,10 @@ export default function DocsPage() {
             <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
               <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Project Status</p>
               <p className="mt-1 text-sm font-medium text-zinc-200">Manual. Completed means delivered.</p>
+            </div>
+            <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Pricing</p>
+              <p className="mt-1 text-sm font-medium text-zinc-200">Stable lane anchors and retainer-fit rules.</p>
             </div>
             <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
               <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Performance</p>
@@ -970,6 +1144,7 @@ export default function DocsPage() {
           </section>
 
           <ActionEventMap />
+          <PricingFramework />
 
           <section id="flow-reference" className="scroll-mt-24">
             <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
