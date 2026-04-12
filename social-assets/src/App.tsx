@@ -9,6 +9,8 @@ import { BuildFlowExplainer } from './components/posts/BuildFlowExplainer';
 import { CarouselSlide, type CarouselSlideData } from './components/posts/CarouselSlide';
 import { OfferPost, type OfferPostData } from './components/posts/OfferPost';
 import { ProcessCarousel } from './components/posts/ProcessCarousel';
+import { ProofCarousel } from './components/posts/ProofCarousel';
+import { ProofSnippetPost } from './components/posts/ProofSnippetPost';
 import { QuotePost, type QuotePostData } from './components/posts/QuotePost';
 import { ServicePost, type ServicePostData } from './components/posts/ServicePost';
 import { SystemsExplainer } from './components/posts/SystemsExplainer';
@@ -17,10 +19,15 @@ import type {
   ProcessCarouselSlideData,
   SystemsExplainerData,
 } from './components/posts/explainer-types';
+import type {
+  ProofCarouselSlideData,
+  ProofSnippetPostData,
+} from './components/posts/proof-types';
 import {
   SAVED_POSTS,
   SOCIAL_PLATFORMS,
   WEEKLY_POST_SETS,
+  type PostLocale,
   type SavedPost,
   type SocialPlatform,
   type TemplateKey,
@@ -31,8 +38,11 @@ import {
   authorityPostSample,
   carouselSlides,
   facebookCoverBannerSample,
+  localePresetsByTemplate,
   linkedInCompanyBannerSample,
   offerPostSample,
+  proofCarouselSlidesSample,
+  proofSnippetSample,
   processCarouselSlidesSample,
   quotePostSample,
   servicePostSample,
@@ -48,6 +58,7 @@ type ParseResult<T> = {
 };
 
 type PlatformFilter = 'all' | SocialPlatform;
+type LocaleFilter = 'all' | PostLocale;
 type UsageField = 'exported' | 'posted';
 type PlatformUsageState = {
   exported: boolean;
@@ -99,6 +110,16 @@ const templateOptions: Array<{ key: TemplateKey; label: string; description: str
     description: 'Icon-led build process template for website and delivery flows.',
   },
   {
+    key: 'proof_snippet',
+    label: 'Proof Snippet',
+    description: 'Compact case-proof post for outcomes, context, and execution shifts.',
+  },
+  {
+    key: 'proof_carousel',
+    label: 'Proof Carousel',
+    description: '2-5 card proof sequence for authority and case storytelling.',
+  },
+  {
     key: 'facebook_banner',
     label: 'Facebook Cover Banner',
     description: 'Safe-area-aware Facebook page cover asset.',
@@ -119,6 +140,8 @@ const defaultJsonByTemplate: Record<TemplateKey, string> = {
   process_carousel: JSON.stringify(processCarouselSlidesSample, null, 2),
   systems_explainer: JSON.stringify(systemsExplainerSample, null, 2),
   build_flow_explainer: JSON.stringify(buildFlowExplainerSample, null, 2),
+  proof_snippet: JSON.stringify(proofSnippetSample, null, 2),
+  proof_carousel: JSON.stringify(proofCarouselSlidesSample, null, 2),
   facebook_banner: JSON.stringify(facebookCoverBannerSample, null, 2),
   linkedin_banner: JSON.stringify(linkedInCompanyBannerSample, null, 2),
 };
@@ -132,6 +155,8 @@ const TEMPLATE_ALLOWED_FORMATS: Record<TemplateKey, FormatKey[]> = {
   process_carousel: ['portrait', 'square', 'story'],
   systems_explainer: ['portrait', 'square', 'story'],
   build_flow_explainer: ['portrait', 'square', 'story'],
+  proof_snippet: ['portrait', 'square', 'story'],
+  proof_carousel: ['portrait', 'square', 'story'],
   facebook_banner: ['facebook_cover'],
   linkedin_banner: ['linkedin_banner'],
 };
@@ -152,6 +177,12 @@ const platformFilterOptions: Array<{ key: PlatformFilter; label: string }> = [
   { key: 'Instagram', label: 'Instagram' },
   { key: 'Facebook', label: 'Facebook' },
   { key: 'LinkedIn', label: 'LinkedIn' },
+];
+
+const localeFilterOptions: Array<{ key: LocaleFilter; label: string }> = [
+  { key: 'all', label: 'All locales' },
+  { key: 'EN', label: 'English' },
+  { key: 'NL', label: 'Dutch' },
 ];
 
 const parseObjectData = <T extends object>(raw: string, fallback: T): ParseResult<T> => {
@@ -239,6 +270,7 @@ function App() {
   const [formatKey, setFormatKey] = useState<FormatKey>('portrait');
   const [selectedWeekId, setSelectedWeekId] = useState<string>('all');
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformFilter>('all');
+  const [selectedLocale, setSelectedLocale] = useState<LocaleFilter>('all');
   const [activeSavedPostId, setActiveSavedPostId] = useState<string | null>(null);
   const [usageByPost, setUsageByPost] = useState<PostUsageMap>({});
   const [jsonByTemplate, setJsonByTemplate] = useState<Record<TemplateKey, string>>(
@@ -271,11 +303,18 @@ function App() {
     return orderedPosts;
   }, [selectedWeekId]);
   const visiblePosts = useMemo(() => {
-    if (selectedPlatform === 'all') {
-      return weekScopedPosts;
+    let filtered = weekScopedPosts;
+
+    if (selectedPlatform !== 'all') {
+      filtered = filtered.filter((post) => post.platforms.includes(selectedPlatform));
     }
-    return weekScopedPosts.filter((post) => post.platforms.includes(selectedPlatform));
-  }, [selectedPlatform, weekScopedPosts]);
+
+    if (selectedLocale !== 'all') {
+      filtered = filtered.filter((post) => post.locale === selectedLocale);
+    }
+
+    return filtered;
+  }, [selectedLocale, selectedPlatform, weekScopedPosts]);
   const activeSavedPost = useMemo(
     () => SAVED_POSTS.find((post) => post.id === activeSavedPostId) ?? null,
     [activeSavedPostId]
@@ -328,6 +367,23 @@ function App() {
       ),
     [jsonByTemplate.build_flow_explainer]
   );
+  const proofSnippetParsed = useMemo(
+    () =>
+      parseObjectData<ProofSnippetPostData>(
+        jsonByTemplate.proof_snippet,
+        proofSnippetSample
+      ),
+    [jsonByTemplate.proof_snippet]
+  );
+  const proofCarouselParsed = useMemo(
+    () =>
+      parseArrayData<ProofCarouselSlideData>(
+        jsonByTemplate.proof_carousel,
+        proofCarouselSlidesSample,
+        'Proof carousel'
+      ),
+    [jsonByTemplate.proof_carousel]
+  );
   const facebookBannerParsed = useMemo(
     () =>
       parseObjectData<BrandBannerData>(
@@ -348,17 +404,24 @@ function App() {
   const sequenceMaxIndex =
     templateKey === 'process_carousel'
       ? Math.max(0, processCarouselParsed.data.length - 1)
-      : Math.max(0, carouselParsed.data.length - 1);
+      : templateKey === 'proof_carousel'
+        ? Math.max(0, proofCarouselParsed.data.length - 1)
+        : Math.max(0, carouselParsed.data.length - 1);
   const clampedCarouselIndex = Math.min(carouselIndex, sequenceMaxIndex);
   const activeCarouselSlide =
     carouselParsed.data[clampedCarouselIndex] ?? carouselSlides[Math.min(activeSlideIndex, carouselSlides.length - 1)];
   const activeProcessCarouselSlide =
     processCarouselParsed.data[clampedCarouselIndex] ??
     processCarouselSlidesSample[Math.min(activeSlideIndex, processCarouselSlidesSample.length - 1)];
+  const activeProofCarouselSlide =
+    proofCarouselParsed.data[clampedCarouselIndex] ??
+    proofCarouselSlidesSample[Math.min(activeSlideIndex, proofCarouselSlidesSample.length - 1)];
 
   useEffect(() => {
     if (
-      (templateKey === 'carousel' || templateKey === 'process_carousel') &&
+      (templateKey === 'carousel' ||
+        templateKey === 'process_carousel' ||
+        templateKey === 'proof_carousel') &&
       carouselIndex > sequenceMaxIndex
     ) {
       setCarouselIndex(sequenceMaxIndex);
@@ -446,6 +509,10 @@ function App() {
         return systemsExplainerParsed.error;
       case 'build_flow_explainer':
         return buildFlowExplainerParsed.error;
+      case 'proof_snippet':
+        return proofSnippetParsed.error;
+      case 'proof_carousel':
+        return proofCarouselParsed.error;
       case 'facebook_banner':
         return facebookBannerParsed.error;
       case 'linkedin_banner':
@@ -473,7 +540,37 @@ function App() {
       [templateKey]: defaultJsonByTemplate[templateKey],
     }));
     setActiveSavedPostId(null);
-    if (templateKey === 'carousel' || templateKey === 'process_carousel') {
+    if (
+      templateKey === 'carousel' ||
+      templateKey === 'process_carousel' ||
+      templateKey === 'proof_carousel'
+    ) {
+      setCarouselIndex(activeSlideIndex);
+    }
+  };
+
+  const loadLocalePreset = (locale: 'en' | 'nl') => {
+    const templatePresets = localePresetsByTemplate[templateKey];
+    if (!templatePresets) {
+      return;
+    }
+
+    const preset = templatePresets[locale];
+    if (!preset) {
+      return;
+    }
+
+    setJsonByTemplate((previous) => ({
+      ...previous,
+      [templateKey]: JSON.stringify(preset, null, 2),
+    }));
+    setActiveSavedPostId(null);
+
+    if (
+      templateKey === 'carousel' ||
+      templateKey === 'process_carousel' ||
+      templateKey === 'proof_carousel'
+    ) {
       setCarouselIndex(activeSlideIndex);
     }
   };
@@ -486,7 +583,11 @@ function App() {
     setTemplateKey(post.template);
     setFormatKey(post.recommendedFormat);
     setActiveSavedPostId(post.id);
-    if (post.template === 'carousel' || post.template === 'process_carousel') {
+    if (
+      post.template === 'carousel' ||
+      post.template === 'process_carousel' ||
+      post.template === 'proof_carousel'
+    ) {
       setCarouselIndex(post.slideIndex ?? 0);
     }
   };
@@ -615,9 +716,23 @@ function App() {
               </option>
             ))}
           </select>
+          <label htmlFor="locale-filter-select">Locale filter</label>
+          <select
+            id="locale-filter-select"
+            className="select-field"
+            value={selectedLocale}
+            onChange={(event) => setSelectedLocale(event.target.value as LocaleFilter)}
+          >
+            {localeFilterOptions.map((locale) => (
+              <option key={locale.key} value={locale.key}>
+                {locale.label}
+              </option>
+            ))}
+          </select>
           <p className="helper-text">
             {activeWeekMeta?.focus ?? 'Load saved post content into the current editor.'}
             {selectedPlatform === 'all' ? '' : ` Filtered for ${selectedPlatform}.`}
+            {selectedLocale === 'all' ? '' : ` Locale ${selectedLocale}.`}
           </p>
           <div className="saved-post-list">
             {visiblePosts.length ? (
@@ -634,7 +749,10 @@ function App() {
                     {FORMATS[post.format].label}
                   </span>
                   <span className="saved-post-guidance">
-                    Best for {post.bestFor} | Recommended {FORMATS[post.recommendedFormat].label}
+                    {post.family} | {post.locale} | Best for {post.bestFor}
+                  </span>
+                  <span className="saved-post-guidance">
+                    Recommended {FORMATS[post.recommendedFormat].label}
                   </span>
                   <span className="saved-post-status">
                     {getSavedPostStatus(usageByPost, post.id, selectedPlatform)}
@@ -767,7 +885,9 @@ function App() {
           </div>
         ) : null}
 
-        {templateKey === 'carousel' || templateKey === 'process_carousel' ? (
+        {templateKey === 'carousel' ||
+        templateKey === 'process_carousel' ||
+        templateKey === 'proof_carousel' ? (
           <div className="control-group">
             <label htmlFor="carousel-index">Slide</label>
             <div className="range-row">
@@ -789,9 +909,17 @@ function App() {
         <div className="control-group">
           <div className="group-head">
             <label htmlFor="json-editor">Content JSON</label>
-            <button type="button" className="text-link" onClick={resetActiveTemplate}>
-              Reset
-            </button>
+            <div className="group-actions">
+              <button type="button" className="text-link" onClick={() => loadLocalePreset('en')}>
+                Load EN
+              </button>
+              <button type="button" className="text-link" onClick={() => loadLocalePreset('nl')}>
+                Load NL
+              </button>
+              <button type="button" className="text-link" onClick={resetActiveTemplate}>
+                Reset
+              </button>
+            </div>
           </div>
           <textarea
             id="json-editor"
@@ -856,6 +984,20 @@ function App() {
               <BuildFlowExplainer
                 ref={canvasRef}
                 data={buildFlowExplainerParsed.data}
+                format={currentFormat}
+              />
+            ) : null}
+            {templateKey === 'proof_snippet' ? (
+              <ProofSnippetPost
+                ref={canvasRef}
+                data={proofSnippetParsed.data}
+                format={currentFormat}
+              />
+            ) : null}
+            {templateKey === 'proof_carousel' ? (
+              <ProofCarousel
+                ref={canvasRef}
+                data={activeProofCarouselSlide}
                 format={currentFormat}
               />
             ) : null}

@@ -1,6 +1,7 @@
 import type { AuthorityPostData } from '../components/posts/AuthorityPost';
 import type { CarouselSlideData } from '../components/posts/CarouselSlide';
 import type { OfferPostData } from '../components/posts/OfferPost';
+import type { ProofCarouselSlideData, ProofSnippetPostData } from '../components/posts/proof-types';
 import type { QuotePostData } from '../components/posts/QuotePost';
 import type { ServicePostData } from '../components/posts/ServicePost';
 import type {
@@ -19,9 +20,20 @@ export type TemplateKey =
   | 'process_carousel'
   | 'systems_explainer'
   | 'build_flow_explainer'
+  | 'proof_snippet'
+  | 'proof_carousel'
   | 'facebook_banner'
   | 'linkedin_banner';
+
 export type SocialPlatform = 'Instagram' | 'Facebook' | 'LinkedIn';
+export type PostLocale = 'EN' | 'NL';
+export type PostFamily =
+  | 'Authority'
+  | 'Service'
+  | 'Explainer'
+  | 'Offer'
+  | 'Proof'
+  | 'Carousel';
 
 export const SOCIAL_PLATFORMS: SocialPlatform[] = ['Instagram', 'Facebook', 'LinkedIn'];
 
@@ -29,6 +41,8 @@ type SavedPostBase = {
   id: string;
   title: string;
   weekId: string;
+  family: PostFamily;
+  locale: PostLocale;
   format: FormatKey;
   bestFor: SocialPlatform;
   platforms: SocialPlatform[];
@@ -70,6 +84,15 @@ export type SavedPost =
   | (SavedPostBase & {
       template: 'build_flow_explainer';
       content: BuildFlowExplainerData;
+    })
+  | (SavedPostBase & {
+      template: 'proof_snippet';
+      content: ProofSnippetPostData;
+    })
+  | (SavedPostBase & {
+      template: 'proof_carousel';
+      content: ProofCarouselSlideData[];
+      slideIndex?: number;
     });
 
 export interface WeeklyPostSet {
@@ -89,14 +112,26 @@ export const WEEKLY_POST_SETS: WeeklyPostSet[] = [
   {
     id: 'week-18',
     label: 'Week 18',
-    focus: 'Systems trust and proof content',
+    focus: 'Systems trust and authority positioning',
     postIds: ['w18-authority-systems', 'w18-quote-operator', 'w18-service-systems', 'w18-offer-shopify'],
   },
   {
     id: 'week-19',
     label: 'Week 19',
-    focus: 'Icon-led process explainers for services and operations',
+    focus: 'Explainer-driven content loops',
     postIds: ['w19-process-website', 'w19-systems-explainer', 'w19-growth-process'],
+  },
+  {
+    id: 'week-20',
+    label: 'Week 20',
+    focus: 'Proof snippets and bilingual execution',
+    postIds: [
+      'w20-proof-systems',
+      'w20-proof-carousel-growth',
+      'w20-authority-nl',
+      'w20-service-nl',
+      'w20-proof-nl',
+    ],
   },
 ];
 
@@ -104,6 +139,8 @@ export const SAVED_POSTS: SavedPost[] = [
   {
     id: 'w17-authority-exec',
     weekId: 'week-17',
+    family: 'Authority',
+    locale: 'EN',
     title: 'Execution quality statement',
     template: 'authority',
     format: 'square',
@@ -125,6 +162,8 @@ export const SAVED_POSTS: SavedPost[] = [
   {
     id: 'w17-service-build',
     weekId: 'week-17',
+    family: 'Service',
+    locale: 'EN',
     title: 'Build lane service post',
     template: 'service',
     format: 'portrait',
@@ -149,6 +188,8 @@ export const SAVED_POSTS: SavedPost[] = [
   {
     id: 'w17-offer-growth',
     weekId: 'week-17',
+    family: 'Offer',
+    locale: 'EN',
     title: 'Growth offer post',
     template: 'offer',
     format: 'portrait',
@@ -172,6 +213,8 @@ export const SAVED_POSTS: SavedPost[] = [
   {
     id: 'w17-carousel-web',
     weekId: 'week-17',
+    family: 'Carousel',
+    locale: 'EN',
     title: 'Website conversion carousel',
     template: 'carousel',
     format: 'portrait',
@@ -211,6 +254,8 @@ export const SAVED_POSTS: SavedPost[] = [
   {
     id: 'w18-authority-systems',
     weekId: 'week-18',
+    family: 'Authority',
+    locale: 'EN',
     title: 'Systems authority post',
     template: 'authority',
     format: 'square',
@@ -232,6 +277,8 @@ export const SAVED_POSTS: SavedPost[] = [
   {
     id: 'w18-quote-operator',
     weekId: 'week-18',
+    family: 'Authority',
+    locale: 'EN',
     title: 'Operator quote',
     template: 'quote',
     format: 'square',
@@ -250,6 +297,8 @@ export const SAVED_POSTS: SavedPost[] = [
   {
     id: 'w18-service-systems',
     weekId: 'week-18',
+    family: 'Service',
+    locale: 'EN',
     title: 'Systems lane service post',
     template: 'service',
     format: 'square',
@@ -274,6 +323,8 @@ export const SAVED_POSTS: SavedPost[] = [
   {
     id: 'w18-offer-shopify',
     weekId: 'week-18',
+    family: 'Offer',
+    locale: 'EN',
     title: 'Shopify optimization offer',
     template: 'offer',
     format: 'portrait',
@@ -297,6 +348,8 @@ export const SAVED_POSTS: SavedPost[] = [
   {
     id: 'w19-process-website',
     weekId: 'week-19',
+    family: 'Explainer',
+    locale: 'EN',
     title: 'Website process carousel',
     template: 'process_carousel',
     format: 'portrait',
@@ -357,6 +410,8 @@ export const SAVED_POSTS: SavedPost[] = [
   {
     id: 'w19-systems-explainer',
     weekId: 'week-19',
+    family: 'Explainer',
+    locale: 'EN',
     title: 'Systems automation explainer',
     template: 'systems_explainer',
     format: 'square',
@@ -382,6 +437,8 @@ export const SAVED_POSTS: SavedPost[] = [
   {
     id: 'w19-growth-process',
     weekId: 'week-19',
+    family: 'Explainer',
+    locale: 'EN',
     title: 'Growth system flow explainer',
     template: 'build_flow_explainer',
     format: 'portrait',
@@ -404,4 +461,171 @@ export const SAVED_POSTS: SavedPost[] = [
       cta: 'Discuss growth systems',
     },
   },
+  {
+    id: 'w20-proof-systems',
+    weekId: 'week-20',
+    family: 'Proof',
+    locale: 'EN',
+    title: 'Systems proof snippet',
+    template: 'proof_snippet',
+    format: 'portrait',
+    bestFor: 'LinkedIn',
+    platforms: ['LinkedIn', 'Instagram', 'Facebook'],
+    recommendedFormat: 'portrait',
+    formatVariants: ['portrait', 'square'],
+    content: {
+      tag: 'Case Snippet',
+      headline: 'Manual follow-up\nto systemized\npipeline control.',
+      sub: 'Compact proof format for feed-level trust and commercial authority.',
+      outcomeLabel: 'Result in 45 days',
+      outcome: '+38% qualified calls',
+      context: 'Service business with high inbound demand and inconsistent lead handling.',
+      whatChanged: [
+        'Rebuilt lead routing and ownership logic in CRM',
+        'Introduced proposal/payment event automation at decision points',
+        'Added weekly review loop with source and conversion visibility',
+      ],
+      cta: 'Build your systems',
+    },
+  },
+  {
+    id: 'w20-proof-carousel-growth',
+    weekId: 'week-20',
+    family: 'Carousel',
+    locale: 'EN',
+    title: 'Growth proof carousel',
+    template: 'proof_carousel',
+    format: 'portrait',
+    bestFor: 'LinkedIn',
+    platforms: ['LinkedIn', 'Instagram', 'Facebook'],
+    recommendedFormat: 'portrait',
+    formatVariants: ['portrait', 'square'],
+    slideIndex: 0,
+    content: [
+      {
+        slideNumber: 1,
+        totalSlides: 3,
+        tag: 'Proof Loop',
+        title: 'Growth system\nproof in\nthree cards.',
+        subtitle: 'A compact sequence for feed-native trust and authority.',
+        outcomeLabel: 'Result',
+        outcome: '+41% lead-to-call',
+        context: 'B2B service pipeline over 8 weeks.',
+        whatChanged: [
+          'Offer-led landing architecture',
+          'CRM follow-up logic rebuilt',
+          'Weekly conversion review cadence',
+        ],
+      },
+      {
+        slideNumber: 2,
+        totalSlides: 3,
+        tag: 'What Changed',
+        title: 'Structure first,\nthen traffic.',
+        subtitle: 'Most wins came from fixing handoffs before scaling acquisition.',
+        outcomeLabel: 'Delta',
+        outcome: '-29% response lag',
+        context: 'Lower delay from inbound inquiry to contextual outreach.',
+        whatChanged: [
+          'Lead source segmentation in CRM',
+          'Decision-point automations',
+          'Clear lane ownership and QA',
+        ],
+      },
+      {
+        slideNumber: 3,
+        totalSlides: 3,
+        tag: 'Operator Takeaway',
+        title: 'Proof beats\npromise in\nserious markets.',
+        subtitle: 'Use repeatable systems and show concrete movement.',
+        outcomeLabel: 'Net impact',
+        outcome: 'Higher intent pipeline',
+        context: 'Stable, scalable execution with better commercial confidence.',
+        whatChanged: [
+          'Measurement baseline agreed upfront',
+          'Execution loop documented and repeated',
+          'Weekly decisions tied to signal, not intuition',
+        ],
+        cta: 'inovense.com',
+        isLast: true,
+      },
+    ],
+  },
+  {
+    id: 'w20-authority-nl',
+    weekId: 'week-20',
+    family: 'Authority',
+    locale: 'NL',
+    title: 'Authority post NL',
+    template: 'authority',
+    format: 'square',
+    bestFor: 'LinkedIn',
+    platforms: ['LinkedIn', 'Instagram'],
+    recommendedFormat: 'square',
+    formatVariants: ['square', 'portrait'],
+    content: {
+      tag: 'Executie',
+      headline: 'Groei zonder\nsysteem is\nfrictie op schaal.',
+      sub: 'Sterke output komt uit duidelijke operatie, niet uit losse tactieken.',
+      proofPoints: [
+        'Eén commerciële flow van intake tot handoff',
+        'Duidelijke eigenaars per beslismoment',
+        'Proceskwaliteit zichtbaar in elke oplevering',
+      ],
+    },
+  },
+  {
+    id: 'w20-service-nl',
+    weekId: 'week-20',
+    family: 'Service',
+    locale: 'NL',
+    title: 'Service post NL',
+    template: 'service',
+    format: 'portrait',
+    bestFor: 'Instagram',
+    platforms: ['Instagram', 'LinkedIn', 'Facebook'],
+    recommendedFormat: 'portrait',
+    formatVariants: ['portrait', 'square'],
+    content: {
+      tag: 'Systems',
+      service: 'Commerciële\nOperatielaag',
+      description:
+        'Workflow, automatisering en zichtbaarheid die teams rust en snelheid geven.',
+      features: [
+        'Leadflow en routering per lane',
+        'Voorstel- en betaalmomenten gekoppeld',
+        'Onboarding en delivery handoff zonder chaos',
+        'Rapportage voor operatorbeslissingen',
+      ],
+      cta: 'Bouw je systeem',
+    },
+  },
+  {
+    id: 'w20-proof-nl',
+    weekId: 'week-20',
+    family: 'Proof',
+    locale: 'NL',
+    title: 'Proof snippet NL',
+    template: 'proof_snippet',
+    format: 'portrait',
+    bestFor: 'LinkedIn',
+    platforms: ['LinkedIn', 'Instagram', 'Facebook'],
+    recommendedFormat: 'portrait',
+    formatVariants: ['portrait', 'square'],
+    content: {
+      tag: 'Case Snippet',
+      headline: 'Van losse leads\nnaar een\nstrakke flow.',
+      sub: 'Proof-format voor snelle geloofwaardigheid in de feed.',
+      outcomeLabel: 'Resultaat in 6 weken',
+      outcome: '+33% gekwalificeerde calls',
+      context: 'Dienstverlener met genoeg vraag, maar te veel handoff-lekkage.',
+      whatChanged: [
+        'Intake en opvolging in één CRM-flow gezet',
+        'Status- en e-mailmomenten op beslispunten vastgezet',
+        'Wekelijkse reviewloop met duidelijke KPI-baseline',
+      ],
+      cta: 'inovense.com',
+    },
+  },
 ];
+

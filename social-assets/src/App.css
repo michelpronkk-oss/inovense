@@ -132,6 +132,12 @@
   align-items: center;
 }
 
+.group-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .helper-chip {
   display: inline-flex;
   align-items: center;
