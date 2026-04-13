@@ -1,4 +1,4 @@
-import type { LeadStatus } from "@/lib/supabase-server";
+import type { LeadStatus, ProspectStatus } from "@/lib/supabase-server";
 
 export const STATUS_CONFIG: Record<
   LeadStatus,
@@ -99,6 +99,84 @@ export const LEAD_SOURCE_LABELS: Record<string, string> = {
   call: "Call",
   other: "Other",
 };
+
+export const PROSPECT_STATUS_CONFIG: Record<
+  ProspectStatus,
+  { label: string; color: string }
+> = {
+  new: {
+    label: "New",
+    color: "bg-zinc-700/25 text-zinc-300 border-zinc-700/60",
+  },
+  researched: {
+    label: "Researched",
+    color: "bg-blue-500/10 text-blue-300 border-blue-500/25",
+  },
+  ready_to_contact: {
+    label: "Ready to contact",
+    color: "bg-brand/10 text-brand border-brand/25",
+  },
+  contacted: {
+    label: "Contacted",
+    color: "bg-cyan-500/10 text-cyan-300 border-cyan-500/25",
+  },
+  replied: {
+    label: "Replied",
+    color: "bg-emerald-500/10 text-emerald-300 border-emerald-500/25",
+  },
+  qualified: {
+    label: "Qualified",
+    color: "bg-violet-500/10 text-violet-300 border-violet-500/25",
+  },
+  converted_to_lead: {
+    label: "Converted to lead",
+    color: "bg-emerald-500/12 text-emerald-200 border-emerald-500/30",
+  },
+  not_fit: {
+    label: "Not fit",
+    color: "bg-zinc-700/25 text-zinc-500 border-zinc-700/60",
+  },
+};
+
+export const PROSPECT_STATUSES: Array<{ value: ProspectStatus; label: string }> = [
+  { value: "new", label: "New" },
+  { value: "researched", label: "Researched" },
+  { value: "ready_to_contact", label: "Ready to contact" },
+  { value: "contacted", label: "Contacted" },
+  { value: "replied", label: "Replied" },
+  { value: "qualified", label: "Qualified" },
+  { value: "converted_to_lead", label: "Converted to lead" },
+  { value: "not_fit", label: "Not fit" },
+];
+
+export const PROSPECT_LANGUAGE_OPTIONS = [
+  { value: "en", label: "English" },
+  { value: "nl", label: "Dutch" },
+] as const;
+
+export const PROSPECT_LANE_OPTIONS = [
+  { value: "build", label: "Build" },
+  { value: "systems", label: "Systems" },
+  { value: "growth", label: "Growth" },
+  { value: "uncertain", label: "Uncertain" },
+] as const;
+
+export const PROSPECT_CONTACT_CHANNEL_OPTIONS = [
+  { value: "email", label: "Email" },
+  { value: "linkedin", label: "LinkedIn" },
+  { value: "instagram", label: "Instagram" },
+  { value: "contact_form", label: "Contact form" },
+  { value: "other", label: "Other" },
+] as const;
+
+export const PROSPECT_SOURCE_OPTIONS = [
+  { value: "outbound", label: "Outbound list" },
+  { value: "linkedin", label: "LinkedIn" },
+  { value: "instagram", label: "Instagram" },
+  { value: "referral", label: "Referral" },
+  { value: "website", label: "Website" },
+  { value: "other", label: "Other" },
+] as const;
 
 export const EMAIL_TYPE_LABELS: Record<string, string> = {
   fit_followup: "Fit follow-up",

@@ -64,6 +64,12 @@ const CONTROL_MODEL = [
 
 const MANUAL_AUTOMATION_REFERENCE = [
   {
+    area: "Outbound prospects",
+    automation: "Manual",
+    manual: "Prospects are operator-managed targets with explicit next-step discipline.",
+    auto: "No auto-send, no bulk outreach, and no automatic prospect-to-lead conversion.",
+  },
+  {
     area: "Lead lifecycle status",
     automation: "Mixed",
     manual: "Most status movement is operator-controlled.",
@@ -146,6 +152,153 @@ const ACTION_EVENT_MATRIX = [
     email: "None by default",
     next: "Close lifecycle state when commercially appropriate.",
   },
+];
+
+type LanePricingAnchor = {
+  lane: "Build" | "Systems" | "Growth";
+  pricingModel: string;
+  quoteFirst: string;
+  tiers: Array<{
+    tier: string;
+    range: string;
+    scope: string;
+    useWhen: string;
+    moveUpWhen: string;
+  }>;
+  retainerPath: string;
+};
+
+const LANE_PRICING_ANCHORS: LanePricingAnchor[] = [
+  {
+    lane: "Build",
+    pricingModel: "Productized premium builds with clear scope boundaries.",
+    quoteFirst: "Start with Framework for most standard website projects.",
+    tiers: [
+      {
+        tier: "Framework",
+        range: "$3.5k-$5.5k",
+        scope: "Core site architecture, premium UI direction, production implementation, clean handoff.",
+        useWhen: "Use for focused website scopes with limited integration complexity.",
+        moveUpWhen:
+          "Move to Extended when page count, content depth, or integration needs expand.",
+      },
+      {
+        tier: "Extended",
+        range: "$6k-$9k",
+        scope: "Broader page system, stronger conversion structure, and deeper implementation scope.",
+        useWhen: "Use when delivery needs more architecture depth and cross-page strategy.",
+        moveUpWhen:
+          "Move to Custom/Premium when dependency, risk, or timeline pressure becomes high.",
+      },
+      {
+        tier: "Custom / Premium",
+        range: "$10k-$18k+",
+        scope: "High-complexity builds with advanced integrations, custom logic, and elevated execution risk.",
+        useWhen: "Use when the project is clearly beyond reusable framework delivery.",
+        moveUpWhen:
+          "Do not use as default for routine builds.",
+      },
+    ],
+    retainerPath:
+      "Offer support/optimization retainer post-launch when monthly updates or CRO iteration is expected.",
+  },
+  {
+    lane: "Systems",
+    pricingModel: "Framework-first systems delivery with recurring evolution potential.",
+    quoteFirst: "Start with Framework for first production workflow layer.",
+    tiers: [
+      {
+        tier: "Framework",
+        range: "$4k-$7k",
+        scope: "Workflow mapping, core automation setup, and stable operational baseline.",
+        useWhen: "Use for first systems layer and cleaner internal execution rhythm.",
+        moveUpWhen:
+          "Move to Extended when number of flows, integrations, or teams increases.",
+      },
+      {
+        tier: "Extended",
+        range: "$8k-$12k",
+        scope: "Multiple flows, deeper automations, and stronger reporting/visibility structure.",
+        useWhen: "Use when systems scope spans multiple functions and operational owners.",
+        moveUpWhen:
+          "Move to Custom/Premium for complex orchestration, integrations, or high criticality.",
+      },
+      {
+        tier: "Custom / Premium",
+        range: "$15k-$25k+",
+        scope: "Mission-critical systems with bespoke logic and high dependency requirements.",
+        useWhen: "Use when framework patterns are insufficient for business-critical delivery.",
+        moveUpWhen:
+          "Do not position as default for standard systems engagements.",
+      },
+    ],
+    retainerPath:
+      "Move to recurring retainer when workflows keep evolving and uptime/iteration becomes business-critical.",
+  },
+  {
+    lane: "Growth",
+    pricingModel: "Retainer-first growth model with clear scaling tiers.",
+    quoteFirst: "Start with Foundation Retainer for focused monthly execution.",
+    tiers: [
+      {
+        tier: "Foundation Retainer",
+        range: "$1.5k-$2.5k/mo",
+        scope: "Core growth cadence, baseline reporting, and focused execution priorities.",
+        useWhen: "Use for lean growth operations with one core execution track.",
+        moveUpWhen:
+          "Move to Operator when channels, experiments, or content velocity grow.",
+      },
+      {
+        tier: "Operator Retainer",
+        range: "$3k-$4.5k/mo",
+        scope: "Broader weekly execution with tighter optimization and pipeline accountability.",
+        useWhen: "Use when growth requires continuous testing and cross-channel coordination.",
+        moveUpWhen:
+          "Move to Scale when execution depth and volume become materially higher.",
+      },
+      {
+        tier: "Scale Retainer",
+        range: "$5k-$8k+/mo",
+        scope: "High-frequency growth operations with deeper experimentation and performance control.",
+        useWhen: "Use when growth is a major operating priority with sustained execution load.",
+        moveUpWhen:
+          "Do not force for low-complexity or low-volume clients.",
+      },
+    ],
+    retainerPath:
+      "Keep one-off growth work limited to audits/setup. Ongoing growth should usually remain retainer-based.",
+  },
+];
+
+const PRICING_GUARDRAILS = [
+  "Start with the lane Framework tier unless clear complexity signals justify a higher tier.",
+  "If budget is below floor, reduce scope depth and protect delivery quality.",
+  "No random discounting. Any concession must be paired with explicit scope reduction.",
+  "Keep proposal price and deposit aligned with selected lane tier before send.",
+  "Record quote rationale in notes: lane, tier, complexity signals, and upgrade reason.",
+];
+
+const RETAINER_DECISION_RULES = [
+  "Use one-off scope when delivery is finite, handoff is clean, and monthly iteration is not required.",
+  "Build: move into support/optimization retainer when monthly changes or CRO loops are expected.",
+  "Systems: use recurring retainers when workflows evolve continuously or operational dependency is high.",
+  "Growth: default to retainer when outcomes require recurring execution and weekly decision loops.",
+  "Do not force retainers for low-complexity clients with minimal change frequency.",
+];
+
+const PRICING_ANTI_PATTERNS = [
+  "Do not improvise pricing from scratch on each lead.",
+  "Do not default to Custom/Premium tiers when Framework or Extended can solve the problem.",
+  "Do not overscope small budgets just to preserve top-line ticket size.",
+  "Do not force retainers when a lean one-off outcome is the better commercial fit.",
+];
+
+const QUOTE_FLOW_RULES = [
+  "Quote first from lane Framework tier with clear scope boundaries.",
+  "Upgrade to Extended only when complexity signals are real and documented.",
+  "Use Custom/Premium only when complexity, risk, or dependency truly warrants it.",
+  "For Growth, propose retainer tiers as default progression: Foundation -> Operator -> Scale.",
+  "When upselling, tie tier changes to execution load and outcome potential, not prestige language.",
 ];
 
 const SCENARIO_PLAYBOOKS = [
@@ -254,6 +407,52 @@ const SECTIONS: HandbookSection[] = [
         items: [
           "Do not force Dutch or English based on personal preference. Follow lead context.",
           "Do not create a separate process tree for Dutch leads.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "outbound-prospects",
+    title: "Outbound Prospects Layer",
+    tag: "Ops",
+    automation: "Manual",
+    summary:
+      "Prospects are pre-lead outbound targets. Keep outreach disciplined, convert intentionally, and keep lead semantics clean.",
+    blocks: [
+      {
+        title: "Prospect vs lead",
+        tone: "guardrail",
+        items: [
+          "Prospect = researched target not yet in active commercial flow.",
+          "Lead = submitted inquiry or manually qualified lead record in CRM lifecycle.",
+          "Do not count prospects as leads in performance reporting.",
+        ],
+      },
+      {
+        title: "Operator workflow",
+        tone: "do",
+        items: [
+          "Track company, channel, lane fit, status, opening angle, and next_follow_up_at for every outbound target.",
+          "Use NL/EN snippet library for first-touch and follow-up support, then personalize before send.",
+          "Maintain next-step discipline: if status changes, update follow-up date or close as not fit.",
+        ],
+      },
+      {
+        title: "Convert to lead rule",
+        tone: "reference",
+        items: [
+          "Convert only when conversation is commercially real and qualified for proposal/payment flow.",
+          "Conversion should carry core fields into leads while preserving locale/currency defaults.",
+          "After conversion, continue execution in the normal lead detail flow.",
+        ],
+      },
+      {
+        title: "What this layer is not",
+        tone: "avoid",
+        items: [
+          "Not a bulk sender, campaign builder, or inbox automation suite.",
+          "Do not auto-send outreach from CRM templates without human review.",
+          "Do not blur prospect statuses with lead lifecycle statuses.",
         ],
       },
     ],
@@ -660,7 +859,9 @@ const CORE_NAV_ITEMS = [
   { id: "control-model", title: "Control Model" },
   { id: "manual-vs-automatic", title: "Manual vs Automatic" },
   { id: "action-event-map", title: "Action Event Map" },
+  { id: "pricing-framework", title: "Pricing Framework" },
   { id: "flow-reference", title: "Lifecycle Reference" },
+  { id: "outbound-prospects", title: "Outbound Prospects" },
   { id: "scenario-playbooks", title: "Scenario Playbooks" },
   { id: "project-status-reference", title: "Project Status Reference" },
 ];
@@ -789,6 +990,123 @@ function ActionEventMap() {
   );
 }
 
+function PricingFramework() {
+  return (
+    <section id="pricing-framework" className="scroll-mt-24">
+      <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
+        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <SectionTag label="Commercial" />
+            <AutomationTag label="Manual" />
+          </div>
+          <h2 className="text-lg font-semibold text-zinc-100">
+            Pricing Framework
+          </h2>
+          <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+            English-first internal USD anchors with framework tiers and clean
+            upgrade logic. Convert to local client currency for client-facing
+            proposal/payment communication where needed.
+          </p>
+        </div>
+
+        <div className="space-y-3 p-5">
+          {LANE_PRICING_ANCHORS.map((lane) => (
+            <article
+              key={lane.lane}
+              className="rounded-xl border border-zinc-800/70 bg-zinc-950/35 p-3.5"
+            >
+              <div className="grid gap-2 md:grid-cols-[1.4fr_1fr]">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">
+                    Lane
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-zinc-200">
+                    {lane.lane}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                    {lane.pricingModel}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">
+                    Quote First
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-zinc-300">
+                    {lane.quoteFirst}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-3 grid gap-2 md:grid-cols-3">
+                {lane.tiers.map((tier) => (
+                  <div
+                    key={`${lane.lane}-${tier.tier}`}
+                    className="rounded-lg border border-zinc-800/70 bg-zinc-900/35 p-3"
+                  >
+                    <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">
+                      {tier.tier}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-zinc-100">
+                      {tier.range}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                      {tier.scope}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                      <span className="text-zinc-400">Use when: </span>
+                      {tier.useWhen}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                      <span className="text-zinc-400">Move up when: </span>
+                      {tier.moveUpWhen}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <p className="mt-3 text-xs leading-relaxed text-zinc-400">
+                <span className="text-zinc-300">Retainer path: </span>
+                {lane.retainerPath}
+              </p>
+            </article>
+          ))}
+        </div>
+
+        <div className="grid gap-3 border-t border-zinc-800/70 p-5 md:grid-cols-2 xl:grid-cols-4">
+          <BlockCard
+            block={{
+              title: "Quote flow",
+              tone: "do",
+              items: QUOTE_FLOW_RULES,
+            }}
+          />
+          <BlockCard
+            block={{
+              title: "Anti-chaos quoting rules",
+              tone: "guardrail",
+              items: PRICING_GUARDRAILS,
+            }}
+          />
+          <BlockCard
+            block={{
+              title: "Retainer logic",
+              tone: "do",
+              items: RETAINER_DECISION_RULES,
+            }}
+          />
+          <BlockCard
+            block={{
+              title: "What not to do",
+              tone: "avoid",
+              items: PRICING_ANTI_PATTERNS,
+            }}
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function ScenarioPlaybooks() {
   return (
     <section id="scenario-playbooks" className="scroll-mt-24">
@@ -844,7 +1162,7 @@ export default function DocsPage() {
             traffic-to-lead performance semantics.
             Keep records precise. Keep automation boundaries strict.
           </p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
             <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
               <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Lead Flow</p>
               <p className="mt-1 text-sm font-medium text-zinc-200">Status-driven and stage-true</p>
@@ -860,6 +1178,10 @@ export default function DocsPage() {
             <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
               <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Project Status</p>
               <p className="mt-1 text-sm font-medium text-zinc-200">Manual. Completed means delivered.</p>
+            </div>
+            <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Pricing</p>
+              <p className="mt-1 text-sm font-medium text-zinc-200">Framework tiers with realistic USD anchors.</p>
             </div>
             <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
               <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Performance</p>
@@ -970,6 +1292,7 @@ export default function DocsPage() {
           </section>
 
           <ActionEventMap />
+          <PricingFramework />
 
           <section id="flow-reference" className="scroll-mt-24">
             <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">

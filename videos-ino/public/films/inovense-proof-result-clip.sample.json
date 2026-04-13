@@ -1,0 +1,14 @@
+{
+  "tag": "Proof",
+  "hook": "From weak handoff\nto stronger pipeline control.",
+  "context": "A service operator with enough demand, but too much manual drag in follow-up.",
+  "interventions": [
+    "Lead routing ownership was rebuilt in CRM.",
+    "Proposal and payment events triggered clean follow-up steps.",
+    "Weekly review loop tied decisions to real signal."
+  ],
+  "outcomeLabel": "Result in 7 weeks",
+  "outcome": "+38% qualified calls",
+  "endHeadline": "Proof over promise.",
+  "cta": "Discuss your systems"
+}

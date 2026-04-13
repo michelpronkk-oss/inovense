@@ -41,6 +41,23 @@ export type PlannerTemplateType =
   | "quote"
   | "carousel"
   | "custom";
+export type ProspectStatus =
+  | "new"
+  | "researched"
+  | "ready_to_contact"
+  | "contacted"
+  | "replied"
+  | "qualified"
+  | "converted_to_lead"
+  | "not_fit";
+export type ProspectContactChannel =
+  | "email"
+  | "linkedin"
+  | "instagram"
+  | "contact_form"
+  | "other";
+export type ProspectOutreachLanguage = "en" | "nl";
+export type ProspectLaneFit = "build" | "systems" | "growth" | "uncertain";
 
 export type Lead = {
   id: string;
@@ -170,6 +187,28 @@ export type PlannerPost = {
   social_asset_key: string | null;
 };
 
+export type Prospect = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  company_name: string;
+  website_url: string | null;
+  contact_name: string | null;
+  contact_channel: ProspectContactChannel;
+  contact_value: string | null;
+  country_code: string | null;
+  outreach_language: ProspectOutreachLanguage;
+  lane_fit: ProspectLaneFit;
+  status: ProspectStatus;
+  source: string;
+  notes: string | null;
+  opening_angle: string | null;
+  last_contact_at: string | null;
+  next_follow_up_at: string | null;
+  converted_lead_id: string | null;
+  converted_at: string | null;
+};
+
 type Database = {
   public: {
     Tables: {
@@ -215,6 +254,16 @@ type Database = {
           updated_at?: string;
         };
         Update: Partial<PlannerPost>;
+        Relationships: [];
+      };
+      prospects: {
+        Row: Prospect;
+        Insert: Omit<Prospect, "id" | "created_at" | "updated_at"> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Prospect>;
         Relationships: [];
       };
     };

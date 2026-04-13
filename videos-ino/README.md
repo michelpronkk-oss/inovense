@@ -31,6 +31,32 @@ pnpm run dev
 pnpm exec remotion render
 ```
 
+## Inovense social video compositions
+
+The project now includes real vertical (9:16) social templates:
+
+- `InovenseStatementClip`
+- `InovenseProcessExplainerClip`
+- `InovenseProofResultClip`
+- `InovenseUgcOverlayClip`
+
+List all compositions:
+
+```console
+pnpm exec remotion compositions src/index.ts
+```
+
+Render examples:
+
+```console
+pnpm exec remotion render src/index.ts InovenseStatementClip out/statement.mp4
+pnpm exec remotion render src/index.ts InovenseProcessExplainerClip out/process.mp4
+pnpm exec remotion render src/index.ts InovenseProofResultClip out/proof.mp4
+pnpm exec remotion render src/index.ts InovenseUgcOverlayClip out/ugc.mp4
+```
+
+Sample content payloads are in `public/films/` and can be passed with `--props` or loaded in Studio.
+
 **Upgrade Remotion**
 
 ```console
