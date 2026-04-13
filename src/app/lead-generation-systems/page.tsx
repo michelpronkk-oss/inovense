@@ -3,6 +3,12 @@ import Link from "next/link";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import TrustpilotSignal from "@/components/trustpilot-signal";
+import {
+  INOVENSE_ORGANIZATION_ID,
+  INOVENSE_URL,
+  INOVENSE_WEBSITE_ID,
+  toJsonLd,
+} from "@/lib/geo";
 
 export const metadata: Metadata = {
   title: "Lead Generation Systems for Operators and Growing Brands",
@@ -17,6 +23,28 @@ export const metadata: Metadata = {
     description:
       "Lead capture, routing, qualification, and follow-up built as a single designed system. For operators with real demand who lose too much between capture and close.",
   },
+};
+
+const leadGenerationServiceSchema = {
+  "@context": "https://schema.org",
+  "@type": "Service",
+  "@id": `${INOVENSE_URL}/lead-generation-systems#service`,
+  name: "Inovense Lead Generation Systems",
+  serviceType: "Lead generation systems and conversion operations",
+  provider: {
+    "@id": INOVENSE_ORGANIZATION_ID,
+  },
+  areaServed: "Global",
+  audience: {
+    "@type": "Audience",
+    audienceType: "Teams with demand that leaks between capture and close",
+  },
+  isPartOf: {
+    "@id": INOVENSE_WEBSITE_ID,
+  },
+  url: `${INOVENSE_URL}/lead-generation-systems`,
+  description:
+    "Lead capture, routing, qualification, and follow-up systems designed as one coherent conversion infrastructure.",
 };
 
 /* ─── Primitives ────────────────────────────────────────────────────────── */
@@ -647,10 +675,32 @@ function PageCTA() {
 /* ─── Page ──────────────────────────────────────────────────────────────── */
 
 export default function LeadGenerationSystemsPage() {
+  const leadGenerationFaqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "@id": `${INOVENSE_URL}/lead-generation-systems#faq`,
+    mainEntity: faqs.map((faq) => ({
+      "@type": "Question",
+      name: faq.q,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: faq.a,
+      },
+    })),
+  };
+
   return (
     <>
       <Nav />
       <main className="flex flex-col">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: toJsonLd(leadGenerationServiceSchema) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: toJsonLd(leadGenerationFaqSchema) }}
+        />
         <Hero />
         <WhoThisIsFor />
         <WhatWeBuild />

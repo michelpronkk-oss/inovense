@@ -3,6 +3,12 @@ import Link from "next/link";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import TrustpilotSignal from "@/components/trustpilot-signal";
+import {
+  INOVENSE_ORGANIZATION_ID,
+  INOVENSE_URL,
+  INOVENSE_WEBSITE_ID,
+  toJsonLd,
+} from "@/lib/geo";
 
 export const metadata: Metadata = {
   title: "AI Automation for Lead Flow and Business Operations",
@@ -22,6 +28,28 @@ export const metadata: Metadata = {
     description:
       "AI-powered automation for lead routing, qualification, follow-up, and internal operations. Real workflow leverage, not vague AI promises. Inovense builds systems that handle the work.",
   },
+};
+
+const aiAutomationServiceSchema = {
+  "@context": "https://schema.org",
+  "@type": "Service",
+  "@id": `${INOVENSE_URL}/ai-automation#service`,
+  name: "Inovense AI Automation",
+  serviceType: "AI automation and workflow systems",
+  provider: {
+    "@id": INOVENSE_ORGANIZATION_ID,
+  },
+  areaServed: "Global",
+  audience: {
+    "@type": "Audience",
+    audienceType: "Operations and sales teams with manual process bottlenecks",
+  },
+  isPartOf: {
+    "@id": INOVENSE_WEBSITE_ID,
+  },
+  url: `${INOVENSE_URL}/ai-automation`,
+  description:
+    "AI automation services for lead routing, process orchestration, internal tooling, and workflow reliability.",
 };
 
 /* ─── Primitives ────────────────────────────────────────────────────────── */
@@ -650,10 +678,32 @@ function PageCTA() {
 /* ─── Page ──────────────────────────────────────────────────────────────── */
 
 export default function AIAutomationPage() {
+  const aiAutomationFaqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "@id": `${INOVENSE_URL}/ai-automation#faq`,
+    mainEntity: faqs.map((faq) => ({
+      "@type": "Question",
+      name: faq.q,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: faq.a,
+      },
+    })),
+  };
+
   return (
     <>
       <Nav />
       <main className="flex flex-col">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: toJsonLd(aiAutomationServiceSchema) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: toJsonLd(aiAutomationFaqSchema) }}
+        />
         <Hero />
         <WhoThisIsFor />
         <WhatWeBuild />

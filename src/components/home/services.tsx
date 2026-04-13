@@ -58,6 +58,12 @@ export default function Services() {
           <h2 className="max-w-xl text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
             Three lanes. One execution standard.
           </h2>
+          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-zinc-500 md:text-base">
+            Build improves trust and conversion at the experience layer. Systems
+            removes operational bottlenecks through automation and tooling.
+            Growth compounds qualified demand through SEO, content, and
+            distribution.
+          </p>
         </div>
 
         {/* Cards — each card links to its own service page for sitelink-readiness */}

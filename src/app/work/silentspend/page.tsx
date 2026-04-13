@@ -4,6 +4,12 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
+import {
+  INOVENSE_ORGANIZATION_ID,
+  INOVENSE_URL,
+  INOVENSE_WEBSITE_ID,
+  toJsonLd,
+} from "@/lib/geo";
 
 export const metadata: Metadata = {
   title: "SilentSpend | Global Monetization Layer Case Study",
@@ -13,11 +19,71 @@ export const metadata: Metadata = {
     canonical: "https://inovense.com/work/silentspend",
   },
   openGraph: {
+    type: "article",
     url: "https://inovense.com/work/silentspend",
     title: "SilentSpend Case Study | Inovense",
     description:
       "A flagship internal product case on designing and building SilentSpend as a high-trust monetization intelligence system.",
   },
+};
+
+const silentSpendCaseSchema = {
+  "@context": "https://schema.org",
+  "@type": "CreativeWork",
+  "@id": `${INOVENSE_URL}/work/silentspend#case-study`,
+  name: "SilentSpend case study",
+  url: `${INOVENSE_URL}/work/silentspend`,
+  description:
+    "Case study covering how Inovense designed and built SilentSpend as a monetization intelligence decision layer.",
+  inLanguage: "en",
+  author: {
+    "@id": INOVENSE_ORGANIZATION_ID,
+  },
+  isPartOf: {
+    "@id": INOVENSE_WEBSITE_ID,
+  },
+  about: [
+    { "@type": "Thing", name: "Monetization intelligence" },
+    { "@type": "Thing", name: "Decision systems" },
+    { "@type": "Thing", name: "Product workflows" },
+  ],
+  mentions: [
+    { "@type": "WebPage", url: `${INOVENSE_URL}/build` },
+    { "@type": "WebPage", url: `${INOVENSE_URL}/systems` },
+    { "@type": "WebPage", url: `${INOVENSE_URL}/growth` },
+  ],
+};
+
+const silentSpendFaqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "@id": `${INOVENSE_URL}/work/silentspend#faq`,
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "What does this case prove about Inovense?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "It demonstrates Inovense can design and ship high-trust product systems where evidence quality and decision workflow clarity are core requirements.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Which service lanes does this case support?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "The case primarily demonstrates Systems and Build capabilities, with direct relevance to Growth teams that depend on reliable signal quality.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Who is this case most relevant for?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Founders, operators, pricing teams, product leaders, and growth leads who make decisions in complex environments with incomplete or noisy data.",
+      },
+    },
+  ],
 };
 
 function Eyebrow({ children }: { children: ReactNode }) {
@@ -557,6 +623,65 @@ function WhyItMattersForClients() {
   );
 }
 
+function CaseAnswers() {
+  const answers = [
+    {
+      question: "What does this case prove about Inovense?",
+      answer:
+        "It proves we can ship high-trust product systems where evidence clarity and decision confidence matter as much as interface quality.",
+      linkLabel: "Systems lane",
+      href: "/systems",
+    },
+    {
+      question: "Which service lanes does this case support?",
+      answer:
+        "This case maps most directly to Systems and Build work, and is relevant to Growth teams that depend on reliable signal quality.",
+      linkLabel: "Build lane",
+      href: "/build",
+    },
+    {
+      question: "Who is this most relevant for?",
+      answer:
+        "Founders, operators, pricing teams, product leaders, and growth leaders working in categories where monetization decisions carry real downside risk.",
+      linkLabel: "Growth lane",
+      href: "/growth",
+    },
+  ] as const;
+
+  return (
+    <section className="border-t border-zinc-800/60 py-16 md:py-24">
+      <div className="mx-auto max-w-5xl px-6">
+        <div className="mb-10">
+          <Eyebrow>Case clarity</Eyebrow>
+          <h2 className="max-w-3xl text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
+            Questions this case answers directly.
+          </h2>
+        </div>
+
+        <div className="space-y-4">
+          {answers.map((item) => (
+            <article
+              key={item.question}
+              className="rounded-xl border border-zinc-800/70 bg-zinc-900/25 p-6"
+            >
+              <h3 className="mb-2 text-sm font-semibold text-zinc-100">
+                {item.question}
+              </h3>
+              <p className="text-sm leading-relaxed text-zinc-500">{item.answer}</p>
+              <Link
+                href={item.href}
+                className="mt-3 inline-flex text-xs text-zinc-500 transition-colors hover:text-zinc-300"
+              >
+                {item.linkLabel}
+              </Link>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function CTA() {
   return (
     <section className="relative overflow-hidden border-t border-white/[0.06] py-16 md:py-24">
@@ -618,6 +743,14 @@ export default function SilentSpendPage() {
     <>
       <Nav />
       <main className="flex flex-col">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: toJsonLd(silentSpendCaseSchema) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: toJsonLd(silentSpendFaqSchema) }}
+        />
         <Hero />
         <Divider />
         <WhatSilentSpendIs />
@@ -627,6 +760,7 @@ export default function SilentSpendPage() {
         <ExecutionPrinciples />
         <ProductProof />
         <WhyItMattersForClients />
+        <CaseAnswers />
         <CTA />
       </main>
       <Footer />

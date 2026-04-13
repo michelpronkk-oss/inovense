@@ -4,17 +4,25 @@ import { headers } from "next/headers";
 import React from "react";
 import "./globals.css";
 import TrafficAttributionTracker from "@/components/analytics/traffic-attribution-tracker";
+import {
+  INOVENSE_DESCRIPTION,
+  INOVENSE_LANES,
+  INOVENSE_NAME,
+  INOVENSE_ORGANIZATION_ID,
+  INOVENSE_URL,
+  INOVENSE_WEBSITE_ID,
+  toJsonLd,
+} from "@/lib/geo";
 
 const figtree = Figtree({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://inovense.com"),
+  metadataBase: new URL(INOVENSE_URL),
   title: {
     default: "Inovense | Web Design, AI Automation & Growth Systems",
     template: "%s | Inovense",
   },
-  description:
-    "Inovense builds high-performance websites, AI automation workflows, and growth systems for operators and ambitious brands.",
+  description: INOVENSE_DESCRIPTION,
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
@@ -24,17 +32,15 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    siteName: "Inovense",
+    siteName: INOVENSE_NAME,
     title: "Inovense | Web Design, AI Automation & Growth Systems",
-    description:
-      "Inovense builds high-performance websites, AI automation workflows, and growth systems for operators and ambitious brands.",
-    url: "https://inovense.com",
+    description: INOVENSE_DESCRIPTION,
+    url: INOVENSE_URL,
   },
   twitter: {
     card: "summary_large_image",
     title: "Inovense | Web Design, AI Automation & Growth Systems",
-    description:
-      "Inovense builds high-performance websites, AI automation workflows, and growth systems for operators and ambitious brands.",
+    description: INOVENSE_DESCRIPTION,
   },
   robots: {
     index: true,
@@ -51,17 +57,42 @@ export const metadata: Metadata = {
 const orgSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
-  name: "Inovense",
-  url: "https://inovense.com",
-  logo: "https://inovense.com/logo.png",
-  description:
-    "Inovense builds high-performance websites, AI automation workflows, and growth systems for operators and ambitious brands.",
+  "@id": INOVENSE_ORGANIZATION_ID,
+  name: INOVENSE_NAME,
+  url: INOVENSE_URL,
+  logo: `${INOVENSE_URL}/logo.png`,
+  description: INOVENSE_DESCRIPTION,
   email: "hello@inovense.com",
   foundingDate: "2024",
+  contactPoint: [
+    {
+      "@type": "ContactPoint",
+      contactType: "sales",
+      email: "hello@inovense.com",
+      url: `${INOVENSE_URL}/intake`,
+      availableLanguage: ["en", "nl"],
+    },
+  ],
+  hasOfferCatalog: {
+    "@type": "OfferCatalog",
+    name: "Inovense service lanes",
+    itemListElement: INOVENSE_LANES.map((lane) => ({
+      "@type": "Offer",
+      itemOffered: {
+        "@type": "Service",
+        name: `${lane.name} by ${INOVENSE_NAME}`,
+        url: `${INOVENSE_URL}${lane.path}`,
+        description: lane.description,
+      },
+    })),
+  },
   knowsAbout: [
+    "Web Design",
     "Web Development",
     "AI Automation",
     "Business Process Automation",
+    "Internal Tooling",
+    "Lead Generation Systems",
     "Growth Marketing",
     "SEO",
   ],
@@ -70,10 +101,14 @@ const orgSchema = {
 const websiteSchema = {
   "@context": "https://schema.org",
   "@type": "WebSite",
-  name: "Inovense",
-  url: "https://inovense.com",
-  description:
-    "Inovense builds high-performance websites, AI automation workflows, and growth systems for operators and ambitious brands.",
+  "@id": INOVENSE_WEBSITE_ID,
+  name: INOVENSE_NAME,
+  url: INOVENSE_URL,
+  description: INOVENSE_DESCRIPTION,
+  inLanguage: ["en", "nl"],
+  publisher: {
+    "@id": INOVENSE_ORGANIZATION_ID,
+  },
 };
 
 export default async function RootLayout({
@@ -100,11 +135,11 @@ export default async function RootLayout({
       <head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }}
+          dangerouslySetInnerHTML={{ __html: toJsonLd(orgSchema) }}
         />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+          dangerouslySetInnerHTML={{ __html: toJsonLd(websiteSchema) }}
         />
       </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">

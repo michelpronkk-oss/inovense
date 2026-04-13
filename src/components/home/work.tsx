@@ -5,6 +5,7 @@ type WorkCase = {
   title: string;
   lane: string;
   summary: string;
+  evidence: string[];
   tags: string[];
   status: string;
   href?: string;
@@ -17,6 +18,11 @@ const workCases: WorkCase[] = [
     lane: "Product intelligence",
     summary:
       "Global monetization layer built as a high-trust decision system for pricing and packaging movement.",
+    evidence: [
+      "Problem: monetization movement was hard to monitor reliably",
+      "System: structured signal + evidence decision layer",
+      "Proof: live case study with product screenshots",
+    ],
     tags: ["Product", "Systems"],
     status: "Live case",
     href: "/work/silentspend",
@@ -27,6 +33,11 @@ const workCases: WorkCase[] = [
     lane: "Luxury digital infrastructure",
     summary:
       "Hospitality platform engagement focused on premium UX execution and conversion-grade foundations.",
+    evidence: [
+      "Problem: premium positioning needed stronger digital trust",
+      "System: luxury UX and conversion architecture",
+      "Proof: publication in progress",
+    ],
     tags: ["Build", "Luxury"],
     status: "Publishing soon",
   },
@@ -35,6 +46,11 @@ const workCases: WorkCase[] = [
     lane: "Commerce and brand systems",
     summary:
       "Commerce and brand system designed for clearer positioning and clean growth-ready product storytelling.",
+    evidence: [
+      "Problem: brand and commerce signal was fragmented",
+      "System: integrated commerce and storytelling surface",
+      "Proof: publication in progress",
+    ],
     tags: ["Commerce", "Brand"],
     status: "Publishing soon",
   },
@@ -87,6 +103,14 @@ function CaseCard({ item }: { item: WorkCase }) {
           {item.title}
         </h3>
         <p className="mt-2.5 text-sm leading-relaxed text-zinc-500">{item.summary}</p>
+
+        <div className="mt-4 space-y-1.5">
+          {item.evidence.map((line) => (
+            <p key={line} className="text-xs leading-relaxed text-zinc-600">
+              {line}
+            </p>
+          ))}
+        </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
           {item.tags.map((tag) => (

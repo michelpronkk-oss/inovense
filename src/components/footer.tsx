@@ -1,14 +1,22 @@
 import Link from "next/link";
 import Image from "next/image";
 
-const serviceLinks = [
+const laneLinks = [
   { label: "Build", href: "/build" },
   { label: "Systems", href: "/systems" },
   { label: "Growth", href: "/growth" },
 ];
 
+const serviceLinks = [
+  { label: "Web Design", href: "/web-design" },
+  { label: "AI Automation", href: "/ai-automation" },
+  { label: "Lead Systems", href: "/lead-generation-systems" },
+  { label: "SilentSpend Case", href: "/work/silentspend" },
+];
+
 const companyLinks = [
   { label: "Start a project", href: "/intake" },
+  { label: "Service Fit Answers", href: "/answers" },
   { label: "Process", href: "/process" },
   { label: "Privacy Policy", href: "/privacy-policy" },
   { label: "Terms of Use", href: "/terms-of-use" },
@@ -35,7 +43,7 @@ export default function Footer() {
       <div className="mx-auto max-w-6xl px-6 pt-16 pb-10">
 
         {/* Main grid */}
-        <div className="grid grid-cols-1 gap-12 md:grid-cols-[1fr_auto_auto]">
+        <div className="grid grid-cols-1 gap-12 md:grid-cols-[1fr_auto_auto_auto]">
 
           {/* Brand column */}
           <div className="flex flex-col items-start">
@@ -59,10 +67,29 @@ export default function Footer() {
             </a>
           </div>
 
+          {/* Lanes */}
+          <div>
+            <p className="mb-5 text-[11px] font-medium uppercase tracking-[0.15em] text-zinc-700">
+              Lanes
+            </p>
+            <ul className="space-y-3.5">
+              {laneLinks.map(({ label, href }) => (
+                <li key={label}>
+                  <Link
+                    href={href}
+                    className="text-sm text-zinc-500 transition-colors hover:text-zinc-100"
+                  >
+                    {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
           {/* Services */}
           <div>
             <p className="mb-5 text-[11px] font-medium uppercase tracking-[0.15em] text-zinc-700">
-              Services
+              Service Pages
             </p>
             <ul className="space-y-3.5">
               {serviceLinks.map(({ label, href }) => (

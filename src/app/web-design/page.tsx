@@ -3,6 +3,12 @@ import Link from "next/link";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import TrustpilotSignal from "@/components/trustpilot-signal";
+import {
+  INOVENSE_ORGANIZATION_ID,
+  INOVENSE_URL,
+  INOVENSE_WEBSITE_ID,
+  toJsonLd,
+} from "@/lib/geo";
 
 export const metadata: Metadata = {
   title: "Premium Website Design and Development",
@@ -22,6 +28,28 @@ export const metadata: Metadata = {
     description:
       "Custom website design built for conversion, performance, and brand. No templates. No bloat. Designed and built from brief to browser by Inovense.",
   },
+};
+
+const webDesignServiceSchema = {
+  "@context": "https://schema.org",
+  "@type": "Service",
+  "@id": `${INOVENSE_URL}/web-design#service`,
+  name: "Inovense Web Design",
+  serviceType: "Website design and development",
+  provider: {
+    "@id": INOVENSE_ORGANIZATION_ID,
+  },
+  areaServed: "Global",
+  audience: {
+    "@type": "Audience",
+    audienceType: "Founders, operators, and teams needing conversion-ready websites",
+  },
+  isPartOf: {
+    "@id": INOVENSE_WEBSITE_ID,
+  },
+  url: `${INOVENSE_URL}/web-design`,
+  description:
+    "Custom website design and development focused on trust, conversion, and performance.",
 };
 
 /* ─── Primitives ────────────────────────────────────────────────────────── */
@@ -607,10 +635,32 @@ function PageCTA() {
 /* ─── Page ──────────────────────────────────────────────────────────────── */
 
 export default function WebDesignPage() {
+  const webDesignFaqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "@id": `${INOVENSE_URL}/web-design#faq`,
+    mainEntity: faqs.map((faq) => ({
+      "@type": "Question",
+      name: faq.q,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: faq.a,
+      },
+    })),
+  };
+
   return (
     <>
       <Nav />
       <main className="flex flex-col">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: toJsonLd(webDesignServiceSchema) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: toJsonLd(webDesignFaqSchema) }}
+        />
         <Hero />
         <WhoThisIsFor />
         <WhatWeBuild />

@@ -30,13 +30,25 @@ export default async function Image() {
           display: "flex",
           width: "1200px",
           height: "630px",
-          backgroundColor: "#09090b",
+          backgroundColor: "#0f1218",
           position: "relative",
           overflow: "hidden",
           fontFamily:
             "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
         }}
       >
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0,
+            background:
+              "linear-gradient(130deg, #111722 0%, #0f131a 54%, #101821 100%)",
+          }}
+        />
+
         {/* Subtle grid */}
         <div
           style={{
@@ -46,9 +58,10 @@ export default async function Image() {
             bottom: 0,
             left: 0,
             backgroundImage:
-              "linear-gradient(rgba(63,63,70,0.11) 1px, transparent 1px), " +
-              "linear-gradient(90deg, rgba(63,63,70,0.11) 1px, transparent 1px)",
+              "linear-gradient(rgba(113,128,150,0.18) 1px, transparent 1px), " +
+              "linear-gradient(90deg, rgba(113,128,150,0.18) 1px, transparent 1px)",
             backgroundSize: "60px 60px",
+            opacity: 0.3,
           }}
         />
 
@@ -62,7 +75,20 @@ export default async function Image() {
             height: "820px",
             borderRadius: "50%",
             backgroundImage:
-              "radial-gradient(ellipse at center, rgba(73,160,164,0.10) 0%, transparent 58%)",
+              "radial-gradient(ellipse at center, rgba(73,160,164,0.16) 0%, transparent 60%)",
+          }}
+        />
+
+        <div
+          style={{
+            position: "absolute",
+            right: "-260px",
+            bottom: "-220px",
+            width: "860px",
+            height: "860px",
+            borderRadius: "50%",
+            backgroundImage:
+              "radial-gradient(ellipse at center, rgba(79,136,173,0.11) 0%, transparent 66%)",
           }}
         />
 
@@ -74,9 +100,9 @@ export default async function Image() {
             top: `${CARD_TOP + 18}px`,
             width: `${CARD_W}px`,
             height: `${CARD_H}px`,
-            backgroundColor: "#0a0a0c",
+            backgroundColor: "#111722",
             borderRadius: "14px",
-            border: "1px solid rgba(18,18,22,1)",
+            border: "1px solid rgba(84,103,132,0.32)",
           }}
         />
 
@@ -88,9 +114,9 @@ export default async function Image() {
             top: `${CARD_TOP}px`,
             width: `${CARD_W}px`,
             height: `${CARD_H}px`,
-            backgroundColor: "#111116",
+            backgroundColor: "rgba(22,28,39,0.96)",
             borderRadius: "14px",
-            border: "1px solid #1e1e26",
+            border: "1px solid #364054",
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",
@@ -104,12 +130,12 @@ export default async function Image() {
               alignItems: "center",
               paddingLeft: "12px",
               gap: "6px",
-              backgroundColor: "#0f0f13",
-              borderBottom: "1px solid #1a1a22",
+              backgroundColor: "rgba(18,23,33,0.98)",
+              borderBottom: "1px solid rgba(95,111,139,0.28)",
               flexShrink: 0,
             }}
           >
-            {(["#1e1e28", "#1e1e28", "rgba(73,160,164,0.45)"] as const).map(
+            {(["#3a4255", "#3a4255", "rgba(94,197,202,0.75)"] as const).map(
               (bg, i) => (
                 <div
                   key={i}
@@ -148,7 +174,7 @@ export default async function Image() {
             top: `${CARD_TOP}px`,
             width: `${CARD_W}px`,
             height: "2px",
-            backgroundColor: "rgba(73,160,164,0.45)",
+            backgroundColor: "rgba(94,197,202,0.85)",
             borderRadius: "14px 14px 0 0",
           }}
         />
@@ -185,10 +211,10 @@ export default async function Image() {
           <div
             style={{
               display: "flex",
-              color: "#52525b",
-              fontSize: "10px",
+              color: "#9ca7bb",
+              fontSize: "11px",
               fontWeight: 600,
-              letterSpacing: "0.2em",
+              letterSpacing: "0.16em",
               textTransform: "uppercase",
               marginBottom: "12px",
             }}
@@ -200,12 +226,13 @@ export default async function Image() {
           <div
             style={{
               display: "flex",
-              color: "#fafafa",
+              color: "#f7f9fd",
               fontSize: "64px",
               fontWeight: 700,
               lineHeight: 1.0,
               letterSpacing: "-0.032em",
               marginBottom: "14px",
+              textShadow: "0 1px 0 rgba(3,6,10,0.35)",
             }}
           >
             SilentSpend
@@ -215,10 +242,10 @@ export default async function Image() {
           <div
             style={{
               display: "flex",
-              color: "#49A0A4",
-              fontSize: "11px",
+              color: "#6ad5da",
+              fontSize: "12px",
               fontWeight: 600,
-              letterSpacing: "0.16em",
+              letterSpacing: "0.15em",
               textTransform: "uppercase",
               marginBottom: "26px",
             }}
@@ -230,9 +257,9 @@ export default async function Image() {
           <div
             style={{
               display: "flex",
-              color: "#52525b",
-              fontSize: "13px",
-              lineHeight: 1.7,
+              color: "#b4bed0",
+              fontSize: "15px",
+              lineHeight: 1.55,
               letterSpacing: "0.01em",
               maxWidth: "420px",
             }}
@@ -244,8 +271,8 @@ export default async function Image() {
           <div
             style={{
               display: "flex",
-              color: "#3f3f46",
-              fontSize: "11px",
+              color: "#9ca7bb",
+              fontSize: "12px",
               letterSpacing: "0.06em",
               marginTop: "38px",
             }}
