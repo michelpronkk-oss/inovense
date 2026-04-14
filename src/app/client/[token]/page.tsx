@@ -41,6 +41,7 @@ type PortalLead = {
 };
 
 type PortalStatus = "review" | "ready" | "onboarding" | "active" | "completed";
+type PortalPhase = "proposal" | "payment" | "onboarding" | "delivery" | "completed";
 
 type PortalCopy = {
   portalLabel: string;
@@ -55,11 +56,15 @@ type PortalCopy = {
   paymentLabel: string;
   summaryLabel: string;
   contactLabel: string;
+  projectStartLabel: string;
   depositRow: string;
   finalRow: string;
   pending: string;
   paid: string;
   paidOnPrefix: string;
+  availableNow: string;
+  availableSoon: string;
+  completedTag: string;
   noActionTitle: string;
   noActionBody: string;
   replyLine: string;
@@ -73,9 +78,14 @@ type PortalCopy = {
     openPayment: string;
     openOnboarding: string;
     requestContract: string;
+    proposalAvailable: string;
     proposalUnavailable: string;
     contractBody: string;
+    paymentAvailable: string;
+    paymentAfterProposal: string;
     paymentUnavailable: string;
+    onboardingAvailable: string;
+    onboardingAfterPayment: string;
     onboardingCompleted: string;
     onboardingUnavailable: string;
   };
@@ -90,8 +100,17 @@ type PortalCopy = {
     payDepositNoLinkBody: string;
     onboardingTitle: string;
     onboardingBody: string;
+    onboardingComingTitle: string;
+    onboardingComingBody: string;
+    kickoffPrepTitle: string;
+    kickoffPrepBody: string;
+    deliveryTitle: string;
+    deliveryBody: string;
+    completedTitle: string;
+    completedBody: string;
   };
   paymentStateText: {
+    proposalPhase: string;
     noPrice: string;
     unpaid: string;
     depositPaid: string;
@@ -102,23 +121,27 @@ type PortalCopy = {
 
 const PORTAL_COPY: Record<ClientLocale, PortalCopy> = {
   en: {
-    portalLabel: "Client workspace",
+    portalLabel: "Project Workspace",
     pageTitle: "Project Workspace",
     invalidMessage: "This workspace link is invalid or no longer available.",
     invalidHelpPrefix: "If this looks wrong, contact us at",
     overviewLabel: "Overview",
-    statusLabel: "Project status",
+    statusLabel: "Project stage",
     currentStepLabel: "Current step",
     nextActionLabel: "Next action",
-    docsLabel: "Documents and links",
-    paymentLabel: "Payment state",
-    summaryLabel: "Project summary",
+    docsLabel: "Key items",
+    paymentLabel: "Payment",
+    summaryLabel: "Scope summary",
     contactLabel: "Contact",
+    projectStartLabel: "Planned kickoff",
     depositRow: "Deposit",
     finalRow: "Final payment",
     pending: "Pending",
     paid: "Paid",
-    paidOnPrefix: "Paid on",
+    paidOnPrefix: "Confirmed on",
+    availableNow: "Available",
+    availableSoon: "Coming up",
+    completedTag: "Completed",
     noActionTitle: "No action needed right now.",
     noActionBody: "We will contact you when the next input is needed.",
     replyLine: "Reply to your latest Inovense email or contact",
@@ -133,69 +156,89 @@ const PORTAL_COPY: Record<ClientLocale, PortalCopy> = {
       openPayment: "Open payment",
       openOnboarding: "Open onboarding",
       requestContract: "Request contract copy",
+      proposalAvailable:
+        "Your proposal is available here for review and confirmation.",
       proposalUnavailable: "Proposal will appear here once shared.",
       contractBody: "Contract details are shared directly in your agreement email thread.",
+      paymentAvailable: "Your secure payment link is live and ready.",
+      paymentAfterProposal: "Payment details will appear after proposal confirmation.",
       paymentUnavailable: "Payment link is being prepared and will be shared shortly.",
+      onboardingAvailable: "Your onboarding brief is live and ready to complete.",
+      onboardingAfterPayment: "Onboarding will appear after deposit confirmation.",
       onboardingCompleted: "Onboarding was submitted and confirmed.",
       onboardingUnavailable: "Onboarding link will appear here when sent.",
     },
     statusNames: {
-      review: "Review",
-      ready: "Ready",
-      onboarding: "Onboarding",
-      active: "Active",
+      review: "Proposal review",
+      ready: "Commitment",
+      onboarding: "Kickoff setup",
+      active: "In delivery",
       completed: "Completed",
     },
     statusDescriptions: {
-      review: "We are finalizing scope and alignment before active delivery starts.",
-      ready: "Core setup is in place and kickoff planning is being finalized.",
-      onboarding: "We are gathering delivery inputs to launch execution cleanly.",
-      active: "Delivery is in progress with focused execution.",
+      review: "We are aligning final details before work begins.",
+      ready: "Your project is moving into confirmed kickoff.",
+      onboarding: "We are preparing execution with your project inputs.",
+      active: "Delivery is underway with active execution.",
       completed: "Delivery and handoff are complete.",
     },
     stepText: {
-      review: "Commercial scope is being confirmed and prepared for execution.",
-      ready: "Kickoff planning and execution sequencing are being aligned.",
-      onboarding: "Your onboarding inputs are being collected and processed.",
-      active: "The team is actively shipping the agreed work.",
-      completed: "The project is complete and in post-delivery state.",
+      review: "Review the proposal and confirm your decision when ready.",
+      ready: "Your proposal is confirmed. The next step is deposit confirmation.",
+      onboarding: "Kickoff inputs are being prepared so delivery can start smoothly.",
+      active: "The team is currently delivering the agreed scope.",
+      completed: "The project has been wrapped up and moved into post-delivery state.",
     },
     nextAction: {
-      reviewProposalTitle: "Review the proposal",
-      reviewProposalBody: "Open your proposal to review scope and confirm your decision.",
-      payDepositTitle: "Complete the deposit",
-      payDepositBody: "Use the secure payment link to complete the deposit and unlock kickoff.",
-      payDepositNoLinkBody: "Your payment link is being prepared. No action is needed right now.",
+      reviewProposalTitle: "Review your proposal",
+      reviewProposalBody: "Open your proposal to review scope, timeline, and investment.",
+      payDepositTitle: "Confirm your deposit",
+      payDepositBody: "Use the secure payment link to confirm kickoff.",
+      payDepositNoLinkBody: "Your payment link is being prepared. We will share it shortly.",
       onboardingTitle: "Complete onboarding",
-      onboardingBody: "Submit the onboarding brief so delivery can move forward without delays.",
+      onboardingBody: "Submit the onboarding brief so delivery can begin without delays.",
+      onboardingComingTitle: "Onboarding is next",
+      onboardingComingBody: "No input is needed yet. We will share onboarding in the next step.",
+      kickoffPrepTitle: "Kickoff preparation underway",
+      kickoffPrepBody: "Your onboarding is complete. We are now preparing kickoff.",
+      deliveryTitle: "Execution in progress",
+      deliveryBody: "No action is needed right now while delivery is in progress.",
+      completedTitle: "Project wrapped up",
+      completedBody:
+        "No further action is required unless you need support or a follow-up phase.",
     },
     paymentStateText: {
+      proposalPhase: "Payment details will activate after proposal confirmation.",
       noPrice: "Commercial totals are being finalized.",
-      unpaid: "Deposit is pending and final payment remains pending.",
-      depositPaid: "Deposit has been confirmed. Final payment remains pending.",
+      unpaid: "Deposit is pending. Final payment remains pending.",
+      depositPaid: "Deposit is confirmed. Final payment remains pending.",
       fullyPaid: "Deposit and final payment are both confirmed.",
     },
     summaryFallback:
-      "Scope details are being finalized. This workspace will update as the project progresses.",
+      "Scope details are being finalized. This workspace updates as your project progresses.",
   },
   nl: {
-    portalLabel: "Client workspace",
+    portalLabel: "Project Workspace",
     pageTitle: "Project Workspace",
     invalidMessage: "Deze workspacelink is ongeldig of niet meer beschikbaar.",
     invalidHelpPrefix: "Als dit niet klopt, neem contact op via",
     overviewLabel: "Overzicht",
-    statusLabel: "Projectstatus",
+    statusLabel: "Projectfase",
     currentStepLabel: "Huidige stap",
     nextActionLabel: "Volgende actie",
-    docsLabel: "Documenten en links",
-    paymentLabel: "Betaalstatus",
-    summaryLabel: "Projectsamenvatting",
+    docsLabel: "Belangrijke items",
+    paymentLabel: "Betaling",
+    summaryLabel: "Scope samenvatting",
     contactLabel: "Contact",
+    projectStartLabel: "Geplande kickoff",
     depositRow: "Aanbetaling",
     finalRow: "Eindbetaling",
     pending: "Openstaand",
     paid: "Betaald",
-    paidOnPrefix: "Betaald op",
+    paidOnPrefix: "Bevestigd op",
+    availableNow: "Beschikbaar",
+    availableSoon: "Binnenkort",
+    completedTag: "Afgerond",
     noActionTitle: "Er is nu geen actie nodig.",
     noActionBody: "We nemen contact op zodra jouw volgende input nodig is.",
     replyLine: "Reageer op je laatste Inovense-mail of neem contact op via",
@@ -210,45 +253,61 @@ const PORTAL_COPY: Record<ClientLocale, PortalCopy> = {
       openPayment: "Open betaling",
       openOnboarding: "Open onboarding",
       requestContract: "Vraag contractkopie aan",
+      proposalAvailable:
+        "Je voorstel staat hier klaar voor beoordeling en bevestiging.",
       proposalUnavailable: "Het voorstel verschijnt hier zodra het is gedeeld.",
       contractBody: "Contractdetails worden gedeeld in jullie overeenkomstmail.",
-      paymentUnavailable: "De betaallink wordt voorbereid en snel gedeeld.",
+      paymentAvailable: "Je veilige betaallink staat live en is klaar voor gebruik.",
+      paymentAfterProposal: "Betaalgegevens verschijnen na bevestiging van het voorstel.",
+      paymentUnavailable: "Betaalgegevens verschijnen hier in de volgende stap.",
+      onboardingAvailable: "Je onboarding staat live en kan direct worden ingevuld.",
+      onboardingAfterPayment: "Onboarding verschijnt na bevestiging van de aanbetaling.",
       onboardingCompleted: "Onboarding is ingevuld en bevestigd.",
-      onboardingUnavailable: "De onboardinglink verschijnt hier zodra die is verstuurd.",
+      onboardingUnavailable: "Onboarding wordt gedeeld zodra de delivery setup start.",
     },
     statusNames: {
-      review: "Beoordeling",
-      ready: "Klaar",
-      onboarding: "Onboarding",
-      active: "Actief",
+      review: "Voorstel review",
+      ready: "Bevestiging",
+      onboarding: "Kickoff setup",
+      active: "In delivery",
       completed: "Afgerond",
     },
     statusDescriptions: {
-      review: "We ronden scope en afstemming af voordat uitvoering start.",
-      ready: "De basis staat. We ronden de kickoffplanning nu af.",
-      onboarding: "We verzamelen de input die nodig is om strak te leveren.",
-      active: "De uitvoering loopt en het team levert actief op.",
-      completed: "De oplevering en overdracht zijn afgerond.",
+      review: "We stemmen de laatste details af voordat werk start.",
+      ready: "Je project gaat nu richting bevestigde kickoff.",
+      onboarding: "We bereiden de uitvoering voor met jouw projectinput.",
+      active: "De uitvoering loopt met actieve oplevering.",
+      completed: "Oplevering en handoff zijn afgerond.",
     },
     stepText: {
-      review: "De commerciële scope wordt bevestigd en klaargezet.",
-      ready: "Kickoffplanning en uitvoeringsvolgorde worden afgestemd.",
-      onboarding: "Je onboardinginput wordt verzameld en verwerkt.",
-      active: "Het team levert actief op binnen de afgesproken scope.",
-      completed: "Het project is afgerond en in de nazorgfase.",
+      review: "Bekijk het voorstel en bevestig je beslissing zodra je klaar bent.",
+      ready: "Je voorstel is bevestigd. De volgende stap is aanbetaling bevestigen.",
+      onboarding: "Kickoff-input wordt voorbereid zodat delivery soepel kan starten.",
+      active: "Het team levert momenteel op binnen de afgesproken scope.",
+      completed: "Het project is afgerond en staat nu in de post-delivery fase.",
     },
     nextAction: {
-      reviewProposalTitle: "Bekijk het voorstel",
-      reviewProposalBody: "Open je voorstel om de scope te beoordelen en je beslissing te bevestigen.",
-      payDepositTitle: "Rond de aanbetaling af",
-      payDepositBody: "Gebruik de veilige betaallink om de aanbetaling af te ronden en de kickoff vrij te geven.",
-      payDepositNoLinkBody: "Je betaallink wordt voorbereid. Er is nu geen actie nodig.",
+      reviewProposalTitle: "Bekijk je voorstel",
+      reviewProposalBody: "Open je voorstel om scope, planning en investering te beoordelen.",
+      payDepositTitle: "Bevestig je aanbetaling",
+      payDepositBody: "Gebruik de veilige betaallink om de kickoff te bevestigen.",
+      payDepositNoLinkBody: "Je betaallink wordt voorbereid. We delen deze snel met je.",
       onboardingTitle: "Vul onboarding in",
-      onboardingBody: "Vul de onboarding in zodat de uitvoering zonder vertraging kan doorgaan.",
+      onboardingBody: "Rond de onboarding af zodat delivery zonder vertraging kan starten.",
+      onboardingComingTitle: "Onboarding is de volgende stap",
+      onboardingComingBody: "Er is nu geen input nodig. We delen onboarding in de volgende stap.",
+      kickoffPrepTitle: "Kickoff voorbereiding loopt",
+      kickoffPrepBody: "Je onboarding is afgerond. We bereiden nu de kickoff voor.",
+      deliveryTitle: "Uitvoering loopt",
+      deliveryBody: "Er is nu geen actie nodig terwijl delivery loopt.",
+      completedTitle: "Project afgerond",
+      completedBody:
+        "Er is geen verdere actie nodig tenzij je support of een vervolgfase wilt.",
     },
     paymentStateText: {
-      noPrice: "Commerciële totalen worden nog afgerond.",
-      unpaid: "Aanbetaling staat open en eindbetaling is nog niet voldaan.",
+      proposalPhase: "Betaalgegevens worden actief na voorstelbevestiging.",
+      noPrice: "Commerciele totalen worden nog afgerond.",
+      unpaid: "Aanbetaling staat open. Eindbetaling staat ook nog open.",
       depositPaid: "Aanbetaling is bevestigd. Eindbetaling staat nog open.",
       fullyPaid: "Aanbetaling en eindbetaling zijn allebei bevestigd.",
     },
@@ -318,22 +377,28 @@ async function getPortalLeadByToken(token: string): Promise<PortalLead | null> {
 }
 
 function derivePortalStatus(lead: PortalLead): PortalStatus {
-  if (lead.project_status === "completed" || lead.status === "won") return "completed";
-  if (lead.project_status === "active" || lead.status === "active") return "active";
-  if (
-    lead.onboarding_status === "sent" ||
-    (lead.deposit_paid_at != null && lead.onboarding_status !== "completed")
-  ) {
-    return "onboarding";
-  }
-  if (
-    lead.onboarding_status === "completed" ||
-    lead.project_status === "ready" ||
-    lead.status === "onboarding_completed"
-  ) {
-    return "ready";
-  }
+  const phase = derivePortalPhase(lead);
+  if (phase === "completed") return "completed";
+  if (phase === "delivery") return "active";
+  if (phase === "onboarding") return "onboarding";
+  if (phase === "payment") return "ready";
   return "review";
+}
+
+function derivePortalPhase(lead: PortalLead): PortalPhase {
+  if (lead.project_status === "completed" || lead.status === "won") {
+    return "completed";
+  }
+  if (lead.project_status === "active" || lead.status === "active") {
+    return "delivery";
+  }
+  if (lead.proposal_decision !== "accepted") {
+    return "proposal";
+  }
+  if (!lead.deposit_paid_at) {
+    return "payment";
+  }
+  return "onboarding";
 }
 
 type PortalNextAction = {
@@ -344,34 +409,78 @@ type PortalNextAction = {
   external: boolean;
 };
 
-function deriveNextAction(lead: PortalLead, copy: PortalCopy): PortalNextAction {
-  if (lead.onboarding_status === "sent") {
-    return {
-      title: copy.nextAction.onboardingTitle,
-      body: copy.nextAction.onboardingBody,
-      href: lead.onboarding_token ? `/onboarding/${lead.onboarding_token}` : null,
-      ctaLabel: lead.onboarding_token ? copy.docs.openOnboarding : null,
-      external: false,
-    };
-  }
-
-  if (lead.proposal_decision !== "accepted" && lead.proposal_token && lead.proposal_status !== "archived") {
+function deriveNextAction(
+  phase: PortalPhase,
+  lead: PortalLead,
+  copy: PortalCopy
+): PortalNextAction {
+  if (phase === "proposal") {
     return {
       title: copy.nextAction.reviewProposalTitle,
       body: copy.nextAction.reviewProposalBody,
-      href: `/proposal/${lead.proposal_token}`,
-      ctaLabel: copy.docs.openProposal,
+      href: lead.proposal_token ? `/proposal/${lead.proposal_token}` : null,
+      ctaLabel: lead.proposal_token ? copy.docs.openProposal : null,
       external: false,
     };
   }
 
-  if (!lead.deposit_paid_at) {
+  if (phase === "payment") {
     return {
       title: copy.nextAction.payDepositTitle,
       body: lead.payment_link ? copy.nextAction.payDepositBody : copy.nextAction.payDepositNoLinkBody,
       href: lead.payment_link,
       ctaLabel: lead.payment_link ? copy.docs.openPayment : null,
       external: true,
+    };
+  }
+
+  if (phase === "onboarding") {
+    if (lead.onboarding_status === "sent") {
+      return {
+        title: copy.nextAction.onboardingTitle,
+        body: copy.nextAction.onboardingBody,
+        href: lead.onboarding_token ? `/onboarding/${lead.onboarding_token}` : null,
+        ctaLabel: lead.onboarding_token ? copy.docs.openOnboarding : null,
+        external: false,
+      };
+    }
+
+    if (lead.onboarding_status === "completed") {
+      return {
+        title: copy.nextAction.kickoffPrepTitle,
+        body: copy.nextAction.kickoffPrepBody,
+        href: null,
+        ctaLabel: null,
+        external: false,
+      };
+    }
+
+    return {
+      title: copy.nextAction.onboardingComingTitle,
+      body: copy.nextAction.onboardingComingBody,
+      href: null,
+      ctaLabel: null,
+      external: false,
+    };
+  }
+
+  if (phase === "delivery") {
+    return {
+      title: copy.nextAction.deliveryTitle,
+      body: copy.nextAction.deliveryBody,
+      href: null,
+      ctaLabel: null,
+      external: false,
+    };
+  }
+
+  if (phase === "completed") {
+    return {
+      title: copy.nextAction.completedTitle,
+      body: copy.nextAction.completedBody,
+      href: null,
+      ctaLabel: null,
+      external: false,
     };
   }
 
@@ -384,7 +493,13 @@ function deriveNextAction(lead: PortalLead, copy: PortalCopy): PortalNextAction 
   };
 }
 
-function paymentSummaryText(lead: PortalLead, copy: PortalCopy): string {
+function paymentSummaryText(
+  phase: PortalPhase,
+  lead: PortalLead,
+  copy: PortalCopy
+): string {
+  if (phase === "proposal") return copy.paymentStateText.proposalPhase;
+
   const state = derivePaymentState(lead);
   if (state.kind === "no_price") return copy.paymentStateText.noPrice;
   if (state.kind === "unpaid") return copy.paymentStateText.unpaid;
@@ -407,28 +522,55 @@ export async function generateMetadata({
     };
   } catch {
     return {
-      title: "Client Workspace | Inovense",
+      title: "Project Workspace | Inovense",
       robots: { index: false, follow: false },
     };
   }
 }
 
+type DocumentTone = "default" | "active" | "upcoming";
+
+function getDocumentCardClass(tone: DocumentTone): string {
+  if (tone === "active") return "border-brand/35 bg-brand/10";
+  if (tone === "upcoming") return "border-zinc-800/70 bg-zinc-950/35";
+  return "border-zinc-800/80 bg-zinc-900/35";
+}
+
+function getDocumentTagClass(tone: DocumentTone): string {
+  if (tone === "active") return "border-brand/35 bg-brand/10 text-brand";
+  if (tone === "upcoming") return "border-zinc-800/70 bg-zinc-900/30 text-zinc-500";
+  return "border-zinc-700/70 bg-zinc-900/35 text-zinc-500";
+}
+
 function DocumentCard({
   title,
   body,
+  tag,
+  tone = "default",
   ctaLabel,
   href,
   external = false,
 }: {
   title: string;
   body: string;
+  tag: string;
+  tone?: DocumentTone;
   ctaLabel: string | null;
   href: string | null;
   external?: boolean;
 }) {
   return (
-    <article className="rounded-xl border border-zinc-800/80 bg-zinc-900/35 p-4">
-      <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">{title}</p>
+    <article className={`rounded-xl border p-4 ${getDocumentCardClass(tone)}`}>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+          {title}
+        </p>
+        <span
+          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.11em] ${getDocumentTagClass(tone)}`}
+        >
+          {tag}
+        </span>
+      </div>
       <p className="mt-2 text-sm leading-relaxed text-zinc-400">{body}</p>
       {ctaLabel && href ? (
         external ? (
@@ -485,8 +627,9 @@ export default async function ClientPortalPage({
 
   const firstName = lead.full_name.split(" ")[0] || lead.full_name;
   const portalStatus = derivePortalStatus(lead);
-  const nextAction = deriveNextAction(lead, copy);
-  const paymentSummary = paymentSummaryText(lead, copy);
+  const phase = derivePortalPhase(lead);
+  const nextAction = deriveNextAction(phase, lead, copy);
+  const paymentSummary = paymentSummaryText(phase, lead, copy);
   const proposalHref = lead.proposal_token ? `/proposal/${lead.proposal_token}` : null;
   const onboardingHref = lead.onboarding_token ? `/onboarding/${lead.onboarding_token}` : null;
 
@@ -510,6 +653,46 @@ export default async function ClientPortalPage({
     depositAmount != null && Number.isFinite(depositAmount)
       ? formatLocalAmount(lead, depositAmount, locale)
       : null;
+  const showPaymentBreakdown = phase !== "proposal";
+
+  const proposalTag = proposalHref ? copy.availableNow : copy.availableSoon;
+  const proposalTone: DocumentTone =
+    phase === "proposal" ? "active" : proposalHref ? "default" : "upcoming";
+  const proposalBody = proposalHref
+    ? copy.docs.proposalAvailable
+    : copy.docs.proposalUnavailable;
+
+  const paymentTag = lead.payment_link ? copy.availableNow : copy.availableSoon;
+  const paymentTone: DocumentTone =
+    phase === "payment" ? "active" : lead.payment_link ? "default" : "upcoming";
+  const paymentBody = lead.payment_link
+    ? copy.docs.paymentAvailable
+    : phase === "proposal"
+      ? copy.docs.paymentAfterProposal
+      : copy.docs.paymentUnavailable;
+
+  const onboardingTag =
+    lead.onboarding_status === "completed"
+      ? copy.completedTag
+      : onboardingHref
+        ? copy.availableNow
+        : copy.availableSoon;
+  const onboardingTone: DocumentTone =
+    phase === "onboarding"
+      ? "active"
+      : lead.onboarding_status === "completed"
+        ? "default"
+        : onboardingHref
+          ? "default"
+          : "upcoming";
+  const onboardingBody =
+    lead.onboarding_status === "completed"
+      ? copy.docs.onboardingCompleted
+      : onboardingHref
+        ? copy.docs.onboardingAvailable
+        : phase === "proposal" || phase === "payment"
+          ? copy.docs.onboardingAfterPayment
+          : copy.docs.onboardingUnavailable;
 
   return (
     <div lang={locale} className="px-4 py-10 sm:py-14">
@@ -525,7 +708,7 @@ export default async function ClientPortalPage({
             {lead.company_name}
           </h1>
           <p className="mt-2 text-sm text-zinc-500">
-            {copy.pageTitle} · {lead.service_lane}
+            {copy.pageTitle} - {lead.service_lane}
           </p>
         </header>
 
@@ -551,14 +734,20 @@ export default async function ClientPortalPage({
             </p>
             {lead.project_start_date ? (
               <p className="mt-2 text-xs text-zinc-600">
-                {copy.overviewLabel}: {formatDate(`${lead.project_start_date}T12:00:00`, locale)}
+                {copy.projectStartLabel}: {formatDate(`${lead.project_start_date}T12:00:00`, locale)}
               </p>
             ) : null}
           </article>
         </section>
 
         <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <article className="rounded-2xl border border-zinc-800/80 bg-zinc-900/35 p-5">
+          <article
+            className={`rounded-2xl border p-5 ${
+              nextAction.ctaLabel
+                ? "border-brand/35 bg-brand/10"
+                : "border-zinc-800/80 bg-zinc-900/35"
+            }`}
+          >
             <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
               {copy.nextActionLabel}
             </p>
@@ -587,48 +776,62 @@ export default async function ClientPortalPage({
             ) : null}
           </article>
 
-          <article className="rounded-2xl border border-zinc-800/80 bg-zinc-900/35 p-5">
+          <article
+            className={`rounded-2xl border p-5 ${
+              phase === "payment"
+                ? "border-brand/35 bg-brand/10"
+                : "border-zinc-800/80 bg-zinc-900/35"
+            }`}
+          >
             <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
               {copy.paymentLabel}
             </p>
             <p className="mt-3 text-sm leading-relaxed text-zinc-400">{paymentSummary}</p>
 
-            <div className="mt-4 space-y-2.5">
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800/70 bg-zinc-950/45 px-3 py-2">
-                <span className="text-xs text-zinc-500">{copy.depositRow}</span>
-                <span className="text-xs font-medium text-zinc-300">
-                  {lead.deposit_paid_at ? copy.paid : copy.pending}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800/70 bg-zinc-950/45 px-3 py-2">
-                <span className="text-xs text-zinc-500">{copy.finalRow}</span>
-                <span className="text-xs font-medium text-zinc-300">
-                  {lead.final_payment_paid_at ? copy.paid : copy.pending}
-                </span>
-              </div>
-            </div>
-
-            {(totalDisplay || depositDisplay) && (
-              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {totalDisplay ? (
-                  <div className="rounded-lg border border-zinc-800/70 bg-zinc-950/45 px-3 py-2">
-                    <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">Total</p>
-                    <p className="mt-1 text-sm font-medium text-zinc-200">{totalDisplay}</p>
+            {showPaymentBreakdown ? (
+              <>
+                <div className="mt-4 space-y-2.5">
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800/70 bg-zinc-950/45 px-3 py-2">
+                    <span className="text-xs text-zinc-500">{copy.depositRow}</span>
+                    <span className="text-xs font-medium text-zinc-300">
+                      {lead.deposit_paid_at ? copy.paid : copy.pending}
+                    </span>
                   </div>
-                ) : null}
-                {depositDisplay ? (
-                  <div className="rounded-lg border border-zinc-800/70 bg-zinc-950/45 px-3 py-2">
-                    <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">{copy.depositRow}</p>
-                    <p className="mt-1 text-sm font-medium text-zinc-200">{depositDisplay}</p>
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800/70 bg-zinc-950/45 px-3 py-2">
+                    <span className="text-xs text-zinc-500">{copy.finalRow}</span>
+                    <span className="text-xs font-medium text-zinc-300">
+                      {lead.final_payment_paid_at ? copy.paid : copy.pending}
+                    </span>
                   </div>
-                ) : null}
-              </div>
-            )}
+                </div>
 
-            {lead.deposit_paid_at ? (
-              <p className="mt-3 text-[11px] text-zinc-600">
-                {copy.paidOnPrefix} {formatDate(lead.deposit_paid_at, locale)}
-              </p>
+                {(totalDisplay || depositDisplay) && (
+                  <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {totalDisplay ? (
+                      <div className="rounded-lg border border-zinc-800/70 bg-zinc-950/45 px-3 py-2">
+                        <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
+                          Total
+                        </p>
+                        <p className="mt-1 text-sm font-medium text-zinc-200">{totalDisplay}</p>
+                      </div>
+                    ) : null}
+                    {depositDisplay ? (
+                      <div className="rounded-lg border border-zinc-800/70 bg-zinc-950/45 px-3 py-2">
+                        <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-700">
+                          {copy.depositRow}
+                        </p>
+                        <p className="mt-1 text-sm font-medium text-zinc-200">{depositDisplay}</p>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+
+                {lead.deposit_paid_at ? (
+                  <p className="mt-3 text-[11px] text-zinc-600">
+                    {copy.paidOnPrefix} {formatDate(lead.deposit_paid_at, locale)}
+                  </p>
+                ) : null}
+              </>
             ) : null}
           </article>
         </section>
@@ -640,45 +843,41 @@ export default async function ClientPortalPage({
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <DocumentCard
               title={copy.docs.proposalTitle}
-              body={
-                proposalHref
-                  ? copy.nextAction.reviewProposalBody
-                  : copy.docs.proposalUnavailable
-              }
+              body={proposalBody}
+              tag={proposalTag}
+              tone={proposalTone}
               ctaLabel={proposalHref ? copy.docs.openProposal : null}
               href={proposalHref}
             />
             <DocumentCard
-              title={copy.docs.contractTitle}
-              body={copy.docs.contractBody}
-              ctaLabel={copy.docs.requestContract}
-              href={`mailto:hello@inovense.com?subject=${encodeURIComponent(`Contract copy - ${lead.company_name}`)}`}
-              external
-            />
-            <DocumentCard
               title={copy.docs.paymentTitle}
-              body={
-                lead.payment_link ? copy.nextAction.payDepositBody : copy.docs.paymentUnavailable
-              }
+              body={paymentBody}
+              tag={paymentTag}
+              tone={paymentTone}
               ctaLabel={lead.payment_link ? copy.docs.openPayment : null}
               href={lead.payment_link}
               external
             />
             <DocumentCard
               title={copy.docs.onboardingTitle}
-              body={
-                lead.onboarding_status === "completed"
-                  ? copy.docs.onboardingCompleted
-                  : onboardingHref
-                    ? copy.nextAction.onboardingBody
-                    : copy.docs.onboardingUnavailable
-              }
+              body={onboardingBody}
+              tag={onboardingTag}
+              tone={onboardingTone}
               ctaLabel={
                 onboardingHref && lead.onboarding_status !== "completed"
                   ? copy.docs.openOnboarding
                   : null
               }
               href={onboardingHref}
+            />
+            <DocumentCard
+              title={copy.docs.contractTitle}
+              body={copy.docs.contractBody}
+              tag={copy.availableSoon}
+              tone="upcoming"
+              ctaLabel={copy.docs.requestContract}
+              href={`mailto:hello@inovense.com?subject=${encodeURIComponent(`Contract copy - ${lead.company_name}`)}`}
+              external
             />
           </div>
         </section>
@@ -719,3 +918,4 @@ export default async function ClientPortalPage({
     </div>
   );
 }
+
