@@ -34,7 +34,7 @@ export async function sendDepositPaidConfirmationEmail(
 
     const { data: lead, error: fetchError } = await supabase
       .from("leads")
-      .select("id, full_name, company_name, work_email, lead_source")
+      .select("id, full_name, company_name, work_email, lead_source, proposal_token")
       .eq("id", leadId)
       .single();
 
@@ -69,11 +69,36 @@ export async function sendDepositPaidConfirmationEmail(
     const body = template.body(lead.company_name);
 
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://inovense.com";
+    let portalToken = lead.proposal_token;
+    if (!portalToken) {
+      portalToken = crypto.randomUUID();
+      const { error: tokenError } = await supabase
+        .from("leads")
+        .update({ proposal_token: portalToken })
+        .eq("id", leadId);
+
+      if (tokenError) {
+        console.error(
+          "[crm-email] Failed to generate portal token for deposit confirmation:",
+          tokenError.message
+        );
+        return {
+          success: false,
+          error: "Could not prepare Client Workspace link.",
+        };
+      }
+    }
+
+    const cta = {
+      text: template.ctaText,
+      href: `${baseUrl}/client/${portalToken}`,
+    };
 
     const html = buildEmailHtml({
       eyebrow: template.eyebrow,
       heading: template.heading(firstName),
       body,
+      cta,
       baseUrl,
       lang: locale,
     });
@@ -84,6 +109,9 @@ export async function sendDepositPaidConfirmationEmail(
       template.heading(firstName),
       "",
       body,
+      "",
+      `${cta.text}:`,
+      cta.href,
       "",
       "Inovense",
       "hello@inovense.com",

@@ -125,7 +125,8 @@ export default async function RootLayout({
   const isPrivateRoute =
     pathname.startsWith("/admin") ||
     pathname.startsWith("/proposal") ||
-    pathname.startsWith("/onboarding");
+    pathname.startsWith("/onboarding") ||
+    pathname.startsWith("/client");
 
   return (
     <html

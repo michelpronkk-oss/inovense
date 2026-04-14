@@ -101,7 +101,7 @@ const ACTION_EVENT_MATRIX = [
     trigger: "Operator sends Proposal ready email",
     state: "proposal_sent + proposal_sent_at",
     email: "proposal_sent",
-    next: "Wait for client decision, then capture accept/decline truth.",
+    next: "Wait for client decision. Do not position Client Workspace as the main destination at this stage.",
   },
   {
     action: "Proposal accepted",
@@ -122,7 +122,7 @@ const ACTION_EVENT_MATRIX = [
     trigger: "Operator confirms cleared deposit and clicks action",
     state: "deposit_paid_at set (first transition only)",
     email: "deposit_paid_confirmation auto on first transition",
-    next: "Proceed with onboarding and kickoff prep.",
+    next: "This is the first strong Client Workspace introduction. Then proceed with onboarding and kickoff prep.",
   },
   {
     action: "Mark final payment as paid",
@@ -555,6 +555,7 @@ const SECTIONS: HandbookSection[] = [
         tone: "reference",
         items: [
           "Mark deposit as paid sets deposit_paid_at, snapshots deposit amount when needed, and sets lead status to deposit_paid.",
+          "Deposit confirmation email introduces Client Workspace as the central place for status, links, and next steps.",
           "Mark final payment as paid sets final_payment_paid_at only; it does not auto-change project_status.",
           "Server-side idempotency only allows first-time transitions when paid-at fields are null.",
           "On first successful transition, CRM sends a branded event-specific confirmation email automatically.",
@@ -728,6 +729,47 @@ const SECTIONS: HandbookSection[] = [
         items: [
           "Do not start deliverables on incomplete onboarding context.",
           "Do not treat onboarding completion as automatic project completion.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "client-portal-light",
+    title: "Client Portal Light",
+    tag: "Delivery",
+    automation: "Mixed",
+    summary:
+      "Client Portal Light is a private project workspace for calm visibility. It centralizes status and key links without exposing internal CRM complexity.",
+    blocks: [
+      {
+        title: "What it includes",
+        tone: "do",
+        items: [
+          "One private tokenized route per project context at /client/[token].",
+          "Client-facing status, current step, next action, payment state, and concise project summary.",
+          "Direct links to proposal, payment, and onboarding when available.",
+          "Simple contact route back to hello@inovense.com.",
+          "First strong client-facing introduction at deposit confirmation, then reinforced during onboarding/delivery.",
+        ],
+      },
+      {
+        title: "What it does not include",
+        tone: "avoid",
+        items: [
+          "No chat inbox, task board, or internal timeline dump.",
+          "No internal CRM notes, internal_next_step text, or operator terminology.",
+          "No separate data model. Portal reads from existing lead/proposal/payment/onboarding fields.",
+        ],
+      },
+      {
+        title: "Operator sharing flow",
+        tone: "reference",
+        items: [
+          "Use Lead detail > Client portal to generate or copy the private link.",
+          "The portal token reuses proposal_token for minimal system complexity and consistent access.",
+          "Refresh token rotates both proposal and portal access links for that lead.",
+          "Keep lead_source accurate so portal locale resolves correctly (EN default, NL when lead context is Dutch).",
+          "Proposal emails stay proposal-first; do not introduce Client Workspace as the main layer before deposit is confirmed.",
         ],
       },
     ],

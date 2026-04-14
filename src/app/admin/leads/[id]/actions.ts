@@ -232,6 +232,41 @@ export async function generateProposalToken(
   }
 }
 
+export async function generateClientPortalToken(
+  id: string,
+  rotate = false
+): Promise<{ success: boolean; token?: string; error?: string }> {
+  try {
+    const supabase = createSupabaseServerClient();
+    const { data: currentLead, error: readError } = await supabase
+      .from("leads")
+      .select("proposal_token")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (readError || !currentLead) {
+      return { success: false, error: "Failed to resolve client portal token." };
+    }
+
+    if (currentLead.proposal_token && !rotate) {
+      return { success: true, token: currentLead.proposal_token };
+    }
+
+    const token = crypto.randomUUID();
+    const { error } = await supabase
+      .from("leads")
+      .update({ proposal_token: token })
+      .eq("id", id);
+    if (error) throw error;
+
+    revalidateLead(id);
+    return { success: true, token };
+  } catch (err) {
+    console.error("[admin] generateClientPortalToken failed:", err);
+    return { success: false, error: "Failed to generate client portal link." };
+  }
+}
+
 /* ─── Payment ───────────────────────────────────────────────────────────── */
 
 export async function updatePaymentFields(

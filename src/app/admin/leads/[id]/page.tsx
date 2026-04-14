@@ -13,6 +13,7 @@ import {
   NotesEditor,
   NextStepEditor,
   OnboardingManager,
+  ClientPortalLinkManager,
   DeleteLeadButton,
 } from "./lead-editor";
 import { EmailActionsPanel } from "./email-composer";
@@ -327,6 +328,13 @@ export default async function LeadDetailPage({
               onboardingToken={lead.onboarding_token}
               onboardingSentAt={lead.onboarding_sent_at}
               onboardingCompletedAt={lead.onboarding_completed_at}
+            />
+          </Section>
+
+          <Section title="Client portal">
+            <ClientPortalLinkManager
+              id={lead.id}
+              proposalToken={lead.proposal_token}
             />
           </Section>
 

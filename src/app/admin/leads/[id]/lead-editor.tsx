@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useTransition } from "react";
 import {
   updateLeadStatus,
   updateLeadNotes,
   updateInternalNextStep,
   sendOnboarding,
+  generateClientPortalToken,
   deleteLead,
 } from "./actions";
 import { ALL_STATUSES, STATUS_CONFIG } from "@/app/admin/config";
@@ -285,13 +286,10 @@ export function OnboardingManager({
   const [token, setToken] = useState<string | null>(onboardingToken);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [origin, setOrigin] = useState("");
-
-  useEffect(() => {
-    setOrigin(window.location.origin);
-  }, []);
 
   function getUrl(tok: string) {
+    const origin =
+      typeof window === "undefined" ? "" : window.location.origin;
     return `${origin}/onboarding/${tok}`;
   }
 
@@ -360,7 +358,7 @@ export function OnboardingManager({
         </div>
         <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2">
           <p className="break-all font-mono text-[11px] leading-relaxed text-zinc-500">
-            {origin ? getUrl(token) : `/onboarding/${token}`}
+            {getUrl(token)}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -396,6 +394,95 @@ export function OnboardingManager({
       >
         {isPending ? "Generating..." : "Generate onboarding link"}
       </button>
+      {error && <p className="text-xs text-red-400">{error}</p>}
+    </div>
+  );
+}
+
+export function ClientPortalLinkManager({
+  id,
+  proposalToken,
+}: {
+  id: string;
+  proposalToken: string | null;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [token, setToken] = useState<string | null>(proposalToken);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function getUrl(tok: string) {
+    const origin =
+      typeof window === "undefined" ? "" : window.location.origin;
+    return `${origin}/client/${tok}`;
+  }
+
+  function handleGenerate(rotate = false) {
+    setError(null);
+    startTransition(async () => {
+      const result = await generateClientPortalToken(id, rotate);
+      if (result.success && result.token) {
+        setToken(result.token);
+      } else {
+        setError(result.error ?? "Failed to generate portal link.");
+      }
+    });
+  }
+
+  function handleCopy() {
+    if (!token) return;
+    navigator.clipboard.writeText(getUrl(token)).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  if (!token) {
+    return (
+      <div className="space-y-3">
+        <p className="text-xs leading-relaxed text-zinc-600">
+          Generate a private workspace link for the client. It centralizes status,
+          payment, onboarding, and key project documents.
+        </p>
+        <button
+          onClick={() => handleGenerate()}
+          disabled={isPending}
+          className="rounded-lg border border-zinc-700 bg-zinc-800/60 px-4 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand disabled:cursor-wait disabled:opacity-50"
+        >
+          {isPending ? "Generating..." : "Generate client portal link"}
+        </button>
+        {error && <p className="text-xs text-red-400">{error}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2">
+        <p className="break-all font-mono text-[11px] leading-relaxed text-zinc-500">
+          {getUrl(token)}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          onClick={handleCopy}
+          className="rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-700/60 hover:text-zinc-100"
+        >
+          {copied ? "Copied." : "Copy link"}
+        </button>
+        <button
+          onClick={() => handleGenerate(true)}
+          disabled={isPending}
+          className="rounded-lg border border-zinc-800 px-3 py-1.5 text-xs text-zinc-600 transition-colors hover:border-zinc-700 hover:text-zinc-400 disabled:cursor-wait disabled:opacity-50"
+        >
+          {isPending ? "Refreshing..." : "Refresh token"}
+        </button>
+      </div>
+
+      <p className="text-[11px] leading-relaxed text-zinc-700">
+        Refresh token rotates both portal and proposal links because they share the same secure token.
+      </p>
       {error && <p className="text-xs text-red-400">{error}</p>}
     </div>
   );

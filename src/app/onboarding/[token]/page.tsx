@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { getClientLocaleForLeadSource, type ClientLocale } from "@/lib/client-locale";
 import OnboardingForm from "./onboarding-form";
@@ -11,6 +12,7 @@ type OnboardingPageCopy = {
   invalidLinkHelp: string;
   completedTitle: string;
   completedMessage: string;
+  portalButton: string;
 };
 
 const ONBOARDING_PAGE_COPY: Record<ClientLocale, OnboardingPageCopy> = {
@@ -20,6 +22,7 @@ const ONBOARDING_PAGE_COPY: Record<ClientLocale, OnboardingPageCopy> = {
     invalidLinkHelp: "If you believe this is a mistake, contact us at hello@inovense.com.",
     completedTitle: "Already submitted.",
     completedMessage: "This onboarding brief has already been completed. We are on it.",
+    portalButton: "Open Client Workspace",
   },
   nl: {
     pageTitle: "Onboarding",
@@ -27,6 +30,7 @@ const ONBOARDING_PAGE_COPY: Record<ClientLocale, OnboardingPageCopy> = {
     invalidLinkHelp: "Als je denkt dat dit een fout is, neem contact op via hello@inovense.com.",
     completedTitle: "Al verstuurd.",
     completedMessage: "Deze onboarding is al afgerond. Wij pakken het direct op.",
+    portalButton: "Open Client Workspace",
   },
 };
 
@@ -129,6 +133,12 @@ export default async function OnboardingPage({
         <p className="text-sm text-zinc-500">
           {copy.completedMessage}
         </p>
+        <Link
+          href={`/client/${token}`}
+          className="mt-5 inline-flex items-center rounded-lg border border-brand/40 bg-brand/10 px-3 py-1.5 text-xs font-medium text-brand transition-colors hover:border-brand/60 hover:bg-brand/15"
+        >
+          {copy.portalButton}
+        </Link>
       </div>
     );
   }
