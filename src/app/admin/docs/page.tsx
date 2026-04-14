@@ -28,14 +28,33 @@ const LEAD_FLOW_STEPS = [
   },
   { step: "Initial review", status: "reviewing", trigger: "Operator starts qualification work" },
   { step: "Qualified for commercial work", status: "qualified", trigger: "Lane and scope are clear enough for proposal" },
+  {
+    step: "Proposal intelligence run (optional but recommended)",
+    status: "qualified or proposal_sent",
+    trigger: "Lead Research -> Proposal Angle -> Proposal Writer draft assist applied before send",
+  },
   { step: "Proposal sent", status: "proposal_sent", trigger: "Proposal email sent from CRM" },
-  { step: "Decision captured", status: "payment_requested or lost", trigger: "Accept/decline recorded on proposal flow" },
-  { step: "Deposit confirmed", status: "deposit_paid", trigger: "Mark deposit as paid action in CRM" },
-  { step: "Final payment confirmed", status: "final_payment_paid_at set", trigger: "Mark final payment action in CRM" },
+  {
+    step: "Decision captured",
+    status: "payment_requested or lost",
+    trigger: "Accept/decline recorded on proposal flow (accepted maps to payment_requested)",
+  },
+  {
+    step: "Contract package",
+    status: "payment_requested",
+    trigger: "Contract details generated or shared in commercial thread",
+  },
+  { step: "Payment request sent", status: "payment_requested", trigger: "Payment request email sent from CRM" },
+  {
+    step: "Deposit confirmed (first strong workspace introduction)",
+    status: "deposit_paid",
+    trigger: "Mark deposit as paid action in CRM; deposit confirmation email introduces Project Workspace",
+  },
   { step: "Onboarding sent", status: "onboarding_sent", trigger: "Onboarding email/link sent" },
   { step: "Onboarding submitted", status: "onboarding_completed", trigger: "Client submits onboarding form" },
   { step: "Delivery in progress", status: "active", trigger: "Operator moves to active once delivery starts" },
-  { step: "Delivery complete", status: "project_status = completed", trigger: "Operator marks Completed after handoff is done" },
+  { step: "Final payment confirmed", status: "final_payment_paid_at set", trigger: "Mark final payment action in CRM" },
+  { step: "Delivery complete", status: "project_status = completed", trigger: "Operator marks Completed only after handoff is done" },
   { step: "Engagement closed", status: "won or lost", trigger: "Operator closes lifecycle state" },
 ];
 
@@ -59,6 +78,180 @@ const CONTROL_MODEL = [
   {
     title: "Strict Separation",
     body: "Payment state tracks money. project_status tracks delivery. Never use one as a proxy for the other.",
+  },
+];
+
+const OPERATING_STATE_NOW = [
+  {
+    title: "Proposal intelligence stack is live",
+    body: "Lead Research, Proposal Angle, and Proposal Writer are active in lead detail and can apply draft proposal content with operator review.",
+  },
+  {
+    title: "Prospects and outbound discipline are live",
+    body: "Prospects have their own statuses, follow-up tracking, snippet support, and controlled conversion into lead lifecycle.",
+  },
+  {
+    title: "Decision-grade performance layer is live",
+    body: "Performance now includes Decision Insights, stage deltas vs previous 30d, source quality visibility, and landing page commercial relevance.",
+  },
+  {
+    title: "Client Portal Light is live",
+    body: "Project Workspace runs on tokenized routes and reuses lead/proposal/payment/onboarding truth without a separate portal data model.",
+  },
+  {
+    title: "Lifecycle attention layers are live",
+    body: "Lead-level reminders, leads-list attention, and overview Weekly Operating Summary are active and designed to reduce proposal/deposit/onboarding leakage.",
+  },
+  {
+    title: "Host split is live",
+    body: "Public, Admin, and Portal surfaces route by host with middleware guards and safe redirects.",
+  },
+];
+
+type SystemLayerRow = {
+  layer: string;
+  routes: string;
+  role: string;
+  operatorNotes: string;
+};
+
+const CORE_SYSTEM_LAYERS: SystemLayerRow[] = [
+  {
+    layer: "Public site",
+    routes: "/, /build, /systems, /growth, /nl/*",
+    role: "Acquisition surface, intake entry, and conversion-ready service pages.",
+    operatorNotes: "Do not use for internal workflow execution.",
+  },
+  {
+    layer: "CRM Admin",
+    routes: "/admin, /admin/leads, /admin/prospects, /admin/performance, /admin/docs",
+    role: "Operational command layer for lifecycle, commercial actions, delivery status, and internal intelligence.",
+    operatorNotes: "Primary operator surface.",
+  },
+  {
+    layer: "Proposal flow",
+    routes: "/proposal/[token]",
+    role: "Client-facing proposal review and decision capture.",
+    operatorNotes: "Acceptance maps to payment_requested; decline maps to lost.",
+  },
+  {
+    layer: "Client Portal Light (Project Workspace)",
+    routes: "/client/[token] plus linked payment/onboarding/proposal routes",
+    role: "Calm client reference point for stage, payment, documents, and next action.",
+    operatorNotes: "First strong introduction occurs at deposit confirmation.",
+  },
+  {
+    layer: "Onboarding flow",
+    routes: "/onboarding/[token]",
+    role: "Collect kickoff input required for clean activation.",
+    operatorNotes: "On submit, onboarding_status becomes completed automatically.",
+  },
+  {
+    layer: "Prospects layer",
+    routes: "/admin/prospects",
+    role: "Pre-lead outbound discipline and follow-up management.",
+    operatorNotes: "Prospects are not leads and are excluded from lead funnel semantics.",
+  },
+  {
+    layer: "Performance layer",
+    routes: "/admin/performance",
+    role: "Strict pipeline signal layer for sessions, leads, and commercial stage progression.",
+    operatorNotes: "Semantics are strict; no blended conversion score.",
+  },
+  {
+    layer: "Docs center",
+    routes: "/admin/docs",
+    role: "Internal source of truth for operators and partner handoff.",
+    operatorNotes: "Treat stale docs as a system bug.",
+  },
+];
+
+type DefinitionRow = {
+  term: string;
+  meaning: string;
+  guardrail: string;
+};
+
+const CANONICAL_DEFINITIONS: DefinitionRow[] = [
+  {
+    term: "Prospect",
+    meaning: "Outbound target tracked before lead lifecycle entry.",
+    guardrail: "Never count prospects as leads in performance or revenue flow.",
+  },
+  {
+    term: "Lead",
+    meaning: "Submitted intake or manual CRM lead record that enters lifecycle statuses.",
+    guardrail: "One engagement should map to one lead record unless there is a valid separate deal.",
+  },
+  {
+    term: "Session",
+    meaning: "Tracked row in traffic_sessions.",
+    guardrail: "Session volume is not lead volume and does not imply qualification.",
+  },
+  {
+    term: "Won",
+    meaning: "Lead lifecycle state where commercial commitment is closed as won.",
+    guardrail: "Won does not automatically imply deposit paid or completed delivery.",
+  },
+  {
+    term: "Deposit Paid",
+    meaning: "Lead with payment state deposit_paid or fully_paid via existing payment fields.",
+    guardrail: "Deposit paid does not mean delivery complete.",
+  },
+  {
+    term: "Completed",
+    meaning: "project_status = completed after actual delivery and handoff.",
+    guardrail: "Completion remains manual and is intentionally separate from payment timestamps.",
+  },
+  {
+    term: "Project Workspace",
+    meaning: "Client-facing naming standard for Client Portal Light.",
+    guardrail: "Do not introduce as main destination during proposal phase. First strong introduction is deposit confirmation.",
+  },
+  {
+    term: "Manual vs Automatic",
+    meaning: "Lifecycle and delivery decisions are mostly operator-owned with bounded automation events.",
+    guardrail: "Never let automation blur payment truth, delivery truth, and lifecycle truth.",
+  },
+];
+
+type BuildOrderStep = {
+  step: string;
+  status: "Live now" | "Next" | "After next";
+  reason: string;
+  implementation: string;
+};
+
+const CURRENT_BUILD_ORDER: BuildOrderStep[] = [
+  {
+    step: "Lifecycle reminders",
+    status: "Live now",
+    reason: "Reduces proposal/deposit/onboarding leakage where handoff discipline usually slips.",
+    implementation: "Visible as Needs attention in lead detail and leads list.",
+  },
+  {
+    step: "Weekly Operating Summary",
+    status: "Live now",
+    reason: "Gives fast start-of-week priority visibility across lifecycle, prospects, and active flow.",
+    implementation: "Visible on /admin overview as compact summary cards plus Top 3 actions.",
+  },
+  {
+    step: "Performance Decision Insights",
+    status: "Live now",
+    reason: "Moves performance from reporting toward decision-grade source/page/stage guidance.",
+    implementation: "Visible on /admin/performance with comparison pills and grounded insights.",
+  },
+  {
+    step: "Proof capture and proof loops",
+    status: "Next",
+    reason: "Operational proof of outcomes will strengthen sales assets and performance learning loops.",
+    implementation: "Capture completed outcomes, attach evidence, and feed proof back into proposals/public pages.",
+  },
+  {
+    step: "Host and portal cleanup hardening",
+    status: "After next",
+    reason: "Keep split-surface routing robust as traffic and partner use increase.",
+    implementation: "Tighten host/env audits and portal-route hygiene without expanding product surface.",
   },
 ];
 
@@ -93,6 +286,18 @@ const MANUAL_AUTOMATION_REFERENCE = [
     manual: "Operator reviews and sends proposal/payment/onboarding emails.",
     auto: "Deposit and final payment confirmations auto-send on first valid transition.",
   },
+  {
+    area: "Lifecycle reminders",
+    automation: "Automated",
+    manual: "Operator decides follow-up action and status changes.",
+    auto: "System derives proposal/deposit/onboarding attention from lifecycle timestamps.",
+  },
+  {
+    area: "Weekly summary + performance insights",
+    automation: "Automated",
+    manual: "Operator interprets and executes decisions from surfaced insights.",
+    auto: "Overview and Performance aggregate grounded signals and period deltas from live data.",
+  },
 ];
 
 const ACTION_EVENT_MATRIX = [
@@ -106,9 +311,16 @@ const ACTION_EVENT_MATRIX = [
   {
     action: "Proposal accepted",
     trigger: "Client accepts proposal page",
-    state: "Can move lead status to payment_requested",
+    state: "proposal_decision accepted + proposal_decided_at + status payment_requested",
     email: "No auto email by default",
-    next: "Send payment request with correct deposit and payment link.",
+    next: "Prepare contract package if needed, then send payment request with correct deposit and payment link.",
+  },
+  {
+    action: "Share contract package",
+    trigger: "Operator confirms legal/commercial package for this deal",
+    state: "No automatic lifecycle write by default",
+    email: "Handled in normal client thread",
+    next: "Keep payment_requested stage and proceed to deposit request.",
   },
   {
     action: "Send payment request",
@@ -429,6 +641,15 @@ const SECTIONS: HandbookSection[] = [
         ],
       },
       {
+        title: "Prospect statuses",
+        tone: "reference",
+        items: [
+          "new -> researched -> ready_to_contact -> contacted -> replied -> qualified -> converted_to_lead.",
+          "not_fit is explicit closeout for prospects that should not enter lead flow.",
+          "Use next_follow_up_at discipline on active statuses to prevent outbound leakage.",
+        ],
+      },
+      {
         title: "Operator workflow",
         tone: "do",
         items: [
@@ -557,6 +778,7 @@ const SECTIONS: HandbookSection[] = [
           "Mark deposit as paid sets deposit_paid_at, snapshots deposit amount when needed, and sets lead status to deposit_paid.",
           "Deposit confirmation email introduces Project Workspace as the central place for status, links, and next steps.",
           "Mark final payment as paid sets final_payment_paid_at only; it does not auto-change project_status.",
+          "Saved payment_link is immediately reused by Project Workspace payment CTA when deposit is still pending.",
           "Server-side idempotency only allows first-time transitions when paid-at fields are null.",
           "On first successful transition, CRM sends a branded event-specific confirmation email automatically.",
           "Email language follows lead locale logic from lead_source.",
@@ -748,6 +970,7 @@ const SECTIONS: HandbookSection[] = [
           "One private tokenized route per project context at /client/[token].",
           "Client-facing status, current step, next action, payment state, and concise project summary.",
           "Direct links to proposal, payment, and onboarding when available.",
+          "State-aware payment panel: pending, payment CTA when link exists, deposit received state, fully paid state.",
           "Simple contact route back to hello@inovense.com.",
           "First strong client-facing introduction at deposit confirmation, then reinforced during onboarding/delivery.",
         ],
@@ -766,10 +989,201 @@ const SECTIONS: HandbookSection[] = [
         tone: "reference",
         items: [
           "Use Lead detail > Client portal to generate or copy the private link.",
+          "Client-facing naming standard is Project Workspace.",
           "The portal token reuses proposal_token for minimal system complexity and consistent access.",
           "Refresh token rotates both proposal and portal access links for that lead.",
           "Keep lead_source accurate so portal locale resolves correctly (EN default, NL when lead context is Dutch).",
           "Proposal emails stay proposal-first; do not introduce Project Workspace as the main layer before deposit is confirmed.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "structured-client-content-rendering",
+    title: "Structured Client Content Rendering",
+    tag: "Delivery",
+    automation: "Automated",
+    summary:
+      "Proposal and Project Workspace summary fields support lightweight structured text rendering without a rich-text editor.",
+    blocks: [
+      {
+        title: "Supported syntax",
+        tone: "reference",
+        items: [
+          "Paragraph spacing is preserved by blank lines.",
+          "Line breaks are preserved cleanly in paragraph text.",
+          "Lines starting with '- ' are rendered as bullet items.",
+          "Lines starting with '• ' are rendered as bullet items.",
+        ],
+      },
+      {
+        title: "Where it applies",
+        tone: "reference",
+        items: [
+          "Proposal page: intro, scope, deliverables, timeline fields render with lightweight structure.",
+          "Project Workspace summary: proposal intro/scope/deliverables/timeline use the same rendering component.",
+          "Fallback summary also uses the same parser to avoid dense text walls.",
+        ],
+      },
+      {
+        title: "Guardrails",
+        tone: "guardrail",
+        items: [
+          "No markdown dependency and no WYSIWYG editor are required.",
+          "CRM authoring stays plain text and remains backward-compatible.",
+          "Do not treat this as full document authoring; keep syntax lightweight.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "lifecycle-attention-layer",
+    title: "Lifecycle Attention Layer",
+    tag: "Ops",
+    automation: "Automated",
+    summary:
+      "Internal reminder logic highlights proposal, deposit, and onboarding leakage without adding alert noise.",
+    blocks: [
+      {
+        title: "Reminder classes",
+        tone: "reference",
+        items: [
+          "Proposal follow-up due: proposal sent with no meaningful progression after threshold window.",
+          "Deposit pending due: accepted/payment_requested lead without cleared deposit after threshold window.",
+          "Onboarding pending due: deposit paid but onboarding not completed after threshold window.",
+        ],
+      },
+      {
+        title: "Where operators see this",
+        tone: "do",
+        items: [
+          "Lead detail includes Needs attention cards with age labels and next-action text.",
+          "Leads index includes an attention summary plus per-lead attention visibility.",
+          "These reminders are internal-only and intentionally not pushed to clients.",
+        ],
+      },
+      {
+        title: "Signal quality rules",
+        tone: "guardrail",
+        items: [
+          "Do not blur reminder meaning across stages.",
+          "Do not add broad notifications or toast spam.",
+          "Reminder logic reuses lifecycle truth fields and does not create parallel business state.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "weekly-operating-summary",
+    title: "Weekly Operating Summary",
+    tag: "Ops",
+    automation: "Automated",
+    summary:
+      "Overview-level weekly briefing prioritizes what needs action now across leads, payment progression, onboarding, prospects, and active flow.",
+    blocks: [
+      {
+        title: "Current blocks",
+        tone: "reference",
+        items: [
+          "Proposal follow-up",
+          "Deposit pending",
+          "Onboarding pending",
+          "Prospect attention",
+          "Active attention",
+          "Top 3 to act on now",
+        ],
+      },
+      {
+        title: "Operator usage",
+        tone: "do",
+        items: [
+          "Start weekly planning from /admin and clear top priority items first.",
+          "Use direct links from summary cards to execute in lead/prospect detail.",
+          "Treat this as briefing, not as a standalone reporting dashboard.",
+        ],
+      },
+      {
+        title: "Design intent",
+        tone: "guardrail",
+        items: [
+          "Compact and scan-first (under 30 seconds).",
+          "No giant tables or vanity KPI expansion.",
+          "Only high-signal categories grounded in existing operational truth.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "performance-decision-layer",
+    title: "Performance Decision Layer",
+    tag: "Ops",
+    automation: "Automated",
+    summary:
+      "Performance is now a compact decision layer: strongest/weakest signals, stage deltas, and source/page quality context.",
+    blocks: [
+      {
+        title: "What is now surfaced",
+        tone: "reference",
+        items: [
+          "Decision Insights cards for strongest source, weakest stage, best landing pages, biggest drop-off, and current focus.",
+          "Previous-period deltas for sessions, leads, Session -> Lead, Lead -> Won, Won -> Deposit, and Deposit -> Completed.",
+          "Source quality snapshot distinguishing efficient progression vs high-traffic weak-quality signals.",
+          "Landing page relevance by both lead generation and downstream commercial progression.",
+        ],
+      },
+      {
+        title: "Operator usage",
+        tone: "do",
+        items: [
+          "Use deltas to decide whether to prioritize capture quality or downstream follow-through.",
+          "Use source quality snapshot before reallocating traffic attention.",
+          "Use landing watch rows to flag pages with traffic but weak lead yield.",
+        ],
+      },
+      {
+        title: "Guardrails",
+        tone: "guardrail",
+        items: [
+          "Do not overstate confidence on thin samples.",
+          "Do not collapse stages into one blended score.",
+          "Keep interpretations grounded in explicit numerator/denominator rows.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "host-surface-routing",
+    title: "Host Surface Routing",
+    tag: "Ops",
+    automation: "Automated",
+    summary:
+      "Middleware enforces public/admin/portal separation while preserving token-based client routes and admin auth boundaries.",
+    blocks: [
+      {
+        title: "Live surfaces",
+        tone: "reference",
+        items: [
+          "Public host serves marketing site and redirects client/admin paths to their dedicated hosts.",
+          "Admin host rewrites non-API app paths into /admin and enforces authenticated access.",
+          "Portal host maps token paths into /client/[token] and allows proposal/onboarding/client surfaces only.",
+        ],
+      },
+      {
+        title: "Operator implications",
+        tone: "do",
+        items: [
+          "Treat host-split behavior as part of normal deployment contract.",
+          "Keep NEXT_PUBLIC_PUBLIC_HOST, NEXT_PUBLIC_ADMIN_HOST, and NEXT_PUBLIC_PORTAL_HOST consistent with environment.",
+          "Use portal token links as client-facing endpoints; do not share admin routes externally.",
+        ],
+      },
+      {
+        title: "Guardrails",
+        tone: "guardrail",
+        items: [
+          "Unknown preview hosts fall back to development surface behavior.",
+          "Client-surface routes are intentionally blocked from admin host navigation flow.",
+          "Portal surface does not expose admin pages.",
         ],
       },
     ],
@@ -801,6 +1215,17 @@ const SECTIONS: HandbookSection[] = [
           "Lead -> Won uses won leads divided by lead cohort count for that window.",
           "Won -> Deposit Paid uses won leads with cleared deposit/full payment divided by won leads.",
           "Deposit Paid -> Completed uses deposit-paid lead cohort divided by project_status = completed.",
+          "Decision Insights layer adds grounded source/page/stage interpretation without changing these stage definitions.",
+          "Comparison pills and stage trends use current 30d versus previous 30d windows.",
+        ],
+      },
+      {
+        title: "Source and landing quality logic",
+        tone: "reference",
+        items: [
+          "Source quality distinguishes traffic volume from commercial progression (won/deposit/completed context).",
+          "Landing relevance includes both lead-generation and downstream outcome visibility.",
+          "Performance watch rows highlight high-traffic pages/sources with weak progression signals.",
         ],
       },
       {
@@ -818,6 +1243,45 @@ const SECTIONS: HandbookSection[] = [
         items: [
           "Performance is visible in top nav as /admin/performance.",
           "Planner route and code remain active at /admin/planner but are intentionally hidden from visible top navigation.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "deliberate-non-features",
+    title: "Deliberate Non-Features",
+    tag: "Ops",
+    automation: "Manual",
+    summary:
+      "Several product ideas are intentionally excluded to keep the system premium, compact, and high-signal.",
+    blocks: [
+      {
+        title: "Intentionally not built",
+        tone: "reference",
+        items: [
+          "No full BI dashboard stack.",
+          "No noisy notifications inbox.",
+          "No rich-text/WYSIWYG editor for proposal and workspace content.",
+          "No full client portal product with chat/task-board complexity.",
+          "No auto-send outbound engine for prospects.",
+        ],
+      },
+      {
+        title: "Reason",
+        tone: "guardrail",
+        items: [
+          "Protect operator attention from low-signal noise.",
+          "Keep workflows understandable by small teams and partners.",
+          "Prefer strict state truth over broad feature surface.",
+        ],
+      },
+      {
+        title: "Operator expectation",
+        tone: "do",
+        items: [
+          "Use compact attention layers and direct execution paths.",
+          "Escalate only where commercial/delivery risk is real.",
+          "Treat simplicity as an operating constraint, not a temporary limitation.",
         ],
       },
     ],
@@ -898,11 +1362,15 @@ const AUTOMATION_STYLES: Record<HandbookSection["automation"], string> = {
 };
 
 const CORE_NAV_ITEMS = [
+  { id: "operating-state-now", title: "Operating State Now" },
+  { id: "core-system-layers", title: "Core System Layers" },
+  { id: "canonical-definitions", title: "Canonical Definitions" },
   { id: "control-model", title: "Control Model" },
   { id: "manual-vs-automatic", title: "Manual vs Automatic" },
   { id: "action-event-map", title: "Action Event Map" },
   { id: "pricing-framework", title: "Pricing Framework" },
   { id: "flow-reference", title: "Lifecycle Reference" },
+  { id: "current-build-order", title: "Current Build Order" },
   { id: "outbound-prospects", title: "Outbound Prospects" },
   { id: "scenario-playbooks", title: "Scenario Playbooks" },
   { id: "project-status-reference", title: "Project Status Reference" },
@@ -915,7 +1383,13 @@ function getNavItems(): NavItem[] {
     id: section.id,
     title: section.title,
   }));
-  return [...CORE_NAV_ITEMS, ...sectionItems];
+  const combined = [...CORE_NAV_ITEMS, ...sectionItems];
+  const seen = new Set<string>();
+  return combined.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
 }
 
 function SectionTag({ label }: { label: HandbookSection["tag"] }) {
@@ -1180,6 +1654,172 @@ function ScenarioPlaybooks() {
   );
 }
 
+function OperatingStateNowSection() {
+  return (
+    <section id="operating-state-now" className="scroll-mt-24">
+      <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
+        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <SectionTag label="Ops" />
+            <AutomationTag label="Mixed" />
+          </div>
+          <h2 className="text-lg font-semibold text-zinc-100">Operating State Now</h2>
+          <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+            Current live state beyond the earlier launch baseline. Treat this as real system truth.
+          </p>
+        </div>
+        <div className="grid gap-3 p-5 md:grid-cols-2">
+          {OPERATING_STATE_NOW.map((item) => (
+            <article
+              key={item.title}
+              className="rounded-xl border border-zinc-800/70 bg-zinc-950/35 p-3.5"
+            >
+              <p className="text-sm font-medium text-zinc-200">{item.title}</p>
+              <p className="mt-1 text-xs leading-relaxed text-zinc-500">{item.body}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CoreSystemLayersSection() {
+  return (
+    <section id="core-system-layers" className="scroll-mt-24">
+      <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
+        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <SectionTag label="Ops" />
+            <AutomationTag label="Mixed" />
+          </div>
+          <h2 className="text-lg font-semibold text-zinc-100">Core System Layers</h2>
+          <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+            Layer map for operators across public, admin, proposal, portal, prospects, performance, and docs.
+          </p>
+        </div>
+        <div className="space-y-2 p-5">
+          {CORE_SYSTEM_LAYERS.map((row) => (
+            <article
+              key={row.layer}
+              className="grid gap-2 rounded-xl border border-zinc-800/70 bg-zinc-950/35 p-3.5 md:grid-cols-[1fr_1fr_1.2fr_1.2fr]"
+            >
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Layer</p>
+                <p className="mt-1 text-sm font-medium text-zinc-200">{row.layer}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Routes</p>
+                <p className="mt-1 font-mono text-xs leading-relaxed text-zinc-400">{row.routes}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Role</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-300">{row.role}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Operator note</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-500">{row.operatorNotes}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CanonicalDefinitionsSection() {
+  return (
+    <section id="canonical-definitions" className="scroll-mt-24">
+      <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
+        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <SectionTag label="Ops" />
+            <AutomationTag label="Manual" />
+          </div>
+          <h2 className="text-lg font-semibold text-zinc-100">Canonical Definitions</h2>
+          <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+            Non-negotiable terminology for lifecycle, performance, prospects, and client-facing naming.
+          </p>
+        </div>
+        <div className="space-y-2 p-5">
+          {CANONICAL_DEFINITIONS.map((row) => (
+            <article
+              key={row.term}
+              className="grid gap-2 rounded-xl border border-zinc-800/70 bg-zinc-950/35 p-3.5 md:grid-cols-[0.8fr_1.4fr_1.4fr]"
+            >
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Term</p>
+                <p className="mt-1 text-sm font-medium text-zinc-200">{row.term}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Meaning</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-300">{row.meaning}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Guardrail</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-500">{row.guardrail}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CurrentBuildOrderSection() {
+  const statusClass: Record<BuildOrderStep["status"], string> = {
+    "Live now": "border-emerald-500/35 bg-emerald-500/10 text-emerald-300",
+    Next: "border-brand/35 bg-brand/10 text-brand",
+    "After next": "border-zinc-700/70 bg-zinc-900/35 text-zinc-400",
+  };
+
+  return (
+    <section id="current-build-order" className="scroll-mt-24">
+      <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
+        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <SectionTag label="Ops" />
+            <AutomationTag label="Manual" />
+          </div>
+          <h2 className="text-lg font-semibold text-zinc-100">Current Build Order</h2>
+          <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+            Ordered by current operational value, not vanity roadmap volume.
+          </p>
+        </div>
+        <div className="space-y-2 p-5">
+          {CURRENT_BUILD_ORDER.map((row, index) => (
+            <article
+              key={row.step}
+              className="grid gap-2 rounded-xl border border-zinc-800/70 bg-zinc-950/35 p-3.5 md:grid-cols-[28px_1.2fr_1.2fr_1.2fr]"
+            >
+              <span className="text-sm font-semibold tabular-nums text-zinc-500">{index + 1}</span>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Step</p>
+                <p className="mt-1 text-sm font-medium text-zinc-200">{row.step}</p>
+                <span
+                  className={`mt-2 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em] ${statusClass[row.status]}`}
+                >
+                  {row.status}
+                </span>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Why this order</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-300">{row.reason}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Implementation note</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-500">{row.implementation}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function DocsPage() {
   const navItems = getNavItems();
 
@@ -1199,35 +1839,36 @@ export default function DocsPage() {
             Inovense CRM Command Reference
           </h1>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-400">
-            This is the source of truth for how we run lead lifecycle, commercial flow,
-            AI-assisted proposal work, payment confirmation, delivery state, and
-            traffic-to-lead performance semantics.
-            Keep records precise. Keep automation boundaries strict.
+            Source of truth for the live operating system: host-split surfaces, lifecycle execution,
+            proposal intelligence, payment/onboarding flow, client portal behavior, prospects, and
+            decision-grade performance semantics. Keep stage truth strict and operator decisions explicit.
           </p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
             <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
-              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Lead Flow</p>
-              <p className="mt-1 text-sm font-medium text-zinc-200">Status-driven and stage-true</p>
+              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Surface Split</p>
+              <p className="mt-1 text-sm font-medium text-zinc-200">Public / Admin / Portal host routing</p>
             </div>
             <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
-              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Agents</p>
-              <p className="mt-1 text-sm font-medium text-zinc-200">Assist content, no auto-send</p>
+              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Commercial Flow</p>
+              <p className="mt-1 text-sm font-medium text-zinc-200">
+                Proposal to deposit to onboarding to active
+              </p>
             </div>
             <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
-              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Payment Events</p>
-              <p className="mt-1 text-sm font-medium text-zinc-200">Deposit and final payment have separate email events</p>
+              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Proposal Intelligence</p>
+              <p className="mt-1 text-sm font-medium text-zinc-200">Research + Angle + Writer draft stack</p>
             </div>
             <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
-              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Project Status</p>
-              <p className="mt-1 text-sm font-medium text-zinc-200">Manual. Completed means delivered.</p>
+              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Attention Layers</p>
+              <p className="mt-1 text-sm font-medium text-zinc-200">Reminders + Weekly Summary are live</p>
             </div>
             <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
-              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Pricing</p>
-              <p className="mt-1 text-sm font-medium text-zinc-200">Framework tiers with realistic USD anchors.</p>
+              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Project Workspace</p>
+              <p className="mt-1 text-sm font-medium text-zinc-200">Client portal stays intentionally light</p>
             </div>
             <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
               <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Performance</p>
-              <p className="mt-1 text-sm font-medium text-zinc-200">Lead means submitted or manual only.</p>
+              <p className="mt-1 text-sm font-medium text-zinc-200">Decision insights + strict stage semantics</p>
             </div>
           </div>
         </div>
@@ -1268,6 +1909,10 @@ export default function DocsPage() {
         </aside>
 
         <div className="space-y-6">
+          <OperatingStateNowSection />
+          <CoreSystemLayersSection />
+          <CanonicalDefinitionsSection />
+
           <section id="control-model" className="scroll-mt-24">
             <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
               <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
@@ -1370,6 +2015,7 @@ export default function DocsPage() {
             </div>
           </section>
 
+          <CurrentBuildOrderSection />
           <ScenarioPlaybooks />
 
           <section id="project-status-reference" className="scroll-mt-24">
