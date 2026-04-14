@@ -26,6 +26,7 @@ import type { ProposalAngleOutput } from "@/lib/agents/proposal-angle/schema";
 import type { ProposalWriterOutput } from "@/lib/agents/proposal-writer/schema";
 import { formatUsdPrimaryWithLocalSecondary } from "@/lib/currency";
 import { MarketMarker } from "@/app/admin/market-marker";
+import { formatReminderAge, getLifecycleReminders } from "@/lib/lifecycle-reminders";
 
 export const dynamic = "force-dynamic";
 
@@ -135,6 +136,7 @@ export default async function LeadDetailPage({
     localCurrencyCode: lead.local_currency_code,
     usdFxRateLocked: lead.usd_fx_rate_locked,
   });
+  const lifecycleReminders = getLifecycleReminders(lead);
 
   return (
     <>
@@ -221,6 +223,28 @@ export default async function LeadDetailPage({
             localCurrencyCode={lead.local_currency_code}
             usdFxRateLocked={lead.usd_fx_rate_locked}
           />
+
+          {lifecycleReminders.length > 0 && (
+            <Section title="Needs attention">
+              <div className="space-y-2.5">
+                {lifecycleReminders.map((reminder) => (
+                  <div
+                    key={reminder.kind}
+                    className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2.5"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-medium text-amber-100">{reminder.title}</p>
+                      <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-amber-200/85">
+                        {formatReminderAge(reminder)}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[11px] leading-relaxed text-zinc-300">{reminder.summary}</p>
+                    <p className="mt-1 text-[11px] text-zinc-500">{reminder.nextAction}</p>
+                  </div>
+                ))}
+              </div>
+            </Section>
+          )}
 
           <Section title="Status">
             <StatusUpdater id={lead.id} currentStatus={lead.status} />

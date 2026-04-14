@@ -1,31 +1,34 @@
-/**
- * Shared JSX factory for lane-specific Open Graph images.
- * Used by /build, /systems, and /growth opengraph-image.tsx files.
- * Not a Next.js route — just a utility.
- */
-
 import type { OgVariant } from "@/lib/og-variant";
 
-export interface LaneOgConfig {
-  /** Short lane identifier shown in teal above the headline. E.g. "Build Lane" */
-  laneLabel: string;
-  /** Main headline for the OG image. */
+type HubLane = {
+  name: string;
+  desc: string;
+};
+
+export interface HubOgConfig {
+  eyebrow: string;
   headline: string;
-  /** Four deliverable items shown in the right panel. */
-  items: [string, string, string, string];
-  /** Panel section label shown above the items. */
+  subheadline: string;
   panelLabel: string;
-  /** Base64 logo data URL loaded from public/logo.png */
+  lanes: readonly [HubLane, HubLane, HubLane];
+  domainLabel: string;
   logo: string;
-  /** Optional OG composition variant. Defaults to premium. */
   variant?: OgVariant;
 }
 
 const PANEL_H = 272;
 const PANEL_TOP = Math.round((630 - PANEL_H) / 2);
 
-export function makeLaneOg(config: LaneOgConfig) {
-  const { laneLabel, headline, items, panelLabel, logo } = config;
+export function makeHubOg(config: HubOgConfig) {
+  const {
+    eyebrow,
+    headline,
+    subheadline,
+    panelLabel,
+    lanes,
+    domainLabel,
+    logo,
+  } = config;
   const variant = config.variant ?? "premium";
 
   if (variant === "facebook-safe") {
@@ -72,10 +75,10 @@ export function makeLaneOg(config: LaneOgConfig) {
         <div
           style={{
             position: "absolute",
-            top: "-180px",
+            top: "-170px",
             left: "-170px",
-            width: "760px",
-            height: "760px",
+            width: "770px",
+            height: "770px",
             borderRadius: "50%",
             backgroundImage:
               "radial-gradient(ellipse at center, rgba(84,196,206,0.22) 0%, transparent 62%)",
@@ -85,10 +88,10 @@ export function makeLaneOg(config: LaneOgConfig) {
         <div
           style={{
             position: "absolute",
-            right: "-210px",
-            bottom: "-200px",
-            width: "720px",
-            height: "720px",
+            right: "-205px",
+            bottom: "-205px",
+            width: "730px",
+            height: "730px",
             borderRadius: "50%",
             backgroundImage:
               "radial-gradient(ellipse at center, rgba(76,141,186,0.15) 0%, transparent 68%)",
@@ -124,38 +127,57 @@ export function makeLaneOg(config: LaneOgConfig) {
             {panelLabel}
           </div>
 
-          {items.map((item, i) => (
+          {lanes.map((lane, i) => (
             <div
               key={i}
               style={{
                 display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                paddingBottom: i < items.length - 1 ? "16px" : "0",
-                marginBottom: i < items.length - 1 ? "16px" : "0",
+                flexDirection: "column",
+                paddingBottom: i < lanes.length - 1 ? "14px" : "0",
+                marginBottom: i < lanes.length - 1 ? "14px" : "0",
                 borderBottom:
-                  i < items.length - 1 ? "1px solid rgba(101,124,160,0.35)" : "none",
+                  i < lanes.length - 1 ? "1px solid rgba(101,124,160,0.35)" : "none",
               }}
             >
               <div
                 style={{
-                  width: "6px",
-                  height: "6px",
-                  borderRadius: "50%",
-                  backgroundColor: "#61d8df",
-                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "9px",
+                  marginBottom: "5px",
                 }}
-              />
+              >
+                <div
+                  style={{
+                    width: "6px",
+                    height: "6px",
+                    borderRadius: "50%",
+                    backgroundColor: "#61d8df",
+                    flexShrink: 0,
+                  }}
+                />
+                <span
+                  style={{
+                    display: "flex",
+                    color: "#edf2fa",
+                    fontSize: "14px",
+                    fontWeight: 620,
+                    letterSpacing: "0.03em",
+                  }}
+                >
+                  {lane.name}
+                </span>
+              </div>
               <span
                 style={{
                   display: "flex",
-                  color: "#edf2fa",
-                  fontSize: "15px",
-                  fontWeight: 560,
-                  letterSpacing: "0.01em",
+                  color: "#b3c0d4",
+                  fontSize: "13px",
+                  letterSpacing: "0.02em",
+                  paddingLeft: "15px",
                 }}
               >
-                {item}
+                {lane.desc}
               </span>
             </div>
           ))}
@@ -184,7 +206,7 @@ export function makeLaneOg(config: LaneOgConfig) {
             flexDirection: "column",
             justifyContent: "flex-start",
             paddingLeft: "66px",
-            paddingTop: "114px",
+            paddingTop: "108px",
           }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -196,7 +218,7 @@ export function makeLaneOg(config: LaneOgConfig) {
             style={{
               objectFit: "contain",
               objectPosition: "left center",
-              marginBottom: "34px",
+              marginBottom: "32px",
             }}
           />
 
@@ -211,22 +233,36 @@ export function makeLaneOg(config: LaneOgConfig) {
               marginBottom: "12px",
             }}
           >
-            {laneLabel}
+            {eyebrow}
           </div>
 
           <div
             style={{
               display: "flex",
               color: "#f7fbff",
-              fontSize: "58px",
+              fontSize: "54px",
               fontWeight: 740,
               lineHeight: 1.08,
-              letterSpacing: "-0.028em",
-              maxWidth: "650px",
+              letterSpacing: "-0.027em",
+              maxWidth: "652px",
               textShadow: "0 1px 0 rgba(2,5,10,0.35)",
             }}
           >
             {headline}
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              color: "#c2cedf",
+              fontSize: "20px",
+              fontWeight: 520,
+              lineHeight: 1.32,
+              maxWidth: "650px",
+              marginTop: "14px",
+            }}
+          >
+            {subheadline}
           </div>
 
           <div
@@ -238,7 +274,7 @@ export function makeLaneOg(config: LaneOgConfig) {
               marginTop: "30px",
             }}
           >
-            inovense.com
+            {domainLabel}
           </div>
         </div>
       </div>
@@ -270,7 +306,6 @@ export function makeLaneOg(config: LaneOgConfig) {
         }}
       />
 
-      {/* Subtle grid */}
       <div
         style={{
           position: "absolute",
@@ -286,7 +321,6 @@ export function makeLaneOg(config: LaneOgConfig) {
         }}
       />
 
-      {/* Teal atmospheric glow */}
       <div
         style={{
           position: "absolute",
@@ -313,7 +347,6 @@ export function makeLaneOg(config: LaneOgConfig) {
         }}
       />
 
-      {/* Right panel - depth card */}
       <div
         style={{
           position: "absolute",
@@ -327,7 +360,6 @@ export function makeLaneOg(config: LaneOgConfig) {
         }}
       />
 
-      {/* Right panel - main card */}
       <div
         style={{
           position: "absolute",
@@ -343,7 +375,6 @@ export function makeLaneOg(config: LaneOgConfig) {
           padding: "28px",
         }}
       >
-        {/* Panel label */}
         <div
           style={{
             display: "flex",
@@ -358,45 +389,62 @@ export function makeLaneOg(config: LaneOgConfig) {
           {panelLabel}
         </div>
 
-        {/* Deliverable items */}
-        {items.map((item, i) => (
+        {lanes.map((lane, i) => (
           <div
             key={i}
             style={{
               display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              paddingBottom: i < items.length - 1 ? "18px" : "0",
-              marginBottom: i < items.length - 1 ? "18px" : "0",
+              flexDirection: "column",
+              paddingBottom: i < lanes.length - 1 ? "20px" : "0",
+              marginBottom: i < lanes.length - 1 ? "20px" : "0",
               borderBottom:
-                i < items.length - 1 ? "1px solid rgba(95,111,139,0.28)" : "none",
+                i < lanes.length - 1 ? "1px solid rgba(95,111,139,0.28)" : "none",
             }}
           >
             <div
               style={{
-                width: "5px",
-                height: "5px",
-                borderRadius: "50%",
-                backgroundColor: "#5ec5ca",
-                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                gap: "9px",
+                marginBottom: "5px",
               }}
-            />
+            >
+              <div
+                style={{
+                  width: "5px",
+                  height: "5px",
+                  borderRadius: "50%",
+                  backgroundColor: "#5ec5ca",
+                  flexShrink: 0,
+                }}
+              />
+              <span
+                style={{
+                  display: "flex",
+                  color: "#e6eaf3",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  letterSpacing: "0.04em",
+                }}
+              >
+                {lane.name}
+              </span>
+            </div>
             <span
               style={{
                 display: "flex",
-                color: "#e6eaf3",
-                fontSize: "13px",
-                fontWeight: 500,
+                color: "#9ea9be",
+                fontSize: "12px",
                 letterSpacing: "0.02em",
+                paddingLeft: "14px",
               }}
             >
-              {item}
+              {lane.desc}
             </span>
           </div>
         ))}
       </div>
 
-      {/* Panel top accent line */}
       <div
         style={{
           position: "absolute",
@@ -409,7 +457,6 @@ export function makeLaneOg(config: LaneOgConfig) {
         }}
       />
 
-      {/* Main content column */}
       <div
         style={{
           position: "absolute",
@@ -447,22 +494,36 @@ export function makeLaneOg(config: LaneOgConfig) {
             marginBottom: "16px",
           }}
         >
-          {laneLabel}
+          {eyebrow}
         </div>
 
         <div
           style={{
             display: "flex",
             color: "#f7f9fd",
-            fontSize: "49px",
+            fontSize: "47px",
             fontWeight: 700,
             lineHeight: 1.12,
-            letterSpacing: "-0.024em",
-            maxWidth: "520px",
+            letterSpacing: "-0.026em",
+            maxWidth: "548px",
             textShadow: "0 1px 0 rgba(3,6,10,0.35)",
           }}
         >
           {headline}
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            color: "#b4bed0",
+            fontSize: "18px",
+            fontWeight: 500,
+            lineHeight: 1.38,
+            maxWidth: "548px",
+            marginTop: "16px",
+          }}
+        >
+          {subheadline}
         </div>
 
         <div
@@ -474,7 +535,7 @@ export function makeLaneOg(config: LaneOgConfig) {
             marginTop: "42px",
           }}
         >
-          inovense.com
+          {domainLabel}
         </div>
       </div>
     </div>

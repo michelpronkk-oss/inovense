@@ -23,6 +23,11 @@ function formatSignedPp(value: number): string {
   return "0.0pp";
 }
 
+function ratio(numerator: number, denominator: number): number {
+  if (denominator === 0) return 0;
+  return numerator / denominator;
+}
+
 export default async function AdminPerformancePage() {
   const performance = await getAdminPerformanceSnapshot();
 
@@ -74,10 +79,48 @@ export default async function AdminPerformancePage() {
           label: `${formatSignedPp(performance.comparison.sessionToLead30d.deltaPp)} vs prev 30d`,
           tone: performance.comparison.sessionToLead30d.direction,
         };
+  const leadToWonTrend = performance.query.leadsFailed
+    ? undefined
+    : {
+        label: `${formatSignedPp(performance.comparison.leadToWon30d.deltaPp)} vs prev 30d`,
+        tone: performance.comparison.leadToWon30d.direction,
+      };
+  const wonToDepositTrend = performance.query.leadsFailed
+    ? undefined
+    : {
+        label: `${formatSignedPp(performance.comparison.wonToDeposit30d.deltaPp)} vs prev 30d`,
+        tone: performance.comparison.wonToDeposit30d.direction,
+      };
+  const depositToCompletedTrend = performance.query.leadsFailed
+    ? undefined
+    : {
+        label: `${formatSignedPp(performance.comparison.depositToCompleted30d.deltaPp)} vs prev 30d`,
+        tone: performance.comparison.depositToCompleted30d.direction,
+      };
 
   const hasSourceBreakdowns = performance.sessions.topSources.length > 0;
   const hasSourceOutcomes = performance.sourceOutcomes.length > 0;
   const landingByLeads = performance.landingOutcomes.filter((row) => row.leads > 0).slice(0, 5);
+  const landingWatchRows = performance.landingOutcomes
+    .filter((row) => row.sessions >= 8 && row.leads > 0 && ratio(row.leads, row.sessions) < 0.02)
+    .slice(0, 3);
+  const sourceQualityWinners = performance.sourceOutcomes
+    .filter((row) => row.leads >= 2 && row.depositPaid > 0)
+    .slice()
+    .sort((a, b) => {
+      const aScore = ratio(a.depositPaid, a.leads);
+      const bScore = ratio(b.depositPaid, b.leads);
+      if (bScore !== aScore) return bScore - aScore;
+      return b.depositPaid - a.depositPaid;
+    })
+    .slice(0, 3);
+  const sourceQualityWatch = performance.sourceOutcomes
+    .filter(
+      (row) =>
+        row.sessions >= 10 &&
+        ((row.leads === 0 && row.sessions > 0) || (row.leads >= 2 && row.won === 0))
+    )
+    .slice(0, 3);
 
   const sessionBreakdownScale = Math.max(performance.sessions.last30d, 1);
 
@@ -121,9 +164,52 @@ export default async function AdminPerformancePage() {
       <section className="mb-8">
         <div className="mb-3">
           <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-700">
-            Performance Signals
+            Decision Insights
+          </p>
+          <p className="mt-1 text-[11px] text-zinc-600">
+            Grounded operator insights from the current 30d window with strict stage semantics.
           </p>
         </div>
+
+        {!performance.query.sessionsFailed && !performance.query.leadsFailed && (
+          <div className="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-5">
+            <ComparisonPill
+              label="Sessions"
+              current={performance.comparison.sessions30d.current}
+              previous={performance.comparison.sessions30d.previous}
+              deltaLabel={formatSignedCount(performance.comparison.sessions30d.delta)}
+              tone={performance.comparison.sessions30d.direction}
+            />
+            <ComparisonPill
+              label="Leads"
+              current={performance.comparison.leads30d.current}
+              previous={performance.comparison.leads30d.previous}
+              deltaLabel={formatSignedCount(performance.comparison.leads30d.delta)}
+              tone={performance.comparison.leads30d.direction}
+            />
+            <ComparisonPill
+              label="Session -> Lead"
+              current={performance.comparison.sessionToLead30d.currentRate}
+              previous={performance.comparison.sessionToLead30d.previousRate}
+              deltaLabel={formatSignedPp(performance.comparison.sessionToLead30d.deltaPp)}
+              tone={performance.comparison.sessionToLead30d.direction}
+            />
+            <ComparisonPill
+              label="Lead -> Won"
+              current={performance.comparison.leadToWon30d.currentRate}
+              previous={performance.comparison.leadToWon30d.previousRate}
+              deltaLabel={formatSignedPp(performance.comparison.leadToWon30d.deltaPp)}
+              tone={performance.comparison.leadToWon30d.direction}
+            />
+            <ComparisonPill
+              label="Won -> Deposit"
+              current={performance.comparison.wonToDeposit30d.currentRate}
+              previous={performance.comparison.wonToDeposit30d.previousRate}
+              deltaLabel={formatSignedPp(performance.comparison.wonToDeposit30d.deltaPp)}
+              tone={performance.comparison.wonToDeposit30d.direction}
+            />
+          </div>
+        )}
 
         {performance.signals.length === 0 ? (
           <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/20 px-6 py-8 text-center">
@@ -198,6 +284,7 @@ export default async function AdminPerformancePage() {
                 ? "Lead-stage metrics unavailable"
                 : `${performance.funnel.won30d}/${performance.funnel.leads30d} leads`
             }
+            trend={leadToWonTrend}
             accent="border-t-blue-500/35"
             valueColor="text-blue-300"
           />
@@ -209,6 +296,7 @@ export default async function AdminPerformancePage() {
                 ? "Lead-stage metrics unavailable"
                 : `${performance.funnel.wonWithDeposit30d}/${performance.funnel.won30d} won leads`
             }
+            trend={wonToDepositTrend}
             accent="border-t-emerald-500/35"
             valueColor="text-emerald-300"
           />
@@ -220,20 +308,27 @@ export default async function AdminPerformancePage() {
                 ? "Lead-stage metrics unavailable"
                 : `${performance.funnel.completedFromDeposit30d}/${performance.funnel.depositPaid30d} deposit-paid leads`
             }
+            trend={depositToCompletedTrend}
             accent="border-t-amber-500/35"
             valueColor="text-amber-300"
           />
         </div>
       </section>
 
-      {(hasSourceBreakdowns || landingByLeads.length > 0 || performance.sessions.topPaths.length > 0) && (
+      {(hasSourceBreakdowns ||
+        hasSourceOutcomes ||
+        landingByLeads.length > 0 ||
+        performance.sessions.topPaths.length > 0) && (
         <section className="mb-8">
           <div className="mb-3">
             <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-700">
-              Traffic Distribution (30d)
+              Source + Landing Quality (30d)
+            </p>
+            <p className="mt-1 text-[11px] text-zinc-600">
+              Distinguishes raw traffic from commercially useful progression.
             </p>
           </div>
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
             {hasSourceBreakdowns && (
               <div className="overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/30">
                 <div className="border-b border-zinc-800/60 bg-zinc-900/60 px-4 py-2.5">
@@ -265,7 +360,61 @@ export default async function AdminPerformancePage() {
             <div className="overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/30">
               <div className="border-b border-zinc-800/60 bg-zinc-900/60 px-4 py-2.5">
                 <p className="text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-600">
-                  Best landing pages by lead generation
+                  Source quality snapshot
+                </p>
+              </div>
+
+              <div className="space-y-3 px-4 py-3.5">
+                <div>
+                  <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+                    Efficient progression
+                  </p>
+                  {sourceQualityWinners.length > 0 ? (
+                    <ul className="mt-1.5 space-y-1.5">
+                      {sourceQualityWinners.map((row) => (
+                        <li key={row.source} className="flex items-center justify-between gap-2">
+                          <span className="text-xs text-zinc-300">{formatSourceLabel(row.source)}</span>
+                          <span className="text-[10px] tabular-nums text-zinc-500">
+                            {row.depositPaid} deposit / {row.leads} leads ({row.leadToDepositRate})
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-1.5 text-[11px] text-zinc-600">
+                      No source has enough lead/deposit volume for a quality read yet.
+                    </p>
+                  )}
+                </div>
+
+                <div className="border-t border-zinc-800/60 pt-3">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+                    Watch this
+                  </p>
+                  {sourceQualityWatch.length > 0 ? (
+                    <ul className="mt-1.5 space-y-1.5">
+                      {sourceQualityWatch.map((row) => (
+                        <li key={row.source} className="flex items-center justify-between gap-2">
+                          <span className="text-xs text-zinc-400">{formatSourceLabel(row.source)}</span>
+                          <span className="text-[10px] tabular-nums text-amber-300/85">
+                            {row.sessions} sessions, {row.leads} leads, {row.won} won
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-1.5 text-[11px] text-zinc-600">
+                      No obvious high-traffic quality risk in this window.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/30">
+              <div className="border-b border-zinc-800/60 bg-zinc-900/60 px-4 py-2.5">
+                <p className="text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-600">
+                  Landing pages with commercial relevance
                 </p>
               </div>
 
@@ -278,6 +427,9 @@ export default async function AdminPerformancePage() {
                         <p className="mt-1 text-[10px] tabular-nums text-zinc-600">
                           {row.leads} lead{row.leads !== 1 ? "s" : ""} from {row.sessions} session
                           {row.sessions !== 1 ? "s" : ""}
+                        </p>
+                        <p className="mt-0.5 text-[10px] tabular-nums text-zinc-700">
+                          {row.won} won, {row.depositPaid} deposit paid
                         </p>
                       </div>
                       <span className="shrink-0 text-xs tabular-nums text-zinc-300">{row.sessionToLeadRate}</span>
@@ -305,6 +457,21 @@ export default async function AdminPerformancePage() {
               )}
             </div>
           </div>
+
+          {landingWatchRows.length > 0 && (
+            <div className="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/8 px-4 py-3">
+              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-amber-200/85">
+                Landing pages to watch
+              </p>
+              <ul className="mt-1.5 space-y-1">
+                {landingWatchRows.map((row) => (
+                  <li key={row.path} className="text-[11px] text-amber-100/90">
+                    {formatPathLabel(row.path)}: {row.sessions} sessions, {row.leads} leads ({row.sessionToLeadRate})
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
       )}
 
@@ -335,7 +502,9 @@ export default async function AdminPerformancePage() {
                       "Won",
                       "Lead -> Won",
                       "Deposit paid",
+                      "Lead -> Deposit",
                       "Won -> Deposit",
+                      "Completed",
                     ].map((heading) => (
                       <th
                         key={heading}
@@ -361,8 +530,12 @@ export default async function AdminPerformancePage() {
                       </td>
                       <td className="px-4 py-3.5 text-xs tabular-nums text-zinc-500">{row.depositPaid}</td>
                       <td className="px-4 py-3.5 text-xs tabular-nums text-zinc-300">
+                        {row.leadToDepositRate}
+                      </td>
+                      <td className="px-4 py-3.5 text-xs tabular-nums text-zinc-300">
                         {row.wonToDepositRate}
                       </td>
+                      <td className="px-4 py-3.5 text-xs tabular-nums text-zinc-500">{row.completed}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -372,6 +545,38 @@ export default async function AdminPerformancePage() {
         )}
       </section>
     </>
+  );
+}
+
+function ComparisonPill({
+  label,
+  current,
+  previous,
+  deltaLabel,
+  tone,
+}: {
+  label: string;
+  current: string | number;
+  previous: string | number;
+  deltaLabel: string;
+  tone: "up" | "down" | "flat";
+}) {
+  const toneClass =
+    tone === "up"
+      ? "text-emerald-300"
+      : tone === "down"
+        ? "text-amber-300"
+        : "text-zinc-400";
+
+  return (
+    <div className="rounded-lg border border-zinc-800/80 bg-zinc-900/35 px-3 py-2.5">
+      <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-zinc-600">{label}</p>
+      <div className="mt-1 flex items-end justify-between gap-2">
+        <p className="text-sm font-medium tabular-nums text-zinc-100">{current}</p>
+        <p className="text-[10px] tabular-nums text-zinc-600">prev {previous}</p>
+      </div>
+      <p className={`mt-1 text-[10px] tabular-nums ${toneClass}`}>{deltaLabel}</p>
+    </div>
   );
 }
 

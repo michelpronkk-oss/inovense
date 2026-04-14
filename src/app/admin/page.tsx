@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { createSupabaseServerClient, type Lead } from "@/lib/supabase-server";
+import {
+  createSupabaseServerClient,
+  type Lead,
+  type Prospect,
+} from "@/lib/supabase-server";
 import { format } from "date-fns";
 import { STATUS_CONFIG, LANE_COLORS } from "@/app/admin/config";
 import {
@@ -10,6 +14,7 @@ import {
 } from "@/lib/payment-utils";
 import { MarketMarker } from "@/app/admin/market-marker";
 import { TrafficAttributionBlock } from "@/app/admin/traffic-attribution-block";
+import { deriveWeeklyOperatingSummary } from "@/lib/weekly-operating-summary";
 
 export const metadata: Metadata = { title: "Overview | Inovense CRM" };
 
@@ -17,19 +22,23 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminOverviewPage() {
   let leads: Lead[] = [];
+  let prospects: Prospect[] = [];
   let error: string | null = null;
 
   try {
     const supabase = createSupabaseServerClient();
-    const { data, error: sbError } = await supabase
-      .from("leads")
-      .select("*")
-      .order("created_at", { ascending: false });
+    const [leadsResult, prospectsResult] = await Promise.all([
+      supabase.from("leads").select("*").order("created_at", { ascending: false }),
+      supabase.from("prospects").select("*").order("updated_at", { ascending: false }),
+    ]);
 
-    if (sbError) throw sbError;
-    leads = (data ?? []) as Lead[];
+    if (leadsResult.error) throw leadsResult.error;
+    if (prospectsResult.error) throw prospectsResult.error;
+
+    leads = (leadsResult.data ?? []) as Lead[];
+    prospects = (prospectsResult.data ?? []) as Prospect[];
   } catch (err) {
-    error = err instanceof Error ? err.message : "Failed to load leads.";
+    error = err instanceof Error ? err.message : "Failed to load overview.";
   }
 
   /* ─── Pipeline counts ────────────────────────────────────────────────────── */
@@ -97,6 +106,7 @@ export default async function AdminOverviewPage() {
 
   const recent = leads.slice(0, 6);
   const hasData = leads.length > 0 && !error;
+  const weeklySummary = deriveWeeklyOperatingSummary({ leads, prospects });
 
   return (
     <>
@@ -114,6 +124,131 @@ export default async function AdminOverviewPage() {
       )}
 
       {/* ── Pipeline ─────────────────────────────────────────────────────── */}
+      {!error && (
+        <section className="mb-8 rounded-2xl border border-zinc-800/80 bg-zinc-900/45 px-4 py-4 sm:px-5 sm:py-5">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-600">
+                Weekly operating summary
+              </p>
+              <p className="mt-1 text-sm text-zinc-300">
+                What needs action first this week.
+              </p>
+            </div>
+            <p className="text-[11px] text-zinc-600">
+              Scan in under 30 seconds
+            </p>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <WeeklySummaryCard
+              title="Proposal follow-up"
+              count={weeklySummary.proposals.dueCount}
+              sub={`${weeklySummary.proposals.pendingCount} open proposal${weeklySummary.proposals.pendingCount !== 1 ? "s" : ""}`}
+              emptyText="No proposal follow-up due right now."
+              href="/admin/leads"
+              cta="Open leads"
+              items={weeklySummary.proposals.items.map((item) => ({
+                id: item.id,
+                href: item.href,
+                label: item.company,
+                detail: item.ageLabel,
+              }))}
+            />
+            <WeeklySummaryCard
+              title="Deposit pending"
+              count={weeklySummary.deposits.dueCount}
+              sub={`${weeklySummary.deposits.pendingCount} accepted waiting for deposit`}
+              emptyText="No overdue deposit follow-up currently."
+              href="/admin/leads"
+              cta="Open leads"
+              items={weeklySummary.deposits.items.map((item) => ({
+                id: item.id,
+                href: item.href,
+                label: item.company,
+                detail: item.ageLabel,
+              }))}
+            />
+            <WeeklySummaryCard
+              title="Onboarding pending"
+              count={weeklySummary.onboarding.dueCount}
+              sub={`${weeklySummary.onboarding.pendingCount} paid project${weeklySummary.onboarding.pendingCount !== 1 ? "s" : ""} not complete`}
+              emptyText="No onboarding follow-up due right now."
+              href="/admin/leads"
+              cta="Open leads"
+              items={weeklySummary.onboarding.items.map((item) => ({
+                id: item.id,
+                href: item.href,
+                label: item.company,
+                detail: item.ageLabel,
+              }))}
+            />
+            <WeeklySummaryCard
+              title="Prospect attention"
+              count={weeklySummary.prospects.attentionCount}
+              sub={`${weeklySummary.prospects.overdueCount} overdue - ${weeklySummary.prospects.unscheduledCount} unscheduled`}
+              emptyText={
+                weeklySummary.prospects.dueSoonCount > 0
+                  ? `${weeklySummary.prospects.dueSoonCount} prospect follow-up${weeklySummary.prospects.dueSoonCount !== 1 ? "s are" : " is"} due in the next 7 days.`
+                  : "Prospect follow-up queue is calm."
+              }
+              href="/admin/prospects"
+              cta="Open prospects"
+              items={weeklySummary.prospects.items.map((item) => ({
+                id: item.id,
+                href: item.href,
+                label: `${item.company} - ${item.statusLabel}`,
+                detail: item.ageLabel,
+              }))}
+            />
+            <WeeklySummaryCard
+              title="Active attention"
+              count={weeklySummary.active.attentionCount}
+              sub={`${weeklySummary.active.readyToActivateCount} ready to activate - ${weeklySummary.active.pausedCount} paused`}
+              emptyText="Active commercial flow is stable."
+              href="/admin/leads"
+              cta="Open leads"
+              items={weeklySummary.active.items.map((item) => ({
+                id: item.id,
+                href: item.href,
+                label: item.company,
+                detail: item.detail,
+              }))}
+            />
+          </div>
+
+          <div className="mt-4 rounded-xl border border-zinc-800/70 bg-zinc-950/45 px-3.5 py-3">
+            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+              Top 3 to act on now
+            </p>
+            {weeklySummary.priorityItems.length > 0 ? (
+              <ul className="mt-2 space-y-2">
+                {weeklySummary.priorityItems.map((item) => (
+                  <li key={item.id} className="rounded-lg border border-zinc-800/70 bg-zinc-900/35 px-3 py-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <Link
+                        href={item.href}
+                        className="text-xs font-medium text-zinc-200 transition-colors hover:text-brand"
+                      >
+                        {item.title}
+                      </Link>
+                      <span className="text-[10px] uppercase tracking-[0.08em] text-amber-200/85">
+                        {item.ageLabel}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-zinc-500">{item.detail}</p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-xs text-zinc-600">
+                No urgent weekly attention items right now.
+              </p>
+            )}
+          </div>
+        </section>
+      )}
+
       <div className="mb-3">
         <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-700">
           Pipeline
@@ -354,6 +489,66 @@ export default async function AdminOverviewPage() {
 }
 
 /* ─── Revenue metric card ────────────────────────────────────────────────── */
+
+type WeeklySummaryCardItem = {
+  id: string;
+  href: string;
+  label: string;
+  detail: string;
+};
+
+function WeeklySummaryCard({
+  title,
+  count,
+  sub,
+  emptyText,
+  href,
+  cta,
+  items,
+}: {
+  title: string;
+  count: number;
+  sub: string;
+  emptyText: string;
+  href: string;
+  cta: string;
+  items: WeeklySummaryCardItem[];
+}) {
+  return (
+    <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/45 px-3.5 py-3">
+      <div className="flex items-end justify-between gap-2">
+        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+          {title}
+        </p>
+        <p className="text-sm font-semibold tabular-nums text-zinc-100">{count}</p>
+      </div>
+      <p className="mt-1 text-[10px] text-zinc-600">{sub}</p>
+      {items.length > 0 ? (
+        <ul className="mt-2 space-y-1.5">
+          {items.map((item) => (
+            <li key={item.id} className="rounded-md border border-zinc-800/70 bg-zinc-900/35 px-2.5 py-2">
+              <Link
+                href={item.href}
+                className="line-clamp-1 text-[11px] font-medium text-zinc-200 transition-colors hover:text-brand"
+              >
+                {item.label}
+              </Link>
+              <p className="mt-0.5 text-[10px] text-zinc-600">{item.detail}</p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-[11px] text-zinc-600">{emptyText}</p>
+      )}
+      <Link
+        href={href}
+        className="mt-3 inline-flex items-center text-[10px] uppercase tracking-[0.1em] text-zinc-500 transition-colors hover:text-zinc-300"
+      >
+        {cta}
+      </Link>
+    </div>
+  );
+}
 
 function RevenueMetric({
   label,

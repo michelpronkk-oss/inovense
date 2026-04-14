@@ -11,6 +11,11 @@ import {
   fmtUsd,
 } from "@/lib/payment-utils";
 import { MarketMarker } from "@/app/admin/market-marker";
+import {
+  formatReminderAge,
+  getLifecycleReminders,
+  type LifecycleReminderKind,
+} from "@/lib/lifecycle-reminders";
 
 export const metadata: Metadata = { title: "Leads | Inovense CRM" };
 
@@ -88,6 +93,22 @@ export default async function LeadsPage({
   const missingFxLeadCount = missingFxLeadIds.size;
 
   const showMetrics = leads.length > 0 && !error;
+  const attentionRows = leads.flatMap((lead) => {
+    const primaryReminder = getLifecycleReminders(lead)[0];
+    if (!primaryReminder) return [];
+    return [{ lead, reminder: primaryReminder }];
+  });
+  const attentionByLeadId = new Map(
+    attentionRows.map(({ lead, reminder }) => [lead.id, reminder])
+  );
+  const attentionCounts: Record<LifecycleReminderKind, number> = {
+    proposal_follow_up: 0,
+    deposit_pending: 0,
+    onboarding_pending: 0,
+  };
+  for (const row of attentionRows) {
+    attentionCounts[row.reminder.kind] += 1;
+  }
 
   return (
     <>
@@ -162,6 +183,56 @@ export default async function LeadsPage({
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {attentionRows.length > 0 && (
+        <div className="mb-6 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-4 sm:px-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-amber-300/80">
+                Needs attention
+              </p>
+              <p className="mt-1 text-sm text-amber-100">
+                {attentionRows.length} lead{attentionRows.length !== 1 ? "s" : ""} currently need follow-up.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 text-[10px]">
+              {attentionCounts.proposal_follow_up > 0 && (
+                <span className="inline-flex items-center rounded-full border border-amber-400/35 bg-amber-500/10 px-2.5 py-0.5 text-amber-100">
+                  Proposal: {attentionCounts.proposal_follow_up}
+                </span>
+              )}
+              {attentionCounts.deposit_pending > 0 && (
+                <span className="inline-flex items-center rounded-full border border-amber-400/35 bg-amber-500/10 px-2.5 py-0.5 text-amber-100">
+                  Deposit: {attentionCounts.deposit_pending}
+                </span>
+              )}
+              {attentionCounts.onboarding_pending > 0 && (
+                <span className="inline-flex items-center rounded-full border border-amber-400/35 bg-amber-500/10 px-2.5 py-0.5 text-amber-100">
+                  Onboarding: {attentionCounts.onboarding_pending}
+                </span>
+              )}
+            </div>
+          </div>
+          <ul className="mt-3.5 space-y-2.5">
+            {attentionRows.slice(0, 6).map(({ lead, reminder }) => (
+              <li key={lead.id} className="rounded-lg border border-zinc-800/80 bg-zinc-900/45 px-3 py-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <Link
+                    href={`/admin/leads/${lead.id}`}
+                    className="text-xs font-medium text-zinc-200 transition-colors hover:text-brand"
+                  >
+                    {lead.full_name} · {lead.company_name}
+                  </Link>
+                  <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-amber-200/90">
+                    {formatReminderAge(reminder)}
+                  </span>
+                </div>
+                <p className="mt-1 text-[11px] text-zinc-400">{reminder.title}</p>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -241,13 +312,23 @@ export default async function LeadsPage({
                     {format(new Date(lead.created_at), "MMM d, yyyy")}
                   </span>
                 </div>
+                {attentionByLeadId.get(lead.id) && (
+                  <div className="mt-2 rounded-md border border-amber-500/25 bg-amber-500/5 px-2.5 py-1.5">
+                    <p className="text-[11px] font-medium text-amber-100">
+                      {attentionByLeadId.get(lead.id)!.title}
+                    </p>
+                    <p className="mt-0.5 text-[10px] text-amber-200/80">
+                      {formatReminderAge(attentionByLeadId.get(lead.id)!)}
+                    </p>
+                  </div>
+                )}
               </div>
             ))}
           </div>
 
           {/* Desktop: full table */}
           <div className="hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[1020px] text-sm">
+            <table className="w-full min-w-[1120px] text-sm">
               <thead>
                 <tr className="border-b border-zinc-800/80 bg-zinc-900/70">
                   {[
@@ -260,6 +341,7 @@ export default async function LeadsPage({
                     "Budget",
                     "Timeline",
                     "Status",
+                    "Attention",
                   ].map((h) => (
                     <th
                       key={h}
@@ -329,6 +411,20 @@ export default async function LeadsPage({
                       >
                         {STATUS_CONFIG[lead.status]?.label ?? lead.status}
                       </span>
+                    </td>
+                    <td className="px-4 py-4">
+                      {attentionByLeadId.get(lead.id) ? (
+                        <div className="space-y-0.5">
+                          <p className="text-xs text-amber-100">
+                            {attentionByLeadId.get(lead.id)!.title}
+                          </p>
+                          <p className="text-[10px] uppercase tracking-[0.08em] text-amber-300/80">
+                            {formatReminderAge(attentionByLeadId.get(lead.id)!)}
+                          </p>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-zinc-700">—</span>
+                      )}
                     </td>
                   </tr>
                 ))}

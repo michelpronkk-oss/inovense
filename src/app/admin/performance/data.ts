@@ -43,6 +43,7 @@ export type PerformanceSourceOutcome = {
   won: number;
   leadToWonRate: string;
   depositPaid: number;
+  leadToDepositRate: string;
   wonToDepositRate: string;
   completed: number;
 };
@@ -53,7 +54,9 @@ export type PerformanceLandingOutcome = {
   leads: number;
   sessionToLeadRate: string;
   won: number;
+  leadToWonRate: string;
   depositPaid: number;
+  leadToDepositRate: string;
 };
 
 export type CountComparison = {
@@ -77,8 +80,10 @@ export type RateComparison = {
 export type PerformanceSignal = {
   id:
     | "strongest_source"
+    | "best_commercial_source"
     | "weakest_stage"
     | "top_landing_page"
+    | "top_landing_commercial"
     | "biggest_dropoff"
     | "focus_area";
   title: string;
@@ -97,6 +102,9 @@ export type AdminPerformanceSnapshot = {
     sessions30d: CountComparison;
     leads30d: CountComparison;
     sessionToLead30d: RateComparison;
+    leadToWon30d: RateComparison;
+    wonToDeposit30d: RateComparison;
+    depositToCompleted30d: RateComparison;
   };
   sessions: {
     today: number;
@@ -299,6 +307,15 @@ export async function getAdminPerformanceSnapshot(): Promise<AdminPerformanceSna
   const wonToDepositRate = fmtPct(wonWithDeposit30d, won30d);
   const depositToCompletedRate = fmtPct(completedFromDeposit30d, depositPaid30d);
 
+  const wonLeadsPrevious = leadsPrevious.filter((lead) => lead.status === "won");
+  const wonPrevious = wonLeadsPrevious.length;
+  const depositPaidLeadsPrevious = leadsPrevious.filter((lead) => isDepositPaid(lead));
+  const depositPaidPrevious = depositPaidLeadsPrevious.length;
+  const wonWithDepositPrevious = wonLeadsPrevious.filter((lead) => isDepositPaid(lead)).length;
+  const completedFromDepositPrevious = depositPaidLeadsPrevious.filter(
+    (lead) => lead.project_status === "completed"
+  ).length;
+
   const sourceOutcomesMap = new Map<
     string,
     { source: string; leads: number; won: number; depositPaid: number; completed: number }
@@ -333,6 +350,7 @@ export async function getAdminPerformanceSnapshot(): Promise<AdminPerformanceSna
         won: row.won,
         leadToWonRate: fmtPct(row.won, row.leads),
         depositPaid: row.depositPaid,
+        leadToDepositRate: fmtPct(row.depositPaid, row.leads),
         wonToDepositRate: fmtPct(row.depositPaid, row.won),
         completed: row.completed,
       };
@@ -380,6 +398,8 @@ export async function getAdminPerformanceSnapshot(): Promise<AdminPerformanceSna
       sessionToLeadRate: fmtPct(row.leads, row.sessions),
       won: row.won,
       depositPaid: row.depositPaid,
+      leadToWonRate: fmtPct(row.won, row.leads),
+      leadToDepositRate: fmtPct(row.depositPaid, row.leads),
     }))
     .sort((a, b) => b.leads - a.leads || b.won - a.won || b.sessions - a.sessions)
     .slice(0, 8);
@@ -392,18 +412,43 @@ export async function getAdminPerformanceSnapshot(): Promise<AdminPerformanceSna
     leadsPrevious.length,
     sessionsPrevious.length
   );
+  const leadToWonComparison = buildRateComparison(
+    won30d,
+    leads30d,
+    wonPrevious,
+    leadsPrevious.length
+  );
+  const wonToDepositComparison = buildRateComparison(
+    wonWithDeposit30d,
+    won30d,
+    wonWithDepositPrevious,
+    wonPrevious
+  );
+  const depositToCompletedComparison = buildRateComparison(
+    completedFromDeposit30d,
+    depositPaid30d,
+    completedFromDepositPrevious,
+    depositPaidPrevious
+  );
 
   const stageRows = [
-    { stage: "Lead -> Won", numerator: won30d, denominator: leads30d },
+    {
+      stage: "Lead -> Won",
+      numerator: won30d,
+      denominator: leads30d,
+      comparison: leadToWonComparison,
+    },
     {
       stage: "Won -> Deposit Paid",
       numerator: wonWithDeposit30d,
       denominator: won30d,
+      comparison: wonToDepositComparison,
     },
     {
       stage: "Deposit Paid -> Completed",
       numerator: completedFromDeposit30d,
       denominator: depositPaid30d,
+      comparison: depositToCompletedComparison,
     },
   ].filter((row) => row.denominator > 0);
 
@@ -433,9 +478,10 @@ export async function getAdminPerformanceSnapshot(): Promise<AdminPerformanceSna
       return qualityCandidates
         .slice()
         .sort((a, b) => {
-          const aRatio = ratio(a.won, a.leads);
-          const bRatio = ratio(b.won, b.leads);
+          const aRatio = ratio(a.depositPaid, a.leads);
+          const bRatio = ratio(b.depositPaid, b.leads);
           if (bRatio !== aRatio) return bRatio - aRatio;
+          if (b.depositPaid !== a.depositPaid) return b.depositPaid - a.depositPaid;
           if (b.won !== a.won) return b.won - a.won;
           return b.leads - a.leads;
         })[0];
@@ -444,7 +490,38 @@ export async function getAdminPerformanceSnapshot(): Promise<AdminPerformanceSna
     return sourceOutcomes[0];
   })();
 
+  const strongestCommercialSource = sourceOutcomes
+    .filter((row) => row.won > 0 || row.depositPaid > 0)
+    .slice()
+    .sort((a, b) => {
+      if (b.depositPaid !== a.depositPaid) return b.depositPaid - a.depositPaid;
+      if (b.won !== a.won) return b.won - a.won;
+      if (b.leads !== a.leads) return b.leads - a.leads;
+      return b.sessions - a.sessions;
+    })[0] ?? null;
+
   const topLandingByLeads = landingOutcomes.find((row) => row.leads > 0) ?? null;
+  const topLandingByCommercial =
+    landingOutcomes
+      .filter((row) => row.depositPaid > 0 || row.won > 0)
+      .slice()
+      .sort((a, b) => {
+        if (b.depositPaid !== a.depositPaid) return b.depositPaid - a.depositPaid;
+        if (b.won !== a.won) return b.won - a.won;
+        if (b.leads !== a.leads) return b.leads - a.leads;
+        return b.sessions - a.sessions;
+      })[0] ?? null;
+
+  const weakLandingCandidate =
+    landingOutcomes
+      .filter((row) => row.sessions >= 8 && row.leads > 0)
+      .slice()
+      .sort((a, b) => {
+        const aRatio = ratio(a.leads, a.sessions);
+        const bRatio = ratio(b.leads, b.sessions);
+        if (aRatio !== bRatio) return aRatio - bRatio;
+        return b.sessions - a.sessions;
+      })[0] ?? null;
 
   const signals: PerformanceSignal[] = [];
 
@@ -452,19 +529,32 @@ export async function getAdminPerformanceSnapshot(): Promise<AdminPerformanceSna
     signals.push({
       id: "strongest_source",
       title: "Strongest source",
-      text: `${formatSourceLabel(strongestSource.source)} leads this window with ${strongestSource.leads} leads, ${strongestSource.won} won, and ${strongestSource.depositPaid} deposit paid.`,
+      text: `${formatSourceLabel(strongestSource.source)} is the strongest quality source this window (${strongestSource.leadToDepositRate} lead -> deposit, ${strongestSource.leadToWonRate} lead -> won).`,
+      tone: "positive",
+    });
+  }
+
+  if (!leadsFailed && strongestCommercialSource) {
+    signals.push({
+      id: "best_commercial_source",
+      title: "Best source by commercial progression",
+      text: `${formatSourceLabel(strongestCommercialSource.source)} produced ${strongestCommercialSource.won} won and ${strongestCommercialSource.depositPaid} deposit-paid leads in the current 30d cohort.`,
       tone: "positive",
     });
   }
 
   if (!leadsFailed && weakestStage) {
+    const hasPrevious = weakestStage.comparison.previousDenominator > 0;
+    const deltaLabel = hasPrevious
+      ? ` vs prev ${weakestStage.comparison.previousRate} (${weakestStage.comparison.deltaPp.toFixed(1)}pp)`
+      : "";
     signals.push({
       id: "weakest_stage",
       title: "Weakest stage",
       text: `${weakestStage.stage} is currently the weakest active stage at ${fmtPct(
         weakestStage.numerator,
         weakestStage.denominator
-      )} (${weakestStage.numerator}/${weakestStage.denominator}).`,
+      )} (${weakestStage.numerator}/${weakestStage.denominator})${deltaLabel}.`,
       tone: "attention",
     });
   }
@@ -475,6 +565,15 @@ export async function getAdminPerformanceSnapshot(): Promise<AdminPerformanceSna
       title: "Top landing page by leads",
       text: `${formatPathLabel(topLandingByLeads.path)} generated ${topLandingByLeads.leads} leads from ${topLandingByLeads.sessions} sessions (${topLandingByLeads.sessionToLeadRate}).`,
       tone: "positive",
+    });
+  }
+
+  if (!sessionsFailed && !leadsFailed && topLandingByCommercial) {
+    signals.push({
+      id: "top_landing_commercial",
+      title: "Top landing page by commercial outcome",
+      text: `${formatPathLabel(topLandingByCommercial.path)} produced ${topLandingByCommercial.won} won and ${topLandingByCommercial.depositPaid} deposit-paid outcomes this window.`,
+      tone: "neutral",
     });
   }
 
@@ -489,12 +588,29 @@ export async function getAdminPerformanceSnapshot(): Promise<AdminPerformanceSna
   }
 
   if (!sessionsFailed && !leadsFailed) {
-    if (sessionToLeadComparison.direction === "down" && Math.abs(sessionToLeadComparison.deltaPp) >= 0.5) {
+    if (wonToDepositComparison.direction === "down" && Math.abs(wonToDepositComparison.deltaPp) >= 2) {
+      signals.push({
+        id: "focus_area",
+        title: "Focus this week",
+        text: `Deposit conversion after won moved from ${wonToDepositComparison.previousRate} to ${wonToDepositComparison.currentRate}. Tighten payment-request follow-up and unblock deposit steps.`,
+        tone: "attention",
+      });
+    } else if (
+      sessionToLeadComparison.direction === "down" &&
+      Math.abs(sessionToLeadComparison.deltaPp) >= 0.5
+    ) {
       signals.push({
         id: "focus_area",
         title: "Focus this week",
         text: `Recover Session -> Lead efficiency. It moved from ${sessionToLeadComparison.previousRate} to ${sessionToLeadComparison.currentRate} (${sessionToLeadComparison.deltaPp.toFixed(1)}pp).`,
         tone: "attention",
+      });
+    } else if (weakLandingCandidate && ratio(weakLandingCandidate.leads, weakLandingCandidate.sessions) < 0.02) {
+      signals.push({
+        id: "focus_area",
+        title: "Focus this week",
+        text: `${formatPathLabel(weakLandingCandidate.path)} has traffic volume but weak lead yield (${weakLandingCandidate.sessionToLeadRate}). Review positioning and offer clarity on this route.`,
+        tone: "neutral",
       });
     } else if (weakestStage) {
       signals.push({
@@ -526,6 +642,9 @@ export async function getAdminPerformanceSnapshot(): Promise<AdminPerformanceSna
       sessions30d: sessionsComparison,
       leads30d: leadsComparison,
       sessionToLead30d: sessionToLeadComparison,
+      leadToWon30d: leadToWonComparison,
+      wonToDeposit30d: wonToDepositComparison,
+      depositToCompleted30d: depositToCompletedComparison,
     },
     sessions: {
       today: sessionsToday,
