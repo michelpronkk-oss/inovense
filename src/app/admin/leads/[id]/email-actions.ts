@@ -15,6 +15,8 @@ import {
 
 const DEPOSIT_PAID_CONFIRMATION_EMAIL_TYPE = "deposit_paid_confirmation";
 const FINAL_PAYMENT_RECEIVED_EMAIL_TYPE = "final_payment_received_confirmation";
+const PROPOSAL_PHASE_PORTAL_REFERENCE_PATTERN =
+  /(?:\/client\/|client\s+workspace|project\s+workspace|client\s+portal|project\s+portal)/i;
 
 export async function sendDepositPaidConfirmationEmail(
   leadId: string
@@ -84,7 +86,7 @@ export async function sendDepositPaidConfirmationEmail(
         );
         return {
           success: false,
-          error: "Could not prepare Client Workspace link.",
+          error: "Could not prepare Project Workspace link.",
         };
       }
     }
@@ -338,6 +340,19 @@ export async function sendLeadEmail(
     const template = getEmailTemplatesForLeadSource(lead.lead_source)[emailType];
     if (!template) {
       return { success: false, error: "Invalid email template." };
+    }
+
+    if (
+      emailType === "proposal_sent" &&
+      PROPOSAL_PHASE_PORTAL_REFERENCE_PATTERN.test(body)
+    ) {
+      return {
+        success: false,
+        error:
+          locale === "nl"
+            ? "Houd de voorstelmail voorstelgericht. Verwijder Project Workspace-verwijzingen in deze fase."
+            : "Keep proposal emails proposal-first. Remove Project Workspace references at this stage.",
+      };
     }
 
     const effectiveDepositAmount = lead.deposit_amount ?? lead.proposal_deposit;

@@ -528,6 +528,13 @@ export function PaymentEditor({
         usdFxRateLocked,
         countryCode,
       });
+      if (result.success) {
+        if (result.paymentLink != null) {
+          setPaymentLink(result.paymentLink);
+        } else {
+          setPaymentLink("");
+        }
+      }
       setSaveState(result.success ? "saved" : "error");
       if (result.success) setTimeout(() => setSaveState("idle"), 2500);
     });

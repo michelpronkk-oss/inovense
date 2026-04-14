@@ -40,8 +40,8 @@ const DEPOSIT_PAID_CONFIRMATION_TEMPLATE_EN: DepositPaidConfirmationTemplate = {
   heading: (firstName) => `Deposit received, ${firstName}.`,
   subject: (company) => `Deposit confirmed for ${company}`,
   body: (company) =>
-    `We've received the deposit for ${company}, and your project slot is now secured.\n\nYour Client Workspace is now live. Use it as the central place for project status, key links, and next steps.\n\nNext, we will move into onboarding and kickoff preparation. If there is anything you want us to factor in before kickoff, just reply to this email.`,
-  ctaText: "Open Client Workspace",
+    `We've received the deposit for ${company}, so your project can now move forward.\n\nYour Project Workspace is now live. Use it as the central place for status, key links, and next steps.\n\nNext, we will move into onboarding and kickoff preparation. If there is anything you want us to factor in before kickoff, just reply to this email.`,
+  ctaText: "Open Project Workspace",
 };
 
 const DEPOSIT_PAID_CONFIRMATION_TEMPLATE_NL: DepositPaidConfirmationTemplate = {
@@ -49,8 +49,8 @@ const DEPOSIT_PAID_CONFIRMATION_TEMPLATE_NL: DepositPaidConfirmationTemplate = {
   heading: (firstName) => `Aanbetaling ontvangen, ${firstName}.`,
   subject: (company) => `Aanbetaling bevestigd voor ${company}`,
   body: (company) =>
-    `We hebben de aanbetaling voor ${company} ontvangen en je projectslot is nu bevestigd.\n\nJe Client Workspace staat nu live. Gebruik deze als centrale plek voor projectstatus, belangrijke links en volgende stappen.\n\nHierna gaan we door naar onboarding en kickoffvoorbereiding. Als je vooraf nog context wilt delen, kun je gewoon op deze e-mail reageren.`,
-  ctaText: "Open Client Workspace",
+    `We hebben de aanbetaling voor ${company} ontvangen, dus je project kan nu door naar de volgende fase.\n\nJe Project Workspace staat nu live. Gebruik deze als centrale plek voor status, belangrijke links en volgende stappen.\n\nHierna gaan we door naar onboarding en kickoffvoorbereiding. Als je vooraf nog context wilt delen, kun je gewoon op deze e-mail reageren.`,
+  ctaText: "Open Project Workspace",
 };
 
 export type FinalPaymentReceivedTemplate = {
@@ -117,7 +117,7 @@ const EMAIL_TEMPLATES_EN: Record<EmailTemplateType, EmailTemplateDef> = {
     heading: (firstName) => `One step before we start, ${firstName}.`,
     defaultSubject: (_, company) => `Your onboarding brief for ${company}`,
     defaultBody: (_, company) =>
-      `To make sure we hit the ground running, we've prepared a short onboarding brief for ${company}. It takes about 10 minutes and helps us deliver faster and more accurately.\n\nPlease complete it using the link below.\n\nYour Client Workspace remains the central place for project status, links, and next steps.`,
+      `To make sure we hit the ground running, we've prepared a short onboarding brief for ${company}. It takes about 10 minutes and helps us deliver faster and more accurately.\n\nPlease complete it using the link below.\n\nYour Project Workspace remains the central place for status, links, and next steps.`,
     statusOnSend: "onboarding_sent",
     hasCta: true,
     ctaText: "Complete onboarding brief",
@@ -176,7 +176,7 @@ const EMAIL_TEMPLATES_NL: Record<EmailTemplateType, EmailTemplateDef> = {
     heading: (firstName) => `Nog een stap en we starten, ${firstName}.`,
     defaultSubject: (_, company) => `Onboarding voor ${company}`,
     defaultBody: (_, company) =>
-      `Om scherp te starten staat de onboarding voor ${company} klaar.\n\nHet invullen duurt ongeveer 10 minuten en geeft ons alles om snel en nauwkeurig te leveren.\n\nOpen de link hieronder en rond hem af.\n\nJe Client Workspace blijft de centrale plek voor projectstatus, links en volgende stappen.`,
+      `Om scherp te starten staat de onboarding voor ${company} klaar.\n\nHet invullen duurt ongeveer 10 minuten en geeft ons alles om snel en nauwkeurig te leveren.\n\nOpen de link hieronder en rond hem af.\n\nJe Project Workspace blijft de centrale plek voor status, links en volgende stappen.`,
     statusOnSend: "onboarding_sent",
     hasCta: true,
     ctaText: "Start onboarding",

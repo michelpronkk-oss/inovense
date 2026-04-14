@@ -5,6 +5,7 @@ import { getClientLocaleForLeadSource, type ClientLocale } from "@/lib/client-lo
 import { derivePaymentState } from "@/lib/payment-utils";
 import { formatCurrencyAmount } from "@/lib/currency";
 import { resolveClientFacingCurrencyCode } from "@/lib/market";
+import { LightweightStructuredText } from "@/components/lightweight-structured-text";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,8 @@ type PortalLead = {
   proposal_title: string | null;
   proposal_intro: string | null;
   proposal_scope: string | null;
+  proposal_deliverables: string | null;
+  proposal_timeline: string | null;
   proposal_price: number | null;
   proposal_deposit: number | null;
   proposal_decision: "accepted" | "declined" | null;
@@ -116,7 +119,21 @@ type PortalCopy = {
     depositPaid: string;
     fullyPaid: string;
   };
+  paymentPanel: {
+    openSecurePayment: string;
+    linkPending: string;
+    depositReceivedTitle: string;
+    depositReceivedBody: string;
+    fullyPaidTitle: string;
+    fullyPaidBody: string;
+  };
   summaryFallback: string;
+  summarySections: {
+    intro: string;
+    scope: string;
+    deliverables: string;
+    timeline: string;
+  };
 };
 
 const PORTAL_COPY: Record<ClientLocale, PortalCopy> = {
@@ -214,8 +231,23 @@ const PORTAL_COPY: Record<ClientLocale, PortalCopy> = {
       depositPaid: "Deposit is confirmed. Final payment remains pending.",
       fullyPaid: "Deposit and final payment are both confirmed.",
     },
+    paymentPanel: {
+      openSecurePayment: "Open secure payment",
+      linkPending: "Payment access will appear here when ready.",
+      depositReceivedTitle: "Deposit received",
+      depositReceivedBody:
+        "Your deposit has been confirmed. We will share final payment details later in the project.",
+      fullyPaidTitle: "Payments complete",
+      fullyPaidBody: "All project payments are confirmed.",
+    },
     summaryFallback:
       "Scope details are being finalized. This workspace updates as your project progresses.",
+    summarySections: {
+      intro: "Introduction",
+      scope: "Scope",
+      deliverables: "Deliverables",
+      timeline: "Timeline",
+    },
   },
   nl: {
     portalLabel: "Project Workspace",
@@ -311,8 +343,23 @@ const PORTAL_COPY: Record<ClientLocale, PortalCopy> = {
       depositPaid: "Aanbetaling is bevestigd. Eindbetaling staat nog open.",
       fullyPaid: "Aanbetaling en eindbetaling zijn allebei bevestigd.",
     },
+    paymentPanel: {
+      openSecurePayment: "Open veilige betaling",
+      linkPending: "Betaaltoegang verschijnt hier zodra deze klaarstaat.",
+      depositReceivedTitle: "Aanbetaling ontvangen",
+      depositReceivedBody:
+        "Je aanbetaling is bevestigd. Gegevens voor de slotbetaling delen we later in het project.",
+      fullyPaidTitle: "Betalingen afgerond",
+      fullyPaidBody: "Alle projectbetalingen zijn bevestigd.",
+    },
     summaryFallback:
       "Scopedetails worden afgerond. Deze workspace wordt bijgewerkt naarmate het project vordert.",
+    summarySections: {
+      intro: "Introductie",
+      scope: "Scope",
+      deliverables: "Deliverables",
+      timeline: "Planning",
+    },
   },
 };
 
@@ -336,16 +383,28 @@ function formatLocalAmount(
   return formatCurrencyAmount(value, currencyCode, locale === "nl" ? "nl-NL" : "en-GB");
 }
 
-function compactSummary(value: string): string {
-  const compact = value.replace(/\s+/g, " ").trim();
-  if (compact.length <= 420) return compact;
-  return `${compact.slice(0, 417)}...`;
+function normalizeExternalPaymentHref(raw: string | null | undefined): string | null {
+  const trimmed = (raw ?? "").trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const parsed = new URL(withProtocol);
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
 }
 
 async function getPortalLeadByToken(token: string): Promise<PortalLead | null> {
   const supabase = createSupabaseServerClient();
   const selectColumns =
-    "id, full_name, company_name, work_email, lead_source, service_lane, project_type, project_details, status, project_status, onboarding_status, onboarding_token, onboarding_sent_at, onboarding_completed_at, proposal_token, proposal_status, proposal_title, proposal_intro, proposal_scope, proposal_price, proposal_deposit, proposal_decision, proposal_sent_at, payment_link, deposit_amount, deposit_paid_at, final_payment_paid_at, project_start_date, local_currency_code";
+    "id, full_name, company_name, work_email, lead_source, service_lane, project_type, project_details, status, project_status, onboarding_status, onboarding_token, onboarding_sent_at, onboarding_completed_at, proposal_token, proposal_status, proposal_title, proposal_intro, proposal_scope, proposal_deliverables, proposal_timeline, proposal_price, proposal_deposit, proposal_decision, proposal_sent_at, payment_link, deposit_amount, deposit_paid_at, final_payment_paid_at, project_start_date, local_currency_code";
 
   const proposalResult = await supabase
     .from("leads")
@@ -425,11 +484,12 @@ function deriveNextAction(
   }
 
   if (phase === "payment") {
+    const paymentHref = normalizeExternalPaymentHref(lead.payment_link);
     return {
       title: copy.nextAction.payDepositTitle,
-      body: lead.payment_link ? copy.nextAction.payDepositBody : copy.nextAction.payDepositNoLinkBody,
-      href: lead.payment_link,
-      ctaLabel: lead.payment_link ? copy.docs.openPayment : null,
+      body: paymentHref ? copy.nextAction.payDepositBody : copy.nextAction.payDepositNoLinkBody,
+      href: paymentHref,
+      ctaLabel: paymentHref ? copy.docs.openPayment : null,
       external: true,
     };
   }
@@ -629,17 +689,47 @@ export default async function ClientPortalPage({
   const portalStatus = derivePortalStatus(lead);
   const phase = derivePortalPhase(lead);
   const nextAction = deriveNextAction(phase, lead, copy);
+  const paymentState = derivePaymentState(lead);
   const paymentSummary = paymentSummaryText(phase, lead, copy);
   const proposalHref = lead.proposal_token ? `/proposal/${lead.proposal_token}` : null;
   const onboardingHref = lead.onboarding_token ? `/onboarding/${lead.onboarding_token}` : null;
+  const paymentLinkHref = normalizeExternalPaymentHref(lead.payment_link);
 
-  const scopeTextRaw =
-    lead.proposal_scope ??
-    lead.proposal_intro ??
-    lead.proposal_title ??
-    lead.project_details ??
-    copy.summaryFallback;
-  const scopeText = compactSummary(scopeTextRaw);
+  const proposalSummarySections = [
+    {
+      id: "intro",
+      label: copy.summarySections.intro,
+      value: lead.proposal_intro,
+    },
+    {
+      id: "scope",
+      label: copy.summarySections.scope,
+      value: lead.proposal_scope,
+    },
+    {
+      id: "deliverables",
+      label: copy.summarySections.deliverables,
+      value: lead.proposal_deliverables,
+    },
+    {
+      id: "timeline",
+      label: copy.summarySections.timeline,
+      value: lead.proposal_timeline,
+    },
+  ].filter(
+    (
+      section
+    ): section is {
+      id: string;
+      label: string;
+      value: string;
+    } => typeof section.value === "string" && section.value.trim().length > 0
+  );
+  const hasStructuredSummary = proposalSummarySections.length > 0;
+  const fallbackSummary =
+    lead.project_details && lead.project_details.trim().length > 0
+      ? lead.project_details
+      : copy.summaryFallback;
 
   const totalAmount = lead.proposal_price != null ? Number(lead.proposal_price) : null;
   const depositAmountRaw = lead.deposit_amount ?? lead.proposal_deposit;
@@ -654,6 +744,10 @@ export default async function ClientPortalPage({
       ? formatLocalAmount(lead, depositAmount, locale)
       : null;
   const showPaymentBreakdown = phase !== "proposal";
+  const showPaymentCta =
+    paymentLinkHref != null &&
+    paymentState.kind !== "deposit_paid" &&
+    paymentState.kind !== "fully_paid";
 
   const proposalTag = proposalHref ? copy.availableNow : copy.availableSoon;
   const proposalTone: DocumentTone =
@@ -662,10 +756,10 @@ export default async function ClientPortalPage({
     ? copy.docs.proposalAvailable
     : copy.docs.proposalUnavailable;
 
-  const paymentTag = lead.payment_link ? copy.availableNow : copy.availableSoon;
+  const paymentTag = paymentLinkHref ? copy.availableNow : copy.availableSoon;
   const paymentTone: DocumentTone =
-    phase === "payment" ? "active" : lead.payment_link ? "default" : "upcoming";
-  const paymentBody = lead.payment_link
+    phase === "payment" ? "active" : paymentLinkHref ? "default" : "upcoming";
+  const paymentBody = paymentLinkHref
     ? copy.docs.paymentAvailable
     : phase === "proposal"
       ? copy.docs.paymentAfterProposal
@@ -787,6 +881,41 @@ export default async function ClientPortalPage({
               {copy.paymentLabel}
             </p>
             <p className="mt-3 text-sm leading-relaxed text-zinc-400">{paymentSummary}</p>
+            {showPaymentCta ? (
+              <a
+                href={paymentLinkHref ?? "#"}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 inline-flex items-center rounded-lg border border-brand/40 bg-brand/10 px-3.5 py-2 text-xs font-medium text-brand transition-colors hover:border-brand/60 hover:bg-brand/15"
+              >
+                {copy.paymentPanel.openSecurePayment}
+              </a>
+            ) : null}
+            {!paymentLinkHref && paymentState.kind !== "deposit_paid" && paymentState.kind !== "fully_paid" ? (
+              <p className="mt-3 text-xs leading-relaxed text-zinc-600">
+                {copy.paymentPanel.linkPending}
+              </p>
+            ) : null}
+            {paymentState.kind === "deposit_paid" ? (
+              <div className="mt-4 rounded-lg border border-emerald-500/20 bg-emerald-500/8 px-3.5 py-3">
+                <p className="text-xs font-medium text-emerald-400">
+                  {copy.paymentPanel.depositReceivedTitle}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-emerald-500/70">
+                  {copy.paymentPanel.depositReceivedBody}
+                </p>
+              </div>
+            ) : null}
+            {paymentState.kind === "fully_paid" ? (
+              <div className="mt-4 rounded-lg border border-emerald-500/20 bg-emerald-500/8 px-3.5 py-3">
+                <p className="text-xs font-medium text-emerald-400">
+                  {copy.paymentPanel.fullyPaidTitle}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-emerald-500/70">
+                  {copy.paymentPanel.fullyPaidBody}
+                </p>
+              </div>
+            ) : null}
 
             {showPaymentBreakdown ? (
               <>
@@ -854,8 +983,8 @@ export default async function ClientPortalPage({
               body={paymentBody}
               tag={paymentTag}
               tone={paymentTone}
-              ctaLabel={lead.payment_link ? copy.docs.openPayment : null}
-              href={lead.payment_link}
+              ctaLabel={paymentLinkHref ? copy.docs.openPayment : null}
+              href={paymentLinkHref}
               external
             />
             <DocumentCard
@@ -890,7 +1019,30 @@ export default async function ClientPortalPage({
             <h2 className="mt-3 text-lg font-semibold tracking-tight text-zinc-100">
               {lead.proposal_title ?? `${lead.service_lane} engagement`}
             </h2>
-            <p className="mt-3 text-sm leading-relaxed text-zinc-400">{scopeText}</p>
+            <div className="mt-4 space-y-6">
+              {hasStructuredSummary ? (
+                proposalSummarySections.map((section) => (
+                  <section key={section.id} className="space-y-2.5">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+                      {section.label}
+                    </p>
+                    <LightweightStructuredText
+                      value={section.value}
+                      paragraphClassName="text-sm leading-7 text-zinc-400"
+                      listClassName="space-y-2 pl-5 marker:text-zinc-500"
+                      listItemClassName="text-sm leading-7 text-zinc-400"
+                    />
+                  </section>
+                ))
+              ) : (
+                <LightweightStructuredText
+                  value={fallbackSummary}
+                  paragraphClassName="text-sm leading-7 text-zinc-400"
+                  listClassName="space-y-2 pl-5 marker:text-zinc-500"
+                  listItemClassName="text-sm leading-7 text-zinc-400"
+                />
+              )}
+            </div>
           </article>
 
           <article className="rounded-2xl border border-zinc-800/80 bg-zinc-900/35 p-5">

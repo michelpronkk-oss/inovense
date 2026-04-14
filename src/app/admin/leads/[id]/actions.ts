@@ -34,6 +34,19 @@ function revalidateLead(id: string) {
   revalidatePath("/admin");
 }
 
+function revalidateClientWorkspacePaths(tokens: {
+  proposalToken: string | null;
+  onboardingToken: string | null;
+}) {
+  revalidatePath("/client");
+  if (tokens.proposalToken) {
+    revalidatePath(`/client/${tokens.proposalToken}`);
+  }
+  if (tokens.onboardingToken) {
+    revalidatePath(`/client/${tokens.onboardingToken}`);
+  }
+}
+
 function parseCurrencyAmount(raw: string): number | null {
   const trimmed = raw.trim();
   if (!trimmed) return null;
@@ -47,6 +60,30 @@ function normalizeMoneyValue(value: number | null | undefined): number | null {
   const num = Number(value);
   if (!Number.isFinite(num) || num < 0) return null;
   return Math.round(num * 100) / 100;
+}
+
+function normalizePaymentLinkInput(raw: string): { value: string | null; error?: string } {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return { value: null };
+  }
+
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const parsed = new URL(withProtocol);
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      return {
+        value: null,
+        error: "Payment link must start with http:// or https://.",
+      };
+    }
+    return { value: parsed.toString() };
+  } catch {
+    return {
+      value: null,
+      error: "Enter a valid payment URL.",
+    };
+  }
 }
 
 function isMissingFinalPaymentColumnError(error: unknown): boolean {
@@ -280,8 +317,16 @@ export async function updatePaymentFields(
     usdFxRateLocked: string;
     countryCode: string;
   }
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; paymentLink?: string | null; error?: string }> {
   const amount = parseCurrencyAmount(fields.depositAmount);
+  const paymentLinkResult = normalizePaymentLinkInput(fields.paymentLink);
+  if (paymentLinkResult.error) {
+    return {
+      success: false,
+      error: paymentLinkResult.error,
+    };
+  }
+  const normalizedPaymentLink = paymentLinkResult.value;
   const localCurrencyCode = parseCurrencyCodeInput(fields.localCurrencyCode);
   if (!localCurrencyCode) {
     return {
@@ -315,10 +360,10 @@ export async function updatePaymentFields(
 
   try {
     const supabase = createSupabaseServerClient();
-    const { error } = await supabase
+    const { data: updatedLead, error } = await supabase
       .from("leads")
       .update({
-        payment_link: fields.paymentLink.trim() || null,
+        payment_link: normalizedPaymentLink,
         invoice_reference: fields.invoiceReference.trim() || null,
         deposit_amount: amount,
         project_start_date: fields.projectStartDate || null,
@@ -332,10 +377,24 @@ export async function updatePaymentFields(
         country_code: countryCode,
         country_source: countrySource,
       })
-      .eq("id", id);
+      .eq("id", id)
+      .select("payment_link, proposal_token, onboarding_token")
+      .maybeSingle();
     if (error) throw error;
+    if (!updatedLead) {
+      return { success: false, error: "Failed to save." };
+    }
+
+    if ((updatedLead.payment_link ?? null) !== normalizedPaymentLink) {
+      return { success: false, error: "Payment link was not persisted." };
+    }
+
     revalidateLead(id);
-    return { success: true };
+    revalidateClientWorkspacePaths({
+      proposalToken: updatedLead.proposal_token ?? null,
+      onboardingToken: updatedLead.onboarding_token ?? null,
+    });
+    return { success: true, paymentLink: updatedLead.payment_link ?? null };
   } catch (err) {
     console.error("[admin] updatePaymentFields failed:", err);
     return { success: false, error: "Failed to save." };

@@ -101,7 +101,7 @@ const ACTION_EVENT_MATRIX = [
     trigger: "Operator sends Proposal ready email",
     state: "proposal_sent + proposal_sent_at",
     email: "proposal_sent",
-    next: "Wait for client decision. Do not position Client Workspace as the main destination at this stage.",
+    next: "Wait for client decision. Do not position Project Workspace as the main destination at this stage.",
   },
   {
     action: "Proposal accepted",
@@ -122,7 +122,7 @@ const ACTION_EVENT_MATRIX = [
     trigger: "Operator confirms cleared deposit and clicks action",
     state: "deposit_paid_at set (first transition only)",
     email: "deposit_paid_confirmation auto on first transition",
-    next: "This is the first strong Client Workspace introduction. Then proceed with onboarding and kickoff prep.",
+    next: "This is the first strong Project Workspace introduction. Then proceed with onboarding and kickoff prep.",
   },
   {
     action: "Mark final payment as paid",
@@ -555,7 +555,7 @@ const SECTIONS: HandbookSection[] = [
         tone: "reference",
         items: [
           "Mark deposit as paid sets deposit_paid_at, snapshots deposit amount when needed, and sets lead status to deposit_paid.",
-          "Deposit confirmation email introduces Client Workspace as the central place for status, links, and next steps.",
+          "Deposit confirmation email introduces Project Workspace as the central place for status, links, and next steps.",
           "Mark final payment as paid sets final_payment_paid_at only; it does not auto-change project_status.",
           "Server-side idempotency only allows first-time transitions when paid-at fields are null.",
           "On first successful transition, CRM sends a branded event-specific confirmation email automatically.",
@@ -769,7 +769,7 @@ const SECTIONS: HandbookSection[] = [
           "The portal token reuses proposal_token for minimal system complexity and consistent access.",
           "Refresh token rotates both proposal and portal access links for that lead.",
           "Keep lead_source accurate so portal locale resolves correctly (EN default, NL when lead context is Dutch).",
-          "Proposal emails stay proposal-first; do not introduce Client Workspace as the main layer before deposit is confirmed.",
+          "Proposal emails stay proposal-first; do not introduce Project Workspace as the main layer before deposit is confirmed.",
         ],
       },
     ],

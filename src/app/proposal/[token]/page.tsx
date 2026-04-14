@@ -4,6 +4,7 @@ import { getClientLocaleForLeadSource, type ClientLocale } from "@/lib/client-lo
 import { acceptProposal, declineProposal } from "./actions";
 import { formatCurrencyAmount } from "@/lib/currency";
 import { resolveClientFacingCurrencyCode } from "@/lib/market";
+import { LightweightStructuredText } from "@/components/lightweight-structured-text";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,12 @@ type ProposalCopy = {
   notSet: string;
   depositShareSuffix: string;
   contentPreparing: string;
+  sectionLabels: {
+    intro: string;
+    scope: string;
+    deliverables: string;
+    timeline: string;
+  };
   decisionLabel: string;
   acceptedTitle: string;
   acceptedMessage: string;
@@ -63,6 +70,12 @@ const PROPOSAL_COPY: Record<ClientLocale, ProposalCopy> = {
     notSet: "Not set",
     depositShareSuffix: "of total proposal.",
     contentPreparing: "Proposal content is being prepared. Check back shortly.",
+    sectionLabels: {
+      intro: "Introduction",
+      scope: "Scope",
+      deliverables: "Deliverables",
+      timeline: "Timeline",
+    },
     decisionLabel: "Decision",
     acceptedTitle: "Proposal accepted",
     acceptedMessage:
@@ -89,6 +102,12 @@ const PROPOSAL_COPY: Record<ClientLocale, ProposalCopy> = {
     notSet: "Niet ingesteld",
     depositShareSuffix: "van het totale voorstel.",
     contentPreparing: "De voorstelinhoud wordt voorbereid. Probeer het binnenkort opnieuw.",
+    sectionLabels: {
+      intro: "Introductie",
+      scope: "Scope",
+      deliverables: "Deliverables",
+      timeline: "Planning",
+    },
     decisionLabel: "Beslissing",
     acceptedTitle: "Voorstel geaccepteerd",
     acceptedMessage:
@@ -181,11 +200,27 @@ export default async function ProposalPage({
   const locale = getClientLocaleForLeadSource(lead?.lead_source);
   const copy = PROPOSAL_COPY[locale];
 
-  const proposalBlocks = lead
-    ? [lead.proposal_intro, lead.proposal_scope, lead.proposal_deliverables, lead.proposal_timeline]
-        .filter((block): block is string => typeof block === "string" && block.trim().length > 0)
+  const proposalSections = lead
+    ? [
+        { id: "intro", label: copy.sectionLabels.intro, value: lead.proposal_intro },
+        { id: "scope", label: copy.sectionLabels.scope, value: lead.proposal_scope },
+        {
+          id: "deliverables",
+          label: copy.sectionLabels.deliverables,
+          value: lead.proposal_deliverables,
+        },
+        { id: "timeline", label: copy.sectionLabels.timeline, value: lead.proposal_timeline },
+      ].filter(
+        (
+          section
+        ): section is {
+          id: string;
+          label: string;
+          value: string;
+        } => typeof section.value === "string" && section.value.trim().length > 0
+      )
     : [];
-  const hasProposalContent = proposalBlocks.length > 0;
+  const hasProposalContent = proposalSections.length > 0;
 
   if (!lead || lead.proposal_status === "archived") {
     return (
@@ -311,14 +346,19 @@ export default async function ProposalPage({
         <div className="mb-10 h-px bg-zinc-800/60" />
 
         {hasProposalContent ? (
-          <div className="space-y-5">
-            {proposalBlocks.map((block, i) => (
-              <p
-                key={i}
-                className="text-sm leading-relaxed text-zinc-400 sm:text-base"
-              >
-                {block.trim()}
-              </p>
+          <div className="space-y-8">
+            {proposalSections.map((section) => (
+              <section key={section.id} className="space-y-3">
+                <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+                  {section.label}
+                </p>
+                <LightweightStructuredText
+                  value={section.value}
+                  paragraphClassName="text-sm leading-7 text-zinc-300 sm:text-[15px]"
+                  listClassName="space-y-2.5 pl-5 marker:text-zinc-500"
+                  listItemClassName="text-sm leading-7 text-zinc-300 sm:text-[15px]"
+                />
+              </section>
             ))}
           </div>
         ) : (
