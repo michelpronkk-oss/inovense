@@ -1452,7 +1452,7 @@ function AutomationTag({ label }: { label: HandbookSection["automation"] }) {
 function BlockCard({ block }: { block: SectionBlock }) {
   const tone = TONE_STYLES[block.tone];
   return (
-    <div className={`rounded-xl border p-4 ${tone.cls}`}>
+    <div className={`rounded-xl border p-3 ${tone.cls}`}>
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-[10px] font-medium uppercase tracking-[0.13em] opacity-80">
           {tone.label}
@@ -1477,21 +1477,24 @@ function HandbookSectionCard({ section }: { section: HandbookSection }) {
   return (
     <section id={section.id} className="scroll-mt-24">
       <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
-        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-4 py-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <SectionTag label={section.tag} />
-            <AutomationTag label={section.automation} />
-            <h2 className="text-sm font-semibold text-zinc-100">{section.title}</h2>
+        <details>
+          <summary className="cursor-pointer list-none border-b border-zinc-800/70 bg-zinc-900/70 px-4 py-3 marker:hidden [&::-webkit-details-marker]:hidden">
+            <div className="flex flex-wrap items-center gap-2">
+              <SectionTag label={section.tag} />
+              <AutomationTag label={section.automation} />
+              <h2 className="text-sm font-semibold text-zinc-100">{section.title}</h2>
+              <span className="ml-auto text-[10px] text-zinc-700">expand</span>
+            </div>
+            <p className="mt-1 max-w-3xl text-xs leading-relaxed text-zinc-500">
+              {section.summary}
+            </p>
+          </summary>
+          <div className="grid gap-3 p-4 md:grid-cols-2">
+            {section.blocks.map((block) => (
+              <BlockCard key={`${section.id}-${block.title}`} block={block} />
+            ))}
           </div>
-          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-zinc-500">
-            {section.summary}
-          </p>
-        </div>
-        <div className="grid gap-3 p-4 md:grid-cols-2">
-          {section.blocks.map((block) => (
-            <BlockCard key={`${section.id}-${block.title}`} block={block} />
-          ))}
-        </div>
+        </details>
       </div>
     </section>
   );
@@ -1501,18 +1504,18 @@ function ActionEventMap() {
   return (
     <section id="action-event-map" className="scroll-mt-24">
       <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
-        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
-          <div className="mb-2 flex flex-wrap items-center gap-2">
+        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2">
             <SectionTag label="Ops" />
             <AutomationTag label="Mixed" />
+            <h2 className="text-sm font-semibold text-zinc-100">Action Event Map</h2>
           </div>
-          <h2 className="text-lg font-semibold text-zinc-100">Action Event Map</h2>
-          <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+          <p className="mt-1 text-xs leading-relaxed text-zinc-500">
             Use this map to verify what each critical action writes, which email event fires, and what
             the next operator decision should be.
           </p>
         </div>
-        <div className="space-y-2 p-5">
+        <div className="space-y-2 p-4">
           {ACTION_EVENT_MATRIX.map((row) => (
             <article
               key={row.action}
@@ -1547,22 +1550,18 @@ function PricingFramework() {
   return (
     <section id="pricing-framework" className="scroll-mt-24">
       <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
-        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
-          <div className="mb-2 flex flex-wrap items-center gap-2">
+        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2">
             <SectionTag label="Commercial" />
             <AutomationTag label="Manual" />
+            <h2 className="text-sm font-semibold text-zinc-100">Pricing Framework</h2>
           </div>
-          <h2 className="text-lg font-semibold text-zinc-100">
-            Pricing Framework
-          </h2>
-          <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
-            English-first internal USD anchors with framework tiers and clean
-            upgrade logic. Convert to local client currency for client-facing
-            proposal/payment communication where needed.
+          <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+            English-first internal USD anchors with framework tiers and clean upgrade logic. Convert to local client currency for client-facing proposal/payment communication where needed.
           </p>
         </div>
 
-        <div className="space-y-3 p-5">
+        <div className="space-y-3 p-4">
           {LANE_PRICING_ANCHORS.map((lane) => (
             <article
               key={lane.lane}
@@ -1625,7 +1624,7 @@ function PricingFramework() {
           ))}
         </div>
 
-        <div className="grid gap-3 border-t border-zinc-800/70 p-5 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 border-t border-zinc-800/70 p-4 md:grid-cols-2 xl:grid-cols-4">
           <BlockCard
             block={{
               title: "Quote flow",
@@ -1664,17 +1663,17 @@ function ScenarioPlaybooks() {
   return (
     <section id="scenario-playbooks" className="scroll-mt-24">
       <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
-        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
-          <div className="mb-2 flex flex-wrap items-center gap-2">
+        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2">
             <SectionTag label="Ops" />
             <AutomationTag label="Manual" />
+            <h2 className="text-sm font-semibold text-zinc-100">Scenario Playbooks</h2>
           </div>
-          <h2 className="text-lg font-semibold text-zinc-100">Scenario Playbooks</h2>
-          <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+          <p className="mt-1 text-xs leading-relaxed text-zinc-500">
             Fast guidance for frequent edge cases so operators can move without guessing.
           </p>
         </div>
-        <div className="grid gap-3 p-5 md:grid-cols-2">
+        <div className="grid gap-3 p-4 md:grid-cols-2">
           {SCENARIO_PLAYBOOKS.map((scenario) => (
             <article
               key={scenario.title}
@@ -1695,17 +1694,17 @@ function OperatingStateNowSection() {
   return (
     <section id="operating-state-now" className="scroll-mt-24">
       <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
-        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
-          <div className="mb-2 flex flex-wrap items-center gap-2">
+        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2">
             <SectionTag label="Ops" />
             <AutomationTag label="Mixed" />
+            <h2 className="text-sm font-semibold text-zinc-100">Operating State Now</h2>
           </div>
-          <h2 className="text-lg font-semibold text-zinc-100">Operating State Now</h2>
-          <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+          <p className="mt-1 text-xs leading-relaxed text-zinc-500">
             Current live state beyond the earlier launch baseline. Treat this as real system truth.
           </p>
         </div>
-        <div className="grid gap-3 p-5 md:grid-cols-2">
+        <div className="grid gap-3 p-4 md:grid-cols-2">
           {OPERATING_STATE_NOW.map((item) => (
             <article
               key={item.title}
@@ -1725,17 +1724,17 @@ function CoreSystemLayersSection() {
   return (
     <section id="core-system-layers" className="scroll-mt-24">
       <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
-        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
-          <div className="mb-2 flex flex-wrap items-center gap-2">
+        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2">
             <SectionTag label="Ops" />
             <AutomationTag label="Mixed" />
+            <h2 className="text-sm font-semibold text-zinc-100">Core System Layers</h2>
           </div>
-          <h2 className="text-lg font-semibold text-zinc-100">Core System Layers</h2>
-          <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+          <p className="mt-1 text-xs leading-relaxed text-zinc-500">
             Layer map for operators across public, admin, proposal, portal, prospects, performance, and docs.
           </p>
         </div>
-        <div className="space-y-2 p-5">
+        <div className="space-y-2 p-4">
           {CORE_SYSTEM_LAYERS.map((row) => (
             <article
               key={row.layer}
@@ -1769,17 +1768,17 @@ function CanonicalDefinitionsSection() {
   return (
     <section id="canonical-definitions" className="scroll-mt-24">
       <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
-        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
-          <div className="mb-2 flex flex-wrap items-center gap-2">
+        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2">
             <SectionTag label="Ops" />
             <AutomationTag label="Manual" />
+            <h2 className="text-sm font-semibold text-zinc-100">Canonical Definitions</h2>
           </div>
-          <h2 className="text-lg font-semibold text-zinc-100">Canonical Definitions</h2>
-          <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+          <p className="mt-1 text-xs leading-relaxed text-zinc-500">
             Non-negotiable terminology for lifecycle, performance, prospects, and client-facing naming.
           </p>
         </div>
-        <div className="space-y-2 p-5">
+        <div className="space-y-2 p-4">
           {CANONICAL_DEFINITIONS.map((row) => (
             <article
               key={row.term}
@@ -1815,17 +1814,17 @@ function CurrentBuildOrderSection() {
   return (
     <section id="current-build-order" className="scroll-mt-24">
       <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
-        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
-          <div className="mb-2 flex flex-wrap items-center gap-2">
+        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2">
             <SectionTag label="Ops" />
             <AutomationTag label="Manual" />
+            <h2 className="text-sm font-semibold text-zinc-100">Current Build Order</h2>
           </div>
-          <h2 className="text-lg font-semibold text-zinc-100">Current Build Order</h2>
-          <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+          <p className="mt-1 text-xs leading-relaxed text-zinc-500">
             Ordered by current operational value, not vanity roadmap volume.
           </p>
         </div>
-        <div className="space-y-2 p-5">
+        <div className="space-y-2 p-4">
           {CURRENT_BUILD_ORDER.map((row, index) => (
             <article
               key={row.step}
@@ -1863,7 +1862,7 @@ export default function DocsPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-5">
       <header className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/35">
-        <div className="bg-[radial-gradient(1200px_300px_at_-5%_-50%,rgba(73,160,164,0.22),transparent)] px-6 py-6 md:px-7">
+        <div className="bg-[radial-gradient(1200px_300px_at_-5%_-50%,rgba(73,160,164,0.22),transparent)] px-5 py-4">
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center rounded-full border border-brand/30 bg-brand/10 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.13em] text-brand">
               Internal
@@ -1872,69 +1871,40 @@ export default function DocsPage() {
               Operating Handbook
             </span>
           </div>
-          <h1 className="mt-3 text-2xl font-semibold tracking-tight text-zinc-100">
+          <h1 className="mt-3 text-xl font-semibold tracking-tight text-zinc-100">
             Inovense CRM Command Reference
           </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-400">
+          <p className="mt-2 max-w-3xl text-xs leading-relaxed text-zinc-500">
             Source of truth for the live operating system: host-split surfaces, lifecycle execution,
             proposal intelligence, payment/onboarding flow, client portal behavior, prospects, and
             decision-grade performance semantics. Keep stage truth strict and operator decisions explicit.
           </p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
-              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Surface Split</p>
-              <p className="mt-1 text-sm font-medium text-zinc-200">Public / Admin / Portal host routing</p>
-            </div>
-            <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
-              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Commercial Flow</p>
-              <p className="mt-1 text-sm font-medium text-zinc-200">
-                Proposal to deposit to onboarding to active
-              </p>
-            </div>
-            <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
-              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Proposal Intelligence</p>
-              <p className="mt-1 text-sm font-medium text-zinc-200">Research + Angle + Writer draft stack</p>
-            </div>
-            <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
-              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Attention Layers</p>
-              <p className="mt-1 text-sm font-medium text-zinc-200">Reminders + Weekly Summary are live</p>
-            </div>
-            <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
-              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Project Workspace</p>
-              <p className="mt-1 text-sm font-medium text-zinc-200">Client portal stays intentionally light</p>
-            </div>
-            <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
-              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Performance</p>
-              <p className="mt-1 text-sm font-medium text-zinc-200">Decision insights + strict stage semantics</p>
-            </div>
-          </div>
         </div>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
         <aside className="space-y-4 lg:sticky lg:top-24 lg:h-fit">
-          <nav className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-3.5">
-            <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-600">
+          <nav className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-3">
+            <p className="mb-2 text-[9px] font-medium uppercase tracking-[0.14em] text-zinc-700">
               Jump To
             </p>
-            <div className="space-y-3">
+            <div className="flex flex-col gap-2">
               {navGroups.map((group) => (
                 <div key={group.label}>
-                  <p className="mb-1 px-2 text-[9px] font-medium uppercase tracking-[0.14em] text-zinc-700">
+                  <p className="mb-0.5 text-[9px] font-medium uppercase tracking-[0.13em] text-zinc-700">
                     {group.label}
                   </p>
-                  <ul className="space-y-0.5">
+                  <div className="flex flex-wrap gap-1">
                     {group.items.map((item) => (
-                      <li key={item.id}>
-                        <a
-                          href={`#${item.id}`}
-                          className="flex items-center rounded-md px-2 py-1 text-[11px] leading-tight text-zinc-500 transition-colors hover:bg-zinc-800/60 hover:text-zinc-200"
-                        >
-                          {item.title}
-                        </a>
-                      </li>
+                      <a
+                        key={item.id}
+                        href={`#${item.id}`}
+                        className="rounded-md border border-zinc-800/70 bg-zinc-950/60 px-2 py-0.5 text-[10px] text-zinc-500 transition-colors hover:border-zinc-700 hover:text-zinc-300"
+                      >
+                        {item.title}
+                      </a>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1958,17 +1928,17 @@ export default function DocsPage() {
 
           <section id="control-model" className="scroll-mt-24">
             <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
-              <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
-                <div className="mb-2 flex flex-wrap items-center gap-2">
+              <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-4 py-3">
+                <div className="flex flex-wrap items-center gap-2">
                   <SectionTag label="Ops" />
                   <AutomationTag label="Mixed" />
+                  <h2 className="text-sm font-semibold text-zinc-100">Control Model</h2>
                 </div>
-                <h2 className="text-lg font-semibold text-zinc-100">Control Model</h2>
-                <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+                <p className="mt-1 text-xs leading-relaxed text-zinc-500">
                   Keep operator ownership and automation boundaries explicit at every stage.
                 </p>
               </div>
-              <div className="grid gap-3 p-5 md:grid-cols-3">
+              <div className="grid gap-3 p-4 md:grid-cols-3">
                 {CONTROL_MODEL.map((card) => (
                   <article
                     key={card.title}
@@ -1984,17 +1954,17 @@ export default function DocsPage() {
 
           <section id="manual-vs-automatic" className="scroll-mt-24">
             <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
-              <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
-                <div className="mb-2 flex flex-wrap items-center gap-2">
+              <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-4 py-3">
+                <div className="flex flex-wrap items-center gap-2">
                   <SectionTag label="Ops" />
                   <AutomationTag label="Mixed" />
+                  <h2 className="text-sm font-semibold text-zinc-100">Manual vs Automatic</h2>
                 </div>
-                <h2 className="text-lg font-semibold text-zinc-100">Manual vs Automatic</h2>
-                <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+                <p className="mt-1 text-xs leading-relaxed text-zinc-500">
                   Quick reference for what operators own directly and what the CRM updates automatically.
                 </p>
               </div>
-              <div className="space-y-2 p-5">
+              <div className="space-y-2 p-4">
                 {MANUAL_AUTOMATION_REFERENCE.map((item) => (
                   <article
                     key={item.area}
@@ -2026,17 +1996,17 @@ export default function DocsPage() {
 
           <section id="flow-reference" className="scroll-mt-24">
             <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
-              <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
-                <div className="mb-2 flex flex-wrap items-center gap-2">
+              <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-4 py-3">
+                <div className="flex flex-wrap items-center gap-2">
                   <SectionTag label="Flow" />
                   <AutomationTag label="Mixed" />
+                  <h2 className="text-sm font-semibold text-zinc-100">Lifecycle Reference</h2>
                 </div>
-                <h2 className="text-lg font-semibold text-zinc-100">Lifecycle Reference</h2>
-                <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+                <p className="mt-1 text-xs leading-relaxed text-zinc-500">
                   Use this flow as the operational spine. Status should mirror actual progression.
                 </p>
               </div>
-              <div className="space-y-2 p-5">
+              <div className="space-y-2 p-4">
                 {LEAD_FLOW_STEPS.map((item, index) => (
                   <div
                     key={item.step}
@@ -2063,17 +2033,17 @@ export default function DocsPage() {
 
           <section id="project-status-reference" className="scroll-mt-24">
             <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
-              <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
-                <div className="mb-2 flex flex-wrap items-center gap-2">
+              <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-4 py-3">
+                <div className="flex flex-wrap items-center gap-2">
                   <SectionTag label="Delivery" />
                   <AutomationTag label="Manual" />
+                  <h2 className="text-sm font-semibold text-zinc-100">Project Status Reference</h2>
                 </div>
-                <h2 className="text-lg font-semibold text-zinc-100">Project Status Reference</h2>
-                <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+                <p className="mt-1 text-xs leading-relaxed text-zinc-500">
                   Project status is delivery tracking only. Keep it separate from lifecycle and payment states.
                 </p>
               </div>
-              <div className="grid gap-3 p-5 md:grid-cols-2">
+              <div className="grid gap-3 p-4 md:grid-cols-2">
                 {PROJECT_STATUS_REFERENCE.map((item) => (
                   <div
                     key={item.value}
