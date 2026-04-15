@@ -85,12 +85,12 @@ function Section({
 }) {
   return (
     <div className="overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/30">
-      <div className="border-b border-zinc-800/60 bg-zinc-900/60 px-5 py-3">
+      <div className="border-b border-zinc-800/60 bg-zinc-900/60 px-4 py-2.5">
         <h2 className="text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-600">
           {title}
         </h2>
       </div>
-      <div className="p-5">{children}</div>
+      <div className="p-4">{children}</div>
     </div>
   );
 }
@@ -212,7 +212,7 @@ export default async function LeadDetailPage({
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
 
         {/* ── Actions (mobile: top, desktop: right column) ───────────────── */}
-        <div className="flex flex-col gap-4 lg:col-start-3 lg:row-start-1">
+        <div className="flex flex-col gap-3 lg:col-start-3 lg:row-start-1">
 
           <RevenueCard
             leadId={lead.id}
@@ -243,37 +243,30 @@ export default async function LeadDetailPage({
                         <p className={`text-xs font-medium ${isStalled ? "text-orange-100" : "text-amber-100"}`}>
                           {reminder.title}
                         </p>
-                        <span className={`text-[10px] font-medium uppercase tracking-[0.08em] ${isStalled ? "text-orange-300/85" : "text-amber-200/85"}`}>
-                          {formatReminderAge(reminder)}
-                        </span>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <span className={`text-[10px] font-medium uppercase tracking-[0.08em] ${isStalled ? "text-orange-300/85" : "text-amber-200/85"}`}>
+                            {formatReminderAge(reminder)}
+                          </span>
+                          <form action={snoozeReminder}>
+                            <input type="hidden" name="lead_id" value={lead.id} />
+                            <input type="hidden" name="kind" value={reminder.kind} />
+                            <input type="hidden" name="days" value="3" />
+                            <button type="submit" className="text-[10px] text-zinc-700 transition-colors hover:text-zinc-400">
+                              · 3d
+                            </button>
+                          </form>
+                          <form action={snoozeReminder}>
+                            <input type="hidden" name="lead_id" value={lead.id} />
+                            <input type="hidden" name="kind" value={reminder.kind} />
+                            <input type="hidden" name="days" value="7" />
+                            <button type="submit" className="text-[10px] text-zinc-700 transition-colors hover:text-zinc-400">
+                              · 7d
+                            </button>
+                          </form>
+                        </div>
                       </div>
-                      <p className="mt-1 text-[11px] leading-relaxed text-zinc-300">{reminder.summary}</p>
-                      <p className="mt-1 text-[11px] text-zinc-500">{reminder.nextAction}</p>
-                      <div className="mt-2 flex items-center justify-end gap-3 border-t border-zinc-800/50 pt-1.5">
-                        <span className="mr-auto text-[10px] text-zinc-700">Snooze</span>
-                        <form action={snoozeReminder}>
-                          <input type="hidden" name="lead_id" value={lead.id} />
-                          <input type="hidden" name="kind" value={reminder.kind} />
-                          <input type="hidden" name="days" value="2" />
-                          <button
-                            type="submit"
-                            className="text-[10px] uppercase tracking-[0.08em] text-zinc-600 transition-colors hover:text-zinc-300"
-                          >
-                            2 days
-                          </button>
-                        </form>
-                        <form action={snoozeReminder}>
-                          <input type="hidden" name="lead_id" value={lead.id} />
-                          <input type="hidden" name="kind" value={reminder.kind} />
-                          <input type="hidden" name="days" value="5" />
-                          <button
-                            type="submit"
-                            className="text-[10px] uppercase tracking-[0.08em] text-zinc-600 transition-colors hover:text-zinc-300"
-                          >
-                            5 days
-                          </button>
-                        </form>
-                      </div>
+                      <p className="mt-1 text-[11px] leading-relaxed text-zinc-400">{reminder.summary}</p>
+                      <p className="mt-1 text-[11px] text-zinc-600">{reminder.nextAction}</p>
                     </div>
                   );
                 })}
@@ -334,12 +327,15 @@ export default async function LeadDetailPage({
             />
           </Section>
 
-          <Section title="Contract">
+          <div className="flex items-center justify-between rounded-xl border border-zinc-800/60 bg-zinc-900/20 px-4 py-3">
+            <p className="text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-600">
+              Contract
+            </p>
             <Link
               href={`/admin/leads/${lead.id}/contract`}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-700/60 bg-zinc-800/30 px-4 py-2.5 text-xs font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-700/40 hover:text-zinc-100"
+              className="flex items-center gap-1.5 text-xs text-zinc-500 transition-colors hover:text-zinc-200"
             >
-              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden>
+              <svg width="11" height="11" viewBox="0 0 14 14" fill="none" aria-hidden>
                 <path
                   d="M7 1v8M4 6l3 3 3-3M2 11h10"
                   stroke="currentColor"
@@ -348,12 +344,9 @@ export default async function LeadDetailPage({
                   strokeLinejoin="round"
                 />
               </svg>
-              Generate contract PDF
+              Generate PDF
             </Link>
-            <p className="mt-2 text-[10px] leading-relaxed text-zinc-600">
-              Project, retainer, or collaboration agreement.
-            </p>
-          </Section>
+          </div>
 
           <Section title="Payment">
             <PaymentEditor
@@ -408,27 +401,37 @@ export default async function LeadDetailPage({
             <NotesEditor id={lead.id} currentNotes={lead.notes} />
           </Section>
 
-          <Section title="Details">
-            <div className="space-y-4">
-              <Field label="Submitted">
-                <p className="text-sm tabular-nums text-zinc-400">
-                  {format(new Date(lead.created_at), "PPpp")}
+          <div className="overflow-hidden rounded-xl border border-zinc-800/60 bg-zinc-900/20">
+            <div className="divide-y divide-zinc-800/40 px-4">
+              <div className="flex items-center justify-between py-2.5">
+                <p className="text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-700">
+                  Submitted
                 </p>
-              </Field>
+                <p className="text-[11px] tabular-nums text-zinc-500">
+                  {format(new Date(lead.created_at), "MMM d, yyyy, h:mm a")}
+                </p>
+              </div>
               {lead.lead_source && (
-                <Field
-                  label="Source"
-                  value={LEAD_SOURCE_LABELS[lead.lead_source] ?? lead.lead_source}
-                />
+                <div className="flex items-center justify-between py-2.5">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-700">
+                    Source
+                  </p>
+                  <p className="text-[11px] text-zinc-500">
+                    {LEAD_SOURCE_LABELS[lead.lead_source] ?? lead.lead_source}
+                  </p>
+                </div>
               )}
-              <Field label="Lead ID">
-                <p className="font-mono text-xs text-zinc-600">{lead.id}</p>
-              </Field>
-              <div className="border-t border-zinc-800/60 pt-3">
-                <DeleteLeadButton id={lead.id} />
+              <div className="flex items-center justify-between py-2.5">
+                <p className="text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-700">
+                  Lead ID
+                </p>
+                <p className="font-mono text-[10px] text-zinc-700">{lead.id}</p>
               </div>
             </div>
-          </Section>
+            <div className="border-t border-zinc-800/60 px-4 py-3">
+              <DeleteLeadButton id={lead.id} />
+            </div>
+          </div>
 
           {/* Attribution context — only shown when at least one field is present */}
           {(lead.first_touch_source ||
@@ -520,7 +523,7 @@ export default async function LeadDetailPage({
         </div>
 
         {/* ── Data (mobile: below actions, desktop: left 2-col span) ─────── */}
-        <div className="flex flex-col gap-4 lg:col-span-2 lg:col-start-1 lg:row-start-1">
+        <div className="flex flex-col gap-3 lg:col-span-2 lg:col-start-1 lg:row-start-1">
 
           {/* Active project banner */}
           {(lead.status === "active" || lead.status === "won") && (
@@ -571,7 +574,7 @@ export default async function LeadDetailPage({
           )}
 
           <Section title="Contact">
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Full name" value={lead.full_name} />
               <Field label="Company" value={lead.company_name} />
               <Field label="Work email">
@@ -587,7 +590,7 @@ export default async function LeadDetailPage({
           </Section>
 
           <Section title="Project">
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Service lane" value={lead.service_lane} />
               <Field label="Project type" value={lead.project_type} />
               <Field label="Budget range" value={lead.budget_range} />
@@ -603,7 +606,7 @@ export default async function LeadDetailPage({
 
           {onboardingFields && lead.onboarding_data && (
             <Section title="Onboarding brief">
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {onboardingFields.map((field) => {
                   const value = lead.onboarding_data![field.key];
                   if (!value) return null;

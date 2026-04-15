@@ -187,49 +187,47 @@ export default async function LeadsPage({
       )}
 
       {attentionRows.length > 0 && (
-        <div className="mb-6 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-4 sm:px-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-amber-300/80">
+        <div className="mb-5 overflow-hidden rounded-xl border border-amber-500/15 bg-amber-500/4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-500/10 px-4 py-2.5">
+            <div className="flex items-center gap-3">
+              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-amber-300/70">
                 Needs attention
               </p>
-              <p className="mt-1 text-sm text-amber-100">
-                {attentionRows.length} lead{attentionRows.length !== 1 ? "s" : ""} currently need follow-up.
-              </p>
+              <span className="text-[10px] text-amber-200/60">
+                {attentionRows.length} lead{attentionRows.length !== 1 ? "s" : ""}
+              </span>
             </div>
-            <div className="flex flex-wrap gap-2 text-[10px]">
+            <div className="flex items-center gap-2 text-[10px]">
               {attentionCounts.proposal_follow_up > 0 && (
-                <span className="inline-flex items-center rounded-full border border-amber-400/35 bg-amber-500/10 px-2.5 py-0.5 text-amber-100">
-                  Proposal: {attentionCounts.proposal_follow_up}
+                <span className="text-zinc-500">
+                  Proposal <span className="text-amber-300/70">{attentionCounts.proposal_follow_up}</span>
                 </span>
               )}
               {attentionCounts.deposit_pending > 0 && (
-                <span className="inline-flex items-center rounded-full border border-amber-400/35 bg-amber-500/10 px-2.5 py-0.5 text-amber-100">
-                  Deposit: {attentionCounts.deposit_pending}
+                <span className="text-zinc-500">
+                  Deposit <span className="text-amber-300/70">{attentionCounts.deposit_pending}</span>
                 </span>
               )}
               {attentionCounts.onboarding_pending > 0 && (
-                <span className="inline-flex items-center rounded-full border border-amber-400/35 bg-amber-500/10 px-2.5 py-0.5 text-amber-100">
-                  Onboarding: {attentionCounts.onboarding_pending}
+                <span className="text-zinc-500">
+                  Onboarding <span className="text-amber-300/70">{attentionCounts.onboarding_pending}</span>
                 </span>
               )}
             </div>
           </div>
-          <ul className="mt-3.5 space-y-2.5">
+          <ul className="divide-y divide-zinc-800/30">
             {attentionRows.slice(0, 6).map(({ lead, reminder }) => (
-              <li key={lead.id} className="rounded-lg border border-zinc-800/80 bg-zinc-900/45 px-3 py-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <Link
-                    href={`/admin/leads/${lead.id}`}
-                    className="text-xs font-medium text-zinc-200 transition-colors hover:text-brand"
-                  >
-                    {lead.full_name} · {lead.company_name}
-                  </Link>
-                  <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-amber-200/90">
-                    {formatReminderAge(reminder)}
-                  </span>
-                </div>
-                <p className="mt-1 text-[11px] text-zinc-400">{reminder.title}</p>
+              <li key={lead.id} className="flex items-center justify-between gap-3 px-4 py-2">
+                <Link
+                  href={`/admin/leads/${lead.id}`}
+                  className="min-w-0 flex-1 text-xs font-medium text-zinc-200 transition-colors hover:text-brand"
+                >
+                  <span className="truncate">{lead.company_name}</span>
+                  <span className="ml-1.5 text-zinc-600">· {reminder.title}</span>
+                </Link>
+                <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.08em] text-amber-300/70">
+                  {formatReminderAge(reminder)}
+                </span>
               </li>
             ))}
           </ul>

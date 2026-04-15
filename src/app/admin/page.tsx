@@ -119,9 +119,9 @@ export default async function AdminOverviewPage() {
 
   return (
     <>
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-lg font-semibold text-zinc-100">Overview</h1>
-        <p className="mt-1 text-sm text-zinc-600">
+        <p className="mt-0.5 text-sm text-zinc-600">
           Pipeline and financial summary.
         </p>
       </div>
@@ -140,22 +140,22 @@ export default async function AdminOverviewPage() {
 
       {/* ── Pipeline ─────────────────────────────────────────────────────── */}
       {!error && (
-        <section className="mb-8 rounded-2xl border border-zinc-800/80 bg-zinc-900/45 px-4 py-4 sm:px-5 sm:py-5">
-          <div className="flex flex-wrap items-end justify-between gap-3">
+        <section className="mb-6 rounded-2xl border border-zinc-800/80 bg-zinc-900/45 px-4 py-4 sm:px-5 sm:py-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-600">
                 Weekly operating summary
               </p>
-              <p className="mt-1 text-sm text-zinc-300">
-                What needs action first this week.
+              <p className="mt-0.5 text-sm text-zinc-400">
+                What needs action first.
               </p>
             </div>
-            <p className="text-[11px] text-zinc-600">
-              Scan in under 30 seconds
+            <p className="text-[10px] text-zinc-700">
+              Scan in 30s
             </p>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="mt-3.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-5">
             <WeeklySummaryCard
               title="Proposal follow-up"
               count={weeklySummary.proposals.dueCount}
@@ -232,14 +232,14 @@ export default async function AdminOverviewPage() {
             />
           </div>
 
-          <div className="mt-4 rounded-xl border border-zinc-800/70 bg-zinc-950/45 px-3.5 py-3">
+          <div className="mt-3 rounded-xl border border-zinc-800/70 bg-zinc-950/45 px-3.5 py-2.5">
             <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
-              Top 3 to act on now
+              Act on first
             </p>
             {weeklySummary.priorityItems.length > 0 ? (
-              <ul className="mt-2 space-y-2">
+              <ul className="mt-1.5 space-y-1.5">
                 {weeklySummary.priorityItems.map((item) => (
-                  <li key={item.id} className="rounded-lg border border-zinc-800/70 bg-zinc-900/35 px-3 py-2">
+                  <li key={item.id} className="rounded-lg border border-zinc-800/60 bg-zinc-900/30 px-3 py-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <Link
                         href={item.href}
@@ -251,25 +251,25 @@ export default async function AdminOverviewPage() {
                         {item.ageLabel}
                       </span>
                     </div>
-                    <p className="mt-1 text-[11px] text-zinc-500">{item.detail}</p>
+                    <p className="mt-0.5 text-[11px] text-zinc-600">{item.detail}</p>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="mt-2 text-xs text-zinc-600">
-                No urgent weekly attention items right now.
+              <p className="mt-1.5 text-xs text-zinc-700">
+                No urgent attention items right now.
               </p>
             )}
           </div>
         </section>
       )}
 
-      <div className="mb-3">
+      <div className="mb-2.5">
         <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-700">
           Pipeline
         </p>
       </div>
-      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="mb-6 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
         {[
           { label: "Total", value: counts.total, color: "text-zinc-100", accent: "border-t-zinc-700/80" },
           { label: "New", value: counts.new, color: "text-brand", accent: "border-t-brand/50" },
@@ -297,7 +297,7 @@ export default async function AdminOverviewPage() {
       {/* ── Revenue ──────────────────────────────────────────────────────── */}
       {hasData && (
         <>
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-2.5 flex items-center justify-between">
             <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-700">
               Revenue
             </p>
@@ -313,7 +313,7 @@ export default async function AdminOverviewPage() {
               USD reporting excludes {missingFxLeadCount} lead{missingFxLeadCount !== 1 ? "s" : ""} without a locked FX rate.
             </p>
           )}
-          <div className="mb-10 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="mb-8 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
             <RevenueMetric
               label="Cash collected"
               value={fmtUsd(cashCollectedUsd)}
@@ -530,34 +530,34 @@ function WeeklySummaryCard({
   items: WeeklySummaryCardItem[];
 }) {
   return (
-    <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/45 px-3.5 py-3">
-      <div className="flex items-end justify-between gap-2">
+    <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/45 px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2">
         <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
           {title}
         </p>
         <p className="text-sm font-semibold tabular-nums text-zinc-100">{count}</p>
       </div>
-      <p className="mt-1 text-[10px] text-zinc-600">{sub}</p>
+      <p className="mt-0.5 text-[10px] text-zinc-700">{sub}</p>
       {items.length > 0 ? (
-        <ul className="mt-2 space-y-1.5">
+        <ul className="mt-2 space-y-1">
           {items.map((item) => (
-            <li key={item.id} className="rounded-md border border-zinc-800/70 bg-zinc-900/35 px-2.5 py-2">
+            <li key={item.id} className="rounded-md border border-zinc-800/60 bg-zinc-900/30 px-2.5 py-1.5">
               <Link
                 href={item.href}
                 className="line-clamp-1 text-[11px] font-medium text-zinc-200 transition-colors hover:text-brand"
               >
                 {item.label}
               </Link>
-              <p className="mt-0.5 text-[10px] text-zinc-600">{item.detail}</p>
+              <p className="text-[10px] text-zinc-600">{item.detail}</p>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="mt-2 text-[11px] text-zinc-600">{emptyText}</p>
+        <p className="mt-1.5 text-[11px] text-zinc-700">{emptyText}</p>
       )}
       <Link
         href={href}
-        className="mt-3 inline-flex items-center text-[10px] uppercase tracking-[0.1em] text-zinc-500 transition-colors hover:text-zinc-300"
+        className="mt-2.5 inline-flex items-center text-[10px] uppercase tracking-[0.1em] text-zinc-600 transition-colors hover:text-zinc-300"
       >
         {cta}
       </Link>
