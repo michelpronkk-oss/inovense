@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { makeLaneOg } from "@/lib/make-lane-og";
 
 export const runtime = "nodejs";
-export const alt = "Proces | Inovense NL";
+export const alt = "Hoe Inovense werkt — Van aanvraag tot oplevering";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -15,7 +15,7 @@ export default async function Image() {
   return new ImageResponse(
     makeLaneOg({
       laneLabel: "Proces",
-      headline: "Hoe elke Inovense samenwerking wordt gestructureerd en opgeleverd.",
+      headline: "Van aanvraag tot oplevering in acht duidelijke stappen.",
       panelLabel: "Elk project bevat",
       items: [
         "Discovery en scopeafstemming",

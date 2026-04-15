@@ -5,7 +5,7 @@ import { makeHubOg } from "@/lib/make-hub-og";
 import { resolveOgVariantForRequest } from "@/lib/og-variant";
 
 export const runtime = "nodejs";
-export const alt = "Inovense NL | Websitebouw, AI-automatisering en groeisystemen";
+export const alt = "Inovense | Websites, AI-automatisering en Groeisystemen";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -24,10 +24,10 @@ export default async function Image() {
 
   return new ImageResponse(
     makeHubOg({
-      eyebrow: "Digitale infrastructuur",
-      headline: "Websitebouw, AI-automatisering en groeisystemen.",
+      eyebrow: "Inovense",
+      headline: "Websites, AI-automatisering en groeisystemen.",
       subheadline:
-        "Voor bedrijven die strakker willen bouwen, automatiseren en groeien.",
+        "Voor bedrijven die beter willen bouwen, automatiseren en groeien.",
       panelLabel: "Lanes",
       lanes: [LANES[0], LANES[1], LANES[2]],
       domainLabel: "inovense.com/nl",

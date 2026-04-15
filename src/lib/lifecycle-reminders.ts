@@ -6,6 +6,8 @@ export type LifecycleReminderKind =
   | "deposit_pending"
   | "onboarding_pending";
 
+export type ReminderUrgency = "due" | "overdue" | "stalled";
+
 export type LifecycleReminder = {
   kind: LifecycleReminderKind;
   title: string;
@@ -15,6 +17,7 @@ export type LifecycleReminder = {
   dueAt: string;
   ageDays: number;
   daysOverdue: number;
+  urgency: ReminderUrgency;
 };
 
 type ReminderThresholds = {
@@ -59,10 +62,17 @@ function addReminderIfDue(
     anchor: Date;
     thresholdDays: number;
     now: Date;
+    snoozedUntil?: string | null;
   }
 ) {
   const dueAt = addDays(params.anchor, params.thresholdDays);
   if (params.now < dueAt) return;
+
+  // Respect active snooze
+  if (params.snoozedUntil) {
+    const snoozedUntilDate = parseIso(params.snoozedUntil);
+    if (snoozedUntilDate && params.now < snoozedUntilDate) return;
+  }
 
   const ageDays = Math.max(
     0,
@@ -72,6 +82,8 @@ function addReminderIfDue(
     0,
     differenceInCalendarDays(params.now, dueAt)
   );
+  const urgency: ReminderUrgency =
+    daysOverdue === 0 ? "due" : daysOverdue <= 7 ? "overdue" : "stalled";
 
   reminders.push({
     kind: params.kind,
@@ -82,6 +94,7 @@ function addReminderIfDue(
     dueAt: toIso(dueAt),
     ageDays,
     daysOverdue,
+    urgency,
   });
 }
 
@@ -117,6 +130,8 @@ export function getLifecycleReminders(
   const isClosed = lead.status === "lost" || lead.status === "won";
   if (isClosed) return reminders;
 
+  const snooze = (lead.reminder_snooze ?? {}) as Record<string, string | undefined>;
+
   const proposalSentAt = parseIso(lead.proposal_sent_at);
   if (proposalSentAt && !proposalHasMeaningfulProgress(lead)) {
     addReminderIfDue(reminders, {
@@ -127,6 +142,7 @@ export function getLifecycleReminders(
       anchor: proposalSentAt,
       thresholdDays: thresholds.proposalFollowUpDays,
       now,
+      snoozedUntil: snooze["proposal_follow_up"],
     });
   }
 
@@ -147,6 +163,7 @@ export function getLifecycleReminders(
         anchor: acceptedAnchor,
         thresholdDays: thresholds.depositPendingDays,
         now,
+        snoozedUntil: snooze["deposit_pending"],
       });
     }
   }
@@ -174,6 +191,7 @@ export function getLifecycleReminders(
         anchor: onboardingAnchor,
         thresholdDays: thresholds.onboardingPendingDays,
         now,
+        snoozedUntil: snooze["onboarding_pending"],
       });
     }
   }

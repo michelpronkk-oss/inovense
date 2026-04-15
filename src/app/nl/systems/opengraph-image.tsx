@@ -5,7 +5,7 @@ import { makeLaneOg } from "@/lib/make-lane-og";
 import { resolveOgVariantForRequest } from "@/lib/og-variant";
 
 export const runtime = "nodejs";
-export const alt = "Systems lane | Inovense NL";
+export const alt = "Inovense Systems — AI-automatisering en Bedrijfsprocessen";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -18,14 +18,14 @@ export default async function Image() {
 
   return new ImageResponse(
     makeLaneOg({
-      laneLabel: "Systems lane",
-      headline: "Automatisering en infrastructuur voor serieuze operators.",
+      laneLabel: "Systems",
+      headline: "AI-automatisering en werkstroomsystemen voor jouw bedrijf.",
       panelLabel: "Wat we bouwen",
       items: [
         "AI-automatisering en leadlogica",
         "CRM-opzet en workflowsystemen",
-        "Operationele infrastructuur",
-        "Interne tools op maat",
+        "Procesautomatisering op maat",
+        "Interne tools en dashboards",
       ],
       logo,
       variant,

@@ -133,6 +133,8 @@ export type Lead = {
   last_touch_source: string | null;
   attribution_session_key: string | null;
   attribution_captured_at: string | null;
+  // Reminder snooze: kind -> ISO expiry string
+  reminder_snooze: Record<string, string> | null;
 };
 
 export type TrafficSession = {

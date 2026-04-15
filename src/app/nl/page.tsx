@@ -8,10 +8,10 @@ import TrustpilotSignal from "@/components/trustpilot-signal";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Inovense | Websitebouw, AI-automatisering en groeisystemen",
+    absolute: "Inovense | Websites, AI-automatisering en Groeisystemen",
   },
   description:
-    "Inovense bouwt premium websites, AI-workflows en groeisystemen voor operators en ambitieuze merken.",
+    "Inovense bouwt premium websites, AI-workflows en groeisystemen voor ambitieuze bedrijven en teams.",
   alternates: {
     canonical: "https://inovense.com/nl",
     languages: {
@@ -22,9 +22,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/nl",
-    title: "Inovense | Websitebouw, AI-automatisering en groeisystemen",
+    title: "Inovense | Websites, AI-automatisering en Groeisystemen",
     description:
-      "Inovense bouwt premium websites, AI-workflows en groeisystemen voor operators en ambitieuze merken.",
+      "Inovense bouwt premium websites, AI-workflows en groeisystemen voor ambitieuze bedrijven en teams.",
     locale: "nl_NL",
   },
 };

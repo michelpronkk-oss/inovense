@@ -6,7 +6,7 @@ import NlBuildHero from "@/components/nl/nl-build-hero";
 import NlRelatedServices from "@/components/nl/nl-related-services";
 
 export const metadata: Metadata = {
-  title: "Bouwen: Websites, E-commerce en Digitale Producten",
+  title: "Maatwerk Websites, E-commerce en Digitale Producten",
   description:
     "Op maat gebouwde websites, Shopify-winkels, landingspagina's en digitale producten. Conversiegericht, performance-first, en gebouwd van brief tot browser.",
   alternates: {
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/nl/build",
-    title: "Bouwen: Websites, E-commerce en Digitale Producten | Inovense",
+    title: "Maatwerk Websites, E-commerce en Digitale Producten | Inovense",
     description:
       "Op maat gebouwde websites, Shopify-winkels, landingspagina's en digitale producten. Conversiegericht, performance-first, en gebouwd van brief tot browser.",
     locale: "nl_NL",

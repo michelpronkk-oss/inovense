@@ -5,7 +5,7 @@ import { makeLaneOg } from "@/lib/make-lane-og";
 import { resolveOgVariantForRequest } from "@/lib/og-variant";
 
 export const runtime = "nodejs";
-export const alt = "Build Lane | Inovense — Custom Websites and Digital Products";
+export const alt = "Inovense Build — Custom Websites and Digital Products";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -18,7 +18,7 @@ export default async function Image() {
 
   return new ImageResponse(
     makeLaneOg({
-      laneLabel: "Build Lane",
+      laneLabel: "Build",
       headline: "Websites and digital products built to perform.",
       panelLabel: "What we build",
       items: [

@@ -6,7 +6,7 @@ import NlSystemsHero from "@/components/nl/nl-systems-hero";
 import NlRelatedServices from "@/components/nl/nl-related-services";
 
 export const metadata: Metadata = {
-  title: "Systemen: AI Automatisering en Operationele Infrastructuur",
+  title: "AI-automatisering, Workflows en Interne Systemen op Maat",
   description:
     "AI-automatisering, workflow systemen, interne tools en operationele infrastructuur gebouwd rondom hoe jouw bedrijf echt werkt. Geen off-the-shelf, geen generieke tools.",
   alternates: {
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/nl/systems",
-    title: "Systemen: AI Automatisering en Operationele Infrastructuur | Inovense",
+    title: "AI-automatisering, Workflows en Interne Systemen op Maat | Inovense",
     description:
       "AI-automatisering, workflow systemen, interne tools en operationele infrastructuur gebouwd rondom hoe jouw bedrijf echt werkt. Geen off-the-shelf, geen generieke tools.",
     locale: "nl_NL",

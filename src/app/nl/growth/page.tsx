@@ -6,9 +6,9 @@ import NlGrowthHero from "@/components/nl/nl-growth-hero";
 import NlRelatedServices from "@/components/nl/nl-related-services";
 
 export const metadata: Metadata = {
-  title: "Groei: Leadgeneratie en Distributiesystemen",
+  title: "Leadgeneratie, SEO en Online Marketing voor Bedrijven",
   description:
-    "Growth als commercieel systeem. Van lead capture en kwalificatie tot distributie en follow-up. Gebouwd voor operators die op uitvoering concurreren.",
+    "Growth als commercieel systeem. Van lead capture en kwalificatie tot SEO, content en follow-up. Gebouwd voor bedrijven die op uitvoering concurreren.",
   alternates: {
     canonical: "https://inovense.com/nl/growth",
     languages: {
@@ -19,9 +19,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/nl/growth",
-    title: "Groei: Leadgeneratie en Distributiesystemen | Inovense",
+    title: "Leadgeneratie, SEO en Online Marketing voor Bedrijven | Inovense",
     description:
-      "Growth als commercieel systeem. Van lead capture en kwalificatie tot distributie en follow-up. Gebouwd voor operators die op uitvoering concurreren.",
+      "Growth als commercieel systeem. Van lead capture en kwalificatie tot SEO, content en follow-up. Gebouwd voor bedrijven die op uitvoering concurreren.",
     locale: "nl_NL",
   },
 };

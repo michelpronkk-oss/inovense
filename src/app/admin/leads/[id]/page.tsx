@@ -27,6 +27,7 @@ import type { ProposalWriterOutput } from "@/lib/agents/proposal-writer/schema";
 import { formatUsdPrimaryWithLocalSecondary } from "@/lib/currency";
 import { MarketMarker } from "@/app/admin/market-marker";
 import { formatReminderAge, getLifecycleReminders } from "@/lib/lifecycle-reminders";
+import { snoozeReminder } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -227,21 +228,55 @@ export default async function LeadDetailPage({
           {lifecycleReminders.length > 0 && (
             <Section title="Needs attention">
               <div className="space-y-2.5">
-                {lifecycleReminders.map((reminder) => (
-                  <div
-                    key={reminder.kind}
-                    className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2.5"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-medium text-amber-100">{reminder.title}</p>
-                      <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-amber-200/85">
-                        {formatReminderAge(reminder)}
-                      </span>
+                {lifecycleReminders.map((reminder) => {
+                  const isStalled = reminder.urgency === "stalled";
+                  return (
+                    <div
+                      key={reminder.kind}
+                      className={`rounded-lg border px-3 py-2.5 ${
+                        isStalled
+                          ? "border-orange-500/25 bg-orange-500/8"
+                          : "border-amber-500/20 bg-amber-500/5"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className={`text-xs font-medium ${isStalled ? "text-orange-100" : "text-amber-100"}`}>
+                          {reminder.title}
+                        </p>
+                        <span className={`text-[10px] font-medium uppercase tracking-[0.08em] ${isStalled ? "text-orange-300/85" : "text-amber-200/85"}`}>
+                          {formatReminderAge(reminder)}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[11px] leading-relaxed text-zinc-300">{reminder.summary}</p>
+                      <p className="mt-1 text-[11px] text-zinc-500">{reminder.nextAction}</p>
+                      <div className="mt-2 flex items-center justify-end gap-3 border-t border-zinc-800/50 pt-1.5">
+                        <span className="mr-auto text-[10px] text-zinc-700">Snooze</span>
+                        <form action={snoozeReminder}>
+                          <input type="hidden" name="lead_id" value={lead.id} />
+                          <input type="hidden" name="kind" value={reminder.kind} />
+                          <input type="hidden" name="days" value="2" />
+                          <button
+                            type="submit"
+                            className="text-[10px] uppercase tracking-[0.08em] text-zinc-600 transition-colors hover:text-zinc-300"
+                          >
+                            2 days
+                          </button>
+                        </form>
+                        <form action={snoozeReminder}>
+                          <input type="hidden" name="lead_id" value={lead.id} />
+                          <input type="hidden" name="kind" value={reminder.kind} />
+                          <input type="hidden" name="days" value="5" />
+                          <button
+                            type="submit"
+                            className="text-[10px] uppercase tracking-[0.08em] text-zinc-600 transition-colors hover:text-zinc-300"
+                          >
+                            5 days
+                          </button>
+                        </form>
+                      </div>
                     </div>
-                    <p className="mt-1 text-[11px] leading-relaxed text-zinc-300">{reminder.summary}</p>
-                    <p className="mt-1 text-[11px] text-zinc-500">{reminder.nextAction}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </Section>
           )}

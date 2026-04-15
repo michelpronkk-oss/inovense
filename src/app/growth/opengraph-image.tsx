@@ -5,7 +5,7 @@ import { makeLaneOg } from "@/lib/make-lane-og";
 import { resolveOgVariantForRequest } from "@/lib/og-variant";
 
 export const runtime = "nodejs";
-export const alt = "Growth Lane | Inovense — Content Systems and Market Presence";
+export const alt = "Inovense Growth — SEO, Content, and Demand Generation";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -18,14 +18,14 @@ export default async function Image() {
 
   return new ImageResponse(
     makeLaneOg({
-      laneLabel: "Growth Lane",
-      headline: "Content systems and market presence built to compound.",
+      laneLabel: "Growth",
+      headline: "SEO, content, and demand generation built to compound.",
       panelLabel: "What we build",
       items: [
-        "SEO infrastructure and content",
+        "SEO and content systems",
         "Paid media and performance",
-        "Organic content systems",
-        "Growth execution and compounding",
+        "Organic distribution",
+        "Growth built to compound",
       ],
       logo,
       variant,

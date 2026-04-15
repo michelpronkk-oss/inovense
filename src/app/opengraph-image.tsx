@@ -24,10 +24,10 @@ export default async function Image() {
 
   return new ImageResponse(
     makeHubOg({
-      eyebrow: "Digital Infrastructure",
+      eyebrow: "Inovense",
       headline: "Web, systems, and growth built to perform.",
       subheadline:
-        "Conversion-focused websites, automation workflows, and growth systems.",
+        "Websites, automation, and growth systems for companies that compete on execution.",
       panelLabel: "Services",
       lanes: [LANES[0], LANES[1], LANES[2]],
       domainLabel: "inovense.com",

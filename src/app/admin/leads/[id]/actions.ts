@@ -3,6 +3,7 @@
 import { createSupabaseServerClient, type LeadStatus, type ProjectStatus } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { addDays } from "date-fns";
 import {
   sendDepositPaidConfirmationEmail,
   sendFinalPaymentReceivedEmail,
@@ -652,6 +653,44 @@ export async function updateProjectStatus(
     console.error("[admin] updateProjectStatus failed:", err);
     return { success: false, error: "Failed to update project status." };
   }
+}
+
+/* ─── Reminder snooze ───────────────────────────────────────────────────── */
+
+export async function snoozeReminder(formData: FormData): Promise<void> {
+  const leadId = formData.get("lead_id");
+  const kind = formData.get("kind");
+  const days = parseInt(String(formData.get("days")), 10);
+
+  if (
+    typeof leadId !== "string" ||
+    typeof kind !== "string" ||
+    !leadId ||
+    !kind ||
+    !Number.isFinite(days) ||
+    days < 1 ||
+    days > 30
+  ) {
+    return;
+  }
+
+  const supabase = createSupabaseServerClient();
+
+  const { data } = await supabase
+    .from("leads")
+    .select("reminder_snooze")
+    .eq("id", leadId)
+    .single();
+
+  const current = (data?.reminder_snooze as Record<string, string> | null) ?? {};
+  const until = addDays(new Date(), days).toISOString();
+
+  await supabase
+    .from("leads")
+    .update({ reminder_snooze: { ...current, [kind]: until } })
+    .eq("id", leadId);
+
+  revalidateLead(leadId);
 }
 
 /* ─── Delete ────────────────────────────────────────────────────────────── */
