@@ -53,6 +53,17 @@ export async function generateMetadata({
   return { title: "Lead | Inovense CRM" };
 }
 
+function SectionGroup({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 px-0.5 pt-1">
+      <p className="shrink-0 text-[10px] font-medium uppercase tracking-[0.15em] text-zinc-700">
+        {children}
+      </p>
+      <div className="h-px flex-1 bg-zinc-800/50" />
+    </div>
+  );
+}
+
 function Field({
   label,
   value,
@@ -274,9 +285,12 @@ export default async function LeadDetailPage({
             </Section>
           )}
 
-          <Section title="Status">
+          <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/20 px-4 py-3">
+            <p className="mb-2.5 text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-600">
+              Stage
+            </p>
             <StatusUpdater id={lead.id} currentStatus={lead.status} />
-          </Section>
+          </div>
 
           <Section title="Send email">
             <EmailActionsPanel
@@ -307,6 +321,8 @@ export default async function LeadDetailPage({
             angleAppliedAt={lead.proposal_angle_applied_at ?? null}
             writerAppliedAt={lead.proposal_writer_applied_at ?? null}
           />
+
+          <SectionGroup>Commercial</SectionGroup>
 
           <Section title="Proposal">
             <ProposalEditor
@@ -373,6 +389,8 @@ export default async function LeadDetailPage({
             />
           </Section>
 
+          <SectionGroup>Delivery</SectionGroup>
+
           <Section title="Onboarding">
             <OnboardingManager
               id={lead.id}
@@ -389,6 +407,8 @@ export default async function LeadDetailPage({
               proposalToken={lead.proposal_token}
             />
           </Section>
+
+          <SectionGroup>Notes</SectionGroup>
 
           <Section title="Next step">
             <NextStepEditor
@@ -573,8 +593,13 @@ export default async function LeadDetailPage({
             </div>
           )}
 
-          <Section title="Contact">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/30">
+            <div className="border-b border-zinc-800/60 bg-zinc-900/60 px-4 py-2.5">
+              <h2 className="text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-600">
+                Client
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2">
               <Field label="Full name" value={lead.full_name} />
               <Field label="Company" value={lead.company_name} />
               <Field label="Work email">
@@ -587,16 +612,13 @@ export default async function LeadDetailPage({
               </Field>
               <Field label="Website or social" value={lead.website_or_social} />
             </div>
-          </Section>
-
-          <Section title="Project">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="Service lane" value={lead.service_lane} />
-              <Field label="Project type" value={lead.project_type} />
-              <Field label="Budget range" value={lead.budget_range} />
+            <div className="grid grid-cols-1 gap-4 border-t border-zinc-800/50 p-4 sm:grid-cols-2">
+              <Field label="Lane" value={lead.service_lane} />
+              <Field label="Type" value={lead.project_type} />
+              <Field label="Budget" value={lead.budget_range} />
               <Field label="Timeline" value={lead.timeline} />
             </div>
-          </Section>
+          </div>
 
           <Section title="Project brief">
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-400">

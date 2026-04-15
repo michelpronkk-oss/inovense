@@ -54,7 +54,7 @@ export function RevenueCard({
   if (state.kind === "no_price") {
     return (
       <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/30">
-        <div className="border-b border-zinc-800/60 bg-zinc-900/60 px-4 py-3">
+        <div className="border-b border-zinc-800/60 bg-zinc-900/60 px-4 py-2.5">
           <h2 className="text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-600">
             Revenue
           </h2>
@@ -135,7 +135,7 @@ export function RevenueCard({
 
   return (
     <div className="overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/30">
-      <div className="flex items-center justify-between gap-2 border-b border-zinc-800/60 bg-zinc-900/60 px-4 py-3">
+      <div className="flex items-center justify-between gap-2 border-b border-zinc-800/60 bg-zinc-900/60 px-4 py-2.5">
         <h2 className="text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-600">
           Revenue
         </h2>
