@@ -1377,6 +1377,7 @@ const CORE_NAV_ITEMS = [
 ];
 
 type NavItem = { id: string; title: string };
+type NavGroup = { label: string; items: NavItem[] };
 
 function getNavItems(): NavItem[] {
   const sectionItems = SECTIONS.map((section) => ({
@@ -1390,6 +1391,42 @@ function getNavItems(): NavItem[] {
     seen.add(item.id);
     return true;
   });
+}
+
+function getNavGroups(): NavGroup[] {
+  const flowIds = new Set([
+    "lead-operating-flow", "flow-reference", "outbound-prospects",
+    "project-status-reference", "onboarding-and-activation",
+  ]);
+  const commercialIds = new Set([
+    "pricing-framework", "action-event-map", "proposal-and-commercial",
+    "payment-and-confirmation", "currency-and-market-handling",
+    "revenue-visibility", "scenario-playbooks",
+  ]);
+  const deliveryIds = new Set([
+    "project-status-semantics", "client-portal-light",
+    "structured-client-content-rendering", "lifecycle-attention-layer",
+  ]);
+  const aiIds = new Set(["agent-stack"]);
+
+  const all = getNavItems();
+  const groups: NavGroup[] = [
+    { label: "Flow", items: all.filter((i) => flowIds.has(i.id)) },
+    { label: "Commercial", items: all.filter((i) => commercialIds.has(i.id)) },
+    { label: "Delivery", items: all.filter((i) => deliveryIds.has(i.id)) },
+    { label: "AI", items: all.filter((i) => aiIds.has(i.id)) },
+    {
+      label: "Ops",
+      items: all.filter(
+        (i) =>
+          !flowIds.has(i.id) &&
+          !commercialIds.has(i.id) &&
+          !deliveryIds.has(i.id) &&
+          !aiIds.has(i.id)
+      ),
+    },
+  ];
+  return groups.filter((g) => g.items.length > 0);
 }
 
 function SectionTag({ label }: { label: HandbookSection["tag"] }) {
@@ -1440,17 +1477,17 @@ function HandbookSectionCard({ section }: { section: HandbookSection }) {
   return (
     <section id={section.id} className="scroll-mt-24">
       <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
-        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-5 py-4">
-          <div className="mb-2 flex flex-wrap items-center gap-2">
+        <div className="border-b border-zinc-800/70 bg-zinc-900/70 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2">
             <SectionTag label={section.tag} />
             <AutomationTag label={section.automation} />
+            <h2 className="text-sm font-semibold text-zinc-100">{section.title}</h2>
           </div>
-          <h2 className="text-lg font-semibold text-zinc-100">{section.title}</h2>
-          <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-zinc-400">
+          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-zinc-500">
             {section.summary}
           </p>
         </div>
-        <div className="grid gap-3 p-5 md:grid-cols-2">
+        <div className="grid gap-3 p-4 md:grid-cols-2">
           {section.blocks.map((block) => (
             <BlockCard key={`${section.id}-${block.title}`} block={block} />
           ))}
@@ -1821,10 +1858,10 @@ function CurrentBuildOrderSection() {
 }
 
 export default function DocsPage() {
-  const navItems = getNavItems();
+  const navGroups = getNavGroups();
 
   return (
-    <div className="mx-auto max-w-6xl space-y-7">
+    <div className="mx-auto max-w-6xl space-y-5">
       <header className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/35">
         <div className="bg-[radial-gradient(1200px_300px_at_-5%_-50%,rgba(73,160,164,0.22),transparent)] px-6 py-6 md:px-7">
           <div className="flex flex-wrap items-center gap-2">
@@ -1843,7 +1880,7 @@ export default function DocsPage() {
             proposal intelligence, payment/onboarding flow, client portal behavior, prospects, and
             decision-grade performance semantics. Keep stage truth strict and operator decisions explicit.
           </p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/45 p-3.5">
               <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">Surface Split</p>
               <p className="mt-1 text-sm font-medium text-zinc-200">Public / Admin / Portal host routing</p>
@@ -1874,27 +1911,33 @@ export default function DocsPage() {
         </div>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+      <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
         <aside className="space-y-4 lg:sticky lg:top-24 lg:h-fit">
-          <nav className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-4">
+          <nav className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-3.5">
             <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-600">
               Jump To
             </p>
-            <ol className="space-y-1.5">
-              {navItems.map((item, index) => (
-                <li key={item.id}>
-                  <a
-                    href={`#${item.id}`}
-                    className="group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-800/60 hover:text-zinc-200"
-                  >
-                    <span className="w-5 text-right text-[11px] text-zinc-700 group-hover:text-zinc-500">
-                      {index + 1}.
-                    </span>
-                    <span className="leading-tight">{item.title}</span>
-                  </a>
-                </li>
+            <div className="space-y-3">
+              {navGroups.map((group) => (
+                <div key={group.label}>
+                  <p className="mb-1 px-2 text-[9px] font-medium uppercase tracking-[0.14em] text-zinc-700">
+                    {group.label}
+                  </p>
+                  <ul className="space-y-0.5">
+                    {group.items.map((item) => (
+                      <li key={item.id}>
+                        <a
+                          href={`#${item.id}`}
+                          className="flex items-center rounded-md px-2 py-1 text-[11px] leading-tight text-zinc-500 transition-colors hover:bg-zinc-800/60 hover:text-zinc-200"
+                        >
+                          {item.title}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ))}
-            </ol>
+            </div>
           </nav>
 
           <div className="rounded-2xl border border-brand/25 bg-brand/10 p-4">
@@ -1908,7 +1951,7 @@ export default function DocsPage() {
           </div>
         </aside>
 
-        <div className="space-y-6">
+        <div className="space-y-5">
           <OperatingStateNowSection />
           <CoreSystemLayersSection />
           <CanonicalDefinitionsSection />

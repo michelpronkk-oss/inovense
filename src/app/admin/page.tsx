@@ -24,21 +24,30 @@ export default async function AdminOverviewPage() {
   let leads: Lead[] = [];
   let prospects: Prospect[] = [];
   let error: string | null = null;
+  let prospectsError: string | null = null;
+
+  const supabase = createSupabaseServerClient();
 
   try {
-    const supabase = createSupabaseServerClient();
-    const [leadsResult, prospectsResult] = await Promise.all([
-      supabase.from("leads").select("*").order("created_at", { ascending: false }),
-      supabase.from("prospects").select("*").order("updated_at", { ascending: false }),
-    ]);
-
-    if (leadsResult.error) throw leadsResult.error;
-    if (prospectsResult.error) throw prospectsResult.error;
-
-    leads = (leadsResult.data ?? []) as Lead[];
-    prospects = (prospectsResult.data ?? []) as Prospect[];
+    const { data, error: leadsErr } = await supabase
+      .from("leads")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (leadsErr) throw leadsErr;
+    leads = (data ?? []) as Lead[];
   } catch (err) {
-    error = err instanceof Error ? err.message : "Failed to load overview.";
+    error = err instanceof Error ? err.message : "Failed to load leads.";
+  }
+
+  try {
+    const { data, error: sbErr } = await supabase
+      .from("prospects")
+      .select("*")
+      .order("updated_at", { ascending: false });
+    if (sbErr) throw sbErr;
+    prospects = (data ?? []) as Prospect[];
+  } catch (err) {
+    prospectsError = err instanceof Error ? err.message : "Prospects data unavailable.";
   }
 
   /* ─── Pipeline counts ────────────────────────────────────────────────────── */
@@ -120,6 +129,12 @@ export default async function AdminOverviewPage() {
       {error && (
         <div className="mb-6 rounded-xl border border-red-500/20 bg-red-500/8 px-4 py-3 text-sm text-red-400">
           {error}
+        </div>
+      )}
+
+      {prospectsError && !error && (
+        <div className="mb-4 rounded-lg border border-zinc-800/70 bg-zinc-900/40 px-3.5 py-2.5 text-[11px] text-zinc-500">
+          Prospect data unavailable. Lead pipeline is unaffected.
         </div>
       )}
 
