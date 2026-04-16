@@ -4,6 +4,11 @@ import type {
   ProspectLaneFit,
   ProspectOutreachLanguage,
 } from "@/lib/supabase-server";
+import {
+  assessCandidateQuality,
+  normalizeWebsiteUrl,
+  websiteHost,
+} from "@/lib/prospects/quality";
 
 const APIFY_BASE_URL = "https://api.apify.com/v2";
 const DEFAULT_MAPS_ACTOR_ID = "compass/crawler-google-places";
@@ -52,6 +57,13 @@ export type ProspectCandidate = {
     nameContactKey: string;
     nameOnlyKey: string;
   };
+};
+
+export type ProspectCandidateBatch = {
+  candidates: ProspectCandidate[];
+  fetchedCount: number;
+  filteredCount: number;
+  filteredByReason: Record<string, number>;
 };
 
 function getApifyToken(): string {
@@ -153,25 +165,6 @@ function asStringArray(value: unknown): string[] {
   return value
     .map((item) => asString(item))
     .filter((item): item is string => Boolean(item));
-}
-
-function normalizeWebsite(value: string | null): string | null {
-  if (!value) return null;
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  if (/^[a-z0-9.-]+\.[a-z]{2,}/i.test(trimmed)) return `https://${trimmed}`;
-  return null;
-}
-
-function websiteHost(value: string | null): string | null {
-  if (!value) return null;
-  try {
-    const url = new URL(value);
-    return url.hostname.replace(/^www\./i, "").toLowerCase();
-  } catch {
-    return null;
-  }
 }
 
 function normalizeKey(value: string | null): string {
@@ -323,9 +316,8 @@ function extractWebsite(record: Record<string, unknown>): string | null {
   const raw =
     asString(record.website) ??
     asString(record.websiteUrl) ??
-    asString(record.domain) ??
-    asString(record.url);
-  return normalizeWebsite(raw);
+    asString(record.domain);
+  return normalizeWebsiteUrl(raw);
 }
 
 function extractLocationLabel(record: Record<string, unknown>): string | null {
@@ -360,6 +352,7 @@ function buildNotes(input: {
   mapsUrl: string | null;
   rating: string | null;
   reviewsCount: string | null;
+  fitSignals: string[];
 }): string {
   const lines: string[] = [
     "Generated via Apify (Google Maps scraper).",
@@ -371,13 +364,14 @@ function buildNotes(input: {
   if (input.rating) lines.push(`Rating: ${input.rating}`);
   if (input.reviewsCount) lines.push(`Reviews: ${input.reviewsCount}`);
   if (input.mapsUrl) lines.push(`Maps URL: ${input.mapsUrl}`);
+  if (input.fitSignals.length > 0) lines.push(`Fit signals: ${input.fitSignals.join(", ")}`);
 
   return lines.join("\n");
 }
 
 export async function generateProspectCandidatesFromApify(
   briefInput: GenerateProspectsBrief
-): Promise<ProspectCandidate[]> {
+): Promise<ProspectCandidateBatch> {
   const brief = {
     ...briefInput,
     volume: clampVolume(briefInput.volume),
@@ -414,6 +408,8 @@ export async function generateProspectCandidatesFromApify(
   });
 
   const candidates: ProspectCandidate[] = [];
+  const filteredByReason: Record<string, number> = {};
+  let filteredRecordCount = 0;
   for (const raw of items) {
     const record = raw as Record<string, unknown>;
     const companyName = extractCompanyName(record);
@@ -430,6 +426,26 @@ export async function generateProspectCandidatesFromApify(
     const rating = asString(record.totalScore) ?? asString(record.rating);
     const reviewsCount = asString(record.reviewsCount);
 
+    const cleanName = normalizeKey(companyName);
+    if (!cleanName) continue;
+    const quality = assessCandidateQuality({
+      companyName,
+      websiteUrl: website,
+      mapsUrl,
+      contactValue,
+      notes: category,
+    });
+
+    if (!quality.accepted) {
+      filteredRecordCount += 1;
+      quality.reasons.forEach((reason) => {
+        filteredByReason[reason] = (filteredByReason[reason] ?? 0) + 1;
+      });
+      continue;
+    }
+
+    const websiteHostKey = websiteHost(website);
+    const contactKey = normalizeKey(contactValue);
     const notes = buildNotes({
       brief,
       locationLabel,
@@ -437,13 +453,8 @@ export async function generateProspectCandidatesFromApify(
       mapsUrl,
       rating,
       reviewsCount,
+      fitSignals: quality.fitSignals.map((signal) => signal.label),
     });
-
-    const cleanName = normalizeKey(companyName);
-    if (!cleanName) continue;
-
-    const websiteHostKey = websiteHost(website);
-    const contactKey = normalizeKey(contactValue);
 
     candidates.push({
       company_name: companyName.trim(),
@@ -467,5 +478,10 @@ export async function generateProspectCandidatesFromApify(
     });
   }
 
-  return candidates;
+  return {
+    candidates,
+    fetchedCount: items.length,
+    filteredCount: filteredRecordCount,
+    filteredByReason,
+  };
 }

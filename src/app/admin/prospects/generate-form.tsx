@@ -26,8 +26,8 @@ const MARKET_OPTIONS = [
 ] as const;
 
 const NICHE_OPTIONS = [
-  "Marketing agency",
-  "Shopify store",
+  "Digital marketing agency",
+  "Shopify agency",
   "Ecommerce brand",
   "Consultant",
   "Interior designer",
@@ -51,19 +51,11 @@ type GeneratePreset = {
   source: string;
 };
 
-const GENERATE_PRESETS: GeneratePreset[] = [
+const RECOMMENDED_PRESETS: GeneratePreset[] = [
   {
     label: "UK Agencies, London",
     market: "United Kingdom",
-    niche: "Marketing agency",
-    location: "London",
-    volume: "15",
-    source: "outbound",
-  },
-  {
-    label: "UK Shopify, London",
-    market: "United Kingdom",
-    niche: "Shopify store",
+    niche: "Digital marketing agency",
     location: "London",
     volume: "15",
     source: "outbound",
@@ -71,25 +63,60 @@ const GENERATE_PRESETS: GeneratePreset[] = [
   {
     label: "UK Agencies, Manchester",
     market: "United Kingdom",
-    niche: "Marketing agency",
+    niche: "Digital marketing agency",
     location: "Manchester",
     volume: "15",
     source: "outbound",
   },
   {
-    label: "US Ecommerce, Austin",
-    market: "United States",
-    niche: "Ecommerce brand",
-    location: "Austin",
-    volume: "20",
+    label: "NL Agencies, Amsterdam",
+    market: "Netherlands",
+    niche: "Digital marketing agency",
+    location: "Amsterdam",
+    volume: "15",
     source: "outbound",
   },
   {
-    label: "NL Agencies, Amsterdam",
+    label: "NL Renovation, Amsterdam",
     market: "Netherlands",
-    niche: "Marketing agency",
+    niche: "Renovation company",
     location: "Amsterdam",
     volume: "15",
+    source: "outbound",
+  },
+  {
+    label: "NL Interior, Amsterdam",
+    market: "Netherlands",
+    niche: "Interior designer",
+    location: "Amsterdam",
+    volume: "15",
+    source: "outbound",
+  },
+];
+
+const SECONDARY_PRESETS: GeneratePreset[] = [
+  {
+    label: "UK Shopify Agencies, London",
+    market: "United Kingdom",
+    niche: "Shopify agency",
+    location: "London",
+    volume: "15",
+    source: "outbound",
+  },
+  {
+    label: "NL Renovation, Utrecht",
+    market: "Netherlands",
+    niche: "Renovation company",
+    location: "Utrecht",
+    volume: "15",
+    source: "outbound",
+  },
+  {
+    label: "US Agencies, Austin",
+    market: "United States",
+    niche: "Digital marketing agency",
+    location: "Austin",
+    volume: "18",
     source: "outbound",
   },
 ];
@@ -99,9 +126,9 @@ export default function GenerateForm({
 }: {
   sourceOptions: Array<{ value: string; label: string }>;
 }) {
-  const [market, setMarket] = useState<string>("Netherlands");
-  const [niche, setNiche] = useState<string>("Marketing agency");
-  const [location, setLocation] = useState<string>("Amsterdam");
+  const [market, setMarket] = useState<string>("United Kingdom");
+  const [niche, setNiche] = useState<string>("Digital marketing agency");
+  const [location, setLocation] = useState<string>("London");
   const [volume, setVolume] = useState<string>("15");
   const [source, setSource] = useState<string>("outbound");
 
@@ -131,10 +158,10 @@ export default function GenerateForm({
     <form action={formAction} className="space-y-3">
       <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/35 p-3">
         <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
-          Quick presets
+          Recommended presets
         </p>
         <div className="mt-2 flex flex-wrap gap-2">
-          {GENERATE_PRESETS.map((preset) => {
+          {RECOMMENDED_PRESETS.map((preset) => {
             const active =
               preset.market === market &&
               preset.niche === niche &&
@@ -156,6 +183,33 @@ export default function GenerateForm({
               </button>
             );
           })}
+        </div>
+        <div className="mt-2 border-t border-zinc-800/60 pt-2">
+          <p className="text-[10px] uppercase tracking-[0.1em] text-zinc-700">Secondary</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {SECONDARY_PRESETS.map((preset) => {
+              const active =
+                preset.market === market &&
+                preset.niche === niche &&
+                preset.location === location &&
+                preset.volume === volume &&
+                preset.source === source;
+              return (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => applyPreset(preset)}
+                  className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.08em] transition-colors ${
+                    active
+                      ? "border-brand/45 bg-brand/15 text-brand"
+                      : "border-zinc-700/80 bg-zinc-900/60 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300"
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 

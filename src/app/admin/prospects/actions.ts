@@ -263,13 +263,14 @@ export async function generateProspectsFromBrief(
   }
 
   try {
-    const candidates = await generateProspectCandidatesFromApify({
+    const generation = await generateProspectCandidatesFromApify({
       market,
       niche,
       location,
       volume,
       source,
     });
+    const candidates = generation.candidates;
 
     if (candidates.length === 0) {
       return {
@@ -277,7 +278,7 @@ export async function generateProspectsFromBrief(
         error: "No usable prospects were returned for this brief.",
         inserted: 0,
         duplicates: 0,
-        discarded: 0,
+        discarded: generation.filteredCount,
         summary: null,
       };
     }
@@ -314,7 +315,7 @@ export async function generateProspectsFromBrief(
     }
 
     let duplicates = 0;
-    let discarded = 0;
+    let discarded = generation.filteredCount;
     const insertRows: Array<Omit<Prospect, "id" | "created_at" | "updated_at">> = [];
 
     for (const candidate of candidates) {
@@ -388,7 +389,11 @@ export async function generateProspectsFromBrief(
 
     const summary = `Added ${insertRows.length} prospect${
       insertRows.length === 1 ? "" : "s"
-    } to queue${duplicates > 0 ? `, skipped ${duplicates} duplicate${duplicates === 1 ? "" : "s"}` : ""}.`;
+    } to queue${
+      duplicates > 0 ? `, skipped ${duplicates} duplicate${duplicates === 1 ? "" : "s"}` : ""
+    }${
+      discarded > 0 ? `, filtered ${discarded} weak record${discarded === 1 ? "" : "s"}` : ""
+    }.`;
 
     return {
       ok: true,

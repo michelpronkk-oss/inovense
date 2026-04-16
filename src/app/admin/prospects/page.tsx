@@ -10,6 +10,7 @@ import {
   type ProspectLaneFit,
   type ProspectOutreachLanguage,
 } from "@/lib/supabase-server";
+import { fitSignalsFromProspect, type ProspectFitSignal } from "@/lib/prospects/quality";
 import {
   PROSPECT_STATUS_CONFIG,
   PROSPECT_LANE_OPTIONS,
@@ -145,14 +146,14 @@ function formatDateTime(value: string | null): string {
   return format(parsed, "MMM d, yyyy HH:mm");
 }
 
-function fitSignalsForProspect(prospect: Prospect): string[] {
-  const signals: string[] = [];
-  if (prospect.website_url) signals.push("website");
-  if (prospect.contact_value) signals.push("contact route");
-  if (prospect.opening_angle) signals.push("opening angle");
-  if (prospect.notes) signals.push("research notes");
-  if (prospect.next_follow_up_at) signals.push("follow-up scheduled");
-  return signals;
+function fitSignalClassName(signal: ProspectFitSignal): string {
+  if (signal.tone === "good") {
+    return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
+  }
+  if (signal.tone === "warn") {
+    return "border-amber-500/30 bg-amber-500/10 text-amber-200";
+  }
+  return "border-zinc-700/70 bg-zinc-900/60 text-zinc-500";
 }
 
 function statusCount(prospects: Prospect[], status: ProspectStatus): number {
@@ -423,7 +424,7 @@ export default async function ProspectsPage({
                 <tbody className="divide-y divide-zinc-800/40">
                   {queueProspects.map((prospect) => {
                     const primaryAction = queuePrimaryAction(prospect);
-                    const signals = fitSignalsForProspect(prospect);
+                    const signals = fitSignalsFromProspect(prospect);
                     return (
                       <tr key={prospect.id} className="transition-colors hover:bg-zinc-800/20">
                         <td className="px-4 py-4">
@@ -444,10 +445,12 @@ export default async function ProspectsPage({
                             <div className="flex flex-wrap gap-1.5">
                               {signals.map((signal) => (
                                 <span
-                                  key={`${prospect.id}-${signal}`}
-                                  className="inline-flex items-center rounded-full border border-zinc-700/70 bg-zinc-900/60 px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-zinc-500"
+                                  key={`${prospect.id}-${signal.label}`}
+                                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] ${fitSignalClassName(
+                                    signal
+                                  )}`}
                                 >
-                                  {signal}
+                                  {signal.label}
                                 </span>
                               ))}
                             </div>
@@ -509,7 +512,7 @@ export default async function ProspectsPage({
 
             <div className="divide-y divide-zinc-800/40 md:hidden">
               {queueProspects.map((prospect) => {
-                const signals = fitSignalsForProspect(prospect);
+                const signals = fitSignalsFromProspect(prospect);
                 return (
                   <article key={prospect.id} className="space-y-2 px-4 py-3.5">
                     <div className="flex items-start justify-between gap-3">
@@ -536,7 +539,9 @@ export default async function ProspectsPage({
                       {laneLabel(prospect.lane_fit)} · {languageLabel(prospect.outreach_language)}
                     </p>
                     {signals.length > 0 && (
-                      <p className="text-[11px] text-zinc-500">Signals: {signals.join(", ")}</p>
+                      <p className="text-[11px] text-zinc-500">
+                        Signals: {signals.map((signal) => signal.label).join(", ")}
+                      </p>
                     )}
                     <Link
                       href={`/admin/prospects/${prospect.id}`}
