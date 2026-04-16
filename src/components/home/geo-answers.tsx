@@ -113,39 +113,43 @@ export default function GeoAnswers() {
             <Link
               key={lane.lane}
               href={lane.href}
-              className="group relative flex flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/60 p-5 transition-all duration-200 hover:border-zinc-600 hover:bg-zinc-900"
+              className="group relative flex flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/60 p-5 transition-all duration-200 hover:border-zinc-600/80 hover:bg-zinc-900 active:scale-[0.99]"
+              style={{ boxShadow: "0 0 0 0 transparent" }}
             >
               {/* Top accent line */}
               <div className="absolute inset-x-0 top-0 h-px origin-left scale-x-0 bg-brand/70 transition-transform duration-300 ease-out group-hover:scale-x-100" />
 
-              {/* Subtle hover overlay */}
-              <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 ring-1 ring-inset ring-brand/20 transition-opacity duration-200 group-hover:opacity-100" />
+              {/* Hover glow */}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+                style={{
+                  boxShadow: "inset 0 0 0 1px rgba(73,160,164,0.18), 0 8px 32px rgba(0,0,0,0.28)",
+                }}
+              />
 
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-sm font-semibold text-zinc-100 transition-colors group-hover:text-zinc-50">
+                <span className="text-sm font-semibold text-zinc-200 transition-colors group-hover:text-zinc-50">
                   {lane.lane}
                 </span>
                 <svg
                   width="14" height="14" viewBox="0 0 12 12" fill="none" aria-hidden
-                  className="text-zinc-600 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-brand"
+                  className="text-zinc-500 transition-all duration-200 group-hover:translate-x-1 group-hover:text-brand"
                 >
                   <path d="M2.5 6h7M6.5 3l3 3-3 3" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
 
               <p className="mb-2 text-sm leading-snug text-zinc-300">{lane.focus}</p>
-              <p className="mb-4 text-xs leading-relaxed text-zinc-500">{lane.signal}</p>
+              <p className="mb-5 text-xs leading-relaxed text-zinc-500">{lane.signal}</p>
 
-              <div className="mt-auto flex items-center gap-1">
-                <span className="text-xs font-medium text-zinc-500 transition-colors group-hover:text-brand">
+              <div className="mt-auto">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-900/80 px-3 py-1 text-[11px] font-medium text-zinc-400 transition-all duration-200 group-hover:border-brand/40 group-hover:bg-brand/[0.08] group-hover:text-brand">
                   {lane.cta}
+                  <svg width="9" height="9" viewBox="0 0 12 12" fill="none" aria-hidden className="transition-transform duration-200 group-hover:translate-x-0.5">
+                    <path d="M2.5 6h7M6.5 3l3 3-3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </span>
-                <svg
-                  width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden
-                  className="text-zinc-600 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-brand"
-                >
-                  <path d="M2.5 6h7M6.5 3l3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
               </div>
             </Link>
           ))}
