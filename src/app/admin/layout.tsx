@@ -20,7 +20,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
 
       {/* Top bar */}
-      <header className="sticky top-0 z-40 border-b border-zinc-800/70 bg-zinc-950/95 backdrop-blur-sm">
+      <header className="sticky top-0 z-40 border-b border-zinc-800/60 bg-zinc-950/92 backdrop-blur-sm">
         {/* Gradient accent line */}
         <div
           aria-hidden
@@ -36,10 +36,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-10">
+      <main className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
         {children}
       </main>
 
     </div>
   );
 }
+

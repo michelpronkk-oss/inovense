@@ -12,6 +12,8 @@ import {
   getEmailTemplatesForLeadSource,
   type EmailTemplateType,
 } from "@/lib/email-templates";
+import { parseCountryCodeInput } from "@/lib/market";
+import { logActivityEventSafe } from "@/lib/activity-events";
 
 const DEPOSIT_PAID_CONFIRMATION_EMAIL_TYPE = "deposit_paid_confirmation";
 const FINAL_PAYMENT_RECEIVED_EMAIL_TYPE = "final_payment_received_confirmation";
@@ -326,7 +328,7 @@ export async function sendLeadEmail(
     const { data: lead, error: fetchError } = await supabase
       .from("leads")
       .select(
-        "id, full_name, company_name, work_email, status, onboarding_token, onboarding_status, proposal_token, proposal_deposit, deposit_amount, payment_link, lead_source, local_currency_code"
+        "id, full_name, company_name, work_email, status, onboarding_token, onboarding_status, proposal_token, proposal_deposit, deposit_amount, payment_link, lead_source, local_currency_code, country_code"
       )
       .eq("id", leadId)
       .single();
@@ -513,6 +515,21 @@ export async function sendLeadEmail(
         .from("leads")
         .update({ ...statusUpdate, ...proposalUpdate })
         .eq("id", leadId);
+    }
+
+    if (emailType === "proposal_sent") {
+      await logActivityEventSafe({
+        entityType: "lead",
+        entityId: leadId,
+        eventType: "proposal.sent",
+        fromStatus: lead.status,
+        toStatus: "proposal_sent",
+        market: parseCountryCodeInput(lead.country_code),
+        metadata: {
+          email_type: emailType,
+          has_proposal_token: Boolean(proposalToken),
+        },
+      });
     }
 
     revalidatePath(`/admin/leads/${leadId}`);

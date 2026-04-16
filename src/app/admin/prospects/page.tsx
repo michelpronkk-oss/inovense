@@ -20,7 +20,9 @@ import {
 import ProspectsFilter from "./prospects-filter";
 import SnippetLibrary from "./snippet-library";
 import GenerateForm from "./generate-form";
+import DeleteProspectButton from "./delete-prospect-button";
 import {
+  markProspectDoNotContactFromList,
   markProspectContactedFromList,
   updateProspectStatusFromList,
 } from "./actions";
@@ -30,22 +32,15 @@ export const dynamic = "force-dynamic";
 
 type FollowUpFilter = "today" | "overdue" | "next_7d" | "none";
 
-type StageKey =
-  | "new"
-  | "reviewed"
-  | "shortlisted"
-  | "outreach_ready"
-  | "contacted"
-  | "replied"
-  | "converted";
+type QueueView =
+  | "needs_review"
+  | "ready"
+  | "active"
+  | "qualified"
+  | "archive"
+  | "all";
 
-const QUEUE_STATUSES: ProspectStatus[] = [
-  "new",
-  "researched",
-  "ready_to_contact",
-  "qualified",
-  "not_fit",
-];
+const STALE_REVIEW_DAYS = 7;
 
 const OUTREACH_STATUSES: ProspectStatus[] = [
   "ready_to_contact",
@@ -53,6 +48,16 @@ const OUTREACH_STATUSES: ProspectStatus[] = [
   "replied",
   "qualified",
 ];
+
+const WEEKLY_ACTIVITY_EVENT_TYPES = [
+  "prospect.generated",
+  "prospect.reviewed",
+  "prospect.ready_to_contact",
+  "prospect.contacted",
+  "prospect.replied",
+  "prospect.qualified",
+  "prospect.converted_to_lead",
+] as const;
 
 function laneLabel(lane: ProspectLaneFit): string {
   return (
@@ -109,6 +114,61 @@ function parseLaneFilter(value: string | undefined): ProspectLaneFit | null {
     : null;
 }
 
+function parseQueueView(value: string | undefined): QueueView {
+  const allowed: QueueView[] = ["needs_review", "ready", "active", "qualified", "archive", "all"];
+  return allowed.includes(value as QueueView) ? (value as QueueView) : "needs_review";
+}
+
+function isStaleReviewedProspect(prospect: Prospect): boolean {
+  if (prospect.status !== "researched") return false;
+  const updated = new Date(prospect.updated_at);
+  if (Number.isNaN(updated.getTime())) return false;
+  const staleThreshold = new Date();
+  staleThreshold.setDate(staleThreshold.getDate() - STALE_REVIEW_DAYS);
+  return updated.getTime() < staleThreshold.getTime();
+}
+
+function isNeedsReviewProspect(prospect: Prospect): boolean {
+  if (prospect.status === "new") return true;
+  if (prospect.status === "researched" && !isStaleReviewedProspect(prospect)) return true;
+  return false;
+}
+
+function queueViewLabel(view: QueueView): string {
+  if (view === "needs_review") return "Needs review";
+  if (view === "ready") return "Ready for outreach";
+  if (view === "active") return "Contacted and replied";
+  if (view === "qualified") return "Qualified and converted";
+  if (view === "archive") return "Archive";
+  return "All prospects";
+}
+
+function prospectsForQueueView(prospects: Prospect[], view: QueueView): Prospect[] {
+  if (view === "needs_review") {
+    return prospects.filter(isNeedsReviewProspect);
+  }
+  if (view === "ready") {
+    return prospects.filter((prospect) => prospect.status === "ready_to_contact");
+  }
+  if (view === "active") {
+    return prospects.filter(
+      (prospect) => prospect.status === "contacted" || prospect.status === "replied"
+    );
+  }
+  if (view === "qualified") {
+    return prospects.filter(
+      (prospect) =>
+        prospect.status === "qualified" || prospect.status === "converted_to_lead"
+    );
+  }
+  if (view === "archive") {
+    return prospects.filter(
+      (prospect) => prospect.status === "not_fit" || isStaleReviewedProspect(prospect)
+    );
+  }
+  return prospects;
+}
+
 function matchesFollowUpFilter(
   nextFollowUpAt: string | null,
   filter: FollowUpFilter | null
@@ -148,26 +208,52 @@ function formatDateTime(value: string | null): string {
 
 function fitSignalClassName(signal: ProspectFitSignal): string {
   if (signal.tone === "good") {
-    return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
+    return "border-emerald-500/25 bg-emerald-500/8 text-emerald-300";
   }
   if (signal.tone === "warn") {
-    return "border-amber-500/30 bg-amber-500/10 text-amber-200";
+    return "border-amber-500/25 bg-amber-500/8 text-amber-200";
   }
-  return "border-zinc-700/70 bg-zinc-900/60 text-zinc-500";
+  return "border-zinc-700/60 bg-zinc-900/55 text-zinc-500";
+}
+
+function mobileFitSignalClassName(signal: ProspectFitSignal): string {
+  const label = signal.label.toLowerCase();
+  if (label.includes("website")) {
+    return "border-cyan-500/30 bg-cyan-500/12 text-cyan-200";
+  }
+  if (label.includes("contact")) {
+    return "border-brand/35 bg-brand/15 text-brand";
+  }
+  if (label.includes("agency") || label.includes("ecommerce") || label.includes("service")) {
+    return "border-violet-500/30 bg-violet-500/12 text-violet-200";
+  }
+  if (label.includes("maps")) {
+    return "border-orange-500/35 bg-orange-500/12 text-orange-200";
+  }
+  if (label.includes("platform") || label.includes("weak") || label.includes("manual")) {
+    return "border-red-500/28 bg-red-500/10 text-red-300";
+  }
+  return fitSignalClassName(signal);
+}
+
+function condensedSignalText(signals: ProspectFitSignal[], max = 2): string | null {
+  if (signals.length <= 1) return null;
+  const rest = signals.slice(1);
+  const labels = rest.slice(0, max).map((signal) => signal.label);
+  const remainder = rest.length - labels.length;
+  const suffix = remainder > 0 ? ` +${remainder}` : "";
+  return `${labels.join(", ")}${suffix}`;
+}
+
+function weeklyEventCount(
+  counts: Map<string, number>,
+  eventType: (typeof WEEKLY_ACTIVITY_EVENT_TYPES)[number]
+): number {
+  return counts.get(eventType) ?? 0;
 }
 
 function statusCount(prospects: Prospect[], status: ProspectStatus): number {
   return prospects.filter((prospect) => prospect.status === status).length;
-}
-
-function stageCount(prospects: Prospect[], stage: StageKey): number {
-  if (stage === "new") return statusCount(prospects, "new");
-  if (stage === "reviewed") return statusCount(prospects, "researched");
-  if (stage === "shortlisted") return statusCount(prospects, "qualified");
-  if (stage === "outreach_ready") return statusCount(prospects, "ready_to_contact");
-  if (stage === "contacted") return statusCount(prospects, "contacted");
-  if (stage === "replied") return statusCount(prospects, "replied");
-  return statusCount(prospects, "converted_to_lead");
 }
 
 function queuePrimaryAction(prospect: Prospect) {
@@ -225,19 +311,56 @@ function outreachPrimaryAction(prospect: Prospect) {
   return null;
 }
 
+function ProspectSecondaryMenu({
+  prospect,
+  includeNotFit = true,
+}: {
+  prospect: Prospect;
+  includeNotFit?: boolean;
+}) {
+  return (
+    <details className="relative">
+      <summary className="inline-flex h-7 list-none items-center rounded-md border border-zinc-700/70 px-2.5 text-[10px] uppercase tracking-[0.08em] text-zinc-500 transition-colors hover:border-zinc-600 hover:text-zinc-300 [&::-webkit-details-marker]:hidden">
+        More
+      </summary>
+      <div className="absolute right-0 z-20 mt-1 min-w-[150px] rounded-lg border border-zinc-800/90 bg-zinc-950/95 p-2 shadow-2xl shadow-black/40">
+        <div className="flex flex-col items-start gap-1 text-[11px]">
+          {includeNotFit && prospect.status !== "not_fit" && prospect.status !== "converted_to_lead" && (
+            <form action={updateProspectStatusFromList.bind(null, prospect.id, "not_fit")}>
+              <button type="submit" className="text-zinc-400 transition-colors hover:text-zinc-200">
+                Not fit
+              </button>
+            </form>
+          )}
+          {prospect.status !== "converted_to_lead" && (
+            <form action={markProspectDoNotContactFromList.bind(null, prospect.id)}>
+              <button type="submit" className="text-amber-200/85 transition-colors hover:text-amber-100">
+                Do not contact
+              </button>
+            </form>
+          )}
+          <DeleteProspectButton id={prospect.id} variant="subtle" />
+        </div>
+      </div>
+    </details>
+  );
+}
+
 export default async function ProspectsPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const { status, language, lane, follow_up } = await searchParams;
+  const { status, language, lane, follow_up, view } = await searchParams;
   const followUpFilter = normalizeFollowUpFilter(follow_up);
   const statusFilter = parseStatusFilter(status);
   const languageFilter = parseLanguageFilter(language);
   const laneFilter = parseLaneFilter(lane);
+  const queueView = parseQueueView(view);
 
   let prospects: Prospect[] = [];
   let error: string | null = null;
+  const weeklyEventCounts = new Map<string, number>();
 
   try {
     const supabase = createSupabaseServerClient();
@@ -257,22 +380,40 @@ export default async function ProspectsPage({
     error = err instanceof Error ? err.message : "Failed to load prospects.";
   }
 
+  try {
+    const weekStart = new Date();
+    const weekday = (weekStart.getDay() + 6) % 7;
+    weekStart.setDate(weekStart.getDate() - weekday);
+    weekStart.setHours(0, 0, 0, 0);
+
+    const supabase = createSupabaseServerClient();
+    const { data: events, error: eventsError } = await supabase
+      .from("activity_events")
+      .select("event_type")
+      .gte("created_at", weekStart.toISOString())
+      .in("event_type", [...WEEKLY_ACTIVITY_EVENT_TYPES]);
+
+    if (!eventsError) {
+      for (const row of events ?? []) {
+        const eventType = row.event_type as string;
+        weeklyEventCounts.set(eventType, (weeklyEventCounts.get(eventType) ?? 0) + 1);
+      }
+    }
+  } catch {
+    // Keep the core workspace running even if activity summary is unavailable.
+  }
+
   const filteredProspects = prospects.filter((prospect) =>
     matchesFollowUpFilter(prospect.next_follow_up_at, followUpFilter)
   );
 
-  const queueProspects = filteredProspects.filter((prospect) =>
-    QUEUE_STATUSES.includes(prospect.status)
-  );
+  const queueProspects = prospectsForQueueView(filteredProspects, queueView);
   const outreachProspects = filteredProspects.filter((prospect) =>
     OUTREACH_STATUSES.includes(prospect.status)
   );
   const convertedCount = statusCount(filteredProspects, "converted_to_lead");
-  const qualifiedCount = statusCount(filteredProspects, "qualified");
-
-  const dueTodayCount = filteredProspects.filter((prospect) =>
-    matchesFollowUpFilter(prospect.next_follow_up_at, "today")
-  ).length;
+  const staleReviewedCount = filteredProspects.filter(isStaleReviewedProspect).length;
+  const needsReviewCount = prospectsForQueueView(filteredProspects, "needs_review").length;
   const overdueCount = filteredProspects.filter((prospect) =>
     matchesFollowUpFilter(prospect.next_follow_up_at, "overdue")
   ).length;
@@ -280,7 +421,9 @@ export default async function ProspectsPage({
     (prospect) => !prospect.next_follow_up_at && prospect.status !== "converted_to_lead"
   ).length;
 
-  const hasFilters = Boolean(status || language || lane || follow_up);
+  const hasFilters = Boolean(status || language || lane || follow_up || view);
+  const readyCount = prospectsForQueueView(filteredProspects, "ready").length;
+  const activeCount = prospectsForQueueView(filteredProspects, "active").length;
 
   const snippetLanguage = language === "nl" ? "nl" : "en";
   const snippetLane =
@@ -288,6 +431,27 @@ export default async function ProspectsPage({
       ? lane
       : "all";
   const snippetLaneInput = snippetLane === "uncertain" ? "all" : snippetLane;
+  const queueViews: QueueView[] = [
+    "needs_review",
+    "ready",
+    "active",
+    "qualified",
+    "archive",
+    "all",
+  ];
+
+  function queueViewHref(nextView: QueueView): string {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    if (language) params.set("language", language);
+    if (lane) params.set("lane", lane);
+    if (follow_up) params.set("follow_up", follow_up);
+    if (nextView !== "needs_review") {
+      params.set("view", nextView);
+    }
+    const query = params.toString();
+    return query ? `/admin/prospects?${query}` : "/admin/prospects";
+  }
 
   return (
     <div className="space-y-7">
@@ -314,34 +478,28 @@ export default async function ProspectsPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-7">
-        <MetricCard label="New" value={String(stageCount(filteredProspects, "new"))} sub="Generated" />
-        <MetricCard label="Reviewed" value={String(stageCount(filteredProspects, "reviewed"))} sub="Research pass" />
-        <MetricCard label="Shortlisted" value={String(stageCount(filteredProspects, "shortlisted"))} sub="High fit" />
-        <MetricCard
-          label="Outreach ready"
-          value={String(stageCount(filteredProspects, "outreach_ready"))}
-          sub="Ready to touch"
-        />
-        <MetricCard label="Contacted" value={String(stageCount(filteredProspects, "contacted"))} sub="First touch sent" />
-        <MetricCard label="Replied" value={String(stageCount(filteredProspects, "replied"))} sub="Conversation open" />
-        <MetricCard label="Converted" value={String(stageCount(filteredProspects, "converted"))} sub="Moved to lead" />
-      </div>
-
-      {(overdueCount > 0 || unscheduledCount > 0) && (
-        <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-200">
-          {overdueCount > 0 && (
-            <p>
-              {overdueCount} prospect{overdueCount !== 1 ? "s are" : " is"} overdue for follow-up.
-            </p>
-          )}
-          {unscheduledCount > 0 && (
-            <p className={overdueCount > 0 ? "mt-1" : ""}>
-              {unscheduledCount} active prospect{unscheduledCount !== 1 ? "s have" : " has"} no next touch scheduled.
-            </p>
-          )}
+      <section className="rounded-2xl border border-zinc-800/80 bg-zinc-900/25 p-3.5 sm:p-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-600">Pipeline health</p>
+          <p className="text-[11px] text-zinc-600">
+            Generated {weeklyEventCount(weeklyEventCounts, "prospect.generated")} · Reviewed{" "}
+            {weeklyEventCount(weeklyEventCounts, "prospect.reviewed")} · Contacted{" "}
+            {weeklyEventCount(weeklyEventCounts, "prospect.contacted")} · Replied{" "}
+            {weeklyEventCount(weeklyEventCounts, "prospect.replied")}
+          </p>
         </div>
-      )}
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
+          <HealthMetric label="Need review" value={needsReviewCount} />
+          <HealthMetric label="Ready" value={readyCount} />
+          <HealthMetric label="Active" value={activeCount} />
+          <HealthMetric label="Overdue" value={overdueCount} tone={overdueCount > 0 ? "warn" : "default"} />
+          <HealthMetric
+            label="No next touch"
+            value={unscheduledCount}
+            tone={unscheduledCount > 0 ? "warn" : "default"}
+          />
+        </div>
+      </section>
 
       {error && (
         <div className="rounded-xl border border-red-500/20 bg-red-500/8 px-4 py-3 text-sm text-red-400">
@@ -355,10 +513,10 @@ export default async function ProspectsPage({
             <p className="text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-600">Generate</p>
             <h2 className="mt-1 text-sm font-medium text-zinc-100">Queue generation brief</h2>
             <p className="mt-1 text-xs text-zinc-500">
-              Define target market inputs first, then create prospects against that brief.
+              Set market inputs, then generate the next review batch.
             </p>
           </div>
-          <p className="text-[10px] text-zinc-700">Commercial setup first, tooling second.</p>
+          <p className="text-[10px] text-zinc-700">Generate for same-day review pace.</p>
         </div>
 
         <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -369,9 +527,9 @@ export default async function ProspectsPage({
               Generation notes
             </p>
             <ul className="mt-2 space-y-1.5 text-xs text-zinc-500">
-              <li>Keep each brief tied to one lane and one language.</li>
-              <li>Target volume should be realistic for same-day review.</li>
-              <li>Use source labels to preserve pipeline attribution.</li>
+              <li>One lane and one language per run.</li>
+              <li>Keep volume realistic for the current queue.</li>
+              <li>Use source labels for attribution history.</li>
             </ul>
             <Link
               href="/admin/prospects/new"
@@ -387,22 +545,49 @@ export default async function ProspectsPage({
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-600">Queue</p>
-            <h2 className="mt-1 text-sm font-medium text-zinc-100">Review and shortlist</h2>
+            <h2 className="mt-1 text-sm font-medium text-zinc-100">Inbound review inbox</h2>
             <p className="mt-1 text-xs text-zinc-500">
-              Review fit signals quickly, then move prospects to shortlist or reject.
+              Keep queue focused on active decisions. Move reviewed records to a clear next state.
             </p>
           </div>
           <p className="text-[11px] text-zinc-600">
-            {queueProspects.length} in queue · {qualifiedCount} qualified · {dueTodayCount} due today
+            {queueViewLabel(queueView)} · {queueProspects.length} visible · {needsReviewCount} needing review
           </p>
         </div>
+
+        <div className="flex flex-wrap gap-1.5 rounded-xl border border-zinc-800/70 bg-zinc-950/35 p-1.5">
+          {queueViews.map((viewOption) => {
+            const isActive = queueView === viewOption;
+            const count = prospectsForQueueView(filteredProspects, viewOption).length;
+            return (
+              <Link
+                key={viewOption}
+                href={queueViewHref(viewOption)}
+                className={`inline-flex h-7 items-center rounded-md border px-2.5 text-[10px] uppercase tracking-[0.08em] transition-colors ${
+                  isActive
+                    ? "border-brand/35 bg-brand/12 text-brand"
+                    : "border-zinc-700/80 bg-zinc-900/60 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300"
+                }`}
+              >
+                {queueViewLabel(viewOption)} ({count})
+              </Link>
+            );
+          })}
+        </div>
+
+        {staleReviewedCount > 0 && queueView === "needs_review" && (
+          <div className="rounded-xl border border-zinc-800/70 bg-zinc-900/25 px-4 py-3 text-xs text-zinc-500">
+            {staleReviewedCount} reviewed prospect{staleReviewedCount === 1 ? "" : "s"} moved out of inbox after{" "}
+            {STALE_REVIEW_DAYS} days. Open Archive to reprocess.
+          </div>
+        )}
 
         {queueProspects.length === 0 && !error ? (
           <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/20 px-6 py-12 text-center">
             <p className="text-sm text-zinc-600">
               {hasFilters
-                ? "No queue prospects match current filters."
-                : "Queue is clear. Generate or add new prospects to continue."}
+                ? "No prospects match this inbox view and filter set."
+                : "Inbox is clear. Generate or add new prospects to continue."}
             </p>
           </div>
         ) : (
@@ -411,7 +596,7 @@ export default async function ProspectsPage({
               <table className="w-full min-w-[1040px] text-sm">
                 <thead>
                   <tr className="border-b border-zinc-800/80 bg-zinc-900/70">
-                    {["Company", "Fit signals", "Lane and source", "Status", "Actions"].map((header) => (
+                    {["Company", "Fit signals", "Context", "Actions"].map((header) => (
                       <th
                         key={header}
                         className="px-4 py-3 text-left text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600"
@@ -442,31 +627,31 @@ export default async function ProspectsPage({
                         </td>
                         <td className="px-4 py-4">
                           {signals.length > 0 ? (
-                            <div className="flex flex-wrap gap-1.5">
-                              {signals.map((signal) => (
-                                <span
-                                  key={`${prospect.id}-${signal.label}`}
-                                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] ${fitSignalClassName(
-                                    signal
-                                  )}`}
-                                >
-                                  {signal.label}
-                                </span>
-                              ))}
+                            <div className="space-y-1">
+                              <span
+                                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] ${fitSignalClassName(
+                                  signals[0]
+                                )}`}
+                              >
+                                {signals[0].label}
+                              </span>
+                              {condensedSignalText(signals) && (
+                                <p className="text-[11px] text-zinc-600">
+                                  {condensedSignalText(signals)}
+                                </p>
+                              )}
                             </div>
                           ) : (
                             <span className="text-xs text-zinc-700">No signals yet</span>
                           )}
                         </td>
                         <td className="px-4 py-4 text-xs text-zinc-500">
-                          <p>{laneLabel(prospect.lane_fit)}</p>
-                          <p className="mt-1 text-zinc-600">
-                            {languageLabel(prospect.outreach_language)} · {prospect.source}
+                          <p className="text-zinc-500">
+                            {laneLabel(prospect.lane_fit)} · {languageLabel(prospect.outreach_language)} ·{" "}
+                            {prospect.source}
                           </p>
-                        </td>
-                        <td className="px-4 py-4">
                           <span
-                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                            className={`mt-2 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${
                               PROSPECT_STATUS_CONFIG[prospect.status].color
                             }`}
                           >
@@ -474,33 +659,26 @@ export default async function ProspectsPage({
                           </span>
                         </td>
                         <td className="px-4 py-4">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Link
-                              href={`/admin/prospects/${prospect.id}`}
-                              className="inline-flex items-center rounded-md border border-zinc-700/70 px-2 py-1 text-[10px] uppercase tracking-[0.1em] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-200"
-                            >
-                              Open
-                            </Link>
-                            {primaryAction ? (
-                              <form action={updateProspectStatusFromList.bind(null, prospect.id, primaryAction.toStatus)}>
-                                <button
-                                  type="submit"
-                                  className={`inline-flex items-center rounded-md border px-2 py-1 text-[10px] uppercase tracking-[0.1em] transition-colors ${primaryAction.style}`}
-                                >
-                                  {primaryAction.label}
-                                </button>
-                              </form>
-                            ) : null}
-                            {prospect.status !== "not_fit" && prospect.status !== "converted_to_lead" && (
-                              <form action={updateProspectStatusFromList.bind(null, prospect.id, "not_fit")}>
-                                <button
-                                  type="submit"
-                                  className="inline-flex items-center rounded-md border border-zinc-700/80 px-2 py-1 text-[10px] uppercase tracking-[0.1em] text-zinc-500 transition-colors hover:border-zinc-600 hover:text-zinc-300"
-                                >
-                                  Reject
-                                </button>
-                              </form>
-                            )}
+                          <div className="space-y-1.5">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {primaryAction ? (
+                                <form action={updateProspectStatusFromList.bind(null, prospect.id, primaryAction.toStatus)}>
+                                  <button
+                                    type="submit"
+                                    className={`inline-flex h-7 items-center rounded-md border px-2.5 text-[10px] uppercase tracking-[0.08em] transition-colors ${primaryAction.style}`}
+                                  >
+                                    {primaryAction.label}
+                                  </button>
+                                </form>
+                              ) : null}
+                              <Link
+                                href={`/admin/prospects/${prospect.id}`}
+                                className="inline-flex h-7 items-center rounded-md border border-zinc-700/70 px-2.5 text-[10px] uppercase tracking-[0.08em] text-zinc-300 transition-colors hover:border-zinc-600 hover:text-zinc-100"
+                              >
+                                Open
+                              </Link>
+                              <ProspectSecondaryMenu prospect={prospect} />
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -512,43 +690,73 @@ export default async function ProspectsPage({
 
             <div className="divide-y divide-zinc-800/40 md:hidden">
               {queueProspects.map((prospect) => {
+                const primaryAction = queuePrimaryAction(prospect);
                 const signals = fitSignalsFromProspect(prospect);
                 return (
-                  <article key={prospect.id} className="space-y-2 px-4 py-3.5">
-                    <div className="flex items-start justify-between gap-3">
+                  <article key={prospect.id} className="space-y-3 px-4 py-4">
+                    <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <Link
                           href={`/admin/prospects/${prospect.id}`}
-                          className="font-medium text-zinc-200 transition-colors hover:text-brand"
+                          className="line-clamp-1 text-sm font-medium text-zinc-200 transition-colors hover:text-brand"
                         >
                           {prospect.company_name}
                         </Link>
-                        <p className="mt-0.5 truncate text-xs text-zinc-600">
+                        <p className="mt-1 truncate text-xs text-zinc-600">
                           {prospect.website_url ?? "No website captured"}
                         </p>
                       </div>
                       <span
-                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${
                           PROSPECT_STATUS_CONFIG[prospect.status].color
                         }`}
                       >
                         {PROSPECT_STATUS_CONFIG[prospect.status].label}
                       </span>
                     </div>
+
                     <p className="text-[11px] text-zinc-600">
                       {laneLabel(prospect.lane_fit)} · {languageLabel(prospect.outreach_language)}
                     </p>
-                    {signals.length > 0 && (
-                      <p className="text-[11px] text-zinc-500">
-                        Signals: {signals.map((signal) => signal.label).join(", ")}
-                      </p>
+
+                    {signals.length > 0 ? (
+                      <div className="space-y-1">
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] ${mobileFitSignalClassName(
+                            signals[0]
+                          )}`}
+                        >
+                          {signals[0].label}
+                        </span>
+                        {condensedSignalText(signals) && (
+                          <p className="text-[11px] text-zinc-600">{condensedSignalText(signals)}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-zinc-700">No fit signals yet</p>
                     )}
-                    <Link
-                      href={`/admin/prospects/${prospect.id}`}
-                      className="inline-flex items-center rounded-md border border-zinc-700/70 px-2 py-1 text-[10px] uppercase tracking-[0.1em] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-200"
-                    >
-                      Open
-                    </Link>
+
+                    <div className="space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {primaryAction ? (
+                          <form action={updateProspectStatusFromList.bind(null, prospect.id, primaryAction.toStatus)}>
+                            <button
+                              type="submit"
+                              className={`inline-flex h-8 items-center rounded-md border px-2.5 text-[10px] uppercase tracking-[0.08em] transition-colors ${primaryAction.style}`}
+                            >
+                              {primaryAction.label}
+                            </button>
+                          </form>
+                        ) : null}
+                        <Link
+                          href={`/admin/prospects/${prospect.id}`}
+                          className="inline-flex h-8 items-center rounded-md border border-zinc-700/70 px-2.5 text-[10px] uppercase tracking-[0.08em] text-zinc-300 transition-colors hover:border-zinc-600 hover:text-zinc-100"
+                        >
+                          Open
+                        </Link>
+                        <ProspectSecondaryMenu prospect={prospect} />
+                      </div>
+                    </div>
                   </article>
                 );
               })}
@@ -637,18 +845,12 @@ export default async function ProspectsPage({
                               </span>
                             </td>
                             <td className="px-4 py-4">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Link
-                                  href={`/admin/prospects/${prospect.id}`}
-                                  className="inline-flex items-center rounded-md border border-zinc-700/70 px-2 py-1 text-[10px] uppercase tracking-[0.1em] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-200"
-                                >
-                                  Open
-                                </Link>
+                              <div className="flex flex-wrap items-center gap-1.5">
                                 {primaryAction?.type === "contact" && (
                                   <form action={markProspectContactedFromList.bind(null, prospect.id)}>
                                     <button
                                       type="submit"
-                                      className="inline-flex items-center rounded-md border border-brand/30 bg-brand/10 px-2 py-1 text-[10px] uppercase tracking-[0.1em] text-brand transition-colors hover:border-brand/50 hover:bg-brand/15"
+                                      className="inline-flex h-7 items-center rounded-md border border-brand/30 bg-brand/10 px-2.5 text-[10px] uppercase tracking-[0.08em] text-brand transition-colors hover:border-brand/50 hover:bg-brand/15"
                                     >
                                       {primaryAction.label}
                                     </button>
@@ -658,7 +860,7 @@ export default async function ProspectsPage({
                                   <form action={updateProspectStatusFromList.bind(null, prospect.id, primaryAction.toStatus)}>
                                     <button
                                       type="submit"
-                                      className="inline-flex items-center rounded-md border border-brand/30 bg-brand/10 px-2 py-1 text-[10px] uppercase tracking-[0.1em] text-brand transition-colors hover:border-brand/50 hover:bg-brand/15"
+                                      className="inline-flex h-7 items-center rounded-md border border-brand/30 bg-brand/10 px-2.5 text-[10px] uppercase tracking-[0.08em] text-brand transition-colors hover:border-brand/50 hover:bg-brand/15"
                                     >
                                       {primaryAction.label}
                                     </button>
@@ -667,19 +869,26 @@ export default async function ProspectsPage({
                                 {prospect.status === "qualified" && !prospect.converted_lead_id && (
                                   <Link
                                     href={`/admin/prospects/${prospect.id}`}
-                                    className="inline-flex items-center rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2 py-1 text-[10px] uppercase tracking-[0.1em] text-emerald-300 transition-colors hover:border-emerald-400/45 hover:bg-emerald-500/15"
+                                    className="inline-flex h-7 items-center rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2.5 text-[10px] uppercase tracking-[0.08em] text-emerald-300 transition-colors hover:border-emerald-400/45 hover:bg-emerald-500/15"
                                   >
                                     Convert to lead
                                   </Link>
                                 )}
+                                <Link
+                                  href={`/admin/prospects/${prospect.id}`}
+                                  className="inline-flex h-7 items-center rounded-md border border-zinc-700/70 px-2.5 text-[10px] uppercase tracking-[0.08em] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-200"
+                                >
+                                  Open
+                                </Link>
                                 {prospect.converted_lead_id && (
                                   <Link
                                     href={`/admin/leads/${prospect.converted_lead_id}`}
-                                    className="text-[10px] text-emerald-300 transition-colors hover:text-emerald-200"
+                                    className="inline-flex h-7 items-center rounded-md border border-emerald-500/20 px-2.5 text-[10px] text-emerald-300 transition-colors hover:border-emerald-500/35 hover:text-emerald-200"
                                   >
                                     View lead
                                   </Link>
                                 )}
+                                <ProspectSecondaryMenu prospect={prospect} />
                               </div>
                             </td>
                           </tr>
@@ -690,42 +899,87 @@ export default async function ProspectsPage({
                 </div>
 
                 <div className="divide-y divide-zinc-800/40 md:hidden">
-                  {outreachProspects.map((prospect) => (
-                    <article key={prospect.id} className="space-y-2 px-4 py-3.5">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
+                  {outreachProspects.map((prospect) => {
+                    const primaryAction = outreachPrimaryAction(prospect);
+
+                    return (
+                      <article key={prospect.id} className="space-y-3 px-4 py-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <Link
+                              href={`/admin/prospects/${prospect.id}`}
+                              className="line-clamp-1 text-sm font-medium text-zinc-200 transition-colors hover:text-brand"
+                            >
+                              {prospect.company_name}
+                            </Link>
+                            <p className="mt-1 truncate text-xs text-zinc-600">
+                              {prospect.contact_name ?? prospect.contact_value ?? "No contact captured"}
+                            </p>
+                          </div>
+                          <span
+                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                              PROSPECT_STATUS_CONFIG[prospect.status].color
+                            }`}
+                          >
+                            {PROSPECT_STATUS_CONFIG[prospect.status].label}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-[11px] text-zinc-600">
+                          <p className="truncate">Channel: {prospect.contact_channel}</p>
+                          <p className="truncate">Language: {languageLabel(prospect.outreach_language)}</p>
+                          <p className="truncate">Last: {formatDateTime(prospect.last_contact_at)}</p>
+                          <p className="truncate">Next: {formatDateTime(prospect.next_follow_up_at)}</p>
+                        </div>
+
+                        <div className="flex flex-wrap gap-1.5">
+                          {primaryAction?.type === "contact" && (
+                            <form action={markProspectContactedFromList.bind(null, prospect.id)}>
+                              <button
+                                type="submit"
+                                className="inline-flex h-8 items-center rounded-md border border-brand/30 bg-brand/10 px-2.5 text-[10px] uppercase tracking-[0.08em] text-brand transition-colors hover:border-brand/50 hover:bg-brand/15"
+                              >
+                                {primaryAction.label}
+                              </button>
+                            </form>
+                          )}
+                          {primaryAction?.type === "status" && (
+                            <form action={updateProspectStatusFromList.bind(null, prospect.id, primaryAction.toStatus)}>
+                              <button
+                                type="submit"
+                                className="inline-flex h-8 items-center rounded-md border border-brand/30 bg-brand/10 px-2.5 text-[10px] uppercase tracking-[0.08em] text-brand transition-colors hover:border-brand/50 hover:bg-brand/15"
+                              >
+                                {primaryAction.label}
+                              </button>
+                            </form>
+                          )}
+                          {prospect.status === "qualified" && !prospect.converted_lead_id && (
+                            <Link
+                              href={`/admin/prospects/${prospect.id}`}
+                              className="inline-flex h-8 items-center rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2.5 text-[10px] uppercase tracking-[0.08em] text-emerald-300 transition-colors hover:border-emerald-400/45 hover:bg-emerald-500/15"
+                            >
+                              Convert to lead
+                            </Link>
+                          )}
                           <Link
                             href={`/admin/prospects/${prospect.id}`}
-                            className="font-medium text-zinc-200 transition-colors hover:text-brand"
+                            className="inline-flex h-8 items-center rounded-md border border-zinc-700/70 px-2.5 text-[10px] uppercase tracking-[0.08em] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-200"
                           >
-                            {prospect.company_name}
+                            Open
                           </Link>
-                          <p className="mt-0.5 truncate text-xs text-zinc-600">
-                            {prospect.contact_name ?? prospect.contact_value ?? "No contact captured"}
-                          </p>
+                          {prospect.converted_lead_id && (
+                            <Link
+                              href={`/admin/leads/${prospect.converted_lead_id}`}
+                              className="inline-flex h-8 items-center rounded-md border border-emerald-500/20 px-2.5 text-[10px] text-emerald-300 transition-colors hover:border-emerald-500/35 hover:text-emerald-200"
+                            >
+                              View lead
+                            </Link>
+                          )}
+                          <ProspectSecondaryMenu prospect={prospect} />
                         </div>
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
-                            PROSPECT_STATUS_CONFIG[prospect.status].color
-                          }`}
-                        >
-                          {PROSPECT_STATUS_CONFIG[prospect.status].label}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-zinc-600">
-                        Last: {formatDateTime(prospect.last_contact_at)}
-                      </p>
-                      <p className="text-[11px] text-zinc-600">
-                        Next: {formatDateTime(prospect.next_follow_up_at)}
-                      </p>
-                      <Link
-                        href={`/admin/prospects/${prospect.id}`}
-                        className="inline-flex items-center rounded-md border border-zinc-700/70 px-2 py-1 text-[10px] uppercase tracking-[0.1em] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-200"
-                      >
-                        Open
-                      </Link>
-                    </article>
-                  ))}
+                      </article>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -751,22 +1005,25 @@ export default async function ProspectsPage({
   );
 }
 
-function MetricCard({
+function HealthMetric({
   label,
   value,
-  sub,
+  tone = "default",
 }: {
   label: string;
-  value: string;
-  sub: string;
+  value: number;
+  tone?: "default" | "warn";
 }) {
+  const valueClassName = tone === "warn" ? "text-amber-200" : "text-zinc-100";
+  const borderClassName = tone === "warn" ? "border-amber-500/20" : "border-zinc-800/80";
+  const bgClassName = tone === "warn" ? "bg-amber-500/6" : "bg-zinc-900/35";
+
   return (
-    <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/35 px-3 py-3">
+    <div className={`rounded-lg border px-3 py-2.5 ${borderClassName} ${bgClassName}`}>
       <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
         {label}
       </p>
-      <p className="mt-1.5 text-base font-semibold tabular-nums text-zinc-100 sm:text-lg">{value}</p>
-      <p className="mt-0.5 text-[10px] text-zinc-700">{sub}</p>
+      <p className={`mt-1 text-base font-semibold tabular-nums sm:text-lg ${valueClassName}`}>{value}</p>
     </div>
   );
 }

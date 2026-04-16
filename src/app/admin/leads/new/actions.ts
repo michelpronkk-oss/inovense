@@ -3,6 +3,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 import { getLeadMarketSeedFromLeadSource } from "@/lib/market";
+import { logActivityEventSafe } from "@/lib/activity-events";
 
 export async function createManualLead(fields: {
   full_name: string;
@@ -75,6 +76,18 @@ export async function createManualLead(fields: {
 
     revalidatePath("/admin/leads");
     revalidatePath("/admin");
+
+    await logActivityEventSafe({
+      entityType: "lead",
+      entityId: data.id,
+      eventType: "lead.created",
+      toStatus: "new",
+      market: marketSeed.country_code,
+      metadata: {
+        source: fields.lead_source,
+        creation_mode: "manual",
+      },
+    });
 
     return { success: true, id: data.id };
   } catch (err) {

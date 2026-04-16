@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-/* ─── Types ───────────────────────────────────────────────────────────────── */
+/* Section */
 
 type HandbookSection = {
   id: string;
@@ -53,7 +53,7 @@ type DefinitionRow = {
   guardrail: string;
 };
 
-/* ─── Data ────────────────────────────────────────────────────────────────── */
+/* Section */
 
 const LEAD_FLOW_STEPS = [
   {
@@ -1005,7 +1005,7 @@ const SECTIONS: HandbookSection[] = [
           "Paragraph spacing is preserved by blank lines.",
           "Line breaks are preserved cleanly in paragraph text.",
           "Lines starting with '- ' are rendered as bullet items.",
-          "Lines starting with '• ' are rendered as bullet items.",
+          "Lines starting with '* ' are rendered as bullet items.",
         ],
       },
       {
@@ -1319,7 +1319,7 @@ const SECTIONS: HandbookSection[] = [
   },
 ];
 
-/* ─── Style maps ──────────────────────────────────────────────────────────── */
+/* Section */
 
 const TONE_STYLES: Record<SectionBlock["tone"], { label: string; cls: string }> = {
   do: { label: "Do", cls: "border-emerald-500/20 bg-emerald-500/5 text-emerald-300" },
@@ -1343,7 +1343,7 @@ const AUTOMATION_STYLES: Record<HandbookSection["automation"], string> = {
   Automated: "border-emerald-500/40 text-emerald-400",
 };
 
-/* ─── Group definitions ───────────────────────────────────────────────────── */
+/* Section */
 
 type DocGroupId = "flow" | "commercial" | "delivery" | "ai" | "ops";
 
@@ -1393,7 +1393,7 @@ const DOC_GROUPS: DocGroup[] = [
   },
 ];
 
-/* ─── Primitive components ────────────────────────────────────────────────── */
+/* Section */
 
 function SectionTag({ label }: { label: HandbookSection["tag"] }) {
   return (
@@ -1431,7 +1431,7 @@ function BlockCard({ block }: { block: SectionBlock }) {
   );
 }
 
-/* ─── Section components ──────────────────────────────────────────────────── */
+/* Section */
 
 function HandbookSectionCard({ section }: { section: HandbookSection }) {
   return (
@@ -1481,7 +1481,7 @@ function SectionHeader({
   );
 }
 
-/* ─── Flow group sections ─────────────────────────────────────────────────── */
+/* Section */
 
 function FlowGroupSections() {
   const flowSections = SECTIONS.filter((s) =>
@@ -1530,7 +1530,7 @@ function FlowGroupSections() {
   );
 }
 
-/* ─── Commercial group sections ───────────────────────────────────────────── */
+/* Section */
 
 function CommercialGroupSections() {
   const commercialSections = SECTIONS.filter((s) =>
@@ -1631,7 +1631,7 @@ function CommercialGroupSections() {
   );
 }
 
-/* ─── Delivery group sections ─────────────────────────────────────────────── */
+/* Section */
 
 function DeliveryGroupSections() {
   const deliverySections = SECTIONS.filter((s) =>
@@ -1644,7 +1644,7 @@ function DeliveryGroupSections() {
   );
 }
 
-/* ─── AI group sections ───────────────────────────────────────────────────── */
+/* Section */
 
 function AIGroupSections() {
   const aiSections = SECTIONS.filter((s) => s.id === "agent-stack");
@@ -1655,7 +1655,7 @@ function AIGroupSections() {
   );
 }
 
-/* ─── Ops group sections ──────────────────────────────────────────────────── */
+/* Section */
 
 function OpsGroupSections() {
   const opsSections = SECTIONS.filter((s) =>
@@ -1816,7 +1816,7 @@ function OpsGroupSections() {
   );
 }
 
-/* ─── Group sections dispatcher ──────────────────────────────────────────── */
+/* Section */
 
 function GroupSections({ groupId }: { groupId: DocGroupId }) {
   switch (groupId) {
@@ -1828,11 +1828,11 @@ function GroupSections({ groupId }: { groupId: DocGroupId }) {
   }
 }
 
-/* ─── Level 1: Docs home ──────────────────────────────────────────────────── */
+/* Section */
 
 function DocsHome({ onOpen }: { onOpen: (id: DocGroupId) => void }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
         <div className="mb-2 flex items-center gap-2">
           <span className="inline-flex items-center rounded-full border border-brand/30 bg-brand/10 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.13em] text-brand">
@@ -1847,38 +1847,35 @@ function DocsHome({ onOpen }: { onOpen: (id: DocGroupId) => void }) {
         </p>
       </div>
 
-      <div className="rounded-lg border border-brand/20 bg-brand/8 px-3.5 py-2.5">
-        <p className="text-xs leading-relaxed text-zinc-300">
-          <span className="font-medium text-brand">Hard rule: </span>
+      <p className="text-xs leading-relaxed text-zinc-500">
+        <span className="font-medium text-zinc-300">Hard rule: </span>
           Payment confirmation and project completion are separate truths.
           Paid does not mean delivered. Session activity does not mean lead creation.
-        </p>
-      </div>
+      </p>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/20">
         {DOC_GROUPS.map((group) => (
           <button
             key={group.id}
             onClick={() => onOpen(group.id)}
-            className="group text-left rounded-2xl border border-zinc-800/80 bg-zinc-900/30 p-4 transition-all hover:border-zinc-700/70 hover:bg-zinc-900/50"
+            className="group w-full border-b border-zinc-800/60 px-4 py-3.5 text-left transition-colors last:border-b-0 hover:bg-zinc-900/50"
           >
-            <div className="flex items-start justify-between gap-2">
-              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em] ${group.tagCls}`}>
-                {group.label}
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em] ${group.tagCls}`}>
+                    {group.label}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-500">{group.description}</p>
+                <p className="mt-1.5 line-clamp-1 text-[11px] text-zinc-600">
+                  {group.keyItems.join(" Ã‚Â· ")}
+                </p>
+              </div>
+              <span className="shrink-0 text-[11px] text-zinc-600 transition-colors group-hover:text-zinc-400">
+                Open &rarr;
               </span>
             </div>
-            <p className="mt-2.5 text-sm font-medium text-zinc-200">{group.label}</p>
-            <p className="mt-1 text-xs leading-relaxed text-zinc-500">{group.description}</p>
-            <div className="mt-3 flex flex-wrap gap-1">
-              {group.keyItems.map((item) => (
-                <span key={item} className="rounded-md border border-zinc-800/70 bg-zinc-950/60 px-2 py-0.5 text-[10px] text-zinc-600">
-                  {item}
-                </span>
-              ))}
-            </div>
-            <p className="mt-3 text-[10px] text-zinc-600 transition-colors group-hover:text-zinc-400">
-              Open &rarr;
-            </p>
           </button>
         ))}
       </div>
@@ -1892,7 +1889,7 @@ function DocsHome({ onOpen }: { onOpen: (id: DocGroupId) => void }) {
   );
 }
 
-/* ─── Level 2: Group detail ───────────────────────────────────────────────── */
+/* Section */
 
 function GroupDetailView({
   group,
@@ -1935,7 +1932,7 @@ function GroupDetailView({
   );
 }
 
-/* ─── Main export ─────────────────────────────────────────────────────────── */
+/* Section */
 
 export function DocsClient() {
   const [activeGroup, setActiveGroup] = useState<DocGroupId | null>(null);
@@ -1951,3 +1948,4 @@ export function DocsClient() {
     </div>
   );
 }
+

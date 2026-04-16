@@ -14,6 +14,7 @@ import {
   USD_CURRENCY_CODE,
 } from "@/lib/currency";
 import { parseCountryCodeInput } from "@/lib/market";
+import { logActivityEventSafe } from "@/lib/activity-events";
 
 const VALID_STATUSES: LeadStatus[] = [
   "new",
@@ -116,11 +117,45 @@ export async function updateLeadStatus(
   }
   try {
     const supabase = createSupabaseServerClient();
+    const { data: current, error: currentError } = await supabase
+      .from("leads")
+      .select("status,country_code")
+      .eq("id", id)
+      .single();
+    if (currentError || !current) {
+      throw currentError ?? new Error("Lead not found.");
+    }
+
+    const toStatus = status as LeadStatus;
+    if (current.status === toStatus) {
+      revalidateLead(id);
+      return { success: true };
+    }
+
     const { error } = await supabase
       .from("leads")
-      .update({ status: status as LeadStatus })
+      .update({ status: toStatus })
       .eq("id", id);
     if (error) throw error;
+    await logActivityEventSafe({
+      entityType: "lead",
+      entityId: id,
+      eventType: "lead.status_changed",
+      fromStatus: current.status,
+      toStatus,
+      market: parseCountryCodeInput(current.country_code),
+    });
+    if (toStatus === "won") {
+      await logActivityEventSafe({
+        entityType: "lead",
+        entityId: id,
+        eventType: "deal.won",
+        fromStatus: current.status,
+        toStatus,
+        market: parseCountryCodeInput(current.country_code),
+      });
+    }
+
     revalidateLead(id);
     return { success: true };
   } catch (err) {

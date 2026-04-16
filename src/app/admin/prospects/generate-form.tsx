@@ -15,6 +15,7 @@ const INITIAL_GENERATE_STATE: GenerateProspectsState = {
   error: null,
   inserted: 0,
   duplicates: 0,
+  excluded: 0,
   discarded: 0,
   summary: null,
 };

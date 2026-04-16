@@ -11,6 +11,7 @@ import {
 } from "@/lib/supabase-server";
 import { getLeadMarketSeedFromLeadSource, parseCountryCodeInput } from "@/lib/market";
 import { generateProspectCandidatesFromApify } from "@/lib/prospects/apify";
+import { logActivityEventSafe } from "@/lib/activity-events";
 
 const VALID_STATUSES: ProspectStatus[] = [
   "new",
@@ -61,9 +62,28 @@ export type GenerateProspectsState = {
   error: string | null;
   inserted: number;
   duplicates: number;
+  excluded: number;
   discarded: number;
   summary: string | null;
 };
+
+const DO_NOT_CONTACT_TAG = "[DNC]";
+const DURABLE_EXCLUSION_STATUSES = new Set<ProspectStatus>([
+  "not_fit",
+  "contacted",
+  "replied",
+  "qualified",
+  "converted_to_lead",
+]);
+
+function prospectStatusEventType(status: ProspectStatus): string | null {
+  if (status === "researched") return "prospect.reviewed";
+  if (status === "ready_to_contact") return "prospect.ready_to_contact";
+  if (status === "not_fit") return "prospect.rejected";
+  if (status === "replied") return "prospect.replied";
+  if (status === "qualified") return "prospect.qualified";
+  return null;
+}
 
 function revalidateProspects(id?: string) {
   revalidatePath("/admin/prospects");
@@ -116,6 +136,17 @@ function normalizeKey(value: string | null): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
+}
+
+function hasDoNotContactTag(notes: string | null | undefined): boolean {
+  return (notes ?? "").toUpperCase().includes(DO_NOT_CONTACT_TAG);
+}
+
+function mergeDoNotContactTag(notes: string | null | undefined): string {
+  const normalized = (notes ?? "").trim();
+  if (!normalized) return DO_NOT_CONTACT_TAG;
+  if (hasDoNotContactTag(normalized)) return normalized;
+  return `${normalized}\n${DO_NOT_CONTACT_TAG}`;
 }
 
 function parseVolumeInput(value: string | null): number {
@@ -233,6 +264,18 @@ export async function createProspect(input: ProspectCreateInput): Promise<Action
       throw new Error(error?.message ?? "Failed to create prospect.");
     }
 
+    await logActivityEventSafe({
+      entityType: "prospect",
+      entityId: data.id,
+      eventType: "prospect.created",
+      toStatus: input.status,
+      market: parseCountryCodeInput(input.country_code),
+      metadata: {
+        source: normalizeSource(input.source),
+        lane_fit: input.lane_fit,
+      },
+    });
+
     revalidateProspects(data.id);
     return { success: true, id: data.id };
   } catch (err) {
@@ -257,6 +300,7 @@ export async function generateProspectsFromBrief(
       error: "Enter niche and location (or market) before generating.",
       inserted: 0,
       duplicates: 0,
+      excluded: 0,
       discarded: 0,
       summary: null,
     };
@@ -278,6 +322,7 @@ export async function generateProspectsFromBrief(
         error: "No usable prospects were returned for this brief.",
         inserted: 0,
         duplicates: 0,
+        excluded: 0,
         discarded: generation.filteredCount,
         summary: null,
       };
@@ -286,9 +331,9 @@ export async function generateProspectsFromBrief(
     const supabase = createSupabaseServerClient();
     const { data: existingRaw, error: existingError } = await supabase
       .from("prospects")
-      .select("id,company_name,website_url,contact_value")
+      .select("id,company_name,website_url,contact_value,country_code,status,notes")
       .order("updated_at", { ascending: false })
-      .limit(2500);
+      .limit(10000);
 
     if (existingError) {
       throw new Error(existingError.message);
@@ -296,12 +341,17 @@ export async function generateProspectsFromBrief(
 
     const existing = (existingRaw ?? []) as Pick<
       Prospect,
-      "id" | "company_name" | "website_url" | "contact_value"
+      "id" | "company_name" | "website_url" | "contact_value" | "country_code" | "status" | "notes"
     >[];
 
     const knownWebsiteHosts = new Set<string>();
     const knownNameContact = new Set<string>();
     const knownNameOnly = new Set<string>();
+    const knownNameCountry = new Set<string>();
+    const durableWebsiteHosts = new Set<string>();
+    const durableNameContact = new Set<string>();
+    const durableNameOnly = new Set<string>();
+    const durableNameCountry = new Set<string>();
 
     for (const row of existing) {
       const host = websiteHost(normalizeWebsite(row.website_url));
@@ -312,13 +362,33 @@ export async function generateProspectsFromBrief(
       knownNameOnly.add(nameKey);
       const contactKey = normalizeKey(row.contact_value);
       knownNameContact.add(`${nameKey}|${contactKey}`);
+      const countryCode = parseCountryCodeInput(row.country_code);
+      if (countryCode) {
+        knownNameCountry.add(`${nameKey}|${countryCode}`);
+      }
+
+      const isDurableDecision =
+        DURABLE_EXCLUSION_STATUSES.has(row.status) || hasDoNotContactTag(row.notes);
+      if (!isDurableDecision) continue;
+      if (host) durableWebsiteHosts.add(host);
+      durableNameOnly.add(nameKey);
+      durableNameContact.add(`${nameKey}|${contactKey}`);
+      if (countryCode) {
+        durableNameCountry.add(`${nameKey}|${countryCode}`);
+      }
     }
 
     let duplicates = 0;
+    let excluded = 0;
     let discarded = generation.filteredCount;
     const insertRows: Array<Omit<Prospect, "id" | "created_at" | "updated_at">> = [];
 
     for (const candidate of candidates) {
+      const candidateCountry = parseCountryCodeInput(candidate.country_code);
+      const nameCountryKey = candidateCountry
+        ? `${candidate.dedupe.nameOnlyKey}|${candidateCountry}`
+        : "";
+
       const hasWebsiteDuplicate =
         Boolean(candidate.dedupe.websiteHost) &&
         knownWebsiteHosts.has(candidate.dedupe.websiteHost as string);
@@ -330,7 +400,42 @@ export async function generateProspectsFromBrief(
         !candidate.contact_value &&
         knownNameOnly.has(candidate.dedupe.nameOnlyKey);
 
-      if (hasWebsiteDuplicate || hasNameContactDuplicate || shouldUseNameOnlyFallback) {
+      const hasNameCountryDuplicate =
+        !candidate.dedupe.websiteHost &&
+        !candidate.contact_value &&
+        Boolean(nameCountryKey) &&
+        knownNameCountry.has(nameCountryKey);
+
+      const hasDurableWebsiteMatch =
+        Boolean(candidate.dedupe.websiteHost) &&
+        durableWebsiteHosts.has(candidate.dedupe.websiteHost as string);
+      const hasDurableNameContactMatch = durableNameContact.has(candidate.dedupe.nameContactKey);
+      const hasDurableNameOnlyMatch =
+        !candidate.dedupe.websiteHost &&
+        !candidate.contact_value &&
+        durableNameOnly.has(candidate.dedupe.nameOnlyKey);
+      const hasDurableNameCountryMatch =
+        !candidate.dedupe.websiteHost &&
+        !candidate.contact_value &&
+        Boolean(nameCountryKey) &&
+        durableNameCountry.has(nameCountryKey);
+
+      if (
+        hasDurableWebsiteMatch ||
+        hasDurableNameContactMatch ||
+        hasDurableNameOnlyMatch ||
+        hasDurableNameCountryMatch
+      ) {
+        excluded += 1;
+        continue;
+      }
+
+      if (
+        hasWebsiteDuplicate ||
+        hasNameContactDuplicate ||
+        shouldUseNameOnlyFallback ||
+        hasNameCountryDuplicate
+      ) {
         duplicates += 1;
         continue;
       }
@@ -364,25 +469,43 @@ export async function generateProspectsFromBrief(
       }
       knownNameContact.add(candidate.dedupe.nameContactKey);
       knownNameOnly.add(candidate.dedupe.nameOnlyKey);
+      if (nameCountryKey) {
+        knownNameCountry.add(nameCountryKey);
+      }
     }
 
     if (insertRows.length === 0) {
       return {
         ok: false,
         error:
-          duplicates > 0
-            ? "Generation completed but all results were already in queue."
+          duplicates > 0 || excluded > 0
+            ? "Generation completed but all results were already handled or excluded."
             : "Generation returned no records eligible for queue.",
         inserted: 0,
         duplicates,
+        excluded,
         discarded,
         summary: null,
       };
     }
 
-    const { error: insertError } = await supabase.from("prospects").insert(insertRows);
+    const { data: insertedRows, error: insertError } = await supabase
+      .from("prospects")
+      .insert(insertRows)
+      .select("id,country_code,source");
     if (insertError) {
       throw new Error(insertError.message);
+    }
+
+    for (const row of insertedRows ?? []) {
+      await logActivityEventSafe({
+        entityType: "prospect",
+        entityId: row.id,
+        eventType: "prospect.generated",
+        toStatus: "new",
+        market: parseCountryCodeInput(row.country_code),
+        metadata: { source: normalizeSource(row.source) },
+      });
     }
 
     revalidateProspects();
@@ -392,6 +515,8 @@ export async function generateProspectsFromBrief(
     } to queue${
       duplicates > 0 ? `, skipped ${duplicates} duplicate${duplicates === 1 ? "" : "s"}` : ""
     }${
+      excluded > 0 ? `, excluded ${excluded} already-decided prospect${excluded === 1 ? "" : "s"}` : ""
+    }${
       discarded > 0 ? `, filtered ${discarded} weak record${discarded === 1 ? "" : "s"}` : ""
     }.`;
 
@@ -400,6 +525,7 @@ export async function generateProspectsFromBrief(
       error: null,
       inserted: insertRows.length,
       duplicates,
+      excluded,
       discarded,
       summary,
     };
@@ -413,6 +539,7 @@ export async function generateProspectsFromBrief(
           : "Prospect generation failed.",
       inserted: 0,
       duplicates: 0,
+      excluded: 0,
       discarded: 0,
       summary: null,
     };
@@ -478,12 +605,49 @@ export async function updateProspectStatus(
 
   try {
     const supabase = createSupabaseServerClient();
+    const { data: current, error: currentError } = await supabase
+      .from("prospects")
+      .select("id,status,country_code")
+      .eq("id", id)
+      .single();
+
+    if (currentError || !current) {
+      throw new Error(currentError?.message ?? "Prospect not found.");
+    }
+
+    if (current.status === status) {
+      revalidateProspects(id);
+      return { success: true };
+    }
+
     const { error } = await supabase
       .from("prospects")
       .update({ status })
       .eq("id", id);
 
     if (error) throw new Error(error.message);
+
+    await logActivityEventSafe({
+      entityType: "prospect",
+      entityId: id,
+      eventType: "prospect.status_changed",
+      fromStatus: current.status,
+      toStatus: status,
+      market: parseCountryCodeInput(current.country_code),
+    });
+
+    const mappedEventType = prospectStatusEventType(status);
+    if (mappedEventType) {
+      await logActivityEventSafe({
+        entityType: "prospect",
+        entityId: id,
+        eventType: mappedEventType,
+        fromStatus: current.status,
+        toStatus: status,
+        market: parseCountryCodeInput(current.country_code),
+      });
+    }
+
     revalidateProspects(id);
     return { success: true };
   } catch (err) {
@@ -503,6 +667,16 @@ export async function markProspectContacted(id: string): Promise<ActionResult> {
   try {
     const now = new Date().toISOString();
     const supabase = createSupabaseServerClient();
+    const { data: current, error: currentError } = await supabase
+      .from("prospects")
+      .select("id,status,country_code")
+      .eq("id", id)
+      .single();
+
+    if (currentError || !current) {
+      throw new Error(currentError?.message ?? "Prospect not found.");
+    }
+
     const { error } = await supabase
       .from("prospects")
       .update({
@@ -512,6 +686,24 @@ export async function markProspectContacted(id: string): Promise<ActionResult> {
       .eq("id", id);
 
     if (error) throw new Error(error.message);
+
+    await logActivityEventSafe({
+      entityType: "prospect",
+      entityId: id,
+      eventType: "prospect.status_changed",
+      fromStatus: current.status,
+      toStatus: "contacted",
+      market: parseCountryCodeInput(current.country_code),
+    });
+    await logActivityEventSafe({
+      entityType: "prospect",
+      entityId: id,
+      eventType: "prospect.contacted",
+      fromStatus: current.status,
+      toStatus: "contacted",
+      market: parseCountryCodeInput(current.country_code),
+    });
+
     revalidateProspects(id);
     return { success: true };
   } catch (err) {
@@ -522,6 +714,110 @@ export async function markProspectContacted(id: string): Promise<ActionResult> {
 
 export async function markProspectContactedFromList(id: string): Promise<void> {
   await markProspectContacted(id);
+}
+
+export async function markProspectDoNotContact(id: string): Promise<ActionResult> {
+  if (!id) {
+    return { success: false, error: "Prospect id is required." };
+  }
+
+  try {
+    const supabase = createSupabaseServerClient();
+    const { data: row, error: fetchError } = await supabase
+      .from("prospects")
+      .select("status,notes,country_code")
+      .eq("id", id)
+      .single();
+
+    if (fetchError) {
+      throw new Error(fetchError.message);
+    }
+
+    const notes = mergeDoNotContactTag(row?.notes ?? null);
+    const { error } = await supabase
+      .from("prospects")
+      .update({
+        status: "not_fit",
+        notes,
+        next_follow_up_at: null,
+      })
+      .eq("id", id);
+
+    if (error) throw new Error(error.message);
+
+    await logActivityEventSafe({
+      entityType: "prospect",
+      entityId: id,
+      eventType: "prospect.status_changed",
+      fromStatus: row.status,
+      toStatus: "not_fit",
+      market: parseCountryCodeInput(row.country_code),
+    });
+    await logActivityEventSafe({
+      entityType: "prospect",
+      entityId: id,
+      eventType: "prospect.do_not_contact",
+      fromStatus: row.status,
+      toStatus: "not_fit",
+      market: parseCountryCodeInput(row.country_code),
+    });
+
+    revalidateProspects(id);
+    return { success: true };
+  } catch (err) {
+    console.error("[admin] markProspectDoNotContact failed:", err);
+    return { success: false, error: "Failed to mark do not contact." };
+  }
+}
+
+export async function markProspectDoNotContactFromList(id: string): Promise<void> {
+  await markProspectDoNotContact(id);
+}
+
+export async function deleteProspect(id: string): Promise<ActionResult> {
+  if (!id) {
+    return { success: false, error: "Prospect id is required." };
+  }
+
+  try {
+    const supabase = createSupabaseServerClient();
+    const { data: row, error: fetchError } = await supabase
+      .from("prospects")
+      .select("id,status,country_code,company_name,source")
+      .eq("id", id)
+      .single();
+
+    if (fetchError || !row) {
+      throw new Error(fetchError?.message ?? "Prospect not found.");
+    }
+
+    const { error } = await supabase
+      .from("prospects")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    await logActivityEventSafe({
+      entityType: "prospect",
+      entityId: id,
+      eventType: "prospect.deleted",
+      fromStatus: row.status,
+      market: parseCountryCodeInput(row.country_code),
+      metadata: {
+        company_name: row.company_name,
+        source: normalizeSource(row.source),
+      },
+    });
+
+    revalidateProspects(id);
+    return { success: true };
+  } catch (err) {
+    console.error("[admin] deleteProspect failed:", err);
+    return { success: false, error: "Failed to delete prospect." };
+  }
 }
 
 export async function convertProspectToLead(id: string): Promise<ActionResult> {
@@ -623,6 +919,32 @@ export async function convertProspectToLead(id: string): Promise<ActionResult> {
     if (updateError) {
       throw new Error(updateError.message);
     }
+
+    await logActivityEventSafe({
+      entityType: "prospect",
+      entityId: id,
+      eventType: "prospect.status_changed",
+      fromStatus: prospect.status,
+      toStatus: "converted_to_lead",
+      market: countryCode,
+    });
+    await logActivityEventSafe({
+      entityType: "prospect",
+      entityId: id,
+      eventType: "prospect.converted_to_lead",
+      fromStatus: prospect.status,
+      toStatus: "converted_to_lead",
+      market: countryCode,
+      metadata: { lead_id: leadRow.id },
+    });
+    await logActivityEventSafe({
+      entityType: "lead",
+      entityId: leadRow.id,
+      eventType: "lead.created",
+      toStatus: "new",
+      market: countryCode,
+      metadata: { source: "prospect_conversion", prospect_id: id },
+    });
 
     revalidateProspects(id);
     revalidatePath("/admin/leads");

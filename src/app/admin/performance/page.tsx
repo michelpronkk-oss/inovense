@@ -147,7 +147,7 @@ export default async function AdminPerformancePage() {
 
   return (
     <>
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-lg font-semibold text-zinc-100">Performance</h1>
         <p className="mt-1 text-sm text-zinc-600">
           Traffic quality, lead capture, and business stage progression in one compact operator view.
@@ -161,7 +161,7 @@ export default async function AdminPerformancePage() {
         </div>
       )}
 
-      <section className="mb-8">
+      <section className="mb-6">
         <div className="mb-3">
           <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-700">
             Decision Insights
@@ -172,42 +172,10 @@ export default async function AdminPerformancePage() {
         </div>
 
         {!performance.query.sessionsFailed && !performance.query.leadsFailed && (
-          <div className="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-5">
-            <ComparisonPill
-              label="Sessions"
-              current={performance.comparison.sessions30d.current}
-              previous={performance.comparison.sessions30d.previous}
-              deltaLabel={formatSignedCount(performance.comparison.sessions30d.delta)}
-              tone={performance.comparison.sessions30d.direction}
-            />
-            <ComparisonPill
-              label="Leads"
-              current={performance.comparison.leads30d.current}
-              previous={performance.comparison.leads30d.previous}
-              deltaLabel={formatSignedCount(performance.comparison.leads30d.delta)}
-              tone={performance.comparison.leads30d.direction}
-            />
-            <ComparisonPill
-              label="Session -> Lead"
-              current={performance.comparison.sessionToLead30d.currentRate}
-              previous={performance.comparison.sessionToLead30d.previousRate}
-              deltaLabel={formatSignedPp(performance.comparison.sessionToLead30d.deltaPp)}
-              tone={performance.comparison.sessionToLead30d.direction}
-            />
-            <ComparisonPill
-              label="Lead -> Won"
-              current={performance.comparison.leadToWon30d.currentRate}
-              previous={performance.comparison.leadToWon30d.previousRate}
-              deltaLabel={formatSignedPp(performance.comparison.leadToWon30d.deltaPp)}
-              tone={performance.comparison.leadToWon30d.direction}
-            />
-            <ComparisonPill
-              label="Won -> Deposit"
-              current={performance.comparison.wonToDeposit30d.currentRate}
-              previous={performance.comparison.wonToDeposit30d.previousRate}
-              deltaLabel={formatSignedPp(performance.comparison.wonToDeposit30d.deltaPp)}
-              tone={performance.comparison.wonToDeposit30d.direction}
-            />
+          <div className="mb-3 rounded-xl border border-zinc-800/80 bg-zinc-900/30 px-4 py-2.5">
+            <p className="text-[11px] text-zinc-500">
+              Sessions {performance.comparison.sessions30d.current} ({formatSignedCount(performance.comparison.sessions30d.delta)}) &middot; Leads {performance.comparison.leads30d.current} ({formatSignedCount(performance.comparison.leads30d.delta)}) &middot; Session to lead {performance.comparison.sessionToLead30d.currentRate} ({formatSignedPp(performance.comparison.sessionToLead30d.deltaPp)}) &middot; Lead to won {performance.comparison.leadToWon30d.currentRate} ({formatSignedPp(performance.comparison.leadToWon30d.deltaPp)})
+            </p>
           </div>
         )}
 
@@ -226,7 +194,7 @@ export default async function AdminPerformancePage() {
         )}
       </section>
 
-      <section className="mb-8">
+      <section className="mb-6">
         <div className="mb-3">
           <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-700">
             Traffic + Lead Capture
@@ -235,9 +203,10 @@ export default async function AdminPerformancePage() {
             Lead = submitted intake inquiry or manual CRM lead record only.
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-          <MetricCard label="Sessions today" value={sessionsTodayValue} />
-          <MetricCard label="Sessions 7d" value={sessions7dValue} />
+        <div className="mb-2 text-[11px] text-zinc-600">
+          Today {sessionsTodayValue} &middot; 7d {sessions7dValue}
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <MetricCard
             label="Sessions 30d"
             value={sessions30dValue}
@@ -269,7 +238,7 @@ export default async function AdminPerformancePage() {
         </div>
       </section>
 
-      <section className="mb-8">
+      <section className="mb-6">
         <div className="mb-3">
           <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-700">
             Business Stages (30d Lead Cohort)
@@ -319,7 +288,7 @@ export default async function AdminPerformancePage() {
         hasSourceOutcomes ||
         landingByLeads.length > 0 ||
         performance.sessions.topPaths.length > 0) && (
-        <section className="mb-8">
+        <section className="mb-6">
           <div className="mb-3">
             <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-700">
               Source + Landing Quality (30d)
@@ -548,38 +517,6 @@ export default async function AdminPerformancePage() {
   );
 }
 
-function ComparisonPill({
-  label,
-  current,
-  previous,
-  deltaLabel,
-  tone,
-}: {
-  label: string;
-  current: string | number;
-  previous: string | number;
-  deltaLabel: string;
-  tone: "up" | "down" | "flat";
-}) {
-  const toneClass =
-    tone === "up"
-      ? "text-emerald-300"
-      : tone === "down"
-        ? "text-amber-300"
-        : "text-zinc-400";
-
-  return (
-    <div className="rounded-lg border border-zinc-800/80 bg-zinc-900/35 px-3 py-2.5">
-      <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-zinc-600">{label}</p>
-      <div className="mt-1 flex items-end justify-between gap-2">
-        <p className="text-sm font-medium tabular-nums text-zinc-100">{current}</p>
-        <p className="text-[10px] tabular-nums text-zinc-600">prev {previous}</p>
-      </div>
-      <p className={`mt-1 text-[10px] tabular-nums ${toneClass}`}>{deltaLabel}</p>
-    </div>
-  );
-}
-
 function SignalCard({ signal }: { signal: PerformanceSignal }) {
   const accentClass =
     signal.tone === "positive"
@@ -637,3 +574,4 @@ function MetricCard({
     </div>
   );
 }
+

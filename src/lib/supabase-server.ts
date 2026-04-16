@@ -58,6 +58,18 @@ export type ProspectContactChannel =
   | "other";
 export type ProspectOutreachLanguage = "en" | "nl";
 export type ProspectLaneFit = "build" | "systems" | "growth" | "uncertain";
+export type ActivityEvent = {
+  id: string;
+  created_at: string;
+  actor_identifier: string | null;
+  entity_type: string;
+  entity_id: string;
+  event_type: string;
+  from_status: string | null;
+  to_status: string | null;
+  market: string | null;
+  metadata: Record<string, unknown>;
+};
 
 export type Lead = {
   id: string;
@@ -266,6 +278,15 @@ type Database = {
           updated_at?: string;
         };
         Update: Partial<Prospect>;
+        Relationships: [];
+      };
+      activity_events: {
+        Row: ActivityEvent;
+        Insert: Omit<ActivityEvent, "id" | "created_at"> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<ActivityEvent>;
         Relationships: [];
       };
     };

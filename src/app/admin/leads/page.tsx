@@ -51,7 +51,7 @@ export default async function LeadsPage({
 
   const isFiltered = !!(status || lane || source);
 
-  /* ─── Revenue metrics ─────────────────────────────────────────────────── */
+  /* Section */
   let cashCollectedUsd = 0;
   let completedRevenueUsd = 0;
   let outstandingBalanceUsd = 0;
@@ -138,79 +138,76 @@ export default async function LeadsPage({
       </div>
 
       {showMetrics && (
-        <div className="mb-6 space-y-3">
+        <div className="mb-6 space-y-2.5">
           {missingFxLeadCount > 0 && (
             <p className="text-[11px] text-zinc-700">
               USD reporting excludes {missingFxLeadCount} lead{missingFxLeadCount !== 1 ? "s" : ""} without a locked FX rate.
             </p>
           )}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              {
-                label: "Cash collected",
-                value: fmtUsd(cashCollectedUsd),
-                sub: "USD deposits + full payments",
-              },
-              {
-                label: "Completed revenue",
-                value: fmtUsd(completedRevenueUsd),
-                sub: "USD fully paid + project complete",
-              },
-              {
-                label: "Outstanding",
-                value: fmtUsd(outstandingBalanceUsd),
-                sub: `USD across ${activeLeadsWithPrice} lead${
-                  activeLeadsWithPrice !== 1 ? "s" : ""
-                }`,
-              },
-              {
-                label: "Total leads",
-                value: String(leads.length),
-                sub: isFiltered ? "Filtered view" : "All time",
-              },
-            ].map((m) => (
-              <div
-                key={m.label}
-                className="rounded-xl border border-zinc-800/80 bg-zinc-900/30 px-3 py-3 sm:px-4 sm:py-3.5"
-              >
-                <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
-                  {m.label}
-                </p>
-                <p className="mt-1.5 text-base font-semibold tabular-nums text-zinc-100 sm:text-lg">
-                  {m.value}
-                </p>
-                <p className="mt-0.5 text-[10px] text-zinc-700">{m.sub}</p>
-              </div>
-            ))}
+          <div className="overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/25">
+            <div className="grid grid-cols-2 divide-x divide-y divide-zinc-800/50 sm:grid-cols-4 sm:divide-y-0">
+              {[
+                {
+                  label: "Cash collected",
+                  value: fmtUsd(cashCollectedUsd),
+                  sub: "USD",
+                },
+                {
+                  label: "Completed revenue",
+                  value: fmtUsd(completedRevenueUsd),
+                  sub: "USD",
+                },
+                {
+                  label: "Outstanding",
+                  value: fmtUsd(outstandingBalanceUsd),
+                  sub: `${activeLeadsWithPrice} active`,
+                },
+                {
+                  label: "Total leads",
+                  value: String(leads.length),
+                  sub: isFiltered ? "Filtered" : "All",
+                },
+              ].map((m) => (
+                <div key={m.label} className="px-3 py-3 sm:px-4 sm:py-3.5">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+                    {m.label}
+                  </p>
+                  <p className="mt-1 text-base font-semibold tabular-nums text-zinc-100 sm:text-lg">
+                    {m.value}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-zinc-700">{m.sub}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
       {attentionRows.length > 0 && (
-        <div className="mb-5 overflow-hidden rounded-xl border border-amber-500/15 bg-amber-500/4">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-500/10 px-4 py-2.5">
+        <div className="mb-5 overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/20">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/60 px-4 py-2.5">
             <div className="flex items-center gap-3">
-              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-amber-300/70">
+              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500">
                 Needs attention
               </p>
-              <span className="text-[10px] text-amber-200/60">
+              <span className="text-[10px] text-zinc-600">
                 {attentionRows.length} lead{attentionRows.length !== 1 ? "s" : ""}
               </span>
             </div>
             <div className="flex items-center gap-2 text-[10px]">
               {attentionCounts.proposal_follow_up > 0 && (
                 <span className="text-zinc-500">
-                  Proposal <span className="text-amber-300/70">{attentionCounts.proposal_follow_up}</span>
+                  Proposal <span className="text-zinc-300">{attentionCounts.proposal_follow_up}</span>
                 </span>
               )}
               {attentionCounts.deposit_pending > 0 && (
                 <span className="text-zinc-500">
-                  Deposit <span className="text-amber-300/70">{attentionCounts.deposit_pending}</span>
+                  Deposit <span className="text-zinc-300">{attentionCounts.deposit_pending}</span>
                 </span>
               )}
               {attentionCounts.onboarding_pending > 0 && (
                 <span className="text-zinc-500">
-                  Onboarding <span className="text-amber-300/70">{attentionCounts.onboarding_pending}</span>
+                  Onboarding <span className="text-zinc-300">{attentionCounts.onboarding_pending}</span>
                 </span>
               )}
             </div>
@@ -223,9 +220,9 @@ export default async function LeadsPage({
                   className="min-w-0 flex-1 text-xs font-medium text-zinc-200 transition-colors hover:text-brand"
                 >
                   <span className="truncate">{lead.company_name}</span>
-                  <span className="ml-1.5 text-zinc-600">· {reminder.title}</span>
+                  <span className="ml-1.5 text-zinc-600">&middot; {reminder.title}</span>
                 </Link>
-                <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.08em] text-amber-300/70">
+                <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500">
                   {formatReminderAge(reminder)}
                 </span>
               </li>
@@ -374,7 +371,7 @@ export default async function LeadsPage({
                       <div className="flex items-center gap-1.5 text-xs text-zinc-600">
                         {lead.lead_source
                           ? (LEAD_SOURCE_LABELS[lead.lead_source] ?? lead.lead_source)
-                          : <span className="text-zinc-800">—</span>}
+                          : <span className="text-zinc-800">-</span>}
                         <MarketMarker
                           countryCode={lead.country_code}
                           countrySource={lead.country_source}
@@ -421,7 +418,7 @@ export default async function LeadsPage({
                           </p>
                         </div>
                       ) : (
-                        <span className="text-xs text-zinc-700">—</span>
+                        <span className="text-xs text-zinc-700">-</span>
                       )}
                     </td>
                   </tr>
@@ -434,3 +431,4 @@ export default async function LeadsPage({
     </>
   );
 }
+

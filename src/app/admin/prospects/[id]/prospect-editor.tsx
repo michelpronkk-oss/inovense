@@ -15,6 +15,7 @@ import {
 import type { Prospect } from "@/lib/supabase-server";
 import {
   convertProspectToLead,
+  markProspectDoNotContact,
   markProspectContacted,
   updateProspect,
   type ProspectUpdateInput,
@@ -114,6 +115,14 @@ function formatDate(value: string | null): string {
   return format(parsed, "MMM d, yyyy HH:mm");
 }
 
+function normalizeWebsiteLink(value: string | null): string | null {
+  const raw = (value ?? "").trim();
+  if (!raw) return null;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  if (/^[a-z0-9.-]+\.[a-z]{2,}/i.test(raw)) return `https://${raw}`;
+  return null;
+}
+
 export default function ProspectEditor({ prospect }: { prospect: Prospect }) {
   const router = useRouter();
   const [fields, setFields] = useState<ProspectUpdateInput>(() => toActionInput(prospect));
@@ -122,6 +131,7 @@ export default function ProspectEditor({ prospect }: { prospect: Prospect }) {
   const [success, setSuccess] = useState<string | null>(null);
 
   const statusMeta = PROSPECT_STATUS_CONFIG[fields.status];
+  const websiteHref = normalizeWebsiteLink(fields.website_url);
 
   const snippetLane =
     fields.lane_fit === "build" || fields.lane_fit === "systems" || fields.lane_fit === "growth"
@@ -199,6 +209,25 @@ export default function ProspectEditor({ prospect }: { prospect: Prospect }) {
 
       router.refresh();
       setSuccess("Prospect converted.");
+    });
+  }
+
+  function handleDoNotContact() {
+    clearMessages();
+
+    startTransition(async () => {
+      const result = await markProspectDoNotContact(prospect.id);
+      if (!result.success) {
+        setError(result.error ?? "Failed to mark do not contact.");
+        return;
+      }
+
+      setFields((prev) => ({
+        ...prev,
+        status: "not_fit",
+      }));
+      setSuccess("Prospect marked as do not contact.");
+      router.refresh();
     });
   }
 
@@ -452,6 +481,16 @@ export default function ProspectEditor({ prospect }: { prospect: Prospect }) {
         <aside className="flex flex-col gap-4">
           <SectionCard title="Actions">
             <div className="space-y-2">
+              {websiteHref ? (
+                <a
+                  href={websiteHref}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-700/70 px-3 py-2 text-xs font-medium uppercase tracking-[0.08em] text-zinc-300 transition-colors hover:border-zinc-600 hover:text-zinc-100"
+                >
+                  Visit website
+                </a>
+              ) : null}
               <button
                 type="button"
                 disabled={isPending || fields.status === "converted_to_lead"}
@@ -467,6 +506,14 @@ export default function ProspectEditor({ prospect }: { prospect: Prospect }) {
                 className="w-full rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-300 transition-colors hover:border-emerald-400/45 hover:bg-emerald-500/15 disabled:opacity-50"
               >
                 Convert to lead
+              </button>
+              <button
+                type="button"
+                disabled={isPending || fields.status === "converted_to_lead"}
+                onClick={handleDoNotContact}
+                className="w-full rounded-lg border border-amber-500/30 bg-amber-500/8 px-3 py-2 text-sm font-medium text-amber-200 transition-colors hover:border-amber-400/40 hover:bg-amber-500/12 disabled:opacity-50"
+              >
+                Do not contact
               </button>
               {prospect.converted_lead_id ? (
                 <Link
