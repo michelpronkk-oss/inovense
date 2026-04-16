@@ -394,16 +394,15 @@ function ProcessCTA() {
       />
 
       <div className="relative mx-auto max-w-4xl px-6 text-center">
-        <Eyebrow>Ready to start</Eyebrow>
+        <Eyebrow>Ready for the next step</Eyebrow>
 
         <h2 className="text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-5xl">
-          Now you know what to expect.
-          <br className="hidden md:block" /> Let us get to work.
+          You know how we work.
+          <br className="hidden md:block" /> Now let&apos;s see if it fits.
         </h2>
 
         <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-zinc-400 md:text-lg">
-          Submit your brief. We will review it within 24 hours and come back
-          with a clear direction. No pitch decks, no automated responses.
+          Send us your brief. We review every project properly and come back within 24 hours with a clear next step. No pitch decks, no vague follow-up.
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">

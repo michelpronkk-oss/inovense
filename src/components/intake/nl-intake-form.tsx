@@ -194,10 +194,10 @@ export default function NlIntakeForm() {
   } = useForm<NlIntakeFormData>({
     resolver: standardSchemaResolver(nlIntakeSchema),
     defaultValues: {
-      serviceLane: undefined,
-      projectType: undefined,
-      budget: undefined,
-      timeline: undefined,
+      serviceLane: "" as never,
+      projectType: "" as never,
+      budget: "" as never,
+      timeline: "" as never,
     },
   });
 
@@ -307,7 +307,7 @@ export default function NlIntakeForm() {
             <FieldLabel htmlFor="projectType">Projecttype</FieldLabel>
             <FormSelect
               id="projectType"
-              placeholder="Kies een type"
+              placeholder="Kies een projecttype"
               error={!!errors.projectType}
               {...register("projectType")}
             >
@@ -328,7 +328,7 @@ export default function NlIntakeForm() {
             <FieldLabel htmlFor="budget">Budgetrange</FieldLabel>
             <FormSelect
               id="budget"
-              placeholder="Kies een range"
+              placeholder="Kies een budgetrange"
               error={!!errors.budget}
               {...register("budget")}
             >

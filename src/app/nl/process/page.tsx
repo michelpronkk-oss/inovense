@@ -382,12 +382,12 @@ function PageCTA() {
         <Eyebrow>Klaar voor de volgende stap</Eyebrow>
 
         <h2 className="text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-5xl">
-          Weet je hoe we werken?
-          <br className="hidden md:block" /> Dan kijken we nu of het past.
+          Je weet hoe we werken.
+          <br className="hidden md:block" /> Nu kijken we of het past.
         </h2>
 
         <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-zinc-400 md:text-lg">
-          Stuur je brief in. We beoordelen die persoonlijk en komen binnen 24 uur terug met een heldere richting. Geen pitch decks, geen loze opvolging.
+          Stuur je brief in. We beoordelen elk project serieus en komen binnen 24 uur terug met een heldere volgende stap. Geen pitch decks, geen vage opvolging.
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">

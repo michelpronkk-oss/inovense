@@ -194,10 +194,10 @@ export default function IntakeForm() {
   } = useForm<IntakeFormData>({
     resolver: standardSchemaResolver(intakeSchema),
     defaultValues: {
-      serviceLane: undefined,
-      projectType: undefined,
-      budget: undefined,
-      timeline: undefined,
+      serviceLane: "" as never,
+      projectType: "" as never,
+      budget: "" as never,
+      timeline: "" as never,
     },
   });
 
@@ -291,7 +291,7 @@ export default function IntakeForm() {
             <FieldLabel htmlFor="serviceLane">Service lane</FieldLabel>
             <FormSelect
               id="serviceLane"
-              placeholder="Select a lane"
+              placeholder="Select a service"
               error={!!errors.serviceLane}
               {...register("serviceLane")}
             >
@@ -307,7 +307,7 @@ export default function IntakeForm() {
             <FieldLabel htmlFor="projectType">Project type</FieldLabel>
             <FormSelect
               id="projectType"
-              placeholder="Select a type"
+              placeholder="Select a project type"
               error={!!errors.projectType}
               {...register("projectType")}
             >
@@ -328,7 +328,7 @@ export default function IntakeForm() {
             <FieldLabel htmlFor="budget">Budget range</FieldLabel>
             <FormSelect
               id="budget"
-              placeholder="Select a range"
+              placeholder="Select a budget range"
               error={!!errors.budget}
               {...register("budget")}
             >
