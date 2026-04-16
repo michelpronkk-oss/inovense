@@ -7,21 +7,21 @@ const laneClarity = [
     href: "/build",
     focus: "Websites and digital products built to convert.",
     signal: "Right fit when traffic exists but the site is not converting.",
-    detailLabel: "Web design service",
+    cta: "See Build",
   },
   {
     lane: "Systems",
     href: "/systems",
     focus: "AI automation and internal tools that remove manual bottlenecks.",
     signal: "Right fit when manual work or broken handoffs are limiting your team.",
-    detailLabel: "AI automation service",
+    cta: "See Systems",
   },
   {
     lane: "Growth",
     href: "/growth",
     focus: "SEO, content, and paid media that compound over time.",
     signal: "Right fit when the business runs well but inbound is not growing.",
-    detailLabel: "Lead generation systems",
+    cta: "See Growth",
   },
 ] as const;
 
@@ -32,12 +32,12 @@ const questionLinks: Record<
   "What does Inovense do?": { href: "/process", label: "How delivery works" },
   "What is the difference between Build, Systems, and Growth?": {
     href: "/build",
-    label: "Compare lanes",
+    label: "See Build lane",
   },
   "Who is Inovense for?": { href: "/intake", label: "Fit and intake" },
   "When should a company invest in systems or automation?": {
     href: "/systems",
-    label: "Systems lane",
+    label: "See Systems lane",
   },
   "When is a website problem actually a trust or conversion problem?": {
     href: "/web-design",
@@ -113,9 +113,13 @@ export default function GeoAnswers() {
             <Link
               key={lane.lane}
               href={lane.href}
-              className="group relative flex flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/60 p-5 transition-all duration-200 hover:border-zinc-700 hover:bg-zinc-900/80"
+              className="group relative flex flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/60 p-5 transition-all duration-200 hover:border-zinc-600 hover:bg-zinc-900"
             >
-              <div className="absolute inset-x-0 top-0 h-px origin-left scale-x-0 bg-brand/60 transition-transform duration-400 ease-out group-hover:scale-x-100" />
+              {/* Top accent line */}
+              <div className="absolute inset-x-0 top-0 h-px origin-left scale-x-0 bg-brand/70 transition-transform duration-300 ease-out group-hover:scale-x-100" />
+
+              {/* Subtle hover overlay */}
+              <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 ring-1 ring-inset ring-brand/20 transition-opacity duration-200 group-hover:opacity-100" />
 
               <div className="mb-3 flex items-center justify-between">
                 <span className="text-sm font-semibold text-zinc-100 transition-colors group-hover:text-zinc-50">
@@ -132,10 +136,16 @@ export default function GeoAnswers() {
               <p className="mb-2 text-sm leading-snug text-zinc-300">{lane.focus}</p>
               <p className="mb-4 text-xs leading-relaxed text-zinc-500">{lane.signal}</p>
 
-              <div className="mt-auto">
-                <span className="text-xs text-zinc-600">
-                  {lane.detailLabel}
+              <div className="mt-auto flex items-center gap-1">
+                <span className="text-xs font-medium text-zinc-500 transition-colors group-hover:text-brand">
+                  {lane.cta}
                 </span>
+                <svg
+                  width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden
+                  className="text-zinc-600 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-brand"
+                >
+                  <path d="M2.5 6h7M6.5 3l3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </div>
             </Link>
           ))}
