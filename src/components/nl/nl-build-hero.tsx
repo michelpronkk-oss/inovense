@@ -195,18 +195,15 @@ export default function NlBuildHero() {
               variants={itemVariants}
               className="text-5xl font-semibold leading-[1.08] tracking-tight text-zinc-50 lg:text-6xl"
             >
-              Websites en producten{" "}
-              <em className="not-italic text-brand">gebouwd</em> om te
-              presteren.
+              Websites en webshops die vertrouwen{" "}
+              <em className="not-italic text-brand">wekken</em> en converteren.
             </motion.h1>
 
             <motion.p
               variants={itemVariants}
               className="mt-6 max-w-[440px] text-lg leading-relaxed text-zinc-400"
             >
-              We ontwerpen en bouwen conversiegerichte websites, landingspagina&apos;s,
-              e-commerce ervaringen en digitale producten. Geen templates.
-              Geen shortcuts.
+              Op maat gebouwde websites en Shopify-winkels die presteren — niet alleen mooi zijn.
             </motion.p>
 
             <motion.div
@@ -233,7 +230,7 @@ export default function NlBuildHero() {
             <motion.div variants={itemVariants} className="mt-5 flex items-center gap-2">
               <span className="h-1 w-1 shrink-0 rounded-full bg-zinc-700" aria-hidden="true" />
               <span className="text-xs text-zinc-600">
-                Op maat gescoped <span className="text-zinc-500">| Projectbasis</span>
+                We bouwen voor bedrijven die meer nodig hebben dan een template.
               </span>
             </motion.div>
 

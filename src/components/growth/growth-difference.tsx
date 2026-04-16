@@ -1,33 +1,28 @@
 const differences = [
   {
     number: "01",
-    title: "Infrastructure over activity",
-    body: "We build growth systems, not content calendars. Everything we create is designed to compound and hold up over time, not fill a weekly deliverable quota.",
+    title: "We build the funnel, not just the ad",
+    body: "Traffic without a strong landing experience does not convert. We build both sides of the funnel together.",
   },
   {
     number: "02",
-    title: "Signal over noise",
-    body: "We track what predicts outcomes: qualified traffic, pipeline contribution, and conversion rate. Not impressions, follower counts, or engagement rate theater.",
+    title: "Commercial goals come first",
+    body: "We measure against pipeline and revenue — not vanity metrics. If it does not move the number, we adjust.",
   },
   {
     number: "03",
-    title: "Conversion-focused throughout",
-    body: "Every channel, asset, and campaign is measured against one thing: qualified leads and revenue. We do not optimise for awareness metrics that do not move the business.",
+    title: "AI-assisted optimisation",
+    body: "We use AI tools to improve copy testing, audience refinement, and signal interpretation faster than manual workflows allow.",
   },
   {
     number: "04",
-    title: "Clarity in reporting",
-    body: "You always know what is working, what is not, and what comes next. No opaque agency reports with vanity metrics buried in deck slides and sent without context.",
+    title: "Cross-channel awareness",
+    body: "We look at your full acquisition picture — paid, organic, email, referral — and find the highest-leverage place to focus.",
   },
   {
     number: "05",
-    title: "Consistency over hacks",
-    body: "Sustainable growth comes from well-executed fundamentals run with discipline. We do not chase algorithm hacks or short-cycle tactics that decay in six weeks.",
-  },
-  {
-    number: "06",
-    title: "Systems that compound",
-    body: "The best growth infrastructure improves over time. We build toward compounding returns: SEO authority, audience trust, and conversion improvement that accumulate.",
+    title: "Transparent reporting",
+    body: "Clean, operator-grade performance reports. You always know where your money went and what it produced.",
   },
 ];
 
@@ -42,7 +37,7 @@ export default function GrowthDifference() {
             The difference
           </p>
           <h2 className="max-w-lg text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-            What separates our growth work.
+            Why our growth work converts.
           </h2>
         </div>
 

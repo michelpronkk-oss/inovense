@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     absolute: "Inovense | Web, Systems, and Growth Built to Perform",
   },
   description:
-    "Conversion-focused websites, AI workflows, and growth systems for ambitious companies that compete on execution.",
+    "We build conversion-focused websites, webshops, and smart systems for businesses that want commercial results, not just good-looking work.",
   alternates: {
     canonical: "https://inovense.com",
     languages: {
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     url: "https://inovense.com",
     title: "Inovense | Web, Systems, and Growth Built to Perform",
     description:
-      "Conversion-focused websites, AI workflows, and growth systems for ambitious companies that compete on execution.",
+      "We build conversion-focused websites, webshops, and smart systems for businesses that want commercial results, not just good-looking work.",
     images: [
       {
         url: "/opengraph-image",
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Inovense | Web, Systems, and Growth Built to Perform",
     description:
-      "Conversion-focused websites, AI workflows, and growth systems for ambitious companies that compete on execution.",
+      "We build conversion-focused websites, webshops, and smart systems for businesses that want commercial results, not just good-looking work.",
     images: [
       {
         url: "/opengraph-image",
@@ -64,7 +64,7 @@ const homePageSchema = {
   url: INOVENSE_URL,
   name: "Inovense | Web, Systems, and Growth Built to Perform",
   description:
-    "Inovense helps operators build digital infrastructure across Build, Systems, and Growth lanes.",
+    "Inovense builds custom websites, smart systems, and growth campaigns for businesses that want commercial results.",
   isPartOf: {
     "@id": INOVENSE_WEBSITE_ID,
   },

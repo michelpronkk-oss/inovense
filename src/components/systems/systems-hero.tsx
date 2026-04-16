@@ -266,17 +266,16 @@ export default function SystemsHero() {
               variants={itemVariants}
               className="text-5xl font-semibold leading-[1.08] tracking-tight text-zinc-50 lg:text-6xl"
             >
-              Internal leverage,{" "}
-              <em className="not-italic text-brand">built</em> to last.
+              Smart systems and AI automation —{" "}
+              <em className="not-italic text-brand">built</em> for operational clarity.
             </motion.h1>
 
             <motion.p
               variants={itemVariants}
               className="mt-6 max-w-[440px] text-lg leading-relaxed text-zinc-400"
             >
-              We design and implement AI workflows, automations, and
-              operational systems that reduce friction, remove manual chaos,
-              and help companies run cleaner.
+              We build custom workflows, automations, and AI-powered tools that remove friction,
+              save time, and improve how your business runs.
             </motion.p>
 
             <motion.div
@@ -303,7 +302,7 @@ export default function SystemsHero() {
             <motion.div variants={itemVariants} className="mt-5 flex items-center gap-2">
               <span className="h-1 w-1 shrink-0 rounded-full bg-zinc-700" aria-hidden="true" />
               <span className="text-xs text-zinc-600">
-                Custom system builds <span className="text-zinc-500">· Scoped to fit</span>
+                Built for teams that want more output without more overhead.
               </span>
             </motion.div>
 

@@ -24,9 +24,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/growth",
-    title: "SEO, Content, and Paid Growth Systems | Inovense",
+    title: "Growth campaigns built for pipeline — not impressions. | Inovense",
     description:
-      "Structured SEO infrastructure, content systems, paid media, and growth execution built to compound. Inovense builds growth assets you own.",
+      "Paid media, content, and lead generation built to fill your pipeline. We run growth campaigns for businesses that need qualified leads, not just reach.",
   },
 };
 

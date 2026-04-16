@@ -6,9 +6,9 @@ import NlGrowthHero from "@/components/nl/nl-growth-hero";
 import NlRelatedServices from "@/components/nl/nl-related-services";
 
 export const metadata: Metadata = {
-  title: "Leadgeneratie, SEO en Online Marketing voor Bedrijven",
+  title: "Groeicampagnes gericht op pipeline — niet op impressies. | Inovense",
   description:
-    "Growth als commercieel systeem. Van lead capture en kwalificatie tot SEO, content en follow-up. Gebouwd voor bedrijven die op uitvoering concurreren.",
+    "Betaalde media, content en leadgeneratie gebouwd om je pipeline te vullen. We draaien groeicampagnes voor bedrijven die gekwalificeerde leads nodig hebben.",
   alternates: {
     canonical: "https://inovense.com/nl/growth",
     languages: {
@@ -19,9 +19,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/nl/growth",
-    title: "Leadgeneratie, SEO en Online Marketing voor Bedrijven | Inovense",
+    title: "Groeicampagnes gericht op pipeline — niet op impressies. | Inovense",
     description:
-      "Growth als commercieel systeem. Van lead capture en kwalificatie tot SEO, content en follow-up. Gebouwd voor bedrijven die op uitvoering concurreren.",
+      "Betaalde media, content en leadgeneratie gebouwd om je pipeline te vullen. We draaien groeicampagnes voor bedrijven die gekwalificeerde leads nodig hebben.",
     locale: "nl_NL",
   },
 };
@@ -100,37 +100,44 @@ function FocusAreas() {
 const scope = [
   {
     number: "01",
-    title: "Lead generation systems",
+    title: "Betaalde social campagnes",
     description:
-      "Capture, kwalificatie, scoring en routing als een gekoppeld commercieel systeem in plaats van losse tools.",
+      "Campagne-architectuur en creatieve assets gericht op conversie, niet alleen bereik. Gebouwd rondom jouw funnel en doelgroep.",
     tag: "Kerngebied",
   },
   {
     number: "02",
-    title: "SEO en content infrastructuur",
+    title: "Search en vindbaarheid",
     description:
-      "Onderwerpen, landingsstructuur en publicatieritme afgestemd op hoe jouw doelgroep zoekt en beslist.",
+      "SEO-structuur, landingspagina's en contentstrategie afgestemd op hoe jouw doelgroep zoekt en beslist.",
     tag: null,
   },
   {
     number: "03",
-    title: "Paid creative support",
+    title: "Leadgeneratiefunnels",
     description:
-      "Advertentie-assets en campagnelogica die aansluiten op je funnel in plaats van alleen bereik najagen.",
+      "Van eerste contact tot gekwalificeerde lead. Capture, kwalificatie, scoring en routing als een gekoppeld commercieel systeem.",
     tag: null,
   },
   {
     number: "04",
-    title: "CRM pipeline hygiene",
+    title: "Content en organische groei",
     description:
-      "Heldere statusmodellen en overdracht tussen marketing en sales om commercieel lek te beperken.",
+      "Onderwerpen, publicatieritme en distributie gebouwd op compounding organisch bereik en autoriteit in jouw markt.",
     tag: null,
   },
   {
     number: "05",
-    title: "Reporting en feedback loops",
+    title: "E-mail en CRM-nurture",
     description:
-      "Rapportage op de metrics die beslissingen sturen, met snelle iteraties op bottlenecks in de flow.",
+      "Follow-up sequenties, nurture flows en pipeline-opvolging die leads omzetten in gesprekken zonder handmatige tussenkomst.",
+    tag: null,
+  },
+  {
+    number: "06",
+    title: "Performanceaudits",
+    description:
+      "Audit van huidige kanalen, conversiepunten en growthdata. We identificeren waar het lekt en waar de echte kansen liggen.",
     tag: null,
   },
 ];
@@ -141,17 +148,14 @@ function Scope() {
       <div className="mx-auto max-w-5xl px-6">
         <div className="mb-14 grid grid-cols-1 gap-8 md:grid-cols-2">
           <div>
-            <Eyebrow>Scope</Eyebrow>
+            <Eyebrow>Wat we draaien</Eyebrow>
             <h2 className="text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-              Alles wat valt
-              <br />
-              <span className="text-zinc-500">onder Growth.</span>
+              Groeiwerk dat aansluit op commercieel resultaat.
             </h2>
           </div>
           <div className="flex items-end">
             <p className="max-w-sm text-sm leading-relaxed text-zinc-500">
-              Growth is hier een beslissysteem met eigenaarschap en duidelijke
-              uitvoeringsregels. Niet een verzameling losse hacks.
+              Elk groeiproject wordt geschreven rond een commercieel doel — niet een kanaal.
             </p>
           </div>
         </div>
@@ -191,23 +195,28 @@ function Scope() {
 const difference = [
   {
     number: "01",
-    title: "Commercieel systeem, geen tactiekenlijst",
+    title: "We bouwen de funnel, niet alleen de advertentie",
     body: "Growth bestaat hier uit gekoppelde onderdelen: capture, kwalificatie, routing, distributie en feedback. Elk onderdeel versterkt het volgende. Geen losse campagnes.",
   },
   {
     number: "02",
-    title: "Eigendom bij jou, niet bij ons",
-    body: "Elke asset, elk stuk copy en elke campagnestructuur is van jou bij oplevering. Geen doorlopende afhankelijkheid om jouw groeisysteem draaiende te houden.",
+    title: "Commerciële doelen staan centraal",
+    body: "Elk kanaal, elke asset en elke beslissing is gekoppeld aan een uitkomst. We draaien geen campagnes om activiteit te tonen.",
   },
   {
     number: "03",
-    title: "Rapportage op echte signalen",
-    body: "Wij rapporteren op metrics die beslissingen sturen, niet op ijdele nummers. Als iets niet werkt, zeggen we het en passen we aan.",
+    title: "AI-gestuurde optimalisatie",
+    body: "We zetten AI in voor snellere iteraties, betere targetinglogica en scherpere creatieve beslissingen — niet als vervanger van strategie.",
   },
   {
     number: "04",
-    title: "Geen lock-in, per cyclus",
-    body: "Engagements lopen per cyclus. Je beoordeelt de waarde op basis van uitkomsten, niet op basis van een langlopend contract.",
+    title: "Crosschannel inzicht",
+    body: "We kijken naar hoe kanalen elkaar versterken. SEO, paid en content werken samen rondom jouw commercieel doel, niet los van elkaar.",
+  },
+  {
+    number: "05",
+    title: "Transparante rapportage",
+    body: "Rapportage op metrics die beslissingen sturen, niet op ijdele nummers. Als iets niet werkt, zeggen we het en passen we aan.",
   },
 ];
 
@@ -218,7 +227,7 @@ function GrowthDifference() {
         <div className="mb-14">
           <Eyebrow>Het verschil</Eyebrow>
           <h2 className="max-w-lg text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-            Growth die compoundt in plaats van herstart.
+            Waarom ons groeiwerk converteert.
           </h2>
         </div>
 
@@ -553,13 +562,12 @@ function PageCTA() {
         <Eyebrow>Growth project starten</Eyebrow>
 
         <h2 className="text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-5xl">
-          Klaar om je growthflow
-          <br className="hidden md:block" /> als systeem te bouwen?
+          Klaar om te groeien met
+          <br className="hidden md:block" /> een scherp, senior team?
         </h2>
 
         <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-zinc-400 md:text-lg">
-          Stuur je context en huidige bottlenecks. We reageren binnen 24 uur
-          met een duidelijke richting en een realistische volgende stap.
+          Vertel ons je groeidoel en we scopen een plan.
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
@@ -581,7 +589,7 @@ function PageCTA() {
         </div>
 
         <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-          {["Beperkte intake", "Reactie binnen 24 uur", "Geen pitch decks"].map((item) => (
+          {["Selectieve intake. We nemen alleen projecten aan die we kunnen winnen."].map((item) => (
             <span key={item} className="flex items-center gap-2 text-xs text-zinc-700">
               <span className="h-1 w-1 shrink-0 rounded-full bg-brand/50" />
               {item}

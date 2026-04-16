@@ -5,42 +5,42 @@ const services = [
     id: "build",
     label: "Build",
     href: "/build",
-    tagline: "Websites & digital products engineered to convert.",
+    tagline: "Websites & Webshops",
     description:
-      "From landing pages to full-stack builds. Every decision is made with performance and conversion in mind. No template shortcuts.",
+      "Conversion-optimized websites and Shopify stores built to earn trust, generate leads, and sell.",
     deliverables: [
-      "Web design & development",
-      "Landing pages & microsites",
-      "E-commerce builds",
-      "Full-stack web applications",
+      "Custom website design",
+      "Shopify stores",
+      "Landing pages",
+      "Redesign and migration",
     ],
   },
   {
     id: "systems",
     label: "Systems",
     href: "/systems",
-    tagline: "AI automation and tooling that multiplies your output.",
+    tagline: "Smart Systems",
     description:
-      "We design and build AI workflows, process automation, and internal tooling that remove bottlenecks and compound over time.",
+      "AI automation, CRM workflows, and operational tooling that removes friction and saves hours.",
     deliverables: [
-      "AI workflow design & build",
-      "Process automation",
-      "CRM & ops setup",
-      "Lead qualification systems",
+      "AI workflow automation",
+      "CRM and pipeline logic",
+      "Internal tooling",
+      "Integrations and APIs",
     ],
   },
   {
     id: "growth",
     label: "Growth",
     href: "/growth",
-    tagline: "Content, SEO, and paid infrastructure built to compound.",
+    tagline: "Growth Campaigns",
     description:
-      "Growth systems that build pipeline over time. Not monthly reports. Content that ranks, converts, and compounds regardless of market.",
+      "Paid media, content strategy, and lead generation built to drive qualified traffic and pipeline.",
     deliverables: [
-      "Content strategy & production",
-      "SEO infrastructure",
-      "Paid media systems",
-      "Social & authority building",
+      "Paid social campaigns",
+      "Search and SEO",
+      "Lead generation funnels",
+      "Content and email nurture",
     ],
   },
 ];
@@ -56,13 +56,10 @@ export default function Services() {
             What we build
           </p>
           <h2 className="max-w-xl text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-            Three lanes. One execution standard.
+            Three ways we grow your business.
           </h2>
           <p className="mt-4 max-w-2xl text-sm leading-relaxed text-zinc-500 md:text-base">
-            Build improves trust and conversion at the experience layer. Systems
-            removes operational bottlenecks through automation and tooling.
-            Growth compounds qualified demand through SEO, content, and
-            distribution.
+            Every project is scoped, built, and delivered to produce real commercial output.
           </p>
         </div>
 

@@ -220,18 +220,15 @@ export default function BuildHero() {
               variants={itemVariants}
               className="text-5xl font-semibold leading-[1.08] tracking-tight text-zinc-50 lg:text-6xl"
             >
-              Websites and products{" "}
-              <em className="not-italic text-brand">engineered</em> to
-              perform.
+              Websites and webshops that earn{" "}
+              <em className="not-italic text-brand">trust</em> and convert.
             </motion.h1>
 
             <motion.p
               variants={itemVariants}
               className="mt-6 max-w-[440px] text-lg leading-relaxed text-zinc-400"
             >
-              We design and build conversion-focused websites, landing
-              pages, e-commerce experiences, and full-stack digital
-              products. No templates. No shortcuts.
+              Custom-built sites and Shopify stores designed for performance — not just good looks.
             </motion.p>
 
             <motion.div
@@ -258,7 +255,7 @@ export default function BuildHero() {
             <motion.div variants={itemVariants} className="mt-5 flex items-center gap-2">
               <span className="h-1 w-1 shrink-0 rounded-full bg-zinc-700" aria-hidden="true" />
               <span className="text-xs text-zinc-600">
-                Custom scoped <span className="text-zinc-500">· Project-based</span>
+                We build for businesses that need more than a template.
               </span>
             </motion.div>
 

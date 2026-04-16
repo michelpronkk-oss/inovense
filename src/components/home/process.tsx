@@ -1,23 +1,23 @@
 const steps = [
   {
     number: "01",
-    title: "Strategy call",
-    body: "We understand your goals, constraints, and current position. We'll tell you honestly whether we're the right fit. If we're not, we'll point you in the right direction.",
+    title: "Intake & brief",
+    body: "We understand your business, your goals, and what a successful outcome looks like before we scope anything.",
   },
   {
     number: "02",
-    title: "Scoped proposal",
-    body: "A clear document with exact deliverables, timeline, and price. No sliding scope, no surprise invoices. You know what you're getting before anything starts.",
+    title: "Scope & proposal",
+    body: "You receive a clear, fixed-price proposal. No vague retainers, no scope creep.",
   },
   {
     number: "03",
-    title: "Build & execute",
-    body: "We move with precision. Regular updates, clear milestones, and no disappearing acts. You stay informed without needing to chase.",
+    title: "Build & deliver",
+    body: "We build, test, and deliver to a high standard. You stay informed throughout without being buried in updates.",
   },
   {
     number: "04",
-    title: "Launch & compound",
-    body: "Clean handover with full asset ownership. We don't disappear at launch. We measure, refine, and continue driving results.",
+    title: "Launch & support",
+    body: "After launch, we support the handoff and make sure everything performs the way it should.",
   },
 ];
 
@@ -32,7 +32,7 @@ export default function Process() {
             How we work
           </p>
           <h2 className="max-w-md text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-            From first call to compounding results.
+            From brief to results — a clear, controlled process.
           </h2>
         </div>
 

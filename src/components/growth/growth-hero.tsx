@@ -218,17 +218,15 @@ export default function GrowthHero() {
               variants={itemVariants}
               className="text-5xl font-semibold leading-[1.08] tracking-tight text-zinc-50 lg:text-6xl"
             >
-              Growth infrastructure,{" "}
-              <em className="not-italic text-brand">built</em> to compound.
+              Paid media, content, and lead generation —{" "}
+              <em className="not-italic text-brand">built</em> to fill your pipeline.
             </motion.h1>
 
             <motion.p
               variants={itemVariants}
               className="mt-6 max-w-[440px] text-lg leading-relaxed text-zinc-400"
             >
-              We design and execute growth systems around signal, structure,
-              and compounding execution. Not random posting. Not bloated
-              retainers. Infrastructure that builds.
+              We run growth campaigns for businesses that need qualified leads, not just clicks and impressions.
             </motion.p>
 
             <motion.div
@@ -255,7 +253,7 @@ export default function GrowthHero() {
             <motion.div variants={itemVariants} className="mt-5 flex items-center gap-2">
               <span className="h-1 w-1 shrink-0 rounded-full bg-zinc-700" aria-hidden="true" />
               <span className="text-xs text-zinc-600">
-                Monthly engagements <span className="text-zinc-500">· Tailored to scope</span>
+                Selective intake. We only take on growth projects we can win.
               </span>
             </motion.div>
 

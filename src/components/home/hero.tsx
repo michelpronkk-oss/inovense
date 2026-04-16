@@ -182,7 +182,7 @@ const itemVariants = {
   },
 };
 
-const trustItems = ["Limited intake", "24h response", "No pitch decks"];
+const trustItems = ["Custom-built", "Conversion-focused", "AI-ready", "No templates"];
 
 /* ─── Hero ──────────────────────────────────────────────────────────────── */
 
@@ -247,7 +247,7 @@ export default function Hero() {
                 variant="outline"
                 className="border-brand/30 bg-brand/10 px-3 py-1 text-xs font-medium tracking-wide text-brand"
               >
-                Now accepting Q2 2026 projects
+                Custom-built for growth
               </Badge>
             </motion.div>
 
@@ -255,7 +255,7 @@ export default function Hero() {
               variants={itemVariants}
               className="text-5xl font-semibold leading-[1.08] tracking-tight text-zinc-50 lg:text-6xl"
             >
-              Web, systems, and growth
+              Websites, systems, and growth —
               <br className="hidden sm:block" /> built to{" "}
               <span className="text-brand">perform.</span>
             </motion.h1>
@@ -264,8 +264,8 @@ export default function Hero() {
               variants={itemVariants}
               className="mt-6 max-w-[520px] text-lg leading-relaxed text-zinc-400"
             >
-              Conversion-focused websites, AI workflows, and growth systems for ambitious
-              companies that compete on execution.
+              We build conversion-focused websites, webshops, and smart systems for businesses
+              that want commercial results, not just good-looking work.
             </motion.p>
 
             <motion.div

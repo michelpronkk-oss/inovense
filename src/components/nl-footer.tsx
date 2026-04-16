@@ -49,7 +49,7 @@ export default function NlFooter() {
               />
             </Link>
             <p className="max-w-[240px] text-sm leading-relaxed text-zinc-500">
-              Digitale infrastructuur voor operators die op kwaliteit concurreren.
+              Inovense — gebouwd voor resultaat.
             </p>
             <a
               href="mailto:hello@inovense.com"

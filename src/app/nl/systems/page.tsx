@@ -6,9 +6,9 @@ import NlSystemsHero from "@/components/nl/nl-systems-hero";
 import NlRelatedServices from "@/components/nl/nl-related-services";
 
 export const metadata: Metadata = {
-  title: "AI-automatisering, Workflows en Interne Systemen op Maat",
+  title: "Slimme systemen. Minder handmatig werk. Betere resultaten. | Inovense",
   description:
-    "AI-automatisering, workflow systemen, interne tools en operationele infrastructuur gebouwd rondom hoe jouw bedrijf echt werkt. Geen off-the-shelf, geen generieke tools.",
+    "Maatwerk workflows, automatiseringen en AI-tools die wrijving weghalen, tijd besparen en je bedrijf beter laten lopen. Vaste scope, heldere overdracht.",
   alternates: {
     canonical: "https://inovense.com/nl/systems",
     languages: {
@@ -19,9 +19,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/nl/systems",
-    title: "AI-automatisering, Workflows en Interne Systemen op Maat | Inovense",
+    title: "Slimme systemen. Minder handmatig werk. Betere resultaten. | Inovense",
     description:
-      "AI-automatisering, workflow systemen, interne tools en operationele infrastructuur gebouwd rondom hoe jouw bedrijf echt werkt. Geen off-the-shelf, geen generieke tools.",
+      "Maatwerk workflows, automatiseringen en AI-tools die wrijving weghalen, tijd besparen en je bedrijf beter laten lopen. Vaste scope, heldere overdracht.",
     locale: "nl_NL",
   },
 };
@@ -100,37 +100,44 @@ function WhoThisIsFor() {
 const deliverables = [
   {
     number: "01",
-    title: "Workflow automatisering",
+    title: "AI-gestuurde leadverwerking",
     description:
-      "Repetitieve processen geautomatiseerd van begin tot eind. Van lead routing en onboarding flows tot interne goedkeurings- en notificatiesystemen.",
+      "Inbound leads automatisch gekwalificeerd, gescoord en doorgestuurd. Het salesteam focust op gesprekken, niet op admin.",
     tag: "Meest gevraagd",
   },
   {
     number: "02",
-    title: "AI-integraties",
+    title: "CRM en pipeline-automatisering",
     description:
-      "AI-aangedreven content pipelines, documentverwerking, geautomatiseerde klantcommunicatie en beslissingsondersteuning. Gebouwd op het model dat het beste presteert voor jouw use case.",
+      "Operationele CRM-logica, follow-up triggers en pipeline-zichtbaarheid gebouwd op hoe jouw team daadwerkelijk werkt.",
     tag: null,
   },
   {
     number: "03",
-    title: "Interne tools en dashboards",
+    title: "Operationele workflows",
     description:
-      "Maatwerk interfaces waarmee jouw team dagelijks data kan inzien, processen kan beheren en beslissingen kan nemen. Geen off-the-shelf software die je team aan moet passen.",
+      "Repetitieve processen geautomatiseerd van begin tot eind. Van onboarding flows tot goedkeurings- en notificatiesystemen.",
     tag: null,
   },
   {
     number: "04",
-    title: "CRM en lead management",
+    title: "Interne tooling",
     description:
-      "Operationele CRM-logica, lead routing en commercieel procesmanagement gebouwd op wat jouw team daadwerkelijk nodig heeft, niet wat een generiek pakket standaard biedt.",
+      "Maatwerk interfaces waarmee jouw team dagelijks data kan inzien, processen kan beheren en beslissingen kan nemen zonder externe afhankelijkheid.",
     tag: null,
   },
   {
     number: "05",
-    title: "Data integraties",
+    title: "AI content en documentgeneratie",
     description:
-      "Verbindingen tussen tools, databases en systemen die handmatige overzetting elimineren. Eén bron van waarheid, automatisch bijgehouden.",
+      "AI-aangedreven content pipelines, documentverwerking en geautomatiseerde communicatie gebouwd op het model dat het beste presteert voor jouw use case.",
+    tag: null,
+  },
+  {
+    number: "06",
+    title: "Integraties en API-koppelingen",
+    description:
+      "Verbindingen tussen tools, databases en systemen die handmatige overzetting elimineren. Een bron van waarheid, automatisch bijgehouden.",
     tag: null,
   },
 ];
@@ -141,17 +148,14 @@ function WhatWeBuild() {
       <div className="mx-auto max-w-5xl px-6">
         <div className="mb-14 grid grid-cols-1 gap-8 md:grid-cols-2">
           <div>
-            <Eyebrow>Scope</Eyebrow>
+            <Eyebrow>Wat we bouwen</Eyebrow>
             <h2 className="text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-              Alles wat valt
-              <br />
-              <span className="text-zinc-500">onder Systemen.</span>
+              Systemen die werken terwijl jij werkt.
             </h2>
           </div>
           <div className="flex items-end">
             <p className="max-w-sm text-sm leading-relaxed text-zinc-500">
-              Elk systeem wordt gescopet op basis van jouw operationele context.
-              Niets generiek, niets gebouwd voor een andere use case.
+              Elk systeem wordt geschreven, gebouwd en overgedragen zodat jouw team het zelfstandig kan beheren.
             </p>
           </div>
         </div>
@@ -193,23 +197,28 @@ function WhatWeBuild() {
 const approach = [
   {
     number: "01",
-    title: "Procesanalyse eerst",
-    body: "Voordat we iets bouwen, begrijpen we hoe jouw operatie daadwerkelijk werkt. Niet hoe het op papier staat. We identificeren waar automatisering waarde toevoegt en waar het gewoon complexiteit toevoegt.",
+    title: "Gebouwd voor jouw workflow, niet de onze",
+    body: "Voordat we iets bouwen, begrijpen we hoe jouw operatie daadwerkelijk werkt. We ontwerpen systemen die passen bij jouw realiteit, niet bij een generieke template.",
   },
   {
     number: "02",
-    title: "Gebouwd om te onderhouden",
-    body: "Automatisering die alleen werkt zolang de originele bouwer er is, lost niets op. We bouwen systemen die jouw team kan begrijpen, aanpassen en beheren zonder technische afhankelijkheid.",
+    title: "Overdracht die klopt",
+    body: "Automatisering die alleen werkt zolang de originele bouwer er is, lost niets op. Wij bouwen systemen die jouw team kan begrijpen, aanpassen en beheren zonder externe afhankelijkheid.",
   },
   {
     number: "03",
-    title: "Het juiste model voor de taak",
-    body: "We zijn niet gebonden aan een specifiek AI-platform of toolstack. We kiezen het model en de architectuur die het beste passen bij jouw use case, budget en vereisten voor betrouwbaarheid.",
+    title: "Snelheid en betrouwbaarheid",
+    body: "Productie-grade implementatie met real-world edge-case testing. We stress-testen faaltoestanden en data-integriteit voor iets live gaat.",
   },
   {
     number: "04",
-    title: "Stapsgewijze oplevering",
-    body: "Grote projecten worden gefaseerd opgeleverd. Je ziet waarde eerder, en we passen aan op basis van hoe het systeem presteert in de praktijk voor we verder uitbreiden.",
+    title: "Geen overbodige tussenschakels",
+    body: "We kiezen het model en de architectuur die het beste passen bij jouw use case. Geen bloated middleware, geen onnodige complexiteit.",
+  },
+  {
+    number: "05",
+    title: "Commerciële impact als maatstaf",
+    body: "Automatisering moet zichzelf terugverdienen. We kijken naar frequentie, foutgevoeligheid, tijdsinvestering en strategische impact voor we bouwen.",
   },
 ];
 
@@ -220,7 +229,7 @@ function OurApproach() {
         <div className="mb-14">
           <Eyebrow>Het verschil</Eyebrow>
           <h2 className="max-w-lg text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-            Systemen die werken zoals jouw bedrijf werkt.
+            Waarom onze systemen echt gebruikt worden.
           </h2>
         </div>
 
@@ -557,13 +566,12 @@ function PageCTA() {
         <Eyebrow>Systeemproject starten</Eyebrow>
 
         <h2 className="text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-5xl">
-          Klaar om te stoppen met
-          <br className="hidden md:block" /> hetzelfde handmatige werk?
+          Wil je het handmatige werk
+          <br className="hidden md:block" /> dat je vertraagt aanpakken?
         </h2>
 
         <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-zinc-400 md:text-lg">
-          Beschrijf je operatie en laat ons inschatten wat er mogelijk is.
-          We reageren binnen 24 uur met een duidelijke richting.
+          Beschrijf je workflow en we laten zien wat er mogelijk is.
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
@@ -585,7 +593,7 @@ function PageCTA() {
         </div>
 
         <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-          {["Beperkte intake", "Reactie binnen 24 uur", "Geen pitch decks"].map((item) => (
+          {["Vaste scope. Heldere oplevering. Geen abonnement vereist."].map((item) => (
             <span key={item} className="flex items-center gap-2 text-xs text-zinc-700">
               <span className="h-1 w-1 shrink-0 rounded-full bg-brand/50" />
               {item}

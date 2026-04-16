@@ -37,15 +37,11 @@ export default function GrowthCTA() {
         </p>
 
         <h2 className="text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-5xl">
-          Ready to build a growth system
-          <br className="hidden md:block" /> that lasts?
+          Ready to grow with a focused, senior team?
         </h2>
 
         <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-zinc-400 md:text-lg">
-          We take on a small number of Growth engagements at a time. Tell us
-          what you&apos;re building toward and what your current acquisition
-          picture looks like. We&apos;ll respond with clarity, not a proposal
-          template.
+          Tell us your growth goal and we will scope a plan.
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
@@ -69,7 +65,7 @@ export default function GrowthCTA() {
 
         {/* Trust strip */}
         <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-          {["Limited intake", "24-hour response", "No pitch decks"].map(
+          {["Selective intake. We take on projects we can win."].map(
             (item) => (
               <span
                 key={item}

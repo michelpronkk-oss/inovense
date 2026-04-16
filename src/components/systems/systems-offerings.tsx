@@ -1,44 +1,44 @@
 const offerings = [
   {
     number: "01",
-    title: "AI Workflows",
+    title: "AI-powered lead handling",
     description:
-      "Custom AI integrations designed around your actual processes. Not general-purpose tools bolted on. Specific, reliable pipelines that handle real operational logic with consistent output.",
+      "Automated intake, qualification, routing, and follow-up flows. Leads handled faster, with less manual effort.",
     tag: "Most requested",
   },
   {
     number: "02",
-    title: "Lead Routing Systems",
+    title: "CRM and pipeline automation",
     description:
-      "Structured pipelines that capture, qualify, and route leads to the right place. Faster handoffs, fewer gaps, and no leads falling through the cracks between tools.",
+      "Custom CRM setups and automated pipeline workflows built around how your team actually sells.",
     tag: null,
   },
   {
     number: "03",
-    title: "CRM and Pipeline Logic",
+    title: "Operational workflows",
     description:
-      "Custom CRM configuration, automation logic, and pipeline architecture. Built to match how your team actually sells, follows up, and closes, not how a template assumes they do.",
+      "We map, build, and automate the repetitive processes eating your team's time — proposals, onboarding, handoffs, reporting.",
     tag: null,
   },
   {
     number: "04",
-    title: "Internal Dashboards",
+    title: "Internal tooling",
     description:
-      "Clean operational views that surface what your team needs to see, without burying it in noise. Built for clarity and daily use, not for a demo.",
+      "Custom admin panels and operator tools built with Next.js and Supabase — fast, private, and built to your exact workflow.",
     tag: null,
   },
   {
     number: "05",
-    title: "Ops Automations",
+    title: "AI content and document generation",
     description:
-      "Repetitive operational tasks removed from the queue. Data sync, notifications, scheduling, handoffs, and reporting: all running reliably without manual input.",
+      "Automated generation of proposals, briefs, reports, and client-facing documents from your existing data.",
     tag: null,
   },
   {
     number: "06",
-    title: "Reporting and Decision Flows",
+    title: "Integrations and API connectors",
     description:
-      "Automated pipelines that deliver the right data to the right people at the right time. Decisions made on current information, not last week's export.",
+      "We connect your stack — CRM, email, payments, calendar, tools — so data flows cleanly and nothing falls through the cracks.",
     tag: null,
   },
 ];
@@ -55,19 +55,15 @@ export default function SystemsOfferings() {
         <div className="mb-16 grid grid-cols-1 gap-8 md:grid-cols-2">
           <div>
             <p className="mb-4 text-xs font-medium uppercase tracking-widest text-brand">
-              Scope
+              What we build
             </p>
             <h2 className="text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-              Everything that falls
-              <br />
-              <span className="text-zinc-500">under Systems.</span>
+              Systems that run while you work.
             </h2>
           </div>
           <div className="flex items-end">
             <p className="max-w-sm text-sm leading-relaxed text-zinc-500">
-              Each system is designed around your specific operations. No
-              off-the-shelf workflows, no generic automation templates, no
-              tools configured for someone else&apos;s business.
+              Every system is scoped, built, and handed over so your team can run it without us.
             </p>
           </div>
         </div>

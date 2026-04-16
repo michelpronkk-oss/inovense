@@ -196,17 +196,16 @@ export default function NlGrowthHero() {
               variants={itemVariants}
               className="text-5xl font-semibold leading-[1.08] tracking-tight text-zinc-50 lg:text-6xl"
             >
-              Groei-infrastructuur,{" "}
-              <em className="not-italic text-brand">gebouwd</em> om te stapelen.
+              Betaalde media, content en leadgeneratie —{" "}
+              <em className="not-italic text-brand">gebouwd</em> om je pipeline te vullen.
             </motion.h1>
 
             <motion.p
               variants={itemVariants}
               className="mt-6 max-w-[440px] text-lg leading-relaxed text-zinc-400"
             >
-              We ontwerpen en voeren groeisystemen uit rond signaal, structuur
-              en consistente uitvoering. Geen losse posts. Geen ruis.
-              Infrastructuur die doorwerkt.
+              We draaien groeicampagnes voor bedrijven die gekwalificeerde leads nodig hebben —
+              geen klikken en impressies.
             </motion.p>
 
             <motion.div
@@ -233,7 +232,7 @@ export default function NlGrowthHero() {
             <motion.div variants={itemVariants} className="mt-5 flex items-center gap-2">
               <span className="h-1 w-1 shrink-0 rounded-full bg-zinc-700" aria-hidden="true" />
               <span className="text-xs text-zinc-600">
-                Commercieel gestuurd <span className="text-zinc-500">| Gescoped per fase</span>
+                Selectieve intake. We nemen alleen groeiprojecten aan die we kunnen winnen.
               </span>
             </motion.div>
 

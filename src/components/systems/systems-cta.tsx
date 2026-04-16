@@ -37,14 +37,11 @@ export default function SystemsCTA() {
         </p>
 
         <h2 className="text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-5xl">
-          Ready to operate with
-          <br className="hidden md:block" /> more clarity?
+          Want to remove the manual work slowing you down?
         </h2>
 
         <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-zinc-400 md:text-lg">
-          We take on a small number of Systems projects at a time. Tell us
-          what you&apos;re trying to fix and what good looks like. We&apos;ll
-          respond with a clear path forward, not a proposal template.
+          Describe your workflow and we will show you what is possible.
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
@@ -68,7 +65,7 @@ export default function SystemsCTA() {
 
         {/* Trust strip */}
         <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-          {["Limited intake", "24-hour response", "No pitch decks"].map(
+          {["Fixed scope. Clear delivery. No retainer required."].map(
             (item) => (
               <span
                 key={item}

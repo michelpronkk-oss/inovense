@@ -24,9 +24,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/systems",
-    title: "Business Operations Systems and Internal Tooling | Inovense",
+    title: "Smart systems. Less manual work. Better results. | Inovense",
     description:
-      "Custom CRM logic, internal tooling, operational workflows, and business process infrastructure designed around how your team actually works. Built for the long-term, not stitched together.",
+      "Custom workflows, AI automation, and internal tooling built around how your business actually runs. Fixed scope, clean handoff, no retainer required.",
   },
 };
 

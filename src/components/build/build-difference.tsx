@@ -1,33 +1,28 @@
 const differences = [
   {
     number: "01",
-    title: "Performance architecture",
-    body: "Core Web Vitals, load speed, and server performance are designed in from day one. Not patched in at the end. We target green across the board.",
+    title: "Speed matters",
+    body: "Every site we build is performance-optimised. Fast load times, clean code, and solid Core Web Vitals.",
   },
   {
     number: "02",
-    title: "Conversion-led layout",
-    body: "Every section, headline, and CTA placement is informed by how your target user makes decisions. We design for outcomes, not aesthetics alone.",
+    title: "Trust-first design",
+    body: "We build layouts that feel premium and credible from the first impression — because trust is the first conversion.",
   },
   {
     number: "03",
-    title: "Brand-level polish",
-    body: "Mobile typography, spacing, micro-detail, and responsive behavior executed at a standard that matches your positioning. Not what a template defaults to.",
+    title: "Mobile without compromise",
+    body: "Mobile experience is designed first, not adjusted after. Every interaction is tested on real devices.",
   },
   {
     number: "04",
-    title: "Built from scratch, every time",
-    body: "We don't start from a theme and customize outward. We start from your brief and build in. Every component exists because it needs to.",
+    title: "Copy and flow together",
+    body: "We work on layout and copy simultaneously so structure and message reinforce each other.",
   },
   {
     number: "05",
-    title: "Clean ownership & handoff",
-    body: "You own the code, the assets, the CMS, and the deployment. Full documentation, clean repo, and a handoff that doesn't leave you dependent on us.",
-  },
-  {
-    number: "06",
-    title: "SEO-ready from launch",
-    body: "Semantic structure, metadata, Open Graph, and performance baked in from the start. You launch with what search engines reward, not what you retrofit later.",
+    title: "Handoff that works",
+    body: "You get a site you understand, can manage, and can hand to a team without confusion.",
   },
 ];
 
@@ -42,7 +37,7 @@ export default function BuildDifference() {
             The difference
           </p>
           <h2 className="max-w-lg text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-            What separates our builds.
+            Why our builds perform.
           </h2>
         </div>
 

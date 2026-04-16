@@ -6,7 +6,7 @@ import NlBuildHero from "@/components/nl/nl-build-hero";
 import NlRelatedServices from "@/components/nl/nl-related-services";
 
 export const metadata: Metadata = {
-  title: "Maatwerk Websites, E-commerce en Digitale Producten",
+  title: "Websites en webshops gebouwd om te converteren. | Inovense",
   description:
     "Op maat gebouwde websites, Shopify-winkels, landingspagina's en digitale producten. Conversiegericht, performance-first, en gebouwd van brief tot browser.",
   alternates: {
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/nl/build",
-    title: "Maatwerk Websites, E-commerce en Digitale Producten | Inovense",
+    title: "Websites en webshops gebouwd om te converteren. | Inovense",
     description:
       "Op maat gebouwde websites, Shopify-winkels, landingspagina's en digitale producten. Conversiegericht, performance-first, en gebouwd van brief tot browser.",
     locale: "nl_NL",
@@ -100,44 +100,37 @@ function WhoThisIsFor() {
 const deliverables = [
   {
     number: "01",
-    title: "Merkwebsites",
+    title: "Conversiegerichte website",
     description:
-      "De complete digitale aanwezigheid. Architectuur, design en build in handen van één team. Gestructureerd om te converteren en gebouwd om bestand te zijn tegen kritisch onderzoek en aanhoudend verkeer.",
+      "Meerdere pagina's, gebouwd rond jouw aanbod, jouw doelgroep en jouw conversiedoelen. Schoon, snel en vertrouwenwekkend vanaf de eerste seconde.",
     tag: "Meest gevraagd",
   },
   {
     number: "02",
-    title: "Shopify en e-commerce",
+    title: "Shopify-winkel",
     description:
-      "Webshops gebouwd rondom hoe mensen daadwerkelijk kopen. Merk-niveau afwerking, mobile-first en gestructureerd om te converteren van productpagina tot kassa. Maatwerk of bovenop een bestaand theme.",
+      "Volledige Shopify-builds inclusief productopzet, eigen ontwerp, betaalflow en optimalisatie na de lancering.",
     tag: null,
   },
   {
     number: "03",
     title: "Landingspagina's",
     description:
-      "High-conversion pagina's voor campagnes, productlanceringen en lead capture. Elk element verdient zijn plek. Snel, gefocust en de advertentie-investering waard.",
+      "Sterk converterende landingspagina's voor campagnes, launches en leadgeneratie — snel gebouwd en klaar voor A/B-tests.",
     tag: null,
   },
   {
     number: "04",
-    title: "Digitale producten",
+    title: "Redesign en migratie",
     description:
-      "Web apps, SaaS-interfaces, klantportalen en interne tools. Productie-grade code, ontworpen op dezelfde standaard als de rest van jouw merk.",
+      "Presteert je huidige site niet goed? We herbouwen vanaf een schone basis — sneller, scherper en beter converterend.",
     tag: null,
   },
   {
     number: "05",
-    title: "Microsites",
+    title: "CMS en contentlaag",
     description:
-      "Zelfstandige ervaringen voor lanceringen, campagnes en merkmomenten die meer verdienen dan een pagina op je hoofdsite.",
-    tag: null,
-  },
-  {
-    number: "06",
-    title: "Redesigns",
-    description:
-      "Bestaande sites volledig herbouwd wanneer patchen niet meer zinvol is. Wij beoordelen wat de moeite waard is om te bewaren en ontwerpen dan vooruit.",
+      "Volledige CMS-inrichting zodat jouw team content kan aanpassen zonder aan code te zitten.",
     tag: null,
   },
 ];
@@ -148,17 +141,14 @@ function WhatWeBuild() {
       <div className="mx-auto max-w-5xl px-6">
         <div className="mb-14 grid grid-cols-1 gap-8 md:grid-cols-2">
           <div>
-            <Eyebrow>Scope</Eyebrow>
+            <Eyebrow>Wat er inzit</Eyebrow>
             <h2 className="text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-              Alles wat valt
-              <br />
-              <span className="text-zinc-500">onder Bouwen.</span>
+              Wat we bouwen.
             </h2>
           </div>
           <div className="flex items-end">
             <p className="max-w-sm text-sm leading-relaxed text-zinc-500">
-              Elk project wordt gescopet op basis van jouw brief. Niets
-              opnieuw ingekleurd, niets uit een starter kit, niets twee keer gebouwd.
+              Elk Build-project wordt opgeleverd als een maatwerkoplossing.
             </p>
           </div>
         </div>
@@ -200,33 +190,28 @@ function WhatWeBuild() {
 const approach = [
   {
     number: "01",
-    title: "Performance ingebakken van dag een",
-    body: "Core Web Vitals, laadsnelheid en server performance worden ontworpen, niet toegevoegd. We streven naar groen in alle metrieken, want trage digitale producten kosten geld.",
+    title: "Snelheid is geen bijzaak",
+    body: "Elke site die we bouwen is geoptimaliseerd voor prestaties. Snelle laadtijden, schone code en solide Core Web Vitals.",
   },
   {
     number: "02",
-    title: "Conversiegericht layout",
-    body: "Elke sectie, koptekst en CTA-plaatsing is gebaseerd op hoe jouw doelgebruiker beslissingen neemt. We ontwerpen voor resultaten, niet voor esthetiek alleen.",
+    title: "Vertrouwen als eerste conversie",
+    body: "We bouwen layouts die direct premium en geloofwaardig voelen — want vertrouwen is de eerste stap naar conversie.",
   },
   {
     number: "03",
-    title: "Merk-niveau mobile afwerking",
-    body: "Typografie, witruimte, touch targets en responsive gedrag uitgevoerd op het niveau dat jouw positionering vereist. Niet wat een componentbibliotheek standaard oplevert.",
+    title: "Mobiel zonder concessies",
+    body: "De mobiele ervaring wordt als eerste ontworpen, niet achteraf aangepast. Elke interactie getest op echte apparaten.",
   },
   {
     number: "04",
-    title: "Elke keer from scratch gebouwd",
-    body: "Wij starten niet vanuit een theme en passen van buiten naar binnen aan. Wij beginnen bij jouw brief en bouwen van binnen naar buiten. Elk component bestaat omdat het nodig is.",
+    title: "Copy en layout samen",
+    body: "We werken tegelijk aan structuur en boodschap — zodat ze elkaar versterken in plaats van tegenwerken.",
   },
   {
     number: "05",
-    title: "SEO-klaar bij lancering",
-    body: "Semantische structuur, metadata, Open Graph en performance ingebakken voor go-live. Je lanceert met wat zoekmachines belonen, niet wat je achteraf nog moet toevoegen.",
-  },
-  {
-    number: "06",
-    title: "Volledige eigendom, geen lock-in",
-    body: "Jij bezit de code, de CMS-toegang en de deployment. Gedocumenteerde overdracht zonder doorlopende afhankelijkheid van Inovense om jouw project draaiende te houden.",
+    title: "Overdracht die werkt",
+    body: "Je krijgt een site die je begrijpt, kunt beheren en zonder verwarring kunt overdragen aan je team.",
   },
 ];
 
@@ -237,7 +222,7 @@ function OurApproach() {
         <div className="mb-14">
           <Eyebrow>Het verschil</Eyebrow>
           <h2 className="max-w-lg text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-            Wat onze builds onderscheidt van de standaard.
+            Waarom onze builds presteren.
           </h2>
         </div>
 
@@ -589,12 +574,11 @@ function PageCTA() {
 
         <h2 className="text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-5xl">
           Klaar om iets te bouwen
-          <br className="hidden md:block" /> dat de moeite waard is?
+          <br className="hidden md:block" /> dat converteert?
         </h2>
 
         <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-zinc-400 md:text-lg">
-          We nemen een klein aantal projecten tegelijk aan. Stuur een aanvraag
-          en we reageren binnen 24 uur met een duidelijke richting.
+          Stuur een briefing en we scopen je project binnen 48 uur.
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
@@ -616,7 +600,7 @@ function PageCTA() {
         </div>
 
         <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-          {["Beperkte intake", "Reactie binnen 24 uur", "Geen pitch decks"].map((item) => (
+          {["Vaste prijs. Geen verborgen kosten."].map((item) => (
             <span key={item} className="flex items-center gap-2 text-xs text-zinc-700">
               <span className="h-1 w-1 shrink-0 rounded-full bg-brand/50" />
               {item}

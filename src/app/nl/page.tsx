@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     absolute: "Inovense | Websites, AI-automatisering en Groeisystemen",
   },
   description:
-    "Inovense bouwt premium websites, AI-workflows en groeisystemen voor ambitieuze bedrijven en teams.",
+    "We bouwen websites, webshops en slimme automatiseringen voor bedrijven die echte resultaten willen. Op maat, conversiegericht, AI-ready.",
   alternates: {
     canonical: "https://inovense.com/nl",
     languages: {
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     url: "https://inovense.com/nl",
     title: "Inovense | Websites, AI-automatisering en Groeisystemen",
     description:
-      "Inovense bouwt premium websites, AI-workflows en groeisystemen voor ambitieuze bedrijven en teams.",
+      "We bouwen websites, webshops en slimme automatiseringen voor bedrijven die echte resultaten willen. Op maat, conversiegericht, AI-ready.",
     locale: "nl_NL",
   },
 };
@@ -68,22 +68,22 @@ const services = [
   {
     label: "Build",
     href: "/nl/build",
-    headline: "Digitale producten en websites gebouwd van brief tot browser.",
-    body: "Van merkwebsites tot productfront-ends en e-commerce. Conversiegericht, performance-first en volledig op maat gebouwd.",
+    headline: "Websites & webshops",
+    body: "Conversiegerichte websites en Shopify-winkels die vertrouwen wekken, leads genereren en verkopen.",
     tags: ["Build lane", "Geen templates", "Volledige eigendom"],
   },
   {
     label: "Systems",
     href: "/nl/systems",
-    headline: "Operationele systemen die meebewegen met hoe je team werkt.",
-    body: "Workflowautomatisering, interne tooling en AI-integraties die jouw operatie versnellen zonder extra complexiteit.",
+    headline: "Slimme systemen",
+    body: "AI-automatisering, CRM-workflows en operationele tooling die wrijving wegneemt en uren bespaart.",
     tags: ["Systems lane", "Op maat gebouwd", "Geen off-the-shelf"],
   },
   {
     label: "Growth",
     href: "/nl/growth",
-    headline: "Groeisystemen voor leadflow, distributie en follow-up.",
-    body: "Van lead capture en routing tot performance content en paid support. Gebouwd als commercieel systeem, niet als losse tactieken.",
+    headline: "Groeicampagnes",
+    body: "Betaalde media, contentstrategie en leadgeneratie gericht op gekwalificeerd verkeer en meer pipeline.",
     tags: ["Growth lane", "Commerciele focus", "Systeemdenken"],
   },
 ];
@@ -95,11 +95,10 @@ function Services() {
         <div className="mb-14">
           <Eyebrow>Wat wij bouwen</Eyebrow>
           <h2 className="max-w-lg text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-            Drie lanes. Een standaard.
+            Drie manieren waarop we jouw bedrijf laten groeien.
           </h2>
           <p className="mt-4 max-w-lg text-sm leading-relaxed text-zinc-500">
-            Build, Systems en Growth als gekoppeld systeem. Geen losse diensten,
-            geen generieke aanpak. Elke lane levert productie-uitkomsten.
+            Elk project wordt geschreven, gebouwd en opgeleverd met commercieel resultaat als doel.
           </p>
         </div>
 
@@ -158,20 +157,20 @@ function Services() {
 
 const reasons = [
   {
-    title: "Op maat gebouwd, altijd",
-    body: "Wij starten niet vanuit een theme en passen van buiten naar binnen aan. Wij beginnen bij jouw brief en bouwen van binnen naar buiten. Elk component bestaat omdat het nodig is.",
+    title: "Senior specialisten, geen juniors",
+    body: "Elk project wordt geleid door een senior specialist. Geen accountmanagers die briefings doorsluizen naar juniors.",
   },
   {
-    title: "Eén team van brief tot oplevering",
-    body: "Geen handoffs tussen strategie, design en development. Hetzelfde team begrijpt jouw context van het eerste gesprek tot de definitieve oplevering.",
+    title: "Op maat gebouwd, niet van een template",
+    body: "We bouwen vanaf de basis. Geen thema's, geen shortcuts, geen opgeblazen plugins. Snel, schoon en gebouwd om te blijven.",
   },
   {
-    title: "Beperkte intake, bewust",
-    body: "Wij nemen een klein aantal projecten tegelijk aan. Dat is geen marketingtruc. Het is hoe wij de kwaliteit bewaken die onze klanten verwachten.",
+    title: "Commercieel denken van begin tot eind",
+    body: "Elke beslissing — copy, opmaak, flow, automatisering — wordt gemaakt met conversie en vertrouwen als uitgangspunt.",
   },
   {
-    title: "Volledige eigendom bij oplevering",
-    body: "Code, assets, CMS-toegang en documentatie overgedragen bij oplevering. Geen doorlopende afhankelijkheid van Inovense om jouw site draaiende te houden.",
+    title: "Helder proces, geen verrassingen",
+    body: "Vaste prijs, duidelijke scope, schone oplevering. Je weet altijd waar je aan toe bent.",
   },
 ];
 
@@ -182,7 +181,7 @@ function WhyInovense() {
         <div className="mb-14">
           <Eyebrow>Waarom Inovense</Eyebrow>
           <h2 className="max-w-lg text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-            Gebouwd voor operators die op uitvoering concurreren.
+            Serieuze uitvoering. Resultaat voorop.
           </h2>
         </div>
 
@@ -212,23 +211,23 @@ function WhyInovense() {
 const steps = [
   {
     number: "01",
-    title: "Strategiegesprek",
-    body: "We begrijpen jouw doelen, context en huidige positie. We vertellen je eerlijk of we de juiste match zijn. Als dat niet zo is, wijzen we je in de juiste richting.",
+    title: "Intake & briefing",
+    body: "We leren je bedrijf kennen, begrijpen je doelen en stellen vast hoe een geslaagd project eruitziet.",
   },
   {
     number: "02",
-    title: "Concreet voorstel",
-    body: "Een helder document met exacte deliverables, tijdlijn en prijs. Geen glijdende scope, geen verrassende facturen. Je weet wat je krijgt voor we beginnen.",
+    title: "Scope & voorstel",
+    body: "Je ontvangt een helder voorstel met vaste prijs. Geen vage abonnementen, geen scope-uitbreiding achteraf.",
   },
   {
     number: "03",
-    title: "Bouwen en uitvoeren",
-    body: "We werken met precisie. Regelmatige updates, heldere mijlpalen en geen verdwijnacts. Je blijft op de hoogte zonder te hoeven achtervolgen.",
+    title: "Bouwen & opleveren",
+    body: "We bouwen, testen en leveren op hoog niveau. Je blijft op de hoogte zonder te verdrinken in updates.",
   },
   {
     number: "04",
-    title: "Lancering en oplevering",
-    body: "Heldere overdracht met volledige eigendom. We verdwijnen niet bij lancering. We meten, verfijnen en zorgen dat alles werkt zoals verwacht.",
+    title: "Launch & ondersteuning",
+    body: "Na de lancering begeleiden we de overdracht en zorgen we dat alles presteert zoals het hoort.",
   },
 ];
 
@@ -239,7 +238,7 @@ function ProcessPreview() {
         <div className="mb-16">
           <Eyebrow>Hoe wij werken</Eyebrow>
           <h2 className="max-w-md text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-            Van eerste gesprek tot resultaat dat aanhoudt.
+            Van briefing tot resultaat — een helder, gecontroleerd proces.
           </h2>
         </div>
 
@@ -470,16 +469,14 @@ function PageCTA() {
       />
 
       <div className="relative mx-auto max-w-4xl px-6 text-center">
-        <Eyebrow>Project starten</Eyebrow>
+        <Eyebrow>Aan de slag</Eyebrow>
 
         <h2 className="text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-5xl">
-          Klaar om iets serieus
-          <br className="hidden md:block" /> te bouwen?
+          Vertel ons wat je nodig hebt.
         </h2>
 
         <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-zinc-400 md:text-lg">
-          Stuur een brief. We beoordelen elk verzoek persoonlijk en reageren
-          binnen 24 uur met een duidelijke richting, geen voorstel-template.
+          Stuur een briefing en we komen terug met een helder voorstel.
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
@@ -501,7 +498,7 @@ function PageCTA() {
         </div>
 
         <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-          {["Beperkte intake", "Reactie binnen 24 uur", "Geen pitch decks"].map((item) => (
+          {["Geen verplichtingen. Reactie binnen 1 werkdag."].map((item) => (
             <span key={item} className="flex items-center gap-2 text-xs text-zinc-700">
               <span className="h-1 w-1 shrink-0 rounded-full bg-brand/50" />
               {item}

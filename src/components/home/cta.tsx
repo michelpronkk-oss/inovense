@@ -33,15 +33,13 @@ export default function CTA() {
 
       <div className="relative mx-auto max-w-4xl px-6 text-center">
         <p className="mb-6 text-xs font-medium uppercase tracking-widest text-brand">
-          Let&apos;s build
+          Get started
         </p>
         <h2 className="text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-5xl">
-          Ready to build something
-          <br className="hidden md:block" /> that actually performs?
+          Tell us what you need.
         </h2>
         <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-zinc-400 md:text-lg">
-          Tell us what you&apos;re working on and where you&apos;re trying to
-          go. We respond within 24 hours with a clear plan, not a pitch deck.
+          Send us a brief and we will come back with a clear proposal.
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
@@ -65,8 +63,7 @@ export default function CTA() {
 
         {/* Trust note */}
         <p className="mt-10 text-xs text-zinc-700">
-          We take on a limited number of projects at a time. Response within 24
-          hours.
+          No commitment required. Response within 1 business day.
         </p>
       </div>
     </section>

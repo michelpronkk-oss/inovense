@@ -1,18 +1,18 @@
 const points = [
   {
     number: "01",
-    title: "Small team. No handoff chains.",
-    body: "We take on a limited number of engagements at a time. The people you meet are the people who build. Senior execution on every project, no account managers in between.",
+    title: "Senior execution, no juniors.",
+    body: "Every project is handled by senior specialists. No account managers passing briefs down to juniors.",
   },
   {
     number: "02",
-    title: "Scoped for outcomes, not hours.",
-    body: "Every project is defined by what it needs to deliver. Clear scope, clear deliverables, no open-ended retainers that produce decks instead of results.",
+    title: "Custom-built, not templated.",
+    body: "We build from the foundation. No themes, no shortcuts, no bloated plugins. Fast, clean, and built to last.",
   },
   {
     number: "03",
-    title: "We build. We don't just advise.",
-    body: "You'll get more shipping updates than strategy calls. We measure success by what moves: rankings, conversions, revenue. Not by what gets reported.",
+    title: "Commercial focus throughout.",
+    body: "Every decision — copy, layout, flow, automation — is made with conversion and trust in mind.",
   },
 ];
 
@@ -28,16 +28,15 @@ export default function Why() {
               Why Inovense
             </p>
             <h2 className="text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-              We operate differently.
+              Execution-heavy.
               <br />
-              <span className="text-zinc-500">Intentionally.</span>
+              <span className="text-zinc-500">Results-first.</span>
             </h2>
           </div>
           <div className="flex items-end">
             <p className="max-w-sm text-sm leading-relaxed text-zinc-500">
-              Most agencies are built to maximize throughput. We&apos;re built
-              to maximize outcomes for a smaller number of clients who care about
-              results.
+              We are not a generalist agency. We are a focused, senior team that builds custom
+              solutions, delivers on time, and stays commercially sharp throughout.
             </p>
           </div>
         </div>

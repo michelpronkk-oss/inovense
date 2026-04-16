@@ -1,44 +1,44 @@
 const offerings = [
   {
     number: "01",
-    title: "SEO Infrastructure",
+    title: "Paid social campaigns",
     description:
-      "Technical SEO, content architecture, and indexation strategy built to compound over time. Not a checklist exercise. A long-term acquisition channel designed and executed with precision.",
+      "Meta and LinkedIn campaigns built for lead quality — not just reach. Every campaign is tied to an intake or conversion goal.",
     tag: "Most requested",
   },
   {
     number: "02",
-    title: "Content Systems",
+    title: "Search and discovery",
     description:
-      "Structured content programs built around your target audience and search intent. Editorial rhythm, quality control, and distribution logic that scales without turning into noise.",
+      "Google Ads and SEO strategy for businesses that need consistent inbound volume from high-intent traffic.",
     tag: null,
   },
   {
     number: "03",
-    title: "Paid Media Systems",
+    title: "Lead generation funnels",
     description:
-      "Campaign architecture, targeting structure, and spend governance for paid channels. Built to acquire at margin, not just generate impressions or inflate vanity numbers.",
+      "End-to-end funnel builds: landing page, offer, ad, follow-up automation — scoped as one complete system.",
     tag: null,
   },
   {
     number: "04",
-    title: "Landing Page Optimization",
+    title: "Content and organic growth",
     description:
-      "Conversion-focused pages tested against real traffic. Copy, layout, and CTA logic refined against signal from your actual audience, not assumptions from a template.",
+      "Content strategy and execution designed to build authority and generate inbound leads over time.",
     tag: null,
   },
   {
     number: "05",
-    title: "Reporting and Signal Loops",
+    title: "Email and CRM nurture",
     description:
-      "Dashboards and reporting infrastructure that surface what matters. Decision-grade data delivered to the right people, not vanity metric spreadsheets sent weekly.",
+      "Email sequences, re-engagement campaigns, and CRM-based nurture flows that convert pipeline into revenue.",
     tag: null,
   },
   {
     number: "06",
-    title: "Distribution Systems",
+    title: "Performance audits",
     description:
-      "Structured distribution logic that gets the right content to the right audience through the right channels. Consistent, compounding, and tied to measurable outcomes.",
+      "We audit current campaigns, identify the drop-off points, and deliver a prioritised action plan with clear expected impact.",
     tag: null,
   },
 ];
@@ -55,19 +55,15 @@ export default function GrowthOfferings() {
         <div className="mb-16 grid grid-cols-1 gap-8 md:grid-cols-2">
           <div>
             <p className="mb-4 text-xs font-medium uppercase tracking-widest text-brand">
-              Scope
+              What we run
             </p>
             <h2 className="text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-              Everything that falls
-              <br />
-              <span className="text-zinc-500">under Growth.</span>
+              Growth work that connects to commercial results.
             </h2>
           </div>
           <div className="flex items-end">
             <p className="max-w-sm text-sm leading-relaxed text-zinc-500">
-              Each growth engagement is designed around your specific business
-              model and acquisition goals. No generic playbooks, no activity for
-              its own sake.
+              Every growth project is scoped around a commercial goal — not a channel.
             </p>
           </div>
         </div>

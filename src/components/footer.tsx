@@ -57,7 +57,7 @@ export default function Footer() {
               />
             </Link>
             <p className="max-w-[240px] text-sm leading-relaxed text-zinc-500">
-              Digital infrastructure for operators who compete on execution.
+              Inovense — built for results.
             </p>
             <a
               href="mailto:hello@inovense.com"

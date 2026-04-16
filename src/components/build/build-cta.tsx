@@ -37,14 +37,11 @@ export default function BuildCTA() {
         </p>
 
         <h2 className="text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-5xl">
-          Ready to build something
-          <br className="hidden md:block" /> worth being proud of?
+          Ready to build something that converts?
         </h2>
 
         <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-zinc-400 md:text-lg">
-          We take on a small number of Build projects at a time. Tell us
-          what you&apos;re working on and what a good outcome looks like.
-          We&apos;ll respond with a clear direction, not a proposal template.
+          Send us a brief and we will scope your project within 48 hours.
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
@@ -70,7 +67,7 @@ export default function BuildCTA() {
 
         {/* Trust strip: flex-wrap for mobile, one brand dot per item */}
         <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-          {["Limited intake", "24-hour response", "No pitch decks"].map(
+          {["Fixed-price proposals. No hidden costs."].map(
             (item) => (
               <span
                 key={item}

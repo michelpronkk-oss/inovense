@@ -1,37 +1,37 @@
 const offerings = [
   {
     number: "01",
-    title: "Brand Websites",
+    title: "Conversion-focused website",
     description:
-      "The complete digital presence. Architecture, design, and build done together, not handed off between teams. Built to convert and hold up under scrutiny.",
+      "Multi-page websites built around your offer, your audience, and your conversion goals. Clean, fast, and built to earn trust from the first visit.",
     tag: "Most requested",
   },
   {
     number: "02",
-    title: "Landing Pages",
+    title: "Shopify store",
     description:
-      "High-conversion pages for campaigns, product launches, and lead capture. Fast, focused, and worth every dollar of your ad spend.",
+      "Full Shopify builds including product setup, custom design, payment flow, and post-launch optimisation.",
     tag: null,
   },
   {
     number: "03",
-    title: "E-commerce Builds",
+    title: "Landing pages",
     description:
-      "From Shopify to custom stack. Built around how people actually buy: brand-level finish, mobile-first, and structured to convert at every step.",
+      "High-converting landing pages for campaigns, launches, and lead generation — built fast and A/B-ready.",
     tag: null,
   },
   {
     number: "04",
-    title: "Microsites",
+    title: "Redesign and migration",
     description:
-      "Standalone experiences for launches, campaigns, and brand moments that deserve more than a page on your main site.",
+      "Existing site underperforming? We rebuild from a clean foundation — faster, sharper, and better converting.",
     tag: null,
   },
   {
     number: "05",
-    title: "Digital Products",
+    title: "CMS and content layer",
     description:
-      "Web apps, SaaS interfaces, client portals, and tools. Production-grade code, designed to the same standard as the rest of your brand.",
+      "Full CMS setup so your team can update content without touching code.",
     tag: null,
   },
 ];
@@ -45,18 +45,15 @@ export default function BuildOfferings() {
         <div className="mb-16 grid grid-cols-1 gap-8 md:grid-cols-2">
           <div>
             <p className="mb-4 text-xs font-medium uppercase tracking-widest text-brand">
-              Scope
+              What&apos;s included
             </p>
             <h2 className="text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-              Everything that falls
-              <br />
-              <span className="text-zinc-500">under Build.</span>
+              What we build.
             </h2>
           </div>
           <div className="flex items-end">
             <p className="max-w-sm text-sm leading-relaxed text-zinc-500">
-              Each project is scoped from your brief. Nothing reskinned,
-              nothing templated, nothing pulled from a starter kit.
+              Every Build project is scoped and delivered as a custom solution.
             </p>
           </div>
         </div>

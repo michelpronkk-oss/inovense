@@ -170,7 +170,7 @@ export default function NlHomeHero() {
                 variant="outline"
                 className="border-brand/30 bg-brand/10 px-3 py-1 text-xs font-medium tracking-wide text-brand"
               >
-                Q2 2026 projecten beschikbaar
+                Op maat gemaakt voor groei
               </Badge>
             </motion.div>
 
@@ -178,16 +178,16 @@ export default function NlHomeHero() {
               variants={itemVariants}
               className="text-5xl font-semibold leading-[1.08] tracking-tight text-zinc-50 lg:text-6xl"
             >
-              Websites, webshops en systemen{" "}
-              <span className="text-brand">die echt presteren</span>
+              Websites, systemen en groei —{" "}
+              <span className="text-brand">gebouwd om te presteren.</span>
             </motion.h1>
 
             <motion.p
               variants={itemVariants}
               className="mt-6 max-w-[560px] text-lg leading-relaxed text-zinc-400"
             >
-              Voor bedrijven die strakker willen bouwen, beter willen converteren en slimmer
-              willen werken.
+              We bouwen websites, webshops en slimme automatiseringen voor bedrijven die echte
+              resultaten willen — geen mooie plaatjes.
             </motion.p>
 
             <motion.div

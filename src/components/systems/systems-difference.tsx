@@ -1,33 +1,28 @@
 const differences = [
   {
     number: "01",
-    title: "Practical first",
-    body: "We build systems your team can rely on in production. Not experiments. Not proof-of-concepts. Stable, tested infrastructure that handles real load and real edge cases.",
+    title: "Built to your workflow, not ours",
+    body: "We do not fit your business into an off-the-shelf tool. We scope the system around how you already work.",
   },
   {
     number: "02",
-    title: "Designed for humans",
-    body: "Good systems are usable systems. We design the logic and the interface layer so your team adopts what we build, not works around it.",
+    title: "Handed off properly",
+    body: "Every system comes with documentation, training, and a clean handoff so your team can own it from day one.",
   },
   {
     number: "03",
-    title: "Business fit over feature count",
-    body: "We scope to what your business actually needs. Not the largest automation platform on the market. The right one, configured correctly for your operations.",
+    title: "Speed and reliability",
+    body: "Systems that respond fast, handle errors cleanly, and keep working when you are not watching.",
   },
   {
     number: "04",
-    title: "Reliable by design",
-    body: "We test for edge cases, failure states, and real-world usage before anything goes live. Systems that fail silently are not systems. They are liabilities.",
+    title: "No bloated middleware",
+    body: "We build lean, direct integrations. No unnecessary third-party layers that break every few months.",
   },
   {
     number: "05",
-    title: "Friction removed, not hidden",
-    body: "Every system we build targets a real source of manual work or operational drag. If your team is still doing something by hand that can run automatically, we address it.",
-  },
-  {
-    number: "06",
-    title: "Built to be maintained",
-    body: "Clean logic, documented flows, and no duct tape. Systems you can understand, update, and hand to someone else without a full briefing from us.",
+    title: "Commercial impact first",
+    body: "Every automation we build is judged by whether it saves real time or improves a commercial outcome. No vanity tooling.",
   },
 ];
 
@@ -42,7 +37,7 @@ export default function SystemsDifference() {
             The difference
           </p>
           <h2 className="max-w-lg text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-            What separates our systems.
+            Why our systems actually get used.
           </h2>
         </div>
 

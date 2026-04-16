@@ -241,17 +241,16 @@ export default function NlSystemsHero() {
               variants={itemVariants}
               className="text-5xl font-semibold leading-[1.08] tracking-tight text-zinc-50 lg:text-6xl"
             >
-              Interne hefboom,{" "}
-              <em className="not-italic text-brand">gebouwd</em> om te blijven.
+              Slimme systemen en AI-automatisering —{" "}
+              <em className="not-italic text-brand">gebouwd</em> voor operationele helderheid.
             </motion.h1>
 
             <motion.p
               variants={itemVariants}
               className="mt-6 max-w-[440px] text-lg leading-relaxed text-zinc-400"
             >
-              We ontwerpen en implementeren AI-workflows, automatiseringen en
-              operationele systemen die frictie verlagen en handmatig werk
-              uit je operatie halen.
+              We bouwen maatwerk workflows, automatiseringen en AI-tools die wrijving weghalen,
+              tijd besparen en je bedrijf beter laten lopen.
             </motion.p>
 
             <motion.div
@@ -278,7 +277,7 @@ export default function NlSystemsHero() {
             <motion.div variants={itemVariants} className="mt-5 flex items-center gap-2">
               <span className="h-1 w-1 shrink-0 rounded-full bg-zinc-700" aria-hidden="true" />
               <span className="text-xs text-zinc-600">
-                Maatwerk systeembouw <span className="text-zinc-500">| Gescoped per case</span>
+                Gebouwd voor teams die meer output willen zonder meer overhead.
               </span>
             </motion.div>
 
