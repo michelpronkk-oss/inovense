@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useActionState } from "react";
 import {
   generateProspectsFromBrief,
@@ -18,26 +19,219 @@ const INITIAL_GENERATE_STATE: GenerateProspectsState = {
   summary: null,
 };
 
+const MARKET_OPTIONS = [
+  "Netherlands",
+  "United Kingdom",
+  "United States",
+] as const;
+
+const NICHE_OPTIONS = [
+  "Marketing agency",
+  "Shopify store",
+  "Ecommerce brand",
+  "Consultant",
+  "Interior designer",
+  "Renovation company",
+  "Beauty salon",
+  "Beauty clinic",
+] as const;
+
+const LOCATION_BY_MARKET: Record<string, string[]> = {
+  Netherlands: ["Amsterdam", "Rotterdam", "Utrecht"],
+  "United Kingdom": ["London", "Manchester", "Birmingham"],
+  "United States": ["New York", "Austin", "Miami", "Los Angeles"],
+};
+
+type GeneratePreset = {
+  label: string;
+  market: string;
+  niche: string;
+  location: string;
+  volume: string;
+  source: string;
+};
+
+const GENERATE_PRESETS: GeneratePreset[] = [
+  {
+    label: "UK Agencies, London",
+    market: "United Kingdom",
+    niche: "Marketing agency",
+    location: "London",
+    volume: "15",
+    source: "outbound",
+  },
+  {
+    label: "UK Shopify, London",
+    market: "United Kingdom",
+    niche: "Shopify store",
+    location: "London",
+    volume: "15",
+    source: "outbound",
+  },
+  {
+    label: "UK Agencies, Manchester",
+    market: "United Kingdom",
+    niche: "Marketing agency",
+    location: "Manchester",
+    volume: "15",
+    source: "outbound",
+  },
+  {
+    label: "US Ecommerce, Austin",
+    market: "United States",
+    niche: "Ecommerce brand",
+    location: "Austin",
+    volume: "20",
+    source: "outbound",
+  },
+  {
+    label: "NL Agencies, Amsterdam",
+    market: "Netherlands",
+    niche: "Marketing agency",
+    location: "Amsterdam",
+    volume: "15",
+    source: "outbound",
+  },
+];
+
 export default function GenerateForm({
   sourceOptions,
 }: {
   sourceOptions: Array<{ value: string; label: string }>;
 }) {
+  const [market, setMarket] = useState<string>("Netherlands");
+  const [niche, setNiche] = useState<string>("Marketing agency");
+  const [location, setLocation] = useState<string>("Amsterdam");
+  const [volume, setVolume] = useState<string>("15");
+  const [source, setSource] = useState<string>("outbound");
+
   const [state, formAction, isPending] = useActionState(
     generateProspectsFromBrief,
     INITIAL_GENERATE_STATE
   );
 
+  const locationOptions = useMemo(() => {
+    const marketLocations = LOCATION_BY_MARKET[market] ?? [];
+    const merged = new Set<string>(marketLocations);
+    Object.values(LOCATION_BY_MARKET).forEach((items) => {
+      items.forEach((item) => merged.add(item));
+    });
+    return Array.from(merged);
+  }, [market]);
+
+  function applyPreset(preset: GeneratePreset) {
+    setMarket(preset.market);
+    setNiche(preset.niche);
+    setLocation(preset.location);
+    setVolume(preset.volume);
+    setSource(preset.source);
+  }
+
   return (
     <form action={formAction} className="space-y-3">
+      <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/35 p-3">
+        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+          Quick presets
+        </p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {GENERATE_PRESETS.map((preset) => {
+            const active =
+              preset.market === market &&
+              preset.niche === niche &&
+              preset.location === location &&
+              preset.volume === volume &&
+              preset.source === source;
+            return (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => applyPreset(preset)}
+                className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.08em] transition-colors ${
+                  active
+                    ? "border-brand/45 bg-brand/15 text-brand"
+                    : "border-zinc-700/80 bg-zinc-900/60 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200"
+                }`}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <Field name="market" label="Market" placeholder="Netherlands" />
-        <Field name="niche" label="Niche" placeholder="B2B SaaS" />
-        <Field name="location" label="Location" placeholder="Amsterdam" />
-        <Field name="volume" label="Volume" placeholder="15" defaultValue="15" />
+        <label className="space-y-1.5">
+          <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">Market</span>
+          <input
+            name="market"
+            value={market}
+            onChange={(event) => setMarket(event.target.value)}
+            list="prospects-market-options"
+            placeholder="Select market"
+            className={inputClassName}
+          />
+          <datalist id="prospects-market-options">
+            {MARKET_OPTIONS.map((option) => (
+              <option key={option} value={option} />
+            ))}
+          </datalist>
+        </label>
+
+        <label className="space-y-1.5">
+          <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">Niche</span>
+          <input
+            name="niche"
+            value={niche}
+            onChange={(event) => setNiche(event.target.value)}
+            list="prospects-niche-options"
+            placeholder="Select or type niche"
+            className={inputClassName}
+          />
+          <datalist id="prospects-niche-options">
+            {NICHE_OPTIONS.map((option) => (
+              <option key={option} value={option} />
+            ))}
+          </datalist>
+        </label>
+
+        <label className="space-y-1.5">
+          <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">Location</span>
+          <input
+            name="location"
+            value={location}
+            onChange={(event) => setLocation(event.target.value)}
+            list="prospects-location-options"
+            placeholder="Select or type location"
+            className={inputClassName}
+          />
+          <datalist id="prospects-location-options">
+            {locationOptions.map((option) => (
+              <option key={option} value={option} />
+            ))}
+          </datalist>
+        </label>
+
+        <label className="space-y-1.5">
+          <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">Volume</span>
+          <input
+            name="volume"
+            type="number"
+            min={1}
+            max={50}
+            value={volume}
+            onChange={(event) => setVolume(event.target.value)}
+            className={inputClassName}
+          />
+        </label>
+
         <label className="space-y-1.5">
           <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">Source</span>
-          <select name="source" defaultValue="outbound" className={inputClassName}>
+          <select
+            name="source"
+            value={source}
+            onChange={(event) => setSource(event.target.value)}
+            className={inputClassName}
+          >
             {sourceOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -68,29 +262,5 @@ export default function GenerateForm({
         </p>
       ) : null}
     </form>
-  );
-}
-
-function Field({
-  name,
-  label,
-  placeholder,
-  defaultValue,
-}: {
-  name: string;
-  label: string;
-  placeholder: string;
-  defaultValue?: string;
-}) {
-  return (
-    <label className="space-y-1.5">
-      <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">{label}</span>
-      <input
-        name={name}
-        defaultValue={defaultValue}
-        placeholder={placeholder}
-        className={inputClassName}
-      />
-    </label>
   );
 }
