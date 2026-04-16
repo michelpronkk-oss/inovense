@@ -6,8 +6,7 @@ const laneClarity = [
     lane: "Build",
     href: "/build",
     focus: "Websites and digital products built to convert.",
-    signal: "Right fit when traffic exists but the site isn't converting.",
-    detailHref: "/web-design",
+    signal: "Right fit when traffic exists but the site is not converting.",
     detailLabel: "Web design service",
   },
   {
@@ -15,15 +14,13 @@ const laneClarity = [
     href: "/systems",
     focus: "AI automation and internal tools that remove manual bottlenecks.",
     signal: "Right fit when manual work or broken handoffs are limiting your team.",
-    detailHref: "/ai-automation",
     detailLabel: "AI automation service",
   },
   {
     lane: "Growth",
     href: "/growth",
     focus: "SEO, content, and paid media that compound over time.",
-    signal: "Right fit when the business runs well but inbound isn't growing.",
-    detailHref: "/lead-generation-systems",
+    signal: "Right fit when the business runs well but inbound is not growing.",
     detailLabel: "Lead generation systems",
   },
 ] as const;
@@ -79,107 +76,127 @@ const proofSurfaces = [
   },
 ] as const;
 
+const VISIBLE_FAQS = INOVENSE_HOME_FAQS.slice(0, 4);
+
 export default function GeoAnswers() {
   return (
-    <section className="border-t border-white/[0.06] bg-zinc-900/20 py-24 md:py-32">
+    <section className="border-t border-white/[0.06] bg-zinc-900/20 py-16 md:py-24">
       <div className="mx-auto max-w-6xl px-6">
-        <div className="mb-14 grid grid-cols-1 gap-8 md:grid-cols-2">
+
+        {/* Header */}
+        <div className="mb-10 grid grid-cols-1 gap-6 md:grid-cols-2 md:items-end">
           <div>
-            <p className="mb-4 text-xs font-medium uppercase tracking-widest text-brand">
+            <p className="mb-3 text-xs font-medium uppercase tracking-widest text-brand">
               Service clarity
             </p>
-            <h2 className="max-w-xl text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
+            <h2 className="text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
               Answers first. Hype last.
             </h2>
             <Link
               href="/answers"
-              className="mt-4 inline-flex text-sm text-zinc-500 transition-colors hover:text-zinc-300"
+              className="mt-3 inline-flex items-center gap-1 text-sm text-zinc-500 transition-colors hover:text-zinc-300"
             >
               Full service-fit answers
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden>
+                <path d="M2.5 6h7M6.5 3l3 3-3 3" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </Link>
           </div>
-          <div className="flex items-end">
-            <p className="max-w-md text-sm leading-relaxed text-zinc-500">
-              Clear lane definitions, fit signals, and proof. So you know what to expect before we talk.
-            </p>
-          </div>
+          <p className="text-sm leading-relaxed text-zinc-500 md:text-right">
+            Clear lane definitions, fit signals, and proof so you know where to start.
+          </p>
         </div>
 
-        <div className="mb-12 grid grid-cols-1 gap-6 md:grid-cols-3">
+        {/* Lane cards */}
+        <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
           {laneClarity.map((lane) => (
-            <article
+            <Link
               key={lane.lane}
-              className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-6"
+              href={lane.href}
+              className="group relative flex flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/60 p-5 transition-all duration-200 hover:border-zinc-700 hover:bg-zinc-900/80"
             >
-              <Link
-                href={lane.href}
-                className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-zinc-200 transition-colors hover:text-zinc-50"
-              >
-                {lane.lane}
-                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden>
-                  <path
-                    d="M2.5 6h7M6.5 3l3 3-3 3"
-                    stroke="currentColor"
-                    strokeWidth="1.25"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
+              <div className="absolute inset-x-0 top-0 h-px origin-left scale-x-0 bg-brand/60 transition-transform duration-400 ease-out group-hover:scale-x-100" />
+
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-sm font-semibold text-zinc-100 transition-colors group-hover:text-zinc-50">
+                  {lane.lane}
+                </span>
+                <svg
+                  width="14" height="14" viewBox="0 0 12 12" fill="none" aria-hidden
+                  className="text-zinc-600 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-brand"
+                >
+                  <path d="M2.5 6h7M6.5 3l3 3-3 3" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-              </Link>
-              <p className="mb-3 text-sm leading-relaxed text-zinc-400">{lane.focus}</p>
-              <p className="text-xs leading-relaxed text-zinc-500">{lane.signal}</p>
-              <Link
-                href={lane.detailHref}
-                className="mt-4 inline-flex text-xs text-zinc-500 transition-colors hover:text-zinc-300"
-              >
-                {lane.detailLabel}
-              </Link>
-            </article>
+              </div>
+
+              <p className="mb-2 text-sm leading-snug text-zinc-300">{lane.focus}</p>
+              <p className="mb-4 text-xs leading-relaxed text-zinc-500">{lane.signal}</p>
+
+              <div className="mt-auto">
+                <span className="text-xs text-zinc-600">
+                  {lane.detailLabel}
+                </span>
+              </div>
+            </Link>
           ))}
         </div>
 
-        <div className="grid grid-cols-1 gap-6 border-t border-zinc-800/70 pt-12 md:grid-cols-2">
+        {/* Bottom: Q&A + Proof */}
+        <div className="grid grid-cols-1 gap-6 border-t border-zinc-800/70 pt-8 md:grid-cols-2">
+
+          {/* Questions answered */}
           <div>
-            <h3 className="mb-6 text-lg font-semibold tracking-tight text-zinc-100">
+            <h3 className="mb-4 text-sm font-semibold uppercase tracking-widest text-zinc-600">
               Questions answered
             </h3>
-            <div className="space-y-5">
-              {INOVENSE_HOME_FAQS.map((faq) => (
-                <article key={faq.question} className="rounded-xl border border-zinc-800/70 bg-zinc-950/40 p-5">
-                  <p className="mb-2 text-sm font-semibold text-zinc-100">{faq.question}</p>
-                  <p className="text-sm leading-relaxed text-zinc-500">{faq.answer}</p>
-                  <Link
-                    href={questionLinks[faq.question].href}
-                    className="mt-3 inline-flex text-xs text-zinc-500 transition-colors hover:text-zinc-300"
-                  >
-                    {questionLinks[faq.question].label}
-                  </Link>
-                </article>
+            <div className="space-y-2.5">
+              {VISIBLE_FAQS.map((faq) => (
+                <Link
+                  key={faq.question}
+                  href={questionLinks[faq.question].href}
+                  className="group block rounded-xl border border-zinc-800/70 bg-zinc-950/40 p-4 transition-all duration-200 hover:border-zinc-700/80 hover:bg-zinc-900/60"
+                >
+                  <p className="mb-1.5 text-[13px] font-semibold leading-snug text-zinc-100 transition-colors group-hover:text-zinc-50">
+                    {faq.question}
+                  </p>
+                  <p className="text-xs leading-relaxed text-zinc-500">{faq.answer}</p>
+                  <p className="mt-2 text-[11px] text-zinc-600 transition-colors group-hover:text-zinc-400">
+                    {questionLinks[faq.question].label} →
+                  </p>
+                </Link>
               ))}
             </div>
           </div>
 
+          {/* Proof and work */}
           <div>
-            <h3 className="mb-6 text-lg font-semibold tracking-tight text-zinc-100">
+            <h3 className="mb-4 text-sm font-semibold uppercase tracking-widest text-zinc-600">
               Proof and work
             </h3>
-            <div className="space-y-4">
+            <div className="space-y-2.5">
               {proofSurfaces.map((surface) => (
-                <article
+                <Link
                   key={surface.title}
-                  className="rounded-xl border border-zinc-800/70 bg-zinc-950/40 p-5"
+                  href={surface.href}
+                  className="group flex items-center justify-between rounded-xl border border-zinc-800/70 bg-zinc-950/40 p-4 transition-all duration-200 hover:border-zinc-700/80 hover:bg-zinc-900/60"
                 >
-                  <Link
-                    href={surface.href}
-                    className="text-sm font-semibold text-zinc-200 transition-colors hover:text-zinc-50"
+                  <div className="min-w-0 flex-1 pr-4">
+                    <p className="text-[13px] font-semibold text-zinc-100 transition-colors group-hover:text-zinc-50">
+                      {surface.title}
+                    </p>
+                    <p className="mt-0.5 text-xs text-zinc-500">{surface.note}</p>
+                  </div>
+                  <svg
+                    width="14" height="14" viewBox="0 0 12 12" fill="none" aria-hidden
+                    className="shrink-0 text-zinc-700 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-zinc-400"
                   >
-                    {surface.title}
-                  </Link>
-                  <p className="mt-2 text-sm leading-relaxed text-zinc-500">{surface.note}</p>
-                </article>
+                    <path d="M2.5 6h7M6.5 3l3 3-3 3" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </Link>
               ))}
             </div>
           </div>
+
         </div>
       </div>
     </section>
