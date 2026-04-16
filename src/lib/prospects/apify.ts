@@ -6,7 +6,7 @@ import type {
 } from "@/lib/supabase-server";
 
 const APIFY_BASE_URL = "https://api.apify.com/v2";
-const DEFAULT_MAPS_ACTOR_ID = "apify/google-maps-scraper";
+const DEFAULT_MAPS_ACTOR_ID = "compass/crawler-google-places";
 const DEFAULT_TIMEOUT_MS = 15_000;
 const POLL_INTERVAL_MS = 3_000;
 const MAX_POLL_ATTEMPTS = 35;
@@ -60,6 +60,19 @@ function getApifyToken(): string {
     throw new Error("APIFY_TOKEN is missing.");
   }
   return token;
+}
+
+function normalizeApifyResourceId(value: string): string {
+  const normalized = value.trim();
+  if (!normalized) return "";
+  if (normalized.includes("~")) return normalized;
+  if (normalized.includes("/")) {
+    const [owner, name] = normalized.split("/");
+    if (owner && name) {
+      return `${owner.trim()}~${name.trim()}`;
+    }
+  }
+  return normalized;
 }
 
 function normalizeSource(value: string): string {
@@ -227,28 +240,44 @@ async function sleep(ms: number) {
 
 async function startRun(input: Record<string, unknown>): Promise<ApifyRunData> {
   const token = getApifyToken();
-  const taskId = process.env.APIFY_TASK_ID_DEFAULT_PROSPECTS?.trim();
+  const taskIdRaw = process.env.APIFY_TASK_ID_DEFAULT_PROSPECTS?.trim();
+  const taskId = taskIdRaw ? normalizeApifyResourceId(taskIdRaw) : "";
 
   if (taskId) {
     const url = `${APIFY_BASE_URL}/actor-tasks/${encodeURIComponent(
       taskId
     )}/runs?token=${encodeURIComponent(token)}`;
+    try {
+      const payload = await fetchJson<ApifyEnvelope<ApifyRunData>>(url, {
+        method: "POST",
+        body: JSON.stringify(input),
+      });
+      return payload.data;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown Apify task error.";
+      throw new Error(`Prospect generation task failed. ${message}`);
+    }
+  }
+
+  const actorId = normalizeApifyResourceId(
+    process.env.APIFY_ACTOR_ID_MAPS?.trim() || DEFAULT_MAPS_ACTOR_ID
+  );
+  if (!actorId) {
+    throw new Error("APIFY_ACTOR_ID_MAPS is missing.");
+  }
+  const url = `${APIFY_BASE_URL}/acts/${encodeURIComponent(
+    actorId
+  )}/runs?token=${encodeURIComponent(token)}`;
+  try {
     const payload = await fetchJson<ApifyEnvelope<ApifyRunData>>(url, {
       method: "POST",
       body: JSON.stringify(input),
     });
     return payload.data;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown Apify actor error.";
+    throw new Error(`Prospect generation actor failed. ${message}`);
   }
-
-  const actorId = process.env.APIFY_ACTOR_ID_MAPS?.trim() || DEFAULT_MAPS_ACTOR_ID;
-  const url = `${APIFY_BASE_URL}/acts/${encodeURIComponent(
-    actorId
-  )}/runs?token=${encodeURIComponent(token)}`;
-  const payload = await fetchJson<ApifyEnvelope<ApifyRunData>>(url, {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-  return payload.data;
 }
 
 async function waitForRunCompletion(runId: string): Promise<ApifyRunData> {
