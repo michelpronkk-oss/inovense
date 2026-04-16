@@ -67,7 +67,7 @@ function InfrastructureMock() {
               </div>
             </div>
             <p className="mb-2 text-[8px] text-zinc-600">
-              Website and product engineering
+              Websites, webshops and Shopify stores
             </p>
             {/* Mini visual: three card skeletons */}
             <div className="flex gap-1.5">
@@ -97,7 +97,7 @@ function InfrastructureMock() {
               </div>
             </div>
             <p className="mb-2 text-[8px] text-zinc-600">
-              Workflows and automation infrastructure
+              Smart workflows and automation
             </p>
             {/* Mini visual: pipeline nodes */}
             <div className="flex items-center">
@@ -127,7 +127,7 @@ function InfrastructureMock() {
               </div>
             </div>
             <p className="mb-2 text-[8px] text-zinc-600">
-              SEO, paid, and content systems
+              Paid media, SEO, and lead generation
             </p>
             {/* Mini visual: sparkline */}
             <div className="flex h-[18px] items-end gap-[2px]">
@@ -182,7 +182,7 @@ const itemVariants = {
   },
 };
 
-const trustItems = ["Custom-built", "Conversion-focused", "AI-ready", "No templates"];
+const trustItems = ["Custom-built", "Conversion-focused", "Senior-built", "No templates"];
 
 /* ─── Hero ──────────────────────────────────────────────────────────────── */
 
@@ -256,14 +256,14 @@ export default function Hero() {
               className="text-5xl font-semibold leading-[1.08] tracking-tight text-zinc-50 lg:text-6xl"
             >
               Websites, webshops and smart systems{" "}
-              <span className="text-brand">built to grow your business.</span>
+              <span className="text-brand">built to win more clients.</span>
             </motion.h1>
 
             <motion.p
               variants={itemVariants}
               className="mt-6 max-w-[520px] text-lg leading-relaxed text-zinc-400"
             >
-              We build conversion-focused websites, Shopify stores, and smart workflows that help businesses earn trust, work faster, and win more clients.
+              We build websites, Shopify stores, and smart workflows that help businesses earn trust, move faster, and convert more of the right people.
             </motion.p>
 
             <motion.div

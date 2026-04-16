@@ -6,15 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 const lanes = [
-  { lane: "Build", note: "Websites en digitale producten" },
-  { lane: "Systems", note: "Automatisering en operaties" },
-  { lane: "Growth", note: "Distributie en commerciele flow" },
+  { lane: "Build", note: "Websites, webshops en Shopify-winkels" },
+  { lane: "Systems", note: "Slimme workflows en automatisering" },
+  { lane: "Growth", note: "Betaalde media, SEO en leadgeneratie" },
 ];
 
 const proofItems = [
+  "Op maat gebouwd",
+  "Conversiegericht",
+  "Senior uitgevoerd",
   "Geen templates",
-  "Volledige eigendom",
-  "Reactie binnen 24 uur",
 ];
 
 function EcosystemMock() {
@@ -43,7 +44,7 @@ function EcosystemMock() {
           <div className="flex items-center gap-2">
             <div className="h-1.5 w-1.5 rounded-full bg-brand/80" />
             <span className="text-[10px] tracking-wide text-zinc-500">
-              Digitale infrastructuur
+              Services overzicht
             </span>
           </div>
           <span className="text-[9px] text-zinc-700">3 lanes actief</span>
@@ -178,16 +179,15 @@ export default function NlHomeHero() {
               variants={itemVariants}
               className="text-5xl font-semibold leading-[1.08] tracking-tight text-zinc-50 lg:text-6xl"
             >
-              Websites, systemen en groei,{" "}
-              <span className="text-brand">gebouwd om te presteren.</span>
+              Websites, webshops en slimme systemen{" "}
+              <span className="text-brand">die bedrijven laten groeien.</span>
             </motion.h1>
 
             <motion.p
               variants={itemVariants}
               className="mt-6 max-w-[560px] text-lg leading-relaxed text-zinc-400"
             >
-              We bouwen websites, webshops en slimme automatiseringen voor bedrijven die echte
-              resultaten willen, geen mooie plaatjes.
+              We bouwen websites, Shopify-webshops en slimme automatiseringen die zorgen voor meer vertrouwen, minder frictie en meer conversie.
             </motion.p>
 
             <motion.div
@@ -211,11 +211,13 @@ export default function NlHomeHero() {
               </Button>
             </motion.div>
 
-            <motion.div variants={itemVariants} className="mt-5 flex items-center gap-2">
-              <span className="h-1 w-1 shrink-0 rounded-full bg-zinc-700" aria-hidden="true" />
-              <span className="text-xs text-zinc-600">
-                Premium uitvoering <span className="text-zinc-500">| Reactie binnen 24 uur</span>
-              </span>
+            <motion.div variants={itemVariants} className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
+              {["Op maat gebouwd", "Conversiegericht", "Senior uitgevoerd", "Geen templates"].map((t) => (
+                <span key={t} className="flex items-center gap-1.5 text-xs text-zinc-700">
+                  <span className="h-1 w-1 shrink-0 rounded-full bg-brand/40" aria-hidden="true" />
+                  {t}
+                </span>
+              ))}
             </motion.div>
 
             <motion.div

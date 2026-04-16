@@ -268,7 +268,7 @@ export default function NlIntakeForm() {
 
           <div>
             <FieldLabel htmlFor="website" optional>
-              Website of social link
+              Website of socialprofiel
             </FieldLabel>
             <Input
               id="website"
@@ -363,12 +363,12 @@ export default function NlIntakeForm() {
 
       {/* ── Project brief ── */}
       <div>
-        <SectionDivider label="Project brief" />
+        <SectionDivider label="Projectomschrijving" />
         <div className="mt-6">
-          <FieldLabel htmlFor="details">Vertel ons over je project</FieldLabel>
+          <FieldLabel htmlFor="details">Omschrijf je project</FieldLabel>
           <Textarea
             id="details"
-            placeholder="Wat bouw je, voor wie is het, en hoe ziet een goed resultaat eruit? Hoe meer context je ons geeft, hoe beter we kunnen reageren."
+            placeholder="Wat wil je bouwen, voor wie is het bedoeld, en wat moet het opleveren? Hoe meer context je deelt, hoe beter we kunnen reageren."
             rows={6}
             aria-invalid={!!errors.details}
             className="resize-none"
@@ -386,11 +386,11 @@ export default function NlIntakeForm() {
           size="lg"
           className="rounded-full bg-brand px-10 text-white hover:bg-brand/90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
         >
-          {status === "loading" ? "Versturen..." : "Projectaanvraag versturen"}
+          {status === "loading" ? "Versturen..." : "Project starten"}
         </Button>
 
         <p className="text-xs text-zinc-600">
-          We reageren binnen 24 uur. Geen pitch decks, geen templates.
+          Persoonlijke reactie binnen 24 uur. Geen pitch decks, geen standaardaanpak.
         </p>
       </div>
 

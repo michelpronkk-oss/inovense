@@ -379,16 +379,15 @@ function PageCTA() {
       />
 
       <div className="relative mx-auto max-w-4xl px-6 text-center">
-        <Eyebrow>Klaar om te starten</Eyebrow>
+        <Eyebrow>Klaar voor de volgende stap</Eyebrow>
 
         <h2 className="text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-5xl">
-          Nu je weet wat je kunt verwachten.
-          <br className="hidden md:block" /> Laten we aan het werk gaan.
+          Weet je hoe we werken?
+          <br className="hidden md:block" /> Dan kijken we nu of het past.
         </h2>
 
         <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-zinc-400 md:text-lg">
-          Dien je brief in. We beoordelen het binnen 24 uur en komen terug met
-          een heldere richting. Geen pitch decks, geen geautomatiseerde reacties.
+          Stuur je brief in. We beoordelen die persoonlijk en komen binnen 24 uur terug met een heldere richting. Geen pitch decks, geen loze opvolging.
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">

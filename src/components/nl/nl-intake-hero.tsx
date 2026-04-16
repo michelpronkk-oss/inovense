@@ -73,16 +73,14 @@ export default function NlIntakeHero() {
             variants={item}
             className="text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-5xl"
           >
-            Vertel ons wat je bouwt.
+            Vertel ons wat je wilt bouwen.
           </motion.h1>
 
           <motion.p
             variants={item}
             className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-zinc-400"
           >
-            Vul de brief hieronder in. We beoordelen elke inzending persoonlijk
-            en reageren binnen 24 uur met een duidelijke volgende stap, geen
-            voorsteltemplate.
+            Vul de brief hieronder in. We beoordelen elke aanvraag persoonlijk en komen binnen 24 uur terug met een heldere volgende stap. Geen pitch decks, geen standaardreacties.
           </motion.p>
 
           <motion.div
@@ -94,7 +92,7 @@ export default function NlIntakeHero() {
               size="lg"
               className="rounded-full bg-brand px-8 text-white hover:bg-brand/90"
             >
-              <Link href="#nl-intake-form">Projectaanvraag starten</Link>
+              <Link href="#nl-intake-form">Project starten</Link>
             </Button>
             <Button
               asChild
