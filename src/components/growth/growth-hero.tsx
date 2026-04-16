@@ -216,7 +216,7 @@ export default function GrowthHero() {
 
             <motion.h1
               variants={itemVariants}
-              className="text-5xl font-semibold leading-[1.08] tracking-tight text-zinc-50 lg:text-6xl"
+              className="text-4xl font-semibold leading-[1.1] tracking-tight text-zinc-50 sm:text-5xl lg:text-6xl"
             >
               Paid media, content, and lead generation,{" "}
               <em className="not-italic text-brand">built</em> to fill your pipeline.
@@ -224,7 +224,7 @@ export default function GrowthHero() {
 
             <motion.p
               variants={itemVariants}
-              className="mt-6 max-w-[440px] text-lg leading-relaxed text-zinc-400"
+              className="mt-6 max-w-[440px] text-base leading-relaxed text-zinc-400 sm:text-lg"
             >
               We run growth campaigns for businesses that need qualified leads, not just clicks and impressions.
             </motion.p>

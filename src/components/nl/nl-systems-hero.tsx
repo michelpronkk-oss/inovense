@@ -239,7 +239,7 @@ export default function NlSystemsHero() {
 
             <motion.h1
               variants={itemVariants}
-              className="text-5xl font-semibold leading-[1.08] tracking-tight text-zinc-50 lg:text-6xl"
+              className="text-4xl font-semibold leading-[1.1] tracking-tight text-zinc-50 sm:text-5xl lg:text-6xl"
             >
               Slimme systemen en AI-automatisering,{" "}
               <em className="not-italic text-brand">gebouwd</em> voor operationele helderheid.
@@ -247,7 +247,7 @@ export default function NlSystemsHero() {
 
             <motion.p
               variants={itemVariants}
-              className="mt-6 max-w-[440px] text-lg leading-relaxed text-zinc-400"
+              className="mt-6 max-w-[440px] text-base leading-relaxed text-zinc-400 sm:text-lg"
             >
               We bouwen maatwerk workflows, automatiseringen en AI-tools die wrijving weghalen,
               tijd besparen en je bedrijf beter laten lopen.

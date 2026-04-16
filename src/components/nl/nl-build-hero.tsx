@@ -193,7 +193,7 @@ export default function NlBuildHero() {
 
             <motion.h1
               variants={itemVariants}
-              className="text-5xl font-semibold leading-[1.08] tracking-tight text-zinc-50 lg:text-6xl"
+              className="text-4xl font-semibold leading-[1.1] tracking-tight text-zinc-50 sm:text-5xl lg:text-6xl"
             >
               Websites en webshops die vertrouwen{" "}
               <em className="not-italic text-brand">wekken</em> en converteren.
@@ -201,7 +201,7 @@ export default function NlBuildHero() {
 
             <motion.p
               variants={itemVariants}
-              className="mt-6 max-w-[440px] text-lg leading-relaxed text-zinc-400"
+              className="mt-6 max-w-[440px] text-base leading-relaxed text-zinc-400 sm:text-lg"
             >
               Op maat gebouwde websites en Shopify-winkels die presteren, niet alleen mooi zijn.
             </motion.p>

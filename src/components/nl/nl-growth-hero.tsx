@@ -194,7 +194,7 @@ export default function NlGrowthHero() {
 
             <motion.h1
               variants={itemVariants}
-              className="text-5xl font-semibold leading-[1.08] tracking-tight text-zinc-50 lg:text-6xl"
+              className="text-4xl font-semibold leading-[1.1] tracking-tight text-zinc-50 sm:text-5xl lg:text-6xl"
             >
               Betaalde media, content en leadgeneratie,{" "}
               <em className="not-italic text-brand">gebouwd</em> om je pipeline te vullen.
@@ -202,7 +202,7 @@ export default function NlGrowthHero() {
 
             <motion.p
               variants={itemVariants}
-              className="mt-6 max-w-[440px] text-lg leading-relaxed text-zinc-400"
+              className="mt-6 max-w-[440px] text-base leading-relaxed text-zinc-400 sm:text-lg"
             >
               We draaien groeicampagnes voor bedrijven die gekwalificeerde leads nodig hebben,
               geen klikken en impressies.

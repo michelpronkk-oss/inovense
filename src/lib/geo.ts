@@ -31,38 +31,38 @@ export const INOVENSE_HOME_FAQS = [
   {
     question: "What does Inovense do?",
     answer:
-      "Inovense builds digital infrastructure across three lanes: Build for websites and digital products, Systems for automation and operations, and Growth for SEO, content, and demand systems.",
+      "Websites, AI automation, and growth programs. Three service lanes: Build, Systems, and Growth.",
   },
   {
     question: "What is the difference between Build, Systems, and Growth?",
     answer:
-      "Build solves trust and conversion at the experience layer, Systems fixes operational bottlenecks and handoff failures, and Growth builds compounding acquisition and demand capture systems.",
+      "Build fixes websites that don't convert. Systems removes manual bottlenecks. Growth builds SEO, content, and paid media that compound.",
   },
   {
     question: "Who is Inovense for?",
     answer:
-      "Inovense works best with founders and operators who already have momentum and need stronger execution systems rather than generic agency output.",
+      "Companies with momentum that want stronger execution, not generic agency output.",
   },
   {
     question: "When should a company invest in systems or automation?",
     answer:
-      "When important work depends on manual coordination, response times are inconsistent, or leads and operations leak between tools, systems and automation usually create immediate leverage.",
+      "When manual coordination is slowing you down, leads are leaking, or your tools aren't connected.",
   },
   {
     question:
       "When is a website problem actually a trust or conversion problem?",
     answer:
-      "If traffic exists but qualified actions stay low, the issue is usually message clarity, conversion flow, or trust signals instead of pure traffic volume.",
+      "When traffic exists but conversions are low, the issue is usually trust, clarity, or conversion flow.",
   },
   {
     question: "When does growth fail because the system leaks?",
     answer:
-      "Growth stalls when capture, routing, follow-up, and reporting are disconnected. In that state more traffic often magnifies waste instead of increasing pipeline quality.",
+      "When capture, routing, and follow-up are disconnected, more traffic just magnifies the leaks.",
   },
   {
     question: "What kind of clients are the best fit for Inovense?",
     answer:
-      "Best-fit clients value high standards, clear scope, and durable systems. They want outcomes they can own after handoff, not ongoing dependency.",
+      "Companies that value clear scope, high standards, and work they own after delivery.",
   },
 ] as const;
 

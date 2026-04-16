@@ -253,7 +253,7 @@ export default function Hero() {
 
             <motion.h1
               variants={itemVariants}
-              className="text-5xl font-semibold leading-[1.08] tracking-tight text-zinc-50 lg:text-6xl"
+              className="text-4xl font-semibold leading-[1.1] tracking-tight text-zinc-50 sm:text-5xl lg:text-6xl"
             >
               Websites, webshops and smart systems{" "}
               <span className="text-brand">built to win more clients.</span>
@@ -261,7 +261,7 @@ export default function Hero() {
 
             <motion.p
               variants={itemVariants}
-              className="mt-6 max-w-[520px] text-lg leading-relaxed text-zinc-400"
+              className="mt-6 max-w-[520px] text-base leading-relaxed text-zinc-400 sm:text-lg"
             >
               We build websites, Shopify stores, and smart workflows that help businesses earn trust, move faster, and convert more of the right people.
             </motion.p>

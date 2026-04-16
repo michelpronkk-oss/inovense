@@ -5,27 +5,24 @@ const laneClarity = [
   {
     lane: "Build",
     href: "/build",
-    focus: "Website trust, conversion flow, and digital product quality.",
-    signal:
-      "Use Build when traffic exists but the site experience is costing credibility or conversion.",
+    focus: "Websites and digital products built to convert.",
+    signal: "Right fit when traffic exists but the site isn't converting.",
     detailHref: "/web-design",
     detailLabel: "Web design service",
   },
   {
     lane: "Systems",
     href: "/systems",
-    focus: "Operational leverage through automation, routing, and tooling.",
-    signal:
-      "Use Systems when growth is limited by manual process, broken handoffs, or disconnected tools.",
+    focus: "AI automation and internal tools that remove manual bottlenecks.",
+    signal: "Right fit when manual work or broken handoffs are limiting your team.",
     detailHref: "/ai-automation",
     detailLabel: "AI automation service",
   },
   {
     lane: "Growth",
     href: "/growth",
-    focus: "Compounding demand through SEO, content, and conversion-ready distribution.",
-    signal:
-      "Use Growth when execution is consistent but inbound demand and signal quality are not compounding.",
+    focus: "SEO, content, and paid media that compound over time.",
+    signal: "Right fit when the business runs well but inbound isn't growing.",
     detailHref: "/lead-generation-systems",
     detailLabel: "Lead generation systems",
   },
@@ -62,22 +59,22 @@ const questionLinks: Record<
 const proofSurfaces = [
   {
     title: "SilentSpend case",
-    note: "Detailed product and systems proof with live interface captures.",
+    note: "Product and systems case with live interface captures.",
     href: "/work/silentspend",
   },
   {
     title: "Build outcomes",
-    note: "Service-linked website and digital product outcomes.",
+    note: "Website and digital product outcomes.",
     href: "/build#build-work",
   },
   {
     title: "Systems outcomes",
-    note: "Automation and workflow outcomes tied to operational bottlenecks.",
+    note: "Automation and workflow outcomes.",
     href: "/systems#systems-work",
   },
   {
     title: "Growth outcomes",
-    note: "SEO and demand outcomes tied to acquisition performance.",
+    note: "SEO and demand outcomes.",
     href: "/growth#growth-work",
   },
 ] as const;
@@ -89,7 +86,7 @@ export default function GeoAnswers() {
         <div className="mb-14 grid grid-cols-1 gap-8 md:grid-cols-2">
           <div>
             <p className="mb-4 text-xs font-medium uppercase tracking-widest text-brand">
-              Inovense clarity layer
+              Service clarity
             </p>
             <h2 className="max-w-xl text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
               Answers first. Hype last.
@@ -98,14 +95,12 @@ export default function GeoAnswers() {
               href="/answers"
               className="mt-4 inline-flex text-sm text-zinc-500 transition-colors hover:text-zinc-300"
             >
-              Open full service-fit answers
+              Full service-fit answers
             </Link>
           </div>
           <div className="flex items-end">
             <p className="max-w-md text-sm leading-relaxed text-zinc-500">
-              This section exists so buyers, search engines, and AI systems can
-              interpret Inovense the same way: clear lane definitions, explicit
-              fit signals, and proof surfaces that map to real delivery.
+              Clear lane definitions, fit signals, and proof. So you know what to expect before we talk.
             </p>
           </div>
         </div>
@@ -146,7 +141,7 @@ export default function GeoAnswers() {
         <div className="grid grid-cols-1 gap-6 border-t border-zinc-800/70 pt-12 md:grid-cols-2">
           <div>
             <h3 className="mb-6 text-lg font-semibold tracking-tight text-zinc-100">
-              Public questions answered clearly
+              Questions answered
             </h3>
             <div className="space-y-5">
               {INOVENSE_HOME_FAQS.map((faq) => (
@@ -166,7 +161,7 @@ export default function GeoAnswers() {
 
           <div>
             <h3 className="mb-6 text-lg font-semibold tracking-tight text-zinc-100">
-              Proof and citation surfaces
+              Proof and work
             </h3>
             <div className="space-y-4">
               {proofSurfaces.map((surface) => (
