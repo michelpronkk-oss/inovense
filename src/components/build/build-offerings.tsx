@@ -17,14 +17,14 @@ const offerings = [
     number: "03",
     title: "Landing pages",
     description:
-      "High-converting landing pages for campaigns, launches, and lead generation — built fast and A/B-ready.",
+      "High-converting landing pages for campaigns, launches, and lead generation. Built fast and A/B-ready.",
     tag: null,
   },
   {
     number: "04",
     title: "Redesign and migration",
     description:
-      "Existing site underperforming? We rebuild from a clean foundation — faster, sharper, and better converting.",
+      "Existing site underperforming? We rebuild from a clean foundation: faster, sharper, and better converting.",
     tag: null,
   },
   {

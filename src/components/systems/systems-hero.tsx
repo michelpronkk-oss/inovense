@@ -266,7 +266,7 @@ export default function SystemsHero() {
               variants={itemVariants}
               className="text-5xl font-semibold leading-[1.08] tracking-tight text-zinc-50 lg:text-6xl"
             >
-              Smart systems and AI automation —{" "}
+              Smart systems and AI automation,{" "}
               <em className="not-italic text-brand">built</em> for operational clarity.
             </motion.h1>
 

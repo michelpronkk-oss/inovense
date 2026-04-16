@@ -203,7 +203,7 @@ export default function NlBuildHero() {
               variants={itemVariants}
               className="mt-6 max-w-[440px] text-lg leading-relaxed text-zinc-400"
             >
-              Op maat gebouwde websites en Shopify-winkels die presteren — niet alleen mooi zijn.
+              Op maat gebouwde websites en Shopify-winkels die presteren, niet alleen mooi zijn.
             </motion.p>
 
             <motion.div

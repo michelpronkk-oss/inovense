@@ -218,7 +218,7 @@ export default function GrowthHero() {
               variants={itemVariants}
               className="text-5xl font-semibold leading-[1.08] tracking-tight text-zinc-50 lg:text-6xl"
             >
-              Paid media, content, and lead generation —{" "}
+              Paid media, content, and lead generation,{" "}
               <em className="not-italic text-brand">built</em> to fill your pipeline.
             </motion.h1>
 

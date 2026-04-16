@@ -255,17 +255,15 @@ export default function Hero() {
               variants={itemVariants}
               className="text-5xl font-semibold leading-[1.08] tracking-tight text-zinc-50 lg:text-6xl"
             >
-              Websites, systems, and growth —
-              <br className="hidden sm:block" /> built to{" "}
-              <span className="text-brand">perform.</span>
+              Websites, webshops and smart systems{" "}
+              <span className="text-brand">built to grow your business.</span>
             </motion.h1>
 
             <motion.p
               variants={itemVariants}
               className="mt-6 max-w-[520px] text-lg leading-relaxed text-zinc-400"
             >
-              We build conversion-focused websites, webshops, and smart systems for businesses
-              that want commercial results, not just good-looking work.
+              We build conversion-focused websites, Shopify stores, and smart workflows that help businesses earn trust, work faster, and win more clients.
             </motion.p>
 
             <motion.div

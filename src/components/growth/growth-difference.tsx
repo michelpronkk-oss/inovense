@@ -7,7 +7,7 @@ const differences = [
   {
     number: "02",
     title: "Commercial goals come first",
-    body: "We measure against pipeline and revenue — not vanity metrics. If it does not move the number, we adjust.",
+    body: "We measure against pipeline and revenue, not vanity metrics. If it does not move the number, we adjust.",
   },
   {
     number: "03",
@@ -17,7 +17,7 @@ const differences = [
   {
     number: "04",
     title: "Cross-channel awareness",
-    body: "We look at your full acquisition picture — paid, organic, email, referral — and find the highest-leverage place to focus.",
+    body: "We look at your full acquisition picture: paid, organic, email, and referral, and find the highest-leverage place to focus.",
   },
   {
     number: "05",

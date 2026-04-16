@@ -17,14 +17,14 @@ const offerings = [
     number: "03",
     title: "Operational workflows",
     description:
-      "We map, build, and automate the repetitive processes eating your team's time — proposals, onboarding, handoffs, reporting.",
+      "We map, build, and automate the repetitive processes eating your team's time: proposals, onboarding, handoffs, reporting.",
     tag: null,
   },
   {
     number: "04",
     title: "Internal tooling",
     description:
-      "Custom admin panels and operator tools built with Next.js and Supabase — fast, private, and built to your exact workflow.",
+      "Custom admin panels and operator tools built with Next.js and Supabase. Fast, private, and built to your exact workflow.",
     tag: null,
   },
   {
@@ -38,7 +38,7 @@ const offerings = [
     number: "06",
     title: "Integrations and API connectors",
     description:
-      "We connect your stack — CRM, email, payments, calendar, tools — so data flows cleanly and nothing falls through the cracks.",
+      "We connect your stack: CRM, email, payments, calendar, and tools, so data flows cleanly and nothing falls through the cracks.",
     tag: null,
   },
 ];

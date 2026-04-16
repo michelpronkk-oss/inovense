@@ -32,7 +32,7 @@ export default function Process() {
             How we work
           </p>
           <h2 className="max-w-md text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-            From brief to results — a clear, controlled process.
+            From brief to results: a clear, controlled process.
           </h2>
         </div>
 

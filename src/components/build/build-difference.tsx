@@ -7,7 +7,7 @@ const differences = [
   {
     number: "02",
     title: "Trust-first design",
-    body: "We build layouts that feel premium and credible from the first impression — because trust is the first conversion.",
+    body: "We build layouts that feel premium and credible from the first impression. Trust is the first conversion.",
   },
   {
     number: "03",

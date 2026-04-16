@@ -228,7 +228,7 @@ export default function BuildHero() {
               variants={itemVariants}
               className="mt-6 max-w-[440px] text-lg leading-relaxed text-zinc-400"
             >
-              Custom-built sites and Shopify stores designed for performance — not just good looks.
+              Custom-built sites and Shopify stores designed for performance, not just good looks.
             </motion.p>
 
             <motion.div

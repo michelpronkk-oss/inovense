@@ -178,7 +178,7 @@ export default function NlHomeHero() {
               variants={itemVariants}
               className="text-5xl font-semibold leading-[1.08] tracking-tight text-zinc-50 lg:text-6xl"
             >
-              Websites, systemen en groei —{" "}
+              Websites, systemen en groei,{" "}
               <span className="text-brand">gebouwd om te presteren.</span>
             </motion.h1>
 
@@ -187,7 +187,7 @@ export default function NlHomeHero() {
               className="mt-6 max-w-[560px] text-lg leading-relaxed text-zinc-400"
             >
               We bouwen websites, webshops en slimme automatiseringen voor bedrijven die echte
-              resultaten willen — geen mooie plaatjes.
+              resultaten willen, geen mooie plaatjes.
             </motion.p>
 
             <motion.div

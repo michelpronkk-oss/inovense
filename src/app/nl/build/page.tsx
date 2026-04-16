@@ -116,14 +116,14 @@ const deliverables = [
     number: "03",
     title: "Landingspagina's",
     description:
-      "Sterk converterende landingspagina's voor campagnes, launches en leadgeneratie — snel gebouwd en klaar voor A/B-tests.",
+      "Sterk converterende landingspagina's voor campagnes, launches en leadgeneratie. Snel gebouwd en klaar voor A/B-tests.",
     tag: null,
   },
   {
     number: "04",
     title: "Redesign en migratie",
     description:
-      "Presteert je huidige site niet goed? We herbouwen vanaf een schone basis — sneller, scherper en beter converterend.",
+      "Presteert je huidige site niet goed? We herbouwen vanaf een schone basis: sneller, scherper en beter converterend.",
     tag: null,
   },
   {
@@ -196,7 +196,7 @@ const approach = [
   {
     number: "02",
     title: "Vertrouwen als eerste conversie",
-    body: "We bouwen layouts die direct premium en geloofwaardig voelen — want vertrouwen is de eerste stap naar conversie.",
+    body: "We bouwen layouts die direct premium en geloofwaardig voelen. Vertrouwen is de eerste stap naar conversie.",
   },
   {
     number: "03",
@@ -206,7 +206,7 @@ const approach = [
   {
     number: "04",
     title: "Copy en layout samen",
-    body: "We werken tegelijk aan structuur en boodschap — zodat ze elkaar versterken in plaats van tegenwerken.",
+    body: "We werken tegelijk aan structuur en boodschap, zodat ze elkaar versterken in plaats van tegenwerken.",
   },
   {
     number: "05",

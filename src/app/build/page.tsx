@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     url: "https://inovense.com/build",
     title: "Websites and webshops built to convert. | Inovense",
     description:
-      "Custom-built websites and Shopify stores designed for performance — not just good looks. Fixed-price proposals, senior delivery, clean handoff.",
+      "Custom-built websites and Shopify stores designed for performance, not just good looks. Fixed-price proposals, senior delivery, clean handoff.",
   },
 };
 

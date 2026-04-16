@@ -241,7 +241,7 @@ export default function NlSystemsHero() {
               variants={itemVariants}
               className="text-5xl font-semibold leading-[1.08] tracking-tight text-zinc-50 lg:text-6xl"
             >
-              Slimme systemen en AI-automatisering —{" "}
+              Slimme systemen en AI-automatisering,{" "}
               <em className="not-italic text-brand">gebouwd</em> voor operationele helderheid.
             </motion.h1>
 

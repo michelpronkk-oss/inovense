@@ -12,7 +12,7 @@ const points = [
   {
     number: "03",
     title: "Commercial focus throughout.",
-    body: "Every decision — copy, layout, flow, automation — is made with conversion and trust in mind.",
+    body: "Every decision, from copy to layout to automation, is made with conversion and trust in mind.",
   },
 ];
 

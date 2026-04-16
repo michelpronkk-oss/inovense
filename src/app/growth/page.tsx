@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/growth",
-    title: "Growth campaigns built for pipeline — not impressions. | Inovense",
+    title: "Growth campaigns built for pipeline, not impressions. | Inovense",
     description:
       "Paid media, content, and lead generation built to fill your pipeline. We run growth campaigns for businesses that need qualified leads, not just reach.",
   },

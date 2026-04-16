@@ -166,7 +166,7 @@ const reasons = [
   },
   {
     title: "Commercieel denken van begin tot eind",
-    body: "Elke beslissing — copy, opmaak, flow, automatisering — wordt gemaakt met conversie en vertrouwen als uitgangspunt.",
+    body: "Elke beslissing, van copy tot opmaak tot automatisering, wordt gemaakt met conversie en vertrouwen als uitgangspunt.",
   },
   {
     title: "Helder proces, geen verrassingen",
@@ -238,7 +238,7 @@ function ProcessPreview() {
         <div className="mb-16">
           <Eyebrow>Hoe wij werken</Eyebrow>
           <h2 className="max-w-md text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-            Van briefing tot resultaat — een helder, gecontroleerd proces.
+            Van briefing tot resultaat: een helder, gecontroleerd proces.
           </h2>
         </div>
 

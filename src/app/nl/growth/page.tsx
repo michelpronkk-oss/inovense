@@ -6,7 +6,7 @@ import NlGrowthHero from "@/components/nl/nl-growth-hero";
 import NlRelatedServices from "@/components/nl/nl-related-services";
 
 export const metadata: Metadata = {
-  title: "Groeicampagnes gericht op pipeline — niet op impressies. | Inovense",
+  title: "Groeicampagnes gericht op pipeline, niet op impressies. | Inovense",
   description:
     "Betaalde media, content en leadgeneratie gebouwd om je pipeline te vullen. We draaien groeicampagnes voor bedrijven die gekwalificeerde leads nodig hebben.",
   alternates: {
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/nl/growth",
-    title: "Groeicampagnes gericht op pipeline — niet op impressies. | Inovense",
+    title: "Groeicampagnes gericht op pipeline, niet op impressies. | Inovense",
     description:
       "Betaalde media, content en leadgeneratie gebouwd om je pipeline te vullen. We draaien groeicampagnes voor bedrijven die gekwalificeerde leads nodig hebben.",
     locale: "nl_NL",
@@ -155,7 +155,7 @@ function Scope() {
           </div>
           <div className="flex items-end">
             <p className="max-w-sm text-sm leading-relaxed text-zinc-500">
-              Elk groeiproject wordt geschreven rond een commercieel doel — niet een kanaal.
+              Elk groeiproject wordt geschreven rond een commercieel doel, niet een kanaal.
             </p>
           </div>
         </div>
@@ -206,7 +206,7 @@ const difference = [
   {
     number: "03",
     title: "AI-gestuurde optimalisatie",
-    body: "We zetten AI in voor snellere iteraties, betere targetinglogica en scherpere creatieve beslissingen — niet als vervanger van strategie.",
+    body: "We zetten AI in voor snellere iteraties, betere targetinglogica en scherpere creatieve beslissingen, niet als vervanger van strategie.",
   },
   {
     number: "04",

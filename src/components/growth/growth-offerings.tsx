@@ -3,7 +3,7 @@ const offerings = [
     number: "01",
     title: "Paid social campaigns",
     description:
-      "Meta and LinkedIn campaigns built for lead quality — not just reach. Every campaign is tied to an intake or conversion goal.",
+      "Meta and LinkedIn campaigns built for lead quality, not just reach. Every campaign is tied to an intake or conversion goal.",
     tag: "Most requested",
   },
   {
@@ -17,7 +17,7 @@ const offerings = [
     number: "03",
     title: "Lead generation funnels",
     description:
-      "End-to-end funnel builds: landing page, offer, ad, follow-up automation — scoped as one complete system.",
+      "End-to-end funnel builds: landing page, offer, ad, follow-up automation, scoped as one complete system.",
     tag: null,
   },
   {
@@ -63,7 +63,7 @@ export default function GrowthOfferings() {
           </div>
           <div className="flex items-end">
             <p className="max-w-sm text-sm leading-relaxed text-zinc-500">
-              Every growth project is scoped around a commercial goal — not a channel.
+              Every growth project is scoped around a commercial goal, not a channel.
             </p>
           </div>
         </div>
