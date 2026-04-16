@@ -3,12 +3,14 @@
 import { revalidatePath } from "next/cache";
 import {
   createSupabaseServerClient,
+  type Prospect,
   type ProspectContactChannel,
   type ProspectLaneFit,
   type ProspectOutreachLanguage,
   type ProspectStatus,
 } from "@/lib/supabase-server";
 import { getLeadMarketSeedFromLeadSource, parseCountryCodeInput } from "@/lib/market";
+import { generateProspectCandidatesFromApify } from "@/lib/prospects/apify";
 
 const VALID_STATUSES: ProspectStatus[] = [
   "new",
@@ -54,6 +56,15 @@ export type ProspectUpdateInput = ProspectCreateInput & {
 
 type ActionResult = { success: true; id?: string } | { success: false; error: string };
 
+export type GenerateProspectsState = {
+  ok: boolean;
+  error: string | null;
+  inserted: number;
+  duplicates: number;
+  discarded: number;
+  summary: string | null;
+};
+
 function revalidateProspects(id?: string) {
   revalidatePath("/admin/prospects");
   revalidatePath("/admin");
@@ -88,6 +99,31 @@ function normalizeWebsite(value: string | null | undefined): string | null {
     return `https://${raw}`;
   }
   return raw;
+}
+
+function websiteHost(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.hostname.replace(/^www\./i, "").toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+function normalizeKey(value: string | null): string {
+  return (value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function parseVolumeInput(value: string | null): number {
+  const parsed = Number.parseInt((value ?? "").trim(), 10);
+  if (!Number.isFinite(parsed)) return 10;
+  if (parsed < 1) return 1;
+  if (parsed > 50) return 50;
+  return parsed;
 }
 
 function parseEmailCandidate(input: {
@@ -205,6 +241,179 @@ export async function createProspect(input: ProspectCreateInput): Promise<Action
   }
 }
 
+export async function generateProspectsFromBrief(
+  _prevState: GenerateProspectsState,
+  formData: FormData
+): Promise<GenerateProspectsState> {
+  const market = (formData.get("market") as string | null)?.trim() ?? "";
+  const niche = (formData.get("niche") as string | null)?.trim() ?? "";
+  const location = (formData.get("location") as string | null)?.trim() ?? "";
+  const source = (formData.get("source") as string | null)?.trim() ?? "outbound";
+  const volume = parseVolumeInput(formData.get("volume") as string | null);
+
+  if (!niche || (!location && !market)) {
+    return {
+      ok: false,
+      error: "Enter niche and location (or market) before generating.",
+      inserted: 0,
+      duplicates: 0,
+      discarded: 0,
+      summary: null,
+    };
+  }
+
+  try {
+    const candidates = await generateProspectCandidatesFromApify({
+      market,
+      niche,
+      location,
+      volume,
+      source,
+    });
+
+    if (candidates.length === 0) {
+      return {
+        ok: false,
+        error: "No usable prospects were returned for this brief.",
+        inserted: 0,
+        duplicates: 0,
+        discarded: 0,
+        summary: null,
+      };
+    }
+
+    const supabase = createSupabaseServerClient();
+    const { data: existingRaw, error: existingError } = await supabase
+      .from("prospects")
+      .select("id,company_name,website_url,contact_value")
+      .order("updated_at", { ascending: false })
+      .limit(2500);
+
+    if (existingError) {
+      throw new Error(existingError.message);
+    }
+
+    const existing = (existingRaw ?? []) as Pick<
+      Prospect,
+      "id" | "company_name" | "website_url" | "contact_value"
+    >[];
+
+    const knownWebsiteHosts = new Set<string>();
+    const knownNameContact = new Set<string>();
+    const knownNameOnly = new Set<string>();
+
+    for (const row of existing) {
+      const host = websiteHost(normalizeWebsite(row.website_url));
+      if (host) knownWebsiteHosts.add(host);
+
+      const nameKey = normalizeKey(row.company_name);
+      if (!nameKey) continue;
+      knownNameOnly.add(nameKey);
+      const contactKey = normalizeKey(row.contact_value);
+      knownNameContact.add(`${nameKey}|${contactKey}`);
+    }
+
+    let duplicates = 0;
+    let discarded = 0;
+    const insertRows: Array<Omit<Prospect, "id" | "created_at" | "updated_at">> = [];
+
+    for (const candidate of candidates) {
+      const hasWebsiteDuplicate =
+        Boolean(candidate.dedupe.websiteHost) &&
+        knownWebsiteHosts.has(candidate.dedupe.websiteHost as string);
+
+      const hasNameContactDuplicate = knownNameContact.has(candidate.dedupe.nameContactKey);
+
+      const shouldUseNameOnlyFallback =
+        !candidate.dedupe.websiteHost &&
+        !candidate.contact_value &&
+        knownNameOnly.has(candidate.dedupe.nameOnlyKey);
+
+      if (hasWebsiteDuplicate || hasNameContactDuplicate || shouldUseNameOnlyFallback) {
+        duplicates += 1;
+        continue;
+      }
+
+      if (!candidate.company_name.trim()) {
+        discarded += 1;
+        continue;
+      }
+
+      insertRows.push({
+        company_name: candidate.company_name.trim(),
+        website_url: normalizeWebsite(candidate.website_url),
+        contact_name: normalizeOptionalText(candidate.contact_name),
+        contact_channel: candidate.contact_channel,
+        contact_value: normalizeOptionalText(candidate.contact_value),
+        country_code: parseCountryCodeInput(candidate.country_code),
+        outreach_language: candidate.outreach_language,
+        lane_fit: candidate.lane_fit,
+        status: "new",
+        source: normalizeSource(candidate.source),
+        notes: normalizeOptionalText(candidate.notes),
+        opening_angle: normalizeOptionalText(candidate.opening_angle),
+        last_contact_at: null,
+        next_follow_up_at: null,
+        converted_lead_id: null,
+        converted_at: null,
+      });
+
+      if (candidate.dedupe.websiteHost) {
+        knownWebsiteHosts.add(candidate.dedupe.websiteHost);
+      }
+      knownNameContact.add(candidate.dedupe.nameContactKey);
+      knownNameOnly.add(candidate.dedupe.nameOnlyKey);
+    }
+
+    if (insertRows.length === 0) {
+      return {
+        ok: false,
+        error:
+          duplicates > 0
+            ? "Generation completed but all results were already in queue."
+            : "Generation returned no records eligible for queue.",
+        inserted: 0,
+        duplicates,
+        discarded,
+        summary: null,
+      };
+    }
+
+    const { error: insertError } = await supabase.from("prospects").insert(insertRows);
+    if (insertError) {
+      throw new Error(insertError.message);
+    }
+
+    revalidateProspects();
+
+    const summary = `Added ${insertRows.length} prospect${
+      insertRows.length === 1 ? "" : "s"
+    } to queue${duplicates > 0 ? `, skipped ${duplicates} duplicate${duplicates === 1 ? "" : "s"}` : ""}.`;
+
+    return {
+      ok: true,
+      error: null,
+      inserted: insertRows.length,
+      duplicates,
+      discarded,
+      summary,
+    };
+  } catch (err) {
+    console.error("[admin] generateProspectsFromBrief failed:", err);
+    return {
+      ok: false,
+      error:
+        err instanceof Error
+          ? err.message || "Prospect generation failed."
+          : "Prospect generation failed.",
+      inserted: 0,
+      duplicates: 0,
+      discarded: 0,
+      summary: null,
+    };
+  }
+}
+
 export async function updateProspect(id: string, input: ProspectUpdateInput): Promise<ActionResult> {
   if (!id) {
     return { success: false, error: "Prospect id is required." };
@@ -276,6 +485,13 @@ export async function updateProspectStatus(
     console.error("[admin] updateProspectStatus failed:", err);
     return { success: false, error: "Failed to update status." };
   }
+}
+
+export async function updateProspectStatusFromList(
+  id: string,
+  status: ProspectStatus
+): Promise<void> {
+  await updateProspectStatus(id, status);
 }
 
 export async function markProspectContacted(id: string): Promise<ActionResult> {

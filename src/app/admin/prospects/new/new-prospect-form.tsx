@@ -87,11 +87,58 @@ const INITIAL_FIELDS: ProspectCreateInput = {
   next_follow_up_at: "",
 };
 
-export default function NewProspectForm() {
+export type ProspectGenerationSeed = {
+  market?: string;
+  niche?: string;
+  location?: string;
+  volume?: string;
+  source?: string;
+};
+
+function normalizeSourceSeed(source?: string): ProspectCreateInput["source"] {
+  const normalized = (source ?? "").trim().toLowerCase().replace(/\s+/g, "_");
+  if (!normalized) return "outbound";
+  const allowed = new Set([
+    "outbound",
+    "linkedin",
+    "instagram",
+    "referral",
+    "website",
+    "other",
+  ]);
+  return allowed.has(normalized) ? normalized : "outbound";
+}
+
+function buildSeedNotes(seed?: ProspectGenerationSeed): string {
+  if (!seed) return "";
+
+  const rows = [
+    { label: "Market", value: seed.market },
+    { label: "Niche", value: seed.niche },
+    { label: "Location", value: seed.location },
+    { label: "Volume target", value: seed.volume },
+  ].filter((row) => Boolean((row.value ?? "").trim()));
+
+  if (rows.length === 0) return "";
+
+  return `Generation brief\n${rows
+    .map((row) => `${row.label}: ${(row.value ?? "").trim()}`)
+    .join("\n")}`;
+}
+
+export default function NewProspectForm({
+  generationSeed,
+}: {
+  generationSeed?: ProspectGenerationSeed;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [fields, setFields] = useState<ProspectCreateInput>(INITIAL_FIELDS);
+  const [fields, setFields] = useState<ProspectCreateInput>(() => ({
+    ...INITIAL_FIELDS,
+    source: normalizeSourceSeed(generationSeed?.source),
+    notes: buildSeedNotes(generationSeed),
+  }));
 
   function set<K extends keyof ProspectCreateInput>(key: K, value: ProspectCreateInput[K]) {
     setFields((prev) => ({ ...prev, [key]: value }));
