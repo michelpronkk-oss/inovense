@@ -345,6 +345,14 @@ export default function ProspectEditor({ prospect }: { prospect: Prospect }) {
           </SectionCard>
 
           <SectionCard title="Outreach setup">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-800/75 bg-zinc-950/45 p-3">
+              <p className="text-xs leading-relaxed text-zinc-500">
+                Internal snippet support for {fields.outreach_language.toUpperCase()} outreach in{" "}
+                <span className="text-zinc-300">{snippetDescriptor}</span>.
+              </p>
+              <SnippetLibrary language={fields.outreach_language} lane={snippetLane} />
+            </div>
+
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div>
                 <Label>Language</Label>
@@ -536,13 +544,6 @@ export default function ProspectEditor({ prospect }: { prospect: Prospect }) {
                 Conversion is explicit. Prospects do not count as leads until converted.
               </p>
             </div>
-          </SectionCard>
-
-          <SectionCard title="Snippet support">
-            <p className="text-xs leading-relaxed text-zinc-500">
-              Internal copy support only. No auto-send. Showing {fields.outreach_language.toUpperCase()} snippets for {snippetDescriptor}.
-            </p>
-            <SnippetLibrary language={fields.outreach_language} lane={snippetLane} />
           </SectionCard>
         </aside>
       </div>

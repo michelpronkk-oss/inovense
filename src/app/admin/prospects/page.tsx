@@ -65,11 +65,6 @@ function laneLabel(lane: ProspectLaneFit): string {
   );
 }
 
-function laneLabelForSnippet(lane: ProspectLaneFit | "all"): string {
-  if (lane === "all") return "all lanes";
-  return laneLabel(lane);
-}
-
 function languageLabel(language: ProspectOutreachLanguage): string {
   return (
     PROSPECT_LANGUAGE_OPTIONS.find((opt) => opt.value === language)?.label ??
@@ -774,232 +769,216 @@ export default async function ProspectsPage({
               Keep next touch clear, log response progression, and convert qualified prospects into leads.
             </p>
           </div>
-          <p className="text-[11px] text-zinc-600">
-            {outreachProspects.length} outreach-active · {convertedCount} converted to lead
-          </p>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <p className="text-[11px] text-zinc-600">
+              {outreachProspects.length} outreach-active · {convertedCount} converted to lead
+            </p>
+            <SnippetLibrary language={snippetLanguage} lane={snippetLaneInput} />
+          </div>
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <div>
-            {outreachProspects.length === 0 && !error ? (
-              <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/20 px-6 py-12 text-center">
-                <p className="text-sm text-zinc-600">
-                  {hasFilters
-                    ? "No outreach prospects match current filters."
-                    : "No outreach queue yet. Promote shortlisted prospects to outreach-ready first."}
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-xl border border-zinc-800/80">
-                <div className="hidden overflow-x-auto md:block">
-                  <table className="w-full min-w-[980px] text-sm">
-                    <thead>
-                      <tr className="border-b border-zinc-800/80 bg-zinc-900/70">
-                        {["Company", "Channel", "Last touch", "Next touch", "Status", "Actions"].map((header) => (
-                          <th
-                            key={header}
-                            className="px-4 py-3 text-left text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600"
-                          >
-                            {header}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-800/40">
-                      {outreachProspects.map((prospect) => {
-                        const primaryAction = outreachPrimaryAction(prospect);
-                        return (
-                          <tr key={prospect.id} className="transition-colors hover:bg-zinc-800/20">
-                            <td className="px-4 py-4">
-                              <div className="min-w-[220px]">
-                                <Link
-                                  href={`/admin/prospects/${prospect.id}`}
-                                  className="font-medium text-zinc-200 transition-colors hover:text-brand"
-                                >
-                                  {prospect.company_name}
-                                </Link>
-                                <p className="mt-0.5 text-xs text-zinc-600">
-                                  {prospect.contact_name ?? "No contact name"}
-                                </p>
-                              </div>
-                            </td>
-                            <td className="px-4 py-4 text-xs text-zinc-500">
-                              <p>{prospect.contact_channel}</p>
-                              <p className="mt-1 truncate text-zinc-600">
-                                {prospect.contact_value ?? "No contact value"}
-                              </p>
-                            </td>
-                            <td className="px-4 py-4 text-xs tabular-nums text-zinc-500">
-                              {formatDateTime(prospect.last_contact_at)}
-                            </td>
-                            <td className="px-4 py-4 text-xs tabular-nums text-zinc-500">
-                              {formatDateTime(prospect.next_follow_up_at)}
-                            </td>
-                            <td className="px-4 py-4">
-                              <span
-                                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
-                                  PROSPECT_STATUS_CONFIG[prospect.status].color
-                                }`}
-                              >
-                                {PROSPECT_STATUS_CONFIG[prospect.status].label}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4">
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                {primaryAction?.type === "contact" && (
-                                  <form action={markProspectContactedFromList.bind(null, prospect.id)}>
-                                    <button
-                                      type="submit"
-                                      className="inline-flex h-7 items-center rounded-md border border-brand/30 bg-brand/10 px-2.5 text-[10px] uppercase tracking-[0.08em] text-brand transition-colors hover:border-brand/50 hover:bg-brand/15"
-                                    >
-                                      {primaryAction.label}
-                                    </button>
-                                  </form>
-                                )}
-                                {primaryAction?.type === "status" && (
-                                  <form action={updateProspectStatusFromList.bind(null, prospect.id, primaryAction.toStatus)}>
-                                    <button
-                                      type="submit"
-                                      className="inline-flex h-7 items-center rounded-md border border-brand/30 bg-brand/10 px-2.5 text-[10px] uppercase tracking-[0.08em] text-brand transition-colors hover:border-brand/50 hover:bg-brand/15"
-                                    >
-                                      {primaryAction.label}
-                                    </button>
-                                  </form>
-                                )}
-                                {prospect.status === "qualified" && !prospect.converted_lead_id && (
-                                  <Link
-                                    href={`/admin/prospects/${prospect.id}`}
-                                    className="inline-flex h-7 items-center rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2.5 text-[10px] uppercase tracking-[0.08em] text-emerald-300 transition-colors hover:border-emerald-400/45 hover:bg-emerald-500/15"
-                                  >
-                                    Convert to lead
-                                  </Link>
-                                )}
-                                <Link
-                                  href={`/admin/prospects/${prospect.id}`}
-                                  className="inline-flex h-7 items-center rounded-md border border-zinc-700/70 px-2.5 text-[10px] uppercase tracking-[0.08em] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-200"
-                                >
-                                  Open
-                                </Link>
-                                {prospect.converted_lead_id && (
-                                  <Link
-                                    href={`/admin/leads/${prospect.converted_lead_id}`}
-                                    className="inline-flex h-7 items-center rounded-md border border-emerald-500/20 px-2.5 text-[10px] text-emerald-300 transition-colors hover:border-emerald-500/35 hover:text-emerald-200"
-                                  >
-                                    View lead
-                                  </Link>
-                                )}
-                                <ProspectSecondaryMenu prospect={prospect} />
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="divide-y divide-zinc-800/40 md:hidden">
+        {outreachProspects.length === 0 && !error ? (
+          <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/20 px-6 py-12 text-center">
+            <p className="text-sm text-zinc-600">
+              {hasFilters
+                ? "No outreach prospects match current filters."
+                : "No outreach queue yet. Promote shortlisted prospects to outreach-ready first."}
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-zinc-800/80">
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[980px] text-sm">
+                <thead>
+                  <tr className="border-b border-zinc-800/80 bg-zinc-900/70">
+                    {["Company", "Channel", "Last touch", "Next touch", "Status", "Actions"].map((header) => (
+                      <th
+                        key={header}
+                        className="px-4 py-3 text-left text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600"
+                      >
+                        {header}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/40">
                   {outreachProspects.map((prospect) => {
                     const primaryAction = outreachPrimaryAction(prospect);
-
                     return (
-                      <article key={prospect.id} className="space-y-3 px-4 py-4">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
+                      <tr key={prospect.id} className="transition-colors hover:bg-zinc-800/20">
+                        <td className="px-4 py-4">
+                          <div className="min-w-[220px]">
                             <Link
                               href={`/admin/prospects/${prospect.id}`}
-                              className="line-clamp-1 text-sm font-medium text-zinc-200 transition-colors hover:text-brand"
+                              className="font-medium text-zinc-200 transition-colors hover:text-brand"
                             >
                               {prospect.company_name}
                             </Link>
-                            <p className="mt-1 truncate text-xs text-zinc-600">
-                              {prospect.contact_name ?? prospect.contact_value ?? "No contact captured"}
+                            <p className="mt-0.5 text-xs text-zinc-600">
+                              {prospect.contact_name ?? "No contact name"}
                             </p>
                           </div>
+                        </td>
+                        <td className="px-4 py-4 text-xs text-zinc-500">
+                          <p>{prospect.contact_channel}</p>
+                          <p className="mt-1 truncate text-zinc-600">
+                            {prospect.contact_value ?? "No contact value"}
+                          </p>
+                        </td>
+                        <td className="px-4 py-4 text-xs tabular-nums text-zinc-500">
+                          {formatDateTime(prospect.last_contact_at)}
+                        </td>
+                        <td className="px-4 py-4 text-xs tabular-nums text-zinc-500">
+                          {formatDateTime(prospect.next_follow_up_at)}
+                        </td>
+                        <td className="px-4 py-4">
                           <span
-                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
                               PROSPECT_STATUS_CONFIG[prospect.status].color
                             }`}
                           >
                             {PROSPECT_STATUS_CONFIG[prospect.status].label}
                           </span>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2 text-[11px] text-zinc-600">
-                          <p className="truncate">Channel: {prospect.contact_channel}</p>
-                          <p className="truncate">Language: {languageLabel(prospect.outreach_language)}</p>
-                          <p className="truncate">Last: {formatDateTime(prospect.last_contact_at)}</p>
-                          <p className="truncate">Next: {formatDateTime(prospect.next_follow_up_at)}</p>
-                        </div>
-
-                        <div className="flex flex-wrap gap-1.5">
-                          {primaryAction?.type === "contact" && (
-                            <form action={markProspectContactedFromList.bind(null, prospect.id)}>
-                              <button
-                                type="submit"
-                                className="inline-flex h-8 items-center rounded-md border border-brand/30 bg-brand/10 px-2.5 text-[10px] uppercase tracking-[0.08em] text-brand transition-colors hover:border-brand/50 hover:bg-brand/15"
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {primaryAction?.type === "contact" && (
+                              <form action={markProspectContactedFromList.bind(null, prospect.id)}>
+                                <button
+                                  type="submit"
+                                  className="inline-flex h-7 items-center rounded-md border border-brand/30 bg-brand/10 px-2.5 text-[10px] uppercase tracking-[0.08em] text-brand transition-colors hover:border-brand/50 hover:bg-brand/15"
+                                >
+                                  {primaryAction.label}
+                                </button>
+                              </form>
+                            )}
+                            {primaryAction?.type === "status" && (
+                              <form action={updateProspectStatusFromList.bind(null, prospect.id, primaryAction.toStatus)}>
+                                <button
+                                  type="submit"
+                                  className="inline-flex h-7 items-center rounded-md border border-brand/30 bg-brand/10 px-2.5 text-[10px] uppercase tracking-[0.08em] text-brand transition-colors hover:border-brand/50 hover:bg-brand/15"
+                                >
+                                  {primaryAction.label}
+                                </button>
+                              </form>
+                            )}
+                            {prospect.status === "qualified" && !prospect.converted_lead_id && (
+                              <Link
+                                href={`/admin/prospects/${prospect.id}`}
+                                className="inline-flex h-7 items-center rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2.5 text-[10px] uppercase tracking-[0.08em] text-emerald-300 transition-colors hover:border-emerald-400/45 hover:bg-emerald-500/15"
                               >
-                                {primaryAction.label}
-                              </button>
-                            </form>
-                          )}
-                          {primaryAction?.type === "status" && (
-                            <form action={updateProspectStatusFromList.bind(null, prospect.id, primaryAction.toStatus)}>
-                              <button
-                                type="submit"
-                                className="inline-flex h-8 items-center rounded-md border border-brand/30 bg-brand/10 px-2.5 text-[10px] uppercase tracking-[0.08em] text-brand transition-colors hover:border-brand/50 hover:bg-brand/15"
-                              >
-                                {primaryAction.label}
-                              </button>
-                            </form>
-                          )}
-                          {prospect.status === "qualified" && !prospect.converted_lead_id && (
+                                Convert to lead
+                              </Link>
+                            )}
                             <Link
                               href={`/admin/prospects/${prospect.id}`}
-                              className="inline-flex h-8 items-center rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2.5 text-[10px] uppercase tracking-[0.08em] text-emerald-300 transition-colors hover:border-emerald-400/45 hover:bg-emerald-500/15"
+                              className="inline-flex h-7 items-center rounded-md border border-zinc-700/70 px-2.5 text-[10px] uppercase tracking-[0.08em] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-200"
                             >
-                              Convert to lead
+                              Open
                             </Link>
-                          )}
-                          <Link
-                            href={`/admin/prospects/${prospect.id}`}
-                            className="inline-flex h-8 items-center rounded-md border border-zinc-700/70 px-2.5 text-[10px] uppercase tracking-[0.08em] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-200"
-                          >
-                            Open
-                          </Link>
-                          {prospect.converted_lead_id && (
-                            <Link
-                              href={`/admin/leads/${prospect.converted_lead_id}`}
-                              className="inline-flex h-8 items-center rounded-md border border-emerald-500/20 px-2.5 text-[10px] text-emerald-300 transition-colors hover:border-emerald-500/35 hover:text-emerald-200"
-                            >
-                              View lead
-                            </Link>
-                          )}
-                          <ProspectSecondaryMenu prospect={prospect} />
-                        </div>
-                      </article>
+                            {prospect.converted_lead_id && (
+                              <Link
+                                href={`/admin/leads/${prospect.converted_lead_id}`}
+                                className="inline-flex h-7 items-center rounded-md border border-emerald-500/20 px-2.5 text-[10px] text-emerald-300 transition-colors hover:border-emerald-500/35 hover:text-emerald-200"
+                              >
+                                View lead
+                              </Link>
+                            )}
+                            <ProspectSecondaryMenu prospect={prospect} />
+                          </div>
+                        </td>
+                      </tr>
                     );
                   })}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <aside className="space-y-3">
-            <div className="rounded-xl border border-zinc-800/70 bg-zinc-900/35 p-4">
-              <p className="text-[10px] font-medium uppercase tracking-[0.13em] text-zinc-600">
-                Outreach openers
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-zinc-500">
-                Internal copy support only. Keep messages short, human, and lane-specific.
-              </p>
-              <p className="mt-2 text-[10px] text-zinc-700">
-                Showing {snippetLanguage.toUpperCase()} snippets for {laneLabelForSnippet(snippetLaneInput)}.
-              </p>
+                </tbody>
+              </table>
             </div>
-            <SnippetLibrary language={snippetLanguage} lane={snippetLaneInput} />
-          </aside>
-        </div>
+
+            <div className="divide-y divide-zinc-800/40 md:hidden">
+              {outreachProspects.map((prospect) => {
+                const primaryAction = outreachPrimaryAction(prospect);
+
+                return (
+                  <article key={prospect.id} className="space-y-3 px-4 py-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <Link
+                          href={`/admin/prospects/${prospect.id}`}
+                          className="line-clamp-1 text-sm font-medium text-zinc-200 transition-colors hover:text-brand"
+                        >
+                          {prospect.company_name}
+                        </Link>
+                        <p className="mt-1 truncate text-xs text-zinc-600">
+                          {prospect.contact_name ?? prospect.contact_value ?? "No contact captured"}
+                        </p>
+                      </div>
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                          PROSPECT_STATUS_CONFIG[prospect.status].color
+                        }`}
+                      >
+                        {PROSPECT_STATUS_CONFIG[prospect.status].label}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-zinc-600">
+                      <p className="truncate">Channel: {prospect.contact_channel}</p>
+                      <p className="truncate">Language: {languageLabel(prospect.outreach_language)}</p>
+                      <p className="truncate">Last: {formatDateTime(prospect.last_contact_at)}</p>
+                      <p className="truncate">Next: {formatDateTime(prospect.next_follow_up_at)}</p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5">
+                      {primaryAction?.type === "contact" && (
+                        <form action={markProspectContactedFromList.bind(null, prospect.id)}>
+                          <button
+                            type="submit"
+                            className="inline-flex h-8 items-center rounded-md border border-brand/30 bg-brand/10 px-2.5 text-[10px] uppercase tracking-[0.08em] text-brand transition-colors hover:border-brand/50 hover:bg-brand/15"
+                          >
+                            {primaryAction.label}
+                          </button>
+                        </form>
+                      )}
+                      {primaryAction?.type === "status" && (
+                        <form action={updateProspectStatusFromList.bind(null, prospect.id, primaryAction.toStatus)}>
+                          <button
+                            type="submit"
+                            className="inline-flex h-8 items-center rounded-md border border-brand/30 bg-brand/10 px-2.5 text-[10px] uppercase tracking-[0.08em] text-brand transition-colors hover:border-brand/50 hover:bg-brand/15"
+                          >
+                            {primaryAction.label}
+                          </button>
+                        </form>
+                      )}
+                      {prospect.status === "qualified" && !prospect.converted_lead_id && (
+                        <Link
+                          href={`/admin/prospects/${prospect.id}`}
+                          className="inline-flex h-8 items-center rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2.5 text-[10px] uppercase tracking-[0.08em] text-emerald-300 transition-colors hover:border-emerald-400/45 hover:bg-emerald-500/15"
+                        >
+                          Convert to lead
+                        </Link>
+                      )}
+                      <Link
+                        href={`/admin/prospects/${prospect.id}`}
+                        className="inline-flex h-8 items-center rounded-md border border-zinc-700/70 px-2.5 text-[10px] uppercase tracking-[0.08em] text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-200"
+                      >
+                        Open
+                      </Link>
+                      {prospect.converted_lead_id && (
+                        <Link
+                          href={`/admin/leads/${prospect.converted_lead_id}`}
+                          className="inline-flex h-8 items-center rounded-md border border-emerald-500/20 px-2.5 text-[10px] text-emerald-300 transition-colors hover:border-emerald-500/35 hover:text-emerald-200"
+                        >
+                          View lead
+                        </Link>
+                      )}
+                      <ProspectSecondaryMenu prospect={prospect} />
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );
