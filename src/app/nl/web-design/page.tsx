@@ -3,21 +3,21 @@ import Link from "next/link";
 import NlNav from "@/components/nl-nav";
 import NlFooter from "@/components/nl-footer";
 import TrustpilotSignal from "@/components/trustpilot-signal";
+import { absoluteSiteUrl, buildLocalizedAlternates } from "@/lib/metadata";
+
+const NL_WEB_DESIGN_ALTERNATES = buildLocalizedAlternates({
+  canonicalPath: "/nl/web-design",
+  enPath: "/web-design",
+  nlPath: "/nl/web-design",
+});
 
 export const metadata: Metadata = {
   title: "Premium website design en ontwikkeling",
   description:
     "Maatwerk website design gebouwd voor conversie, performance en merk. Geen templates. Geen ballast. Ontworpen en gebouwd van brief tot browser door Inovense.",
-  alternates: {
-    canonical: "https://inovense.com/nl/web-design",
-    languages: {
-      en: "https://inovense.com/web-design",
-      nl: "https://inovense.com/nl/web-design",
-      "x-default": "https://inovense.com/web-design",
-    },
-  },
+  alternates: NL_WEB_DESIGN_ALTERNATES,
   openGraph: {
-    url: "https://inovense.com/nl/web-design",
+    url: absoluteSiteUrl("/nl/web-design"),
     title: "Premium website design en ontwikkeling | Inovense",
     description:
       "Maatwerk website design gebouwd voor conversie, performance en merk. Geen templates. Geen ballast. Ontworpen en gebouwd van brief tot browser door Inovense.",

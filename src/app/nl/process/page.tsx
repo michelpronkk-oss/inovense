@@ -3,21 +3,21 @@ import Link from "next/link";
 import NlNav from "@/components/nl-nav";
 import NlFooter from "@/components/nl-footer";
 import NlProcessHero from "@/components/nl/nl-process-hero";
+import { absoluteSiteUrl, buildLocalizedAlternates } from "@/lib/metadata";
+
+const NL_PROCESS_ALTERNATES = buildLocalizedAlternates({
+  canonicalPath: "/nl/process",
+  enPath: "/process",
+  nlPath: "/nl/process",
+});
 
 export const metadata: Metadata = {
   title: "Proces: Van intake tot overdracht",
   description:
     "Het Inovense proces in acht duidelijke stappen. Intake, scope, voorstel, aanbetaling, onboarding, uitvoering, lancering en overdracht zonder ruis.",
-  alternates: {
-    canonical: "https://inovense.com/nl/process",
-    languages: {
-      en: "https://inovense.com/process",
-      nl: "https://inovense.com/nl/process",
-      "x-default": "https://inovense.com/process",
-    },
-  },
+  alternates: NL_PROCESS_ALTERNATES,
   openGraph: {
-    url: "https://inovense.com/nl/process",
+    url: absoluteSiteUrl("/nl/process"),
     title: "Proces: Van intake tot overdracht | Inovense",
     description:
       "Het Inovense proces in acht duidelijke stappen. Intake, scope, voorstel, aanbetaling, onboarding, uitvoering, lancering en overdracht zonder ruis.",

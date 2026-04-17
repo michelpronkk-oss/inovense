@@ -4,21 +4,21 @@ import NlNav from "@/components/nl-nav";
 import NlFooter from "@/components/nl-footer";
 import NlSystemsHero from "@/components/nl/nl-systems-hero";
 import NlRelatedServices from "@/components/nl/nl-related-services";
+import { absoluteSiteUrl, buildLocalizedAlternates } from "@/lib/metadata";
+
+const NL_SYSTEMS_ALTERNATES = buildLocalizedAlternates({
+  canonicalPath: "/nl/systems",
+  enPath: "/systems",
+  nlPath: "/nl/systems",
+});
 
 export const metadata: Metadata = {
   title: "Slimme systemen. Minder handmatig werk. Betere resultaten. | Inovense",
   description:
     "Maatwerk workflows, automatiseringen en AI-tools die wrijving weghalen, tijd besparen en je bedrijf beter laten lopen. Vaste scope, heldere overdracht.",
-  alternates: {
-    canonical: "https://inovense.com/nl/systems",
-    languages: {
-      en: "https://inovense.com/systems",
-      nl: "https://inovense.com/nl/systems",
-      "x-default": "https://inovense.com/systems",
-    },
-  },
+  alternates: NL_SYSTEMS_ALTERNATES,
   openGraph: {
-    url: "https://inovense.com/nl/systems",
+    url: absoluteSiteUrl("/nl/systems"),
     title: "Slimme systemen. Minder handmatig werk. Betere resultaten. | Inovense",
     description:
       "Maatwerk workflows, automatiseringen en AI-tools die wrijving weghalen, tijd besparen en je bedrijf beter laten lopen. Vaste scope, heldere overdracht.",

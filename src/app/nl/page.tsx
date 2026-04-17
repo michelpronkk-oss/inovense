@@ -5,6 +5,13 @@ import NlNav from "@/components/nl-nav";
 import NlFooter from "@/components/nl-footer";
 import NlHomeHero from "@/components/nl/nl-home-hero";
 import TrustpilotSignal from "@/components/trustpilot-signal";
+import { absoluteSiteUrl, buildLocalizedAlternates } from "@/lib/metadata";
+
+const NL_HOME_ALTERNATES = buildLocalizedAlternates({
+  canonicalPath: "/nl",
+  enPath: "/",
+  nlPath: "/nl",
+});
 
 export const metadata: Metadata = {
   title: {
@@ -12,16 +19,9 @@ export const metadata: Metadata = {
   },
   description:
     "We bouwen websites, webshops en slimme automatiseringen voor bedrijven die echte resultaten willen. Op maat, conversiegericht, AI-ready.",
-  alternates: {
-    canonical: "https://inovense.com/nl",
-    languages: {
-      en: "https://inovense.com",
-      nl: "https://inovense.com/nl",
-      "x-default": "https://inovense.com",
-    },
-  },
+  alternates: NL_HOME_ALTERNATES,
   openGraph: {
-    url: "https://inovense.com/nl",
+    url: absoluteSiteUrl("/nl"),
     title: "Inovense | Websites, AI-automatisering en Groeisystemen",
     description:
       "We bouwen websites, webshops en slimme automatiseringen voor bedrijven die echte resultaten willen. Op maat, conversiegericht, AI-ready.",

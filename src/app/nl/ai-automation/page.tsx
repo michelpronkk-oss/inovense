@@ -3,21 +3,21 @@ import Link from "next/link";
 import NlNav from "@/components/nl-nav";
 import NlFooter from "@/components/nl-footer";
 import TrustpilotSignal from "@/components/trustpilot-signal";
+import { absoluteSiteUrl, buildLocalizedAlternates } from "@/lib/metadata";
+
+const NL_AI_AUTOMATION_ALTERNATES = buildLocalizedAlternates({
+  canonicalPath: "/nl/ai-automation",
+  enPath: "/ai-automation",
+  nlPath: "/nl/ai-automation",
+});
 
 export const metadata: Metadata = {
   title: "AI-automatisering en bedrijfsworkflows",
   description:
     "Praktische AI-automatisering, lead routing en operationele workflows voor bedrijven die echte interne hefboomwerking nodig hebben. Geen vage AI-beloften. Systemen die draaien.",
-  alternates: {
-    canonical: "https://inovense.com/nl/ai-automation",
-    languages: {
-      en: "https://inovense.com/ai-automation",
-      nl: "https://inovense.com/nl/ai-automation",
-      "x-default": "https://inovense.com/ai-automation",
-    },
-  },
+  alternates: NL_AI_AUTOMATION_ALTERNATES,
   openGraph: {
-    url: "https://inovense.com/nl/ai-automation",
+    url: absoluteSiteUrl("/nl/ai-automation"),
     title: "AI-automatisering en bedrijfsworkflows | Inovense",
     description:
       "Praktische AI-automatisering, lead routing en operationele workflows voor bedrijven die echte interne hefboomwerking nodig hebben. Geen vage AI-beloften. Systemen die draaien.",

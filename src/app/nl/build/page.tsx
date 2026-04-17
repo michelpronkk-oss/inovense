@@ -4,21 +4,21 @@ import NlNav from "@/components/nl-nav";
 import NlFooter from "@/components/nl-footer";
 import NlBuildHero from "@/components/nl/nl-build-hero";
 import NlRelatedServices from "@/components/nl/nl-related-services";
+import { absoluteSiteUrl, buildLocalizedAlternates } from "@/lib/metadata";
+
+const NL_BUILD_ALTERNATES = buildLocalizedAlternates({
+  canonicalPath: "/nl/build",
+  enPath: "/build",
+  nlPath: "/nl/build",
+});
 
 export const metadata: Metadata = {
   title: "Websites en webshops gebouwd om te converteren. | Inovense",
   description:
     "Op maat gebouwde websites, Shopify-winkels, landingspagina's en digitale producten. Conversiegericht, performance-first, en gebouwd van brief tot browser.",
-  alternates: {
-    canonical: "https://inovense.com/nl/build",
-    languages: {
-      en: "https://inovense.com/build",
-      nl: "https://inovense.com/nl/build",
-      "x-default": "https://inovense.com/build",
-    },
-  },
+  alternates: NL_BUILD_ALTERNATES,
   openGraph: {
-    url: "https://inovense.com/nl/build",
+    url: absoluteSiteUrl("/nl/build"),
     title: "Websites en webshops gebouwd om te converteren. | Inovense",
     description:
       "Op maat gebouwde websites, Shopify-winkels, landingspagina's en digitale producten. Conversiegericht, performance-first, en gebouwd van brief tot browser.",

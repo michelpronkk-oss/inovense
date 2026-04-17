@@ -44,6 +44,8 @@ export default function SnippetLibrary({
 }) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [activeSnippetId, setActiveSnippetId] = useState<string | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [mobileView, setMobileView] = useState<"list" | "preview">("list");
 
   const snippets = useMemo(() => {
     return PROSPECT_SNIPPETS.filter((snippet) => {
@@ -71,6 +73,9 @@ export default function SnippetLibrary({
     return snippets.find((snippet) => snippet.id === activeSnippetId) ?? preferredSnippet;
   }, [activeSnippetId, preferredSnippet, snippets]);
 
+  const totalCount = snippets.length;
+  const showMobilePreview = mobileView === "preview" && Boolean(activeSnippet);
+
   async function handleCopy(text: string, id: string) {
     try {
       await navigator.clipboard.writeText(text);
@@ -83,10 +88,20 @@ export default function SnippetLibrary({
     }
   }
 
-  const totalCount = snippets.length;
+  function handleSnippetSelect(id: string) {
+    setActiveSnippetId(id);
+    setMobileView("preview");
+  }
+
+  function handleSheetOpenChange(nextOpen: boolean) {
+    setSheetOpen(nextOpen);
+    if (!nextOpen) {
+      setMobileView("list");
+    }
+  }
 
   return (
-    <Sheet>
+    <Sheet open={sheetOpen} onOpenChange={handleSheetOpenChange}>
       <SheetTrigger asChild>
         <button
           type="button"
@@ -108,7 +123,7 @@ export default function SnippetLibrary({
             Internal operator support only. Preview first, then copy.
           </SheetDescription>
           <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-600">
-            {language.toUpperCase()} · {totalCount} snippet{totalCount !== 1 ? "s" : ""}
+            {language.toUpperCase()}  |  {totalCount} snippet{totalCount !== 1 ? "s" : ""}
           </p>
         </SheetHeader>
 
@@ -119,88 +134,183 @@ export default function SnippetLibrary({
             </div>
           </div>
         ) : (
-          <div className="grid h-[calc(100dvh-112px)] grid-cols-1 md:grid-cols-[320px_minmax(0,1fr)]">
-            <div className="border-b border-zinc-800/70 bg-zinc-900/35 px-4 py-4 md:h-full md:overflow-y-auto md:border-b-0 md:border-r">
-              <div className="space-y-2.5">
-                {snippetsByCategory.map((bucket) => (
-                  <section key={bucket.category} className="rounded-lg border border-zinc-800/70 bg-zinc-900/45 p-2.5">
-                    <div className="mb-2 flex items-center justify-between">
-                      <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
-                        {PROSPECT_SNIPPET_CATEGORY_LABELS[bucket.category]}
-                      </p>
-                      <span className="text-[10px] text-zinc-700">{bucket.items.length}</span>
-                    </div>
+          <>
+            <div className="md:hidden">
+              {!showMobilePreview ? (
+                <div className="h-[calc(100dvh-112px)] overflow-y-auto border-b border-zinc-800/70 bg-zinc-900/35 px-4 py-4 overscroll-contain">
+                  <div className="space-y-2.5">
+                    {snippetsByCategory.map((bucket) => (
+                      <section
+                        key={bucket.category}
+                        className="rounded-lg border border-zinc-800/70 bg-zinc-900/45 p-2.5"
+                      >
+                        <div className="mb-2 flex items-center justify-between">
+                          <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+                            {PROSPECT_SNIPPET_CATEGORY_LABELS[bucket.category]}
+                          </p>
+                          <span className="text-[10px] text-zinc-700">{bucket.items.length}</span>
+                        </div>
 
-                    <div className="space-y-1.5">
-                      {bucket.items.map((snippet) => {
-                        const isActive = activeSnippet?.id === snippet.id;
-                        return (
-                          <button
-                            key={snippet.id}
-                            type="button"
-                            onClick={() => setActiveSnippetId(snippet.id)}
-                            className={`w-full rounded-md border px-2.5 py-2 text-left transition-colors ${
-                              isActive
-                                ? "border-brand/40 bg-brand/10"
-                                : "border-zinc-800/85 bg-zinc-900/60 hover:border-zinc-700"
-                            }`}
-                          >
-                            <p className="text-[11px] font-medium text-zinc-200">{snippet.label}</p>
-                            <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-zinc-500">
-                              {snippet.useCase}
-                            </p>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </section>
-                ))}
-              </div>
-            </div>
-
-            <div className="h-full overflow-y-auto px-5 py-5 sm:px-6">
-              {activeSnippet ? (
-                <div className="mx-auto w-full max-w-3xl space-y-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
-                        Preview
-                      </p>
-                      <p className="mt-1 text-base font-medium text-zinc-100">{activeSnippet.label}</p>
-                      <p className="mt-1 text-sm leading-relaxed text-zinc-400">{activeSnippet.useCase}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(activeSnippet.body, activeSnippet.id)}
-                      className="inline-flex h-9 shrink-0 items-center rounded-lg border border-zinc-700/85 px-3 text-xs font-medium uppercase tracking-[0.08em] text-zinc-200 transition-colors hover:border-zinc-600 hover:text-zinc-100"
-                    >
-                      {copiedId === activeSnippet.id ? "Copied" : "Copy snippet"}
-                    </button>
+                        <div className="space-y-1.5">
+                          {bucket.items.map((snippet) => {
+                            const isActive = activeSnippet?.id === snippet.id;
+                            return (
+                              <button
+                                key={snippet.id}
+                                type="button"
+                                onClick={() => handleSnippetSelect(snippet.id)}
+                                className={`w-full rounded-md border px-2.5 py-2 text-left transition-colors ${
+                                  isActive
+                                    ? "border-brand/40 bg-brand/10"
+                                    : "border-zinc-800/85 bg-zinc-900/60 hover:border-zinc-700"
+                                }`}
+                              >
+                                <p className="text-[11px] font-medium text-zinc-200">{snippet.label}</p>
+                                <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-zinc-500">
+                                  {snippet.useCase}
+                                </p>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    ))}
                   </div>
-
-                  <div className="rounded-xl border border-zinc-800/85 bg-zinc-900/50 p-4 sm:p-5">
-                    <p className="mb-2 text-[10px] uppercase tracking-[0.1em] text-zinc-600">
-                      {PROSPECT_SNIPPET_CATEGORY_LABELS[activeSnippet.category]} ·{" "}
-                      {activeSnippet.language.toUpperCase()}
-                    </p>
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-200">
-                      {activeSnippet.body}
-                    </p>
-                  </div>
-
-                  <p className="text-[11px] text-zinc-600">
-                    Tip: replace placeholders before sending.
-                  </p>
                 </div>
               ) : (
-                <div className="rounded-lg border border-zinc-800/80 bg-zinc-900/45 p-3 text-xs text-zinc-600">
-                  Pick a snippet from the index to preview and copy.
+                <div className="h-[calc(100dvh-112px)] overflow-y-auto px-5 py-5 overscroll-contain">
+                  <div className="space-y-4">
+                    <button
+                      type="button"
+                      onClick={() => setMobileView("list")}
+                      className="inline-flex h-8 items-center rounded-lg border border-zinc-700/80 px-3 text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-300 transition-colors hover:border-zinc-600 hover:text-zinc-100"
+                    >
+                      Back to snippets
+                    </button>
+
+                    {activeSnippet ? (
+                      <div className="space-y-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+                              Preview
+                            </p>
+                            <p className="mt-1 text-base font-medium text-zinc-100">
+                              {activeSnippet.label}
+                            </p>
+                            <p className="mt-1 text-sm leading-relaxed text-zinc-400">
+                              {activeSnippet.useCase}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(activeSnippet.body, activeSnippet.id)}
+                            className="inline-flex h-9 shrink-0 items-center rounded-lg border border-zinc-700/85 px-3 text-xs font-medium uppercase tracking-[0.08em] text-zinc-200 transition-colors hover:border-zinc-600 hover:text-zinc-100"
+                          >
+                            {copiedId === activeSnippet.id ? "Copied" : "Copy snippet"}
+                          </button>
+                        </div>
+
+                        <div className="rounded-xl border border-zinc-800/85 bg-zinc-900/50 p-4">
+                          <p className="mb-2 text-[10px] uppercase tracking-[0.1em] text-zinc-600">
+                            {PROSPECT_SNIPPET_CATEGORY_LABELS[activeSnippet.category]}  | {" "}
+                            {activeSnippet.language.toUpperCase()}
+                          </p>
+                          <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-200">
+                            {activeSnippet.body}
+                          </p>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               )}
             </div>
-          </div>
+
+            <div className="hidden h-[calc(100dvh-112px)] grid-cols-[320px_minmax(0,1fr)] md:grid">
+              <div className="h-full overflow-y-auto border-r border-zinc-800/70 bg-zinc-900/35 px-4 py-4">
+                <div className="space-y-2.5">
+                  {snippetsByCategory.map((bucket) => (
+                    <section key={bucket.category} className="rounded-lg border border-zinc-800/70 bg-zinc-900/45 p-2.5">
+                      <div className="mb-2 flex items-center justify-between">
+                        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+                          {PROSPECT_SNIPPET_CATEGORY_LABELS[bucket.category]}
+                        </p>
+                        <span className="text-[10px] text-zinc-700">{bucket.items.length}</span>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        {bucket.items.map((snippet) => {
+                          const isActive = activeSnippet?.id === snippet.id;
+                          return (
+                            <button
+                              key={snippet.id}
+                              type="button"
+                              onClick={() => setActiveSnippetId(snippet.id)}
+                              className={`w-full rounded-md border px-2.5 py-2 text-left transition-colors ${
+                                isActive
+                                  ? "border-brand/40 bg-brand/10"
+                                  : "border-zinc-800/85 bg-zinc-900/60 hover:border-zinc-700"
+                              }`}
+                            >
+                              <p className="text-[11px] font-medium text-zinc-200">{snippet.label}</p>
+                              <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-zinc-500">
+                                {snippet.useCase}
+                              </p>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              </div>
+
+              <div className="h-full overflow-y-auto px-5 py-5 sm:px-6">
+                {activeSnippet ? (
+                  <div className="mx-auto w-full max-w-3xl space-y-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+                          Preview
+                        </p>
+                        <p className="mt-1 text-base font-medium text-zinc-100">{activeSnippet.label}</p>
+                        <p className="mt-1 text-sm leading-relaxed text-zinc-400">{activeSnippet.useCase}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(activeSnippet.body, activeSnippet.id)}
+                        className="inline-flex h-9 shrink-0 items-center rounded-lg border border-zinc-700/85 px-3 text-xs font-medium uppercase tracking-[0.08em] text-zinc-200 transition-colors hover:border-zinc-600 hover:text-zinc-100"
+                      >
+                        {copiedId === activeSnippet.id ? "Copied" : "Copy snippet"}
+                      </button>
+                    </div>
+
+                    <div className="rounded-xl border border-zinc-800/85 bg-zinc-900/50 p-4 sm:p-5">
+                      <p className="mb-2 text-[10px] uppercase tracking-[0.1em] text-zinc-600">
+                        {PROSPECT_SNIPPET_CATEGORY_LABELS[activeSnippet.category]}  | {" "}
+                        {activeSnippet.language.toUpperCase()}
+                      </p>
+                      <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-200">
+                        {activeSnippet.body}
+                      </p>
+                    </div>
+
+                    <p className="text-[11px] text-zinc-600">
+                      Tip: replace placeholders before sending.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-zinc-800/80 bg-zinc-900/45 p-3 text-xs text-zinc-600">
+                    Pick a snippet from the index to preview and copy.
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
         )}
       </SheetContent>
     </Sheet>
   );
 }
+

@@ -4,21 +4,21 @@ import NlNav from "@/components/nl-nav";
 import NlFooter from "@/components/nl-footer";
 import NlGrowthHero from "@/components/nl/nl-growth-hero";
 import NlRelatedServices from "@/components/nl/nl-related-services";
+import { absoluteSiteUrl, buildLocalizedAlternates } from "@/lib/metadata";
+
+const NL_GROWTH_ALTERNATES = buildLocalizedAlternates({
+  canonicalPath: "/nl/growth",
+  enPath: "/growth",
+  nlPath: "/nl/growth",
+});
 
 export const metadata: Metadata = {
   title: "Groeicampagnes gericht op pipeline, niet op impressies. | Inovense",
   description:
     "Betaalde media, content en leadgeneratie gebouwd om je pipeline te vullen. We draaien groeicampagnes voor bedrijven die gekwalificeerde leads nodig hebben.",
-  alternates: {
-    canonical: "https://inovense.com/nl/growth",
-    languages: {
-      en: "https://inovense.com/growth",
-      nl: "https://inovense.com/nl/growth",
-      "x-default": "https://inovense.com/growth",
-    },
-  },
+  alternates: NL_GROWTH_ALTERNATES,
   openGraph: {
-    url: "https://inovense.com/nl/growth",
+    url: absoluteSiteUrl("/nl/growth"),
     title: "Groeicampagnes gericht op pipeline, niet op impressies. | Inovense",
     description:
       "Betaalde media, content en leadgeneratie gebouwd om je pipeline te vullen. We draaien groeicampagnes voor bedrijven die gekwalificeerde leads nodig hebben.",

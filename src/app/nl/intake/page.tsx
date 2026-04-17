@@ -3,21 +3,21 @@ import NlNav from "@/components/nl-nav";
 import NlFooter from "@/components/nl-footer";
 import NlIntakeForm from "@/components/intake/nl-intake-form";
 import NlIntakeHero from "@/components/nl/nl-intake-hero";
+import { absoluteSiteUrl, buildLocalizedAlternates } from "@/lib/metadata";
+
+const NL_INTAKE_ALTERNATES = buildLocalizedAlternates({
+  canonicalPath: "/nl/intake",
+  enPath: "/intake",
+  nlPath: "/nl/intake",
+});
 
 export const metadata: Metadata = {
   title: "Project starten",
   description:
     "Vertel ons wat je bouwt. Inovense beoordeelt elke brief persoonlijk en reageert binnen 24 uur met een duidelijke richting, geen salesverhaal. Beperkte intake.",
-  alternates: {
-    canonical: "https://inovense.com/nl/intake",
-    languages: {
-      en: "https://inovense.com/intake",
-      nl: "https://inovense.com/nl/intake",
-      "x-default": "https://inovense.com/intake",
-    },
-  },
+  alternates: NL_INTAKE_ALTERNATES,
   openGraph: {
-    url: "https://inovense.com/nl/intake",
+    url: absoluteSiteUrl("/nl/intake"),
     title: "Project starten | Inovense",
     description:
       "Vertel ons wat je bouwt. Inovense beoordeelt elke brief persoonlijk en reageert binnen 24 uur met een duidelijke richting, geen salesverhaal. Beperkte intake.",

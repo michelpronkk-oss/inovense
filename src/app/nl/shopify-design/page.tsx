@@ -3,21 +3,21 @@ import Link from "next/link";
 import NlNav from "@/components/nl-nav";
 import NlFooter from "@/components/nl-footer";
 import TrustpilotSignal from "@/components/trustpilot-signal";
+import { absoluteSiteUrl, buildLocalizedAlternates } from "@/lib/metadata";
+
+const NL_SHOPIFY_DESIGN_ALTERNATES = buildLocalizedAlternates({
+  canonicalPath: "/nl/shopify-design",
+  enPath: "/shopify-design",
+  nlPath: "/nl/shopify-design",
+});
 
 export const metadata: Metadata = {
   title: "Premium Shopify design en ontwikkeling",
   description:
     "Maatwerk Shopify themes, productpagina's en e-commercedesign voor merken die een standaard stocktemplate zijn ontgroeid. Conversiefocus, merkniveau uitvoering, mobile-first.",
-  alternates: {
-    canonical: "https://inovense.com/nl/shopify-design",
-    languages: {
-      en: "https://inovense.com/shopify-design",
-      nl: "https://inovense.com/nl/shopify-design",
-      "x-default": "https://inovense.com/shopify-design",
-    },
-  },
+  alternates: NL_SHOPIFY_DESIGN_ALTERNATES,
   openGraph: {
-    url: "https://inovense.com/nl/shopify-design",
+    url: absoluteSiteUrl("/nl/shopify-design"),
     title: "Premium Shopify design en ontwikkeling | Inovense",
     description:
       "Maatwerk Shopify themes, productpagina's en e-commercedesign voor merken die een standaard stocktemplate zijn ontgroeid. Conversiefocus, merkniveau uitvoering, mobile-first.",
