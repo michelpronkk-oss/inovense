@@ -29,6 +29,21 @@ const workCases: WorkCase[] = [
     imageSrc: "/work/silentspend/hero.png",
   },
   {
+    title: "CheckoutLeak",
+    lane: "Revenue intelligence",
+    summary:
+      "Revenue leak detection platform for Shopify and Stripe operators. Website, backend, and core detection engine. Designed and built in full.",
+    evidence: [
+      "Problem: checkout revenue losses don't surface in standard reports",
+      "System: ranked recovery intelligence with root cause and fix paths",
+      "Proof: live product, invite-only operator access",
+    ],
+    tags: ["Product", "Systems", "Build"],
+    status: "Live case",
+    href: "/work/checkoutleak",
+    imageSrc: "/work/checkoutleak/hero.png",
+  },
+  {
     title: "St. Regis Marriott",
     lane: "Luxury digital infrastructure",
     summary:
@@ -40,6 +55,7 @@ const workCases: WorkCase[] = [
     ],
     tags: ["Build", "Luxury"],
     status: "Publishing soon",
+    imageSrc: "/work/st-regis/hero.png",
   },
   {
     title: "The Nude Bottle",
@@ -65,40 +81,52 @@ function CaseCard({ item }: { item: WorkCase }) {
         </p>
       </div>
 
-      <div className="relative aspect-[16/10] border-b border-zinc-800/80 bg-zinc-950/80">
-        {item.imageSrc ? (
-          <Image
-            src={item.imageSrc}
-            alt={`${item.title} case preview`}
-            fill
-            sizes="(max-width: 768px) 86vw, (max-width: 1024px) 68vw, 33vw"
-            className="h-full w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-[1.015]"
-          />
-        ) : (
-          <div
-            className="flex h-full items-end p-5"
-            style={{
-              backgroundImage:
-                "linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px)",
-              backgroundSize: "26px 26px",
-            }}
-          >
-            <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-600">
-              {item.status}
-            </p>
+      <div className="border-b border-zinc-800/80 bg-zinc-950/80">
+        {/* Browser chrome */}
+        <div className="flex items-center gap-1.5 border-b border-zinc-800/60 bg-zinc-900/70 px-3.5 py-2.5">
+          <span className="h-2 w-2 rounded-full bg-zinc-700/80" aria-hidden />
+          <span className="h-2 w-2 rounded-full bg-zinc-700/80" aria-hidden />
+          <span className="h-2 w-2 rounded-full bg-zinc-700/80" aria-hidden />
+          <div className="mx-2 flex-1 rounded-sm bg-zinc-800/80 px-2.5 py-1 text-[9px] text-zinc-600">
+            {item.imageSrc ? item.title.toLowerCase().replace(/\s+/g, "") + ".com" : ""}
           </div>
-        )}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(to top, rgba(9,9,11,0.30) 0%, rgba(9,9,11,0) 45%)",
-          }}
-        />
+        </div>
+
+        <div className="relative aspect-[16/10]">
+          {item.imageSrc ? (
+            <Image
+              src={item.imageSrc}
+              alt={`${item.title} case preview`}
+              fill
+              sizes="(max-width: 768px) 86vw, (max-width: 1024px) 68vw, 33vw"
+              className="h-full w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-[1.015]"
+            />
+          ) : (
+            <div
+              className="flex h-full items-end p-5"
+              style={{
+                backgroundImage:
+                  "linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px)",
+                backgroundSize: "26px 26px",
+              }}
+            >
+              <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-600">
+                {item.status}
+              </p>
+            </div>
+          )}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(to top, rgba(9,9,11,0.30) 0%, rgba(9,9,11,0) 45%)",
+            }}
+          />
+        </div>
       </div>
 
-      <div className="flex min-h-[216px] flex-col p-5 md:min-h-[230px]">
+      <div className="flex flex-1 flex-col p-5">
         <h3 className="text-lg font-semibold tracking-tight text-zinc-50 md:text-xl">
           {item.title}
         </h3>
@@ -136,7 +164,7 @@ function CaseCard({ item }: { item: WorkCase }) {
   );
 
   const baseClassName =
-    "group block min-w-[88%] snap-start overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/55 sm:min-w-[68%] md:min-w-0 md:h-full";
+    "group flex flex-col min-w-[88%] snap-start overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/55 sm:min-w-[68%] md:min-w-0 md:h-full";
 
   if (item.href) {
     return (
@@ -165,7 +193,7 @@ export default function Work() {
               Product and systems cases.
             </h2>
             <p className="mt-4 max-w-2xl text-sm leading-relaxed text-zinc-500 md:text-base">
-              SilentSpend is live. Additional engagements are structured for upcoming case releases.
+              SilentSpend and CheckoutLeak are live. Additional engagements are structured for upcoming case releases.
             </p>
           </div>
         </div>
