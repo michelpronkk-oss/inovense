@@ -33,15 +33,15 @@ export default function BuildCTA() {
 
       <div className="relative mx-auto max-w-4xl px-6 text-center">
         <p className="mb-6 text-xs font-medium uppercase tracking-widest text-brand">
-          Start a build
+          Build review
         </p>
 
         <h2 className="text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-5xl">
-          Ready to build something that converts?
+          Need a website layer that closes better leads?
         </h2>
 
         <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-zinc-400 md:text-lg">
-          Send us a brief and we will scope your project within 48 hours.
+          Share your current site and offer. We will review structure, trust signal, and conversion path, then recommend the right build scope.
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
@@ -51,7 +51,7 @@ export default function BuildCTA() {
             className="rounded-full bg-brand px-10 text-white hover:bg-brand/90"
           >
             <Link href="/intake">
-              Start a build project
+              Request a build review
             </Link>
           </Button>
           <span className="text-sm text-zinc-600">
@@ -67,7 +67,7 @@ export default function BuildCTA() {
 
         {/* Trust strip: flex-wrap for mobile, one brand dot per item */}
         <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-          {["Fixed-price proposals. No hidden costs."].map(
+          {["Selective intake. Structured scope. Clean handoff."].map(
             (item) => (
               <span
                 key={item}

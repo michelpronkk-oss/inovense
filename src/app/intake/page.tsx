@@ -7,7 +7,7 @@ import IntakeForm from "@/components/intake/intake-form";
 export const metadata: Metadata = {
   title: "Request a Build Review",
   description:
-    "Request a build review for your website and client acquisition flow. Inovense reviews every brief personally and replies within 24 hours with a clear direction.",
+    "Request a build review for your website and client acquisition flow. Tell Inovense what you are building, where the current flow leaks, and what needs to become cleaner.",
   alternates: {
     canonical: "https://inovense.com/intake",
     languages: {
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     url: "https://inovense.com/intake",
     title: "Request a Build Review | Inovense",
     description:
-      "Request a build review for your website and client acquisition flow. Inovense reviews every brief personally and replies within 24 hours with a clear direction.",
+      "Tell Inovense what you are building, where the current flow leaks, and what needs to become cleaner before the next launch.",
   },
 };
 

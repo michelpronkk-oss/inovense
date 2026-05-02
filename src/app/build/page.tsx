@@ -11,9 +11,9 @@ import BuildCTA from "@/components/build/build-cta";
 import RelatedServices from "@/components/related-services";
 
 export const metadata: Metadata = {
-  title: "Conversion Website and Landing Page Build",
+  title: "Websites Built as Acquisition Systems",
   description:
-    "Conversion websites, landing pages, and Shopify builds for teams that need better qualified leads and stronger first-call trust.",
+    "Premium websites, landing pages, and conversion architecture built around offer clarity, trust, intake paths, and qualified client action.",
   alternates: {
     canonical: "https://inovense.com/build",
     languages: {
@@ -24,9 +24,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/build",
-    title: "Conversion websites and landing systems. | Inovense",
+    title: "Websites Built as Acquisition Systems | Inovense",
     description:
-      "Custom-built websites and Shopify builds designed for conversion, speed, and handoff from lead to paid project.",
+      "Premium website execution shaped around offer clarity, trust, intake paths, and qualified client action.",
   },
 };
 

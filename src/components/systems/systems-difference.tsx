@@ -1,18 +1,18 @@
 const differences = [
   {
     number: "01",
-    title: "Built to your workflow, not ours",
-    body: "We do not fit your business into an off-the-shelf tool. We scope the system around how you already work.",
+    title: "Designed around your real client flow",
+    body: "We map how leads enter, qualify, and close in your business, then design systems around that reality instead of generic templates.",
   },
   {
     number: "02",
-    title: "Handed off properly",
-    body: "Every system comes with documentation, training, and a clean handoff so your team can own it from day one.",
+    title: "Clear ownership at every handoff",
+    body: "Intake, sales, delivery, and operations each get clear responsibilities so leads do not stall between teams.",
   },
   {
     number: "03",
-    title: "Speed and reliability",
-    body: "Systems that respond fast, handle errors cleanly, and keep working when you are not watching.",
+    title: "Reliable automation, not fragile glue",
+    body: "Workflows are built with error handling, alerting, and visibility so the system remains dependable when volume rises.",
   },
   {
     number: "04",
@@ -22,7 +22,7 @@ const differences = [
   {
     number: "05",
     title: "Commercial impact first",
-    body: "Every automation we build is judged by whether it saves real time or improves a commercial outcome. No vanity tooling.",
+    body: "Each workflow is judged on practical outcomes: faster response, cleaner qualification, fewer dropped leads, and smoother close-to-delivery transition.",
   },
 ];
 

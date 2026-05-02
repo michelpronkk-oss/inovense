@@ -5,9 +5,9 @@ import Footer from "@/components/footer";
 import ProcessHero from "./_hero";
 
 export const metadata: Metadata = {
-  title: "Project Process and Client Delivery",
+  title: "Controlled Process From Review to Launch",
   description:
-    "From brief to handoff in eight steps. Learn exactly how Inovense structures every engagement: intake, proposal, payment, onboarding, execution, launch, and handoff.",
+    "A controlled Inovense delivery process from first review to launch: clear scope, fast decisions, clean handoff, and fewer revision loops.",
   alternates: {
     canonical: "https://inovense.com/process",
     languages: {
@@ -18,9 +18,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/process",
-    title: "Project Process and Client Delivery | Inovense",
+    title: "Controlled Process From Review to Launch | Inovense",
     description:
-      "From brief to handoff in eight steps. Learn exactly how Inovense structures every engagement: intake, proposal, payment, onboarding, execution, launch, and handoff.",
+      "Clear scope, fast decisions, clean handoff, and a delivery rhythm designed to avoid revision chaos.",
   },
 };
 
@@ -410,7 +410,7 @@ function ProcessCTA() {
             href="/intake"
             className="rounded-full bg-brand px-10 py-3 text-sm font-medium text-zinc-950 transition-colors hover:bg-brand/90"
           >
-            Start a project
+            Request a build review
           </Link>
           <span className="text-sm text-zinc-600">
             or email{" "}

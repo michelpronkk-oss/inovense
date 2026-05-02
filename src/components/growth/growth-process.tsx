@@ -2,25 +2,25 @@ const steps = [
   {
     number: "01",
     title: "Audit and Baseline",
-    body: "We audit your current channels, conversion points, and growth data before making a single recommendation. We need to know what is actually working and what is not before designing anything.",
+    body: "We audit channel performance, landing behavior, lead quality, and handoff outcomes to establish a clear baseline before changes are made.",
     note: "Evidence before strategy",
   },
   {
     number: "02",
     title: "Strategy and Architecture",
-    body: "We design a growth system built around your business model, margin structure, and acquisition goals. Not a generic playbook applied to your brand. A specific, structured plan.",
+    body: "We design an acquisition plan around business model, margin reality, and conversion constraints. This includes assets, funnel variants, and testing priorities.",
     note: "Built for your business",
   },
   {
     number: "03",
     title: "Build and Launch",
-    body: "System build, campaign creation, content production, and technical implementation. Everything set up to the same production standard as our Build and Systems work.",
+    body: "Campaign setup, asset production, landing variants, and tracking implementation are launched as one coordinated system.",
     note: "Production-grade standard",
   },
   {
     number: "04",
     title: "Optimise and Compound",
-    body: "Continuous refinement based on real signal. Conversion testing, channel optimisation, and compounding execution over time. Growth that builds on itself rather than restarting each month.",
+    body: "We run recurring test cycles based on source-to-lead evidence. Winning patterns are scaled, weak points are replaced, and performance compounds instead of resetting monthly.",
     note: "Long-term compounding",
   },
 ];
@@ -36,7 +36,7 @@ export default function GrowthProcess() {
             Growth process
           </p>
           <h2 className="max-w-md text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-            From brief to compounding acquisition.
+            From baseline to compounding demand.
           </h2>
         </div>
 

@@ -9,17 +9,17 @@ const services: Record<
   build: {
     label: "Build",
     href: "/build",
-    description: "Websites and digital products",
+    description: "Conversion websites and landing architecture",
   },
   systems: {
     label: "Systems",
     href: "/systems",
-    description: "AI workflows and automation",
+    description: "Intake, CRM, and client flow automation",
   },
   growth: {
     label: "Growth",
     href: "/growth",
-    description: "SEO, content, and paid growth",
+    description: "Demand iteration and conversion feedback loops",
   },
 };
 
@@ -35,7 +35,7 @@ const laneGuidance: Record<
   build: {
     question: "When should you choose Build?",
     answer:
-      "Choose Build when trust, conversion, or digital product quality is the bottleneck. If your offer is strong but the site experience is underperforming, this is the right lane.",
+      "Choose Build when the offer is strong but trust, clarity, or conversion performance on the website is holding back qualified leads.",
     serviceLinks: [
       { label: "Web Design", href: "/web-design" },
       { label: "Shopify Design", href: "/shopify-design" },
@@ -46,7 +46,7 @@ const laneGuidance: Record<
   systems: {
     question: "When should you choose Systems?",
     answer:
-      "Choose Systems when manual operations, routing errors, or disconnected tools are creating avoidable revenue leakage and team friction.",
+      "Choose Systems when qualified leads are being slowed or dropped between intake, qualification, CRM handoff, proposal, and onboarding.",
     serviceLinks: [
       { label: "AI Automation", href: "/ai-automation" },
       { label: "Lead Generation Systems", href: "/lead-generation-systems" },
@@ -57,7 +57,7 @@ const laneGuidance: Record<
   growth: {
     question: "When should you choose Growth?",
     answer:
-      "Choose Growth when core delivery works but qualified demand is not compounding. Growth lane work focuses on durable acquisition systems instead of short spikes.",
+      "Choose Growth when delivery is solid but demand quality is inconsistent. Growth lane work improves assets, testing loops, and source-to-lead learning.",
     serviceLinks: [
       { label: "Lead Generation Systems", href: "/lead-generation-systems" },
       { label: "Process", href: "/process" },

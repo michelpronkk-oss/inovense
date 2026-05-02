@@ -33,15 +33,15 @@ export default function SystemsCTA() {
 
       <div className="relative mx-auto max-w-4xl px-6 text-center">
         <p className="mb-6 text-xs font-medium uppercase tracking-widest text-brand">
-          Start a systems project
+          Systems review
         </p>
 
         <h2 className="text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-5xl">
-          Want to remove the manual work slowing you down?
+          Need a cleaner lead-to-client operating flow?
         </h2>
 
         <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-zinc-400 md:text-lg">
-          Describe your workflow and we will show you what is possible.
+          Share where leads stall between intake, CRM, proposal, and onboarding. We will map the highest-leverage systems fixes.
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
@@ -50,7 +50,7 @@ export default function SystemsCTA() {
             size="lg"
             className="rounded-full bg-brand px-10 text-white hover:bg-brand/90"
           >
-            <Link href="/intake">Start a systems project</Link>
+            <Link href="/intake">Request a systems review</Link>
           </Button>
           <span className="text-sm text-zinc-600">
             or email{" "}
@@ -65,7 +65,7 @@ export default function SystemsCTA() {
 
         {/* Trust strip */}
         <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-          {["Fixed scope. Clear delivery. No retainer required."].map(
+          {["Fixed scope. Clear handoff. Built for operator ownership."].map(
             (item) => (
               <span
                 key={item}

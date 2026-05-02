@@ -54,7 +54,7 @@ export default function GrowthOutcomes() {
             href="#growth-contact"
             className="self-start text-sm font-medium text-zinc-500 transition-colors hover:text-brand md:self-auto"
           >
-            Start your growth project
+            Request a growth review
           </a>
         </div>
 

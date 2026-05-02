@@ -1,23 +1,23 @@
 const offerings = [
   {
     number: "01",
-    title: "AI-powered lead handling",
+    title: "Intake and qualification flow",
     description:
-      "Automated intake, qualification, routing, and follow-up flows. Leads handled faster, with less manual effort.",
+      "Structured intake, qualification rules, routing logic, and first-response workflows so qualified leads are handled quickly and consistently.",
     tag: "Most requested",
   },
   {
     number: "02",
-    title: "CRM and pipeline automation",
+    title: "CRM handoff and pipeline automation",
     description:
-      "Custom CRM setups and automated pipeline workflows built around how your team actually sells.",
+      "CRM setup and stage automation built around how your team actually sells, with clean context transfer from lead capture to pipeline.",
     tag: null,
   },
   {
     number: "03",
-    title: "Operational workflows",
+    title: "Proposal and onboarding workflows",
     description:
-      "We map, build, and automate the repetitive processes eating your team's time: proposals, onboarding, handoffs, reporting.",
+      "Proposal generation, approval flow, onboarding steps, and handoff routines mapped and automated to reduce response lag and manual admin.",
     tag: null,
   },
   {
@@ -29,9 +29,9 @@ const offerings = [
   },
   {
     number: "05",
-    title: "AI content and document generation",
+    title: "Document and communication automation",
     description:
-      "Automated generation of proposals, briefs, reports, and client-facing documents from your existing data.",
+      "Automated proposals, briefs, summaries, and client updates generated from your real data with consistent structure and fewer handoff errors.",
     tag: null,
   },
   {
@@ -58,12 +58,12 @@ export default function SystemsOfferings() {
               What we build
             </p>
             <h2 className="text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-              Systems that run while you work.
+              Systems that keep the commercial flow moving.
             </h2>
           </div>
           <div className="flex items-end">
             <p className="max-w-sm text-sm leading-relaxed text-zinc-500">
-              Every system is scoped, built, and handed over so your team can run it without us.
+              Every system is scoped around lead-to-client continuity and handed over so your team can run it without us.
             </p>
           </div>
         </div>

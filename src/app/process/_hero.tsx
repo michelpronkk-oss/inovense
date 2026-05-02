@@ -172,7 +172,7 @@ const itemVariants = {
 
 export default function ProcessHero() {
   return (
-    <section className="relative overflow-hidden pb-20 pt-32 lg:flex lg:min-h-screen lg:items-center">
+    <section className="relative overflow-hidden pb-20 pt-32 md:pb-24 lg:pt-36">
 
       {/* Grid texture */}
       <div
@@ -190,10 +190,10 @@ export default function ProcessHero() {
       {/* Ambient glow: center-left */}
       <div
         aria-hidden
-        className="pointer-events-none absolute left-[-5%] top-[-15%] h-[85vh] w-[75%]"
+        className="pointer-events-none absolute left-1/2 top-[-18%] h-[70vh] w-[90%] -translate-x-1/2"
         style={{
           background:
-            "radial-gradient(ellipse 68% 58% at 35% 38%, rgba(73,160,164,0.13) 0%, rgba(73,160,164,0.03) 52%, transparent 70%)",
+            "radial-gradient(ellipse 70% 58% at 50% 30%, rgba(73,160,164,0.13) 0%, rgba(73,160,164,0.03) 52%, transparent 72%)",
         }}
       />
 
@@ -207,11 +207,11 @@ export default function ProcessHero() {
       />
 
       <div className="relative mx-auto w-full max-w-6xl px-6">
-        <div className="flex flex-col items-start gap-16 lg:flex-row lg:items-center lg:gap-14">
+        <div className="flex flex-col items-center gap-12 text-center">
 
           {/* ── Left: Content ── */}
           <motion.div
-            className="w-full flex-shrink-0 lg:max-w-[520px]"
+            className="mx-auto w-full max-w-4xl"
             variants={containerVariants}
             initial="hidden"
             animate="visible"
@@ -221,37 +221,35 @@ export default function ProcessHero() {
                 variant="outline"
                 className="border-brand/30 bg-brand/10 px-3 py-1 text-xs font-medium tracking-wide text-brand"
               >
-                How we work ·· Inovense
+                Controlled execution
               </Badge>
             </motion.div>
 
             <motion.h1
               variants={itemVariants}
-              className="text-5xl font-semibold leading-[1.08] tracking-tight text-zinc-50 lg:text-6xl"
+              className="mx-auto max-w-4xl text-4xl font-semibold leading-[1.08] tracking-tight text-zinc-50 sm:text-5xl lg:text-6xl"
             >
-              Clarity, structure, and precision{" "}
-              <em className="not-italic text-brand">from day one.</em>
+              A controlled process{" "}
+              <em className="not-italic text-brand">from first review to launch.</em>
             </motion.h1>
 
             <motion.p
               variants={itemVariants}
-              className="mt-6 max-w-[440px] text-lg leading-relaxed text-zinc-400"
+              className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-zinc-400 sm:text-lg"
             >
-              Every Inovense engagement follows the same structure. You always
-              know what is happening, what comes next, and exactly what you will
-              have when we are done.
+              Clear scope, fast decisions, clean handoff, and a delivery rhythm designed to avoid revision chaos.
             </motion.p>
 
             <motion.div
               variants={itemVariants}
-              className="mt-8 flex flex-col gap-3 sm:flex-row"
+              className="mt-8 flex flex-col justify-center gap-3 sm:flex-row"
             >
               <Button
                 asChild
                 size="lg"
                 className="rounded-full bg-brand px-8 text-white hover:bg-brand/90"
               >
-                <Link href="/intake">Start a project</Link>
+                <Link href="/intake">Request a build review</Link>
               </Button>
               <Button
                 asChild
@@ -265,7 +263,7 @@ export default function ProcessHero() {
 
             <motion.div
               variants={itemVariants}
-              className="mt-5 flex items-center gap-2"
+              className="mt-5 flex items-center justify-center gap-2"
             >
               <span
                 className="h-1 w-1 shrink-0 rounded-full bg-zinc-700"
@@ -276,23 +274,13 @@ export default function ProcessHero() {
                 <span className="text-zinc-500">· Full ownership on delivery</span>
               </span>
             </motion.div>
-
-            <motion.div
-              variants={itemVariants}
-              className="mt-8 flex items-center gap-4"
-            >
-              <div className="h-px w-8 bg-brand/40" />
-              <span className="text-xs uppercase tracking-[0.2em] text-zinc-600">
-                Process ·· Inovense
-              </span>
-            </motion.div>
           </motion.div>
 
           {/* ── Right: Engagement tracker, desktop only ── */}
-          <div className="hidden w-full flex-1 lg:block">
+          <div className="hidden w-full max-w-3xl md:block">
             <motion.div
-              initial={{ opacity: 0, x: 40 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: 28 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.5 }}
             >
               <motion.div

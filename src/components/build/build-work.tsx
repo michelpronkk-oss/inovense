@@ -54,7 +54,7 @@ export default function BuildWork() {
             href="#build-contact"
             className="self-start text-sm font-medium text-zinc-500 transition-colors hover:text-brand md:self-auto"
           >
-            Start your build project
+            Request a build review
           </a>
         </div>
 

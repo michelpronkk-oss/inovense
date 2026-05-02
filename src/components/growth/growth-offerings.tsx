@@ -1,9 +1,9 @@
 const offerings = [
   {
     number: "01",
-    title: "Paid social campaigns",
+    title: "Paid campaign systems",
     description:
-      "Meta and LinkedIn campaigns built for lead quality, not just reach. Every campaign is tied to an intake or conversion goal.",
+      "Meta, LinkedIn, and search campaigns scoped to qualified lead quality, not vanity reach. Every campaign is tied to a conversion objective.",
     tag: "Most requested",
   },
   {
@@ -15,30 +15,30 @@ const offerings = [
   },
   {
     number: "03",
-    title: "Lead generation funnels",
+    title: "Landing page and offer variants",
     description:
-      "End-to-end funnel builds: landing page, offer, ad, follow-up automation, scoped as one complete system.",
+      "Variant-based landing pages, offer angles, and call-to-action structures built for testing, learning, and conversion improvement.",
     tag: null,
   },
   {
     number: "04",
-    title: "Content and organic growth",
+    title: "Proof loops and content systems",
     description:
-      "Content strategy and execution designed to build authority and generate inbound leads over time.",
+      "Content and proof distribution systems designed to reinforce trust, support campaigns, and improve inbound quality over time.",
     tag: null,
   },
   {
     number: "05",
-    title: "Email and CRM nurture",
+    title: "Follow-up and nurture flow",
     description:
-      "Email sequences, re-engagement campaigns, and CRM-based nurture flows that convert pipeline into revenue.",
+      "Email and CRM nurture sequences that carry qualified leads from first response through sales conversation and close readiness.",
     tag: null,
   },
   {
     number: "06",
-    title: "Performance audits",
+    title: "Performance and signal audits",
     description:
-      "We audit current campaigns, identify the drop-off points, and deliver a prioritised action plan with clear expected impact.",
+      "Recurring reviews that identify drop-off points by source, asset, and funnel step, then prioritize the next conversion tests.",
     tag: null,
   },
 ];
@@ -58,12 +58,12 @@ export default function GrowthOfferings() {
               What we run
             </p>
             <h2 className="text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-              Growth work that connects to commercial results.
+              Growth work that compounds commercial signal.
             </h2>
           </div>
           <div className="flex items-end">
             <p className="max-w-sm text-sm leading-relaxed text-zinc-500">
-              Every growth project is scoped around a commercial goal, not a channel.
+              Every Growth engagement is scoped as an iteration system connected to Build and Systems, not as isolated channel work.
             </p>
           </div>
         </div>

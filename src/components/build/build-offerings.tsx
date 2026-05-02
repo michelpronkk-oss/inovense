@@ -1,9 +1,9 @@
 const offerings = [
   {
     number: "01",
-    title: "Conversion-focused website",
+    title: "Conversion website architecture",
     description:
-      "Multi-page websites built around your offer, your audience, and your conversion goals. Clean, fast, and built to earn trust from the first visit.",
+      "Multi-page websites structured around offer clarity, trust, and qualified conversion paths. Built to support serious buying decisions.",
     tag: "Most requested",
   },
   {
@@ -17,21 +17,21 @@ const offerings = [
     number: "03",
     title: "Landing pages",
     description:
-      "High-converting landing pages for campaigns, launches, and lead generation. Built fast and A/B-ready.",
+      "Landing pages for campaigns, launches, and high-intent offers. Built for rapid iteration and clear conversion measurement.",
     tag: null,
   },
   {
     number: "04",
     title: "Redesign and migration",
     description:
-      "Existing site underperforming? We rebuild from a clean foundation: faster, sharper, and better converting.",
+      "Full rebuilds for underperforming websites. Faster performance, better trust signal, cleaner lead flow, and stronger offer communication.",
     tag: null,
   },
   {
     number: "05",
-    title: "CMS and content layer",
+    title: "CMS and handoff layer",
     description:
-      "Full CMS setup so your team can update content without touching code.",
+      "Structured CMS setup and handoff so your team can update content, launch pages, and run campaigns without dev dependency.",
     tag: null,
   },
 ];
@@ -48,12 +48,12 @@ export default function BuildOfferings() {
               What&apos;s included
             </p>
             <h2 className="text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-              What we build.
+              What Build includes.
             </h2>
           </div>
           <div className="flex items-end">
             <p className="max-w-sm text-sm leading-relaxed text-zinc-500">
-              Every Build project is scoped and delivered as a custom solution.
+              Every Build engagement is scoped as conversion infrastructure, not decorative web design.
             </p>
           </div>
         </div>

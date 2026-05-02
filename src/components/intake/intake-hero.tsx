@@ -64,9 +64,9 @@ export default function IntakeHero() {
         >
           <motion.p
             variants={item}
-            className="mb-5 text-xs font-medium uppercase tracking-widest text-brand"
+            className="mb-5 text-xs font-medium uppercase tracking-[0.12em] text-brand"
           >
-            Project intake
+            Build review
           </motion.p>
 
           <motion.h1
@@ -80,7 +80,7 @@ export default function IntakeHero() {
             variants={item}
             className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-zinc-400"
           >
-            Share your website, current lead flow, and project goals. We review every submission personally and respond within 24 hours with a clear next step.
+            Tell us what you are building, where the current flow leaks, and what needs to become cleaner before the next launch.
           </motion.p>
 
           <motion.div

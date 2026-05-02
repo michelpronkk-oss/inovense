@@ -11,9 +11,9 @@ import GrowthCTA from "@/components/growth/growth-cta";
 import RelatedServices from "@/components/related-services";
 
 export const metadata: Metadata = {
-  title: "Growth Systems for Qualified Pipeline",
+  title: "Growth Loops for Acquisition Systems",
   description:
-    "Paid media, SEO, and campaign systems built to drive qualified pipeline into conversion-ready websites and automated client workflows.",
+    "Campaign assets, landing-page variants, proof loops, and source feedback built to improve acquisition systems over time.",
   alternates: {
     canonical: "https://inovense.com/growth",
     languages: {
@@ -24,9 +24,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/growth",
-    title: "Growth campaigns built for qualified pipeline. | Inovense",
+    title: "Growth Loops Built Around the System | Inovense",
     description:
-      "Growth execution built for teams that care about qualified leads, conversion quality, and long-term pipeline signal.",
+      "Growth execution for teams that care about qualified leads, conversion quality, and long-term pipeline signal.",
   },
 };
 

@@ -163,7 +163,7 @@ const itemVariants = {
 
 export default function BuildHero() {
   return (
-    <section className="relative overflow-hidden pt-32 pb-20 lg:min-h-screen lg:flex lg:items-center">
+    <section className="relative overflow-hidden pb-20 pt-32 md:pb-24 lg:pt-36">
 
       {/* Grid texture */}
       <div
@@ -181,10 +181,10 @@ export default function BuildHero() {
       {/* Ambient glow: left-biased, behind the text */}
       <div
         aria-hidden
-        className="animate-ambient-pulse pointer-events-none absolute -left-[10%] top-[-15%] h-[90vh] w-[80%]"
+        className="animate-ambient-pulse pointer-events-none absolute left-1/2 top-[-18%] h-[70vh] w-[90%] -translate-x-1/2"
         style={{
           background:
-            "radial-gradient(ellipse 70% 60% at 30% 40%, rgba(73,160,164,0.15) 0%, rgba(73,160,164,0.03) 50%, transparent 70%)",
+            "radial-gradient(ellipse 70% 58% at 50% 30%, rgba(73,160,164,0.15) 0%, rgba(73,160,164,0.03) 52%, transparent 72%)",
         }}
       />
 
@@ -198,11 +198,11 @@ export default function BuildHero() {
       />
 
       <div className="relative mx-auto w-full max-w-6xl px-6">
-        <div className="flex flex-col items-start gap-16 lg:flex-row lg:items-center lg:gap-14">
+        <div className="flex flex-col items-center gap-12 text-center">
 
           {/* ── Left: Content ── */}
           <motion.div
-            className="w-full flex-shrink-0 lg:max-w-[520px]"
+            className="mx-auto w-full max-w-4xl"
             variants={containerVariants}
             initial="hidden"
             animate="visible"
@@ -212,35 +212,35 @@ export default function BuildHero() {
                 variant="outline"
                 className="border-brand/30 bg-brand/10 px-3 py-1 text-xs font-medium tracking-wide text-brand"
               >
-                Build ·· Lane 01
+                Conversion architecture
               </Badge>
             </motion.div>
 
             <motion.h1
               variants={itemVariants}
-              className="text-4xl font-semibold leading-[1.1] tracking-tight text-zinc-50 sm:text-5xl lg:text-6xl"
+              className="mx-auto max-w-4xl text-4xl font-semibold leading-[1.08] tracking-tight text-zinc-50 sm:text-5xl lg:text-6xl"
             >
-              Websites and webshops that earn{" "}
-              <em className="not-italic text-brand">trust</em> and convert.
+              Websites built as{" "}
+              <em className="not-italic text-brand">acquisition systems.</em>
             </motion.h1>
 
             <motion.p
               variants={itemVariants}
-              className="mt-6 max-w-[440px] text-base leading-relaxed text-zinc-400 sm:text-lg"
+              className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-zinc-400 sm:text-lg"
             >
-              Custom-built sites and Shopify stores designed for performance, not just good looks.
+              We shape the offer, page structure, trust layer, and intake path so visitors can move from interest to qualified action.
             </motion.p>
 
             <motion.div
               variants={itemVariants}
-              className="mt-8 flex flex-col gap-3 sm:flex-row"
+              className="mt-8 flex flex-col justify-center gap-3 sm:flex-row"
             >
               <Button
                 asChild
                 size="lg"
                 className="rounded-full bg-brand px-8 text-white hover:bg-brand/90"
               >
-                <Link href="/intake">Start a build project</Link>
+                <Link href="/intake">Request a build review</Link>
               </Button>
               <Button
                 asChild
@@ -248,34 +248,24 @@ export default function BuildHero() {
                 size="lg"
                 className="rounded-full border-zinc-700 bg-transparent px-8 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50"
               >
-                <Link href="#build-work">View build work</Link>
+                <Link href="#build-work">View build outcomes</Link>
               </Button>
             </motion.div>
 
-            <motion.div variants={itemVariants} className="mt-5 flex items-center gap-2">
+            <motion.div variants={itemVariants} className="mt-5 flex items-center justify-center gap-2">
               <span className="h-1 w-1 shrink-0 rounded-full bg-zinc-700" aria-hidden="true" />
               <span className="text-xs text-zinc-600">
-                We build for businesses that need more than a template.
-              </span>
-            </motion.div>
-
-            <motion.div
-              variants={itemVariants}
-              className="mt-8 flex items-center gap-4"
-            >
-              <div className="h-px w-8 bg-brand/40" />
-              <span className="text-xs uppercase tracking-[0.2em] text-zinc-600">
-                Build lane ·· Inovense
+                Conversion architecture, premium execution, and launch control in one lane.
               </span>
             </motion.div>
           </motion.div>
 
           {/* Right: Browser mock, desktop only */}
-          <div className="hidden w-full flex-1 lg:block">
+          <div className="hidden w-full max-w-3xl md:block">
             {/* Entrance animation wrapper */}
             <motion.div
-              initial={{ opacity: 0, x: 40 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: 28 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.5 }}
             >
               {/* Continuous float */}

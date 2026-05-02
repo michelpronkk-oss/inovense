@@ -2,25 +2,25 @@ const steps = [
   {
     number: "01",
     title: "Discovery & Brief",
-    body: "We get clear on goals, audience, and what success actually looks like. Site structure, conversion priorities, and scope locked before design starts.",
+    body: "We align on offer, audience, and commercial goals. Information architecture, conversion priorities, and intake path are defined before design begins.",
     note: "Alignment before execution",
   },
   {
     number: "02",
     title: "Design Direction",
-    body: "Visual language, layout, and component structure reviewed with you. Alignment on direction before a single line of production code gets written.",
+    body: "Visual direction, section hierarchy, and page flow are reviewed early so trust signal and conversion intent are aligned before production build.",
     note: "Design-first, no surprises",
   },
   {
     number: "03",
     title: "Build & QA",
-    body: "Full-stack development, cross-device QA, performance testing, and accessibility review. Nothing ships until it passes.",
+    body: "Production development with cross-device QA, performance testing, and launch checks. Nothing moves live until speed, stability, and conversion flow pass review.",
     note: "Production-ready standard",
   },
   {
     number: "04",
     title: "Launch & Handoff",
-    body: "Clean deployment with full code and asset ownership. CMS access, documentation, and post-launch support. You leave with everything, owing nothing.",
+    body: "Controlled launch with full ownership transfer. CMS access, documentation, and handoff support ensure your team can operate the site independently.",
     note: "Full ownership, no lock-in",
   },
 ];

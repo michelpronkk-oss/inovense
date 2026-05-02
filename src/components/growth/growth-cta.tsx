@@ -33,15 +33,15 @@ export default function GrowthCTA() {
 
       <div className="relative mx-auto max-w-4xl px-6 text-center">
         <p className="mb-6 text-xs font-medium uppercase tracking-widest text-brand">
-          Start a growth project
+          Growth review
         </p>
 
         <h2 className="text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-5xl">
-          Ready to grow with a focused, senior team?
+          Need cleaner demand and stronger conversion signal?
         </h2>
 
         <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-zinc-400 md:text-lg">
-          Tell us your growth goal and we will scope a plan.
+          Share your current channels and conversion bottlenecks. We will outline a focused testing and optimization path.
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
@@ -50,7 +50,7 @@ export default function GrowthCTA() {
             size="lg"
             className="rounded-full bg-brand px-10 text-white hover:bg-brand/90"
           >
-            <Link href="/intake">Start a growth project</Link>
+            <Link href="/intake">Request a growth review</Link>
           </Button>
           <span className="text-sm text-zinc-600">
             or email{" "}
@@ -65,7 +65,7 @@ export default function GrowthCTA() {
 
         {/* Trust strip */}
         <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-          {["Selective intake. We take on projects we can win."].map(
+          {["Selective intake. Built for qualified pipeline outcomes."].map(
             (item) => (
               <span
                 key={item}

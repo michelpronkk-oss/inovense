@@ -11,9 +11,9 @@ import SystemsCTA from "@/components/systems/systems-cta";
 import RelatedServices from "@/components/related-services";
 
 export const metadata: Metadata = {
-  title: "Client Acquisition Systems and Workflow Automation",
+  title: "Client Flow Systems and Acquisition Automation",
   description:
-    "Automated intake, follow-up, proposal, onboarding, and CRM workflows designed to remove friction from your lead-to-client handoff.",
+    "Intake, qualification, follow-up, proposal, payment, onboarding, and CRM handoff systems built to reduce leakage after the first click.",
   alternates: {
     canonical: "https://inovense.com/systems",
     languages: {
@@ -24,9 +24,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/systems",
-    title: "Automated client systems. Less leakage. | Inovense",
+    title: "The Client Flow Behind Every Better Website | Inovense",
     description:
-      "Custom workflows and CRM automation that keep qualified leads moving from intake to paid project without manual gaps.",
+      "Client acquisition systems that keep qualified leads moving from intake to paid project without manual gaps.",
   },
 };
 

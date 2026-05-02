@@ -11,9 +11,9 @@ import {
 } from "@/lib/geo";
 
 export const metadata: Metadata = {
-  title: "Premium Website Design and Development",
+  title: "Premium Conversion Website Design",
   description:
-    "Custom website design built for conversion, performance, and brand. No templates. No bloat. Designed and built from brief to browser by Inovense.",
+    "Premium conversion websites for serious buyers: sharper structure, stronger offer flow, conversion-ready pages, and no generic templates.",
   alternates: {
     canonical: "https://inovense.com/web-design",
     languages: {
@@ -24,9 +24,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/web-design",
-    title: "Premium Website Design and Development | Inovense",
+    title: "Premium Conversion Website Design | Inovense",
     description:
-      "Custom website design built for conversion, performance, and brand. No templates. No bloat. Designed and built from brief to browser by Inovense.",
+      "Premium conversion websites with sharper structure, stronger offer flow, and conversion-ready pages.",
   },
 };
 
@@ -49,7 +49,7 @@ const webDesignServiceSchema = {
   },
   url: `${INOVENSE_URL}/web-design`,
   description:
-    "Custom website design and development focused on trust, conversion, and performance.",
+    "Premium website design and development focused on trust, offer flow, conversion, and performance.",
 };
 
 /* ─── Primitives ────────────────────────────────────────────────────────── */
@@ -94,36 +94,34 @@ function Hero() {
         }}
       />
 
-      <div className="relative mx-auto max-w-5xl px-6">
-        <div className="mb-8 flex flex-wrap items-center gap-2">
+      <div className="relative mx-auto max-w-5xl px-6 text-center">
+        <div className="mb-8 flex flex-wrap items-center justify-center gap-2">
           <span className="inline-flex items-center rounded-full border border-brand/25 bg-brand/8 px-3 py-1 text-[11px] font-medium tracking-wide text-brand">
-            Web Design
+            Conversion websites
           </span>
           <span className="inline-flex items-center rounded-full border border-zinc-700/60 px-3 py-1 text-[11px] font-medium text-zinc-500">
-            Build lane
+            Website systems
           </span>
           <span className="inline-flex items-center rounded-full border border-zinc-700/60 px-3 py-1 text-[11px] font-medium text-zinc-500">
             No templates
           </span>
         </div>
 
-        <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-6xl md:leading-[1.06]">
-          Websites that hold up{" "}
-          <span className="text-brand">under scrutiny.</span>
+        <h1 className="mx-auto max-w-3xl text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-6xl md:leading-[1.06]">
+          Premium websites built to{" "}
+          <span className="text-brand">convert serious buyers.</span>
         </h1>
 
-        <p className="mt-6 max-w-2xl text-base leading-relaxed text-zinc-400 md:text-lg">
-          Conversion-focused, performance-first website design and development
-          for founders, operators, and brands that compete on quality. Built
-          from brief to browser. Nothing templated.
+        <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-zinc-400 md:text-lg">
+          A sharper site structure, stronger offer flow, and conversion-ready pages for businesses that cannot afford a generic online presence.
         </p>
 
-        <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+        <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
           <Link
             href="/intake"
             className="inline-flex items-center justify-center rounded-full bg-brand px-8 py-3 text-sm font-medium text-zinc-950 transition-colors hover:bg-brand/90"
           >
-            Start a project
+            Request a build review
           </Link>
           <Link
             href="/process"
@@ -133,7 +131,7 @@ function Hero() {
           </Link>
         </div>
 
-        <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2">
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
           {["No templates", "Full ownership on delivery", "24-hour response"].map(
             (item) => (
               <span key={item} className="flex items-center gap-2 text-xs text-zinc-700">
@@ -588,7 +586,7 @@ function PageCTA() {
       />
 
       <div className="relative mx-auto max-w-4xl px-6 text-center">
-        <Eyebrow>Start a web design project</Eyebrow>
+        <Eyebrow>Request a build review</Eyebrow>
 
         <h2 className="text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-5xl">
           Ready to build a website
@@ -606,7 +604,7 @@ function PageCTA() {
             href="/intake"
             className="rounded-full bg-brand px-10 py-3 text-sm font-medium text-zinc-950 transition-colors hover:bg-brand/90"
           >
-            Start a project
+            Request a build review
           </Link>
           <span className="text-sm text-zinc-600">
             or email{" "}

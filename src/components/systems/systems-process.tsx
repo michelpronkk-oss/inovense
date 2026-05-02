@@ -2,25 +2,25 @@ const steps = [
   {
     number: "01",
     title: "Audit and Map",
-    body: "We map your current processes, tools, and manual workflows before touching anything. We need to understand what actually exists before we design what comes next.",
+    body: "We map intake, qualification, CRM movement, follow-up, proposal, and onboarding so we can see exactly where qualified leads slow down or drop.",
     note: "Clarity before design",
   },
   {
     number: "02",
     title: "System Design",
-    body: "We design the logic, flow architecture, and integration structure with you. No black boxes. You understand what we are building, why it works that way, and what it connects to.",
+    body: "We design flow logic, ownership rules, and integration structure with your team. You understand what is being built, why, and how each handoff works.",
     note: "No surprises in production",
   },
   {
     number: "03",
     title: "Build and Test",
-    body: "Production-grade implementation with real-world edge-case testing. We stress-test failure states, timing issues, and data integrity before anything goes near your live environment.",
+    body: "Production implementation with real-world testing across timing, data integrity, and failure states before anything reaches your live lead flow.",
     note: "Reliable from day one",
   },
   {
     number: "04",
     title: "Deploy and Document",
-    body: "Clean deployment with full documentation, operator training where needed, and post-launch monitoring. You leave with full ownership of your systems and everything needed to run them.",
+    body: "Clean deployment with documentation, operator training, and launch monitoring so your team can run and improve the system without external dependency.",
     note: "Full ownership, no lock-in",
   },
 ];
@@ -36,7 +36,7 @@ export default function SystemsProcess() {
             Systems process
           </p>
           <h2 className="max-w-md text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-            From brief to live infrastructure.
+            From workflow audit to live client system.
           </h2>
         </div>
 

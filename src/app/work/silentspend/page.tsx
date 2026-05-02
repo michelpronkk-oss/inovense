@@ -130,10 +130,10 @@ function Hero() {
         }}
       />
 
-      <div className="relative mx-auto max-w-5xl px-6">
+      <div className="relative mx-auto max-w-5xl px-6 text-center lg:text-left">
         <Link
-          href="/build"
-          className="mb-10 inline-flex items-center gap-2 text-xs text-zinc-600 transition-colors hover:text-zinc-400"
+          href="/#work"
+          className="mb-10 inline-flex items-center justify-center gap-2 text-xs text-zinc-600 transition-colors hover:text-zinc-400"
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
             <path
@@ -144,10 +144,10 @@ function Hero() {
               strokeLinejoin="round"
             />
           </svg>
-          Build lane
+          Selected work
         </Link>
 
-        <div className="mb-6 flex flex-wrap items-center gap-2">
+        <div className="mb-6 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
           {tags.map((tag) => (
             <span
               key={tag}
@@ -160,17 +160,17 @@ function Hero() {
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.6fr_1fr] lg:items-end lg:gap-10">
           <div>
-            <h1 className="max-w-2xl text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-6xl md:leading-[1.05]">
+            <h1 className="mx-auto max-w-2xl text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-6xl md:leading-[1.05] lg:mx-0">
               SilentSpend is a <span className="text-brand">global monetization layer.</span>
             </h1>
 
-            <p className="mt-6 max-w-2xl text-base leading-relaxed text-zinc-400 md:text-lg">
+            <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-zinc-400 md:text-lg lg:mx-0">
               Not a dashboard. A high-trust decision system for pricing movement,
               packaging shifts, trial and free-tier changes, paywall changes, and
               monetization surface movement across digital businesses.
             </p>
 
-            <div className="mt-7 flex flex-wrap gap-3">
+            <div className="mt-7 flex flex-wrap justify-center gap-3 lg:justify-start">
               <a
                 href="https://www.silentspend.com"
                 target="_blank"
@@ -192,7 +192,7 @@ function Hero() {
                 href="/intake"
                 className="inline-flex items-center rounded-full border border-zinc-700 px-6 py-2.5 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50"
               >
-                Start a project
+                Discuss the system
               </Link>
             </div>
           </div>
@@ -219,7 +219,7 @@ function Hero() {
           </div>
         </div>
 
-        <div className="mt-8 flex flex-wrap gap-x-8 gap-y-4 md:mt-10 md:gap-x-10 md:gap-y-5">
+        <div className="mt-8 flex flex-wrap justify-center gap-x-8 gap-y-4 md:mt-10 md:gap-x-10 md:gap-y-5 lg:justify-start">
           {[
             { label: "Client", value: "SilentSpend" },
             { label: "Engagement", value: "Internal product design and build" },
@@ -724,7 +724,7 @@ function CTA() {
             href="/intake"
             className="rounded-full bg-brand px-10 py-3 text-sm font-medium text-zinc-950 transition-colors hover:bg-brand/90"
           >
-            Start a project
+            Discuss the system
           </Link>
           <Link
             href="/systems"

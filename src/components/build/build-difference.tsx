@@ -1,28 +1,28 @@
 const differences = [
   {
     number: "01",
-    title: "Speed matters",
-    body: "Every site we build is performance-optimised. Fast load times, clean code, and solid Core Web Vitals.",
+    title: "Speed and launch stability",
+    body: "Performance is built in from day one: fast rendering, clean implementation, and stable launch behavior under real traffic.",
   },
   {
     number: "02",
-    title: "Trust-first design",
-    body: "We build layouts that feel premium and credible from the first impression. Trust is the first conversion.",
+    title: "Trust architecture",
+    body: "We design page structure and messaging to establish credibility quickly. Trust is the first step in every high-value conversion path.",
   },
   {
     number: "03",
-    title: "Mobile without compromise",
-    body: "Mobile experience is designed first, not adjusted after. Every interaction is tested on real devices.",
+    title: "Mobile quality by default",
+    body: "Mobile layouts are designed as core surfaces, not fallback versions. Spacing, flow, and interaction are tuned for high-intent visitors.",
   },
   {
     number: "04",
-    title: "Copy and flow together",
-    body: "We work on layout and copy simultaneously so structure and message reinforce each other.",
+    title: "Offer clarity in the build",
+    body: "Layout, copy, and call-to-action hierarchy are developed together so your offer is clear and decision friction is reduced.",
   },
   {
     number: "05",
-    title: "Handoff that works",
-    body: "You get a site you understand, can manage, and can hand to a team without confusion.",
+    title: "Operator-ready handoff",
+    body: "You leave with a site your team can manage and extend confidently, with clear ownership and no technical dependency loop.",
   },
 ];
 
@@ -37,7 +37,7 @@ export default function BuildDifference() {
             The difference
           </p>
           <h2 className="max-w-lg text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-            Why our builds perform.
+            Why Build supports commercial outcomes.
           </h2>
         </div>
 

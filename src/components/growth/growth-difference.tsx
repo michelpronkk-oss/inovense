@@ -1,28 +1,28 @@
 const differences = [
   {
     number: "01",
-    title: "We build the funnel, not just the ad",
-    body: "Traffic without a strong landing experience does not convert. We build both sides of the funnel together.",
+    title: "We optimize the full conversion loop",
+    body: "Traffic, landing experience, intake quality, and follow-up are treated as one system. We do not isolate the ad from the handoff.",
   },
   {
     number: "02",
     title: "Commercial goals come first",
-    body: "We measure against pipeline and revenue, not vanity metrics. If it does not move the number, we adjust.",
+    body: "We measure by qualified pipeline signal and close quality, not surface engagement metrics. If signal drops, we adjust quickly.",
   },
   {
     number: "03",
-    title: "AI-assisted optimisation",
-    body: "We use AI tools to improve copy testing, audience refinement, and signal interpretation faster than manual workflows allow.",
+    title: "Fast iteration with clear evidence",
+    body: "Creative, offer, and page variants are tested in structured cycles so decisions come from evidence instead of opinion.",
   },
   {
     number: "04",
-    title: "Cross-channel awareness",
-    body: "We look at your full acquisition picture: paid, organic, email, and referral, and find the highest-leverage place to focus.",
+    title: "Source-to-lead visibility",
+    body: "We track which sources and assets produce qualified conversations, then reallocate effort to the highest-leverage opportunities.",
   },
   {
     number: "05",
-    title: "Transparent reporting",
-    body: "Clean, operator-grade performance reports. You always know where your money went and what it produced.",
+    title: "Operator-grade reporting",
+    body: "Reporting is designed for action: what changed, what improved, where leads leaked, and what we test next.",
   },
 ];
 

@@ -5,9 +5,9 @@ import Footer from "@/components/footer";
 import TrustpilotSignal from "@/components/trustpilot-signal";
 
 export const metadata: Metadata = {
-  title: "Premium Shopify Design and Development",
+  title: "Shopify Storefronts Built for Conversion",
   description:
-    "Custom Shopify themes, product pages, and ecommerce design for brands that have outgrown a stock template. Conversion-focused, brand-level execution, mobile-first.",
+    "Shopify storefronts built around product pages, offer structure, trust elements, and checkout paths for a cleaner buying experience.",
   alternates: {
     canonical: "https://inovense.com/shopify-design",
     languages: {
@@ -18,9 +18,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/shopify-design",
-    title: "Premium Shopify Design and Development | Inovense",
+    title: "Shopify Storefronts Built for Conversion | Inovense",
     description:
-      "Custom Shopify themes, product pages, and ecommerce design for brands that have outgrown a stock template. Conversion-focused, brand-level execution, mobile-first.",
+      "Ecommerce conversion architecture for product pages, offer structure, trust elements, and checkout paths.",
   },
 };
 
@@ -66,46 +66,44 @@ function Hero() {
         }}
       />
 
-      <div className="relative mx-auto max-w-5xl px-6">
-        <div className="mb-8 flex flex-wrap items-center gap-2">
+      <div className="relative mx-auto max-w-5xl px-6 text-center">
+        <div className="mb-8 flex flex-wrap items-center justify-center gap-2">
           <span className="inline-flex items-center rounded-full border border-brand/25 bg-brand/8 px-3 py-1 text-[11px] font-medium tracking-wide text-brand">
-            Shopify Design
+            Shopify conversion
           </span>
           <span className="inline-flex items-center rounded-full border border-zinc-700/60 px-3 py-1 text-[11px] font-medium text-zinc-500">
-            Build lane
+            Storefront systems
           </span>
           <span className="inline-flex items-center rounded-full border border-zinc-700/60 px-3 py-1 text-[11px] font-medium text-zinc-500">
-            No theme reskins
+            Ecommerce trust layer
           </span>
         </div>
 
-        <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-6xl md:leading-[1.06]">
-          A Shopify store worth{" "}
-          <span className="text-brand">the brand behind it.</span>
+        <h1 className="mx-auto max-w-3xl text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-6xl md:leading-[1.06]">
+          Shopify storefronts built for{" "}
+          <span className="text-brand">trust and conversion.</span>
         </h1>
 
-        <p className="mt-6 max-w-2xl text-base leading-relaxed text-zinc-400 md:text-lg">
-          Custom Shopify themes, product page systems, and ecommerce design
-          for brands that need more than a modified stock template.
-          Designed for conversion, built for brand, mobile-first throughout.
+        <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-zinc-400 md:text-lg">
+          Product pages, offer structure, trust elements, and checkout paths shaped for a cleaner buying experience.
         </p>
 
-        <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+        <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
           <Link
             href="/intake"
             className="inline-flex items-center justify-center rounded-full bg-brand px-8 py-3 text-sm font-medium text-zinc-950 transition-colors hover:bg-brand/90"
           >
-            Start a Shopify project
+            Request a Shopify review
           </Link>
           <Link
             href="/build"
             className="inline-flex items-center justify-center rounded-full border border-zinc-700 px-8 py-3 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50"
           >
-            See the Build lane
+            Explore website systems
           </Link>
         </div>
 
-        <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2">
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
           {[
             "No theme reskins",
             "Mobile-first execution",
@@ -569,7 +567,7 @@ function PageCTA() {
       />
 
       <div className="relative mx-auto max-w-4xl px-6 text-center">
-        <Eyebrow>Start a Shopify project</Eyebrow>
+        <Eyebrow>Request a Shopify review</Eyebrow>
 
         <h2 className="text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-5xl">
           Ready to build a store
@@ -586,7 +584,7 @@ function PageCTA() {
             href="/intake"
             className="rounded-full bg-brand px-10 py-3 text-sm font-medium text-zinc-950 transition-colors hover:bg-brand/90"
           >
-            Start a project
+            Request a Shopify review
           </Link>
           <span className="text-sm text-zinc-600">
             or email{" "}
