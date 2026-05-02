@@ -21,26 +21,63 @@ const INITIAL_GENERATE_STATE: GenerateProspectsState = {
 };
 
 const MARKET_OPTIONS = [
-  "Netherlands",
-  "United Kingdom",
   "United States",
+  "United Kingdom",
+  "Canada",
+  "Australia",
+  "Netherlands",
 ] as const;
 
 const NICHE_OPTIONS = [
-  "Digital marketing agency",
-  "Shopify agency",
-  "Ecommerce brand",
-  "Consultant",
-  "Interior designer",
-  "Renovation company",
-  "Beauty salon",
-  "Beauty clinic",
+  "Medspa",
+  "Aesthetic clinic",
+  "Cosmetic dentist",
+  "Dental implants clinic",
+  "Law firm",
+  "Personal injury law firm",
+  "Immigration law firm",
+  "Business consultant",
+  "High-ticket coach",
+  "Fractional CFO",
+  "Fractional CMO",
+  "Marketing agency",
+  "Creative agency",
+  "Web agency",
+  "Performance marketing agency",
+  "Home remodeling company",
+  "Roofing company",
+  "HVAC company",
+  "Solar installer",
+  "Private clinic",
+  "Wellness studio",
+  "Performance studio",
+  "B2B service provider",
+  "IT consultancy",
+  "Cybersecurity consultancy",
+  "Recruitment firm",
 ] as const;
 
 const LOCATION_BY_MARKET: Record<string, string[]> = {
-  Netherlands: ["Amsterdam", "Rotterdam", "Utrecht"],
-  "United Kingdom": ["London", "Manchester", "Birmingham"],
-  "United States": ["New York", "Austin", "Miami", "Los Angeles"],
+  "United States": [
+    "Miami",
+    "Los Angeles",
+    "New York",
+    "Austin",
+    "Dallas",
+    "Chicago",
+    "Phoenix",
+    "Denver",
+    "Houston",
+    "Tampa",
+    "San Diego",
+    "Nashville",
+    "Atlanta",
+    "Scottsdale",
+  ],
+  "United Kingdom": ["London", "Manchester", "Birmingham", "Leeds"],
+  Canada: ["Toronto", "Vancouver", "Calgary"],
+  Australia: ["Sydney", "Melbourne", "Brisbane"],
+  Netherlands: ["Amsterdam", "Rotterdam", "Utrecht", "Eindhoven"],
 };
 
 type GeneratePreset = {
@@ -52,85 +89,67 @@ type GeneratePreset = {
   source: string;
 };
 
-const RECOMMENDED_PRESETS: GeneratePreset[] = [
-  {
-    label: "UK Agencies, London",
-    market: "United Kingdom",
-    niche: "Digital marketing agency",
-    location: "London",
-    volume: "15",
-    source: "outbound",
-  },
-  {
-    label: "UK Agencies, Manchester",
-    market: "United Kingdom",
-    niche: "Digital marketing agency",
-    location: "Manchester",
-    volume: "15",
-    source: "outbound",
-  },
-  {
-    label: "NL Agencies, Amsterdam",
-    market: "Netherlands",
-    niche: "Digital marketing agency",
-    location: "Amsterdam",
-    volume: "15",
-    source: "outbound",
-  },
-  {
-    label: "NL Renovation, Amsterdam",
-    market: "Netherlands",
-    niche: "Renovation company",
-    location: "Amsterdam",
-    volume: "15",
-    source: "outbound",
-  },
-  {
-    label: "NL Interior, Amsterdam",
-    market: "Netherlands",
-    niche: "Interior designer",
-    location: "Amsterdam",
-    volume: "15",
-    source: "outbound",
-  },
+const PRIMARY_PRESETS: GeneratePreset[] = [
+  { label: "US Medspas, Miami", market: "United States", niche: "Medspa", location: "Miami", volume: "18", source: "outbound" },
+  { label: "US Medspas, Los Angeles", market: "United States", niche: "Medspa", location: "Los Angeles", volume: "18", source: "outbound" },
+  { label: "US Aesthetic Clinics, New York", market: "United States", niche: "Aesthetic clinic", location: "New York", volume: "18", source: "outbound" },
+  { label: "US Cosmetic Dentists, Austin", market: "United States", niche: "Cosmetic dentist", location: "Austin", volume: "18", source: "outbound" },
+  { label: "US Dental Implants, Dallas", market: "United States", niche: "Dental implants clinic", location: "Dallas", volume: "18", source: "outbound" },
+  { label: "US Law Firms, Chicago", market: "United States", niche: "Law firm", location: "Chicago", volume: "18", source: "outbound" },
+  { label: "US Personal Injury Law, Phoenix", market: "United States", niche: "Personal injury law firm", location: "Phoenix", volume: "18", source: "outbound" },
+  { label: "US Home Remodeling, Denver", market: "United States", niche: "Home remodeling company", location: "Denver", volume: "18", source: "outbound" },
+  { label: "US Roofing Companies, Houston", market: "United States", niche: "Roofing company", location: "Houston", volume: "18", source: "outbound" },
+  { label: "US HVAC Companies, Tampa", market: "United States", niche: "HVAC company", location: "Tampa", volume: "18", source: "outbound" },
+  { label: "US Business Consultants, New York", market: "United States", niche: "Business consultant", location: "New York", volume: "18", source: "outbound" },
+  { label: "US Fractional CFOs, Austin", market: "United States", niche: "Fractional CFO", location: "Austin", volume: "18", source: "outbound" },
+  { label: "UK Aesthetic Clinics, London", market: "United Kingdom", niche: "Aesthetic clinic", location: "London", volume: "15", source: "outbound" },
+  { label: "UK Dental Clinics, Manchester", market: "United Kingdom", niche: "Cosmetic dentist", location: "Manchester", volume: "15", source: "outbound" },
+  { label: "UK Business Consultants, London", market: "United Kingdom", niche: "Business consultant", location: "London", volume: "15", source: "outbound" },
+  { label: "UK Agencies, London", market: "United Kingdom", niche: "Marketing agency", location: "London", volume: "15", source: "outbound" },
 ];
 
-const SECONDARY_PRESETS: GeneratePreset[] = [
-  {
-    label: "UK Shopify Agencies, London",
-    market: "United Kingdom",
-    niche: "Shopify agency",
-    location: "London",
-    volume: "15",
-    source: "outbound",
-  },
-  {
-    label: "NL Renovation, Utrecht",
-    market: "Netherlands",
-    niche: "Renovation company",
-    location: "Utrecht",
-    volume: "15",
-    source: "outbound",
-  },
-  {
-    label: "US Agencies, Austin",
-    market: "United States",
-    niche: "Digital marketing agency",
-    location: "Austin",
-    volume: "18",
-    source: "outbound",
-  },
+const PARTNER_PRESETS: GeneratePreset[] = [
+  { label: "US Marketing Agencies, Austin", market: "United States", niche: "Marketing agency", location: "Austin", volume: "18", source: "outbound" },
+  { label: "US Creative Agencies, New York", market: "United States", niche: "Creative agency", location: "New York", volume: "18", source: "outbound" },
+  { label: "UK Web Agencies, London", market: "United Kingdom", niche: "Web agency", location: "London", volume: "15", source: "outbound" },
+  { label: "UK Performance Agencies, Manchester", market: "United Kingdom", niche: "Performance marketing agency", location: "Manchester", volume: "15", source: "outbound" },
+  { label: "Canada Agencies, Toronto", market: "Canada", niche: "Marketing agency", location: "Toronto", volume: "15", source: "outbound" },
+  { label: "Australia Agencies, Sydney", market: "Australia", niche: "Marketing agency", location: "Sydney", volume: "15", source: "outbound" },
 ];
+
+const NL_PRESETS: GeneratePreset[] = [
+  { label: "NL Aesthetic Clinics, Amsterdam", market: "Netherlands", niche: "Aesthetic clinic", location: "Amsterdam", volume: "15", source: "outbound" },
+  { label: "NL Dental Clinics, Rotterdam", market: "Netherlands", niche: "Cosmetic dentist", location: "Rotterdam", volume: "15", source: "outbound" },
+  { label: "NL Renovation Companies, Utrecht", market: "Netherlands", niche: "Home remodeling company", location: "Utrecht", volume: "15", source: "outbound" },
+  { label: "NL Agencies, Amsterdam", market: "Netherlands", niche: "Marketing agency", location: "Amsterdam", volume: "15", source: "outbound" },
+];
+
+function isActivePreset(
+  preset: GeneratePreset,
+  market: string,
+  niche: string,
+  location: string,
+  volume: string,
+  source: string
+) {
+  return (
+    preset.market === market &&
+    preset.niche === niche &&
+    preset.location === location &&
+    preset.volume === volume &&
+    preset.source === source
+  );
+}
 
 export default function GenerateForm({
   sourceOptions,
 }: {
   sourceOptions: Array<{ value: string; label: string }>;
 }) {
-  const [market, setMarket] = useState<string>("United Kingdom");
-  const [niche, setNiche] = useState<string>("Digital marketing agency");
-  const [location, setLocation] = useState<string>("London");
-  const [volume, setVolume] = useState<string>("15");
+  const [market, setMarket] = useState<string>("United States");
+  const [niche, setNiche] = useState<string>("Medspa");
+  const [location, setLocation] = useState<string>("Miami");
+  const [volume, setVolume] = useState<string>("18");
   const [source, setSource] = useState<string>("outbound");
 
   const [state, formAction, isPending] = useActionState(
@@ -155,61 +174,68 @@ export default function GenerateForm({
     setSource(preset.source);
   }
 
+  const activeCheck = (preset: GeneratePreset) =>
+    isActivePreset(preset, market, niche, location, volume, source);
+
+  function PresetChip({
+    preset,
+    dim,
+  }: {
+    preset: GeneratePreset;
+    dim?: boolean;
+  }) {
+    const active = activeCheck(preset);
+    return (
+      <button
+        key={preset.label}
+        type="button"
+        onClick={() => applyPreset(preset)}
+        className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.08em] transition-colors ${
+          active
+            ? "border-brand/45 bg-brand/15 text-brand"
+            : dim
+            ? "border-zinc-800/70 bg-zinc-900/40 text-zinc-600 hover:border-zinc-700 hover:text-zinc-300"
+            : "border-zinc-700/80 bg-zinc-900/60 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200"
+        }`}
+      >
+        {preset.label}
+      </button>
+    );
+  }
+
   return (
     <form action={formAction} className="space-y-3">
-      <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/35 p-3">
-        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
-          Recommended presets
-        </p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {RECOMMENDED_PRESETS.map((preset) => {
-            const active =
-              preset.market === market &&
-              preset.niche === niche &&
-              preset.location === location &&
-              preset.volume === volume &&
-              preset.source === source;
-            return (
-              <button
-                key={preset.label}
-                type="button"
-                onClick={() => applyPreset(preset)}
-                className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.08em] transition-colors ${
-                  active
-                    ? "border-brand/45 bg-brand/15 text-brand"
-                    : "border-zinc-700/80 bg-zinc-900/60 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200"
-                }`}
-              >
-                {preset.label}
-              </button>
-            );
-          })}
+      <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/35 p-3 space-y-3">
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+            Primary high-ticket
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {PRIMARY_PRESETS.map((preset) => (
+              <PresetChip key={preset.label} preset={preset} />
+            ))}
+          </div>
         </div>
-        <div className="mt-2 border-t border-zinc-800/60 pt-2">
-          <p className="text-[10px] uppercase tracking-[0.1em] text-zinc-700">Secondary</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {SECONDARY_PRESETS.map((preset) => {
-              const active =
-                preset.market === market &&
-                preset.niche === niche &&
-                preset.location === location &&
-                preset.volume === volume &&
-                preset.source === source;
-              return (
-                <button
-                  key={preset.label}
-                  type="button"
-                  onClick={() => applyPreset(preset)}
-                  className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.08em] transition-colors ${
-                    active
-                      ? "border-brand/45 bg-brand/15 text-brand"
-                      : "border-zinc-700/80 bg-zinc-900/60 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300"
-                  }`}
-                >
-                  {preset.label}
-                </button>
-              );
-            })}
+
+        <div className="border-t border-zinc-800/60 pt-2.5">
+          <p className="text-[10px] uppercase tracking-[0.1em] text-zinc-700">
+            Partner / channel
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {PARTNER_PRESETS.map((preset) => (
+              <PresetChip key={preset.label} preset={preset} dim />
+            ))}
+          </div>
+        </div>
+
+        <div className="border-t border-zinc-800/60 pt-2.5">
+          <p className="text-[10px] uppercase tracking-[0.1em] text-zinc-700">
+            Secondary NL / EU
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {NL_PRESETS.map((preset) => (
+              <PresetChip key={preset.label} preset={preset} dim />
+            ))}
           </div>
         </div>
       </div>

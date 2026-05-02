@@ -152,6 +152,66 @@ export const PROSPECT_SNIPPETS: ProspectSnippet[] = [
       "Understood, thanks for letting me know.\n\nI will pause and circle back in {time_window}.\n\nIf anything shifts before then, just reply here and I will send something specific.",
   },
   {
+    id: "en-medspa-aesthetics-opener",
+    language: "en",
+    lane: "build",
+    category: "local_service_opener",
+    label: "Medspa / aesthetics intro",
+    useCase: "Use for medspas and aesthetic clinics. High-trust decisions where the path from interest to consultation is the leak.",
+    body:
+      "Hi {first_name},\n\nI looked through the {company} website this week and wanted to share one observation.\n\nYour treatments are high-trust decisions. Someone researching a procedure is already motivated, but the path from that interest to booking a consultation is where most of it slips. The site looks credible, but the steps between landing and actually reaching out are not as clear or compelling as they could be.\n\nI am with Inovense. We help clinics and studios improve websites, intake flows, and follow-up systems.\n\nIf useful, I can send a short outside-in note on where the trust gap sits and what to tighten first.",
+  },
+  {
+    id: "en-dental-clinics-opener",
+    language: "en",
+    lane: "build",
+    category: "local_service_opener",
+    label: "Dental clinic intro",
+    useCase: "Use for cosmetic dentists and dental implant clinics. Trust and consultation intent are the main gaps.",
+    body:
+      "Hi {first_name},\n\nI had a look at the {company} website this week and had one practical observation.\n\nFor high-value treatments like implants or clear aligners, the website needs to do more than describe the service. It needs to guide someone from interest to consultation intent, and the follow-up after an enquiry matters just as much as the first impression.\n\nI am with Inovense. We help dental and healthcare practices improve their intake paths and follow-up systems.\n\nIf useful, I can send a short note on where the {company} site currently loses people before they reach out.",
+  },
+  {
+    id: "en-law-firm-opener",
+    language: "en",
+    lane: "build",
+    category: "website_trust_opener",
+    label: "Law firm intro",
+    useCase: "Use for law firms. Legal leads need trust and speed. Unclear practice pages, weak intake, or slow follow-up are the typical leaks.",
+    body:
+      "Hi {first_name},\n\nI looked through the {company} website this week and wanted to share one note.\n\nLegal leads move fast and they need to feel confident before they reach out. Right now the site does a decent job of describing the practice, but there are points where someone on the fence would drift rather than take the next step. The intake path could be sharper and the trust signals near the contact point are light.\n\nI am with Inovense. We help professional service firms improve websites, intake flows, and lead follow-up.\n\nIf helpful, I can share a short breakdown of the specific points I would address first.",
+  },
+  {
+    id: "en-consultant-coach-opener",
+    language: "en",
+    lane: "build",
+    category: "conversion_next_step_opener",
+    label: "Consultant / coach intro",
+    useCase: "Use for business consultants, coaches, and fractional executives. Strong offer but the path to a qualified call needs work.",
+    body:
+      "Hi {first_name},\n\nI looked at the {company} website this week and had one observation worth sharing.\n\nThe offer reads well and the positioning is clear. Where I think there is room is in the path from someone being genuinely interested to actually booking a call. Right now that path asks a bit too much of the visitor before they feel ready to reach out. A few small changes to how the offer is framed and what happens near the contact point could close that gap meaningfully.\n\nI am with Inovense. We help consultants and advisors improve their websites and intake systems.\n\nIf useful, I can send a short outside-in note on what I would prioritise.",
+  },
+  {
+    id: "en-home-services-opener",
+    language: "en",
+    lane: "build",
+    category: "local_service_opener",
+    label: "Home services intro",
+    useCase: "Use for home remodeling, roofing, HVAC, and similar high-value local services. One job can be worth thousands so every quote request path matters.",
+    body:
+      "Hi {first_name},\n\nI came across {company} this week and wanted to share one short observation.\n\nWhen one job can be worth several thousand dollars, the path from first impression to a quote request should feel easy and trustworthy at every step. The {company} site reads fine, but near the point where someone would decide to reach out the trust signals are thin and the next step is not quite obvious enough.\n\nI am with Inovense. We help home service businesses improve their websites and quote request paths.\n\nIf useful, I can share a quick outside-in note on the two or three things that would make the biggest difference.",
+  },
+  {
+    id: "en-b2b-services-opener",
+    language: "en",
+    lane: "build",
+    category: "conversion_next_step_opener",
+    label: "B2B services intro",
+    useCase: "Use for B2B service providers, IT consultancies, and professional service firms. Higher-value contracts require authority, qualification, and a clear handoff into sales.",
+    body:
+      "Hi {first_name},\n\nI spent some time on the {company} website this week and had one observation.\n\nFor higher-value B2B contracts, the site needs to do three things well: qualify the visitor, build enough authority that they feel comfortable reaching out, and make the handoff into a sales conversation feel natural. Right now the site handles the first part but the path from qualified interest to an actual conversation is not tight enough.\n\nI am with Inovense. We help B2B service firms improve their websites and lead intake flows.\n\nIf helpful, I can send a short note on what I would look at first for {company}.",
+  },
+  {
     id: "nl-website-trust-opener",
     language: "nl",
     lane: "build",
