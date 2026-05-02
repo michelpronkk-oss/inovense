@@ -19,6 +19,29 @@ const item = {
   },
 };
 
+function MobileReviewVisual() {
+  return (
+    <motion.div
+      variants={item}
+      className="mt-6 w-[calc(100vw-3rem)] max-w-xs md:hidden"
+    >
+      <div className="rounded-2xl border border-zinc-800/80 bg-zinc-950/70 p-4 text-left shadow-[0_16px_60px_rgba(0,0,0,0.36)]">
+        <div className="mb-3 flex items-center justify-between">
+          <span className="text-xs font-medium text-brand">Review focus</span>
+          <span className="h-2 w-2 rounded-full bg-brand/55" />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {["Current flow", "Lead leaks", "Next launch", "Clean handoff"].map((item) => (
+            <div key={item} className="rounded-xl border border-zinc-800 bg-zinc-900/55 px-3 py-2">
+              <p className="text-[11px] font-medium text-zinc-400">{item}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function IntakeHero() {
   return (
     <section className="relative overflow-hidden pb-14 pt-32">
@@ -58,7 +81,7 @@ export default function IntakeHero() {
       <div className="relative mx-auto max-w-2xl px-6 text-center">
         <motion.div
           variants={container}
-          initial="hidden"
+          initial={false}
           animate="visible"
           className="flex flex-col items-center"
         >
@@ -71,26 +94,26 @@ export default function IntakeHero() {
 
           <motion.h1
             variants={item}
-            className="text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-5xl"
+            className="max-w-[calc(100vw-3rem)] break-words text-3xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-5xl"
           >
             Request a build review.
           </motion.h1>
 
           <motion.p
             variants={item}
-            className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-zinc-400"
+            className="mx-auto mt-6 max-w-[calc(100vw-3rem)] text-base leading-relaxed text-zinc-400 md:max-w-lg"
           >
             Tell us what you are building, where the current flow leaks, and what needs to become cleaner before the next launch.
           </motion.p>
 
           <motion.div
             variants={item}
-            className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center"
+            className="mt-8 flex w-[calc(100vw-3rem)] max-w-xs flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row sm:justify-center"
           >
             <Button
               asChild
               size="lg"
-              className="rounded-full bg-brand px-8 text-white hover:bg-brand/90"
+              className="w-full rounded-full bg-brand px-8 text-white hover:bg-brand/90 sm:w-auto"
             >
               <Link href="#intake-form">Submit your brief</Link>
             </Button>
@@ -98,11 +121,13 @@ export default function IntakeHero() {
               asChild
               variant="outline"
               size="lg"
-              className="rounded-full border-zinc-700 bg-transparent px-8 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50"
+              className="w-full rounded-full border-zinc-700 bg-transparent px-8 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50 sm:w-auto"
             >
               <Link href="/process">How we work</Link>
             </Button>
           </motion.div>
+
+          <MobileReviewVisual />
 
           {/* Trust strip */}
           <motion.div

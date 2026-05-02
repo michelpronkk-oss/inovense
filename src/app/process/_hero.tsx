@@ -18,6 +18,8 @@ const stages = [
   { num: "08", label: "Handoff", status: "pending" },
 ] as const;
 
+const mobileProcessSteps = ["Review", "Scope", "Build", "Refine", "Launch"];
+
 type StageStatus = typeof stages[number]["status"];
 
 function dotClass(status: StageStatus) {
@@ -149,6 +151,47 @@ function ProcessTrackerMock() {
   );
 }
 
+function MobileProcessVisual() {
+  return (
+    <div className="relative mx-auto w-[calc(100vw-3rem)] max-w-sm select-none md:hidden">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-8 -top-6 h-20 opacity-50 blur-2xl"
+        style={{
+          background:
+            "radial-gradient(ellipse 65% 60% at 50% 50%, rgba(73,160,164,0.16), transparent 70%)",
+        }}
+      />
+      <div className="relative overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-950/70 p-4 shadow-[0_18px_70px_rgba(0,0,0,0.42)]">
+        <div className="mb-4 flex items-center justify-between border-b border-zinc-800/70 pb-3">
+          <span className="text-xs font-medium text-brand">Delivery rhythm</span>
+          <span className="text-[11px] text-zinc-600">Controlled path</span>
+        </div>
+
+        <div className="grid grid-cols-5 gap-1.5">
+          {mobileProcessSteps.map((step, index) => (
+            <div key={step} className="flex flex-col items-center gap-2">
+              <div
+                className={`h-2 w-full rounded-full ${
+                  index < 3 ? "bg-brand/45" : "bg-zinc-800"
+                }`}
+              />
+              <span className="text-[10px] font-medium text-zinc-500">{step}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/55 p-3 text-left">
+          <p className="text-xs font-medium text-zinc-300">Scope before speed</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-zinc-600">
+            Each step has an owner, an output, and a next decision.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Animation variants ────────────────────────────────────────────────── */
 
 const containerVariants = {
@@ -207,13 +250,13 @@ export default function ProcessHero() {
       />
 
       <div className="relative mx-auto w-full max-w-6xl px-6">
-        <div className="flex flex-col items-center gap-12 text-center">
+        <div className="flex flex-col items-center gap-8 text-center md:gap-12">
 
           {/* ── Left: Content ── */}
           <motion.div
             className="mx-auto w-full max-w-4xl"
             variants={containerVariants}
-            initial="hidden"
+            initial={false}
             animate="visible"
           >
             <motion.div variants={itemVariants} className="mb-8">
@@ -227,27 +270,27 @@ export default function ProcessHero() {
 
             <motion.h1
               variants={itemVariants}
-              className="mx-auto max-w-4xl text-4xl font-semibold leading-[1.08] tracking-tight text-zinc-50 sm:text-5xl lg:text-6xl"
+              className="mx-auto max-w-[calc(100vw-3rem)] break-words text-3xl font-semibold leading-[1.08] tracking-tight text-zinc-50 sm:max-w-4xl sm:text-5xl lg:text-6xl"
             >
-              A controlled process{" "}
-              <em className="not-italic text-brand">from first review to launch.</em>
+              Controlled from{" "}
+              <em className="not-italic text-brand">review to launch.</em>
             </motion.h1>
 
             <motion.p
               variants={itemVariants}
-              className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-zinc-400 sm:text-lg"
+              className="mx-auto mt-6 max-w-[calc(100vw-3rem)] text-base leading-relaxed text-zinc-400 sm:max-w-2xl sm:text-lg"
             >
               Clear scope, fast decisions, clean handoff, and a delivery rhythm designed to avoid revision chaos.
             </motion.p>
 
             <motion.div
               variants={itemVariants}
-              className="mt-8 flex flex-col justify-center gap-3 sm:flex-row"
+              className="mx-auto mt-8 flex w-[calc(100vw-3rem)] max-w-sm flex-col justify-center gap-3 sm:w-auto sm:max-w-none sm:flex-row"
             >
               <Button
                 asChild
                 size="lg"
-                className="rounded-full bg-brand px-8 text-white hover:bg-brand/90"
+                className="w-full rounded-full bg-brand px-8 text-white hover:bg-brand/90 sm:w-auto"
               >
                 <Link href="/intake">Request a build review</Link>
               </Button>
@@ -255,7 +298,7 @@ export default function ProcessHero() {
                 asChild
                 variant="outline"
                 size="lg"
-                className="rounded-full border-zinc-700 bg-transparent px-8 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50"
+                className="w-full rounded-full border-zinc-700 bg-transparent px-8 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50 sm:w-auto"
               >
                 <Link href="#how-we-work">See how it works</Link>
               </Button>
@@ -277,6 +320,13 @@ export default function ProcessHero() {
           </motion.div>
 
           {/* ── Right: Engagement tracker, desktop only ── */}
+          <motion.div
+            className="w-full md:hidden"
+            variants={itemVariants}
+          >
+            <MobileProcessVisual />
+          </motion.div>
+
           <div className="hidden w-full max-w-3xl md:block">
             <motion.div
               initial={{ opacity: 0, y: 28 }}

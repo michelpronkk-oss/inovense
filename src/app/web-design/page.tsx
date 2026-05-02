@@ -62,6 +62,33 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
   );
 }
 
+function MobileWebsiteVisual() {
+  return (
+    <div className="relative mx-auto mt-8 w-[calc(100vw-3rem)] max-w-sm md:hidden">
+      <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-950/70 p-4 shadow-[0_18px_70px_rgba(0,0,0,0.38)]">
+        <div className="mb-4 flex items-center justify-between border-b border-zinc-800/70 pb-3">
+          <span className="text-xs font-medium text-brand">Conversion page</span>
+          <div className="h-2 w-12 rounded-full bg-brand/30" />
+        </div>
+
+        <div className="space-y-3 text-left">
+          <div className="rounded-xl border border-brand/25 bg-brand/10 p-3">
+            <p className="text-xs font-medium text-brand">Offer and CTA</p>
+            <div className="mt-2 h-2 w-4/5 rounded-full bg-zinc-700/70" />
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            {["Trust", "Mobile", "Speed", "Handoff"].map((item) => (
+              <div key={item} className="rounded-xl border border-zinc-800 bg-zinc-900/55 p-3">
+                <p className="text-[11px] font-medium text-zinc-400">{item}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Hero ──────────────────────────────────────────────────────────────── */
 
 function Hero() {
@@ -107,25 +134,25 @@ function Hero() {
           </span>
         </div>
 
-        <h1 className="mx-auto max-w-3xl text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-6xl md:leading-[1.06]">
-          Premium websites built to{" "}
-          <span className="text-brand">convert serious buyers.</span>
+        <h1 className="mx-auto max-w-[calc(100vw-3rem)] break-words text-3xl font-semibold leading-tight tracking-tight text-zinc-50 md:max-w-3xl md:text-6xl md:leading-[1.06]">
+          Premium websites for{" "}
+          <span className="text-brand">serious buyers.</span>
         </h1>
 
-        <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-zinc-400 md:text-lg">
+        <p className="mx-auto mt-6 max-w-[calc(100vw-3rem)] text-base leading-relaxed text-zinc-400 md:max-w-2xl md:text-lg">
           A sharper site structure, stronger offer flow, and conversion-ready pages for businesses that cannot afford a generic online presence.
         </p>
 
-        <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
+        <div className="mx-auto mt-10 flex w-[calc(100vw-3rem)] max-w-sm flex-col justify-center gap-3 sm:w-auto sm:max-w-none sm:flex-row">
           <Link
             href="/intake"
-            className="inline-flex items-center justify-center rounded-full bg-brand px-8 py-3 text-sm font-medium text-zinc-950 transition-colors hover:bg-brand/90"
+            className="inline-flex w-full items-center justify-center rounded-full bg-brand px-8 py-3 text-sm font-medium text-zinc-950 transition-colors hover:bg-brand/90 sm:w-auto"
           >
             Request a build review
           </Link>
           <Link
             href="/process"
-            className="inline-flex items-center justify-center rounded-full border border-zinc-700 px-8 py-3 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50"
+            className="inline-flex w-full items-center justify-center rounded-full border border-zinc-700 px-8 py-3 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50 sm:w-auto"
           >
             See how we work
           </Link>
@@ -141,6 +168,8 @@ function Hero() {
             )
           )}
         </div>
+
+        <MobileWebsiteVisual />
       </div>
     </section>
   );

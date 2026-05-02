@@ -34,6 +34,35 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
   );
 }
 
+function MobileShopifyVisual() {
+  return (
+    <div className="relative mx-auto mt-8 w-[calc(100vw-3rem)] max-w-sm md:hidden">
+      <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-950/70 p-4 shadow-[0_18px_70px_rgba(0,0,0,0.38)]">
+        <div className="mb-4 flex items-center justify-between border-b border-zinc-800/70 pb-3">
+          <span className="text-xs font-medium text-brand">Product page flow</span>
+          <div className="h-2 w-2 rounded-full bg-brand/60" />
+        </div>
+
+        <div className="grid grid-cols-[0.85fr_1.15fr] gap-3">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/55 p-3">
+            <div className="aspect-square rounded-lg bg-zinc-800/80" />
+          </div>
+          <div className="space-y-2 text-left">
+            <div className="rounded-xl border border-brand/25 bg-brand/10 p-2.5">
+              <p className="text-[11px] font-medium text-brand">Buy path</p>
+            </div>
+            {["Trust layer", "Offer structure", "Checkout cue"].map((item) => (
+              <div key={item} className="rounded-xl border border-zinc-800 bg-zinc-900/55 p-2.5">
+                <p className="text-[11px] font-medium text-zinc-400">{item}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Hero ──────────────────────────────────────────────────────────────── */
 
 function Hero() {
@@ -79,25 +108,25 @@ function Hero() {
           </span>
         </div>
 
-        <h1 className="mx-auto max-w-3xl text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-6xl md:leading-[1.06]">
-          Shopify storefronts built for{" "}
-          <span className="text-brand">trust and conversion.</span>
+        <h1 className="mx-auto max-w-[calc(100vw-3rem)] break-words text-3xl font-semibold leading-tight tracking-tight text-zinc-50 md:max-w-3xl md:text-6xl md:leading-[1.06]">
+          Shopify stores built for{" "}
+          <span className="text-brand">trust.</span>
         </h1>
 
-        <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-zinc-400 md:text-lg">
+        <p className="mx-auto mt-6 max-w-[calc(100vw-3rem)] text-base leading-relaxed text-zinc-400 md:max-w-2xl md:text-lg">
           Product pages, offer structure, trust elements, and checkout paths shaped for a cleaner buying experience.
         </p>
 
-        <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
+        <div className="mx-auto mt-10 flex w-[calc(100vw-3rem)] max-w-sm flex-col justify-center gap-3 sm:w-auto sm:max-w-none sm:flex-row">
           <Link
             href="/intake"
-            className="inline-flex items-center justify-center rounded-full bg-brand px-8 py-3 text-sm font-medium text-zinc-950 transition-colors hover:bg-brand/90"
+            className="inline-flex w-full items-center justify-center rounded-full bg-brand px-8 py-3 text-sm font-medium text-zinc-950 transition-colors hover:bg-brand/90 sm:w-auto"
           >
             Request a Shopify review
           </Link>
           <Link
             href="/build"
-            className="inline-flex items-center justify-center rounded-full border border-zinc-700 px-8 py-3 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50"
+            className="inline-flex w-full items-center justify-center rounded-full border border-zinc-700 px-8 py-3 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50 sm:w-auto"
           >
             Explore website systems
           </Link>
@@ -115,6 +144,8 @@ function Hero() {
             </span>
           ))}
         </div>
+
+        <MobileShopifyVisual />
       </div>
     </section>
   );
