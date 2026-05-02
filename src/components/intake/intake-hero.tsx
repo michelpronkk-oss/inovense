@@ -73,16 +73,14 @@ export default function IntakeHero() {
             variants={item}
             className="text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-5xl"
           >
-            Tell us what you&apos;re building.
+            Request a build review.
           </motion.h1>
 
           <motion.p
             variants={item}
             className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-zinc-400"
           >
-            Fill in the brief below. We review every submission personally and
-            respond within 24 hours with a clear next step, not a proposal
-            template.
+            Share your website, current lead flow, and project goals. We review every submission personally and respond within 24 hours with a clear next step.
           </motion.p>
 
           <motion.div
@@ -94,7 +92,7 @@ export default function IntakeHero() {
               size="lg"
               className="rounded-full bg-brand px-8 text-white hover:bg-brand/90"
             >
-              <Link href="#intake-form">Start your project</Link>
+              <Link href="#intake-form">Submit your brief</Link>
             </Button>
             <Button
               asChild

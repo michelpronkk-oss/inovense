@@ -11,9 +11,9 @@ import SystemsCTA from "@/components/systems/systems-cta";
 import RelatedServices from "@/components/related-services";
 
 export const metadata: Metadata = {
-  title: "Business Operations Systems and Internal Tooling",
+  title: "Client Acquisition Systems and Workflow Automation",
   description:
-    "Custom CRM logic, internal tooling, operational workflows, and business process infrastructure designed around how your team actually works. Built for the long-term, not stitched together.",
+    "Automated intake, follow-up, proposal, onboarding, and CRM workflows designed to remove friction from your lead-to-client handoff.",
   alternates: {
     canonical: "https://inovense.com/systems",
     languages: {
@@ -24,9 +24,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/systems",
-    title: "Smart systems. Less manual work. Better results. | Inovense",
+    title: "Automated client systems. Less leakage. | Inovense",
     description:
-      "Custom workflows, AI automation, and internal tooling built around how your business actually runs. Fixed scope, clean handoff, no retainer required.",
+      "Custom workflows and CRM automation that keep qualified leads moving from intake to paid project without manual gaps.",
   },
 };
 

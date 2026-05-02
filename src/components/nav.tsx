@@ -55,7 +55,7 @@ export default function Nav() {
             href="/intake"
             className="rounded-full border border-brand/40 px-5 py-1.5 text-[13px] font-medium text-brand transition-colors duration-150 hover:border-brand/70 hover:bg-brand/10"
           >
-            Start a project
+            Request a review
           </Link>
         </div>
 
@@ -121,7 +121,7 @@ export default function Nav() {
                   onClick={() => setOpen(false)}
                   className="block w-full rounded-full bg-brand py-3 text-center text-sm font-medium text-white transition-colors hover:bg-brand/90"
                 >
-                  Start a project
+                  Request a review
                 </Link>
               </div>
 

@@ -182,7 +182,7 @@ const itemVariants = {
   },
 };
 
-const trustItems = ["Custom-built", "Conversion-focused", "Senior-built", "No templates"];
+const trustItems = ["Custom-built", "Conversion-focused", "Operator-grade", "No templates"];
 
 /* ─── Hero ──────────────────────────────────────────────────────────────── */
 
@@ -247,7 +247,7 @@ export default function Hero() {
                 variant="outline"
                 className="border-brand/30 bg-brand/10 px-3 py-1 text-xs font-medium tracking-wide text-brand"
               >
-                Custom-built for growth
+                Premium execution partner
               </Badge>
             </motion.div>
 
@@ -255,15 +255,15 @@ export default function Hero() {
               variants={itemVariants}
               className="text-4xl font-semibold leading-[1.1] tracking-tight text-zinc-50 sm:text-5xl lg:text-6xl"
             >
-              Websites, webshops and smart systems{" "}
-              <span className="text-brand">built to win more clients.</span>
+              Conversion websites and client systems{" "}
+              <span className="text-brand">built to close better business.</span>
             </motion.h1>
 
             <motion.p
               variants={itemVariants}
               className="mt-6 max-w-[520px] text-base leading-relaxed text-zinc-400 sm:text-lg"
             >
-              We build websites, Shopify stores, and smart workflows that help businesses earn trust, move faster, and convert more of the right people.
+              We design and build the full acquisition layer: your website, intake, follow-up, proposal flow, and onboarding system.
             </motion.p>
 
             <motion.div
@@ -275,7 +275,7 @@ export default function Hero() {
                 size="lg"
                 className="rounded-full bg-brand px-8 text-white hover:bg-brand/90"
               >
-                <Link href="/intake">Start a project</Link>
+                <Link href="/intake">Request a build review</Link>
               </Button>
               <Button
                 asChild
@@ -283,7 +283,7 @@ export default function Hero() {
                 size="lg"
                 className="rounded-full border-zinc-700 bg-transparent px-8 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50"
               >
-                <Link href="#work">See our work</Link>
+                <Link href="#work">See selected work</Link>
               </Button>
             </motion.div>
 

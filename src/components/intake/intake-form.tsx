@@ -332,11 +332,11 @@ export default function IntakeForm() {
               error={!!errors.budget}
               {...register("budget")}
             >
-              <option value="Under €1,500">Under €1,500</option>
-              <option value="€1,500-€3,500">€1,500 - €3,500</option>
-              <option value="€3,500-€7,500">€3,500 - €7,500</option>
-              <option value="€7,500-€15,000">€7,500 - €15,000</option>
-              <option value="€15,000+">€15,000+</option>
+              <option value="Under $5,000">Under $5,000</option>
+              <option value="$5,000-$10,000">$5,000 - $10,000</option>
+              <option value="$10,000-$20,000">$10,000 - $20,000</option>
+              <option value="$20,000-$40,000">$20,000 - $40,000</option>
+              <option value="$40,000+">$40,000+</option>
             </FormSelect>
             <FieldError message={errors.budget?.message} />
           </div>
@@ -368,7 +368,7 @@ export default function IntakeForm() {
           <FieldLabel htmlFor="details">Tell us about your project</FieldLabel>
           <Textarea
             id="details"
-            placeholder="What are you building, who is it for, and what does a good outcome look like? The more context you give us, the better we can respond."
+            placeholder="What are you building, who is it for, and where does your current acquisition flow break down? The more context you share, the better our review."
             rows={6}
             aria-invalid={!!errors.details}
             className="resize-none"
@@ -390,7 +390,7 @@ export default function IntakeForm() {
         </Button>
 
         <p className="text-xs text-zinc-600">
-          We respond within 24 hours. No pitch decks, no templates.
+          We respond within 24 hours. Clear fit assessment, no generic pitch deck.
         </p>
       </div>
 

@@ -11,9 +11,9 @@ import GrowthCTA from "@/components/growth/growth-cta";
 import RelatedServices from "@/components/related-services";
 
 export const metadata: Metadata = {
-  title: "SEO, Content, and Paid Growth Systems",
+  title: "Growth Systems for Qualified Pipeline",
   description:
-    "Structured SEO infrastructure, content systems, paid media, and growth execution built to compound. Inovense builds growth assets you own.",
+    "Paid media, SEO, and campaign systems built to drive qualified pipeline into conversion-ready websites and automated client workflows.",
   alternates: {
     canonical: "https://inovense.com/growth",
     languages: {
@@ -24,9 +24,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/growth",
-    title: "Growth campaigns built for pipeline, not impressions. | Inovense",
+    title: "Growth campaigns built for qualified pipeline. | Inovense",
     description:
-      "Paid media, content, and lead generation built to fill your pipeline. We run growth campaigns for businesses that need qualified leads, not just reach.",
+      "Growth execution built for teams that care about qualified leads, conversion quality, and long-term pipeline signal.",
   },
 };
 

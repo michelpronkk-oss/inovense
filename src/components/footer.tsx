@@ -15,7 +15,7 @@ const serviceLinks = [
 ];
 
 const companyLinks = [
-  { label: "Start a project", href: "/intake" },
+  { label: "Request a build review", href: "/intake" },
   { label: "Service Fit Answers", href: "/answers" },
   { label: "Process", href: "/process" },
   { label: "Privacy Policy", href: "/privacy-policy" },
@@ -57,7 +57,7 @@ export default function Footer() {
               />
             </Link>
             <p className="max-w-[240px] text-sm leading-relaxed text-zinc-500">
-              Inovense. Built for results.
+              Inovense builds conversion websites and client acquisition systems.
             </p>
             <a
               href="mailto:hello@inovense.com"

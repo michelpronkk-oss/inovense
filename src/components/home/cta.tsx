@@ -36,10 +36,10 @@ export default function CTA() {
           Get started
         </p>
         <h2 className="text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-5xl">
-          Tell us what you need.
+          Ready to improve your acquisition system?
         </h2>
         <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-zinc-400 md:text-lg">
-          Send us a brief and we will come back with a clear proposal.
+          Share your website and current lead flow. We will reply with a clear build direction and system recommendations.
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
@@ -48,7 +48,7 @@ export default function CTA() {
             size="lg"
             className="rounded-full bg-brand px-10 text-white hover:bg-brand/90"
           >
-            <Link href="/intake">Start a project</Link>
+            <Link href="/intake">Request a build review</Link>
           </Button>
           <span className="text-sm text-zinc-600">
             or email{" "}
@@ -63,7 +63,7 @@ export default function CTA() {
 
         {/* Trust note */}
         <p className="mt-10 text-xs text-zinc-700">
-          No commitment required. Response within 1 business day.
+          Selective intake. Response within 1 business day.
         </p>
       </div>
     </section>

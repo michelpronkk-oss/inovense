@@ -5,9 +5,9 @@ import IntakeHero from "@/components/intake/intake-hero";
 import IntakeForm from "@/components/intake/intake-form";
 
 export const metadata: Metadata = {
-  title: "Start Your Project",
+  title: "Request a Build Review",
   description:
-    "Tell us what you're building. Inovense reviews every brief personally and responds within 24 hours with a clear direction, not a pitch deck. Limited intake.",
+    "Request a build review for your website and client acquisition flow. Inovense reviews every brief personally and replies within 24 hours with a clear direction.",
   alternates: {
     canonical: "https://inovense.com/intake",
     languages: {
@@ -18,9 +18,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/intake",
-    title: "Start Your Project | Inovense",
+    title: "Request a Build Review | Inovense",
     description:
-      "Tell us what you're building. Inovense reviews every brief personally and responds within 24 hours with a clear direction, not a pitch deck. Limited intake.",
+      "Request a build review for your website and client acquisition flow. Inovense reviews every brief personally and replies within 24 hours with a clear direction.",
   },
 };
 

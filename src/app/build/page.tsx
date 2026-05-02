@@ -11,9 +11,9 @@ import BuildCTA from "@/components/build/build-cta";
 import RelatedServices from "@/components/related-services";
 
 export const metadata: Metadata = {
-  title: "Custom Website Design and Development Agency",
+  title: "Conversion Website and Landing Page Build",
   description:
-    "Premium website design and development. Conversion-focused landing pages, e-commerce builds, and full-stack digital products. Built to perform, not just to launch.",
+    "Conversion websites, landing pages, and Shopify builds for teams that need better qualified leads and stronger first-call trust.",
   alternates: {
     canonical: "https://inovense.com/build",
     languages: {
@@ -24,9 +24,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/build",
-    title: "Websites and webshops built to convert. | Inovense",
+    title: "Conversion websites and landing systems. | Inovense",
     description:
-      "Custom-built websites and Shopify stores designed for performance, not just good looks. Fixed-price proposals, senior delivery, clean handoff.",
+      "Custom-built websites and Shopify builds designed for conversion, speed, and handoff from lead to paid project.",
   },
 };
 

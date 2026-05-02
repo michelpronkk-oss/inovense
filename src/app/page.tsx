@@ -19,10 +19,10 @@ import {
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Inovense | Web, Systems, and Growth Built to Perform",
+    absolute: "Inovense | Conversion Websites and Client Acquisition Systems",
   },
   description:
-    "We build conversion-focused websites, webshops, and smart systems for businesses that want commercial results, not just good-looking work.",
+    "Inovense builds conversion websites and automated client acquisition systems for service businesses, SaaS teams, consultants, agencies, and high-value local brands.",
   alternates: {
     canonical: "https://inovense.com",
     languages: {
@@ -33,9 +33,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com",
-    title: "Inovense | Web, Systems, and Growth Built to Perform",
+    title: "Inovense | Conversion Websites and Client Acquisition Systems",
     description:
-      "We build conversion-focused websites, webshops, and smart systems for businesses that want commercial results, not just good-looking work.",
+      "Inovense builds conversion websites and automated client acquisition systems for service businesses, SaaS teams, consultants, agencies, and high-value local brands.",
     images: [
       {
         url: "/opengraph-image",
@@ -45,9 +45,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Inovense | Web, Systems, and Growth Built to Perform",
+    title: "Inovense | Conversion Websites and Client Acquisition Systems",
     description:
-      "We build conversion-focused websites, webshops, and smart systems for businesses that want commercial results, not just good-looking work.",
+      "Inovense builds conversion websites and automated client acquisition systems for service businesses, SaaS teams, consultants, agencies, and high-value local brands.",
     images: [
       {
         url: "/opengraph-image",
@@ -62,9 +62,9 @@ const homePageSchema = {
   "@type": "WebPage",
   "@id": `${INOVENSE_URL}/#home`,
   url: INOVENSE_URL,
-  name: "Inovense | Web, Systems, and Growth Built to Perform",
+  name: "Inovense | Conversion Websites and Client Acquisition Systems",
   description:
-    "Inovense builds custom websites, smart systems, and growth campaigns for businesses that want commercial results.",
+    "Inovense builds conversion websites, client acquisition systems, and growth infrastructure for businesses that need predictable commercial outcomes.",
   isPartOf: {
     "@id": INOVENSE_WEBSITE_ID,
   },

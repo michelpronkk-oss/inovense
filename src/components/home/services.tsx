@@ -7,7 +7,7 @@ const services = [
     href: "/build",
     tagline: "Websites & Webshops",
     description:
-      "Conversion-optimized websites and Shopify stores built to earn trust, generate leads, and sell.",
+      "Conversion websites, landing pages, and buying flows that turn traffic into qualified opportunities.",
     deliverables: [
       "Custom website design",
       "Shopify stores",
@@ -23,9 +23,9 @@ const services = [
     description:
       "AI automation, CRM workflows, and operational tooling that removes friction and saves hours.",
     deliverables: [
-      "AI workflow automation",
+      "Intake and qualification workflows",
       "CRM and pipeline logic",
-      "Internal tooling",
+      "Proposal and onboarding automation",
       "Integrations and APIs",
     ],
   },
@@ -35,12 +35,12 @@ const services = [
     href: "/growth",
     tagline: "Growth Campaigns",
     description:
-      "Paid media, content strategy, and lead generation built to drive qualified traffic and pipeline.",
+      "Campaign assets and conversion loops that feed your pipeline and strengthen close rate over time.",
     deliverables: [
       "Paid social campaigns",
       "Search and SEO",
       "Lead generation funnels",
-      "Content and email nurture",
+      "Content and retargeting loops",
     ],
   },
 ];
@@ -56,10 +56,10 @@ export default function Services() {
             What we build
           </p>
           <h2 className="max-w-xl text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-            Three ways we grow your business.
+            One connected acquisition system, built in three lanes.
           </h2>
           <p className="mt-4 max-w-2xl text-sm leading-relaxed text-zinc-500 md:text-base">
-            Every project is scoped, built, and delivered to produce real commercial output.
+            Build drives conversion, Systems drives handoff, Growth drives demand. Each lane strengthens the others.
           </p>
         </div>
 
