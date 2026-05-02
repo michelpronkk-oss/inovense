@@ -62,6 +62,49 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
   );
 }
 
+/* ─── Mobile visual ─────────────────────────────────────────────────────── */
+
+const aiFlowSteps = ["Trigger", "Qualify", "Route", "Assign", "Follow-up"];
+
+function MobileAiVisual() {
+  return (
+    <div className="relative mx-auto mt-10 w-[calc(100vw-3rem)] max-w-sm md:hidden">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-8 -top-6 h-16 opacity-50 blur-2xl"
+        style={{
+          background:
+            "radial-gradient(ellipse 65% 60% at 50% 50%, rgba(73,160,164,0.16), transparent 70%)",
+        }}
+      />
+      <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-950/70 p-4 shadow-[0_18px_70px_rgba(0,0,0,0.38)]">
+        <div className="mb-4 flex items-center justify-between border-b border-zinc-800/70 pb-3">
+          <span className="text-xs font-medium text-brand">Automation flow</span>
+          <span className="text-[11px] text-zinc-600">Live</span>
+        </div>
+        <div className="grid grid-cols-5 gap-1.5">
+          {aiFlowSteps.map((step, index) => (
+            <div key={step} className="flex flex-col items-center gap-2">
+              <div
+                className={`h-2 w-full rounded-full ${
+                  index < 3 ? "bg-brand/45" : "bg-zinc-800"
+                }`}
+              />
+              <span className="text-[9px] font-medium text-zinc-600">{step}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/55 p-3 text-left">
+          <p className="text-xs font-medium text-zinc-300">Less manual work</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-zinc-600">
+            Consistent output without the overhead.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Hero ──────────────────────────────────────────────────────────────── */
 
 function Hero() {
@@ -115,27 +158,27 @@ function Hero() {
           </span>
         </div>
 
-        <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-6xl md:leading-[1.06]">
+        <h1 className="max-w-[calc(100vw-3rem)] break-words text-3xl font-semibold leading-tight tracking-tight text-zinc-50 md:max-w-3xl md:text-6xl md:leading-[1.06]">
           Automation built around{" "}
           <span className="text-brand">how your business actually runs.</span>
         </h1>
 
-        <p className="mt-6 max-w-2xl text-base leading-relaxed text-zinc-400 md:text-lg">
+        <p className="mt-6 max-w-[calc(100vw-3rem)] text-base leading-relaxed text-zinc-400 md:max-w-2xl md:text-lg">
           AI-powered workflows, lead routing, and operational automation for
           companies that want their team focused on real work rather than
           manual process. Practical systems. Not vague AI promises.
         </p>
 
-        <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+        <div className="mt-10 flex w-[calc(100vw-3rem)] max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row">
           <Link
             href="/intake"
-            className="inline-flex items-center justify-center rounded-full bg-brand px-8 py-3 text-sm font-medium text-zinc-950 transition-colors hover:bg-brand/90"
+            className="inline-flex w-full items-center justify-center rounded-full bg-brand px-8 py-3 text-sm font-medium text-zinc-950 transition-colors hover:bg-brand/90 sm:w-auto"
           >
             Start an automation project
           </Link>
           <Link
             href="/systems"
-            className="inline-flex items-center justify-center rounded-full border border-zinc-700 px-8 py-3 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50"
+            className="inline-flex w-full items-center justify-center rounded-full border border-zinc-700 px-8 py-3 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50 sm:w-auto"
           >
             See the Systems lane
           </Link>
@@ -153,6 +196,8 @@ function Hero() {
             </span>
           ))}
         </div>
+
+        <MobileAiVisual />
       </div>
     </section>
   );

@@ -3,7 +3,9 @@
     "allow": [
       "Bash(npx tsc:*)",
       "Bash(node -e ':*)",
-      "WebFetch(domain:www.checkoutleak.com)"
+      "WebFetch(domain:www.checkoutleak.com)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\miche\\\\Desktop\\\\inovense\\\\src\" -Recurse -Filter \"*hero*\" -Include \"*.tsx\")",
+      "Bash(Select-Object -ExpandProperty FullName)"
     ]
   }
 }

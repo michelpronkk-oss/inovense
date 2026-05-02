@@ -29,6 +29,46 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
   );
 }
 
+/* ─── Mobile visual ─────────────────────────────────────────────────────── */
+
+function MobileSaasVisual() {
+  return (
+    <div className="relative mx-auto mt-10 w-[calc(100vw-3rem)] max-w-sm md:hidden">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-8 -top-6 h-16 opacity-50 blur-2xl"
+        style={{
+          background:
+            "radial-gradient(ellipse 65% 60% at 50% 50%, rgba(73,160,164,0.16), transparent 70%)",
+        }}
+      />
+      <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-950/70 p-4 shadow-[0_18px_70px_rgba(0,0,0,0.38)]">
+        <div className="mb-4 flex items-center justify-between border-b border-zinc-800/70 pb-3">
+          <span className="text-xs font-medium text-brand">SaaS marketing site</span>
+          <div className="h-2 w-2 rounded-full bg-brand/60" />
+        </div>
+        <div className="space-y-2.5">
+          <div className="rounded-xl border border-brand/25 bg-brand/10 p-3">
+            <p className="text-xs font-medium text-brand">Product positioning</p>
+            <div className="mt-2 space-y-1.5">
+              <div className="h-2 w-4/5 rounded-full bg-zinc-700/70" />
+              <div className="h-2 w-3/5 rounded-full bg-zinc-800" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            {["Pricing page", "Conversion path", "Trust signals", "Trial CTA"].map((item) => (
+              <div key={item} className="rounded-xl border border-zinc-800 bg-zinc-900/55 p-3">
+                <div className="mb-2 h-1.5 w-8 rounded-full bg-brand/35" />
+                <p className="text-[11px] font-medium text-zinc-400">{item}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Hero ──────────────────────────────────────────────────────────────── */
 
 function Hero() {
@@ -82,27 +122,27 @@ function Hero() {
           </span>
         </div>
 
-        <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-tight text-zinc-50 md:text-6xl md:leading-[1.06]">
+        <h1 className="max-w-[calc(100vw-3rem)] break-words text-3xl font-semibold leading-tight tracking-tight text-zinc-50 md:max-w-3xl md:text-6xl md:leading-[1.06]">
           Your product is credible.{" "}
           <span className="text-brand">Your website should be too.</span>
         </h1>
 
-        <p className="mt-6 max-w-2xl text-base leading-relaxed text-zinc-400 md:text-lg">
+        <p className="mt-6 max-w-[calc(100vw-3rem)] text-base leading-relaxed text-zinc-400 md:max-w-2xl md:text-lg">
           Premium SaaS marketing sites, pricing pages, and product interface
           design for software companies where the front-end is part of the
           product experience. Designed to convert trials and close deals.
         </p>
 
-        <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+        <div className="mt-10 flex w-[calc(100vw-3rem)] max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row">
           <Link
             href="/intake"
-            className="inline-flex items-center justify-center rounded-full bg-brand px-8 py-3 text-sm font-medium text-zinc-950 transition-colors hover:bg-brand/90"
+            className="inline-flex w-full items-center justify-center rounded-full bg-brand px-8 py-3 text-sm font-medium text-zinc-950 transition-colors hover:bg-brand/90 sm:w-auto"
           >
             Start a SaaS project
           </Link>
           <Link
             href="/build"
-            className="inline-flex items-center justify-center rounded-full border border-zinc-700 px-8 py-3 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50"
+            className="inline-flex w-full items-center justify-center rounded-full border border-zinc-700 px-8 py-3 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50 sm:w-auto"
           >
             See the Build lane
           </Link>
@@ -120,6 +160,8 @@ function Hero() {
             </span>
           ))}
         </div>
+
+        <MobileSaasVisual />
       </div>
     </section>
   );

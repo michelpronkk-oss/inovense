@@ -211,7 +211,7 @@ export default function Hero() {
 
           <motion.h1
             variants={itemVariants}
-            className="max-w-5xl text-4xl font-semibold leading-[1.06] tracking-tight text-zinc-50 sm:text-5xl md:text-6xl lg:text-7xl"
+            className="max-w-[calc(100vw-3rem)] break-words text-3xl font-semibold leading-[1.06] tracking-tight text-zinc-50 sm:max-w-5xl sm:text-5xl md:text-6xl lg:text-7xl"
           >
             Build the website. Automate the client flow.{" "}
             <span className="text-brand">Close better business.</span>
@@ -219,7 +219,7 @@ export default function Hero() {
 
           <motion.p
             variants={itemVariants}
-            className="mx-auto mt-6 max-w-3xl text-base leading-relaxed text-zinc-400 sm:text-lg"
+            className="mx-auto mt-6 max-w-[calc(100vw-3rem)] text-base leading-relaxed text-zinc-400 sm:max-w-3xl sm:text-lg"
           >
             Inovense builds premium websites, intake flows, proposal systems, and onboarding automations for service businesses that need fewer leaks between interest and revenue.
           </motion.p>

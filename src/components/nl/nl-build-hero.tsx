@@ -125,6 +125,46 @@ function BrowserMock() {
   );
 }
 
+const mobileBuildItems = ["Conversie-eerste", "Geen templates", "Snel gebouwd", "Volledig eigendom"];
+
+function MobileNlBuildVisual() {
+  return (
+    <div className="relative mx-auto w-full max-w-sm select-none lg:hidden">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-8 -top-6 h-16 opacity-50 blur-2xl"
+        style={{
+          background:
+            "radial-gradient(ellipse 65% 60% at 50% 50%, rgba(73,160,164,0.18), transparent 70%)",
+        }}
+      />
+      <div className="relative overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-950/70 p-4 shadow-[0_18px_70px_rgba(0,0,0,0.42)]">
+        <div className="mb-4 flex items-center justify-between border-b border-zinc-800/70 pb-3">
+          <span className="text-xs font-medium text-brand">Website systeem</span>
+          <span className="text-[11px] text-zinc-600">Op maat gebouwd</span>
+        </div>
+        <div className="space-y-2.5">
+          <div className="rounded-xl border border-brand/25 bg-brand/10 p-3 text-left">
+            <p className="text-xs font-medium text-brand">Primair aanbod</p>
+            <div className="mt-2 space-y-1.5">
+              <div className="h-2 w-4/5 rounded-full bg-zinc-700/70" />
+              <div className="h-2 w-3/5 rounded-full bg-zinc-800" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            {mobileBuildItems.map((item) => (
+              <div key={item} className="rounded-xl border border-zinc-800 bg-zinc-900/55 p-3 text-left">
+                <div className="mb-2 h-1.5 w-8 rounded-full bg-brand/35" />
+                <p className="text-[11px] font-medium text-zinc-400">{item}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const containerVariants = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.09 } },
@@ -193,7 +233,7 @@ export default function NlBuildHero() {
 
             <motion.h1
               variants={itemVariants}
-              className="text-4xl font-semibold leading-[1.1] tracking-tight text-zinc-50 sm:text-5xl lg:text-6xl"
+              className="text-3xl font-semibold leading-[1.1] tracking-tight text-zinc-50 sm:text-4xl lg:text-6xl"
             >
               Websites en webshops die vertrouwen{" "}
               <em className="not-italic text-brand">wekken</em> en converteren.
@@ -201,19 +241,19 @@ export default function NlBuildHero() {
 
             <motion.p
               variants={itemVariants}
-              className="mt-6 max-w-[440px] text-base leading-relaxed text-zinc-400 sm:text-lg"
+              className="mt-6 max-w-[calc(100vw-3rem)] text-base leading-relaxed text-zinc-400 sm:max-w-[440px] sm:text-lg"
             >
               Op maat gebouwde websites en Shopify-winkels die presteren, niet alleen mooi zijn.
             </motion.p>
 
             <motion.div
               variants={itemVariants}
-              className="mt-8 flex flex-col gap-3 sm:flex-row"
+              className="mt-8 flex w-[calc(100vw-3rem)] max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row"
             >
               <Button
                 asChild
                 size="lg"
-                className="rounded-full bg-brand px-8 text-white hover:bg-brand/90"
+                className="w-full rounded-full bg-brand px-8 text-white hover:bg-brand/90 sm:w-auto"
               >
                 <Link href="/nl/intake">Start een build project</Link>
               </Button>
@@ -221,7 +261,7 @@ export default function NlBuildHero() {
                 asChild
                 variant="outline"
                 size="lg"
-                className="rounded-full border-zinc-700 bg-transparent px-8 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50"
+                className="w-full rounded-full border-zinc-700 bg-transparent px-8 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50 sm:w-auto"
               >
                 <Link href="/nl/process">Bekijk het proces</Link>
               </Button>
@@ -242,6 +282,10 @@ export default function NlBuildHero() {
               <span className="text-xs uppercase tracking-[0.2em] text-zinc-600">
                 Build lane | Inovense
               </span>
+            </motion.div>
+
+            <motion.div variants={itemVariants} className="mt-8">
+              <MobileNlBuildVisual />
             </motion.div>
           </motion.div>
 
