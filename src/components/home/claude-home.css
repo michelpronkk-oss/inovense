@@ -690,6 +690,36 @@
   color: var(--text-dim);
 }
 
+/* Hero stats strip — mobile only, hidden by default */
+.inovense-os .hero-stats { display: none; }
+.inovense-os .hero-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+.inovense-os .hero-stat-num {
+  font-family: var(--font-sans);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+.inovense-os .hero-stat-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+.inovense-os .hero-stat-sep {
+  width: 1px;
+  height: 32px;
+  background: rgba(255,255,255,0.07);
+  flex-shrink: 0;
+}
+
 /* ---------- Section header ---------- */
 .inovense-os .section-head {
   display: flex;
@@ -1124,16 +1154,45 @@
 @media (max-width: 767px) {
   .inovense-os .hero-fold {
     min-height: calc(100svh - 58px);
+    padding-bottom: 48px;
   }
+  /* Primary cyan glow — concentrated beam */
   .inovense-os .hero-glow {
-    width: 680px;
-    height: 580px;
-    top: -60px;
-    filter: blur(28px);
-    background: radial-gradient(ellipse at 50% 28%, rgba(77,232,225,0.52) 0%, rgba(77,232,225,0.18) 38%, transparent 65%);
+    width: 700px;
+    height: 620px;
+    top: -80px;
+    filter: blur(26px);
+    background: radial-gradient(ellipse at 50% 26%, rgba(77,232,225,0.56) 0%, rgba(77,232,225,0.22) 35%, transparent 62%);
+  }
+  /* Secondary blue accent glow for depth */
+  .inovense-os .hero::before {
+    content: "";
+    position: absolute;
+    top: 5%;
+    left: -5%;
+    width: 340px;
+    height: 440px;
+    background: radial-gradient(ellipse, rgba(91,141,239,0.22) 0%, transparent 68%);
+    filter: blur(44px);
+    pointer-events: none;
+    z-index: 0;
   }
   .inovense-os .hero h1 {
     font-weight: 600;
+  }
+  /* Show stats strip on mobile */
+  .inovense-os .hero-stats {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    width: 100%;
+    padding-top: 22px;
+    padding-bottom: 4px;
+  }
+  /* Hide 4-tile capability band on mobile */
+  .inovense-os .hero-cap-band {
+    display: none;
   }
 }
 
