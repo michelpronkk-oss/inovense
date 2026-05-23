@@ -27,9 +27,13 @@ export default function ClaudeHomeV2() {
 
     if (nodes.length === 0) return;
 
+    const isMobile = window.matchMedia("(max-width: 767px)").matches;
     nodes.forEach((node, index) => {
       node.setAttribute("data-v2-reveal", "");
-      node.style.setProperty("--v2-reveal-delay", `${Math.min((index % 6) * 45, 220)}ms`);
+      node.style.setProperty(
+        "--v2-reveal-delay",
+        `${Math.min((index % 6) * (isMobile ? 24 : 36), isMobile ? 96 : 180)}ms`,
+      );
     });
 
     if (prefersReducedMotion || !("IntersectionObserver" in window)) {
@@ -46,7 +50,10 @@ export default function ClaudeHomeV2() {
           }
         });
       },
-      { rootMargin: "0px 0px -10% 0px", threshold: 0.2 },
+      {
+        rootMargin: isMobile ? "0px 0px 22% 0px" : "0px 0px 8% 0px",
+        threshold: isMobile ? 0.01 : 0.08,
+      },
     );
 
     nodes.forEach((node) => observer.observe(node));
@@ -59,4 +66,3 @@ export default function ClaudeHomeV2() {
     </div>
   );
 }
-

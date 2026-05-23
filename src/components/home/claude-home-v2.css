@@ -34,10 +34,10 @@
 
 .home-v2-root .inovense-os [data-v2-reveal] {
   opacity: 0;
-  transform: translateY(18px);
+  transform: translateY(14px);
   transition:
-    opacity 560ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--v2-reveal-delay, 0ms),
-    transform 560ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--v2-reveal-delay, 0ms);
+    opacity 420ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--v2-reveal-delay, 0ms),
+    transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--v2-reveal-delay, 0ms);
   will-change: opacity, transform;
 }
 
@@ -74,13 +74,17 @@
 
 @media (max-width: 900px) {
   .home-v2-root .inovense-os .section {
-    padding-top: 118px;
-    padding-bottom: 118px;
+    padding-top: 68px;
+    padding-bottom: 68px;
   }
 
   .home-v2-root .inovense-os .section-sm {
-    padding-top: 88px;
-    padding-bottom: 88px;
+    padding-top: 52px;
+    padding-bottom: 52px;
+  }
+
+  .home-v2-root .inovense-os .section-head {
+    margin-bottom: 24px;
   }
 }
 
@@ -95,4 +99,3 @@
     animation: none;
   }
 }
-
