@@ -1,9 +1,10 @@
-export type HostSurface = "public" | "admin" | "portal" | "development";
+export type HostSurface = "public" | "admin" | "portal" | "app" | "development";
 
 const DEFAULT_PUBLIC_HOST = "www.inovense.com";
 const DEFAULT_PUBLIC_APEX_HOST = "inovense.com";
 const DEFAULT_ADMIN_HOST = "admin.inovense.com";
 const DEFAULT_PORTAL_HOST = "portal.inovense.com";
+const DEFAULT_APP_HOST = "app.inovense.com";
 
 export function normalizeHost(rawHost: string | null | undefined): string {
   const first = (rawHost ?? "").split(",")[0]?.trim().toLowerCase() ?? "";
@@ -36,10 +37,15 @@ export function getPortalHost(): string {
   return normalizeHost(process.env.NEXT_PUBLIC_PORTAL_HOST ?? DEFAULT_PORTAL_HOST);
 }
 
+export function getAppHost(): string {
+  return normalizeHost(process.env.NEXT_PUBLIC_APP_HOST ?? DEFAULT_APP_HOST);
+}
+
 export function resolveHostSurface(host: string): HostSurface {
   const normalized = normalizeHost(host);
   const adminHost = getAdminHost();
   const portalHost = getPortalHost();
+  const appHost = getAppHost();
   const publicHost = getPublicHost();
   const publicApexHost = getPublicApexHost();
 
@@ -49,6 +55,7 @@ export function resolveHostSurface(host: string): HostSurface {
 
   if (normalized === adminHost) return "admin";
   if (normalized === portalHost) return "portal";
+  if (normalized === appHost) return "app";
   if (normalized === publicHost || normalized === publicApexHost) return "public";
 
   // Unknown hosts (preview URLs, custom staging domains) keep default app behavior.

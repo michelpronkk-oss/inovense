@@ -1,0 +1,432 @@
+/* ============================================================
+   Inovense OS — The AI operating layer for modern businesses.
+   System: deep black + premium cyan, Geist/Inter type, operational UI
+   All selectors scoped to .inovense-os to avoid Tailwind/global conflicts.
+   ============================================================ */
+
+.inovense-os {
+  /* Surfaces */
+  --bg: #06070A;
+  --bg-1: #0A0C10;
+  --bg-2: #0E1117;
+  --bg-3: #13171F;
+  --card: #0D1015;
+  --card-2: #12161D;
+  --card-3: #171C25;
+
+  /* Lines */
+  --line: rgba(255, 255, 255, 0.055);
+  --line-2: rgba(255, 255, 255, 0.085);
+  --line-strong: rgba(255, 255, 255, 0.14);
+  --line-cyan: rgba(77, 232, 225, 0.22);
+
+  /* Type */
+  --text: #ECEFF3;
+  --text-dim: #A4ABB4;
+  --text-mute: #6B7178;
+  --text-faint: #4A4F57;
+
+  /* Accent — premium cyan */
+  --cyan: #4DE8E1;
+  --cyan-bright: #7EF6F0;
+  --cyan-deep: #0EB8B0;
+  --cyan-soft: rgba(77, 232, 225, 0.10);
+  --cyan-softer: rgba(77, 232, 225, 0.05);
+  --cyan-line: rgba(77, 232, 225, 0.28);
+
+  /* Secondary accents */
+  --blue: #5B8DEF;
+  --green: #51D88A;
+  --green-soft: rgba(81, 216, 138, 0.10);
+  --amber: #F5C26B;
+  --amber-soft: rgba(245, 194, 107, 0.10);
+  --rose: #F2767C;
+  --rose-soft: rgba(242, 118, 124, 0.10);
+  --violet: #A78BFA;
+
+  /* Radius */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+  --r-2xl: 28px;
+
+  /* Fonts */
+  --font-sans: "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+
+  /* Containers */
+  --container: 1240px;
+  --container-wide: 1360px;
+}
+
+.inovense-os * { box-sizing: border-box; }
+.inovense-os { margin: 0; padding: 0; }
+
+.inovense-os {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
+  background:
+    radial-gradient(1200px 700px at 50% -200px, rgba(77, 232, 225, 0.07), transparent 60%),
+    radial-gradient(900px 600px at 90% 10%, rgba(91, 141, 239, 0.05), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.inovense-os ::selection { background: rgba(77, 232, 225, 0.30); color: #fff; }
+
+.inovense-os a { color: inherit; text-decoration: none; }
+.inovense-os button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+
+/* ---------- Layout ---------- */
+.inovense-os .container {
+  width: 100%;
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 0 32px;
+}
+.inovense-os .container-wide {
+  width: 100%;
+  max-width: var(--container-wide);
+  margin: 0 auto;
+  padding: 0 32px;
+}
+.inovense-os .section {
+  position: relative;
+  padding: 140px 0;
+}
+.inovense-os .section-sm { padding: 96px 0; }
+.inovense-os .section-lg { padding: 180px 0; }
+
+/* ---------- Typography ---------- */
+.inovense-os .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  font-weight: 500;
+}
+.inovense-os .eyebrow::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 10px var(--cyan);
+}
+.inovense-os .eyebrow-neutral { color: var(--text-mute); }
+.inovense-os .eyebrow-neutral::before { background: var(--text-mute); box-shadow: none; }
+
+.inovense-os h1,
+.inovense-os h2,
+.inovense-os h3,
+.inovense-os h4 {
+  margin: 0;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  color: var(--text);
+  font-feature-settings: "ss01", "cv11";
+}
+.inovense-os h1 { font-size: clamp(40px, 4.5vw, 64px); line-height: 1.02; letter-spacing: -0.035em; }
+.inovense-os h2 { font-size: clamp(32px, 3.6vw, 54px); line-height: 1.06; letter-spacing: -0.03em; }
+.inovense-os h3 { font-size: clamp(20px, 1.6vw, 26px); line-height: 1.2; letter-spacing: -0.02em; }
+.inovense-os h4 { font-size: 17px; line-height: 1.3; letter-spacing: -0.015em; font-weight: 500; }
+
+.inovense-os p { margin: 0; color: var(--text-dim); font-size: 17px; line-height: 1.55; }
+.inovense-os .lede { font-size: 19px; line-height: 1.55; color: var(--text-dim); max-width: 620px; }
+.inovense-os .mono { font-family: var(--font-mono); }
+.inovense-os .label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+
+/* ---------- Buttons ---------- */
+.inovense-os .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  font-size: 14.5px;
+  font-weight: 500;
+  border-radius: 10px;
+  letter-spacing: -0.005em;
+  transition: all .18s ease;
+  white-space: nowrap;
+}
+.inovense-os .btn-primary {
+  background: var(--cyan);
+  color: #04130F;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.4),
+    0 0 0 1px rgba(77, 232, 225, 0.5),
+    0 8px 28px -8px rgba(77, 232, 225, 0.55);
+}
+.inovense-os .btn-primary:hover { background: var(--cyan-bright); transform: translateY(-1px); }
+.inovense-os .btn-ghost {
+  background: rgba(255,255,255,0.03);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+}
+.inovense-os .btn-ghost:hover { background: rgba(255,255,255,0.06); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.inovense-os .btn-link { color: var(--text); padding: 12px 0; }
+.inovense-os .btn-link:hover { color: var(--cyan); }
+.inovense-os .btn-sm { padding: 8px 12px; font-size: 13px; border-radius: 8px; }
+.inovense-os .btn-lg { padding: 14px 22px; font-size: 15px; border-radius: 12px; }
+
+/* ---------- Cards ---------- */
+.inovense-os .card {
+  position: relative;
+  background: linear-gradient(180deg, var(--card-2), var(--card));
+  border-radius: var(--r-lg);
+  box-shadow:
+    inset 0 0 0 1px var(--line),
+    0 1px 0 rgba(255,255,255,0.02);
+}
+.inovense-os .card-hover { transition: transform .25s ease, box-shadow .25s ease; }
+.inovense-os .card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 0 0 1px var(--line-2),
+    0 20px 40px -20px rgba(0,0,0,0.6);
+}
+
+.inovense-os .surface-grid {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+/* ---------- Header ---------- */
+.inovense-os .header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  padding: 14px 0;
+  transition: backdrop-filter .2s ease, background .2s ease, border-color .2s ease;
+}
+.inovense-os .header-scrolled {
+  background: rgba(6, 7, 10, 0.72);
+  backdrop-filter: saturate(140%) blur(14px);
+  -webkit-backdrop-filter: saturate(140%) blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+.inovense-os .header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+}
+.inovense-os .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 14.5px;
+  letter-spacing: 0.04em;
+  color: var(--cyan);
+}
+.inovense-os .brand-mark {
+  width: 22px; height: 22px;
+  display: grid;
+  place-items: center;
+}
+.inovense-os .nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  background: rgba(13, 16, 21, 0.6);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  backdrop-filter: blur(10px);
+}
+.inovense-os .nav a {
+  padding: 8px 14px;
+  font-size: 13.5px;
+  color: var(--text-dim);
+  border-radius: 999px;
+  transition: color .15s ease, background .15s ease;
+}
+.inovense-os .nav a:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+.inovense-os .nav a.active { color: var(--text); background: rgba(255,255,255,0.06); }
+.inovense-os .header-cta { display: flex; align-items: center; gap: 12px; }
+
+/* ---------- Hero ---------- */
+.inovense-os .hero {
+  position: relative;
+  padding-top: 148px;
+  padding-bottom: 64px;
+  overflow: hidden;
+}
+.inovense-os .hero-grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 80px 80px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, #000 30%, transparent 75%);
+  pointer-events: none;
+}
+.inovense-os .hero-glow {
+  position: absolute;
+  top: -200px; left: 50%; transform: translateX(-50%);
+  width: 1100px; height: 700px;
+  background: radial-gradient(ellipse at center, rgba(77, 232, 225, 0.18), transparent 60%);
+  pointer-events: none;
+  filter: blur(20px);
+}
+.inovense-os .hero-inner {
+  position: relative;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+.inovense-os .hero h1 { max-width: 18ch; }
+.inovense-os .hero h1 .accent { color: var(--cyan); }
+.inovense-os .hero-sub {
+  max-width: 560px;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+.inovense-os .hero-ctas { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.inovense-os .hero-trust {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px 6px 8px;
+  background: rgba(13, 16, 21, 0.6);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: 12.5px;
+  color: var(--text-mute);
+}
+.inovense-os .hero-trust-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  background: var(--cyan-soft);
+  color: var(--cyan);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* ---------- Section header ---------- */
+.inovense-os .section-head {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 760px;
+  margin-bottom: 64px;
+}
+.inovense-os .section-head.center { align-items: center; text-align: center; margin-left: auto; margin-right: auto; }
+.inovense-os .section-head p { max-width: 580px; }
+
+/* ---------- Footer ---------- */
+.inovense-os .footer {
+  position: relative;
+  padding: 80px 0 40px;
+  border-top: 1px solid var(--line);
+  background: linear-gradient(180deg, transparent, rgba(0,0,0,0.4));
+}
+
+/* ---------- Utility ---------- */
+.inovense-os .divider { height: 1px; background: var(--line); }
+.inovense-os .divider-dashed {
+  height: 1px;
+  background-image: linear-gradient(90deg, var(--line) 50%, transparent 50%);
+  background-size: 6px 1px;
+}
+.inovense-os .kbd {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.05);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--text-dim);
+}
+.inovense-os .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+.inovense-os .dot-green { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.inovense-os .dot-amber { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+.inovense-os .dot-cyan { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+.inovense-os .dot-rose { background: var(--rose); box-shadow: 0 0 8px var(--rose); }
+
+.inovense-os .pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(255,255,255,0.04);
+  color: var(--text-dim);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.inovense-os .pill-cyan { background: var(--cyan-soft); color: var(--cyan); box-shadow: inset 0 0 0 1px var(--cyan-line); }
+.inovense-os .pill-green { background: var(--green-soft); color: var(--green); box-shadow: inset 0 0 0 1px rgba(81, 216, 138, 0.25); }
+.inovense-os .pill-amber { background: var(--amber-soft); color: var(--amber); box-shadow: inset 0 0 0 1px rgba(245, 194, 107, 0.25); }
+.inovense-os .pill-rose { background: var(--rose-soft); color: var(--rose); box-shadow: inset 0 0 0 1px rgba(242, 118, 124, 0.25); }
+
+.inovense-os .metric {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+/* ---------- Animations ---------- */
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+.inovense-os .pulsing { animation: pulseDot 1.8s ease-in-out infinite; }
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+@keyframes flowDash {
+  to { stroke-dashoffset: -24; }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.inovense-os .fade-in { animation: fadeUp .6s ease both; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  .inovense-os .section { padding: 96px 0; }
+  .inovense-os .nav { display: none; }
+  .inovense-os .hero { padding-top: 120px; }
+  .inovense-os .container,
+  .inovense-os .container-wide { padding: 0 20px; }
+}

@@ -1,14 +1,5 @@
 import type { Metadata } from "next";
-import Footer from "@/components/footer";
-import CTA from "@/components/home/cta";
-import GeoAnswers from "@/components/home/geo-answers";
-import Hero from "@/components/home/hero";
-import Process from "@/components/home/process";
-import Services from "@/components/home/services";
-import Trust from "@/components/home/trust";
-import Why from "@/components/home/why";
-import Work from "@/components/home/work";
-import Nav from "@/components/nav";
+import ClaudeHome from "@/components/home/claude-home";
 import {
   INOVENSE_HOME_FAQS,
   INOVENSE_ORGANIZATION_ID,
@@ -91,8 +82,7 @@ const homeFaqSchema = {
 export default function Home() {
   return (
     <>
-      <Nav />
-      <main className="flex flex-col">
+      <main>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: toJsonLd(homePageSchema) }}
@@ -101,16 +91,8 @@ export default function Home() {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: toJsonLd(homeFaqSchema) }}
         />
-        <Hero />
-        <Trust />
-        <Services />
-        <GeoAnswers />
-        <Why />
-        <Process />
-        <Work />
-        <CTA />
+        <ClaudeHome />
       </main>
-      <Footer />
     </>
   );
 }

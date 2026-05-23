@@ -10,6 +10,12 @@ import {
   stripAdminPrefix,
 } from "@/lib/host-routing";
 
+function rewriteTo(request: NextRequest, pathname: string, headers: Headers) {
+  const rewriteUrl = request.nextUrl.clone();
+  rewriteUrl.pathname = pathname;
+  return NextResponse.rewrite(rewriteUrl, { request: { headers } });
+}
+
 function redirectToHost(
   request: NextRequest,
   targetHost: string,
@@ -47,6 +53,14 @@ export async function middleware(request: NextRequest) {
       internalPathname =
         originalPathname === "/" ? "/admin" : `/admin${originalPathname}`;
     }
+  }
+
+  if (surface === "app") {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-pathname", originalPathname);
+    const target =
+      originalPathname === "/" ? "/app" : `/app${originalPathname}`;
+    return rewriteTo(request, target, requestHeaders);
   }
 
   if (surface === "portal") {

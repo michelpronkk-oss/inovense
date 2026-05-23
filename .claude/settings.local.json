@@ -5,7 +5,20 @@
       "Bash(node -e ':*)",
       "WebFetch(domain:www.checkoutleak.com)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\miche\\\\Desktop\\\\inovense\\\\src\" -Recurse -Filter \"*hero*\" -Include \"*.tsx\")",
-      "Bash(Select-Object -ExpandProperty FullName)"
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(npm run *)",
+      "Bash(node -e \"require\\('styled-jsx'\\)\")",
+      "WebFetch(domain:api.anthropic.com)",
+      "Bash(mkdir extracted *)",
+      "Bash(cp webfetch-1779534319525-h4mbfn.bin archive.tar.gz)",
+      "Bash(tar -xzf archive.tar.gz -C extracted/)",
+      "Bash(ls \"C:\\\\Users\\\\miche\\\\Desktop\" 2>/dev/null | head -30)",
+      "Read(//c/Users/miche/Desktop/**)",
+      "Bash(mkdir -p \"C:\\\\Users\\\\miche\\\\Desktop\\\\inovense-app\\\\src\\\\app\" \"C:\\\\Users\\\\miche\\\\Desktop\\\\inovense-app\\\\src\\\\components\\\\overview\")",
+      "Bash(node -e ' *)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\miche\\Desktop\\inovense-app\\src"
     ]
   }
 }

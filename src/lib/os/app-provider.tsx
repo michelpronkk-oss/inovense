@@ -1,0 +1,721 @@
+﻿"use client";
+
+import React, { createContext, useContext, useReducer, useEffect, useCallback } from "react";
+import type {
+  OSState,
+  Agent,
+  ExecutionLog,
+  DeployConfig,
+  AgentRun,
+  Connector,
+  Policy,
+  TeamMember,
+  OSSettings,
+  CurrentUser,
+  DashboardState,
+  Workspace,
+  OnboardingState,
+} from "@/lib/os/types";
+import { buildSeedState } from "@/lib/os/seed";
+import { AGENT_TEMPLATES } from "@/lib/os/templates";
+import { continueRunAfterApproval, runAgent as runAgentRuntime, type AgentRuntimeResult } from "@/lib/os/agents/agent-runtime";
+import { installWorkflowFromSuggestion, type SuggestedWorkflow } from "@/lib/os/workflow-recommendations";
+
+const STORAGE_KEY = "inovense-os-state-v1";
+
+type OSAction =
+  | { type: "HYDRATE"; state: OSState }
+  | { type: "COMPLETE_ONBOARDING"; onboarding: OnboardingState; workspace: Workspace; currentUser: CurrentUser; connectors: string[]; preferredOperator: string; mainGoals: string[]; approvalOwner: string }
+  | { type: "DEPLOY_AGENT"; agent: Agent }
+  | { type: "APPROVE"; approvalId: string; runId?: string; agentId: string }
+  | { type: "SKIP"; approvalId: string; runId?: string; agentId: string }
+  | { type: "TOGGLE_AGENT_PAUSE"; agentId: string }
+  | { type: "RUN_WORKFLOW"; workflowId: string }
+  | { type: "INSTALL_WORKFLOW"; workflow: OSState["workflows"][number]; log: ExecutionLog }
+  | { type: "UPSERT_POLICY"; policy: Policy; log: ExecutionLog }
+  | { type: "SET_POLICY_ACTIVE"; policyId: string; active: boolean; log: ExecutionLog }
+  | { type: "INVITE_MEMBER"; member: TeamMember; log: ExecutionLog }
+  | { type: "UPDATE_MEMBER"; memberId: string; patch: Partial<TeamMember>; log: ExecutionLog }
+  | { type: "SET_SETTINGS_SECTION"; section: keyof OSSettings; value: OSSettings[keyof OSSettings]; log: ExecutionLog }
+  | { type: "SET_CURRENT_USER"; value: CurrentUser; log: ExecutionLog }
+  | { type: "SET_DASHBOARD"; value: DashboardState }
+  | { type: "SET_WORKSPACE"; value: Workspace; log: ExecutionLog }
+  | { type: "APPEND_LOG"; log: ExecutionLog }
+  | { type: "UPDATE_CONNECTOR"; connectorId: string; patch: Partial<Connector>; log?: ExecutionLog }
+  | { type: "APPLY_RUNTIME_RESULT"; result: AgentRuntimeResult }
+  | { type: "UPSERT_RUN"; run: AgentRun }
+  | { type: "ADD_MEMORY"; entries: OSState["memory"] };
+
+function reducer(state: OSState, action: OSAction): OSState {
+  switch (action.type) {
+    case "HYDRATE":
+      return action.state;
+    case "COMPLETE_ONBOARDING": {
+      const nowIso = new Date().toISOString();
+      const preferredMap: Record<string, string> = {
+        "Revenue Operator": "revenue",
+        "Marketing Operator": "marketing",
+        "Client Flow Operator": "client",
+        "Operations Operator": "operations",
+        "Support Operator": "support",
+      };
+      const templateId = preferredMap[action.preferredOperator] ?? "revenue";
+      const template = AGENT_TEMPLATES[templateId];
+      const missingRevenueRequirements = action.preferredOperator === "Revenue Operator"
+        ? [
+          !(action.connectors.includes("gmail") || action.connectors.includes("outlook")) ? "gmail|outlook" : "",
+          !(action.connectors.includes("hubspot") || action.connectors.includes("salesforce")) ? "hubspot|salesforce" : "",
+          !action.connectors.includes("slack") ? "slack" : "",
+        ].filter(Boolean)
+        : [];
+      const existingPreferred = state.agents.find((agent) => agent.name === action.preferredOperator);
+      const preferredAgent: Agent | null = template && !existingPreferred
+        ? {
+          id: `agent-${template.id.slice(0, 2).toUpperCase()}-${Date.now()}`,
+          name: action.preferredOperator,
+          mark: template.mark,
+          color: template.color,
+          templateId: template.id,
+          status: missingRevenueRequirements.length ? "awaiting" : "running",
+          workspaceId: action.workspace.id,
+          currentTask: missingRevenueRequirements.length
+            ? `Missing requirements: ${missingRevenueRequirements.join(", ")}`
+            : "Ready for first workflow run",
+          deployedAt: nowIso,
+          config: {
+            tools: template.allowedTools,
+            approvalPolicy: "require_approval",
+            memoryScope: ["client", "brand", "process"],
+          },
+          stats: { actionsThisWeek: 0, outputsThisWeek: 0, totalRuns: 0, metricLabel: "actions/wk", metricValue: "0" },
+        }
+        : null;
+      const onboardLog = logEntry(`Onboarding completed for ${action.workspace.name}`, "onboarding.completed", "ok");
+      const missingReqLog = missingRevenueRequirements.length
+        ? logEntry(`Revenue Operator missing requirements: ${missingRevenueRequirements.join(", ")}`, "connector.missing", "warn")
+        : null;
+      const memoryEntry = {
+        id: `mem-onb-${Date.now()}`,
+        type: "process" as const,
+        label: `${action.workspace.name} onboarding profile`,
+        summary: "Initial workspace goals and operating preferences",
+        content: `Goals: ${action.mainGoals.join(", ") || "none provided"}. Approval owner: ${action.approvalOwner}. Preferred operator: ${action.preferredOperator}.`,
+        tags: ["onboarding", "workspace"],
+        agentScope: preferredAgent ? [preferredAgent.id] : [],
+        fieldCount: 4,
+        updatedAt: nowIso,
+      };
+      return {
+        ...state,
+        onboarding: action.onboarding,
+        workspace: action.workspace,
+        currentUser: action.currentUser,
+        teamMembers: state.teamMembers.map((member) => member.id === state.currentUser.id ? {
+          ...member,
+          name: action.currentUser.name,
+          email: action.currentUser.email,
+          role: action.currentUser.roleLabel,
+          initials: action.currentUser.initials,
+        } : member),
+        connectors: state.connectors.map((connector) => {
+          const shouldConnect = action.connectors.includes(connector.id);
+          if (!shouldConnect) return connector;
+          return {
+            ...connector,
+            isConnected: true,
+            status: "connected",
+            health: "healthy",
+            lastSync: "just now",
+            lastSynced: nowIso,
+          };
+        }),
+        policies: state.policies.map((policy) => ({ ...policy, enabled: true, active: true, updatedAt: nowIso })),
+        agents: preferredAgent ? [preferredAgent, ...state.agents] : state.agents,
+        memory: [memoryEntry, ...state.memory],
+        logs: [onboardLog, ...(missingReqLog ? [missingReqLog] : []), ...state.logs].slice(0, 300),
+      };
+    }
+    case "DEPLOY_AGENT":
+      return { ...state, agents: [...state.agents, action.agent] };
+    case "APPROVE": {
+      const now = new Date().toISOString();
+      return {
+        ...state,
+        approvals: state.approvals.map((a) =>
+          a.id === action.approvalId ? { ...a, status: "approved", resolvedAt: now, resolvedBy: state.currentUser.name } : a
+        ),
+        agents: state.agents.map((a) => (a.id === action.agentId ? { ...a, status: "running", currentTask: "Completed approved action" } : a)),
+        logs: [logEntry("Approval granted and action continued", "approval.approved"), ...state.logs].slice(0, 300),
+      };
+    }
+    case "SKIP": {
+      const now = new Date().toISOString();
+      return {
+        ...state,
+        approvals: state.approvals.map((a) =>
+          a.id === action.approvalId ? { ...a, status: "skipped", resolvedAt: now, resolvedBy: state.currentUser.name } : a
+        ),
+        agents: state.agents.map((a) => (a.id === action.agentId ? { ...a, status: "running", currentTask: "Action skipped by operator" } : a)),
+        logs: [logEntry("Approval skipped, action canceled", "approval.skipped", "warn"), ...state.logs].slice(0, 300),
+      };
+    }
+    case "TOGGLE_AGENT_PAUSE": {
+      const agent = state.agents.find((a) => a.id === action.agentId);
+      const nextPaused = agent?.status !== "paused";
+      const log: ExecutionLog = {
+        id: `log-${Date.now()}-${action.agentId}`,
+        ts: new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+        runId: "manual",
+        agentId: action.agentId,
+        agentMark: agent?.mark ?? "OS",
+        agentColor: agent?.color ?? "#4DE8E1",
+        event: "agent_status",
+        message: nextPaused ? "Agent paused by operator" : "Agent resumed by operator",
+        duration: "-",
+        status: "ok",
+      };
+      return {
+        ...state,
+        agents: state.agents.map((a) => (a.id === action.agentId ? { ...a, status: a.status === "paused" ? "running" : "paused" } : a)),
+        logs: [log, ...state.logs].slice(0, 300),
+      };
+    }
+    case "RUN_WORKFLOW": {
+      const { workflowId } = action;
+      return {
+        ...state,
+        workflows: state.workflows.map((w) => (w.id === workflowId ? { ...w, totalRuns: w.totalRuns + 1, lastRun: "just now" } : w)),
+      };
+    }
+    case "INSTALL_WORKFLOW":
+      return {
+        ...state,
+        workflows: [action.workflow, ...state.workflows],
+        logs: [action.log, ...state.logs].slice(0, 300),
+      };
+    case "UPSERT_POLICY": {
+      const exists = state.policies.some((p) => p.id === action.policy.id);
+      return {
+        ...state,
+        policies: exists ? state.policies.map((p) => (p.id === action.policy.id ? action.policy : p)) : [action.policy, ...state.policies],
+        logs: [action.log, ...state.logs].slice(0, 300),
+      };
+    }
+    case "SET_POLICY_ACTIVE":
+      return {
+        ...state,
+        policies: state.policies.map((p) => (p.id === action.policyId ? { ...p, active: action.active, enabled: action.active, updatedAt: new Date().toISOString() } : p)),
+        logs: [action.log, ...state.logs].slice(0, 300),
+      };
+    case "INVITE_MEMBER":
+      return {
+        ...state,
+        teamMembers: [action.member, ...state.teamMembers],
+        logs: [action.log, ...state.logs].slice(0, 300),
+      };
+    case "UPDATE_MEMBER":
+      return {
+        ...state,
+        teamMembers: state.teamMembers.map((m) => (m.id === action.memberId ? { ...m, ...action.patch } : m)),
+        logs: [action.log, ...state.logs].slice(0, 300),
+      };
+    case "SET_SETTINGS_SECTION":
+      return {
+        ...state,
+        settings: { ...state.settings, [action.section]: action.value } as OSSettings,
+        logs: [action.log, ...state.logs].slice(0, 300),
+      };
+    case "SET_CURRENT_USER":
+      return {
+        ...state,
+        currentUser: action.value,
+        teamMembers: state.teamMembers.map((m) => (m.id === state.currentUser.id ? { ...m, name: action.value.name, role: action.value.roleLabel, initials: action.value.initials } : m)),
+        logs: [action.log, ...state.logs].slice(0, 300),
+      };
+    case "SET_DASHBOARD":
+      return { ...state, dashboard: action.value };
+    case "SET_WORKSPACE":
+      return {
+        ...state,
+        workspace: action.value,
+        settings: { ...state.settings, workspace: { ...action.value } },
+        logs: [action.log, ...state.logs].slice(0, 300),
+      };
+    case "APPEND_LOG":
+      return {
+        ...state,
+        logs: [action.log, ...state.logs].slice(0, 300),
+      };
+    case "UPDATE_CONNECTOR":
+      return {
+        ...state,
+        connectors: state.connectors.map((c) => (c.id === action.connectorId ? { ...c, ...action.patch } : c)),
+        logs: action.log ? [action.log, ...state.logs].slice(0, 300) : state.logs,
+      };
+    case "APPLY_RUNTIME_RESULT": {
+      const { run, logs, approvals, memoryWrites } = action.result;
+      const existingIdx = state.agentRuns.findIndex((r) => r.id === run.id);
+      const nextRuns = existingIdx === -1
+        ? [run, ...state.agentRuns]
+        : state.agentRuns.map((r) => (r.id === run.id ? run : r));
+      return {
+        ...state,
+        agentRuns: nextRuns,
+        logs: [...logs, ...state.logs].slice(0, 300),
+        approvals: approvals.length ? [...approvals, ...state.approvals] : state.approvals,
+        memory: memoryWrites.length ? [...memoryWrites, ...state.memory] : state.memory,
+        agents: state.agents.map((a) =>
+          a.id === run.agentId
+            ? {
+              ...a,
+              status: run.status === "awaiting_approval" ? "awaiting" : run.status === "failed" ? "error" : "running",
+              currentTask: run.status === "awaiting_approval"
+                ? `Awaiting approval - ${run.steps.find((s) => s.state === "active")?.name ?? "action"}`
+                : run.status === "completed"
+                  ? `Completed run ${run.id.slice(-6)}`
+                  : run.status === "failed"
+                    ? `Blocked - ${run.steps.find((s) => s.state === "failed")?.blockedReason ?? "execution failed"}`
+                    : a.currentTask,
+              stats: run.status === "completed"
+                ? {
+                  ...a.stats,
+                  totalRuns: a.stats.totalRuns + 1,
+                  actionsThisWeek: a.stats.actionsThisWeek + 1,
+                }
+                : a.stats,
+            }
+            : a
+        ),
+      };
+    }
+    case "UPSERT_RUN":
+      return {
+        ...state,
+        agentRuns: state.agentRuns.map((r) => (r.id === action.run.id ? action.run : r)),
+      };
+    case "ADD_MEMORY":
+      return {
+        ...state,
+        memory: [...action.entries, ...state.memory],
+      };
+    default:
+      return state;
+  }
+}
+
+interface OSContextValue {
+  state: OSState;
+  completeOnboarding: (input: {
+    companyName: string;
+    websiteUrl: string;
+    companySize: string;
+    industry: string;
+    mainGoals: string[];
+    preferredOperator: string;
+    approvalOwner: string;
+    initialConnectors: string[];
+  }) => void;
+  deployAgent: (config: DeployConfig) => Agent;
+  runAgent: (agentId: string) => void;
+  runWorkflow: (workflowId: string) => void;
+  approveItem: (approvalId: string, runId?: string, agentId?: string) => void;
+  skipItem: (approvalId: string, runId?: string, agentId?: string) => void;
+  toggleAgentPause: (agentId: string) => void;
+  setConnectorConnected: (connectorId: string, connected: boolean) => void;
+  connectConnector: (connectorId: string) => void;
+  disconnectConnector: (connectorId: string) => void;
+  testConnector: (connectorId: string) => void;
+  resyncConnector: (connectorId: string) => void;
+  updateConnectorPermissions: (connectorId: string, operatorsAllowed: string[]) => void;
+  upsertPolicy: (policy: Policy) => void;
+  setPolicyActive: (policyId: string, active: boolean) => void;
+  inviteMember: (input: { email: string; role: string; permissions: string[] }) => void;
+  updateMember: (memberId: string, patch: Partial<TeamMember>) => void;
+  updateSettingsSection: <K extends keyof OSSettings>(section: K, value: OSSettings[K]) => void;
+  updateCurrentUser: (patch: Partial<CurrentUser>) => void;
+  setDashboardPrefs: (value: Partial<DashboardState>) => void;
+  updateWorkspace: (patch: Partial<Workspace>) => void;
+  appendExecutionLog: (event: string, message: string, status?: ExecutionLog["status"]) => void;
+  installSuggestedWorkflow: (suggestion: SuggestedWorkflow) => void;
+  pendingApprovals: number;
+}
+
+const OSContext = createContext<OSContextValue | null>(null);
+
+function toInitials(name: string): string {
+  return name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+}
+
+function logEntry(message: string, event: string, status: ExecutionLog["status"] = "ok"): ExecutionLog {
+  return {
+    id: `log-${Date.now()}-${Math.floor(Math.random() * 999)}`,
+    ts: new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+    runId: "manual",
+    agentId: "system",
+    agentMark: "OS",
+    agentColor: "#4DE8E1",
+    event,
+    message,
+    duration: "-",
+    status,
+  };
+}
+
+let deployCounter = 0;
+
+export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [state, dispatch] = useReducer(reducer, null, () => buildSeedState());
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as OSState;
+      if (Array.isArray(parsed.agents) && parsed.workspace && parsed.currentUser) {
+        if (!parsed.onboarding) {
+          parsed.onboarding = {
+            isComplete: true,
+            completedAt: new Date().toISOString(),
+            companyName: parsed.workspace.name,
+            websiteUrl: "",
+            companySize: "",
+            industry: "",
+            mainGoals: [],
+            preferredOperator: "",
+            approvalOwner: parsed.currentUser.email,
+            initialConnectors: parsed.connectors.filter((c) => c.isConnected).map((c) => c.id),
+          };
+        }
+        dispatch({ type: "HYDRATE", state: parsed });
+      }
+    } catch {
+      // Ignore invalid storage.
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [state]);
+
+  const deployAgent = useCallback((config: DeployConfig): Agent => {
+    const template = AGENT_TEMPLATES[config.templateId];
+    if (!template) throw new Error(`Unknown template: ${config.templateId}`);
+    const id = `agent-${config.templateId.slice(0, 2).toUpperCase()}-${Date.now()}-${++deployCounter}`;
+    const agent: Agent = {
+      id,
+      name: config.name || template.name,
+      mark: template.mark,
+      color: template.color,
+      templateId: config.templateId,
+      status: "running",
+      workspaceId: state.workspace.id,
+      currentTask: "Initializing agent...",
+      deployedAt: new Date().toISOString(),
+      config: {
+        tools: config.tools ? config.tools.split(",").map((t) => t.trim()) : template.allowedTools,
+        primaryWorkflow: config.workflow || undefined,
+        approvalPolicy: config.approvalPolicy,
+        memoryScope: [],
+      },
+      stats: { actionsThisWeek: 0, outputsThisWeek: 0, totalRuns: 0, metricLabel: "actions/wk", metricValue: "0" },
+    };
+    dispatch({ type: "DEPLOY_AGENT", agent });
+    return agent;
+  }, [state.workspace.id]);
+
+  const completeOnboarding = useCallback((input: {
+    companyName: string;
+    websiteUrl: string;
+    companySize: string;
+    industry: string;
+    mainGoals: string[];
+    preferredOperator: string;
+    approvalOwner: string;
+    initialConnectors: string[];
+  }) => {
+    const nowIso = new Date().toISOString();
+    const approvalEmail = input.approvalOwner.includes("@") ? input.approvalOwner : `${input.approvalOwner.toLowerCase().replace(/\s+/g, ".")}@${input.websiteUrl.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0] || "company.com"}`;
+    const ownerName = input.approvalOwner.includes("@")
+      ? input.approvalOwner.split("@")[0].split(/[._-]/g).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ")
+      : input.approvalOwner;
+    const currentUser: CurrentUser = {
+      ...state.currentUser,
+      name: ownerName || state.currentUser.name,
+      email: approvalEmail,
+      roleLabel: "Operator - Admin",
+      initials: toInitials(ownerName || state.currentUser.name),
+    };
+    dispatch({
+      type: "COMPLETE_ONBOARDING",
+      onboarding: {
+        isComplete: true,
+        completedAt: nowIso,
+        companyName: input.companyName,
+        websiteUrl: input.websiteUrl,
+        companySize: input.companySize,
+        industry: input.industry,
+        mainGoals: input.mainGoals,
+        preferredOperator: input.preferredOperator,
+        approvalOwner: input.approvalOwner,
+        initialConnectors: input.initialConnectors,
+      },
+      workspace: {
+        ...state.workspace,
+        name: input.companyName,
+        environment: "production",
+      },
+      currentUser,
+      connectors: input.initialConnectors,
+      preferredOperator: input.preferredOperator,
+      mainGoals: input.mainGoals,
+      approvalOwner: input.approvalOwner,
+    });
+  }, [state.currentUser, state.workspace]);
+
+  const runAgent = useCallback((agentId: string) => {
+    const agent = state.agents.find((a) => a.id === agentId);
+    if (!agent) return;
+    const result = runAgentRuntime({
+      state,
+      agentId: agent.id,
+      goal: "Follow up new inbound lead",
+      context: {
+      email: "inbound@northwind.co",
+      company: "Northwind Co.",
+      },
+    });
+    dispatch({ type: "APPLY_RUNTIME_RESULT", result });
+  }, [state]);
+
+  const runWorkflow = useCallback((workflowId: string) => {
+    const workflow = state.workflows.find((w) => w.id === workflowId);
+    if (!workflow) return;
+    const agent = state.agents.find((a) => a.id === workflow.agentId);
+    if (!agent || agent.status === "paused") return;
+    const result = runAgentRuntime({
+      state,
+      agentId: agent.id,
+      workflowId: workflow.id,
+      goal: `Run workflow ${workflow.name}`,
+      context: {
+      email: "inbound@northwind.co",
+      company: "Northwind Co.",
+      },
+    });
+    dispatch({ type: "RUN_WORKFLOW", workflowId });
+    dispatch({ type: "APPLY_RUNTIME_RESULT", result });
+  }, [state]);
+
+  const approveItem = useCallback((approvalId: string, runId?: string, agentId?: string) => {
+    const approval = state.approvals.find((a) => a.id === approvalId);
+    if (approval) {
+      const continuation = continueRunAfterApproval(state, approval, true);
+      if (continuation) {
+        dispatch({ type: "APPLY_RUNTIME_RESULT", result: continuation });
+      }
+    }
+    dispatch({ type: "APPROVE", approvalId, runId: runId ?? approval?.runId, agentId: agentId ?? approval?.agentId ?? "" });
+  }, [state]);
+
+  const skipItem = useCallback((approvalId: string, runId?: string, agentId?: string) => {
+    const approval = state.approvals.find((a) => a.id === approvalId);
+    if (approval) {
+      const continuation = continueRunAfterApproval(state, approval, false);
+      if (continuation) {
+        dispatch({ type: "APPLY_RUNTIME_RESULT", result: continuation });
+      }
+    }
+    dispatch({ type: "SKIP", approvalId, runId: runId ?? approval?.runId, agentId: agentId ?? approval?.agentId ?? "" });
+  }, [state]);
+
+  const toggleAgentPause = useCallback((agentId: string) => {
+    dispatch({ type: "TOGGLE_AGENT_PAUSE", agentId });
+  }, []);
+
+  const setConnectorConnected = useCallback((connectorId: string, connected: boolean) => {
+    const connector: Connector | undefined = state.connectors.find((c) => c.id === connectorId);
+    if (!connector) return;
+    dispatch({
+      type: "UPDATE_CONNECTOR",
+      connectorId,
+      patch: {
+        isConnected: connected,
+        status: connected ? "connected" : "available",
+        health: connected ? "healthy" : "disabled",
+        lastSync: connected ? "just now" : "-",
+        lastSynced: connected ? new Date().toISOString() : "",
+      },
+      log: logEntry(`${connector.name} ${connected ? "connected" : "disconnected"} by operator`, connected ? "connector.connected" : "connector.disconnected", connected ? "ok" : "warn"),
+    });
+  }, [state.connectors]);
+
+  const connectConnector = useCallback((connectorId: string) => {
+    setConnectorConnected(connectorId, true);
+  }, [setConnectorConnected]);
+
+  const disconnectConnector = useCallback((connectorId: string) => {
+    setConnectorConnected(connectorId, false);
+  }, [setConnectorConnected]);
+
+  const testConnector = useCallback((connectorId: string) => {
+    const connector = state.connectors.find((c) => c.id === connectorId);
+    if (!connector) return;
+    dispatch({
+      type: "UPDATE_CONNECTOR",
+      connectorId,
+      patch: {
+        health: connector.isConnected ? "healthy" : "disabled",
+        authErrors: connector.isConnected ? 0 : connector.authErrors + 1,
+        recentSyncEvents: [
+          connector.isConnected ? "Connection test passed" : "Connection test failed (not connected)",
+          ...connector.recentSyncEvents,
+        ].slice(0, 5),
+      },
+      log: logEntry(`Tested ${connector.name} connection`, "connector.tested", connector.isConnected ? "ok" : "warn"),
+    });
+  }, [state.connectors]);
+
+  const resyncConnector = useCallback((connectorId: string) => {
+    const connector = state.connectors.find((c) => c.id === connectorId);
+    if (!connector) return;
+    const nowIso = new Date().toISOString();
+    dispatch({
+      type: "UPDATE_CONNECTOR",
+      connectorId,
+      patch: {
+        lastSync: "just now",
+        lastSynced: nowIso,
+        eventsSynced: connector.eventsSynced + Math.floor(Math.random() * 120 + 24),
+        recentSyncEvents: [`Manual resync completed at ${new Date(nowIso).toLocaleTimeString("en-GB")}`, ...connector.recentSyncEvents].slice(0, 5),
+      },
+      log: logEntry(`Resynced ${connector.name}`, "connector.resynced", "ok"),
+    });
+  }, [state.connectors]);
+
+  const updateConnectorPermissions = useCallback((connectorId: string, operatorsAllowed: string[]) => {
+    const connector = state.connectors.find((c) => c.id === connectorId);
+    if (!connector) return;
+    dispatch({
+      type: "UPDATE_CONNECTOR",
+      connectorId,
+      patch: { operatorsAllowed },
+      log: logEntry(`Updated ${connector.name} operator permissions`, "connector.permissions_updated", "ok"),
+    });
+  }, [state.connectors]);
+
+  const upsertPolicy = useCallback((policy: Policy) => {
+    dispatch({ type: "UPSERT_POLICY", policy, log: logEntry(`Policy ${policy.name} updated`, "policy_updated") });
+  }, []);
+
+  const setPolicyActive = useCallback((policyId: string, active: boolean) => {
+    const policy = state.policies.find((p) => p.id === policyId);
+    if (!policy) return;
+    dispatch({
+      type: "SET_POLICY_ACTIVE",
+      policyId,
+      active,
+      log: logEntry(`Policy ${policy.name} ${active ? "enabled" : "disabled"}`, "policy_toggled", active ? "ok" : "warn"),
+    });
+  }, [state.policies]);
+
+  const inviteMember = useCallback((input: { email: string; role: string; permissions: string[] }) => {
+    const base = input.email.split("@")[0].replace(/[._-]/g, " ").trim();
+    const name = base.split(" ").map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(" ");
+    const member: TeamMember = {
+      id: `tm-${Date.now()}`,
+      email: input.email,
+      name,
+      role: input.role,
+      initials: toInitials(name || input.email),
+      color: "#7EF6F0",
+      access: input.permissions,
+      status: "pending",
+      active: true,
+    };
+    dispatch({ type: "INVITE_MEMBER", member, log: logEntry(`Invited ${input.email} as ${input.role}`, "team_invite") });
+  }, []);
+
+  const updateMember = useCallback((memberId: string, patch: Partial<TeamMember>) => {
+    const existing = state.teamMembers.find((m) => m.id === memberId);
+    if (!existing) return;
+    dispatch({ type: "UPDATE_MEMBER", memberId, patch, log: logEntry(`Updated member ${existing.email}`, "team_member_updated") });
+  }, [state.teamMembers]);
+
+  const updateSettingsSection = useCallback(<K extends keyof OSSettings>(section: K, value: OSSettings[K]) => {
+    dispatch({ type: "SET_SETTINGS_SECTION", section, value, log: logEntry(`Updated ${String(section)} settings`, "settings_updated") });
+  }, []);
+
+  const updateCurrentUser = useCallback((patch: Partial<CurrentUser>) => {
+    const value = { ...state.currentUser, ...patch };
+    value.initials = toInitials(value.name);
+    dispatch({ type: "SET_CURRENT_USER", value, log: logEntry("Profile updated", "profile_updated") });
+  }, [state.currentUser]);
+
+  const setDashboardPrefs = useCallback((value: Partial<DashboardState>) => {
+    dispatch({ type: "SET_DASHBOARD", value: { ...state.dashboard, ...value } });
+  }, [state.dashboard]);
+
+  const updateWorkspace = useCallback((patch: Partial<Workspace>) => {
+    const value = { ...state.workspace, ...patch };
+    dispatch({ type: "SET_WORKSPACE", value, log: logEntry("Workspace settings updated", "workspace_updated") });
+  }, [state.workspace]);
+
+  const appendExecutionLog = useCallback((event: string, message: string, status: ExecutionLog["status"] = "ok") => {
+    dispatch({ type: "APPEND_LOG", log: logEntry(message, event, status) });
+  }, []);
+
+  const installSuggestedWorkflow = useCallback((suggestion: SuggestedWorkflow) => {
+    const workflow = installWorkflowFromSuggestion(state, suggestion);
+    dispatch({
+      type: "INSTALL_WORKFLOW",
+      workflow,
+      log: logEntry(`Installed suggested workflow: ${suggestion.title}`, "workflow.suggestion_installed"),
+    });
+  }, [state]);
+
+  const pendingApprovals = state.approvals.filter((a) => a.status === "pending").length;
+
+  return (
+    <OSContext.Provider
+      value={{
+        state,
+        completeOnboarding,
+        deployAgent,
+        runAgent,
+        runWorkflow,
+        approveItem,
+        skipItem,
+        toggleAgentPause,
+        setConnectorConnected,
+        connectConnector,
+        disconnectConnector,
+        testConnector,
+        resyncConnector,
+        updateConnectorPermissions,
+        upsertPolicy,
+        setPolicyActive,
+        inviteMember,
+        updateMember,
+        updateSettingsSection,
+        updateCurrentUser,
+        setDashboardPrefs,
+        updateWorkspace,
+        appendExecutionLog,
+        installSuggestedWorkflow,
+        pendingApprovals,
+      }}
+    >
+      {children}
+    </OSContext.Provider>
+  );
+}
+
+export function useOS(): OSContextValue {
+  const ctx = useContext(OSContext);
+  if (!ctx) throw new Error("useOS must be used within AppProvider");
+  return ctx;
+}
