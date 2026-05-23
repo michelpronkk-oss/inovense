@@ -1180,19 +1180,23 @@
   .inovense-os .hero h1 {
     font-weight: 600;
   }
-  /* Show stats strip on mobile */
-  .inovense-os .hero-stats {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 24px;
-    width: 100%;
-    padding-top: 22px;
-    padding-bottom: 4px;
-  }
   /* Hide 4-tile capability band on mobile */
   .inovense-os .hero-cap-band {
     display: none;
+  }
+  /* Stretch hero-inner to fill the fold so hero-meta can sit at the bottom */
+  .inovense-os .hero-fold {
+    align-items: stretch;
+  }
+  .inovense-os .hero-inner {
+    flex: 1;
+    justify-content: center;
+    align-items: center;
+  }
+  /* Push logo rail to the bottom of the content stack */
+  .inovense-os .hero-meta {
+    margin-top: auto;
+    padding-bottom: 4px;
   }
 }
 

@@ -802,24 +802,7 @@ const Hero = () => {
             </a>
           </div>
 
-          <div className="hero-stats fade-in" aria-label="Product highlights" style={{ animationDelay: ".2s" }}>
-            <div className="hero-stat-item">
-              <span className="hero-stat-num">50+</span>
-              <span className="hero-stat-label">Connectors</span>
-            </div>
-            <div className="hero-stat-sep" aria-hidden="true" />
-            <div className="hero-stat-item">
-              <span className="hero-stat-num">99.9%</span>
-              <span className="hero-stat-label">Uptime SLA</span>
-            </div>
-            <div className="hero-stat-sep" aria-hidden="true" />
-            <div className="hero-stat-item">
-              <span className="hero-stat-num">3 min</span>
-              <span className="hero-stat-label">First operator</span>
-            </div>
-          </div>
-
-          <div className="hero-meta fade-in" style={{ animationDelay: ".25s" }}>
+<div className="hero-meta fade-in" style={{ animationDelay: ".25s" }}>
             <HeroLogoRail />
             <HeroCapabilityRow />
           </div>
