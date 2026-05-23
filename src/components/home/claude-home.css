@@ -793,6 +793,13 @@
   background: rgba(0,0,0,0.55);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.26s ease;
+}
+.inovense-os .mobile-nav-overlay.is-open {
+  opacity: 1;
+  pointer-events: auto;
 }
 .inovense-os .mobile-nav-panel {
   position: fixed;
@@ -805,13 +812,13 @@
   display: flex;
   flex-direction: column;
   padding: 20px 20px 32px;
-  animation: mobileNavSlide .22s ease both;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  transform: translateX(100%);
+  transition: transform 0.36s cubic-bezier(0.16, 1, 0.3, 1);
 }
-@keyframes mobileNavSlide {
-  from { transform: translateX(18px); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+.inovense-os .mobile-nav-overlay.is-open .mobile-nav-panel {
+  transform: translateX(0);
 }
 .inovense-os .mobile-nav-head {
   display: flex;
@@ -1061,6 +1068,12 @@
     display: none;
   }
   .inovense-os .mobile-compact-copy { font-size: 13.5px; line-height: 1.48; }
+}
+
+@media (max-width: 767px) {
+  .inovense-os .hero-fold {
+    min-height: calc(100svh - 58px);
+  }
 }
 
 @media (max-width: 767px) {

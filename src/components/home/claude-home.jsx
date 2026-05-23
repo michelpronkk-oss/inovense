@@ -149,18 +149,18 @@ const Header = () => {
         </div>
       </header>
 
-      {mobileOpen && (
+      <div
+        className={`mobile-nav-overlay${mobileOpen ? " is-open" : ""}`}
+        aria-hidden={!mobileOpen}
+        onClick={() => setMobileOpen(false)}
+      >
         <div
-          className="mobile-nav-overlay"
+          className="mobile-nav-panel"
           role="dialog"
           aria-modal="true"
           aria-label="Navigation"
-          onClick={() => setMobileOpen(false)}
+          onClick={(e) => e.stopPropagation()}
         >
-          <div
-            className="mobile-nav-panel"
-            onClick={(e) => e.stopPropagation()}
-          >
             <div className="mobile-nav-head">
               <Brand />
               <button
@@ -203,9 +203,8 @@ const Header = () => {
             >
               {primaryCta.label}
             </a>
-          </div>
         </div>
-      )}
+      </div>
     </>
   );
 };
@@ -1829,10 +1828,10 @@ const ApprovalsVisual = () => {
         </div>
 
         <div className="ap-actions">
-          <button className="appr-btn approve">Approve & send</button>
+          <button className="appr-btn approve">Approve &amp; send</button>
           <button className="appr-btn edit">Edit draft</button>
           <button className="appr-btn deny">Skip</button>
-          <span style={{ marginLeft: "auto", fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)" }}>⌘+↵ to approve</span>
+          <span className="ap-kbd">⌘+↵ to approve</span>
         </div>
       </div>
 
@@ -1869,10 +1868,55 @@ const ApprovalsVisual = () => {
         }
         .ap-draft p { margin: 0; }
         .ap-hl { background: rgba(77,232,225,0.10); color: var(--cyan); padding: 1px 4px; border-radius: 3px; font-weight: 500;}
-        .ap-checks { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
-        .ap-checks li { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--text-dim); font-family: var(--font-mono); }
-        .ap-checks .ap-tail { color: var(--text-mute); margin-left: 6px; }
-        .ap-actions { display: flex; gap: 6px; align-items: center; padding-top: 8px; border-top: 1px solid var(--line); }
+        .ap-checks { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+        .ap-checks li { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: var(--text-dim); font-family: var(--font-mono); line-height: 1.4; }
+        .ap-checks li .dot { margin-top: 4px; flex-shrink: 0; }
+        .ap-checks .ap-tail { color: var(--text-faint); margin-left: 4px; }
+
+        /* Action buttons */
+        .ap-actions { display: flex; gap: 8px; align-items: center; padding-top: 12px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+        .ap-actions .ap-kbd { margin-left: auto; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-faint); white-space: nowrap; }
+        .appr-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-family: var(--font-mono);
+          font-size: 11.5px;
+          font-weight: 500;
+          padding: 6px 14px;
+          border-radius: 8px;
+          letter-spacing: 0.03em;
+          cursor: pointer;
+          border: none;
+          transition: background .14s, box-shadow .14s, opacity .14s;
+          white-space: nowrap;
+        }
+        .appr-btn.approve {
+          background: rgba(77,232,225,0.12);
+          color: #4DE8E1;
+          box-shadow: inset 0 0 0 1px rgba(77,232,225,0.28);
+        }
+        .appr-btn.approve:hover { background: rgba(77,232,225,0.18); }
+        .appr-btn.edit {
+          background: rgba(255,255,255,0.04);
+          color: var(--text-dim);
+          box-shadow: inset 0 0 0 1px rgba(255,255,255,0.09);
+        }
+        .appr-btn.edit:hover { background: rgba(255,255,255,0.08); }
+        .appr-btn.deny {
+          background: transparent;
+          color: var(--text-mute);
+          box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+        }
+        .appr-btn.deny:hover { color: var(--text-dim); }
+
+        @media (max-width: 640px) {
+          .ap-checks li { font-size: 11px; }
+          .ap-checks .ap-tail { display: block; margin-left: 16px; margin-top: 2px; font-size: 10.5px; color: var(--text-faint); }
+          .ap-actions { gap: 6px; }
+          .ap-actions .appr-btn.approve { flex: 1; padding: 8px 10px; }
+          .ap-actions .ap-kbd { display: none; }
+        }
       `}</style>
     </div>
   );
