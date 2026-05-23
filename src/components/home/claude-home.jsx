@@ -133,6 +133,24 @@ const HeroDashboard = () => {
       <div className="ino-dash-glow-tl" />
       <div className="ino-dash-glow-br" />
       <div className="ino-dash-shell">
+        <div className="ino-dash-mobile">
+          <div className="ino-dash-mobile-head">
+            <strong>Operator Command Center</strong>
+            <span className="pill pill-cyan">Live</span>
+          </div>
+          <div className="ino-dash-mobile-kpis">
+            {[
+              ["Active operators", "8"],
+              ["Pending approvals", "3"],
+              ["Hours saved", "412h"],
+            ].map(([label, value]) => (
+              <div key={label} className="ino-dash-mobile-kpi">
+                <span>{label}</span>
+                <strong>{value}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
         <iframe
           title="Inovense OS dashboard preview"
           src="/app-preview"
@@ -181,6 +199,54 @@ const HeroDashboard = () => {
 
         @media (max-width: 600px) {
           .ino-dash-frame { min-height: 680px; }
+        }
+        .ino-dash-mobile { display: none; }
+        @media (max-width: 767px) {
+          .ino-dash-mobile {
+            display: block;
+            padding: 14px;
+            background: linear-gradient(180deg, #0a0d12, #080b10);
+          }
+          .ino-dash-mobile-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+          }
+          .ino-dash-mobile-head strong {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text);
+            letter-spacing: -0.01em;
+          }
+          .ino-dash-mobile-kpis {
+            display: grid;
+            gap: 8px;
+          }
+          .ino-dash-mobile-kpi {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            box-shadow: inset 0 0 0 1px var(--line);
+            padding: 10px 12px;
+          }
+          .ino-dash-mobile-kpi span {
+            font-size: 11px;
+            color: var(--text-mute);
+            font-family: var(--font-mono);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+          }
+          .ino-dash-mobile-kpi strong {
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--text);
+            letter-spacing: -0.02em;
+          }
+          .ino-dash-frame { display: none; }
         }
       `}</style>
     </div>
@@ -1232,6 +1298,17 @@ const WorkflowBuilderMock = () => {
           <span className="kbd">Run</span>
         </div>
       </div>
+      <div className="wf-mobile-list">
+        {steps.map((s) => (
+          <div className="wf-mobile-item" key={`m-${s.id}`}>
+            <span className="wf-node-ico" style={{ color: s.color, boxShadow: `inset 0 0 0 1px ${s.color}55`, background: `${s.color}10` }}>{s.icon}</span>
+            <div style={{ minWidth: 0 }}>
+              <div className="wf-node-label">{s.label}</div>
+              <div className="wf-node-sub">{s.sub}</div>
+            </div>
+          </div>
+        ))}
+      </div>
       <div className="wf-canvas">
         <svg viewBox="0 0 320 540" className="wf-canvas-svg" preserveAspectRatio="xMidYMin slice">
           {/* connecting line */}
@@ -1277,6 +1354,7 @@ const WorkflowBuilderMock = () => {
           min-height: 540px;
         }
         .wf-canvas-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+        .wf-mobile-list { display: none; }
         .wf-node {
           position: absolute; left: 24px; right: 24px;
           display: flex; align-items: center; gap: 10px;
@@ -1297,6 +1375,34 @@ const WorkflowBuilderMock = () => {
           border-radius: 999px;
           background: rgba(255,255,255,0.02);
           box-shadow: inset 0 0 0 1px var(--line);
+        }
+        @media (max-width: 767px) {
+          .wf-builder-head {
+            align-items: flex-start;
+            gap: 8px;
+            flex-direction: column;
+            padding: 12px;
+          }
+          .wf-builder-head .pill {
+            display: none;
+          }
+          .wf-mobile-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 12px;
+            background: #08090c;
+          }
+          .wf-mobile-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: linear-gradient(180deg, #11151B, #0B0E13);
+            box-shadow: inset 0 0 0 1px var(--line);
+          }
+          .wf-canvas { display: none; }
         }
       `}</style>
     </div>
@@ -1406,6 +1512,20 @@ const MemoryVisual = () => {
           </div>
         </div>
       ))}
+      <div className="mem-mobile-list">
+        {[
+          ["Account", "Inovense Client"],
+          ["Contact", "Primary stakeholder"],
+          ["Opportunity", "$184k Series B"],
+          ["Workflow", "Q3 onboarding"],
+          ["Thread", "#inovense-pilot"],
+        ].map(([k, v]) => (
+          <div className="mem-mobile-item" key={k}>
+            <span>{k}</span>
+            <strong>{v}</strong>
+          </div>
+        ))}
+      </div>
 
       <style jsx global>{`
         .mem-vis {
@@ -1442,6 +1562,53 @@ const MemoryVisual = () => {
         .mem-node-ico { width: 18px; height: 18px; border-radius: 5px; display: grid; place-items: center; background: rgba(255,255,255,0.04); color: var(--text-dim); box-shadow: inset 0 0 0 1px var(--line); }
         .mem-node-label { font-size: 10.5px; color: var(--text-mute); font-family: var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase; }
         .mem-node-val { font-size: 12px; font-weight: 500; color: var(--text); margin-top: 1px; }
+        .mem-mobile-list { display: none; }
+        @media (max-width: 767px) {
+          .mem-vis {
+            height: auto;
+            min-height: 0;
+            aspect-ratio: auto;
+            padding: 14px;
+          }
+          .mem-lines,
+          .mem-node { display: none; }
+          .mem-center {
+            position: relative;
+            top: auto;
+            left: auto;
+            transform: none;
+            width: 100%;
+          }
+          .mem-mobile-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+          }
+          .mem-mobile-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            border-radius: 9px;
+            background: rgba(255,255,255,0.03);
+            box-shadow: inset 0 0 0 1px var(--line);
+            padding: 9px 10px;
+          }
+          .mem-mobile-item span {
+            font-size: 10.5px;
+            color: var(--text-mute);
+            text-transform: uppercase;
+            font-family: var(--font-mono);
+            letter-spacing: 0.06em;
+          }
+          .mem-mobile-item strong {
+            font-size: 12.5px;
+            color: var(--text);
+            font-weight: 500;
+            text-align: right;
+          }
+        }
       `}</style>
     </div>
   );
@@ -1488,6 +1655,9 @@ const ApprovalsSection = () => {
         .ap-stat-val { font-size: 26px; font-weight: 500; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
         .ap-stat-lab { font-size: 11.5px; color: var(--text-mute); font-family: var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase; margin-top: 4px; }
         @media (max-width: 1000px) { .ap-split { grid-template-columns: 1fr; } }
+        @media (max-width: 767px) {
+          .ap-stats { grid-template-columns: 1fr; max-width: 100%; }
+        }
       `}</style>
     </section>
   );
@@ -1752,6 +1922,18 @@ const ExecutionLogSection = () => {
               </div>
             ))}
           </div>
+          <div className="log-mobile-feed">
+            {events.map((e, i) => (
+              <div className="log-mobile-card" key={`m-${i}`}>
+                <div className="log-mobile-top">
+                  <span className="log-t">{e.t}</span>
+                  <span className={`log-level log-${e.level}`}>{e.level.toUpperCase()}</span>
+                </div>
+                <div className="log-mobile-agent" style={{ color: e.color }}>{e.agent}</div>
+                <div className="log-mobile-msg">{e.msg}</div>
+              </div>
+            ))}
+          </div>
           <div className="log-foot">
             <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-mute)" }}>showing 8 of 12,841 events</span>
             <span style={{ marginLeft: "auto", fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-mute)" }}>Replay run · Export · Stream to webhook</span>
@@ -1771,6 +1953,7 @@ const ExecutionLogSection = () => {
         .log-head, .log-foot { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; border-bottom: 1px solid var(--line); }
         .log-foot { border-bottom: 0; border-top: 1px solid var(--line); }
         .log-rows { padding: 6px 0; }
+        .log-mobile-feed { display: none; }
         .log-row {
           display: grid; grid-template-columns: 84px 60px 110px 1fr;
           gap: 12px; align-items: center;
@@ -1791,7 +1974,42 @@ const ExecutionLogSection = () => {
         .log-warn  { background: var(--amber-soft); color: var(--amber); box-shadow: inset 0 0 0 1px rgba(245,194,107,0.3); }
         .log-msg { color: var(--text); }
         @media (max-width: 800px) {
-          .log-row { grid-template-columns: 70px 60px 90px 1fr; font-size: 11.5px; }
+          .log-head { padding: 10px 12px; }
+          .log-head .pill { display: none; }
+          .log-rows { display: none; }
+          .log-mobile-feed {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 10px 12px 12px;
+          }
+          .log-mobile-card {
+            border-radius: 10px;
+            background: rgba(255,255,255,0.025);
+            box-shadow: inset 0 0 0 1px var(--line);
+            padding: 10px;
+          }
+          .log-mobile-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 6px;
+          }
+          .log-mobile-agent {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+          }
+          .log-mobile-msg {
+            font-size: 12.5px;
+            color: var(--text);
+            line-height: 1.45;
+          }
+          .log-foot { padding: 10px 12px; }
+          .log-foot span:last-child { display: none; }
         }
       `}</style>
     </section>

@@ -102,6 +102,7 @@
 .inovense-os .section {
   position: relative;
   padding: 140px 0;
+  scroll-margin-top: 96px;
 }
 .inovense-os .section-sm { padding: 96px 0; }
 .inovense-os .section-lg { padding: 180px 0; }
@@ -217,7 +218,7 @@
   position: fixed;
   top: 0; left: 0; right: 0;
   z-index: 100;
-  padding: 14px 0;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 0 10px;
   transition: opacity .2s ease;
 }
 .inovense-os .header-scrolled {
@@ -655,12 +656,14 @@
 @media (max-width: 900px) {
   .inovense-os .section { padding: 96px 0; }
   .inovense-os .nav { display: none; }
-  .inovense-os .header { padding: 10px 0; }
+  .inovense-os .header {
+    padding: calc(env(safe-area-inset-top, 0px) + 8px) 0 8px;
+  }
   .inovense-os .header-inner { gap: 12px; }
   .inovense-os .header-cta .btn-link { display: none; }
   .inovense-os .hero-fold {
     min-height: auto;
-    padding-top: 80px;
+    padding-top: 92px;
     padding-bottom: 60px;
   }
   .inovense-os .hero-below-fold { padding: 40px 20px 80px; }
@@ -674,7 +677,7 @@
   }
   .inovense-os .hero-ctas {
     width: 100%;
-    max-width: 460px;
+    max-width: 360px;
     gap: 10px;
   }
   .inovense-os .hero-ctas .btn {
@@ -688,6 +691,15 @@
   }
   .inovense-os .hero-logo-list { gap: 14px; }
   .inovense-os .hero-metrics { flex-wrap: wrap; justify-content: center; }
+  .inovense-os .header-cta .btn-primary {
+    box-shadow: inset 0 0 0 1px rgba(77,232,225,0.35);
+  }
+  .inovense-os .header-cta .btn {
+    padding: 8px 12px;
+    font-size: 12px;
+    border-radius: 9px;
+    box-shadow: inset 0 0 0 1px rgba(77, 232, 225, 0.35);
+  }
   .inovense-os .hero-metric-item { padding: 6px 16px; border-right: none; border-bottom: 1px solid var(--line); flex: 1 1 40%; }
   .inovense-os .hero-metric-item:nth-child(odd) { border-right: 1px solid var(--line); }
   .inovense-os .hero-metric-item:nth-last-child(-n+2) { border-bottom: none; }
@@ -697,14 +709,15 @@
 
 @media (max-width: 640px) {
   .inovense-os .hero-fold {
-    padding-top: 72px;
-    padding-bottom: 48px;
+    padding-top: 88px;
+    padding-bottom: 42px;
   }
   .inovense-os .hero-below-fold { padding: 28px 16px 60px; }
   .inovense-os .hero-inner { gap: 12px; }
   .inovense-os .hero h1 {
-    font-size: clamp(34px, 11vw, 46px);
-    line-height: 1.03;
+    font-size: clamp(40px, 10.8vw, 48px);
+    line-height: 1.02;
+    letter-spacing: -0.028em;
   }
   .inovense-os .hero-trust {
     font-size: 11px;
@@ -714,10 +727,19 @@
   .inovense-os .hero-ctas { max-width: 100%; }
   .inovense-os .hero-ctas .btn {
     flex: 1 1 100%;
-    padding: 12px 16px;
+    padding: 10px 14px;
+  }
+  .inovense-os .hero-metrics {
+    display: none;
   }
   .inovense-os .hero-metric-item { padding: 5px 12px; }
   .inovense-os .hero-metric-num { font-size: 15px; }
+  .inovense-os .hero-trust {
+    max-width: calc(100vw - 36px);
+  }
+  .inovense-os .section {
+    scroll-margin-top: 84px;
+  }
 }
 
 /* ---------- Homepage v2 section hardening (mobile/tablet) ---------- */
