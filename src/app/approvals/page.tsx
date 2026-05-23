@@ -4,7 +4,7 @@ import Footer from "@/components/footer";
 import Link from "next/link";
 import {
   PageShell,
-  Eyebrow,
+  PageHero,
   MktCard,
   SectionDivider,
   PageCTA,
@@ -81,51 +81,40 @@ export default function ApprovalsPage() {
       <main>
         <PageShell>
           {/* Hero */}
-          <section className="mx-auto flex w-full max-w-4xl flex-col items-center px-6 pb-28 pt-40 text-center">
-            <Eyebrow>Platform</Eyebrow>
-            <h1
-              className="mb-5 max-w-[20ch] text-5xl font-semibold md:text-6xl"
-              style={{ color: "#ECEFF3", letterSpacing: "-0.035em", lineHeight: 1.03 }}
+          <PageHero
+            eyebrow="Platform"
+            heading="Act at speed. Stay in control."
+            description="Approval gates sit between agent proposals and execution. Operators move fast. You stay in the loop on every decision that matters. Every approval and rejection is logged."
+          >
+            <Link
+              href="/app/onboarding"
+              className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-medium transition-all hover:-translate-y-px"
+              style={{
+                background: "#4DE8E1",
+                color: "#04130F",
+                boxShadow:
+                  "inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(77,232,225,0.45), 0 8px 28px -8px rgba(77,232,225,0.5)",
+              }}
             >
-              Act at speed. Stay in control.
-            </h1>
-            <p
-              className="mb-10 max-w-[52ch] text-lg leading-relaxed"
-              style={{ color: "#A4ABB4" }}
+              Get Starter
+            </Link>
+            <Link
+              href="/docs"
+              className="inline-flex rounded-xl px-6 py-3 text-sm font-medium transition-colors"
+              style={{
+                background: "rgba(255,255,255,0.03)",
+                color: "#ECEFF3",
+                boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
+              }}
             >
-              Approval gates sit between agent proposals and execution. Operators move fast. You stay in the loop on every decision that matters. Every approval and rejection is logged.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <Link
-                href="/app/onboarding"
-                className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-medium transition-all hover:-translate-y-px"
-                style={{
-                  background: "#4DE8E1",
-                  color: "#04130F",
-                  boxShadow:
-                    "inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(77,232,225,0.45), 0 8px 28px -8px rgba(77,232,225,0.5)",
-                }}
-              >
-                Get Starter
-              </Link>
-              <Link
-                href="/docs"
-                className="inline-flex rounded-xl px-6 py-3 text-sm font-medium transition-colors"
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  color: "#ECEFF3",
-                  boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
-                }}
-              >
-                Read the docs
-              </Link>
-            </div>
-          </section>
+              Read the docs
+            </Link>
+          </PageHero>
 
           {/* 3-step flow */}
-          <section className="relative py-20">
+          <section className="relative py-12 md:py-20">
             <SectionDivider />
-            <div className="mx-auto max-w-5xl px-6 pt-16">
+            <div className="mx-auto max-w-5xl px-6 pt-8 md:pt-16">
               <span
                 className="font-mono text-[11px] uppercase tracking-[0.14em]"
                 style={{ color: "#4A4F57" }}
@@ -133,7 +122,7 @@ export default function ApprovalsPage() {
                 How it works
               </span>
               <h2
-                className="mb-12 mt-3 text-3xl font-semibold md:text-4xl"
+                className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
                 style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
               >
                 Three steps between proposal and execution.
@@ -143,9 +132,9 @@ export default function ApprovalsPage() {
           </section>
 
           {/* Properties grid */}
-          <section className="relative py-20" style={{ background: "rgba(13,16,21,0.5)" }}>
+          <section className="relative py-12 md:py-20" style={{ background: "rgba(13,16,21,0.5)" }}>
             <SectionDivider />
-            <div className="mx-auto max-w-5xl px-6 pt-16">
+            <div className="mx-auto max-w-5xl px-6 pt-8 md:pt-16">
               <span
                 className="font-mono text-[11px] uppercase tracking-[0.14em]"
                 style={{ color: "#4A4F57" }}
@@ -153,7 +142,7 @@ export default function ApprovalsPage() {
                 Approval properties
               </span>
               <h2
-                className="mb-12 mt-3 text-3xl font-semibold md:text-4xl"
+                className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
                 style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
               >
                 Designed for speed without sacrificing oversight.
@@ -180,13 +169,13 @@ export default function ApprovalsPage() {
             <SectionDivider />
           </section>
 
-          <section className="relative py-20">
+          <section className="relative py-12 md:py-20">
             <SectionDivider />
-            <div className="mx-auto max-w-5xl px-6 pt-16">
+            <div className="mx-auto max-w-5xl px-6 pt-8 md:pt-16">
               <span className="font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: "#4A4F57" }}>
                 Common approval triggers
               </span>
-              <h2 className="mb-12 mt-3 text-3xl font-semibold md:text-4xl" style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}>
+              <h2 className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl" style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}>
                 Actions that wait for human review.
               </h2>
               <div className="grid gap-5 sm:grid-cols-2">

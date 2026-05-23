@@ -56,7 +56,7 @@ export default function Nav() {
 
         {/* Desktop nav */}
         <nav
-          className="hidden items-center gap-1 rounded-full p-1.5 xl:flex"
+          className="hidden items-center gap-1 rounded-full p-1.5 lg:flex"
           style={{
             background: "rgba(13,16,21,0.6)",
             boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",

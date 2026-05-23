@@ -3,7 +3,7 @@ import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import {
   PageShell,
-  Eyebrow,
+  PageHero,
   MktCard,
   SectionDivider,
   PageCTA,
@@ -61,20 +61,11 @@ export default function PressPage() {
       <main>
         <PageShell>
           {/* Hero */}
-          <section className="mx-auto flex w-full max-w-4xl flex-col items-center px-6 pb-28 pt-40 text-center">
-            <Eyebrow>Company</Eyebrow>
-            <h1
-              className="mb-5 max-w-[20ch] text-5xl font-semibold md:text-6xl"
-              style={{ color: "#ECEFF3", letterSpacing: "-0.035em", lineHeight: 1.03 }}
-            >
-              Press
-            </h1>
-            <p
-              className="mb-10 max-w-[52ch] text-lg leading-relaxed"
-              style={{ color: "#A4ABB4" }}
-            >
-              For interview requests, editorial coverage, or brand assets, reach out directly. We respond quickly.
-            </p>
+          <PageHero
+            eyebrow="Company"
+            heading="Press"
+            description="For interview requests, editorial coverage, or brand assets, reach out directly. We respond quickly."
+          >
             <a
               href="mailto:hello@inovense.com"
               className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-medium transition-all hover:-translate-y-px"
@@ -87,12 +78,12 @@ export default function PressPage() {
             >
               hello@inovense.com
             </a>
-          </section>
+          </PageHero>
 
           {/* What to include in coverage */}
-          <section className="relative py-20">
+          <section className="relative py-12 md:py-20">
             <SectionDivider />
-            <div className="mx-auto max-w-5xl px-6 pt-16">
+            <div className="mx-auto max-w-5xl px-6 pt-8 md:pt-16">
               <span
                 className="font-mono text-[11px] uppercase tracking-[0.14em]"
                 style={{ color: "#4A4F57" }}
@@ -100,7 +91,7 @@ export default function PressPage() {
                 Coverage guide
               </span>
               <h2
-                className="mb-12 mt-3 text-3xl font-semibold md:text-4xl"
+                className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
                 style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
               >
                 What to include.
@@ -123,13 +114,13 @@ export default function PressPage() {
             </div>
           </section>
 
-          <section className="relative py-20" style={{ background: "rgba(13,16,21,0.5)" }}>
+          <section className="relative py-12 md:py-20" style={{ background: "rgba(13,16,21,0.5)" }}>
             <SectionDivider />
-            <div className="mx-auto max-w-5xl px-6 pt-16">
+            <div className="mx-auto max-w-5xl px-6 pt-8 md:pt-16">
               <span className="font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: "#4A4F57" }}>
                 Press kit
               </span>
-              <h2 className="mb-12 mt-3 text-3xl font-semibold md:text-4xl" style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}>
+              <h2 className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl" style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}>
                 Company information for editorial use.
               </h2>
               <div className="grid gap-5 sm:grid-cols-2">

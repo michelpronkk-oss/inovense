@@ -1,6 +1,48 @@
 import Link from "next/link";
 
 // ──────────────────────────────────────────────
+// PageHero — centered hero with responsive mobile spacing
+// ──────────────────────────────────────────────
+export function PageHero({
+  eyebrow,
+  heading,
+  description,
+  maxWidth = "20ch",
+  descMaxWidth = "52ch",
+  children,
+}: {
+  eyebrow: string;
+  heading: string;
+  description: string;
+  maxWidth?: string;
+  descMaxWidth?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <section className="mx-auto flex w-full max-w-4xl flex-col items-center px-5 pb-14 pt-24 text-center sm:px-6 sm:pb-20 sm:pt-32 md:pb-28 md:pt-40">
+      <Eyebrow>{eyebrow}</Eyebrow>
+      <h1
+        className="mb-4 text-[2.25rem] font-semibold leading-[1.06] sm:mb-5 sm:text-5xl md:text-6xl"
+        style={{ color: "#ECEFF3", letterSpacing: "-0.034em", maxWidth }}
+      >
+        {heading}
+      </h1>
+      <p
+        className="mb-7 text-base leading-relaxed sm:mb-10 sm:text-lg"
+        style={{ color: "#A4ABB4", maxWidth: descMaxWidth }}
+      >
+        {description}
+      </p>
+      {children && (
+        <div className="flex w-full flex-col items-center gap-3 xs:flex-row xs:flex-wrap xs:justify-center sm:w-auto">
+          {children}
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ──────────────────────────────────────────────
 // PageShell — full-page background matching homepage
 // ──────────────────────────────────────────────
 export function PageShell({ children }: { children: React.ReactNode }) {
@@ -140,11 +182,11 @@ export function PageCTA({
   secondaryHref?: string;
 }) {
   return (
-    <section className="relative py-20">
+    <section className="relative py-12 md:py-20">
       <SectionDivider />
-      <div className="mx-auto max-w-4xl px-6 pt-16 text-center">
+      <div className="mx-auto max-w-4xl px-5 pt-10 text-center sm:px-6 md:pt-16">
         <h2
-          className="mb-4 text-2xl font-semibold tracking-tight"
+          className="mb-4 text-xl font-semibold tracking-tight sm:text-2xl"
           style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
         >
           {heading}

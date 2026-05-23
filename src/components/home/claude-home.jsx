@@ -84,8 +84,19 @@ const Brand = () => (
   </a>
 );
 
+const NAV_LINKS = [
+  { label: "Platform", href: "/" },
+  { label: "Agents", href: "/agents" },
+  { label: "Workflows", href: "/workflows" },
+  { label: "Integrations", href: "/integrations" },
+  { label: "Security", href: "/security" },
+  { label: "Pricing", href: "/pricing" },
+  { label: "Docs", href: "/docs" },
+];
+
 const Header = () => {
   const [scrolled, setScrolled] = React.useState(false);
+  const [mobileOpen, setMobileOpen] = React.useState(false);
   const userState = usePublicUserState();
   const primaryCta =
     userState === "signed_in"
@@ -94,32 +105,108 @@ const Header = () => {
         ? { label: "Sign in", href: "/app" }
         : { label: "Get Started", href: "/app/onboarding" };
   const showSignIn = userState === "guest" || userState === "loading";
+
   React.useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  React.useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
+
   return (
-    <header className={`header ${scrolled ? "header-scrolled" : ""}`}>
-      <div className="container-wide header-inner">
-        <Brand />
-        <nav className="nav">
-          <a href="/" className="active">Platform</a>
-          <a href="/agents">Agents</a>
-          <a href="/workflows">Workflows</a>
-          <a href="/integrations">Integrations</a>
-          <a href="/security">Security</a>
-          <a href="/pricing">Pricing</a>
-          <a href="/docs">Docs</a>
-        </nav>
-        <div className="header-cta">
-          {showSignIn && <a href="/app" className="btn btn-link" style={{ fontSize: 13.5, color: "var(--text-dim)" }}>Sign in</a>}
-          <a href={primaryCta.href} className="btn btn-primary btn-sm">
-            {primaryCta.label} <I.arrow size={14} />
-          </a>
+    <>
+      <header className={`header ${scrolled ? "header-scrolled" : ""}`}>
+        <div className="container-wide header-inner">
+          <Brand />
+          <nav className="nav">
+            {NAV_LINKS.map((link) => (
+              <a key={link.href} href={link.href} className={link.href === "/" ? "active" : undefined}>{link.label}</a>
+            ))}
+          </nav>
+          <div className="header-cta">
+            {showSignIn && <a href="/app" className="btn btn-link" style={{ fontSize: 13.5, color: "var(--text-dim)" }}>Sign in</a>}
+            <a href={primaryCta.href} className="btn btn-primary btn-sm">
+              {primaryCta.label} <I.arrow size={14} />
+            </a>
+            <button
+              className="mobile-menu-btn"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open navigation menu"
+            >
+              <svg width="16" height="12" viewBox="0 0 16 12" fill="none" aria-hidden="true">
+                <path d="M1 1h14M1 6h10M1 11h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {mobileOpen && (
+        <div
+          className="mobile-nav-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation"
+          onClick={() => setMobileOpen(false)}
+        >
+          <div
+            className="mobile-nav-panel"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mobile-nav-head">
+              <Brand />
+              <button
+                className="mobile-nav-close"
+                onClick={() => setMobileOpen(false)}
+                aria-label="Close menu"
+              >
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+                  <path d="M1 1l11 11M12 1L1 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mobile-nav-links">
+              {NAV_LINKS.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="mobile-nav-link"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  {link.label}
+                </a>
+              ))}
+              {showSignIn && (
+                <a
+                  href="/app"
+                  className="mobile-nav-link"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Sign in
+                </a>
+              )}
+            </div>
+
+            <a
+              href={primaryCta.href}
+              className="mobile-nav-cta"
+              onClick={() => setMobileOpen(false)}
+            >
+              {primaryCta.label}
+            </a>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
@@ -685,42 +772,42 @@ const Hero = () => {
       <div className="hero-grid-bg" />
 
       <div className="hero-fold">
-        <HeroFloatCards />
-
         <div className="container hero-inner">
           <div className="hero-trust fade-in">
             <span className="hero-trust-pill">
-              <span className="dot dot-cyan" /> Now in preview
+              <span className="dot dot-cyan" />
+              Self-serve preview
             </span>
-            <span>Inovense OS v1 for AI-native operating teams</span>
+            <span>AI operating layer for serious teams</span>
             <I.arrow size={12} style={{ color: "var(--text-mute)" }} />
           </div>
 
           <h1 className="fade-in" style={{ animationDelay: ".05s" }}>
-            The operating layer<br />
-            between your company<br />
-            <span className="accent">and AI.</span>
+            <span className="hero-copy-desktop">Put AI operators to work inside your business.</span>
+            <span className="hero-copy-mobile">AI operators inside your business.</span>
           </h1>
 
           <p className="hero-sub fade-in" style={{ animationDelay: ".1s" }}>
-            Inovense OS connects AI agents to your real workflows, approvals, memory, and outputs so software can take operational work to completion, not just answer questions.
+            <span className="hero-copy-desktop">
+              Inovense OS connects your tools, workflows, memory and approvals so operators can execute real work safely, not just answer questions.
+            </span>
+            <span className="hero-copy-mobile">
+              Connect tools, set policies and let operators execute work safely.
+            </span>
           </p>
 
           <div className="hero-ctas fade-in" style={{ animationDelay: ".15s" }}>
             <a href="/app/onboarding" className="btn btn-primary btn-lg">
               Get Started <I.arrow size={14} />
             </a>
-            <a href="/docs" className="btn btn-ghost btn-lg">
-              Watch product tour
+            <a href="/workflows" className="btn btn-ghost btn-lg">
+              See how it works
             </a>
           </div>
 
-          <div className="fade-in" style={{ animationDelay: ".2s" }}>
-            <HeroMetrics />
-          </div>
-
           <div className="hero-meta fade-in" style={{ animationDelay: ".25s" }}>
-            <HeroLogoStrip />
+            <HeroLogoRail />
+            <HeroCapabilityRow />
           </div>
         </div>
 
@@ -736,33 +823,67 @@ const Hero = () => {
   );
 };
 
-const HeroMetrics = () => (
-  <div className="hero-metrics">
-    {[
-      { num: "1,284", label: "tasks completed" },
-      { num: "412h", label: "saved this week" },
-      { num: "8", label: "agents active" },
-      { num: "4m", label: "avg to approval" },
-    ].map((m, i) => (
-      <div key={i} className="hero-metric-item">
-        <span className="hero-metric-num">{m.num}</span>
-        <span className="hero-metric-label">{m.label}</span>
-      </div>
-    ))}
-  </div>
-);
-
-const HeroLogoStrip = () => {
-  const logos = ["Linear", "Notion", "Stripe", "HubSpot", "Slack", "Salesforce", "Intercom"];
+const HeroLogoRail = () => {
+  const logos = [
+    { name: "Gmail", key: "gmail" },
+    { name: "Slack", key: "slack" },
+    { name: "HubSpot", key: "hubspot" },
+    { name: "Salesforce", key: "salesforce" },
+    { name: "Notion", key: "notion" },
+    { name: "Linear", key: "linear" },
+    { name: "Stripe", key: "stripe" },
+    { name: "Intercom", key: "intercom" },
+    { name: "Google Drive", key: "gdrive" },
+    { name: "Outlook", key: "outlook" },
+  ];
+  const rail = [...logos, ...logos];
+  const IntegrationMark = ({ id }) => {
+    const common = { width: 14, height: 14, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.7", strokeLinecap: "round", strokeLinejoin: "round" };
+    if (id === "gmail") return <svg {...common}><path d="M3 7.5 12 14l9-6.5" /><path d="M3 7.5V18h18V7.5" /></svg>;
+    if (id === "slack") return <svg {...common}><path d="M8 4a2 2 0 0 1 2 2v5H8a2 2 0 0 1 0-4h2" /><path d="M10 14a2 2 0 0 1-2 2H6v-2a2 2 0 1 1 4 0v2" /><path d="M16 10a2 2 0 0 1-2-2V6h2a2 2 0 1 1 0 4h-2" /><path d="M14 16a2 2 0 0 1 2-2h2v2a2 2 0 1 1-4 0v-2" /></svg>;
+    if (id === "hubspot") return <svg {...common}><circle cx="8" cy="12" r="3.2" /><path d="M11.2 11.2 16 8.8" /><circle cx="18" cy="8" r="2" /><path d="M8 8.8V5.4" /><circle cx="8" cy="4" r="1.6" /><path d="M11 14.2 14.8 17" /><circle cx="16" cy="18.2" r="1.8" /></svg>;
+    if (id === "salesforce") return <svg {...common}><path d="M8 15c-1.8 0-3.2-1.2-3.2-2.8S6.2 9.4 8 9.4c.5-2 2.2-3.4 4.3-3.4 2.4 0 4.3 1.8 4.5 4.1 1.4.2 2.4 1.3 2.4 2.7 0 1.5-1.3 2.7-2.9 2.7H8Z" /></svg>;
+    if (id === "notion") return <svg {...common}><rect x="4.5" y="4.5" width="15" height="15" rx="2" /><path d="M9 16V8l6 8V8" /></svg>;
+    if (id === "linear") return <svg {...common}><path d="M5 7h8" /><path d="M5 12h14" /><path d="M5 17h8" /><circle cx="17.5" cy="7" r="1.5" /><circle cx="17.5" cy="17" r="1.5" /></svg>;
+    if (id === "stripe") return <svg {...common}><path d="M17 7.2c-1.2-.7-2.6-1-4.2-1-2.7 0-4.5 1.3-4.5 3.5 0 1.8 1.3 2.8 3.4 3.3l1.1.3c1 .2 1.4.5 1.4.9 0 .6-.7 1-1.9 1-1.3 0-2.8-.5-3.9-1.3" /><path d="M8.5 18.2V6.8" /></svg>;
+    if (id === "intercom") return <svg {...common}><path d="M6.8 8.2v5.6" /><path d="M10.4 7v7" /><path d="M14 7v7" /><path d="M17.6 8.2v5.6" /><path d="M6.8 16.4c1.2 1 2.8 1.6 5.2 1.6s4-.6 5.2-1.6" /></svg>;
+    if (id === "gdrive") return <svg {...common}><path d="M8 5h8l4 7-4 7H8l-4-7 4-7Z" /><path d="M8 5l4 7" /><path d="M12 12h8" /><path d="M8 19l4-7" /></svg>;
+    if (id === "outlook") return <svg {...common}><rect x="3.5" y="6.5" width="9" height="11" rx="1.8" /><path d="M12.5 9h8v8h-8Z" /><circle cx="8" cy="12" r="2.2" /></svg>;
+    return null;
+  };
   return (
-    <div className="hero-logo-strip">
-      <span className="hero-logo-label">Connects with</span>
-      <span className="hero-logo-divider" />
-      <div className="hero-logo-list">
-        {logos.map((l) => (
-          <span key={l} className="hero-logo-item">{l}</span>
-        ))}
+    <div className="hero-logo-rail-wrap">
+      <div className="hero-logo-rail-label">Works with your existing stack</div>
+      <div className="hero-logo-rail-mask">
+        <div className="hero-logo-rail-track">
+          {rail.map((item, idx) => (
+            <span key={`${item.name}-${idx}`} className="hero-logo-rail-item">
+              <span className="hero-logo-rail-mark" aria-hidden><IntegrationMark id={item.key} /></span>
+              <span className="hero-logo-rail-name">{item.name}</span>
+            </span>
+          ))}
+        </div>
       </div>
+    </div>
+  );
+};
+
+const HeroCapabilityRow = () => {
+  const capabilities = [
+    { label: "Approval-first execution", icon: <I.inbox size={12} /> },
+    { label: "Company memory", icon: <I.database size={12} /> },
+    { label: "Policy guardrails", icon: <I.shield size={12} /> },
+    { label: "Full execution logs", icon: <I.doc size={12} /> },
+  ];
+  return (
+    <div className="hero-cap-band" role="list" aria-label="Core capabilities">
+      {capabilities.map((item, index) => (
+        <div key={item.label} className="hero-cap-segment" role="listitem">
+          <span className="hero-cap-icon">{item.icon}</span>
+          <span>{item.label}</span>
+          {index < capabilities.length - 1 && <span className="hero-cap-divider" aria-hidden />}
+        </div>
+      ))}
     </div>
   );
 };
@@ -1453,7 +1574,11 @@ const MemorySection = () => {
         .mem-tick { flex: none; width: 22px; height: 22px; border-radius: 6px; background: var(--cyan-soft); color: var(--cyan); display: grid; place-items: center; box-shadow: inset 0 0 0 1px var(--cyan-line); margin-top: 1px;}
         .mem-li-h { font-size: 14.5px; font-weight: 500; color: var(--text); }
         .mem-li-b { font-size: 13.5px; color: var(--text-mute); margin-top: 4px; }
-        @media (max-width: 1000px) { .mem-split { grid-template-columns: 1fr; } }
+        @media (max-width: 1000px) {
+          .mem-split { grid-template-columns: 1fr; }
+          .mem-split > :first-child { order: 2; }
+          .mem-split > :last-child { order: 1; }
+        }
       `}</style>
     </section>
   );

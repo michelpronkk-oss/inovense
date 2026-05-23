@@ -4,7 +4,7 @@ import Footer from "@/components/footer";
 import Link from "next/link";
 import {
   PageShell,
-  Eyebrow,
+  PageHero,
   MktCard,
   SectionDivider,
   PageCTA,
@@ -75,51 +75,40 @@ export default function ApiReferencePage() {
       <main>
         <PageShell>
           {/* Hero */}
-          <section className="mx-auto flex w-full max-w-4xl flex-col items-center px-6 pb-28 pt-40 text-center">
-            <Eyebrow>Resources</Eyebrow>
-            <h1
-              className="mb-5 max-w-[20ch] text-5xl font-semibold md:text-6xl"
-              style={{ color: "#ECEFF3", letterSpacing: "-0.035em", lineHeight: 1.03 }}
+          <PageHero
+            eyebrow="Resources"
+            heading="Programmatic control over every layer."
+            description="This page covers the current API shape available in product preview. It focuses on workflow runs, approval decisions, connector events, and webhooks."
+          >
+            <Link
+              href="/app/api-keys"
+              className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-medium transition-all hover:-translate-y-px"
+              style={{
+                background: "#4DE8E1",
+                color: "#04130F",
+                boxShadow:
+                  "inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(77,232,225,0.45), 0 8px 28px -8px rgba(77,232,225,0.5)",
+              }}
             >
-              Programmatic control over every layer.
-            </h1>
-            <p
-              className="mb-10 max-w-[52ch] text-lg leading-relaxed"
-              style={{ color: "#A4ABB4" }}
+              Open API keys
+            </Link>
+            <Link
+              href="/docs"
+              className="inline-flex rounded-xl px-6 py-3 text-sm font-medium transition-colors"
+              style={{
+                background: "rgba(255,255,255,0.03)",
+                color: "#ECEFF3",
+                boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
+              }}
             >
-              This page covers the current API shape available in product preview. It focuses on workflow runs, approval decisions, connector events, and webhooks.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <Link
-                href="/app/api-keys"
-                className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-medium transition-all hover:-translate-y-px"
-                style={{
-                  background: "#4DE8E1",
-                  color: "#04130F",
-                  boxShadow:
-                    "inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(77,232,225,0.45), 0 8px 28px -8px rgba(77,232,225,0.5)",
-                }}
-              >
-                Open API keys
-              </Link>
-              <Link
-                href="/docs"
-                className="inline-flex rounded-xl px-6 py-3 text-sm font-medium transition-colors"
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  color: "#ECEFF3",
-                  boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
-                }}
-              >
-                Documentation hub
-              </Link>
-            </div>
-          </section>
+              Documentation hub
+            </Link>
+          </PageHero>
 
           {/* API groups */}
-          <section className="relative py-20">
+          <section className="relative py-12 md:py-20">
             <SectionDivider />
-            <div className="mx-auto max-w-5xl px-6 pt-16">
+            <div className="mx-auto max-w-5xl px-6 pt-8 md:pt-16">
               <span
                 className="font-mono text-[11px] uppercase tracking-[0.14em]"
                 style={{ color: "#4A4F57" }}
@@ -127,7 +116,7 @@ export default function ApiReferencePage() {
                 API surface
               </span>
               <h2
-                className="mb-12 mt-3 text-3xl font-semibold md:text-4xl"
+                className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
                 style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
               >
                 Current endpoints and event model.

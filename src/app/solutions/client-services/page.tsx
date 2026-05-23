@@ -4,7 +4,7 @@ import Footer from "@/components/footer";
 import Link from "next/link";
 import {
   PageShell,
-  Eyebrow,
+  PageHero,
   MktCard,
   SectionDivider,
   PageCTA,
@@ -81,51 +81,40 @@ export default function ClientServicesPage() {
       <main>
         <PageShell>
           {/* Hero */}
-          <section className="mx-auto flex w-full max-w-4xl flex-col items-center px-6 pb-28 pt-40 text-center">
-            <Eyebrow>Solutions</Eyebrow>
-            <h1
-              className="mb-5 max-w-[20ch] text-5xl font-semibold md:text-6xl"
-              style={{ color: "#ECEFF3", letterSpacing: "-0.035em", lineHeight: 1.03 }}
+          <PageHero
+            eyebrow="Solutions"
+            heading="Client services that scale without adding headcount."
+            description="Onboarding automation, status updates, and account health monitoring that runs without a dedicated ops hire. Every client gets a consistent, high-quality experience."
+          >
+            <Link
+              href="/app/onboarding"
+              className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-medium transition-all hover:-translate-y-px"
+              style={{
+                background: "#4DE8E1",
+                color: "#04130F",
+                boxShadow:
+                  "inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(77,232,225,0.45), 0 8px 28px -8px rgba(77,232,225,0.5)",
+              }}
             >
-              Client services that scale without adding headcount.
-            </h1>
-            <p
-              className="mb-10 max-w-[52ch] text-lg leading-relaxed"
-              style={{ color: "#A4ABB4" }}
+              Get Starter
+            </Link>
+            <Link
+              href="/agents"
+              className="inline-flex rounded-xl px-6 py-3 text-sm font-medium transition-colors"
+              style={{
+                background: "rgba(255,255,255,0.03)",
+                color: "#ECEFF3",
+                boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
+              }}
             >
-              Onboarding automation, status updates, and account health monitoring that runs without a dedicated ops hire. Every client gets a consistent, high-quality experience.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <Link
-                href="/app/onboarding"
-                className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-medium transition-all hover:-translate-y-px"
-                style={{
-                  background: "#4DE8E1",
-                  color: "#04130F",
-                  boxShadow:
-                    "inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(77,232,225,0.45), 0 8px 28px -8px rgba(77,232,225,0.5)",
-                }}
-              >
-                Get Starter
-              </Link>
-              <Link
-                href="/agents"
-                className="inline-flex rounded-xl px-6 py-3 text-sm font-medium transition-colors"
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  color: "#ECEFF3",
-                  boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
-                }}
-              >
-                See agents
-              </Link>
-            </div>
-          </section>
+              See agents
+            </Link>
+          </PageHero>
 
           {/* Use cases */}
-          <section className="relative py-20">
+          <section className="relative py-12 md:py-20">
             <SectionDivider />
-            <div className="mx-auto max-w-5xl px-6 pt-16">
+            <div className="mx-auto max-w-5xl px-6 pt-8 md:pt-16">
               <span
                 className="font-mono text-[11px] uppercase tracking-[0.14em]"
                 style={{ color: "#4A4F57" }}
@@ -133,7 +122,7 @@ export default function ClientServicesPage() {
                 Where client services teams use Inovense
               </span>
               <h2
-                className="mb-12 mt-3 text-3xl font-semibold md:text-4xl"
+                className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
                 style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
               >
                 Four functions. One client layer.
@@ -157,9 +146,9 @@ export default function ClientServicesPage() {
           </section>
 
           {/* How it works */}
-          <section className="relative py-20" style={{ background: "rgba(13,16,21,0.5)" }}>
+          <section className="relative py-12 md:py-20" style={{ background: "rgba(13,16,21,0.5)" }}>
             <SectionDivider />
-            <div className="mx-auto max-w-5xl px-6 pt-16">
+            <div className="mx-auto max-w-5xl px-6 pt-8 md:pt-16">
               <span
                 className="font-mono text-[11px] uppercase tracking-[0.14em]"
                 style={{ color: "#4A4F57" }}
@@ -167,7 +156,7 @@ export default function ClientServicesPage() {
                 How it works
               </span>
               <h2
-                className="mb-12 mt-3 text-3xl font-semibold md:text-4xl"
+                className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
                 style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
               >
                 From client intake to renewal, fully structured.
@@ -177,13 +166,13 @@ export default function ClientServicesPage() {
             <SectionDivider />
           </section>
 
-          <section className="relative py-20">
+          <section className="relative py-12 md:py-20">
             <SectionDivider />
-            <div className="mx-auto max-w-5xl px-6 pt-16">
+            <div className="mx-auto max-w-5xl px-6 pt-8 md:pt-16">
               <span className="font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: "#4A4F57" }}>
                 Implementation blueprint
               </span>
-              <h2 className="mb-12 mt-3 text-3xl font-semibold md:text-4xl" style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}>
+              <h2 className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl" style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}>
                 Recommended setup for client services teams.
               </h2>
               <div className="grid gap-5 sm:grid-cols-2">

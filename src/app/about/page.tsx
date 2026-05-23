@@ -4,7 +4,7 @@ import Footer from "@/components/footer";
 import Link from "next/link";
 import {
   PageShell,
-  Eyebrow,
+  PageHero,
   MktCard,
   SectionDivider,
   PageCTA,
@@ -43,51 +43,40 @@ export default function AboutPage() {
       <main>
         <PageShell>
           {/* Hero */}
-          <section className="mx-auto flex w-full max-w-4xl flex-col items-center px-6 pb-28 pt-40 text-center">
-            <Eyebrow>Company</Eyebrow>
-            <h1
-              className="mb-5 max-w-[20ch] text-5xl font-semibold md:text-6xl"
-              style={{ color: "#ECEFF3", letterSpacing: "-0.035em", lineHeight: 1.03 }}
+          <PageHero
+            eyebrow="Company"
+            heading="We are building the OS for serious operators."
+            description="Inovense OS is a full operating layer for businesses that need structured execution, enforced policies, and persistent institutional knowledge."
+          >
+            <Link
+              href="/app/onboarding"
+              className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-medium transition-all hover:-translate-y-px"
+              style={{
+                background: "#4DE8E1",
+                color: "#04130F",
+                boxShadow:
+                  "inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(77,232,225,0.45), 0 8px 28px -8px rgba(77,232,225,0.5)",
+              }}
             >
-              We are building the OS for serious operators.
-            </h1>
-            <p
-              className="mb-10 max-w-[52ch] text-lg leading-relaxed"
-              style={{ color: "#A4ABB4" }}
+              Get Starter
+            </Link>
+            <Link
+              href="/contact"
+              className="inline-flex rounded-xl px-6 py-3 text-sm font-medium transition-colors"
+              style={{
+                background: "rgba(255,255,255,0.03)",
+                color: "#ECEFF3",
+                boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
+              }}
             >
-              Inovense OS is a full operating layer for businesses that need structured execution, enforced policies, and persistent institutional knowledge.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <Link
-                href="/app/onboarding"
-                className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-medium transition-all hover:-translate-y-px"
-                style={{
-                  background: "#4DE8E1",
-                  color: "#04130F",
-                  boxShadow:
-                    "inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(77,232,225,0.45), 0 8px 28px -8px rgba(77,232,225,0.5)",
-                }}
-              >
-                Get Starter
-              </Link>
-              <Link
-                href="/contact"
-                className="inline-flex rounded-xl px-6 py-3 text-sm font-medium transition-colors"
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  color: "#ECEFF3",
-                  boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
-                }}
-              >
-                Contact us
-              </Link>
-            </div>
-          </section>
+              Contact us
+            </Link>
+          </PageHero>
 
           {/* Mission */}
-          <section className="relative py-20">
+          <section className="relative py-12 md:py-20">
             <SectionDivider />
-            <div className="mx-auto max-w-3xl px-6 pt-16">
+            <div className="mx-auto max-w-3xl px-6 pt-8 md:pt-16">
               <span
                 className="font-mono text-[11px] uppercase tracking-[0.14em]"
                 style={{ color: "#4A4F57" }}
@@ -115,9 +104,9 @@ export default function AboutPage() {
           </section>
 
           {/* Operating principles */}
-          <section className="relative py-20" style={{ background: "rgba(13,16,21,0.5)" }}>
+          <section className="relative py-12 md:py-20" style={{ background: "rgba(13,16,21,0.5)" }}>
             <SectionDivider />
-            <div className="mx-auto max-w-5xl px-6 pt-16">
+            <div className="mx-auto max-w-5xl px-6 pt-8 md:pt-16">
               <span
                 className="font-mono text-[11px] uppercase tracking-[0.14em]"
                 style={{ color: "#4A4F57" }}
@@ -125,7 +114,7 @@ export default function AboutPage() {
                 How we work
               </span>
               <h2
-                className="mb-12 mt-3 text-3xl font-semibold md:text-4xl"
+                className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
                 style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
               >
                 Operating principles.

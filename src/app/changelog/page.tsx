@@ -3,7 +3,7 @@ import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import {
   PageShell,
-  Eyebrow,
+  PageHero,
   SectionDivider,
 } from "@/components/marketing-ui";
 
@@ -66,26 +66,16 @@ export default function ChangelogPage() {
       <main>
         <PageShell>
           {/* Hero */}
-          <section className="mx-auto flex w-full max-w-4xl flex-col items-center px-6 pb-28 pt-40 text-center">
-            <Eyebrow>Resources</Eyebrow>
-            <h1
-              className="mb-5 max-w-[20ch] text-5xl font-semibold md:text-6xl"
-              style={{ color: "#ECEFF3", letterSpacing: "-0.035em", lineHeight: 1.03 }}
-            >
-              What shipped.
-            </h1>
-            <p
-              className="mb-10 max-w-[52ch] text-lg leading-relaxed"
-              style={{ color: "#A4ABB4" }}
-            >
-              Continuous releases across the Inovense operating layer. Updated with every version.
-            </p>
-          </section>
+          <PageHero
+            eyebrow="Resources"
+            heading="What shipped."
+            description="Continuous releases across the Inovense operating layer. Updated with every version."
+          />
 
           {/* Timeline */}
-          <section className="relative py-20">
+          <section className="relative py-12 md:py-20">
             <SectionDivider />
-            <div className="mx-auto max-w-2xl px-6 pt-16">
+            <div className="mx-auto max-w-2xl px-6 pt-8 md:pt-16">
               <div className="relative flex flex-col gap-0">
                 {/* Vertical line */}
                 <div

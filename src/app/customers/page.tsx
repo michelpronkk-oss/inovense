@@ -4,7 +4,7 @@ import Footer from "@/components/footer";
 import Link from "next/link";
 import {
   PageShell,
-  Eyebrow,
+  PageHero,
   MktCard,
   SectionDivider,
   PageCTA,
@@ -54,20 +54,11 @@ export default function CustomersPage() {
       <main>
         <PageShell>
           {/* Hero */}
-          <section className="mx-auto flex w-full max-w-4xl flex-col items-center px-6 pb-28 pt-40 text-center">
-            <Eyebrow>Company</Eyebrow>
-            <h1
-              className="mb-5 max-w-[20ch] text-5xl font-semibold md:text-6xl"
-              style={{ color: "#ECEFF3", letterSpacing: "-0.035em", lineHeight: 1.03 }}
-            >
-              Early design partners running Inovense in production workflows.
-            </h1>
-            <p
-              className="mb-10 max-w-[52ch] text-lg leading-relaxed"
-              style={{ color: "#A4ABB4" }}
-            >
-              We work with early design partners who are building real operator workflows. No logo wall, no fictional case studies, only implementation patterns we can stand behind.
-            </p>
+          <PageHero
+            eyebrow="Company"
+            heading="Early design partners running Inovense in production workflows."
+            description="We work with early design partners who are building real operator workflows. No logo wall, no fictional case studies, only implementation patterns we can stand behind."
+          >
             <Link
               href="/app/onboarding"
               className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-medium transition-all hover:-translate-y-px"
@@ -80,12 +71,12 @@ export default function CustomersPage() {
             >
               Get Starter
             </Link>
-          </section>
+          </PageHero>
 
           {/* Use case cards */}
-          <section className="relative py-20">
+          <section className="relative py-12 md:py-20">
             <SectionDivider />
-            <div className="mx-auto max-w-3xl px-6 pt-16">
+            <div className="mx-auto max-w-3xl px-6 pt-8 md:pt-16">
               <span
                 className="font-mono text-[11px] uppercase tracking-[0.14em]"
                 style={{ color: "#4A4F57" }}
@@ -93,7 +84,7 @@ export default function CustomersPage() {
                 Design partner patterns
               </span>
               <h2
-                className="mb-12 mt-3 text-3xl font-semibold md:text-4xl"
+                className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
                 style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
               >
                 Where teams start and what they run first.

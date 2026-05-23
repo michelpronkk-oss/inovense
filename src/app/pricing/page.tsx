@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
-import { PageShell, Eyebrow, SectionDivider, PageCTA, MktCard, MockupWindow } from "@/components/marketing-ui";
+import { PageShell, PageHero, SectionDivider, PageCTA, MktCard, MockupWindow } from "@/components/marketing-ui";
 import Reveal from "@/components/reveal";
 import { PricingPlans } from "@/components/pricing/pricing-plans";
 
@@ -119,15 +119,12 @@ export default function PricingPage() {
       <main>
         <PageShell>
           <Reveal>
-            <section className="mx-auto flex w-full max-w-4xl flex-col items-center px-6 pb-28 pt-40 text-center">
-            <Eyebrow>Pricing</Eyebrow>
-            <h1 className="mb-5 max-w-[20ch] text-5xl font-semibold md:text-6xl" style={{ color: "#ECEFF3", letterSpacing: "-0.035em", lineHeight: 1.03 }}>
-              Pay for operating capacity, not seats.
-            </h1>
-            <p className="mb-10 max-w-[56ch] text-lg leading-relaxed" style={{ color: "#A4ABB4" }}>
-              Every plan includes the core operating layer: operators, workflows, memory, approvals, connectors, policies and execution logs. Scale by volume, complexity and support.
-            </p>
-            </section>
+            <PageHero
+              eyebrow="Pricing"
+              heading="Pay for operating capacity, not seats."
+              description="Every plan includes the core operating layer: operators, workflows, memory, approvals, connectors, policies and execution logs. Scale by volume, complexity and support."
+              descMaxWidth="56ch"
+            />
           </Reveal>
 
           <section className="relative py-8">
@@ -158,9 +155,9 @@ export default function PricingPage() {
             </div>
           </section>
 
-          <section className="relative py-20">
+          <section className="relative py-12 md:py-20">
             <SectionDivider />
-            <div className="mx-auto max-w-6xl px-6 pt-16">
+            <div className="mx-auto max-w-6xl px-6 pt-8 md:pt-16">
               <PricingPlans plans={plans} />
               <p className="mt-8 text-center font-mono text-[11px]" style={{ color: "#4A4F57" }}>
                 Start self-serve. Upgrade when your operators need higher volume, custom workflows or private connector setup.
@@ -168,9 +165,9 @@ export default function PricingPage() {
             </div>
           </section>
 
-          <section className="relative py-20" style={{ background: "rgba(13,16,21,0.5)" }}>
+          <section className="relative py-12 md:py-20" style={{ background: "rgba(13,16,21,0.5)" }}>
             <SectionDivider />
-            <div className="mx-auto max-w-5xl px-6 pt-16">
+            <div className="mx-auto max-w-5xl px-6 pt-8 md:pt-16">
               <span className="font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: "#4A4F57" }}>
                 Capacity model
               </span>

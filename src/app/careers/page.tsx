@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
-import { PageShell, Eyebrow, MktCard, SectionDivider, PageCTA } from "@/components/marketing-ui";
+import { PageShell, PageHero, MktCard, SectionDivider, PageCTA } from "@/components/marketing-ui";
 
 export const metadata: Metadata = {
   title: "Careers",
@@ -51,26 +51,16 @@ export default function CareersPage() {
       <main>
         <PageShell>
           {/* Hero */}
-          <section className="mx-auto flex w-full max-w-4xl flex-col items-center px-6 pb-28 pt-40 text-center">
-            <Eyebrow>Company</Eyebrow>
-            <h1
-              className="mb-5 max-w-[20ch] text-5xl font-semibold md:text-6xl"
-              style={{ color: "#ECEFF3", letterSpacing: "-0.035em", lineHeight: 1.03 }}
-            >
-              Build the OS for the next decade of business.
-            </h1>
-            <p
-              className="mb-10 max-w-[52ch] text-lg leading-relaxed"
-              style={{ color: "#A4ABB4" }}
-            >
-              A small, focused team working on a hard problem at the intersection of AI, product design, and business execution. If that interests you, we want to hear from you.
-            </p>
-          </section>
+          <PageHero
+            eyebrow="Company"
+            heading="Build the OS for the next decade of business."
+            description="A small, focused team working on a hard problem at the intersection of AI, product design, and business execution. If that interests you, we want to hear from you."
+          />
 
           {/* Roles */}
-          <section className="relative py-20">
+          <section className="relative py-12 md:py-20">
             <SectionDivider />
-            <div className="mx-auto max-w-3xl px-6 pt-16">
+            <div className="mx-auto max-w-3xl px-6 pt-8 md:pt-16">
               <span
                 className="font-mono text-[11px] uppercase tracking-[0.14em]"
                 style={{ color: "#4A4F57" }}
@@ -104,9 +94,9 @@ export default function CareersPage() {
           </section>
 
           {/* How we work */}
-          <section className="relative py-20" style={{ background: "rgba(13,16,21,0.5)" }}>
+          <section className="relative py-12 md:py-20" style={{ background: "rgba(13,16,21,0.5)" }}>
             <SectionDivider />
-            <div className="mx-auto max-w-5xl px-6 pt-16">
+            <div className="mx-auto max-w-5xl px-6 pt-8 md:pt-16">
               <span
                 className="font-mono text-[11px] uppercase tracking-[0.14em]"
                 style={{ color: "#4A4F57" }}
@@ -114,7 +104,7 @@ export default function CareersPage() {
                 How we work
               </span>
               <h2
-                className="mb-12 mt-3 text-3xl font-semibold md:text-4xl"
+                className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
                 style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
               >
                 Operating principles.

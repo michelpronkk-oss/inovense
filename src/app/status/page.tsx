@@ -3,7 +3,7 @@ import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import {
   PageShell,
-  Eyebrow,
+  PageHero,
   MktCard,
   SectionDivider,
 } from "@/components/marketing-ui";
@@ -49,9 +49,12 @@ export default function StatusPage() {
       <main>
         <PageShell>
           {/* Hero */}
-          <section className="mx-auto flex w-full max-w-4xl flex-col items-center px-6 pb-28 pt-40 text-center">
-            <Eyebrow>Resources</Eyebrow>
-            <div className="mb-6 flex items-center justify-center gap-2.5">
+          <PageHero
+            eyebrow="Resources"
+            heading="System Status"
+            description="All systems operational."
+          >
+            <div className="flex items-center justify-center gap-2.5">
               <span
                 className="h-3 w-3 rounded-full bg-emerald-400"
                 style={{ boxShadow: "0 0 10px rgba(52,211,153,0.6)" }}
@@ -63,12 +66,6 @@ export default function StatusPage() {
                 All systems operational
               </span>
             </div>
-            <h1
-              className="mb-4 text-5xl font-semibold md:text-6xl"
-              style={{ color: "#ECEFF3", letterSpacing: "-0.035em", lineHeight: 1.03 }}
-            >
-              System Status
-            </h1>
             <span
               className="inline-block rounded-full px-3 py-1 font-mono text-[11px] uppercase tracking-[0.14em]"
               style={{
@@ -79,12 +76,12 @@ export default function StatusPage() {
             >
               v1.18.2
             </span>
-          </section>
+          </PageHero>
 
           {/* System list */}
-          <section className="relative py-20">
+          <section className="relative py-12 md:py-20">
             <SectionDivider />
-            <div className="mx-auto max-w-3xl px-6 pt-16">
+            <div className="mx-auto max-w-3xl px-6 pt-8 md:pt-16">
               <span
                 className="font-mono text-[11px] uppercase tracking-[0.14em]"
                 style={{ color: "#4A4F57" }}
@@ -126,9 +123,9 @@ export default function StatusPage() {
           </section>
 
           {/* Metrics */}
-          <section className="relative py-20" style={{ background: "rgba(13,16,21,0.5)" }}>
+          <section className="relative py-12 md:py-20" style={{ background: "rgba(13,16,21,0.5)" }}>
             <SectionDivider />
-            <div className="mx-auto max-w-3xl px-6 pt-16">
+            <div className="mx-auto max-w-3xl px-6 pt-8 md:pt-16">
               <span
                 className="font-mono text-[11px] uppercase tracking-[0.14em]"
                 style={{ color: "#4A4F57" }}
@@ -169,7 +166,7 @@ export default function StatusPage() {
           </section>
 
           {/* Subscribe */}
-          <section className="relative py-20">
+          <section className="relative py-12 md:py-20">
             <div className="mx-auto max-w-4xl px-6 text-center">
               <p className="mb-6 text-sm" style={{ color: "#6B7178" }}>
                 Subscribe to status updates for real-time incident alerts.
