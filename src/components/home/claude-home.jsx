@@ -772,14 +772,7 @@ const Hero = () => {
 
       <div className="hero-fold">
         <div className="container hero-inner">
-          <div className="hero-live fade-in" aria-label="Live product status">
-            <span className="hero-live-dot" aria-hidden="true" />
-            <span className="hero-live-stat">3 operators running</span>
-            <span className="hero-live-sep" aria-hidden="true">·</span>
-            <span className="hero-live-text">412h saved this week</span>
-          </div>
-
-          <h1 className="fade-in" style={{ animationDelay: ".05s" }}>
+<h1 className="fade-in" style={{ animationDelay: ".05s" }}>
             <span className="hero-copy-desktop">Put AI operators to work inside your business.</span>
             <span className="hero-copy-mobile">AI operators inside your business.</span>
           </h1>

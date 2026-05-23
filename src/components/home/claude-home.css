@@ -1184,6 +1184,10 @@
   .inovense-os .hero-cap-band {
     display: none;
   }
+  /* Hide live status pill on mobile */
+  .inovense-os .hero-live {
+    display: none;
+  }
   /* Stretch hero-inner to fill the fold height */
   .inovense-os .hero-fold {
     align-items: stretch;
