@@ -677,6 +677,9 @@
 .inovense-os .hero-live-stat {
   color: var(--text);
   font-weight: 600;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  letter-spacing: -0.01em;
   letter-spacing: -0.01em;
 }
 .inovense-os .hero-live-sep {
@@ -956,10 +959,39 @@
   }
   .inovense-os .hero-copy-desktop { display: none !important; }
   .inovense-os .hero-copy-mobile { display: inline !important; }
-  .inovense-os .hero-ctas { max-width: 100%; }
-  .inovense-os .hero-ctas .btn {
-    flex: 1 1 100%;
-    padding: 10px 14px;
+  .inovense-os .hero-ctas {
+    max-width: 100%;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .inovense-os .hero-ctas .btn-primary {
+    flex: none;
+    width: 100%;
+    max-width: 272px;
+    justify-content: center;
+    padding: 17px 28px;
+    border-radius: 15px;
+    font-size: 15px;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.4),
+      0 0 0 1px rgba(77,232,225,0.5),
+      0 12px 40px -10px rgba(77,232,225,0.65),
+      0 0 60px -20px rgba(77,232,225,0.35);
+  }
+  .inovense-os .hero-ctas .btn-ghost {
+    flex: none;
+    background: none;
+    box-shadow: none;
+    border: none;
+    color: var(--text-mute);
+    font-size: 13px;
+    padding: 10px 20px;
+    letter-spacing: 0.01em;
+  }
+  .inovense-os .hero-ctas .btn-ghost:hover {
+    background: none;
+    color: var(--text-dim);
   }
   .inovense-os .hero-logo-rail-label { font-size: 10px; margin-bottom: 7px; }
   .inovense-os .hero-logo-rail-mask { padding: 8px 0; }
@@ -1092,6 +1124,16 @@
 @media (max-width: 767px) {
   .inovense-os .hero-fold {
     min-height: calc(100svh - 58px);
+  }
+  .inovense-os .hero-glow {
+    width: 680px;
+    height: 580px;
+    top: -60px;
+    filter: blur(28px);
+    background: radial-gradient(ellipse at 50% 28%, rgba(77,232,225,0.52) 0%, rgba(77,232,225,0.18) 38%, transparent 65%);
+  }
+  .inovense-os .hero h1 {
+    font-weight: 600;
   }
 }
 
