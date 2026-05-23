@@ -3,6 +3,7 @@
 // @ts-nocheck
 import React from 'react';
 import './claude-home.css';
+import { usePublicUserState } from '@/lib/public-user-state';
 // Inovense  -  Premium line icons (24x24, 1.5 stroke)
 const Icon = ({ children, size = 18, stroke = 1.5, className = "", style }) => (
   <svg
@@ -65,35 +66,34 @@ const I = {
 
 
 // Inovense  -  Header
-const InovenseMark = ({ size = 22 }) => (
-  <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-    <defs>
-      <linearGradient id="ino-mark-grad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor="#7EF6F0" />
-        <stop offset="1" stopColor="#0EB8B0" />
-      </linearGradient>
-    </defs>
-    {/* Hexagonal node, refers to "operating layer" */}
-    <path
-      d="M16 3 27 9.5v13L16 29 5 22.5v-13L16 3Z"
-      stroke="url(#ino-mark-grad)"
-      strokeWidth="1.6"
-      fill="rgba(77,232,225,0.06)"
-    />
-    <path d="M11 12.5 16 16l5-3.5M16 16v6.5" stroke="#4DE8E1" strokeWidth="1.6" strokeLinecap="round" />
-    <circle cx="16" cy="10.5" r="1.6" fill="#7EF6F0" />
+const InovenseMark = ({ size = 22, color = "#ECEFF3" }) => (
+  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" role="img" aria-label="Inovense">
+    <g fill={color}>
+      <rect x="10" y="10" width="44" height="9"/>
+      <rect x="26" y="19" width="12" height="12"/>
+      <rect x="26" y="33" width="12" height="12"/>
+      <rect x="10" y="45" width="44" height="9"/>
+    </g>
   </svg>
 );
 
 const Brand = () => (
   <a href="#top" className="brand">
-    <span className="brand-mark"><InovenseMark size={22} /></span>
-    <span style={{ letterSpacing: "0.16em", fontWeight: 600, color: "#ECEFF3" }}>INOVENSE</span>
+    <span className="brand-mark"><InovenseMark size={20} /></span>
+    <span style={{ letterSpacing: "0.16em", fontWeight: 600, color: "#ECEFF3", fontFamily: "var(--font-sans)" }}>INOVENSE</span>
   </a>
 );
 
 const Header = () => {
   const [scrolled, setScrolled] = React.useState(false);
+  const userState = usePublicUserState();
+  const primaryCta =
+    userState === "signed_in"
+      ? { label: "Open dashboard", href: "/app" }
+      : userState === "registered"
+        ? { label: "Sign in", href: "/app" }
+        : { label: "Get Started", href: "/app/onboarding" };
+  const showSignIn = userState === "guest" || userState === "loading";
   React.useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -104,18 +104,18 @@ const Header = () => {
       <div className="container-wide header-inner">
         <Brand />
         <nav className="nav">
-          <a href="#platform" className="active">Platform</a>
-          <a href="#agents">Agents</a>
-          <a href="#workflows">Workflows</a>
-          <a href="#integrations">Integrations</a>
-          <a href="#security">Security</a>
-          <a href="#pricing">Pricing</a>
-          <a href="#docs">Docs</a>
+          <a href="/" className="active">Platform</a>
+          <a href="/agents">Agents</a>
+          <a href="/workflows">Workflows</a>
+          <a href="/integrations">Integrations</a>
+          <a href="/security">Security</a>
+          <a href="/pricing">Pricing</a>
+          <a href="/docs">Docs</a>
         </nav>
         <div className="header-cta">
-          <a href="#signin" className="btn btn-link" style={{ fontSize: 13.5, color: "var(--text-dim)" }}>Sign in</a>
-          <a href="#start" className="btn btn-primary btn-sm">
-            Start free <I.arrow size={14} />
+          {showSignIn && <a href="/app" className="btn btn-link" style={{ fontSize: 13.5, color: "var(--text-dim)" }}>Sign in</a>}
+          <a href={primaryCta.href} className="btn btn-primary btn-sm">
+            {primaryCta.label} <I.arrow size={14} />
           </a>
         </div>
       </div>
@@ -133,11 +133,12 @@ const HeroDashboard = () => {
       <div className="ino-dash-glow-tl" />
       <div className="ino-dash-glow-br" />
       <div className="ino-dash-shell">
-        <DashChrome />
-        <div className="ino-dash-body">
-          <DashSidebar />
-          <DashMain />
-        </div>
+        <iframe
+          title="Inovense OS dashboard preview"
+          src="/app-preview"
+          className="ino-dash-frame"
+          loading="lazy"
+        />
       </div>
       <style jsx global>{`
         .ino-dash {
@@ -165,283 +166,21 @@ const HeroDashboard = () => {
           overflow: hidden;
           box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
         }
-        .ino-dash-body {
-          display: grid;
-          grid-template-columns: 224px 1fr;
-          min-height: 640px;
+        .ino-dash-frame {
+          display: block;
+          width: 100%;
+          min-height: 920px;
+          border: 0;
+          background: #06070A;
+          pointer-events: none;
         }
-
-        /* Chrome */
-        .dash-chrome {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          padding: 12px 16px;
-          background: linear-gradient(180deg, #0A0D12, #07090C);
-          border-bottom: 1px solid var(--line);
-        }
-        .dash-lights { display: flex; gap: 7px; }
-        .dash-lights span { width: 10px; height: 10px; border-radius: 50%; background: #21262E; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04); }
-        .dash-urlbar {
-          flex: 1;
-          max-width: 480px;
-          margin: 0 auto;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 6px 12px;
-          background: rgba(255,255,255,0.03);
-          border-radius: 8px;
-          box-shadow: inset 0 0 0 1px var(--line);
-          color: var(--text-mute);
-          font-family: var(--font-mono);
-          font-size: 11.5px;
-        }
-        .dash-urlbar .accent { color: var(--cyan); }
-        .dash-chrome-right { display: flex; align-items: center; gap: 10px; color: var(--text-mute); }
-
-        /* Sidebar */
-        .dash-side {
-          background: linear-gradient(180deg, #08090D, #06080B);
-          border-right: 1px solid var(--line);
-          padding: 16px 10px;
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-        }
-        .dash-workspace {
-          display: flex; align-items: center; gap: 10px;
-          padding: 8px 10px;
-          border-radius: 10px;
-          background: rgba(255,255,255,0.025);
-          box-shadow: inset 0 0 0 1px var(--line);
-          margin-bottom: 6px;
-        }
-        .dash-workspace-mark {
-          width: 24px; height: 24px;
-          border-radius: 7px;
-          background: linear-gradient(135deg, #1a3a3a, #06262a);
-          color: var(--cyan);
-          display: grid; place-items: center;
-          font-family: var(--font-mono);
-          font-size: 11px;
-          font-weight: 600;
-          box-shadow: inset 0 0 0 1px var(--cyan-line);
-        }
-        .dash-workspace-name { font-size: 12.5px; font-weight: 500; }
-        .dash-workspace-sub { font-size: 10.5px; color: var(--text-mute); font-family: var(--font-mono); }
-
-        .dash-side-label {
-          padding: 14px 12px 6px;
-          font-family: var(--font-mono);
-          font-size: 10px;
-          letter-spacing: 0.10em;
-          text-transform: uppercase;
-          color: var(--text-faint);
-        }
-        .dash-nav-item {
-          display: flex; align-items: center; gap: 10px;
-          padding: 7px 10px;
-          font-size: 12.5px;
-          color: var(--text-dim);
-          border-radius: 8px;
-          cursor: pointer;
-        }
-        .dash-nav-item:hover { background: rgba(255,255,255,0.03); color: var(--text); }
-        .dash-nav-item.active {
-          background: rgba(77,232,225,0.08);
-          color: var(--cyan);
-          box-shadow: inset 0 0 0 1px rgba(77,232,225,0.18);
-        }
-        .dash-nav-item .ico { display: grid; place-items: center; width: 18px; height: 18px; }
-        .dash-nav-item .badge {
-          margin-left: auto;
-          font-family: var(--font-mono);
-          font-size: 10px;
-          padding: 1px 6px;
-          border-radius: 999px;
-          background: rgba(255,255,255,0.06);
-          color: var(--text-dim);
-        }
-        .dash-nav-item.active .badge { background: rgba(77,232,225,0.18); color: var(--cyan); }
-        .dash-side-bottom { margin-top: auto; padding: 12px 10px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
-        .dash-avatar { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, #4DE8E1, #5B8DEF); color: #04130F; display: grid; place-items: center; font-size: 11px; font-weight: 600; }
-
-        /* Main */
-        .dash-main {
-          padding: 22px 28px 28px;
-          background:
-            radial-gradient(800px 400px at 80% -100px, rgba(77,232,225,0.05), transparent 60%),
-            #07090C;
-          display: flex; flex-direction: column; gap: 22px;
-          min-width: 0;
-        }
-        .dash-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-        .dash-breadcrumb { display: flex; align-items: center; gap: 8px; color: var(--text-mute); font-size: 12px; font-family: var(--font-mono); }
-        .dash-breadcrumb .sep { color: var(--text-faint); }
-        .dash-breadcrumb .cur { color: var(--text); }
-        .dash-top-actions { display: flex; gap: 8px; align-items: center; }
-        .dash-search {
-          display: flex; align-items: center; gap: 8px;
-          padding: 6px 10px;
-          background: rgba(255,255,255,0.03);
-          border-radius: 8px;
-          box-shadow: inset 0 0 0 1px var(--line);
-          color: var(--text-mute);
-          font-size: 12px;
-          min-width: 200px;
-        }
-        .dash-iconbtn {
-          width: 28px; height: 28px;
-          display: grid; place-items: center;
-          border-radius: 8px;
-          background: rgba(255,255,255,0.03);
-          box-shadow: inset 0 0 0 1px var(--line);
-          color: var(--text-dim);
-          position: relative;
-        }
-        .dash-iconbtn .ping {
-          position: absolute; top: 4px; right: 4px;
-          width: 6px; height: 6px; border-radius: 50%;
-          background: var(--cyan); box-shadow: 0 0 6px var(--cyan);
-        }
-
-        .dash-heading h2 { font-size: 22px; letter-spacing: -0.02em; }
-        .dash-heading .sub { font-size: 13px; color: var(--text-mute); margin-top: 2px; }
-        .dash-heading-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap;}
-
-        /* Stat row */
-        .dash-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-        .dash-stat {
-          padding: 14px 14px 12px;
-          border-radius: 12px;
-          background: linear-gradient(180deg, #0F1218, #0B0E13);
-          box-shadow: inset 0 0 0 1px var(--line);
-          position: relative;
-          overflow: hidden;
-        }
-        .dash-stat .label { display: flex; align-items: center; gap: 6px; color: var(--text-mute); font-size: 11px; font-family: var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; }
-        .dash-stat .label .ico { display: grid; place-items: center; }
-        .dash-stat .val { font-size: 24px; font-weight: 500; letter-spacing: -0.02em; margin-top: 8px; font-variant-numeric: tabular-nums; }
-        .dash-stat .delta { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-mono); font-size: 10.5px; margin-top: 6px; color: var(--green); }
-        .dash-stat .delta.neg { color: var(--rose); }
-        .dash-stat .delta.neutral { color: var(--text-mute); }
-        .dash-stat .spark {
-          position: absolute; right: 12px; bottom: 12px; width: 70px; height: 28px; opacity: 0.9;
-        }
-
-        /* Two-col grid */
-        .dash-grid {
-          display: grid;
-          grid-template-columns: 1.55fr 1fr;
-          gap: 14px;
-          min-height: 320px;
-        }
-        .panel {
-          background: linear-gradient(180deg, #0E1218, #0A0D12);
-          border-radius: 12px;
-          box-shadow: inset 0 0 0 1px var(--line);
-          padding: 14px 0 0;
-          display: flex; flex-direction: column;
-          overflow: hidden;
-        }
-        .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 0 16px 12px; border-bottom: 1px solid var(--line); }
-        .panel-head h3 { font-size: 13px; font-weight: 500; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
-        .panel-head .meta { display: flex; align-items: center; gap: 8px; font-size: 11px; font-family: var(--font-mono); color: var(--text-mute); }
-        .panel-head .tabs { display: flex; gap: 2px; padding: 2px; background: rgba(255,255,255,0.025); border-radius: 7px; box-shadow: inset 0 0 0 1px var(--line); }
-        .panel-head .tabs span { padding: 3px 8px; font-size: 11px; color: var(--text-mute); border-radius: 5px; font-family: var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase; }
-        .panel-head .tabs span.active { color: var(--text); background: rgba(255,255,255,0.05); }
-
-        /* Agents table */
-        .agent-row {
-          display: grid;
-          grid-template-columns: 1.4fr 1.5fr 0.8fr 60px;
-          align-items: center;
-          padding: 10px 16px;
-          border-bottom: 1px solid var(--line);
-          gap: 10px;
-        }
-        .agent-row:last-child { border-bottom: none; }
-        .agent-row .ag-name { display: flex; align-items: center; gap: 10px; }
-        .agent-row .ag-avatar {
-          width: 28px; height: 28px;
-          border-radius: 8px;
-          display: grid; place-items: center;
-          font-family: var(--font-mono); font-size: 11px;
-          color: var(--cyan);
-          background: linear-gradient(135deg, #0F2E2C, #061A19);
-          box-shadow: inset 0 0 0 1px rgba(77,232,225,0.16);
-        }
-        .agent-row .ag-meta { font-size: 13px; font-weight: 500; }
-        .agent-row .ag-sub { font-size: 11px; color: var(--text-mute); font-family: var(--font-mono); }
-        .agent-row .ag-task { color: var(--text-dim); font-size: 12.5px; display: flex; align-items: center; gap: 6px; }
-        .agent-row .ag-task .status { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 10.5px; color: var(--cyan); text-transform: uppercase; letter-spacing: 0.06em; }
-        .agent-row .ag-metric { display: flex; align-items: baseline; gap: 4px; font-variant-numeric: tabular-nums; }
-        .agent-row .ag-metric .num { font-size: 14px; font-weight: 500; }
-        .agent-row .ag-metric .unit { font-size: 10.5px; color: var(--text-mute); font-family: var(--font-mono); }
-        .agent-row .ag-mini {
-          height: 22px; width: 100%;
-        }
-        .agent-row .ag-act {
-          font-size: 11px; font-family: var(--font-mono);
-          color: var(--text-mute);
-          text-align: right;
-        }
-
-        /* Approvals */
-        .appr-list { display: flex; flex-direction: column; }
-        .appr-item {
-          display: flex; flex-direction: column; gap: 6px;
-          padding: 12px 16px;
-          border-bottom: 1px solid var(--line);
-        }
-        .appr-item:last-child { border-bottom: none; }
-        .appr-top { display: flex; align-items: center; gap: 8px; }
-        .appr-top .tag {
-          font-family: var(--font-mono);
-          font-size: 10px;
-          padding: 2px 6px;
-          border-radius: 4px;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-        }
-        .appr-title { font-size: 12.5px; color: var(--text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .appr-from { color: var(--text-mute); font-size: 11px; font-family: var(--font-mono); }
-        .appr-body { font-size: 12px; color: var(--text-dim); line-height: 1.4; padding-left: 0; }
-        .appr-actions { display: flex; gap: 6px; margin-top: 2px; }
-        .appr-btn {
-          font-family: var(--font-mono);
-          font-size: 10.5px;
-          padding: 3px 8px;
-          border-radius: 5px;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-        }
-        .appr-btn.approve { background: var(--cyan-soft); color: var(--cyan); box-shadow: inset 0 0 0 1px var(--cyan-line); }
-        .appr-btn.edit { background: rgba(255,255,255,0.03); color: var(--text-dim); box-shadow: inset 0 0 0 1px var(--line); }
-        .appr-btn.deny { background: rgba(255,255,255,0.02); color: var(--text-mute); box-shadow: inset 0 0 0 1px var(--line); }
-
-        /* Workflow strip */
-        .workflow {
-          padding: 12px 16px 16px;
-          background: linear-gradient(180deg, #0C1015, #090C10);
-          border-radius: 12px;
-          box-shadow: inset 0 0 0 1px var(--line);
-          position: relative;
-          overflow: hidden;
-        }
-        .workflow-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-        .workflow-head h3 { font-size: 13px; font-weight: 500; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
-        .workflow-svg { width: 100%; height: 130px; display: block; }
 
         @media (max-width: 1100px) {
-          .dash-stats { grid-template-columns: repeat(2, 1fr); }
-          .dash-grid { grid-template-columns: 1fr; }
-          .ino-dash-body { grid-template-columns: 1fr; }
-          .dash-side { display: none; }
+          .ino-dash-frame { min-height: 760px; }
         }
+
         @media (max-width: 600px) {
-          .dash-main { padding: 16px; }
+          .ino-dash-frame { min-height: 680px; }
         }
       `}</style>
     </div>
@@ -455,7 +194,7 @@ const DashChrome = () => (
       <I.lock size={11} />
       <span>app.inovense.com</span>
       <span style={{ color: "var(--text-faint)" }}>/</span>
-      <span className="accent">workspace/atlas-co</span>
+      <span className="accent">workspace/inovense</span>
       <span style={{ color: "var(--text-faint)" }}>/</span>
       <span>overview</span>
     </div>
@@ -486,7 +225,7 @@ const DashSidebar = () => {
       <div className="dash-workspace">
         <div className="dash-workspace-mark">A</div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="dash-workspace-name">Atlas & Co.</div>
+          <div className="dash-workspace-name">Inovense</div>
           <div className="dash-workspace-sub">production</div>
         </div>
         <I.swap size={12} style={{ color: "var(--text-mute)" }} />
@@ -512,7 +251,7 @@ const DashSidebar = () => {
       <div className="dash-side-bottom">
         <div className="dash-avatar">JD</div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 500 }}>Jordan Devlin</div>
+          <div style={{ fontSize: 12, fontWeight: 500 }}>Inovense Operator</div>
           <div style={{ fontSize: 10.5, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>Operator · Admin</div>
         </div>
       </div>
@@ -527,7 +266,7 @@ const DashMain = () => {
         <div className="dash-breadcrumb">
           <span>Workspace</span>
           <span className="sep">/</span>
-          <span>Atlas & Co.</span>
+          <span>Inovense</span>
           <span className="sep">/</span>
           <span className="cur">Overview</span>
         </div>
@@ -546,7 +285,7 @@ const DashMain = () => {
         <div className="dash-heading-row">
           <div>
             <h2>Operator Command Center</h2>
-            <div className="sub">Live view of every agent, workflow and decision across Atlas & Co.</div>
+            <div className="sub">Live view of every agent, workflow and decision across Inovense.</div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button className="btn btn-ghost btn-sm"><I.filter size={12} /> Last 7 days</button>
@@ -630,7 +369,7 @@ const AgentsPanel = () => {
     {
       mark: "CF", color: "#5B8DEF",
       name: "Client Flow Operator", role: "Intake · Onboarding",
-      task: "Awaiting approval  -  new client kit (Northwind Co.)",
+      task: "Awaiting approval  -  new client kit (Inovense client)",
       status: "awaiting",
       metric: { num: "42", unit: "intakes / wk" },
       spark: [2,3,4,3,5,4,5,4,5,6,5,7],
@@ -715,13 +454,13 @@ const ApprovalsPanel = () => {
   const items = [
     {
       tag: "proposal", tagClass: "pill-cyan",
-      title: "Proposal  -  Northwind onboarding kit",
+      title: "Proposal  -  Inovense onboarding kit",
       from: "Client Flow Operator · 4m ago",
       body: "Draft includes pricing, SOW, kickoff checklist. Memory: Acme Industries (similar scope).",
     },
     {
       tag: "follow-up", tagClass: "pill-amber",
-      title: "Reply to Aiko Tanaka, Series B intro",
+      title: "Reply to priority lead, Series B intro",
       from: "Revenue Operator · 11m ago",
       body: "Suggests Tue 2pm slot. Stage: intro → discovery. Includes case study links.",
     },
@@ -827,65 +566,135 @@ const WorkflowStrip = () => {
 
 
 // Inovense  -  Hero
+const HeroFloatCards = () => (
+  <div className="hero-float-cards" aria-hidden="true">
+    <div className="hero-float-card hero-float-card-left">
+      <div className="hfc-head">
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <span className="dot dot-cyan pulsing" />
+          <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text)" }}>Revenue Operator</span>
+        </div>
+        <span className="hfc-time">2s ago</span>
+      </div>
+      <div className="hfc-body">
+        Drafting follow-up for Meridian Partners, stage 2 of 4.
+      </div>
+      <div className="hfc-foot">
+        <span className="hfc-metric">326 <span>actions/wk</span></span>
+        <span className="hfc-delta">+38%</span>
+      </div>
+    </div>
+
+    <div className="hero-float-card hero-float-card-right">
+      <div className="hfc-head">
+        <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text)" }}>Approval inbox</span>
+        <span className="hfc-badge">3 pending</span>
+      </div>
+      <div style={{ marginTop: 10 }}>
+        <span className="pill pill-cyan" style={{ fontSize: 9, padding: "2px 6px", letterSpacing: "0.08em" }}>PROPOSAL</span>
+      </div>
+      <div className="hfc-body" style={{ marginTop: 6 }}>
+        Inovense onboarding kit, pricing, SOW, kickoff checklist.
+      </div>
+      <div className="hfc-actions">
+        <span className="hfc-btn-approve">Approve</span>
+        <span className="hfc-btn-skip">Skip</span>
+      </div>
+    </div>
+  </div>
+);
+
+const HeroScrollCue = () => (
+  <div className="hero-scroll-cue" aria-hidden="true">
+    <div className="hero-scroll-line" />
+    <span>scroll</span>
+    <div className="hero-scroll-line" />
+  </div>
+);
+
 const Hero = () => {
   return (
     <section className="hero" id="top">
       <div className="hero-glow" />
       <div className="hero-grid-bg" />
-      <div className="container hero-inner">
-        <div className="hero-trust fade-in">
-          <span className="hero-trust-pill">
-            <span className="dot dot-cyan" /> Now in preview
-          </span>
-          <span>Inovense OS v1  -  for AI-native operating teams</span>
-          <I.arrow size={12} style={{ color: "var(--text-mute)" }} />
+
+      <div className="hero-fold">
+        <HeroFloatCards />
+
+        <div className="container hero-inner">
+          <div className="hero-trust fade-in">
+            <span className="hero-trust-pill">
+              <span className="dot dot-cyan" /> Now in preview
+            </span>
+            <span>Inovense OS v1 for AI-native operating teams</span>
+            <I.arrow size={12} style={{ color: "var(--text-mute)" }} />
+          </div>
+
+          <h1 className="fade-in" style={{ animationDelay: ".05s" }}>
+            The operating layer<br />
+            between your company<br />
+            <span className="accent">and AI.</span>
+          </h1>
+
+          <p className="hero-sub fade-in" style={{ animationDelay: ".1s" }}>
+            Inovense OS connects AI agents to your real workflows, approvals, memory, and outputs so software can take operational work to completion, not just answer questions.
+          </p>
+
+          <div className="hero-ctas fade-in" style={{ animationDelay: ".15s" }}>
+            <a href="/app/onboarding" className="btn btn-primary btn-lg">
+              Get Started <I.arrow size={14} />
+            </a>
+            <a href="/docs" className="btn btn-ghost btn-lg">
+              Watch product tour
+            </a>
+          </div>
+
+          <div className="fade-in" style={{ animationDelay: ".2s" }}>
+            <HeroMetrics />
+          </div>
+
+          <div className="hero-meta fade-in" style={{ animationDelay: ".25s" }}>
+            <HeroLogoStrip />
+          </div>
         </div>
 
-        <h1 className="fade-in" style={{ animationDelay: ".05s" }}>
-          The operating layer<br />
-          between your company<br />
-          <span className="accent">and AI.</span>
-        </h1>
-
-        <p className="hero-sub fade-in" style={{ animationDelay: ".1s" }}>
-          Inovense OS connects AI agents to your real workflows, approvals, memory, and outputs  - 
-          so software can take operational work to completion, not just answer questions.
-        </p>
-
-        <div className="hero-ctas fade-in" style={{ animationDelay: ".15s" }}>
-          <a href="#start" className="btn btn-primary btn-lg">
-            Start free <I.arrow size={14} />
-          </a>
-          <a href="#demo" className="btn btn-ghost btn-lg">
-            Watch product tour
-          </a>
-        </div>
-
-        <div className="hero-meta fade-in" style={{ animationDelay: ".2s" }}>
-          <HeroLogoStrip />
-        </div>
+        <HeroScrollCue />
       </div>
 
-      <div className="container-wide" style={{ marginTop: 56 }}>
-        <HeroDashboard />
+      <div className="hero-below-fold">
+        <div className="container-wide">
+          <HeroDashboard />
+        </div>
       </div>
     </section>
   );
 };
 
+const HeroMetrics = () => (
+  <div className="hero-metrics">
+    {[
+      { num: "1,284", label: "tasks completed" },
+      { num: "412h", label: "saved this week" },
+      { num: "8", label: "agents active" },
+      { num: "4m", label: "avg to approval" },
+    ].map((m, i) => (
+      <div key={i} className="hero-metric-item">
+        <span className="hero-metric-num">{m.num}</span>
+        <span className="hero-metric-label">{m.label}</span>
+      </div>
+    ))}
+  </div>
+);
+
 const HeroLogoStrip = () => {
   const logos = ["Linear", "Notion", "Stripe", "HubSpot", "Slack", "Salesforce", "Intercom"];
   return (
-    <div style={{
-      display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-      marginTop: 8, color: "var(--text-faint)", fontFamily: "var(--font-mono)",
-      fontSize: 11.5, letterSpacing: "0.12em", textTransform: "uppercase"
-    }}>
-      <span style={{ color: "var(--text-mute)" }}>Connects with</span>
-      <span style={{ width: 1, height: 12, background: "var(--line-2)" }} />
-      <div style={{ display: "flex", gap: 22 }}>
+    <div className="hero-logo-strip">
+      <span className="hero-logo-label">Connects with</span>
+      <span className="hero-logo-divider" />
+      <div className="hero-logo-list">
         {logos.map((l) => (
-          <span key={l} style={{ color: "var(--text-mute)" }}>{l}</span>
+          <span key={l} className="hero-logo-item">{l}</span>
         ))}
       </div>
     </div>
@@ -1205,7 +1014,7 @@ const AgentsSection = () => {
         "Keep clients informed at every step",
       ],
       stat: { num: "42", unit: "intakes / week", delta: "+12%" },
-      hint: "Awaiting approval  -  Northwind kit",
+      hint: "Awaiting approval  -  client onboarding kit",
     },
     {
       mark: "OP", color: "#51D88A", name: "Operations Operator",
@@ -1564,7 +1373,7 @@ const MemoryVisual = () => {
       <div className="mem-center">
         <I.database size={16} style={{ color: "var(--cyan)" }} />
         <div>
-          <div style={{ fontSize: 13, fontWeight: 500 }}>Atlas & Co.  -  business graph</div>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>Inovense  -  business graph</div>
           <div className="mono" style={{ fontSize: 11, color: "var(--text-mute)" }}>14,392 entities · synced 1m ago</div>
         </div>
       </div>
@@ -1582,12 +1391,12 @@ const MemoryVisual = () => {
       </svg>
 
       {[
-        { top: "8%",  left: "6%",  icon: <I.briefcase size={11} />, label: "Account", val: "Northwind Co." },
-        { top: "8%",  right: "6%", icon: <I.user size={11} />,      label: "Contact", val: "Aiko Tanaka" },
+        { top: "8%",  left: "6%",  icon: <I.briefcase size={11} />, label: "Account", val: "Inovense Client" },
+        { top: "8%",  right: "6%", icon: <I.user size={11} />,      label: "Contact", val: "Primary Stakeholder" },
         { top: "45%", left: "0%",  icon: <I.doc size={11} />,       label: "Document", val: "MSA-v4.pdf" },
         { top: "45%", right: "0%", icon: <I.trend size={11} />,     label: "Opportunity", val: "$184k · Series B" },
         { bottom: "5%", left: "12%", icon: <I.flow size={11} />,    label: "Workflow", val: "Q3 onboarding" },
-        { bottom: "5%", right: "12%", icon: <I.message size={11} />, label: "Thread", val: "#atlas-pilot" },
+        { bottom: "5%", right: "12%", icon: <I.message size={11} />, label: "Thread", val: "#inovense-pilot" },
       ].map((n, i) => (
         <div className="mem-node" key={i} style={n}>
           <span className="mem-node-ico">{n.icon}</span>
@@ -1693,7 +1502,7 @@ const ApprovalsVisual = () => {
           <strong style={{ fontSize: 13, fontWeight: 500 }}>Approval · #4,812</strong>
           <span className="pill pill-amber">Awaiting review</span>
         </div>
-        <span className="mono" style={{ fontSize: 11, color: "var(--text-mute)" }}>Revenue Operator → jordan@atlas.co</span>
+        <span className="mono" style={{ fontSize: 11, color: "var(--text-mute)" }}>Revenue Operator → operator@inovense.com</span>
       </div>
 
       <div className="ap-card-body">
@@ -1701,14 +1510,14 @@ const ApprovalsVisual = () => {
           <div className="ap-section-label">Proposed action</div>
           <div className="ap-action">
             <span className="dot dot-cyan" />
-            <span>Send personalized reply to <strong style={{ color: "var(--text)" }}>Aiko Tanaka · Northwind Co.</strong></span>
+            <span>Send personalized reply to <strong style={{ color: "var(--text)" }}>Primary Stakeholder · Inovense Client</strong></span>
           </div>
         </div>
 
         <div className="ap-section">
           <div className="ap-section-label">Draft</div>
           <div className="ap-draft">
-            <p>Hi Aiko  - </p>
+            <p>Hi there  - </p>
             <p>Thanks for the intro. Based on our previous work with <span className="ap-hl">Acme Industries</span> (similar Series B operating shape), I'd recommend kicking off with a 30-min discovery and a tailored ops audit.</p>
             <p>Could <strong className="ap-hl">Tuesday 2pm PT</strong> work? Happy to share two case studies ahead of time.</p>
           </div>
@@ -1899,11 +1708,11 @@ const IntegrationsSection = () => {
 // ============================================================================
 const ExecutionLogSection = () => {
   const events = [
-    { t: "14:02:38", agent: "Revenue", color: "#4DE8E1", level: "ok",   msg: "approve.send → Aiko Tanaka  -  proposed reply (id: msg_8421)" },
+    { t: "14:02:38", agent: "Revenue", color: "#4DE8E1", level: "ok",   msg: "approve.send → external lead  -  proposed reply (id: msg_8421)" },
     { t: "14:02:32", agent: "Revenue", color: "#4DE8E1", level: "info", msg: "policy.eval > allow-list OK, first-contact requires approval  -  escalated" },
     { t: "14:02:28", agent: "Revenue", color: "#4DE8E1", level: "info", msg: "tool.call hubspot.contact.get (cache hit, 41ms)" },
     { t: "14:01:57", agent: "Marketing", color: "#A78BFA", level: "ok",   msg: "draft.publish → Q3 SEO brief, 1,420w (run #4811)" },
-    { t: "14:01:14", agent: "Client Flow", color: "#5B8DEF", level: "warn", msg: "memory.miss > Northwind onboarding template not found  -  fallback used" },
+    { t: "14:01:14", agent: "Client Flow", color: "#5B8DEF", level: "warn", msg: "memory.miss > onboarding template not found  -  fallback used" },
     { t: "14:00:08", agent: "Operations", color: "#51D88A", level: "ok",   msg: "schedule.create > Mon weekly digest 9:00 AM" },
     { t: "13:59:41", agent: "Revenue", color: "#4DE8E1", level: "info", msg: "agent.plan > 4 steps · enrich → qualify → draft → approve" },
     { t: "13:59:02", agent: "Revenue", color: "#4DE8E1", level: "ok",   msg: "trigger.received > inbound_form.submission (req_4F8a2)" },
@@ -1925,7 +1734,7 @@ const ExecutionLogSection = () => {
           <div className="log-head">
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <I.doc size={13} style={{ color: "var(--cyan)" }} />
-              <strong style={{ fontSize: 13, fontWeight: 500 }}>Execution log · workspace/atlas-co</strong>
+              <strong style={{ fontSize: 13, fontWeight: 500 }}>Execution log · workspace/inovense</strong>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <span className="pill">filter: all agents</span>
@@ -1994,7 +1803,7 @@ const ExecutionLogSection = () => {
 // ============================================================================
 const SecuritySection = () => {
   const features = [
-    { icon: <I.shield size={16} />, title: "SOC 2 Type II", body: "Annual independent audit. Continuous monitoring across infrastructure and access." },
+    { icon: <I.shield size={16} />, title: "Designed for SOC 2 readiness", body: "Policy controls, approvals, and logs are structured to support readiness programs." },
     { icon: <I.lock size={16} />, title: "Encrypted end-to-end", body: "TLS in transit. AES-256 at rest. Per-workspace KMS keys for sensitive data." },
     { icon: <I.users size={16} />, title: "SSO & SCIM", body: "Okta, Azure AD, Google. Role-based access, JIT provisioning, deprovision on offboard." },
     { icon: <I.key size={16} />, title: "Granular tool scopes", body: "Every agent acts under explicit, revocable permissions per system and per action." },
@@ -2027,7 +1836,7 @@ const SecuritySection = () => {
         </div>
 
         <div className="sec-badges">
-          {["SOC 2 II", "ISO 27001", "GDPR", "HIPAA-ready", "PCI-DSS", "CCPA"].map((b) => (
+          {["SOC 2 readiness", "ISO 27001 controls", "GDPR", "HIPAA-ready", "PCI-oriented controls", "CCPA"].map((b) => (
             <span className="sec-badge" key={b}><I.check2 size={13} /> {b}</span>
           ))}
         </div>
@@ -2095,7 +1904,7 @@ const OnboardingSection = () => {
           <span className="eyebrow">Self-serve</span>
           <h2>From zero to first operator<br/>in under 10 minutes.</h2>
           <p className="lede">
-            Inovense OS is self-serve from day one. Start free, deploy a single agent inside your boundaries,
+            Inovense OS is self-serve from day one. Deploy a single operator inside your boundaries,
             and expand into a full operating layer as it proves itself.
           </p>
         </div>
@@ -2161,35 +1970,86 @@ const OnboardingSection = () => {
 // 11. Pricing
 // ============================================================================
 const PricingSection = () => {
+  const userState = usePublicUserState();
   const tiers = [
     {
       name: "Starter",
-      tagline: "For a single operator inside one team.",
-      price: "$0",
-      unit: "/ workspace",
-      hint: "Free during preview",
-      bullets: ["1 agent", "5 connectors", "1,000 actions / mo", "Slack + email approvals", "Community support"],
-      cta: "Start free",
+      tagline: "For teams starting with one controlled AI operator.",
+      price: "$149",
+      unit: "/mo",
+      hint: "Self-serve onboarding",
+      bullets: [
+        "1 active operator",
+        "5 connected tools",
+        "2,000 actions per month",
+        "Core workflows",
+        "Approval inbox",
+        "30-day execution logs",
+        "Basic company memory",
+        "Email support",
+      ],
+      cta: "Get Starter",
       style: "ghost",
     },
     {
       name: "Growth",
-      tagline: "When AI starts running real workflows.",
-      price: "$1,200",
-      unit: "/ workspace · month",
-      hint: "Billed annually",
-      bullets: ["Up to 8 agents", "All connectors", "50k actions / mo", "Approval policies & roles", "Audit logs · 90 days", "Email + Slack support"],
-      cta: "Start trial",
+      tagline: "For teams running AI across revenue, client work and operations.",
+      price: "$699",
+      unit: "/mo",
+      hint: "Monthly or annual",
+      bullets: [
+        "Up to 5 active operators",
+        "15 connected tools",
+        "25,000 actions per month",
+        "Suggested workflows",
+        "Advanced approval policies",
+        "Company memory graph",
+        "90-day execution logs",
+        "Slack and email approvals",
+        "Priority support",
+      ],
+      cta: "Get Growth",
       style: "primary",
       featured: true,
     },
     {
+      name: "Operator",
+      tagline: "For companies that want their first AI operating layer implemented with us.",
+      price: "$2,500",
+      unit: "/mo",
+      hint: "Setup support included",
+      bullets: [
+        "Revenue Operator implementation",
+        "Custom workflow setup",
+        "Client onboarding flows",
+        "Up to 12 active operators",
+        "All standard connectors",
+        "100,000 actions per month",
+        "Advanced policy guardrails",
+        "180-day audit logs",
+        "Private onboarding session",
+        "Dedicated success support",
+      ],
+      cta: "Get Operator",
+      style: "ghost",
+    },
+    {
       name: "Enterprise",
-      tagline: "For regulated, multi-team operations.",
+      tagline: "For regulated, multi-team or high-volume operations.",
       price: "Custom",
       unit: "",
       hint: "Annual contract",
-      bullets: ["Unlimited agents", "Custom connectors & private models", "SSO/SCIM · SOC 2 · HIPAA", "Data residency · KMS", "Dedicated success + SLA", "Procurement & legal review"],
+      bullets: [
+        "Unlimited operators",
+        "Custom connectors and private tools",
+        "SSO and SCIM",
+        "SOC 2 readiness support",
+        "Data residency options",
+        "Custom retention and audit logs",
+        "Security review",
+        "SLA and dedicated success",
+        "Procurement support",
+      ],
       cta: "Contact sales",
       style: "ghost",
     },
@@ -2200,12 +2060,19 @@ const PricingSection = () => {
       <div className="container">
         <div className="section-head center">
           <span className="eyebrow">Pricing</span>
-          <h2>Pay for outcomes,<br/>not seats.</h2>
-          <p style={{ textAlign: "center" }}>Every plan includes the full operating layer  -  agents, workflows, memory, approvals, audit and connectors. Scale changes the volume, not the surface.</p>
+          <h2>Pay for operating capacity,<br/>not seats.</h2>
+          <p style={{ textAlign: "center" }}>Every plan includes the core operating layer: operators, workflows, memory, approvals, connectors, policies and execution logs. Scale by volume, complexity and support.</p>
         </div>
 
         <div className="pr-grid">
-          {tiers.map((t) => (
+          {tiers.map((t) => {
+            const dynamicCta =
+              t.name !== "Enterprise" && userState === "signed_in"
+                ? { label: "Open dashboard", href: "/app" }
+                : t.name !== "Enterprise" && userState === "registered"
+                  ? { label: "Sign in", href: "/app" }
+                  : { label: t.cta, href: t.name === "Enterprise" || t.name === "Operator" ? "/contact" : "/app/onboarding" };
+            return (
             <div className={`pr-card ${t.featured ? "pr-featured" : ""}`} key={t.name}>
               {t.featured && <span className="pr-tag">Most chosen</span>}
               <div className="pr-name">{t.name}</div>
@@ -2215,26 +2082,26 @@ const PricingSection = () => {
                 <span className="pr-unit">{t.unit}</span>
               </div>
               <div className="pr-hint">{t.hint}</div>
-              <a href="#start" className={`btn ${t.style === "primary" ? "btn-primary" : "btn-ghost"} pr-cta`}>
-                {t.cta} <I.arrow size={13} />
+              <a href={dynamicCta.href} className={`btn ${t.style === "primary" ? "btn-primary" : "btn-ghost"} pr-cta`}>
+                {dynamicCta.label} <I.arrow size={13} />
               </a>
               <div className="pr-divider" />
               <ul className="pr-bullets">
                 {t.bullets.map((b) => <li key={b}><I.check size={11} /> {b}</li>)}
               </ul>
             </div>
-          ))}
+          );})}
         </div>
 
         <div className="pr-foot">
           <span className="mono" style={{ fontSize: 12, color: "var(--text-mute)" }}>
-            Need volume actions, custom agents, or a private deployment? <a href="#sales" style={{ color: "var(--cyan)" }}>Talk to us</a>.
+            Start self-serve. Upgrade when your operators need higher volume, custom workflows or private connector setup.
           </span>
         </div>
       </div>
 
       <style jsx global>{`
-        .pr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .pr-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
         .pr-card {
           position: relative;
           padding: 28px 24px 24px;
@@ -2274,6 +2141,7 @@ const PricingSection = () => {
         .pr-bullets li { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--text-dim); }
         .pr-bullets li svg { color: var(--cyan); flex: none; }
         .pr-foot { margin-top: 24px; text-align: center; }
+        @media (max-width: 1200px) { .pr-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 900px) { .pr-grid { grid-template-columns: 1fr; } }
       `}</style>
     </section>
@@ -2284,6 +2152,13 @@ const PricingSection = () => {
 // 12. Final CTA
 // ============================================================================
 const FinalCTA = () => {
+  const userState = usePublicUserState();
+  const primaryCta =
+    userState === "signed_in"
+      ? { label: "Open dashboard", href: "/app" }
+      : userState === "registered"
+        ? { label: "Sign in", href: "/app" }
+        : { label: "Get Started", href: "/app/onboarding" };
   return (
     <section className="section section-sm" id="start">
       <div className="container">
@@ -2298,19 +2173,20 @@ const FinalCTA = () => {
               The next decade of business<br/>will be run inside an OS.
             </h2>
             <p style={{ textAlign: "center", maxWidth: 560 }}>
-              Inovense is building the operating layer it deserves. Start with one agent today  - 
-              expand into a full operating team when the value is undeniable.
+              Start with one controlled operator. Connect your tools, enforce your policies and expand into a full operating layer when the value is proven.
             </p>
             <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 12, flexWrap: "wrap" }}>
-              <a href="#signup" className="btn btn-primary btn-lg">Start free <I.arrow size={14} /></a>
-              <a href="#demo" className="btn btn-ghost btn-lg">Book a 20-min demo</a>
+              <a href={primaryCta.href} className="btn btn-primary btn-lg">{primaryCta.label} <I.arrow size={14} /></a>
+              <a href="/contact" className="btn btn-ghost btn-lg">Book a 20-min demo</a>
             </div>
             <div style={{ marginTop: 18, display: "flex", gap: 18, color: "var(--text-mute)", fontFamily: "var(--font-mono)", fontSize: 11.5, justifyContent: "center", flexWrap: "wrap" }}>
-              <span>No credit card</span>
+              <span>Operators propose</span>
               <span style={{ color: "var(--text-faint)" }}>·</span>
-              <span>SOC 2 Type II</span>
+              <span>Policies enforce</span>
               <span style={{ color: "var(--text-faint)" }}>·</span>
-              <span>Cancel anytime</span>
+              <span>Humans approve</span>
+              <span style={{ color: "var(--text-faint)" }}>·</span>
+              <span>Everything is logged</span>
             </div>
           </div>
         </div>
@@ -2364,19 +2240,46 @@ const Footer = () => {
   const cols = [
     {
       title: "Platform",
-      links: ["Overview", "AI Agents", "Workflows", "Memory & context", "Approvals", "Integrations", "Security"],
+      links: [
+        { label: "Overview", href: "/" },
+        { label: "AI Agents", href: "/agents" },
+        { label: "Workflows", href: "/workflows" },
+        { label: "Memory & context", href: "/memory" },
+        { label: "Approvals", href: "/approvals" },
+        { label: "Integrations", href: "/integrations" },
+        { label: "Security", href: "/security" },
+      ],
     },
     {
       title: "Solutions",
-      links: ["Revenue teams", "Marketing", "Client services", "Operations", "Founders & ops"],
+      links: [
+        { label: "Revenue teams", href: "/solutions/revenue-teams" },
+        { label: "Marketing", href: "/solutions/marketing" },
+        { label: "Client services", href: "/solutions/client-services" },
+        { label: "Operations", href: "/solutions/operations" },
+        { label: "Founders & ops", href: "/solutions/founders-ops" },
+      ],
     },
     {
       title: "Resources",
-      links: ["Documentation", "API reference", "Changelog", "Status", "System architecture", "Trust center"],
+      links: [
+        { label: "Documentation", href: "/docs" },
+        { label: "API reference", href: "/api-reference" },
+        { label: "Changelog", href: "/changelog" },
+        { label: "Status", href: "/status" },
+        { label: "System architecture", href: "/architecture" },
+        { label: "Trust center", href: "/trust" },
+      ],
     },
     {
       title: "Company",
-      links: ["About", "Careers", "Customers", "Press", "Contact"],
+      links: [
+        { label: "About", href: "/about" },
+        { label: "Careers", href: "/careers" },
+        { label: "Customers", href: "/customers" },
+        { label: "Press", href: "/press" },
+        { label: "Contact", href: "/contact" },
+      ],
     },
   ];
   return (
@@ -2400,7 +2303,7 @@ const Footer = () => {
               <div key={c.title} className="ft-col">
                 <div className="label" style={{ marginBottom: 14 }}>{c.title}</div>
                 <ul>
-                  {c.links.map((l) => <li key={l}><a href="#">{l}</a></li>)}
+                  {c.links.map((l) => <li key={l.label}><a href={l.href}>{l.label}</a></li>)}
                 </ul>
               </div>
             ))}
@@ -2409,10 +2312,10 @@ const Footer = () => {
         <div className="ft-bot">
           <span>© 2026 Inovense, Inc. All rights reserved.</span>
           <div className="ft-bot-links">
-            <a href="#">Terms</a>
-            <a href="#">Privacy</a>
-            <a href="#">Security</a>
-            <a href="#">Cookies</a>
+            <a href="/terms">Terms</a>
+            <a href="/privacy">Privacy</a>
+            <a href="/security">Security</a>
+            <a href="/cookies">Cookies</a>
           </div>
         </div>
       </div>
@@ -2474,4 +2377,3 @@ export default function ClaudeHome() {
     </div>
   );
 }
-

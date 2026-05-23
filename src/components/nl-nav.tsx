@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import {
   Sheet,
   SheetContent,
@@ -24,15 +23,16 @@ export default function NlNav() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
 
         {/* Logo — links to Dutch hub */}
-        <Link href="/nl" className="transition-opacity hover:opacity-80">
-          <Image
-            src="/logo.png"
-            alt="Inovense"
-            width={120}
-            height={28}
-            className="h-7 w-auto"
-            priority
-          />
+        <Link href="/nl" className="flex items-center gap-2.5 transition-opacity hover:opacity-80" aria-label="Inovense">
+          <svg width="20" height="20" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+            <g fill="#ECEFF3">
+              <rect x="10" y="10" width="44" height="9"/>
+              <rect x="26" y="19" width="12" height="12"/>
+              <rect x="26" y="33" width="12" height="12"/>
+              <rect x="10" y="45" width="44" height="9"/>
+            </g>
+          </svg>
+          <span className="text-sm font-semibold tracking-[0.16em] text-zinc-100">INOVENSE</span>
         </Link>
 
         {/* Desktop nav */}
@@ -88,14 +88,16 @@ export default function NlNav() {
             className="w-72 border-zinc-800 bg-zinc-950 px-6"
           >
             <div className="flex h-full flex-col">
-              <Link href="/nl" onClick={() => setOpen(false)} className="mt-1 inline-flex">
-                <Image
-                  src="/logo.png"
-                  alt="Inovense"
-                  width={120}
-                  height={28}
-                  className="h-7 w-auto"
-                />
+              <Link href="/nl" onClick={() => setOpen(false)} className="mt-1 inline-flex items-center gap-2.5" aria-label="Inovense">
+                <svg width="20" height="20" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+                  <g fill="#ECEFF3">
+                    <rect x="10" y="10" width="44" height="9"/>
+                    <rect x="26" y="19" width="12" height="12"/>
+                    <rect x="26" y="33" width="12" height="12"/>
+                    <rect x="10" y="45" width="44" height="9"/>
+                  </g>
+                </svg>
+                <span className="text-sm font-semibold tracking-[0.16em] text-zinc-100">INOVENSE</span>
               </Link>
 
               <nav className="mt-10 flex flex-col">

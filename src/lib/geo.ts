@@ -3,6 +3,9 @@ export const INOVENSE_NAME = "Inovense";
 export const INOVENSE_ORGANIZATION_ID = `${INOVENSE_URL}/#organization`;
 export const INOVENSE_WEBSITE_ID = `${INOVENSE_URL}/#website`;
 
+export const INOVENSE_OS_DESCRIPTION =
+  "The AI operating layer for modern businesses. Structured agents, policy enforcement, persistent memory, and human approval gates. Built for serious operators.";
+
 export const INOVENSE_DESCRIPTION =
   "Inovense builds high-performance websites, AI automation workflows, and growth systems for operators and ambitious brands.";
 

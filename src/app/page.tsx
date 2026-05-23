@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import ClaudeHome from "@/components/home/claude-home";
+import ClaudeHomeV2 from "@/components/home/claude-home-v2";
 import {
   INOVENSE_HOME_FAQS,
   INOVENSE_ORGANIZATION_ID,
@@ -10,10 +10,10 @@ import {
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Inovense | Conversion Websites and Client Acquisition Systems",
+    absolute: "Inovense | AI Operating Layer for Modern Businesses",
   },
   description:
-    "Inovense builds conversion websites and automated client acquisition systems for service businesses, SaaS teams, consultants, agencies, and high-value local brands.",
+    "Inovense OS is a self-serve AI operating layer for modern businesses. Operators propose, policies enforce, humans approve, and every action is logged.",
   alternates: {
     canonical: "https://inovense.com",
     languages: {
@@ -24,9 +24,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com",
-    title: "Inovense | Conversion Websites and Client Acquisition Systems",
+    title: "Inovense | AI Operating Layer for Modern Businesses",
     description:
-      "Inovense builds conversion websites and automated client acquisition systems for service businesses, SaaS teams, consultants, agencies, and high-value local brands.",
+      "Inovense OS is a self-serve AI operating layer for modern businesses. Operators propose, policies enforce, humans approve, and every action is logged.",
     images: [
       {
         url: "/opengraph-image",
@@ -36,9 +36,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Inovense | Conversion Websites and Client Acquisition Systems",
+    title: "Inovense | AI Operating Layer for Modern Businesses",
     description:
-      "Inovense builds conversion websites and automated client acquisition systems for service businesses, SaaS teams, consultants, agencies, and high-value local brands.",
+      "Inovense OS is a self-serve AI operating layer for modern businesses. Operators propose, policies enforce, humans approve, and every action is logged.",
     images: [
       {
         url: "/opengraph-image",
@@ -53,9 +53,9 @@ const homePageSchema = {
   "@type": "WebPage",
   "@id": `${INOVENSE_URL}/#home`,
   url: INOVENSE_URL,
-  name: "Inovense | Conversion Websites and Client Acquisition Systems",
+  name: "Inovense | AI Operating Layer for Modern Businesses",
   description:
-    "Inovense builds conversion websites, client acquisition systems, and growth infrastructure for businesses that need predictable commercial outcomes.",
+    "Inovense OS is a self-serve AI operating layer for modern businesses. Connect tools, deploy operators, enforce policies, and execute workflows safely.",
   isPartOf: {
     "@id": INOVENSE_WEBSITE_ID,
   },
@@ -91,7 +91,7 @@ export default function Home() {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: toJsonLd(homeFaqSchema) }}
         />
-        <ClaudeHome />
+        <ClaudeHomeV2 />
       </main>
     </>
   );

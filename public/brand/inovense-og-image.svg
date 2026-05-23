@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="Inovense">
+  <defs>
+    <pattern id="og-grid" x="0" y="0" width="80" height="80" patternUnits="userSpaceOnUse">
+      <path d="M 80 0 L 0 0 0 80" fill="none" stroke="#FFFFFF" stroke-opacity="0.025" stroke-width="1"></path>
+    </pattern>
+    
+  </defs>
+  <rect width="1200" height="630" fill="#06070A"></rect>
+  <rect width="1200" height="630" fill="url(#og-grid)"></rect>
+
+  
+  <g transform="translate(80,64)">
+    <g fill="#ECEFF3">
+      <rect x="0" y="6" width="44" height="6"></rect>
+      <rect x="16" y="12" width="12" height="8"></rect>
+      <rect x="16" y="22" width="12" height="8"></rect>
+      <rect x="0" y="30" width="44" height="6"></rect>
+    </g>
+    <text x="60" y="30" class="og-wm" font-size="20">INOVENSE</text>
+  </g>
+
+  <text x="80" y="280" class="og-tag">The operating layer</text>
+  <text x="80" y="386" class="og-h" font-size="84">The AI operating layer</text>
+  <text x="80" y="478" class="og-h" font-size="84">for modern businesses.</text>
+  <text x="80" y="540" class="og-sub" font-size="22">Operators · workflows · approvals · memory · audit</text>
+
+  <text x="80" y="585" font-family="Geist Mono, monospace" font-size="13" fill="#6B7178" letter-spacing="0.16em" style="text-transform: uppercase;">inovense.com</text>
+</svg>

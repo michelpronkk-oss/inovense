@@ -1,30 +1,72 @@
 import Link from "next/link";
-import Image from "next/image";
 
-const laneLinks = [
-  { label: "Build", href: "/build" },
-  { label: "Systems", href: "/systems" },
-  { label: "Growth", href: "/growth" },
+const platformLinks = [
+  { label: "Overview", href: "/" },
+  { label: "AI Agents", href: "/agents" },
+  { label: "Workflows", href: "/workflows" },
+  { label: "Memory & context", href: "/memory" },
+  { label: "Approvals", href: "/approvals" },
+  { label: "Integrations", href: "/integrations" },
+  { label: "Security", href: "/security" },
 ];
 
-const serviceLinks = [
-  { label: "Web Design", href: "/web-design" },
-  { label: "AI Automation", href: "/ai-automation" },
-  { label: "Lead Systems", href: "/lead-generation-systems" },
-  { label: "SilentSpend Case", href: "/work/silentspend" },
+const solutionLinks = [
+  { label: "Revenue teams", href: "/solutions/revenue-teams" },
+  { label: "Marketing", href: "/solutions/marketing" },
+  { label: "Client services", href: "/solutions/client-services" },
+  { label: "Operations", href: "/solutions/operations" },
+  { label: "Founders & ops", href: "/solutions/founders-ops" },
+];
+
+const resourceLinks = [
+  { label: "Documentation", href: "/docs" },
+  { label: "API reference", href: "/api-reference" },
+  { label: "Changelog", href: "/changelog" },
+  { label: "Status", href: "/status" },
+  { label: "System architecture", href: "/architecture" },
+  { label: "Trust center", href: "/trust" },
 ];
 
 const companyLinks = [
-  { label: "Request a build review", href: "/intake" },
-  { label: "Service Fit Answers", href: "/answers" },
-  { label: "Process", href: "/process" },
-  { label: "Privacy Policy", href: "/privacy-policy" },
-  { label: "Terms of Use", href: "/terms-of-use" },
+  { label: "About", href: "/about" },
+  { label: "Careers", href: "/careers" },
+  { label: "Customers", href: "/customers" },
+  { label: "Press", href: "/press" },
+  { label: "Contact", href: "/contact" },
 ];
+
+const legalLinks = [
+  { label: "Terms", href: "/terms" },
+  { label: "Privacy", href: "/privacy" },
+  { label: "Security", href: "/security" },
+  { label: "Cookies", href: "/cookies" },
+];
+
+function FooterCol({ heading, links }: { heading: string; links: { label: string; href: string }[] }) {
+  return (
+    <div>
+      <p className="mb-5 text-[11px] font-medium uppercase tracking-[0.15em] text-zinc-700">
+        {heading}
+      </p>
+      <ul className="space-y-3.5">
+        {links.map(({ label, href }) => (
+          <li key={label}>
+            <Link
+              href={href}
+              className="text-sm text-zinc-500 transition-colors hover:text-zinc-100"
+            >
+              {label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export default function Footer() {
   return (
-    <footer className="relative border-t border-white/[0.06] bg-zinc-950">
+    <footer className="relative border-t border-white/[0.06] bg-zinc-950/95">
 
       {/* Centered gradient top rule */}
       <div
@@ -40,97 +82,63 @@ export default function Footer() {
         />
       </div>
 
-      <div className="mx-auto max-w-6xl px-6 pt-16 pb-10">
+      <div className="mx-auto max-w-[1360px] px-6 pt-20 pb-12">
 
         {/* Main grid */}
-        <div className="grid grid-cols-1 gap-12 md:grid-cols-[1fr_auto_auto_auto]">
+        <div className="grid grid-cols-2 gap-12 md:grid-cols-[1.4fr_1fr_1fr_1fr_1fr] md:gap-8">
 
-          {/* Brand column */}
-          <div className="flex flex-col items-start">
-            <Link href="/" className="mb-5 self-start transition-opacity hover:opacity-75">
-              <Image
-                src="/logo.png"
-                alt="Inovense"
-                width={110}
-                height={26}
-                className="block h-[26px] w-auto"
-              />
+          {/* Brand column — spans full width on mobile */}
+          <div className="col-span-2 flex flex-col items-start md:col-span-1">
+            <Link href="/" className="mb-5 inline-flex items-center gap-2.5 self-start transition-opacity hover:opacity-75" aria-label="Inovense">
+              <svg width="18" height="18" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+                <g fill="#ECEFF3">
+                  <rect x="10" y="10" width="44" height="9"/>
+                  <rect x="26" y="19" width="12" height="12"/>
+                  <rect x="26" y="33" width="12" height="12"/>
+                  <rect x="10" y="45" width="44" height="9"/>
+                </g>
+              </svg>
+              <span className="text-[13px] font-semibold tracking-[0.16em] text-zinc-200">INOVENSE</span>
             </Link>
-            <p className="max-w-[240px] text-sm leading-relaxed text-zinc-500">
-              Inovense builds conversion websites and client acquisition systems.
+
+            <p className="max-w-[220px] text-sm leading-relaxed text-zinc-500">
+              The AI operating layer for modern businesses. Built for serious operators.
             </p>
-            <a
-              href="mailto:hello@inovense.com"
-              className="mt-5 text-sm text-zinc-600 transition-colors hover:text-zinc-300"
+
+            {/* Status indicator */}
+            <Link
+              href="/status"
+              className="mt-5 inline-flex items-center gap-2 rounded-full border border-zinc-800 px-3 py-1.5 transition-colors hover:border-zinc-600"
             >
-              hello@inovense.com
-            </a>
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+              <span className="font-mono text-[11px] text-zinc-500">All systems operational</span>
+              <span className="font-mono text-[11px] text-zinc-700">v1.18.2</span>
+            </Link>
           </div>
 
-          {/* Lanes */}
-          <div>
-            <p className="mb-5 text-[11px] font-medium uppercase tracking-[0.15em] text-zinc-700">
-              Lanes
-            </p>
-            <ul className="space-y-3.5">
-              {laneLinks.map(({ label, href }) => (
-                <li key={label}>
-                  <Link
-                    href={href}
-                    className="text-sm text-zinc-500 transition-colors hover:text-zinc-100"
-                  >
-                    {label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Services */}
-          <div>
-            <p className="mb-5 text-[11px] font-medium uppercase tracking-[0.15em] text-zinc-700">
-              Service Pages
-            </p>
-            <ul className="space-y-3.5">
-              {serviceLinks.map(({ label, href }) => (
-                <li key={label}>
-                  <Link
-                    href={href}
-                    className="text-sm text-zinc-500 transition-colors hover:text-zinc-100"
-                  >
-                    {label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Company */}
-          <div>
-            <p className="mb-5 text-[11px] font-medium uppercase tracking-[0.15em] text-zinc-700">
-              Company
-            </p>
-            <ul className="space-y-3.5">
-              {companyLinks.map(({ label, href }) => (
-                <li key={label}>
-                  <Link
-                    href={href}
-                    className="text-sm text-zinc-500 transition-colors hover:text-zinc-100"
-                  >
-                    {label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <FooterCol heading="Platform" links={platformLinks} />
+          <FooterCol heading="Solutions" links={solutionLinks} />
+          <FooterCol heading="Resources" links={resourceLinks} />
+          <FooterCol heading="Company" links={companyLinks} />
 
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-14 flex flex-col items-start justify-between gap-3 border-t border-white/[0.05] pt-7 sm:flex-row sm:items-center">
+        <div className="mt-16 flex flex-col items-start justify-between gap-3 border-t border-white/[0.05] pt-7 sm:flex-row sm:items-center">
           <p className="text-xs text-zinc-700">
-            &copy; 2026 Inovense. All rights reserved.
+            &copy; 2026 Inovense, Inc. All rights reserved.
           </p>
+          <div className="flex items-center gap-5">
+            {legalLinks.map(({ label, href }) => (
+              <Link
+                key={label}
+                href={href}
+                className="text-xs text-zinc-700 transition-colors hover:text-zinc-400"
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
         </div>
 
       </div>

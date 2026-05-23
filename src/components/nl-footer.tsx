@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 
 const serviceLinks = [
   { label: "Bouwen", href: "/nl/build" },
@@ -39,14 +38,16 @@ export default function NlFooter() {
 
           {/* Brand column */}
           <div className="flex flex-col items-start">
-            <Link href="/nl" className="mb-5 self-start transition-opacity hover:opacity-75">
-              <Image
-                src="/logo.png"
-                alt="Inovense"
-                width={110}
-                height={26}
-                className="block h-[26px] w-auto"
-              />
+            <Link href="/nl" className="mb-5 inline-flex items-center gap-2.5 self-start transition-opacity hover:opacity-75" aria-label="Inovense">
+              <svg width="18" height="18" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+                <g fill="#ECEFF3">
+                  <rect x="10" y="10" width="44" height="9"/>
+                  <rect x="26" y="19" width="12" height="12"/>
+                  <rect x="26" y="33" width="12" height="12"/>
+                  <rect x="10" y="45" width="44" height="9"/>
+                </g>
+              </svg>
+              <span className="text-[13px] font-semibold tracking-[0.16em] text-zinc-200">INOVENSE</span>
             </Link>
             <p className="max-w-[240px] text-sm leading-relaxed text-zinc-500">
               Inovense. Gebouwd voor resultaat.

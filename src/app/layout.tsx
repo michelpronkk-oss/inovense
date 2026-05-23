@@ -19,28 +19,29 @@ const figtree = Figtree({ subsets: ["latin"], variable: "--font-sans" });
 export const metadata: Metadata = {
   metadataBase: new URL(INOVENSE_URL),
   title: {
-    default: "Inovense | Web Design, AI Automation & Growth Systems",
+    default: "Inovense OS — The AI Operating Layer for Modern Businesses",
     template: "%s | Inovense",
   },
-  description: INOVENSE_DESCRIPTION,
+  description: "The AI operating layer for modern businesses. Structured agents, policy enforcement, persistent memory, and human approval gates.",
   icons: {
     icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
       { url: "/favicon.ico", sizes: "any" },
     ],
-    apple: "/favicon.ico",
+    apple: "/brand/inovense-app-icon-1024.svg",
   },
   openGraph: {
     type: "website",
     locale: "en_US",
     siteName: INOVENSE_NAME,
-    title: "Inovense | Web Design, AI Automation & Growth Systems",
-    description: INOVENSE_DESCRIPTION,
+    title: "Inovense OS — The AI Operating Layer for Modern Businesses",
+    description: "The AI operating layer for modern businesses. Structured agents, policy enforcement, persistent memory, and human approval gates.",
     url: INOVENSE_URL,
   },
   twitter: {
     card: "summary_large_image",
-    title: "Inovense | Web Design, AI Automation & Growth Systems",
-    description: INOVENSE_DESCRIPTION,
+    title: "Inovense OS — The AI Operating Layer for Modern Businesses",
+    description: "The AI operating layer for modern businesses. Structured agents, policy enforcement, persistent memory, and human approval gates.",
   },
   robots: {
     index: true,
@@ -87,14 +88,14 @@ const orgSchema = {
     })),
   },
   knowsAbout: [
-    "Web Design",
-    "Web Development",
-    "AI Automation",
-    "Business Process Automation",
-    "Internal Tooling",
-    "Lead Generation Systems",
-    "Growth Marketing",
-    "SEO",
+    "AI Agents",
+    "Workflow Automation",
+    "Policy Enforcement",
+    "Business Operating Systems",
+    "AI Integration",
+    "Approval Gates",
+    "Company Memory",
+    "Operator Execution",
   ],
 };
 

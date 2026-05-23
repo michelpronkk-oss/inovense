@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Inovense">
+  <rect x="0.5" y="0.5" width="63" height="63" rx="14" fill="none" stroke="#06070A" stroke-opacity="0.65" stroke-width="1"></rect>
+  <g transform="rotate(45 32 32)">
+    <rect x="17" y="17" width="30" height="30" rx="6" fill="#06070A"></rect>
+    <rect x="26" y="26" width="12" height="12" rx="2" fill="#ECEFF3"></rect>
+    <rect x="29" y="29" width="6" height="6" rx="1" fill="#06070A"></rect>
+  </g>
+</svg>
