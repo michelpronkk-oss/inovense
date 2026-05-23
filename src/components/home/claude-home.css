@@ -647,29 +647,44 @@
   letter-spacing: 0.07em;
   text-transform: uppercase;
 }
-.inovense-os .hero-trust {
+/* ---------- Hero live status ---------- */
+.inovense-os .hero-live {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 12px 6px 8px;
-  background: rgba(13, 16, 21, 0.6);
-  border-radius: 999px;
-  box-shadow: inset 0 0 0 1px var(--line);
-  font-size: 12.5px;
-  color: var(--text-mute);
-}
-.inovense-os .hero-trust-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 8px;
-  background: var(--cyan-soft);
-  color: var(--cyan);
-  border-radius: 999px;
   font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.inovense-os .hero-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--cyan);
+  flex-shrink: 0;
+  animation: livePulse 2.6s ease-in-out infinite;
+}
+@keyframes livePulse {
+  0%, 100% {
+    box-shadow: 0 0 0 3px rgba(77,232,225,0.15), 0 0 12px rgba(77,232,225,0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(77,232,225,0.06), 0 0 22px rgba(77,232,225,0.18);
+  }
+}
+.inovense-os .hero-live-stat {
+  color: var(--text);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.inovense-os .hero-live-sep {
+  color: var(--text-faint);
+  font-size: 11px;
+}
+.inovense-os .hero-live-text {
+  color: var(--text-dim);
 }
 
 /* ---------- Section header ---------- */
@@ -955,23 +970,27 @@
   .inovense-os .hero-logo-rail-name { font-size: 10.5px; }
   .inovense-os .hero-cap-band {
     margin-top: 9px;
-    display: flex;
-    overflow-x: auto;
-    gap: 0;
-    border-radius: 10px;
-    padding-bottom: 3px;
-    scrollbar-width: none;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
   }
-  .inovense-os .hero-cap-band::-webkit-scrollbar { display: none; }
   .inovense-os .hero-cap-segment {
-    min-width: 200px;
-    justify-content: flex-start;
-    padding: 0 12px;
-    min-height: 40px;
+    min-width: unset;
+    min-height: 50px;
+    justify-content: center;
+    padding: 0 10px;
+    font-size: 11px;
+    letter-spacing: 0.04em;
   }
   .inovense-os .hero-cap-segment .hero-cap-divider { display: none; }
-  .inovense-os .hero-trust {
-    max-width: calc(100vw - 36px);
+  .inovense-os .hero-cap-band .hero-cap-segment:nth-child(odd) {
+    border-right: 1px solid var(--line-2);
+  }
+  .inovense-os .hero-cap-band .hero-cap-segment:nth-child(-n+2) {
+    border-bottom: 1px solid var(--line-2);
+  }
+  .inovense-os .hero-live {
+    font-size: 11.5px;
+    gap: 8px;
   }
   .inovense-os .section {
     scroll-margin-top: 84px;

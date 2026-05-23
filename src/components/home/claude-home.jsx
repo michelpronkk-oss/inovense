@@ -772,13 +772,11 @@ const Hero = () => {
 
       <div className="hero-fold">
         <div className="container hero-inner">
-          <div className="hero-trust fade-in">
-            <span className="hero-trust-pill">
-              <span className="dot dot-cyan" />
-              Self-serve preview
-            </span>
-            <span>AI operating layer for serious teams</span>
-            <I.arrow size={12} style={{ color: "var(--text-mute)" }} />
+          <div className="hero-live fade-in" aria-label="Live product status">
+            <span className="hero-live-dot" aria-hidden="true" />
+            <span className="hero-live-stat">3 operators running</span>
+            <span className="hero-live-sep" aria-hidden="true">·</span>
+            <span className="hero-live-text">412h saved this week</span>
           </div>
 
           <h1 className="fade-in" style={{ animationDelay: ".05s" }}>
@@ -869,10 +867,10 @@ const HeroLogoRail = () => {
 
 const HeroCapabilityRow = () => {
   const capabilities = [
-    { label: "Approval-first execution", icon: <I.inbox size={12} /> },
-    { label: "Company memory", icon: <I.database size={12} /> },
-    { label: "Policy guardrails", icon: <I.shield size={12} /> },
-    { label: "Full execution logs", icon: <I.doc size={12} /> },
+    { label: "Approval-first execution", icon: <I.inbox size={13} /> },
+    { label: "Company memory", icon: <I.database size={13} /> },
+    { label: "Policy guardrails", icon: <I.shield size={13} /> },
+    { label: "Full execution logs", icon: <I.doc size={13} /> },
   ];
   return (
     <div className="hero-cap-band" role="list" aria-label="Core capabilities">
