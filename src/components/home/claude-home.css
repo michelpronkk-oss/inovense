@@ -1184,19 +1184,25 @@
   .inovense-os .hero-cap-band {
     display: none;
   }
-  /* Stretch hero-inner to fill the fold so hero-meta can sit at the bottom */
+  /* Stretch hero-inner to fill the fold height */
   .inovense-os .hero-fold {
     align-items: stretch;
+    padding-bottom: 0;
   }
   .inovense-os .hero-inner {
     flex: 1;
     justify-content: center;
     align-items: center;
+    /* room for absolutely-pinned logo rail */
+    padding-bottom: 88px;
   }
-  /* Push logo rail to the bottom of the content stack */
+  /* Pull logo rail out of flex flow, pin to fold bottom */
   .inovense-os .hero-meta {
-    margin-top: auto;
-    padding-bottom: 4px;
+    position: absolute;
+    bottom: 24px;
+    left: 0;
+    right: 0;
+    margin: 0;
   }
 }
 
