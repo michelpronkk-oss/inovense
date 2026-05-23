@@ -794,20 +794,16 @@
   .inovense-os .container-wide {
     padding: 0 16px;
   }
-  .inovense-os .section {
-    padding: 78px 0;
-  }
-  .inovense-os .section-sm {
-    padding: 62px 0;
-  }
+  .inovense-os .section { padding: 58px 0; }
+  .inovense-os .section-sm { padding: 44px 0; }
   .inovense-os .section-head {
-    gap: 10px;
-    margin-bottom: 30px;
+    gap: 8px;
+    margin-bottom: 20px;
   }
   .inovense-os .lede,
   .inovense-os .section-head p {
-    font-size: 15px;
-    line-height: 1.55;
+    font-size: 14px;
+    line-height: 1.5;
   }
   .inovense-os .hero-below-fold::after {
     height: 120px;
@@ -825,5 +821,24 @@
   }
   .inovense-os .hero-logo-item {
     letter-spacing: 0.06em;
+  }
+  .inovense-os .wf-bullets,
+  .inovense-os .mem-list,
+  .inovense-os .sec-badges,
+  .inovense-os .int-foot {
+    display: none !important;
+  }
+  .inovense-os .ap-card-body {
+    gap: 12px;
+    padding: 12px;
+  }
+  .inovense-os .ap-draft p:nth-child(2) {
+    display: none;
+  }
+  .inovense-os .mobile-compact-copy {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 }

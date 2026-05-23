@@ -1237,7 +1237,7 @@ const WorkflowsSection = () => {
           <div className="wf-copy">
             <span className="eyebrow">Workflows</span>
             <h2>Compose work the way<br/>your business actually runs.</h2>
-            <p className="lede" style={{ marginTop: 16 }}>
+            <p className="lede mobile-compact-copy" style={{ marginTop: 16 }}>
               Drag steps together  -  triggers, agent actions, tool calls, approvals  -  and Inovense OS
               runs them like a production system. Every run is observable, retriable and idempotent.
             </p>
@@ -1421,7 +1421,7 @@ const MemorySection = () => {
           <div>
             <span className="eyebrow">Memory & context</span>
             <h2 style={{ marginTop: 14 }}>Your business, as<br/>an indexed graph.</h2>
-            <p className="lede" style={{ marginTop: 16 }}>
+            <p className="lede mobile-compact-copy" style={{ marginTop: 16 }}>
               Inovense OS continuously builds a structured understanding of your company  -  accounts,
               opportunities, projects, people, documents  -  and makes it queryable by every agent.
               Nothing happens in a context-less chat.
@@ -1625,7 +1625,7 @@ const ApprovalsSection = () => {
           <div>
             <span className="eyebrow">Boundaries & approvals</span>
             <h2 style={{ marginTop: 14 }}>Give AI the keys you<br/>actually want to give.</h2>
-            <p className="lede" style={{ marginTop: 16 }}>
+            <p className="lede mobile-compact-copy" style={{ marginTop: 16 }}>
               Inovense OS makes "what AI can do" explicit. Define allow-lists, dollar limits,
               approval gates and tool scopes  -  then watch agents stay inside them. Anything risky lands in your inbox.
             </p>
@@ -1894,7 +1894,7 @@ const ExecutionLogSection = () => {
         <div className="section-head">
           <span className="eyebrow">Observability</span>
           <h2>Every action is logged,<br/>replayable and attributable.</h2>
-          <p className="lede">
+          <p className="lede mobile-compact-copy">
             Inovense OS records every plan, tool call, write, decision and approval  -  at the millisecond.
             Replay any run with the same context, or roll back a write across systems.
           </p>
