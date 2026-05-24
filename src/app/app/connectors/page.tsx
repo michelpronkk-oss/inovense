@@ -327,9 +327,9 @@ export default function ConnectorsPage() {
                   <h3>Setup connector</h3>
                   <button className="appr-btn deny" onClick={() => setSetupConnectorId(null)}>Back</button>
                 </div>
-                <ConnectorSetupView connector={setupConnector} isRealConnected={false} />
+                <ConnectorSetupView connector={setupConnector} isRealConnected={false} isPreview={isPreview} />
                 {setupConnector.id === "gmail" && (
-                  <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>Auth: Native OAuth flow</div>
+                  <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>Secure connection via Google OAuth · Native connector</div>
                 )}
                 {setupConnector.id === "hubspot" && (
                   <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>
@@ -377,7 +377,7 @@ export default function ConnectorsPage() {
               <h3>{drawerConnector.name} details</h3>
               <button className="appr-btn deny" onClick={() => setDrawerConnectorId(null)}>Close</button>
             </div>
-            <ConnectorSetupView connector={drawerConnector} isRealConnected={isRealConnectedConnector(drawerConnector)} />
+            <ConnectorSetupView connector={drawerConnector} isRealConnected={isRealConnectedConnector(drawerConnector)} isPreview={isPreview} />
             {drawerConnector.id === "gmail" && (
               <div style={{ marginTop: 10, fontSize: 11.5, color: "#9DEFEA" }}>Secure connection via Google OAuth</div>
             )}
@@ -431,13 +431,20 @@ export default function ConnectorsPage() {
   );
 }
 
-function ConnectorSetupView({ connector, isRealConnected }: { connector: Connector; isRealConnected: boolean }) {
+function getConnectorSetupMessage({ isPreview, isConnected }: { isPreview: boolean; isConnected: boolean }): string {
+  if (isConnected) return "Account connected.";
+  if (isPreview) return "Activate Starter to connect real accounts.";
+  return "Connect your account to enable this connector.";
+}
+
+function ConnectorSetupView({ connector, isRealConnected, isPreview }: { connector: Connector; isRealConnected: boolean; isPreview: boolean }) {
   // Only show real stats (health, sync, event counts) for genuinely connected accounts.
   // For available or preview connectors, show neutral placeholder values.
   const displayHealth = isRealConnected ? connector.health : "Not connected";
   const displayLastSync = isRealConnected ? connector.lastSync : "—";
   const displayEvents = isRealConnected ? String(connector.eventsSynced) : "—";
   const displayErrors = isRealConnected ? String(connector.authErrors) : "—";
+  const setupMessage = getConnectorSetupMessage({ isPreview, isConnected: isRealConnected });
 
   return (
     <div style={{ display: "grid", gap: 10 }}>
@@ -453,13 +460,12 @@ function ConnectorSetupView({ connector, isRealConnected }: { connector: Connect
       <div style={{ fontSize: 12.5, color: "var(--text-dim)" }}>{connector.description}</div>
       {!isRealConnected && (
         <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>
-          Not connected. Activate Starter and connect a real account to start syncing.
+          {setupMessage}
         </div>
       )}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <TagList title="Required permissions" items={connector.permissions} />
-        <TagList title="Read scopes" items={connector.readScopes} />
-        <TagList title="Write scopes" items={connector.writeScopes.length ? connector.writeScopes : ["None"]} />
+        <TagList title="Required access" items={connector.readScopes.length ? connector.readScopes : connector.permissions} />
+        <TagList title="Write access" items={connector.writeScopes.length ? connector.writeScopes : ["None"]} />
         <TagList title="Approval required for" items={connector.approvalRequiredFor.length ? connector.approvalRequiredFor : ["None"]} />
         <TagList title="Blocked actions" items={connector.blockedActions.length ? connector.blockedActions : ["None"]} />
         <TagList title="Operators allowed" items={connector.operatorsAllowed.length ? connector.operatorsAllowed : ["All operators"]} />
