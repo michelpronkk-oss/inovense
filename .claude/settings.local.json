@@ -21,7 +21,9 @@
       "PowerShell($content = Get-Content \"C:\\\\Users\\\\miche\\\\AppData\\\\Local\\\\Temp\\\\design-brandbook.html\" -Raw; $idx = $content.IndexOf\\(\"inovense/project/brandbook.html\"\\); Write-Host \"Found brandbook at index: $idx\")",
       "Bash(findstr /v \"^\\\\.\")",
       "PowerShell(Get-Item \"c:\\\\Users\\\\miche\\\\Desktop\\\\inovense\\\\supabase\" -ErrorAction SilentlyContinue | ForEach-Object { tree $_.FullName /F })",
-      "WebFetch(domain:inovense.com)"
+      "WebFetch(domain:inovense.com)",
+      "Bash(pnpm run *)",
+      "Bash(npx vercel *)"
     ],
     "additionalDirectories": [
       "C:\\Users\\miche\\Desktop\\inovense-app\\src",

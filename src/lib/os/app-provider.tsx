@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from "react";
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef, useState } from "react";
 import type {
   OSState,
   Agent,
@@ -360,6 +360,7 @@ interface OSContextValue {
   appendExecutionLog: (event: string, message: string, status?: ExecutionLog["status"]) => void;
   installSuggestedWorkflow: (suggestion: SuggestedWorkflow) => void;
   pendingApprovals: number;
+  clientHydrated: boolean;
 }
 
 const OSContext = createContext<OSContextValue | null>(null);
@@ -443,6 +444,7 @@ let deployCounter = 0;
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, null, () => buildSeedState());
+  const [clientHydrated, setClientHydrated] = useState(false);
   const hydratedFromRemote = useRef(false);
   const finishedInitialHydration = useRef(false);
   const persistTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -483,27 +485,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as OSState;
-      if (Array.isArray(parsed.agents) && parsed.workspace && parsed.currentUser) {
-        if (!parsed.onboarding) {
-          parsed.onboarding = {
-            isComplete: true,
-            completedAt: new Date().toISOString(),
-            companyName: parsed.workspace.name,
-            websiteUrl: "",
-            companySize: "",
-            industry: "",
-            mainGoals: [],
-            preferredOperator: "",
-            approvalOwner: parsed.currentUser.email,
-            initialConnectors: parsed.connectors.filter((c) => c.isConnected).map((c) => c.id),
-          };
+      if (raw) {
+        const parsed = JSON.parse(raw) as OSState;
+        if (Array.isArray(parsed.agents) && parsed.workspace && parsed.currentUser) {
+          if (!parsed.onboarding) {
+            parsed.onboarding = {
+              isComplete: true,
+              completedAt: new Date().toISOString(),
+              companyName: parsed.workspace.name,
+              websiteUrl: "",
+              companySize: "",
+              industry: "",
+              mainGoals: [],
+              preferredOperator: "",
+              approvalOwner: parsed.currentUser.email,
+              initialConnectors: parsed.connectors.filter((c) => c.isConnected).map((c) => c.id),
+            };
+          }
+          dispatch({ type: "HYDRATE", state: parsed });
         }
-        dispatch({ type: "HYDRATE", state: parsed });
       }
     } catch {
       // Ignore invalid storage.
+    } finally {
+      setClientHydrated(true);
     }
   }, []);
 
@@ -954,6 +959,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         appendExecutionLog,
         installSuggestedWorkflow,
         pendingApprovals,
+        clientHydrated,
       }}
     >
       {children}

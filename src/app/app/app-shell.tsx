@@ -61,13 +61,14 @@ function TrialBanner({ trialEndsAt }: { trialEndsAt?: string }) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { state } = useOS();
+  const { state, clientHydrated } = useOS();
   const isOnboardingRoute = pathname === "/app/onboarding";
   const isOnboarded = state.onboarding.isComplete;
   const entitlements = getEntitlements(state.workspace);
   const showManageBilling = entitlements.billingStatus === "active" || entitlements.billingStatus === "trialing" || entitlements.billingStatus === "past_due";
 
   useEffect(() => {
+    if (!clientHydrated) return;
     if (!isOnboarded && !isOnboardingRoute) {
       router.replace("/app/onboarding");
       return;
@@ -75,7 +76,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (isOnboarded && isOnboardingRoute) {
       router.replace("/app");
     }
-  }, [isOnboarded, isOnboardingRoute, router]);
+  }, [clientHydrated, isOnboarded, isOnboardingRoute, router]);
 
   if (isOnboardingRoute) {
     return (
