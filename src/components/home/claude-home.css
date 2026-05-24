@@ -1154,7 +1154,7 @@
 
 @media (max-width: 767px) {
   .inovense-os .hero-fold {
-    min-height: calc(100svh - 58px);
+    min-height: 0;
     padding-bottom: 48px;
   }
   /* Primary cyan glow — concentrated beam */
@@ -1189,25 +1189,20 @@
   .inovense-os .hero-live {
     display: none;
   }
-  /* Stretch hero-inner to fill the fold height */
+  /* Natural height: content determines fold height */
   .inovense-os .hero-fold {
-    align-items: stretch;
-    padding-bottom: 0;
+    align-items: center;
+    padding-bottom: 44px;
   }
   .inovense-os .hero-inner {
-    flex: 1;
-    justify-content: center;
+    flex: 0 0 auto;
+    justify-content: flex-start;
     align-items: center;
-    /* room for absolutely-pinned logo rail */
-    padding-bottom: 88px;
+    padding-bottom: 0;
   }
-  /* Pull logo rail out of flex flow, pin to fold bottom */
   .inovense-os .hero-meta {
-    position: absolute;
-    bottom: 24px;
-    left: 0;
-    right: 0;
-    margin: 0;
+    position: static;
+    margin-top: 4px;
   }
 }
 
@@ -1250,4 +1245,21 @@
   .inovense-os .ap-actions .kbd { display: none; }
   .inovense-os .log-mobile-msg { font-size: 12px; line-height: 1.42; }
   .inovense-os .log-mobile-card { padding: 9px; }
+}
+
+/* ---------- Footer: mobile compact ---------- */
+@media (max-width: 640px) {
+  .inovense-os .footer { padding: 44px 0 20px; }
+  .inovense-os .ft-top { gap: 28px; padding-bottom: 36px; }
+  .inovense-os .ft-cols { grid-template-columns: 1fr 1fr; gap: 16px; }
+  /* Show only first 4 links in each footer column */
+  .inovense-os .ft-col ul li:nth-child(n+5) { display: none; }
+  .inovense-os .ft-bot { padding-top: 16px; gap: 10px; }
+  .inovense-os .ft-bot-links { gap: 12px; }
+  /* CTA card: tighter padding on small screens */
+  .inovense-os .cta-card { padding: 56px 18px 48px; }
+  /* Integrations: hide footer specs row on small mobile */
+  .inovense-os .int-foot { display: none; }
+  /* Section head p: relax max-width constraint on very small screens */
+  .inovense-os .section-head p { max-width: 100%; }
 }

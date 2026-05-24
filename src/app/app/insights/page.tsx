@@ -3,11 +3,19 @@
 import { useMemo, useState } from "react";
 import { ChartIcon, TrendIcon } from "@/components/dashboard/icons";
 import { useOS } from "@/lib/os/app-provider";
-import { getPlanLimits } from "@/lib/os/plans";
+import { getEntitlements } from "@/lib/os/entitlements";
+import { getPlanLabel } from "@/lib/os/truth";
 import { UpgradePrompt } from "@/components/upgrade-prompt";
 
 function BarChart({ data, color = "#4DE8E1" }: { data: { label: string; val: number }[]; color?: string }) {
-  const max = Math.max(...data.map((d) => d.val));
+  if (data.length === 0) {
+    return (
+      <div style={{ height: 80, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-faint)", fontFamily: "var(--font-mono)", fontSize: 11 }}>
+        No activity yet
+      </div>
+    );
+  }
+  const max = Math.max(...data.map((d) => d.val), 1);
   return (
     <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 80 }}>
       {data.map((d) => (
@@ -21,33 +29,6 @@ function BarChart({ data, color = "#4DE8E1" }: { data: { label: string; val: num
     </div>
   );
 }
-
-const WEEKLY = [
-  { label: "W16", val: 620 },
-  { label: "W17", val: 780 },
-  { label: "W18", val: 830 },
-  { label: "W19", val: 920 },
-  { label: "W20", val: 1080 },
-  { label: "W21", val: 1284 },
-];
-
-const HOURS_SAVED = [
-  { label: "W16", val: 210 },
-  { label: "W17", val: 260 },
-  { label: "W18", val: 310 },
-  { label: "W19", val: 350 },
-  { label: "W20", val: 390 },
-  { label: "W21", val: 412 },
-];
-
-const AGENT_PERF = [
-  { mark: "RV", color: "#4DE8E1", name: "Revenue", actions: 326, outputs: 18, success: 98.4 },
-  { mark: "MK", color: "#A78BFA", name: "Marketing", actions: 118, outputs: 14, success: 97.8 },
-  { mark: "CF", color: "#5B8DEF", name: "Client Flow", actions: 84, outputs: 9, success: 100 },
-  { mark: "OP", color: "#51D88A", name: "Operations", actions: 62, outputs: 6, success: 100 },
-  { mark: "PR", color: "#F2767C", name: "Proposal", actions: 48, outputs: 8, success: 100 },
-  { mark: "SE", color: "#7EF6F0", name: "SEO", actions: 42, outputs: 14, success: 99.2 },
-];
 
 type ExportFormat = "csv" | "json";
 
@@ -71,16 +52,31 @@ function asCSV(rows: string[][]): string {
 
 export default function InsightsPage() {
   const { state, appendExecutionLog } = useOS();
-  const limits = getPlanLimits(state.workspace.plan);
+  const entitlements = getEntitlements(state.workspace);
   const [exportOpen, setExportOpen] = useState(false);
   const [feedback, setFeedback] = useState("");
 
+  const totalActions = state.agents.reduce((sum, a) => sum + a.stats.actionsThisWeek, 0);
+  const totalOutputs = state.agents.reduce((sum, a) => sum + a.stats.outputsThisWeek, 0);
+  const pendingApprovals = state.approvals.filter((a) => a.status === "pending").length;
+  const totalApprovals = state.approvals.length;
+  const approvalRate = totalApprovals > 0 ? ((totalApprovals - pendingApprovals) / totalApprovals * 100).toFixed(1) : null;
+
   const kpis = useMemo(() => ([
-    { label: "Actions this week", val: "1,284", delta: "+38.4% vs W20", color: "#4DE8E1" },
-    { label: "Hours saved", val: "412h", delta: "+5.6% vs W20", color: "#51D88A" },
-    { label: "Outputs created", val: "69", delta: "+28% vs W20", color: "#A78BFA" },
-    { label: "Approval rate", val: "94.2%", delta: "+1.8% vs W20", color: "#F5C26B" },
-  ]), []);
+    { label: "Actions this week", val: totalActions > 0 ? totalActions.toLocaleString() : "0", delta: totalActions > 0 ? "From active operators" : "No activity yet", color: "#4DE8E1" },
+    { label: "Outputs created", val: String(totalOutputs), delta: totalOutputs > 0 ? "This week" : "No outputs yet", color: "#A78BFA" },
+    { label: "Approval rate", val: approvalRate !== null ? `${approvalRate}%` : "—", delta: totalApprovals > 0 ? `${totalApprovals} total` : "No approvals yet", color: "#F5C26B" },
+    { label: "Pending review", val: String(pendingApprovals), delta: pendingApprovals > 0 ? "Awaiting action" : "All clear", color: "#51D88A" },
+  ]), [totalActions, totalOutputs, approvalRate, totalApprovals, pendingApprovals]);
+
+  const agentPerf = state.agents.map((a) => ({
+    mark: a.mark,
+    color: a.color,
+    name: a.name,
+    actions: a.stats.actionsThisWeek,
+    outputs: a.stats.outputsThisWeek,
+    status: a.status,
+  }));
 
   const exportReport = (format: ExportFormat) => {
     const stamp = new Date();
@@ -92,14 +88,11 @@ export default function InsightsPage() {
         ["Section", "Label", "Value", "Delta"],
         ...kpis.map((k) => ["kpi", k.label, k.val, k.delta]),
       ];
-      const weekRows = [["Section", "Week", "Actions"], ...WEEKLY.map((w) => ["weekly_actions", w.label, String(w.val)])];
-      const hoursRows = [["Section", "Week", "HoursSaved"], ...HOURS_SAVED.map((w) => ["weekly_hours", w.label, String(w.val)])];
       const agentRows = [
-        ["Section", "Operator", "Actions", "Outputs", "SuccessPct"],
-        ...AGENT_PERF.map((a) => ["agent_performance", a.name, String(a.actions), String(a.outputs), String(a.success)]),
+        ["Section", "Operator", "Actions/wk", "Outputs/wk", "Status"],
+        ...agentPerf.map((a) => ["agent_performance", a.name, String(a.actions), String(a.outputs), a.status]),
       ];
-
-      const csv = [asCSV(kpiRows), "", asCSV(weekRows), "", asCSV(hoursRows), "", asCSV(agentRows)].join("\n");
+      const csv = [asCSV(kpiRows), "", asCSV(agentRows)].join("\n");
       downloadFile(csv, `${filenameBase}.csv`, "text/csv;charset=utf-8");
       appendExecutionLog("insights_exported", `Exported insights report as CSV (${state.workspace.name})`);
       setFeedback("Insights CSV exported.");
@@ -111,9 +104,7 @@ export default function InsightsPage() {
       workspace: state.workspace.name,
       generatedAt: stamp.toISOString(),
       kpis,
-      weeklyActions: WEEKLY,
-      weeklyHoursSaved: HOURS_SAVED,
-      operatorPerformance: AGENT_PERF,
+      operatorPerformance: agentPerf,
     };
     downloadFile(JSON.stringify(payload, null, 2), `${filenameBase}.json`, "application/json;charset=utf-8");
     appendExecutionLog("insights_exported", `Exported insights report as JSON (${state.workspace.name})`);
@@ -124,12 +115,10 @@ export default function InsightsPage() {
     const stamp = new Date();
     const payload = {
       workspace: state.workspace.name,
-      periodLabel: "Week 21 vs prior periods",
+      periodLabel: "Current week",
       generatedAt: stamp.toISOString(),
       kpis,
-      weeklyActions: WEEKLY,
-      weeklyHoursSaved: HOURS_SAVED,
-      operators: AGENT_PERF.map((a) => ({ name: `${a.name} Operator`, actions: a.actions, outputs: a.outputs, success: a.success })),
+      operators: agentPerf.map((a) => ({ name: `${a.name} Operator`, actions: a.actions, outputs: a.outputs })),
     };
 
     const res = await fetch("/app/insights/export", {
@@ -157,7 +146,7 @@ export default function InsightsPage() {
     setFeedback("Visual PDF exported.");
   };
 
-  if (!limits.insights) {
+  if (entitlements.planTier !== "operator" && entitlements.planTier !== "enterprise") {
     return (
       <div className="os-page" style={{ display: "flex", flexDirection: "column" }}>
         <div className="os-page-head">
@@ -176,13 +165,15 @@ export default function InsightsPage() {
     );
   }
 
+  const planLabel = getPlanLabel(entitlements.planTier);
+
   return (
     <div className="os-page">
       <div className="os-page-head">
         <div>
-          <span className="os-greet">Performance layer - W21</span>
+          <span className="os-greet">Performance layer - {planLabel}</span>
           <h1>Insights</h1>
-          <div className="os-page-sub">Operating metrics across all agents. Week 21 versus prior periods.</div>
+          <div className="os-page-sub">Operating metrics across all agents. Current week activity.</div>
         </div>
         <div className="os-page-actions" style={{ position: "relative" }}>
           <button className="btn btn-ghost btn-sm" onClick={() => setExportOpen((v) => !v)}><ChartIcon size={12} /> Export report</button>
@@ -211,78 +202,60 @@ export default function InsightsPage() {
       <div className="os-grid-2">
         <div className="p">
           <div className="p-head">
-            <h3><ChartIcon size={13} /> Actions per week</h3>
-            <div className="p-meta">6-week rolling</div>
+            <h3><ChartIcon size={13} /> Actions this week</h3>
+            <div className="p-meta">by operator</div>
           </div>
           <div style={{ padding: "20px 18px 14px" }}>
-            <BarChart data={WEEKLY} color="#4DE8E1" />
-            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)" }}>
-              <span>620 (W16)</span>
-              <span style={{ color: "var(--green)" }}>1,284 (W21) +107%</span>
-            </div>
+            <BarChart
+              data={state.agents.filter((a) => a.stats.actionsThisWeek > 0).map((a) => ({ label: a.mark, val: a.stats.actionsThisWeek }))}
+              color="#4DE8E1"
+            />
           </div>
         </div>
 
         <div className="p">
           <div className="p-head">
-            <h3><TrendIcon size={13} /> Hours saved per week</h3>
-            <div className="p-meta">6-week rolling</div>
+            <h3><TrendIcon size={13} /> Outputs this week</h3>
+            <div className="p-meta">by operator</div>
           </div>
           <div style={{ padding: "20px 18px 14px" }}>
-            <BarChart data={HOURS_SAVED} color="#51D88A" />
-            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)" }}>
-              <span>210h (W16)</span>
-              <span style={{ color: "var(--green)" }}>412h (W21) +96%</span>
-            </div>
+            <BarChart
+              data={state.agents.filter((a) => a.stats.outputsThisWeek > 0).map((a) => ({ label: a.mark, val: a.stats.outputsThisWeek }))}
+              color="#A78BFA"
+            />
           </div>
         </div>
       </div>
 
-      <div className="p" style={{ overflowX: "auto" }}>
-        <div className="p-head">
-          <h3><ChartIcon size={13} /> Agent performance - W21</h3>
-          <div className="p-meta">by operator</div>
-        </div>
-        <div style={{ minWidth: 760 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "40px 1fr 120px 120px 100px 120px", gap: 14, padding: "10px 18px 8px", borderBottom: "1px solid var(--line)" }}>
-            {["", "Operator", "Actions/wk", "Outputs/wk", "Success", "Status"].map((h) => (
-              <span key={h} style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-faint)" }}>{h}</span>
+      {agentPerf.length > 0 && (
+        <div className="p" style={{ overflowX: "auto" }}>
+          <div className="p-head">
+            <h3><ChartIcon size={13} /> Agent performance</h3>
+            <div className="p-meta">by operator</div>
+          </div>
+          <div style={{ minWidth: 580 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "40px 1fr 120px 120px 120px", gap: 14, padding: "10px 18px 8px", borderBottom: "1px solid var(--line)" }}>
+              {["", "Operator", "Actions/wk", "Outputs/wk", "Status"].map((h) => (
+                <span key={h} style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-faint)" }}>{h}</span>
+              ))}
+            </div>
+            {agentPerf.map((a) => (
+              <div key={a.mark} style={{ display: "grid", gridTemplateColumns: "40px 1fr 120px 120px 120px", gap: 14, alignItems: "center", padding: "12px 18px", borderBottom: "1px solid var(--line)" }}>
+                <div style={{ width: 28, height: 28, borderRadius: 8, display: "grid", placeItems: "center", fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 600, color: a.color, background: `${a.color}15`, boxShadow: `inset 0 0 0 1px ${a.color}40` }}>{a.mark}</div>
+                <div style={{ fontSize: 13.5, fontWeight: 500 }}>{a.name} Operator</div>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 500 }}>{a.actions}</div>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 500 }}>{a.outputs}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  {a.status === "running"
+                    ? <><span className="dot pulsing" style={{ background: a.color, boxShadow: `0 0 6px ${a.color}` }} /><span style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: a.color }}>Running</span></>
+                    : <><span className="dot" style={{ background: "var(--text-faint)" }} /><span style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)" }}>{a.status.charAt(0).toUpperCase() + a.status.slice(1)}</span></>
+                  }
+                </div>
+              </div>
             ))}
           </div>
-          {AGENT_PERF.map((a) => (
-            <div key={a.mark} style={{ display: "grid", gridTemplateColumns: "40px 1fr 120px 120px 100px 120px", gap: 14, alignItems: "center", padding: "12px 18px", borderBottom: "1px solid var(--line)" }}>
-              <div style={{ width: 28, height: 28, borderRadius: 8, display: "grid", placeItems: "center", fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 600, color: a.color, background: `${a.color}15`, boxShadow: `inset 0 0 0 1px ${a.color}40` }}>{a.mark}</div>
-              <div style={{ fontSize: 13.5, fontWeight: 500 }}>{a.name} Operator</div>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 500 }}>{a.actions}</div>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 500 }}>{a.outputs}</div>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--green)" }}>{a.success}%</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span className="dot pulsing" style={{ background: a.color, boxShadow: `0 0 6px ${a.color}` }} />
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: a.color }}>Running</span>
-              </div>
-            </div>
-          ))}
         </div>
-      </div>
-
-      <div style={{ padding: "20px 22px", borderRadius: 14, background: "rgba(77,232,225,0.04)", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.18)", overflowX: "auto" }}>
-        <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--cyan)", marginBottom: 10 }}>Weekly operating digest - W21</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, minWidth: 720 }}>
-          {[
-            { label: "Pipeline", change: "+18%", detail: "4 new deals entered proposal stage. $340k in active opportunities." },
-            { label: "Content output", change: "+24%", detail: "14 SEO briefs, 3 campaign angles, 2 proposals delivered." },
-            { label: "Operations", change: "-1.4h overhead", detail: "Digest automation saved 5.6h. 3 manual tasks eliminated." },
-          ].map((s) => (
-            <div key={s.label}>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
-                <span style={{ fontSize: 13, fontWeight: 500 }}>{s.label}</span>
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--green)" }}>{s.change}</span>
-              </div>
-              <div style={{ fontSize: 12, color: "var(--text-mute)", lineHeight: 1.5 }}>{s.detail}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+      )}
     </div>
   );
 }

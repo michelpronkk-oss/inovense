@@ -9,6 +9,7 @@ import type { Connector } from "@/lib/os/types";
 import { UsageBanner } from "@/components/upgrade-prompt";
 import { getEntitlements } from "@/lib/os/entitlements";
 import { UpgradeModal } from "@/components/upgrade-modal";
+import { isRealConnector } from "@/lib/os/truth";
 
 const CATEGORY_ORDER = [
   "All",
@@ -336,8 +337,12 @@ export default function ConnectorsPage() {
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
               <div style={{ display: "flex", gap: 8 }}>
-                <button className="btn btn-ghost btn-sm" onClick={() => { testConnector(drawerConnector.id); setFeedback(`${drawerConnector.name} tested.`); }}>Test connection</button>
-                <button className="btn btn-ghost btn-sm" onClick={() => { resyncConnector(drawerConnector.id); setFeedback(`${drawerConnector.name} resynced.`); }}>Resync</button>
+                {isRealConnector(drawerConnector) && (
+                  <>
+                    <button className="btn btn-ghost btn-sm" onClick={() => { testConnector(drawerConnector.id); setFeedback(`${drawerConnector.name} tested.`); }}>Test connection</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => { resyncConnector(drawerConnector.id); setFeedback(`${drawerConnector.name} resynced.`); }}>Resync</button>
+                  </>
+                )}
                 <button className="btn btn-ghost btn-sm" onClick={() => {
                   const next = drawerConnector.operatorsAllowed.includes("Support Operator")
                     ? drawerConnector.operatorsAllowed.filter((x) => x !== "Support Operator")

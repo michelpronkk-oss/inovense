@@ -4,9 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { useOS } from "@/lib/os/app-provider";
 import { PlusIcon, ZapIcon, FilterIcon } from "@/components/dashboard/icons";
-import { getPlanLimits, isAtOperatorLimit } from "@/lib/os/plans";
 import { UsageBanner } from "@/components/upgrade-prompt";
 import { getEntitlements } from "@/lib/os/entitlements";
+import { getPlanLabel } from "@/lib/os/truth";
 
 const TABS = ["All", "Running", "Awaiting", "Paused"];
 
@@ -29,9 +29,8 @@ export default function AgentsPage() {
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
 
   const agents = state.agents;
-  const limits = getPlanLimits(state.workspace.plan);
   const activeOperators = agents.filter((a) => a.status !== "paused").length;
-  const atLimit = isAtOperatorLimit(state.workspace.plan, activeOperators);
+  const atLimit = entitlements.operatorsLimit !== Number.MAX_SAFE_INTEGER && activeOperators >= entitlements.operatorsLimit;
 
   const filtered = agents.filter((a) => {
     if (tab === "All") return true;
@@ -82,8 +81,8 @@ export default function AgentsPage() {
         </div>
       </div>
 
-      {limits.maxOperators !== -1 && (
-        <UsageBanner used={activeOperators} max={limits.maxOperators} label="operators" planLabel={limits.name} />
+      {entitlements.operatorsLimit !== Number.MAX_SAFE_INTEGER && (
+        <UsageBanner used={activeOperators} max={entitlements.operatorsLimit} label="operators" planLabel={getPlanLabel(entitlements.planTier)} />
       )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>

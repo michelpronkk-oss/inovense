@@ -777,9 +777,26 @@ const Hero = () => {
 
       <div className="hero-fold">
         <div className="container hero-inner">
+          <div className="hero-trust fade-in" style={{
+            animationDelay: ".02s",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "5px 12px 5px 8px",
+            borderRadius: 999,
+            background: "rgba(77,232,225,0.07)",
+            boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.18)",
+            fontFamily: "var(--font-mono)",
+            fontSize: 11,
+            letterSpacing: "0.08em",
+            color: "var(--text-dim)",
+          }}>
+            <span className="dot dot-cyan pulsing" style={{ flexShrink: 0 }} />
+            <span>Self-serve · Free to preview</span>
+          </div>
 <h1 className="fade-in" style={{ animationDelay: ".05s" }}>
             <span className="hero-copy-desktop">Put AI operators to work inside your business.</span>
-            <span className="hero-copy-mobile">AI operators inside your business.</span>
+            <span className="hero-copy-mobile">Put AI operators to work inside your business.</span>
           </h1>
 
           <p className="hero-sub fade-in" style={{ animationDelay: ".1s" }}>
@@ -787,7 +804,7 @@ const Hero = () => {
               Inovense OS connects your tools, workflows, memory and approvals so operators can execute real work safely, not just answer questions.
             </span>
             <span className="hero-copy-mobile">
-              Connect tools, set policies and let operators execute work safely.
+              Connect your tools, set policies, and let operators execute real work safely.
             </span>
           </p>
 
