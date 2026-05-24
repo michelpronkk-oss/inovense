@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { SettingsIcon } from "@/components/dashboard/icons";
+import { LinkIcon, SettingsIcon } from "@/components/dashboard/icons";
+import type { ConnectedAccount } from "@/app/api/connectors/accounts/route";
 import { useOS } from "@/lib/os/app-provider";
 import type { OSSettings } from "@/lib/os/types";
 import { saveWorkspaceSettings } from "./actions";
@@ -94,6 +95,8 @@ export default function SettingsPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [billingBusy, setBillingBusy] = useState(false);
+  const [connectedAccounts, setConnectedAccounts] = useState<ConnectedAccount[]>([]);
+  const [accountsLoading, setAccountsLoading] = useState(true);
   const entitlements = getEntitlements(state.workspace);
   const showManageBilling = entitlements.billingStatus === "active" || entitlements.billingStatus === "trialing" || entitlements.billingStatus === "past_due";
 
@@ -114,6 +117,16 @@ export default function SettingsPage() {
     window.addEventListener("keydown", onEscape);
     return () => window.removeEventListener("keydown", onEscape);
   }, [editing]);
+
+  useEffect(() => {
+    if (!state.workspace.id) return;
+    setAccountsLoading(true);
+    fetch(`/api/connectors/accounts?workspaceId=${encodeURIComponent(state.workspace.id)}`)
+      .then((r) => r.ok ? r.json() as Promise<ConnectedAccount[]> : Promise.resolve([]))
+      .then((data) => setConnectedAccounts(Array.isArray(data) ? data : []))
+      .catch(() => setConnectedAccounts([]))
+      .finally(() => setAccountsLoading(false));
+  }, [state.workspace.id]);
 
   const sections: Array<{ key: SectionKey; title: string; fields: Record<string, string> }> = useMemo(() => ([
     { key: "workspace", title: "Workspace", fields: state.settings.workspace },
@@ -195,6 +208,19 @@ export default function SettingsPage() {
     setFeedback("Settings saved.");
   };
 
+  const reconnectAccount = (connectorKey: string) => {
+    if (connectorKey === "gmail") {
+      const qs = new URLSearchParams({
+        workspaceId: state.workspace.id,
+        userEmail: state.currentUser.email,
+        userId: state.currentUser.id,
+      });
+      window.location.href = `/api/connectors/gmail/auth?${qs.toString()}`;
+      return;
+    }
+    window.location.href = "/app/connectors";
+  };
+
   const openBillingPortal = async () => {
     setBillingBusy(true);
     setError("");
@@ -251,6 +277,75 @@ export default function SettingsPage() {
             ? "Use Dodo Customer Portal to manage subscription, invoices, payment method and cancellation."
             : "No active billing profile found. Activate a plan first."}
         </div>
+      </div>
+
+      <div className="p">
+        <div className="p-head">
+          <h3><LinkIcon size={13} /> Connected accounts</h3>
+          <div className="p-meta" style={{ fontSize: 10.5, color: "var(--text-mute)" }}>
+            Accounts operators use for approved actions
+          </div>
+        </div>
+        {accountsLoading ? (
+          <div style={{ padding: "16px 18px", fontSize: 12.5, color: "var(--text-faint)" }}>Loading...</div>
+        ) : connectedAccounts.length === 0 ? (
+          <div style={{ padding: "16px 18px", fontSize: 12.5, color: "var(--text-faint)" }}>No connector data available.</div>
+        ) : (
+          connectedAccounts.map((acct) => {
+            const color = acct.connectorKey === "gmail" ? "#EA4335" : "#FF7A59";
+            const letter = acct.connectorKey === "gmail" ? "G" : "Hs";
+            const authLabel = acct.authType === "native" ? "Native connector" : "Secure connector";
+            const isConnected = acct.status === "connected";
+            const statusColor = isConnected ? "var(--green)" : acct.status === "error" ? "var(--red, #F2767C)" : "var(--text-faint)";
+            const statusLabel = isConnected ? "Connected" : acct.status === "error" ? "Error" : "Not connected";
+            const connectedDate = acct.connectedAt
+              ? new Date(acct.connectedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+              : null;
+            return (
+              <div
+                key={acct.connectorKey}
+                style={{ display: "grid", gridTemplateColumns: "40px 1fr auto", alignItems: "center", gap: 14, padding: "14px 18px", borderBottom: "1px solid var(--line)" }}
+              >
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: `${color}18`, boxShadow: `inset 0 0 0 1px ${color}45`, display: "grid", placeItems: "center", color, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 700, flexShrink: 0 }}>
+                  {letter}
+                </div>
+                <div>
+                  <div style={{ fontSize: 13.5, fontWeight: 500 }}>{acct.displayName}</div>
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)", marginTop: 2 }}>
+                    {isConnected && acct.accountEmail
+                      ? acct.accountEmail
+                      : isConnected
+                        ? "Connected account"
+                        : statusLabel}
+                    {" · "}{authLabel}
+                    {connectedDate && isConnected ? ` · Since ${connectedDate}` : ""}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 3 }}>
+                    {acct.permissionsLabel.join(" · ")}
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: statusColor, marginRight: 4 }}>{statusLabel}</span>
+                  <button
+                    className="appr-btn edit"
+                    style={{ fontSize: 11 }}
+                    onClick={() => reconnectAccount(acct.connectorKey)}
+                  >
+                    {isConnected ? "Reconnect" : "Connect"}
+                  </button>
+                  <button
+                    className="appr-btn deny"
+                    style={{ fontSize: 11, opacity: 0.45, cursor: "not-allowed" }}
+                    disabled
+                    title="Disconnect coming soon"
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {sections.map((section) => (
