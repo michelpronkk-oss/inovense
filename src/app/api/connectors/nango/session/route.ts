@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createNangoConnectSession } from "@/lib/integrations/nango";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
+import { resolveWorkspaceMembership } from "@/lib/server/workspace-membership";
 import { getEntitlements } from "@/lib/os/entitlements";
 import type { Workspace } from "@/lib/os/types";
 
@@ -24,27 +25,25 @@ export async function POST(req: NextRequest) {
     const userId = (body.userId || "").trim();
 
     if (!workspaceId || !connectorKey) {
-      return NextResponse.json({ error: "workspaceId and connectorKey are required." }, { status: 400 });
+      return NextResponse.json({ error: "workspaceId and connectorKey are required.", code: "invalid_params" }, { status: 400 });
     }
     if (connectorKey !== "hubspot") {
-      return NextResponse.json({ error: "Only HubSpot is supported in this pass." }, { status: 400 });
+      return NextResponse.json({ error: "Only HubSpot is supported in this pass.", code: "unsupported_connector" }, { status: 400 });
     }
     if (!userEmail) {
-      return NextResponse.json({ error: "userEmail is required." }, { status: 400 });
+      return NextResponse.json({ error: "userEmail is required.", code: "not_authenticated" }, { status: 400 });
+    }
+
+    // Resolve membership: checks by user_id OR email, with bootstrap fallback.
+    const membership = await resolveWorkspaceMembership({ workspaceId, userId, email: userEmail });
+    if (!membership.found) {
+      return NextResponse.json({
+        error: "Workspace membership not found. Make sure your account is linked to this workspace.",
+        code: "workspace_membership_not_found",
+      }, { status: 403 });
     }
 
     const supabase = createSupabaseAdmin();
-    const membership = await supabase
-      .from("os_workspace_members")
-      .select("workspace_id")
-      .eq("workspace_id", workspaceId)
-      .eq("email", userEmail)
-      .maybeSingle();
-
-    if (!membership.data) {
-      return NextResponse.json({ error: "Workspace membership not found." }, { status: 403 });
-    }
-
     const workspaceRes = await supabase
       .from("os_workspaces")
       .select("id,name,environment,region,plan,plan_tier,billing_status,trial_ends_at")
@@ -52,7 +51,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (workspaceRes.error || !workspaceRes.data) {
-      return NextResponse.json({ error: "Workspace not found." }, { status: 404 });
+      return NextResponse.json({ error: "Workspace not found.", code: "workspace_not_found" }, { status: 404 });
     }
 
     const workspace: Workspace = {
@@ -65,9 +64,13 @@ export async function POST(req: NextRequest) {
       billingStatus: workspaceRes.data.billing_status,
       trialEndsAt: workspaceRes.data.trial_ends_at ?? undefined,
     };
+
     const entitlements = getEntitlements(workspace);
     if (!entitlements.canUseRealConnectors) {
-      return NextResponse.json({ error: "Activate Starter to connect real accounts." }, { status: 402 });
+      return NextResponse.json({
+        error: "Activate Starter to connect real accounts.",
+        code: "billing_required",
+      }, { status: 402 });
     }
 
     const tags = {
@@ -86,8 +89,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ sessionToken: session.sessionToken });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to create Nango session.";
+    const message = error instanceof Error ? error.message : "Could not start secure connector setup.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

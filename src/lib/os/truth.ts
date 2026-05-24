@@ -22,6 +22,12 @@ export function getRealConnectedCount(connectors: Connector[]): number {
   return getRealConnectedConnectors(connectors).length;
 }
 
+// A connector is "real connected" only when it is both connected AND authenticated
+// via a real provider (native OAuth or Nango). Preview/demo connections do not count.
+export function isRealConnectedConnector(connector: Connector): boolean {
+  return connector.isConnected && isRealConnector(connector);
+}
+
 // A log is real if it did not originate from seed fixtures.
 // Seed logs use runIds prefixed "run-seed-" or "log-seed-".
 export function isRealLog(log: ExecutionLog): boolean {

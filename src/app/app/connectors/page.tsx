@@ -9,7 +9,7 @@ import type { Connector } from "@/lib/os/types";
 import { UsageBanner } from "@/components/upgrade-prompt";
 import { getEntitlements } from "@/lib/os/entitlements";
 import { UpgradeModal } from "@/components/upgrade-modal";
-import { isRealConnector } from "@/lib/os/truth";
+import { isRealConnector, isRealConnectedConnector } from "@/lib/os/truth";
 
 const CATEGORY_ORDER = [
   "All",
@@ -47,9 +47,26 @@ export default function ConnectorsPage() {
     connected_at?: string | null;
   } | null>(null);
 
-  const activeConnectors = useMemo(() => state.connectors.filter((c) => c.isConnected), [state.connectors]);
-  const availableConnectors = useMemo(() => state.connectors.filter((c) => !c.isConnected), [state.connectors]);
-  const healthyCount = useMemo(() => activeConnectors.filter((c) => c.health === "healthy").length, [activeConnectors]);
+  // Real connected = authenticated via native OAuth or managed OAuth integration
+  const realConnectedConnectors = useMemo(
+    () => state.connectors.filter((c) => isRealConnectedConnector(c)),
+    [state.connectors]
+  );
+  // Preview connected = connected in preview/demo mode only
+  const previewConnections = useMemo(
+    () => state.connectors.filter((c) => c.isConnected && !isRealConnector(c) && c.source === "preview"),
+    [state.connectors]
+  );
+  // Not connected at all
+  const availableConnectors = useMemo(
+    () => state.connectors.filter((c) => !c.isConnected),
+    [state.connectors]
+  );
+
+  const healthyCount = useMemo(
+    () => realConnectedConnectors.filter((c) => c.health === "healthy").length,
+    [realConnectedConnectors]
+  );
 
   const filteredAvailable = useMemo(() => {
     return availableConnectors.filter((c) => {
@@ -66,10 +83,7 @@ export default function ConnectorsPage() {
   const entitlements = getEntitlements(state.workspace);
   const isPreview = entitlements.billingStatus === "preview";
 
-  const realConnectedCount = useMemo(
-    () => activeConnectors.filter((c) => c.source === "native" || c.source === "nango").length,
-    [activeConnectors]
-  );
+  const realConnectedCount = realConnectedConnectors.length;
   const connectorLimit = typeof entitlements.connectorsLimit === "number" ? entitlements.connectorsLimit : null;
   const atConnectorLimit = connectorLimit !== null && realConnectedCount >= connectorLimit;
   const planLabel = entitlements.planTier.charAt(0).toUpperCase() + entitlements.planTier.slice(1);
@@ -78,6 +92,7 @@ export default function ConnectorsPage() {
     const qs = new URLSearchParams({
       workspaceId: state.workspace.id,
       userEmail: state.currentUser.email,
+      userId: state.currentUser.id,
     });
     window.location.href = `/api/connectors/gmail/auth?${qs.toString()}`;
   };
@@ -96,7 +111,6 @@ export default function ConnectorsPage() {
     if (json.status === "connected") {
       connectConnector("hubspot", "real");
     } else {
-      // Nango says not connected — clear any seed/demo connected state for HubSpot.
       disconnectConnector("hubspot");
     }
   };
@@ -144,7 +158,7 @@ export default function ConnectorsPage() {
         },
       });
     } catch {
-      setFeedback("Failed to launch Nango Connect.");
+      setFeedback("Could not start secure connector setup.");
     } finally {
       setHubspotConnectLoading(false);
     }
@@ -154,10 +168,15 @@ export default function ConnectorsPage() {
     <div className="os-page">
       <div className="os-page-head">
         <div>
-          <span className="os-greet">Connector layer - {activeConnectors.length} connected</span>
+          <span className="os-greet">Connector layer - {realConnectedCount} connected</span>
           <h1>Connectors</h1>
           <div className="os-page-sub">
-            Safe system access for operators. {healthyCount === activeConnectors.length ? "All active connectors healthy." : `${healthyCount} of ${activeConnectors.length} healthy.`}
+            Safe system access for operators.{" "}
+            {realConnectedCount === 0
+              ? "No real accounts connected yet."
+              : healthyCount === realConnectedCount
+                ? "All active connectors healthy."
+                : `${healthyCount} of ${realConnectedCount} healthy.`}
           </div>
           {isPreview && (
             <div style={{ marginTop: 8, color: "#9DEFEA", fontSize: 12.5 }}>
@@ -190,10 +209,10 @@ export default function ConnectorsPage() {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
         {[
-          { label: "Connected", val: String(activeConnectors.length), sub: `${healthyCount} healthy` },
+          { label: "Connected", val: String(realConnectedCount), sub: realConnectedCount > 0 ? `${healthyCount} healthy` : "No real accounts yet" },
           { label: "Available", val: String(availableConnectors.length), sub: "Ready to connect" },
-          { label: "Events synced", val: String(activeConnectors.reduce((sum, c) => sum + c.eventsSynced, 0)), sub: "Local mock stream" },
-          { label: "Auth errors", val: String(activeConnectors.reduce((sum, c) => sum + c.authErrors, 0)), sub: "Needs review if non-zero" },
+          { label: "Events synced", val: String(realConnectedConnectors.reduce((sum, c) => sum + c.eventsSynced, 0)), sub: "From connected accounts" },
+          { label: "Auth errors", val: String(realConnectedConnectors.reduce((sum, c) => sum + c.authErrors, 0)), sub: "Needs review if non-zero" },
         ].map((s) => (
           <div className="kpi" key={s.label}>
             <div className="kpi-top"><span className="lab">{s.label}</span></div>
@@ -203,33 +222,70 @@ export default function ConnectorsPage() {
         ))}
       </div>
 
+      {/* Real connected accounts */}
       <div className="p" style={{ overflowX: "auto" }}>
         <div className="p-head">
-          <h3><LinkIcon size={13} /> Active connectors</h3>
-          <div className="p-meta"><span className="dot dot-green" /> {healthyCount}/{activeConnectors.length} healthy</div>
+          <h3><LinkIcon size={13} /> Connected accounts</h3>
+          <div className="p-meta">
+            {realConnectedCount > 0 ? <><span className="dot dot-green" /> {healthyCount}/{realConnectedCount} healthy</> : "None yet"}
+          </div>
         </div>
-        {activeConnectors.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => setDrawerConnectorId(c.id)}
-            style={{ width: "100%", textAlign: "left", border: "none", background: "none", borderBottom: "1px solid var(--line)", padding: "14px 18px", display: "grid", gridTemplateColumns: "40px 1fr 160px 130px 120px", alignItems: "center", gap: 14, cursor: "pointer" }}
-          >
-            <div style={{ width: 34, height: 34, borderRadius: 10, background: `${c.color}18`, boxShadow: `inset 0 0 0 1px ${c.color}45`, display: "grid", placeItems: "center", color: c.color, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 700 }}>
-              {c.letter}
-            </div>
-            <div>
-              <div style={{ fontSize: 13.5, fontWeight: 500 }}>{c.name}</div>
-              <div style={{ fontSize: 10.5, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>
-                {c.category} - {c.syncFreq} - {c.id === "gmail" ? "Native" : c.id === "hubspot" ? "Powered by Nango" : "Connector"}
+        {realConnectedConnectors.length === 0 ? (
+          <div style={{ padding: "24px 18px", fontSize: 12.5, color: "var(--text-faint)" }}>
+            No real accounts connected. Click <strong>Add connector</strong> to connect Gmail, HubSpot, or other accounts.
+          </div>
+        ) : (
+          realConnectedConnectors.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setDrawerConnectorId(c.id)}
+              style={{ width: "100%", textAlign: "left", border: "none", background: "none", borderBottom: "1px solid var(--line)", padding: "14px 18px", display: "grid", gridTemplateColumns: "40px 1fr 160px 130px 120px", alignItems: "center", gap: 14, cursor: "pointer" }}
+            >
+              <div style={{ width: 34, height: 34, borderRadius: 10, background: `${c.color}18`, boxShadow: `inset 0 0 0 1px ${c.color}45`, display: "grid", placeItems: "center", color: c.color, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 700 }}>
+                {c.letter}
               </div>
-            </div>
-            <div style={{ fontSize: 10.5, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>{c.eventsSynced} events</div>
-            <div style={{ fontSize: 10.5, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>synced {c.lastSync}</div>
-            <div style={{ fontSize: 10.5, color: c.health === "healthy" ? "var(--green)" : "var(--amber)", fontFamily: "var(--font-mono)" }}>{c.health}</div>
-          </button>
-        ))}
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 500 }}>{c.name}</div>
+                <div style={{ fontSize: 10.5, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>
+                  {c.category} - {c.syncFreq} - {c.id === "gmail" ? "Secure OAuth" : c.id === "hubspot" ? "Managed connector" : "Connector"}
+                </div>
+              </div>
+              <div style={{ fontSize: 10.5, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>{c.eventsSynced} events</div>
+              <div style={{ fontSize: 10.5, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>synced {c.lastSync}</div>
+              <div style={{ fontSize: 10.5, color: c.health === "healthy" ? "var(--green)" : "var(--amber)", fontFamily: "var(--font-mono)" }}>{c.health}</div>
+            </button>
+          ))
+        )}
       </div>
 
+      {/* Preview connections (connected in demo mode only) */}
+      {previewConnections.length > 0 && (
+        <div className="p" style={{ overflowX: "auto" }}>
+          <div className="p-head">
+            <h3>Preview connections</h3>
+            <div className="p-meta" style={{ color: "var(--cyan)", fontSize: 10.5 }}>Demo only - no real data</div>
+          </div>
+          {previewConnections.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setDrawerConnectorId(c.id)}
+              style={{ width: "100%", textAlign: "left", border: "none", background: "none", borderBottom: "1px solid var(--line)", padding: "14px 18px", display: "grid", gridTemplateColumns: "40px 1fr 1fr 120px", alignItems: "center", gap: 14, cursor: "pointer" }}
+            >
+              <div style={{ width: 34, height: 34, borderRadius: 10, background: `${c.color}18`, boxShadow: `inset 0 0 0 1px ${c.color}45`, display: "grid", placeItems: "center", color: c.color, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 700 }}>
+                {c.letter}
+              </div>
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 500 }}>{c.name}</div>
+                <div style={{ fontSize: 10.5, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>{c.category}</div>
+              </div>
+              <div style={{ fontSize: 10.5, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>Preview only - not syncing</div>
+              <div style={{ fontSize: 10.5, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>Preview</div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Add connector modal */}
       {addOpen && (
         <div className="os-modal-backdrop" onClick={() => { setAddOpen(false); setSetupConnectorId(null); }}>
           <div className="os-modal" style={{ width: "min(980px, 94vw)", maxHeight: "88vh", overflow: "auto" }} onClick={(e) => e.stopPropagation()}>
@@ -255,8 +311,8 @@ export default function ConnectorsPage() {
                         </div>
                         <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-mute)" }}>{c.category}</div>
                         {(c.id === "gmail" || c.id === "hubspot") && (
-                          <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-mute)", marginTop: 2 }}>
-                            {c.id === "gmail" ? "Native" : "Powered by Nango"}
+                          <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--cyan)", marginTop: 2 }}>
+                            {c.id === "gmail" ? "Secure OAuth" : "Secure OAuth"}
                           </div>
                         )}
                         <div style={{ fontSize: 11.5, color: "var(--text-dim)", marginTop: 6 }}>{c.description}</div>
@@ -271,23 +327,23 @@ export default function ConnectorsPage() {
                   <h3>Setup connector</h3>
                   <button className="appr-btn deny" onClick={() => setSetupConnectorId(null)}>Back</button>
                 </div>
-                <ConnectorSetupView connector={setupConnector} isPreview={isPreview} />
+                <ConnectorSetupView connector={setupConnector} isRealConnected={false} />
                 {setupConnector.id === "gmail" && (
                   <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>Auth: Native OAuth flow</div>
                 )}
                 {setupConnector.id === "hubspot" && (
                   <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>
-                    Auth: Powered by Nango{hubspotStatus?.provider_email ? ` (${hubspotStatus.provider_email})` : ""}
+                    Secure OAuth connection{hubspotStatus?.provider_email ? ` · ${hubspotStatus.provider_email}` : ""}
                   </div>
                 )}
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
                   <button className="btn btn-ghost btn-sm" onClick={() => setSetupConnectorId(null)}>Cancel</button>
                   <button className="btn btn-ghost btn-sm" onClick={() => {
                     connectConnector(setupConnector.id, "preview");
-                    setFeedback(`${setupConnector.name} connected.`);
+                    setFeedback(`${setupConnector.name} added as preview connector.`);
                     setAddOpen(false);
                     setSetupConnectorId(null);
-                  }}>Preview connector</button>
+                  }}>Add as preview</button>
                   <button className="btn btn-primary btn-sm" onClick={() => {
                     if (isPreview || atConnectorLimit) {
                       setUpgradeOpen(true);
@@ -313,6 +369,7 @@ export default function ConnectorsPage() {
         </div>
       )}
 
+      {/* Connector detail drawer */}
       {drawerConnector && (
         <div className="os-modal-backdrop" onClick={() => setDrawerConnectorId(null)}>
           <div className="os-modal" style={{ width: "min(820px, 94vw)", maxHeight: "88vh", overflow: "auto" }} onClick={(e) => e.stopPropagation()}>
@@ -320,24 +377,31 @@ export default function ConnectorsPage() {
               <h3>{drawerConnector.name} details</h3>
               <button className="appr-btn deny" onClick={() => setDrawerConnectorId(null)}>Close</button>
             </div>
-            <ConnectorSetupView connector={drawerConnector} isPreview={isPreview} />
+            <ConnectorSetupView connector={drawerConnector} isRealConnected={isRealConnectedConnector(drawerConnector)} />
             {drawerConnector.id === "gmail" && (
-              <div style={{ marginTop: 10, fontSize: 11.5, color: "#9DEFEA" }}>Auth provider: Native</div>
+              <div style={{ marginTop: 10, fontSize: 11.5, color: "#9DEFEA" }}>Secure connection via Google OAuth</div>
             )}
-            {drawerConnector.id === "hubspot" && (
+            {drawerConnector.id === "hubspot" && hubspotStatus?.status === "connected" && (
               <div style={{ marginTop: 10, fontSize: 11.5, color: "#9DEFEA" }}>
-                Auth provider: Powered by Nango. Status: {hubspotStatus?.status ?? "pending"}{hubspotStatus?.provider_email ? ` (${hubspotStatus.provider_email})` : ""}
+                HubSpot account connected{hubspotStatus.provider_email ? ` · ${hubspotStatus.provider_email}` : ""}
               </div>
             )}
-            <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Recent sync events</div>
-              {(drawerConnector.recentSyncEvents.length ? drawerConnector.recentSyncEvents : ["No sync events yet"]).map((ev) => (
-                <div key={ev} style={{ fontSize: 12, color: "var(--text-dim)", padding: "8px 10px", borderRadius: 8, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)" }}>{ev}</div>
-              ))}
-            </div>
+            {!isRealConnectedConnector(drawerConnector) && drawerConnector.source === "preview" && (
+              <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "rgba(77,232,225,0.06)", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.18)", fontSize: 12, color: "var(--cyan)" }}>
+                Preview connection only. Connect a real account to sync live data and enable operator actions.
+              </div>
+            )}
+            {isRealConnectedConnector(drawerConnector) && (
+              <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Recent sync events</div>
+                {(drawerConnector.recentSyncEvents.length ? drawerConnector.recentSyncEvents : ["No sync events yet"]).map((ev) => (
+                  <div key={ev} style={{ fontSize: 12, color: "var(--text-dim)", padding: "8px 10px", borderRadius: 8, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)" }}>{ev}</div>
+                ))}
+              </div>
+            )}
             <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
               <div style={{ display: "flex", gap: 8 }}>
-                {isRealConnector(drawerConnector) && (
+                {isRealConnectedConnector(drawerConnector) && (
                   <>
                     <button className="btn btn-ghost btn-sm" onClick={() => { testConnector(drawerConnector.id); setFeedback(`${drawerConnector.name} tested.`); }}>Test connection</button>
                     <button className="btn btn-ghost btn-sm" onClick={() => { resyncConnector(drawerConnector.id); setFeedback(`${drawerConnector.name} resynced.`); }}>Resync</button>
@@ -367,7 +431,14 @@ export default function ConnectorsPage() {
   );
 }
 
-function ConnectorSetupView({ connector, isPreview }: { connector: Connector; isPreview: boolean }) {
+function ConnectorSetupView({ connector, isRealConnected }: { connector: Connector; isRealConnected: boolean }) {
+  // Only show real stats (health, sync, event counts) for genuinely connected accounts.
+  // For available or preview connectors, show neutral placeholder values.
+  const displayHealth = isRealConnected ? connector.health : "Not connected";
+  const displayLastSync = isRealConnected ? connector.lastSync : "—";
+  const displayEvents = isRealConnected ? String(connector.eventsSynced) : "—";
+  const displayErrors = isRealConnected ? String(connector.authErrors) : "—";
+
   return (
     <div style={{ display: "grid", gap: 10 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -375,14 +446,14 @@ function ConnectorSetupView({ connector, isPreview }: { connector: Connector; is
         <div>
           <div style={{ fontSize: 14, fontWeight: 600 }}>{connector.name}</div>
           <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)" }}>
-            {connector.category} - {connector.syncMode} - {connector.syncFreq} - {connector.id === "gmail" ? "Native" : connector.id === "hubspot" ? "Powered by Nango" : "Connector"}
+            {connector.category} - {connector.syncMode} - {connector.syncFreq} - {connector.id === "gmail" ? "Secure OAuth" : connector.id === "hubspot" ? "Managed connector" : "Connector"}
           </div>
         </div>
       </div>
       <div style={{ fontSize: 12.5, color: "var(--text-dim)" }}>{connector.description}</div>
-      {isPreview && (
+      {!isRealConnected && (
         <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>
-          Preview only. Activate Starter to connect real account.
+          Not connected. Activate Starter and connect a real account to start syncing.
         </div>
       )}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -391,13 +462,13 @@ function ConnectorSetupView({ connector, isPreview }: { connector: Connector; is
         <TagList title="Write scopes" items={connector.writeScopes.length ? connector.writeScopes : ["None"]} />
         <TagList title="Approval required for" items={connector.approvalRequiredFor.length ? connector.approvalRequiredFor : ["None"]} />
         <TagList title="Blocked actions" items={connector.blockedActions.length ? connector.blockedActions : ["None"]} />
-        <TagList title="Operators allowed" items={connector.operatorsAllowed} />
+        <TagList title="Operators allowed" items={connector.operatorsAllowed.length ? connector.operatorsAllowed : ["All operators"]} />
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
-        <Stat label="Health" value={connector.health} />
-        <Stat label="Last synced" value={connector.lastSync} />
-        <Stat label="Events synced" value={String(connector.eventsSynced)} />
-        <Stat label="Auth errors" value={String(connector.authErrors)} />
+        <Stat label="Status" value={displayHealth} />
+        <Stat label="Last synced" value={displayLastSync} />
+        <Stat label="Events synced" value={displayEvents} />
+        <Stat label="Auth errors" value={displayErrors} />
       </div>
     </div>
   );

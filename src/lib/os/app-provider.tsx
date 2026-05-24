@@ -22,7 +22,7 @@ import { continueRunAfterApproval, runAgent as runAgentRuntime, type AgentRuntim
 import { installWorkflowFromSuggestion, type SuggestedWorkflow } from "@/lib/os/workflow-recommendations";
 import { getEntitlements, type Entitlements } from "@/lib/os/entitlements";
 
-const STORAGE_KEY = "inovense-os-state-v6";
+const STORAGE_KEY = "inovense-os-state-v7";
 const DEV_USER_KEY = "inovense-os-dev-user-v1";
 
 type OSAction =

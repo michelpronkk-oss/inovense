@@ -3,10 +3,22 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useOS } from "@/lib/os/app-provider";
-import { PlusIcon, ZapIcon, FilterIcon } from "@/components/dashboard/icons";
+import { PlusIcon, ZapIcon, FilterIcon, LinkIcon } from "@/components/dashboard/icons";
 import { UsageBanner } from "@/components/upgrade-prompt";
 import { getEntitlements } from "@/lib/os/entitlements";
 import { getPlanLabel } from "@/lib/os/truth";
+
+function parseMissingRequirements(currentTask: string): { connectorIds: string[]; primaryName: string } | null {
+  if (!currentTask.startsWith("Missing requirements:")) return null;
+  const raw = currentTask.replace("Missing requirements:", "").trim();
+  const connectorIds = raw.split(",").map((s) => s.trim().split("|")[0].trim()).filter(Boolean);
+  const nameMap: Record<string, string> = {
+    gmail: "Gmail", outlook: "Outlook", hubspot: "HubSpot",
+    salesforce: "Salesforce", slack: "Slack", notion: "Notion",
+  };
+  const primaryName = nameMap[connectorIds[0]] ?? connectorIds[0];
+  return { connectorIds, primaryName };
+}
 
 const TABS = ["All", "Running", "Awaiting", "Paused"];
 
@@ -129,58 +141,112 @@ export default function AgentsPage() {
                   </div>
                 </div>
               </div>
-              <div className="ops-card-status">
-                {a.status === "running" && <><span className="dot pulsing" style={{ background: a.color, boxShadow: `0 0 8px ${a.color}` }} /><span style={{ color: a.color }}>Running</span></>}
-                {a.status === "awaiting" && <><span className="dot dot-amber pulsing" /><span style={{ color: "var(--amber)" }}>Awaiting</span></>}
-                {a.status === "paused" && <><span className="dot" style={{ background: "var(--text-faint)" }} /><span style={{ color: "var(--text-mute)" }}>Paused</span></>}
-                {a.status === "idle" && <><span className="dot" style={{ background: "var(--text-faint)" }} /><span style={{ color: "var(--text-mute)" }}>Idle</span></>}
-              </div>
-            </div>
-            <div style={{ padding: "12px 14px" }}>
-              <div className="ops-task" style={{ marginBottom: 12 }}>
-                <ZapIcon size={12} style={{ color: a.color, flexShrink: 0 }} />
-                <span>{a.currentTask}</span>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
-                {[
-                  { label: "This week", val: `${a.stats.metricValue} ${a.stats.metricLabel}` },
-                  { label: "Total runs", val: a.stats.totalRuns.toLocaleString() },
-                  { label: "Deployed", val: relativeTime(a.deployedAt) },
-                ].map((s) => (
-                  <div key={s.label} style={{ padding: "8px 10px", borderRadius: 8, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-faint)", marginBottom: 4 }}>{s.label}</div>
-                    <div style={{ fontSize: 13, fontWeight: 500 }}>{s.val}</div>
+              {(() => {
+                const missing = parseMissingRequirements(a.currentTask);
+                if (missing) {
+                  return (
+                    <div className="ops-card-status">
+                      <span className="dot" style={{ background: "var(--amber)" }} />
+                      <span style={{ color: "var(--amber)" }}>Setup required</span>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="ops-card-status">
+                    {a.status === "running" && <><span className="dot pulsing" style={{ background: a.color, boxShadow: `0 0 8px ${a.color}` }} /><span style={{ color: a.color }}>Running</span></>}
+                    {a.status === "awaiting" && <><span className="dot dot-amber pulsing" /><span style={{ color: "var(--amber)" }}>Awaiting</span></>}
+                    {a.status === "paused" && <><span className="dot" style={{ background: "var(--text-faint)" }} /><span style={{ color: "var(--text-mute)" }}>Paused</span></>}
+                    {a.status === "idle" && <><span className="dot" style={{ background: "var(--text-faint)" }} /><span style={{ color: "var(--text-mute)" }}>Idle</span></>}
                   </div>
-                ))}
-              </div>
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                <button
-                  className="appr-btn edit"
-                  onClick={() => toggleAgentPause(a.id)}
-                  disabled={a.status === "awaiting"}
-                  style={{ opacity: a.status === "awaiting" ? 0.4 : 1 }}
-                >
-                  {a.status === "paused" ? "Resume" : "Pause"}
-                </button>
-                <button
-                  className="appr-btn edit"
-                  onClick={() => handleRun(a.id)}
-                  disabled={runningAgentId === a.id || a.status === "paused"}
-                  style={{ opacity: (runningAgentId === a.id || a.status === "paused") ? 0.4 : 1 }}
-                >
-                  {runningAgentId === a.id ? "Running..." : isPreview ? "Run demo" : "Run live"}
-                </button>
-                <button
-                  className="appr-btn approve"
-                  onClick={() => {
-                    const run = state.agentRuns.find((r) => r.agentId === a.id);
-                    if (run) setSelectedRunId(run.id);
-                  }}
-                >
-                  View output
-                </button>
-              </div>
+                );
+              })()}
             </div>
+            {(() => {
+              const missing = parseMissingRequirements(a.currentTask);
+              if (missing) {
+                return (
+                  <div style={{ padding: "12px 14px", display: "grid", gap: 12 }}>
+                    <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(245,194,107,0.06)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.2)" }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>
+                        Setup required: Connect {missing.primaryName} to run this operator.
+                      </div>
+                      <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>
+                        {missing.connectorIds.length > 1
+                          ? `Also requires: ${missing.connectorIds.slice(1).join(", ")}`
+                          : "Connect a real account to enable live operator execution."}
+                      </div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                      {[
+                        { label: "Actions/wk", val: "0" },
+                        { label: "Total runs", val: "0" },
+                        { label: "Deployed", val: relativeTime(a.deployedAt) },
+                      ].map((s) => (
+                        <div key={s.label} style={{ padding: "8px 10px", borderRadius: 8, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+                          <div style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-faint)", marginBottom: 4 }}>{s.label}</div>
+                          <div style={{ fontSize: 13, fontWeight: 500 }}>{s.val}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                      <Link href="/app/connectors" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>
+                        <LinkIcon size={12} /> Connect {missing.primaryName}
+                      </Link>
+                      <Link href="/app/connectors" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>
+                        View requirements
+                      </Link>
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <div style={{ padding: "12px 14px" }}>
+                  <div className="ops-task" style={{ marginBottom: 12 }}>
+                    <ZapIcon size={12} style={{ color: a.color, flexShrink: 0 }} />
+                    <span>{a.currentTask}</span>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
+                    {[
+                      { label: "This week", val: `${a.stats.metricValue} ${a.stats.metricLabel}` },
+                      { label: "Total runs", val: a.stats.totalRuns.toLocaleString() },
+                      { label: "Deployed", val: relativeTime(a.deployedAt) },
+                    ].map((s) => (
+                      <div key={s.label} style={{ padding: "8px 10px", borderRadius: 8, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+                        <div style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-faint)", marginBottom: 4 }}>{s.label}</div>
+                        <div style={{ fontSize: 13, fontWeight: 500 }}>{s.val}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                    <button
+                      className="appr-btn edit"
+                      onClick={() => toggleAgentPause(a.id)}
+                      disabled={a.status === "awaiting"}
+                      style={{ opacity: a.status === "awaiting" ? 0.4 : 1 }}
+                    >
+                      {a.status === "paused" ? "Resume" : "Pause"}
+                    </button>
+                    <button
+                      className="appr-btn edit"
+                      onClick={() => handleRun(a.id)}
+                      disabled={runningAgentId === a.id || a.status === "paused"}
+                      style={{ opacity: (runningAgentId === a.id || a.status === "paused") ? 0.4 : 1 }}
+                    >
+                      {runningAgentId === a.id ? "Running..." : isPreview ? "Run demo" : "Run live"}
+                    </button>
+                    <button
+                      className="appr-btn approve"
+                      onClick={() => {
+                        const run = state.agentRuns.find((r) => r.agentId === a.id);
+                        if (run) setSelectedRunId(run.id);
+                      }}
+                    >
+                      View output
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         ))}
       </div>

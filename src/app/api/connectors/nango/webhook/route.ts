@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
       connected_at: status === "connected" ? nowIso : null,
       last_sync_at: nowIso,
       last_sync: status === "connected" ? "just now" : "error",
-      sync_freq: "Nango managed",
+      sync_freq: "Managed",
       permissions: ["read", "write"],
       records: status === "connected" ? `Real account connected${providerEmail ? `: ${providerEmail}` : ""}` : "Connection failed",
       metadata: {
@@ -115,8 +115,8 @@ export async function POST(req: NextRequest) {
   const logEvent = status === "connected" ? "connector.nango.connected" : "connector.nango.failed";
   const logStatus = status === "connected" ? "ok" : "error";
   const logMessage = status === "connected"
-    ? `Connected HubSpot via Nango${providerEmail ? ` (${providerEmail})` : ""}`
-    : `HubSpot Nango connection failed${eventType ? ` (${eventType})` : ""}`;
+    ? `HubSpot account connected${providerEmail ? ` (${providerEmail})` : ""}`
+    : `HubSpot connection failed${eventType ? ` (${eventType})` : ""}`;
 
   await supabase.from("os_execution_logs").insert({
     id: `log-${connectorKey}-${Date.now()}`,

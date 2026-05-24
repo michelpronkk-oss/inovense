@@ -6,6 +6,10 @@ import { DocIcon, FilterIcon } from "@/components/dashboard/icons";
 
 const STATUS_COLOR: Record<string, string> = { ok: "#51D88A", warn: "#F5C26B", waiting: "#4DE8E1", error: "#F2767C" };
 
+function formatEventKey(event: string): string {
+  return event.replace(".nango.", ".");
+}
+
 export default function LogsPage() {
   const { state } = useOS();
   const [agentFilter, setAgentFilter] = useState("All agents");
@@ -50,7 +54,7 @@ export default function LogsPage() {
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)", letterSpacing: "0.08em", textTransform: "uppercase", marginLeft: 8 }}>Event</span>
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
           {eventTypes.map((e) => (
-            <button key={e} onClick={() => setEventFilter(e)} className={`appr-btn${eventFilter === e ? " approve" : " edit"}`} style={{ fontSize: 10.5, padding: "4px 10px" }}>{e}</button>
+            <button key={e} onClick={() => setEventFilter(e)} className={`appr-btn${eventFilter === e ? " approve" : " edit"}`} style={{ fontSize: 10.5, padding: "4px 10px" }}>{e === "All events" ? e : formatEventKey(e)}</button>
           ))}
         </div>
       </div>
@@ -78,7 +82,7 @@ export default function LogsPage() {
               <span style={{ color: "var(--text-faint)" }}>{l.ts}</span>
               <span style={{ width: 22, height: 22, borderRadius: 6, background: `${l.agentColor}18`, boxShadow: `inset 0 0 0 1px ${l.agentColor}55`, display: "grid", placeItems: "center", fontSize: 10, fontWeight: 600, color: l.agentColor }}>{l.agentMark}</span>
               <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "rgba(255,255,255,0.04)", color: "var(--text-mute)", boxShadow: "inset 0 0 0 1px var(--line)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {l.event}
+                {formatEventKey(l.event)}
               </span>
               <span style={{ color: "var(--text-dim)", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.message}</span>
               <span style={{ color: "var(--text-faint)", textAlign: "right" }}>{l.duration}</span>
