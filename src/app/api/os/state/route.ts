@@ -158,7 +158,7 @@ async function bootstrapWorkspace(input: { workspaceId?: string; userId?: string
   let state = snapshotState;
 
   if (!state) {
-    const [agents, runs, workflows, approvals, logs, memory, connectors, policies] = await Promise.all([
+    const [agents, runs, workflows, approvals, logs, memory, connectors, policies, connectorCredentials] = await Promise.all([
       supabase.from("os_agents").select("*").eq("workspace_id", workspaceId),
       supabase.from("os_agent_runs").select("*"),
       supabase.from("os_workflows").select("*"),
@@ -167,6 +167,7 @@ async function bootstrapWorkspace(input: { workspaceId?: string; userId?: string
       supabase.from("os_memory_entries").select("*").order("updated_at", { ascending: false }).limit(300),
       supabase.from("os_connectors").select("*"),
       supabase.from("os_policies").select("*"),
+      supabase.from("os_connector_credentials").select("connector_key, provider_email, status, workspace_id").eq("workspace_id", workspaceId),
     ]);
 
     const seeded = buildSeedState();
@@ -232,6 +233,8 @@ async function bootstrapWorkspace(input: { workspaceId?: string; userId?: string
         createdAt: a.created_at,
         resolvedAt: a.resolved_at ?? undefined,
         resolvedBy: a.resolved_by ?? undefined,
+        continuationPayload: (a.continuation_payload ?? undefined) as Record<string, unknown> | undefined,
+        policyChecks: a.policy_reason ? [String(a.policy_reason)] : undefined,
       }));
     }
     if (!logs.error && logs.data?.length) {
@@ -287,6 +290,20 @@ async function bootstrapWorkspace(input: { workspaceId?: string; userId?: string
         recentSyncEvents: [],
         isConnected: Boolean(c.connected),
       }));
+    }
+    if (!connectorCredentials.error && connectorCredentials.data?.length) {
+      const gmailCred = connectorCredentials.data.find((row) => row.connector_key === "gmail" && row.status === "connected");
+      if (gmailCred) {
+        seeded.connectors = seeded.connectors.map((connector) => connector.id === "gmail"
+          ? {
+            ...connector,
+            isConnected: true,
+            status: "connected",
+            health: "healthy",
+            records: gmailCred.provider_email ? `Real account connected: ${gmailCred.provider_email}` : "Real account connected",
+          }
+          : connector);
+      }
     }
     if (!policies.error && policies.data?.length) {
       seeded.policies = policies.data.map((p) => ({

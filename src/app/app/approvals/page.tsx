@@ -129,7 +129,9 @@ export default function ApprovalsPage() {
                   </div>
                 )}
                 <div className="appr-row-actions">
-                  <button className="appr-btn approve" onClick={() => approveItem(item.id, item.runId, item.agentId)}>Approve</button>
+                  <button className="appr-btn approve" onClick={() => approveItem(item.id, item.runId, item.agentId)}>
+                    {item.type === "email" ? "Approve and send" : "Approve"}
+                  </button>
                   <button className="appr-btn edit" disabled aria-disabled="true" title="Inline editor is coming soon">Edit</button>
                   <button className="appr-btn deny" onClick={() => skipItem(item.id, item.runId, item.agentId)}>Skip</button>
                 </div>

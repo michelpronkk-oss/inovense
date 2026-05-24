@@ -125,8 +125,10 @@ export function executeToolAction(payload: ExecuteToolActionInput): ToolActionEx
     const approval: Approval = {
       id: approvalId,
       type: "action",
-      title: `Approval required - ${tool.name}`,
-      body: `${tool.description} requires approval before execution.`,
+      title: tool.actionType === "email.send" ? "Approval required before sending" : `Approval required - ${tool.name}`,
+      body: tool.actionType === "email.send"
+        ? `Approval required before sending to ${String(input.email ?? "recipient")}.`
+        : `${tool.description} requires approval before execution.`,
       agentId: agent.id,
       agentMark: agent.mark,
       agentColor: agent.color,
@@ -134,12 +136,28 @@ export function executeToolAction(payload: ExecuteToolActionInput): ToolActionEx
       status: "pending",
       createdAt: new Date().toISOString(),
       proposedAction: tool.actionType,
-      draftOutput: `Pending ${tool.id}`,
+      draftOutput: tool.actionType === "email.send"
+        ? `To: ${String(input.email ?? "")} | Subject: ${String(input.subject ?? "Follow-up")}`
+        : `Pending ${tool.id}`,
       policyChecks: policy.matchedPolicies.map((item) => item.name).concat(policy.reason),
       reviewerRole: policy.requiredReviewerRole,
+      continuationPayload: tool.actionType === "email.send"
+        ? {
+          kind: "gmail.send_after_approval",
+          workspaceId: state.workspace.id,
+          to: String(input.email ?? ""),
+          subject: String(input.subject ?? "Follow-up from Inovense"),
+          body: String(input.body ?? "Following up as discussed."),
+        }
+        : undefined,
     };
     logs.push(makeLog(agent, runId, "policy.approval_required", `Approval required for ${tool.id}`, "waiting"));
     return { status: "require_approval", logs, approval, pendingAction: { toolId, input }, reason: policy.reason };
+  }
+
+  if (tool.connectorId === "hubspot") {
+    logs.push(makeLog(agent, runId, "tool.not_implemented", `${tool.id} is not implemented for production execution yet`, "warn"));
+    return { status: "completed", output: "action_not_implemented", logs };
   }
 
   const handled = tool.handler(input, { state, agentId: agent.id, runId });

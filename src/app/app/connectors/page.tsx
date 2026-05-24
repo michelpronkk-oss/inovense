@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Nango from "@nangohq/frontend";
 import { useOS } from "@/lib/os/app-provider";
 import { LinkIcon, PlusIcon } from "@/components/dashboard/icons";
 import type { Connector } from "@/lib/os/types";
@@ -39,6 +40,12 @@ export default function ConnectorsPage() {
   const [drawerConnectorId, setDrawerConnectorId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [hubspotConnectLoading, setHubspotConnectLoading] = useState(false);
+  const [hubspotStatus, setHubspotStatus] = useState<{
+    status: "connected" | "error" | "pending";
+    provider_email?: string | null;
+    connected_at?: string | null;
+  } | null>(null);
 
   const activeConnectors = useMemo(() => state.connectors.filter((c) => c.isConnected), [state.connectors]);
   const availableConnectors = useMemo(() => state.connectors.filter((c) => !c.isConnected), [state.connectors]);
@@ -60,6 +67,79 @@ export default function ConnectorsPage() {
   const atConnectorLimit = isAtConnectorLimit(state.workspace.plan, activeConnectors.length);
   const entitlements = getEntitlements(state.workspace);
   const isPreview = entitlements.billingStatus === "preview";
+
+  const startRealGmailOAuth = () => {
+    const qs = new URLSearchParams({
+      workspaceId: state.workspace.id,
+      userEmail: state.currentUser.email,
+    });
+    window.location.href = `/api/connectors/gmail/auth?${qs.toString()}`;
+  };
+
+  const fetchHubspotStatus = async () => {
+    const res = await fetch(`/api/connectors/nango/status?workspaceId=${encodeURIComponent(state.workspace.id)}&connectorKey=hubspot`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return;
+    const json = await res.json() as {
+      status: "connected" | "error" | "pending";
+      provider_email?: string | null;
+      connected_at?: string | null;
+    };
+    setHubspotStatus(json);
+    if (json.status === "connected") {
+      connectConnector("hubspot", "real");
+    }
+  };
+
+  useEffect(() => {
+    fetchHubspotStatus().catch(() => undefined);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.workspace.id]);
+
+  const startHubspotNangoConnect = async () => {
+    setHubspotConnectLoading(true);
+    try {
+      const sessionRes = await fetch("/api/connectors/nango/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: state.workspace.id,
+          connectorKey: "hubspot",
+          userEmail: state.currentUser.email,
+          userId: state.currentUser.id,
+        }),
+      });
+      const sessionJson = await sessionRes.json() as { sessionToken?: string; error?: string };
+      if (!sessionRes.ok || !sessionJson.sessionToken) {
+        setFeedback(sessionJson.error || "Failed to start HubSpot connect.");
+        return;
+      }
+
+      const nango = new Nango();
+      const pollStatus = () => {
+        let tries = 0;
+        const timer = setInterval(() => {
+          tries += 1;
+          fetchHubspotStatus().catch(() => undefined);
+          if (tries >= 6) clearInterval(timer);
+        }, 1500);
+      };
+
+      nango.openConnectUI({
+        sessionToken: sessionJson.sessionToken,
+        onEvent: (event) => {
+          if (event.type === "connect" || event.type === "close") {
+            pollStatus();
+          }
+        },
+      });
+    } catch {
+      setFeedback("Failed to launch Nango Connect.");
+    } finally {
+      setHubspotConnectLoading(false);
+    }
+  };
 
   return (
     <div className="os-page">
@@ -130,7 +210,9 @@ export default function ConnectorsPage() {
             </div>
             <div>
               <div style={{ fontSize: 13.5, fontWeight: 500 }}>{c.name}</div>
-              <div style={{ fontSize: 10.5, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>{c.category} - {c.syncFreq}</div>
+              <div style={{ fontSize: 10.5, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>
+                {c.category} - {c.syncFreq} - {c.id === "gmail" ? "Native" : c.id === "hubspot" ? "Powered by Nango" : "Connector"}
+              </div>
             </div>
             <div style={{ fontSize: 10.5, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>{c.eventsSynced} events</div>
             <div style={{ fontSize: 10.5, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>synced {c.lastSync}</div>
@@ -163,6 +245,11 @@ export default function ConnectorsPage() {
                           <div style={{ fontSize: 13, fontWeight: 500 }}>{c.name}</div>
                         </div>
                         <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-mute)" }}>{c.category}</div>
+                        {(c.id === "gmail" || c.id === "hubspot") && (
+                          <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-mute)", marginTop: 2 }}>
+                            {c.id === "gmail" ? "Native" : "Powered by Nango"}
+                          </div>
+                        )}
                         <div style={{ fontSize: 11.5, color: "var(--text-dim)", marginTop: 6 }}>{c.description}</div>
                       </button>
                     ))}
@@ -176,6 +263,14 @@ export default function ConnectorsPage() {
                   <button className="appr-btn deny" onClick={() => setSetupConnectorId(null)}>Back</button>
                 </div>
                 <ConnectorSetupView connector={setupConnector} isPreview={isPreview} />
+                {setupConnector.id === "gmail" && (
+                  <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>Auth: Native OAuth flow</div>
+                )}
+                {setupConnector.id === "hubspot" && (
+                  <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>
+                    Auth: Powered by Nango{hubspotStatus?.provider_email ? ` (${hubspotStatus.provider_email})` : ""}
+                  </div>
+                )}
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
                   <button className="btn btn-ghost btn-sm" onClick={() => setSetupConnectorId(null)}>Cancel</button>
                   <button className="btn btn-ghost btn-sm" onClick={() => {
@@ -189,11 +284,19 @@ export default function ConnectorsPage() {
                       setUpgradeOpen(true);
                       return;
                     }
+                    if (setupConnector.id === "gmail") {
+                      startRealGmailOAuth();
+                      return;
+                    }
+                    if (setupConnector.id === "hubspot") {
+                      startHubspotNangoConnect();
+                      return;
+                    }
                     connectConnector(setupConnector.id, "real");
                     setFeedback(`${setupConnector.name} real account connected.`);
                     setAddOpen(false);
                     setSetupConnectorId(null);
-                  }}>Connect real account</button>
+                  }}>{hubspotConnectLoading && setupConnector.id === "hubspot" ? "Connecting..." : "Connect real account"}</button>
                 </div>
               </>
             )}
@@ -209,6 +312,14 @@ export default function ConnectorsPage() {
               <button className="appr-btn deny" onClick={() => setDrawerConnectorId(null)}>Close</button>
             </div>
             <ConnectorSetupView connector={drawerConnector} isPreview={isPreview} />
+            {drawerConnector.id === "gmail" && (
+              <div style={{ marginTop: 10, fontSize: 11.5, color: "#9DEFEA" }}>Auth provider: Native</div>
+            )}
+            {drawerConnector.id === "hubspot" && (
+              <div style={{ marginTop: 10, fontSize: 11.5, color: "#9DEFEA" }}>
+                Auth provider: Powered by Nango. Status: {hubspotStatus?.status ?? "pending"}{hubspotStatus?.provider_email ? ` (${hubspotStatus.provider_email})` : ""}
+              </div>
+            )}
             <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
               <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Recent sync events</div>
               {(drawerConnector.recentSyncEvents.length ? drawerConnector.recentSyncEvents : ["No sync events yet"]).map((ev) => (
@@ -250,7 +361,9 @@ function ConnectorSetupView({ connector, isPreview }: { connector: Connector; is
         <div style={{ width: 34, height: 34, borderRadius: 10, background: `${connector.color}18`, boxShadow: `inset 0 0 0 1px ${connector.color}45`, display: "grid", placeItems: "center", color: connector.color, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{connector.letter}</div>
         <div>
           <div style={{ fontSize: 14, fontWeight: 600 }}>{connector.name}</div>
-          <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)" }}>{connector.category} - {connector.syncMode} - {connector.syncFreq}</div>
+          <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)" }}>
+            {connector.category} - {connector.syncMode} - {connector.syncFreq} - {connector.id === "gmail" ? "Native" : connector.id === "hubspot" ? "Powered by Nango" : "Connector"}
+          </div>
         </div>
       </div>
       <div style={{ fontSize: 12.5, color: "var(--text-dim)" }}>{connector.description}</div>

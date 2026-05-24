@@ -340,7 +340,7 @@ interface OSContextValue {
   deployAgent: (config: DeployConfig) => Agent;
   runAgent: (agentId: string) => void;
   runWorkflow: (workflowId: string) => void;
-  approveItem: (approvalId: string, runId?: string, agentId?: string) => void;
+  approveItem: (approvalId: string, runId?: string, agentId?: string) => void | Promise<void>;
   skipItem: (approvalId: string, runId?: string, agentId?: string) => void;
   toggleAgentPause: (agentId: string) => void;
   setConnectorConnected: (connectorId: string, connected: boolean) => void;
@@ -716,8 +716,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: "APPLY_RUNTIME_RESULT", result });
   }, [state]);
 
-  const approveItem = useCallback((approvalId: string, runId?: string, agentId?: string) => {
+  const approveItem = useCallback(async (approvalId: string, runId?: string, agentId?: string) => {
     const approval = state.approvals.find((a) => a.id === approvalId);
+    const continuation = approval?.continuationPayload as { kind?: string } | undefined;
+    if (approval && continuation?.kind === "gmail.send_after_approval" && getEntitlements(state.workspace).canRunRealActions) {
+      try {
+        const res = await fetch(`/api/approvals/${approvalId}/approve`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workspaceId: state.workspace.id,
+            userEmail: state.currentUser.email,
+          }),
+        });
+        const json = await res.json().catch(() => ({} as { error?: string }));
+        if (!res.ok) {
+          dispatch({ type: "APPEND_LOG", log: logEntry(json.error || "Gmail send failed after approval", "gmail.send_blocked", "warn") });
+          return;
+        }
+        dispatch({ type: "APPEND_LOG", log: logEntry("Gmail draft sent after approval", "gmail.draft_sent", "ok") });
+      } catch {
+        dispatch({ type: "APPEND_LOG", log: logEntry("Network error while sending approved Gmail draft", "gmail.send_blocked", "warn") });
+        return;
+      }
+    }
     if (approval) {
       const continuation = continueRunAfterApproval(state, approval, true);
       if (continuation) {
