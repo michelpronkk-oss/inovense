@@ -6,18 +6,31 @@ import { useOS } from "@/lib/os/app-provider";
 import { PlusIcon, ZapIcon, FilterIcon, LinkIcon } from "@/components/dashboard/icons";
 import { UsageBanner } from "@/components/upgrade-prompt";
 import { getEntitlements } from "@/lib/os/entitlements";
-import { getPlanLabel } from "@/lib/os/truth";
+import { getPlanLabel, isRealConnectedConnector } from "@/lib/os/truth";
+import type { Connector } from "@/lib/os/types";
 
-function parseMissingRequirements(currentTask: string): { connectorIds: string[]; primaryName: string } | null {
+type MissingReqs = { connectorIds: string[]; primaryName: string };
+const CONNECTOR_NAME_MAP: Record<string, string> = {
+  gmail: "Gmail", outlook: "Outlook", hubspot: "HubSpot",
+  salesforce: "Salesforce", slack: "Slack", notion: "Notion",
+};
+
+function parseMissingRequirements(currentTask: string): MissingReqs | null {
   if (!currentTask.startsWith("Missing requirements:")) return null;
   const raw = currentTask.replace("Missing requirements:", "").trim();
   const connectorIds = raw.split(",").map((s) => s.trim().split("|")[0].trim()).filter(Boolean);
-  const nameMap: Record<string, string> = {
-    gmail: "Gmail", outlook: "Outlook", hubspot: "HubSpot",
-    salesforce: "Salesforce", slack: "Slack", notion: "Notion",
-  };
-  const primaryName = nameMap[connectorIds[0]] ?? connectorIds[0];
+  const primaryName = CONNECTOR_NAME_MAP[connectorIds[0]] ?? connectorIds[0];
   return { connectorIds, primaryName };
+}
+
+// Filter out connector requirements already satisfied by a real connected account.
+function filterMissingByConnectedState(parsed: MissingReqs | null, connectors: Connector[]): MissingReqs | null {
+  if (!parsed) return null;
+  const unsatisfied = parsed.connectorIds.filter(
+    (id) => !connectors.some((c) => c.id === id && isRealConnectedConnector(c))
+  );
+  if (unsatisfied.length === 0) return null;
+  return { connectorIds: unsatisfied, primaryName: CONNECTOR_NAME_MAP[unsatisfied[0]] ?? unsatisfied[0] };
 }
 
 const TABS = ["All", "Running", "Awaiting", "Paused"];
@@ -142,7 +155,7 @@ export default function AgentsPage() {
                 </div>
               </div>
               {(() => {
-                const missing = parseMissingRequirements(a.currentTask);
+                const missing = filterMissingByConnectedState(parseMissingRequirements(a.currentTask), state.connectors);
                 if (missing) {
                   return (
                     <div className="ops-card-status">
@@ -162,7 +175,7 @@ export default function AgentsPage() {
               })()}
             </div>
             {(() => {
-              const missing = parseMissingRequirements(a.currentTask);
+              const missing = filterMissingByConnectedState(parseMissingRequirements(a.currentTask), state.connectors);
               if (missing) {
                 return (
                   <div style={{ padding: "12px 14px", display: "grid", gap: 12 }}>

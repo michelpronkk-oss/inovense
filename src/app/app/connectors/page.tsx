@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Nango from "@nangohq/frontend";
 import { useOS } from "@/lib/os/app-provider";
@@ -32,6 +33,9 @@ export default function ConnectorsPage() {
     resyncConnector,
     updateConnectorPermissions,
   } = useOS();
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [addOpen, setAddOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -119,6 +123,15 @@ export default function ConnectorsPage() {
     fetchHubspotStatus().catch(() => undefined);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.workspace.id]);
+
+  useEffect(() => {
+    const connected = searchParams.get("connected");
+    if (connected === "gmail") {
+      setFeedback("Gmail connected. Account is now active.");
+      router.replace("/app/connectors");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const startHubspotNangoConnect = async () => {
     setHubspotConnectLoading(true);

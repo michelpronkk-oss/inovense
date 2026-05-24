@@ -165,7 +165,7 @@ async function bootstrapWorkspace(input: { workspaceId?: string; userId?: string
   let state = snapshotState;
 
   if (!state) {
-    const [agents, runs, workflows, approvals, logs, memory, connectors, policies, connectorCredentials] = await Promise.all([
+    const [agents, runs, workflows, approvals, logs, memory, connectors, policies] = await Promise.all([
       supabase.from("os_agents").select("*").eq("workspace_id", workspaceId),
       supabase.from("os_agent_runs").select("*"),
       supabase.from("os_workflows").select("*"),
@@ -174,7 +174,6 @@ async function bootstrapWorkspace(input: { workspaceId?: string; userId?: string
       supabase.from("os_memory_entries").select("*").order("updated_at", { ascending: false }).limit(300),
       supabase.from("os_connectors").select("*"),
       supabase.from("os_policies").select("*"),
-      supabase.from("os_connector_credentials").select("connector_key, provider_email, status, workspace_id").eq("workspace_id", workspaceId),
     ]);
 
     const seeded = buildSeedState();
@@ -299,21 +298,6 @@ async function bootstrapWorkspace(input: { workspaceId?: string; userId?: string
         source: (Boolean(c.connected) ? "nango" : undefined) as "nango" | undefined,
       }));
     }
-    if (!connectorCredentials.error && connectorCredentials.data?.length) {
-      const gmailCred = connectorCredentials.data.find((row) => row.connector_key === "gmail" && row.status === "connected");
-      if (gmailCred) {
-        seeded.connectors = seeded.connectors.map((connector) => connector.id === "gmail"
-          ? {
-            ...connector,
-            isConnected: true,
-            status: "connected",
-            health: "healthy",
-            records: gmailCred.provider_email ? `Real account connected: ${gmailCred.provider_email}` : "Real account connected",
-            source: "native" as const,
-          }
-          : connector);
-      }
-    }
     if (!policies.error && policies.data?.length) {
       seeded.policies = policies.data.map((p) => ({
         id: p.id,
@@ -339,6 +323,37 @@ async function bootstrapWorkspace(input: { workspaceId?: string; userId?: string
       }));
     }
     state = seeded;
+  }
+
+  // Always overlay real connector credentials — runs for both fresh seed AND cached snapshot.
+  // This ensures connector connected-state is always in sync with the DB regardless of what
+  // is stored in os_state_snapshots.
+  const connectorCredentials = await supabase
+    .from("os_connector_credentials")
+    .select("connector_key, provider_email, status, workspace_id")
+    .eq("workspace_id", workspaceId);
+
+  if (!connectorCredentials.error && connectorCredentials.data?.length) {
+    const gmailCred = connectorCredentials.data.find(
+      (row) => row.connector_key === "gmail" && row.status === "connected"
+    );
+    if (gmailCred) {
+      state.connectors = state.connectors.map((connector) =>
+        connector.id === "gmail"
+          ? {
+              ...connector,
+              isConnected: true,
+              status: "connected" as const,
+              health: "healthy" as const,
+              records: gmailCred.provider_email
+                ? `Real account connected: ${gmailCred.provider_email}`
+                : "Real account connected",
+              source: "native" as const,
+              lastSync: "Active",
+            }
+          : connector
+      );
+    }
   }
 
   // DB always wins for billing — overlay canonical fields last, regardless of snapshot.
