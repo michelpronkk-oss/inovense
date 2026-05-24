@@ -209,6 +209,7 @@ export interface Connector {
   authErrors: number;
   recentSyncEvents: string[];
   isConnected: boolean;
+  source?: "seed" | "preview" | "native" | "nango";
 }
 
 // ── Execution log ──────────────────────────────────────────

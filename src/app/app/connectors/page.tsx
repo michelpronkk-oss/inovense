@@ -6,7 +6,6 @@ import Nango from "@nangohq/frontend";
 import { useOS } from "@/lib/os/app-provider";
 import { LinkIcon, PlusIcon } from "@/components/dashboard/icons";
 import type { Connector } from "@/lib/os/types";
-import { getPlanLimits, isAtConnectorLimit } from "@/lib/os/plans";
 import { UsageBanner } from "@/components/upgrade-prompt";
 import { getEntitlements } from "@/lib/os/entitlements";
 import { UpgradeModal } from "@/components/upgrade-modal";
@@ -63,10 +62,16 @@ export default function ConnectorsPage() {
   const setupConnector = state.connectors.find((c) => c.id === setupConnectorId) ?? null;
   const drawerConnector = state.connectors.find((c) => c.id === drawerConnectorId) ?? null;
 
-  const limits = getPlanLimits(state.workspace.plan);
-  const atConnectorLimit = isAtConnectorLimit(state.workspace.plan, activeConnectors.length);
   const entitlements = getEntitlements(state.workspace);
   const isPreview = entitlements.billingStatus === "preview";
+
+  const realConnectedCount = useMemo(
+    () => activeConnectors.filter((c) => c.source === "native" || c.source === "nango").length,
+    [activeConnectors]
+  );
+  const connectorLimit = typeof entitlements.connectorsLimit === "number" ? entitlements.connectorsLimit : null;
+  const atConnectorLimit = connectorLimit !== null && realConnectedCount >= connectorLimit;
+  const planLabel = entitlements.planTier.charAt(0).toUpperCase() + entitlements.planTier.slice(1);
 
   const startRealGmailOAuth = () => {
     const qs = new URLSearchParams({
@@ -89,6 +94,9 @@ export default function ConnectorsPage() {
     setHubspotStatus(json);
     if (json.status === "connected") {
       connectConnector("hubspot", "real");
+    } else {
+      // Nango says not connected — clear any seed/demo connected state for HubSpot.
+      disconnectConnector("hubspot");
     }
   };
 
@@ -173,8 +181,8 @@ export default function ConnectorsPage() {
         </div>
       </div>
 
-      {limits.maxConnectors !== -1 && (
-        <UsageBanner used={activeConnectors.length} max={limits.maxConnectors} label="connectors" planLabel={limits.name} />
+      {connectorLimit !== null && (
+        <UsageBanner used={realConnectedCount} max={connectorLimit} label="connectors" planLabel={planLabel} />
       )}
 
       {feedback && <div style={{ color: "#64ffd7", fontSize: 12 }}>{feedback}</div>}
@@ -280,7 +288,7 @@ export default function ConnectorsPage() {
                     setSetupConnectorId(null);
                   }}>Preview connector</button>
                   <button className="btn btn-primary btn-sm" onClick={() => {
-                    if (isPreview) {
+                    if (isPreview || atConnectorLimit) {
                       setUpgradeOpen(true);
                       return;
                     }

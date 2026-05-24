@@ -799,6 +799,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       connectorId,
       patch: {
         records: mode === "preview" ? "Preview connector connected" : connector.records,
+        source: mode === "preview" ? "preview" : "nango",
       },
     });
   }, [setConnectorConnected, state.connectors, state.workspace]);

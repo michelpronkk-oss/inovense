@@ -296,6 +296,7 @@ async function bootstrapWorkspace(input: { workspaceId?: string; userId?: string
         authErrors: 0,
         recentSyncEvents: [],
         isConnected: Boolean(c.connected),
+        source: (Boolean(c.connected) ? "nango" : undefined) as "nango" | undefined,
       }));
     }
     if (!connectorCredentials.error && connectorCredentials.data?.length) {
@@ -308,6 +309,7 @@ async function bootstrapWorkspace(input: { workspaceId?: string; userId?: string
             status: "connected",
             health: "healthy",
             records: gmailCred.provider_email ? `Real account connected: ${gmailCred.provider_email}` : "Real account connected",
+            source: "native" as const,
           }
           : connector);
       }
