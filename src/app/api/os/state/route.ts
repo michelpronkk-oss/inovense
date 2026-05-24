@@ -42,21 +42,26 @@ function makeWorkspaceId(nameOrEmail: string): string {
 }
 
 function workspaceUpdateFromState(state: OSState) {
-  const planTier = state.workspace.planTier ?? "preview";
-  const billingStatus = state.workspace.billingStatus ?? "preview";
   return {
     id: state.workspace.id,
     name: state.workspace.name,
     environment: state.workspace.environment,
     region: state.workspace.region,
-    plan: state.workspace.plan,
-    plan_tier: planTier,
-    billing_status: billingStatus,
-    trial_ends_at: state.workspace.trialEndsAt ?? null,
-    dodo_customer_id: state.workspace.dodoCustomerId ?? null,
-    dodo_subscription_id: state.workspace.dodoSubscriptionId ?? null,
-    dodo_product_id: state.workspace.dodoProductId ?? null,
+    updated_at: new Date().toISOString(),
   };
+}
+
+const BILLING_WORKSPACE_KEYS: (keyof OSState["workspace"])[] = [
+  "plan", "planTier", "billingStatus", "trialEndsAt",
+  "dodoCustomerId", "dodoSubscriptionId", "dodoProductId",
+];
+
+function stripBillingFromSnapshot(state: OSState): OSState {
+  const safeWorkspace = { ...state.workspace };
+  for (const key of BILLING_WORKSPACE_KEYS) {
+    delete safeWorkspace[key];
+  }
+  return { ...state, workspace: safeWorkspace };
 }
 
 async function bootstrapWorkspace(input: { workspaceId?: string; userId?: string; userEmail?: string; userName?: string }) {
@@ -87,6 +92,8 @@ async function bootstrapWorkspace(input: { workspaceId?: string; userId?: string
     workspaceId = makeWorkspaceId(userEmail || input.userName || "workspace");
   }
 
+  // ignoreDuplicates: true — only inserts for new workspaces, never updates
+  // billing fields on existing rows.
   const wsUpsert = await supabase.from("os_workspaces").upsert({
     id: workspaceId,
     name: "Workspace",
@@ -102,7 +109,7 @@ async function bootstrapWorkspace(input: { workspaceId?: string; userId?: string
     can_use_real_connectors: false,
     can_run_real_actions: false,
     support_level: "none",
-  }, { onConflict: "id" });
+  }, { onConflict: "id", ignoreDuplicates: true });
 
   if (wsUpsert.error) throw new Error(wsUpsert.error.message);
 
@@ -332,19 +339,21 @@ async function bootstrapWorkspace(input: { workspaceId?: string; userId?: string
     state = seeded;
   }
 
+  // DB always wins for billing — overlay canonical fields last, regardless of snapshot.
+  const db = workspaceResult.data;
   state.workspace = {
     ...state.workspace,
     id: workspaceId,
-    name: workspaceResult.data.name ?? state.workspace.name,
-    environment: workspaceResult.data.environment ?? state.workspace.environment,
-    region: workspaceResult.data.region ?? state.workspace.region,
-    plan: workspaceResult.data.plan ?? state.workspace.plan,
-    planTier: workspaceResult.data.plan_tier ?? state.workspace.planTier,
-    billingStatus: workspaceResult.data.billing_status ?? state.workspace.billingStatus,
-    trialEndsAt: workspaceResult.data.trial_ends_at ?? state.workspace.trialEndsAt,
-    dodoCustomerId: workspaceResult.data.dodo_customer_id ?? state.workspace.dodoCustomerId,
-    dodoSubscriptionId: workspaceResult.data.dodo_subscription_id ?? state.workspace.dodoSubscriptionId,
-    dodoProductId: workspaceResult.data.dodo_product_id ?? state.workspace.dodoProductId,
+    name: db.name ?? state.workspace.name,
+    environment: db.environment ?? state.workspace.environment,
+    region: db.region ?? state.workspace.region,
+    plan: db.plan ?? state.workspace.plan,
+    planTier: db.plan_tier ?? state.workspace.planTier,
+    billingStatus: db.billing_status ?? state.workspace.billingStatus,
+    trialEndsAt: db.trial_ends_at ?? undefined,
+    dodoCustomerId: db.dodo_customer_id ?? undefined,
+    dodoSubscriptionId: db.dodo_subscription_id ?? undefined,
+    dodoProductId: db.dodo_product_id ?? undefined,
   };
 
   return { workspaceId, state };
@@ -405,7 +414,7 @@ export async function POST(req: NextRequest) {
 
     await supabase.from("os_state_snapshots").upsert({
       workspace_id: state.workspace.id,
-      state,
+      state: stripBillingFromSnapshot(state),
     }, { onConflict: "workspace_id" });
 
     return NextResponse.json({ ok: true });
