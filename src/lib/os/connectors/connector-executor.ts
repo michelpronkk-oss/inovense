@@ -1,6 +1,7 @@
 import type { Agent, Approval, ExecutionLog, OSState } from "@/lib/os/types";
 import { evaluatePolicy, type PolicyEvaluationAction } from "@/lib/os/policy-engine";
 import { getToolDefinition } from "@/lib/os/tools/tool-registry";
+import { getEntitlements } from "@/lib/os/entitlements";
 
 let seq = 0;
 function uid(prefix: string): string {
@@ -66,6 +67,16 @@ export function executeToolAction(payload: ExecuteToolActionInput): ToolActionEx
 
   const logs: ExecutionLog[] = [];
   logs.push(makeLog(agent, runId, "tool.requested", `${tool.id} requested`, "ok"));
+
+  const entitlements = getEntitlements(state.workspace);
+  if (!entitlements.canRunRealActions) {
+    logs.push(makeLog(agent, runId, "execution.blocked", "Real execution requires an active plan", "warn"));
+    return {
+      status: "blocked",
+      reason: "Real execution requires an active plan",
+      logs,
+    };
+  }
 
   if (tool.blocked) {
     logs.push(makeLog(agent, runId, "tool.blocked", `${tool.id} is blocked`, "error"));

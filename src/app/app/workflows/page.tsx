@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useOS } from "@/lib/os/app-provider";
 import { PlusIcon, FlowIcon, ZapIcon } from "@/components/dashboard/icons";
 import { getSuggestedWorkflows, type SuggestedWorkflow } from "@/lib/os/workflow-recommendations";
+import { getEntitlements } from "@/lib/os/entitlements";
 
 export default function WorkflowsPage() {
   const router = useRouter();
@@ -29,6 +30,8 @@ export default function WorkflowsPage() {
     }));
   }, [state.agentRuns, state.workflows]);
   const suggestions = useMemo(() => getSuggestedWorkflows(state), [state]);
+  const entitlements = getEntitlements(state.workspace);
+  const isPreview = entitlements.billingStatus === "preview" || !entitlements.canRunRealActions;
   const previewSuggestion = suggestions.find((s) => s.id === previewId) ?? null;
   const requirementsSuggestion = suggestions.find((s) => s.id === requirementsId) ?? null;
 
@@ -63,6 +66,11 @@ export default function WorkflowsPage() {
           <span className="os-greet">Workflow engine - {state.workflows.filter((w) => w.status === "active").length} active</span>
           <h1>Workflows</h1>
           <div className="os-page-sub">{state.workflows.length} workflows - {totalRuns.toLocaleString()} total runs - {avgSuccess}% success rate</div>
+          {isPreview && (
+            <div style={{ marginTop: 8, color: "#9DEFEA", fontSize: 12.5 }}>
+              Preview mode: run workflow demo executes mock actions only.
+            </div>
+          )}
         </div>
         <div className="os-page-actions">
           <button className="btn btn-ghost btn-sm" disabled aria-disabled="true" title="Templates are coming soon"><FlowIcon size={12} /> Templates</button>
@@ -114,6 +122,7 @@ export default function WorkflowsPage() {
         </div>
       </div>
 
+      {(!isPreview || state.workflows.length > 0) && (
       <div className="p">
         <div className="p-head">
           <h3><FlowIcon size={13} /> Suggested workflows</h3>
@@ -161,6 +170,7 @@ export default function WorkflowsPage() {
           ))}
         </div>
       </div>
+      )}
 
       <div className="p" style={{ overflowX: "auto" }}>
         <div className="p-head">
@@ -189,7 +199,7 @@ export default function WorkflowsPage() {
               <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-mute)" }}>{w.totalRuns.toLocaleString()} runs</span>
               <div style={{ display: "flex", gap: 6 }}>
                 <button className="appr-btn edit" onClick={() => router.push("/app/logs")}>View logs</button>
-                <button className="appr-btn approve" onClick={() => runWorkflow(w.id)}>Run</button>
+                <button className="appr-btn approve" onClick={() => runWorkflow(w.id)}>{isPreview ? "Run demo" : "Run live"}</button>
               </div>
             </div>
           ))}

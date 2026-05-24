@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import React, { createContext, useContext, useReducer, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from "react";
 import type {
   OSState,
   Agent,
@@ -20,8 +20,10 @@ import { buildSeedState } from "@/lib/os/seed";
 import { AGENT_TEMPLATES } from "@/lib/os/templates";
 import { continueRunAfterApproval, runAgent as runAgentRuntime, type AgentRuntimeResult } from "@/lib/os/agents/agent-runtime";
 import { installWorkflowFromSuggestion, type SuggestedWorkflow } from "@/lib/os/workflow-recommendations";
+import { getEntitlements, type Entitlements } from "@/lib/os/entitlements";
 
-const STORAGE_KEY = "inovense-os-state-v1";
+const STORAGE_KEY = "inovense-os-state-v5";
+const DEV_USER_KEY = "inovense-os-dev-user-v1";
 
 type OSAction =
   | { type: "HYDRATE"; state: OSState }
@@ -68,8 +70,7 @@ function reducer(state: OSState, action: OSAction): OSState {
           !action.connectors.includes("slack") ? "slack" : "",
         ].filter(Boolean)
         : [];
-      const existingPreferred = state.agents.find((agent) => agent.name === action.preferredOperator);
-      const preferredAgent: Agent | null = template && !existingPreferred
+      const preferredAgent: Agent | null = template
         ? {
           id: `agent-${template.id.slice(0, 2).toUpperCase()}-${Date.now()}`,
           name: action.preferredOperator,
@@ -109,14 +110,27 @@ function reducer(state: OSState, action: OSAction): OSState {
         ...state,
         onboarding: action.onboarding,
         workspace: action.workspace,
+        settings: {
+          ...state.settings,
+          workspace: {
+            name: action.workspace.name,
+            environment: action.workspace.environment,
+            region: action.workspace.region,
+            plan: action.workspace.plan,
+          },
+        },
         currentUser: action.currentUser,
-        teamMembers: state.teamMembers.map((member) => member.id === state.currentUser.id ? {
-          ...member,
+        teamMembers: [{
+          id: state.currentUser.id,
           name: action.currentUser.name,
           email: action.currentUser.email,
-          role: action.currentUser.roleLabel,
+          role: "Admin",
           initials: action.currentUser.initials,
-        } : member),
+          color: "#4DE8E1",
+          access: ["All operators", "Approvals", "Settings"],
+          status: "online" as const,
+          active: true,
+        }],
         connectors: state.connectors.map((connector) => {
           const shouldConnect = action.connectors.includes(connector.id);
           if (!shouldConnect) return connector;
@@ -125,14 +139,21 @@ function reducer(state: OSState, action: OSAction): OSState {
             isConnected: true,
             status: "connected",
             health: "healthy",
-            lastSync: "just now",
+            lastSync: "preview",
             lastSynced: nowIso,
+            records: "Preview — activate Starter to sync live data",
           };
         }),
         policies: state.policies.map((policy) => ({ ...policy, enabled: true, active: true, updatedAt: nowIso })),
-        agents: preferredAgent ? [preferredAgent, ...state.agents] : state.agents,
-        memory: [memoryEntry, ...state.memory],
-        logs: [onboardLog, ...(missingReqLog ? [missingReqLog] : []), ...state.logs].slice(0, 300),
+        // Replace seed agents with only the user's selected operator
+        agents: preferredAgent ? [preferredAgent] : [],
+        // Start with a clean approvals inbox
+        approvals: [],
+        // Start with no workflows — user builds from here
+        workflows: [],
+        // Start with only the onboarding memory seed
+        memory: [memoryEntry],
+        logs: [onboardLog, ...(missingReqLog ? [missingReqLog] : [])],
       };
     }
     case "DEPLOY_AGENT":
@@ -305,6 +326,7 @@ function reducer(state: OSState, action: OSAction): OSState {
 
 interface OSContextValue {
   state: OSState;
+  entitlements: Entitlements;
   completeOnboarding: (input: {
     companyName: string;
     websiteUrl: string;
@@ -322,7 +344,7 @@ interface OSContextValue {
   skipItem: (approvalId: string, runId?: string, agentId?: string) => void;
   toggleAgentPause: (agentId: string) => void;
   setConnectorConnected: (connectorId: string, connected: boolean) => void;
-  connectConnector: (connectorId: string) => void;
+  connectConnector: (connectorId: string, mode?: "preview" | "real") => void;
   disconnectConnector: (connectorId: string) => void;
   testConnector: (connectorId: string) => void;
   resyncConnector: (connectorId: string) => void;
@@ -361,10 +383,102 @@ function logEntry(message: string, event: string, status: ExecutionLog["status"]
   };
 }
 
+function makePreviewRun(agent: Agent, goal: string, workflowId?: string): AgentRuntimeResult {
+  const runId = `run-preview-${Date.now()}`;
+  const nowIso = new Date().toISOString();
+  const ts = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const run: AgentRun = {
+    id: runId,
+    agentId: agent.id,
+    agentMark: agent.mark,
+    agentColor: agent.color,
+    agentName: agent.name,
+    workflowId,
+    status: "completed",
+    startedAt: nowIso,
+    completedAt: nowIso,
+    steps: [
+      { id: `${runId}-1`, name: "Load demo context", sub: "Preview workspace context", state: "done", riskLevel: "low", output: "Loaded" },
+      { id: `${runId}-2`, name: "Build execution plan", sub: "Deterministic demo planning", state: "done", riskLevel: "low", output: "Planned 4 demo steps" },
+      { id: `${runId}-3`, name: "Run mock actions", sub: "No real connector execution", state: "done", riskLevel: "medium", output: "Mock actions completed" },
+      { id: `${runId}-4`, name: "Write preview logs", sub: "Preview-mode execution trace", state: "done", riskLevel: "low", output: "Logged" },
+    ],
+    triggeredBy: "manual",
+    output: {
+      type: "preview_demo_result",
+      title: `${agent.name} preview run`,
+      summary: `Demo run completed in preview mode for goal: ${goal}`,
+    },
+  };
+  const logs: ExecutionLog[] = [
+    {
+      id: `log-${Date.now()}-preview`,
+      ts,
+      runId,
+      agentId: agent.id,
+      agentMark: agent.mark,
+      agentColor: agent.color,
+      event: "preview.demo_run",
+      message: "Demo run completed in preview mode",
+      duration: "-",
+      status: "ok",
+    },
+    {
+      id: `log-${Date.now()}-preview-block`,
+      ts,
+      runId,
+      agentId: agent.id,
+      agentMark: agent.mark,
+      agentColor: agent.color,
+      event: "execution.blocked",
+      message: "Real execution requires an active plan",
+      duration: "-",
+      status: "warn",
+    },
+  ];
+  return { run, logs, approvals: [], memoryWrites: [] };
+}
+
 let deployCounter = 0;
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, null, () => buildSeedState());
+  const hydratedFromRemote = useRef(false);
+  const finishedInitialHydration = useRef(false);
+  const persistTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const getIdentity = useCallback(() => {
+    let devIdentity: { id: string; email: string; name: string } = {
+      id: "dev-preview-user",
+      email: "preview@inovense.local",
+      name: "Preview User",
+    };
+
+    if (typeof window !== "undefined") {
+      try {
+        const raw = window.localStorage.getItem(DEV_USER_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw) as Partial<typeof devIdentity>;
+          devIdentity = {
+            id: parsed.id || devIdentity.id,
+            email: parsed.email || devIdentity.email,
+            name: parsed.name || devIdentity.name,
+          };
+        } else {
+          window.localStorage.setItem(DEV_USER_KEY, JSON.stringify(devIdentity));
+        }
+      } catch {
+        // Ignore dev identity storage failures.
+      }
+    }
+
+    return {
+      userId: state.currentUser.id || devIdentity.id,
+      userEmail: state.currentUser.email || devIdentity.email,
+      userName: state.currentUser.name || devIdentity.name,
+      workspaceId: state.workspace.id,
+    };
+  }, [state.currentUser.email, state.currentUser.id, state.currentUser.name, state.workspace.id]);
 
   useEffect(() => {
     try {
@@ -394,11 +508,90 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const hydrateFromSupabase = async () => {
+      try {
+        const identity = getIdentity();
+        const params = new URLSearchParams({
+          workspaceId: identity.workspaceId || "",
+          userId: identity.userId || "",
+          userEmail: identity.userEmail || "",
+          userName: identity.userName || "",
+        });
+        const res = await fetch(`/api/os/state?${params.toString()}`, { cache: "no-store" });
+        if (cancelled) return;
+
+        if (!res.ok) {
+          if (res.status === 503) {
+            const payload = await res.json().catch(() => ({} as { message?: string }));
+            if (payload?.message) {
+              console.warn(`[inovense-os] ${payload.message}`);
+            }
+          }
+          finishedInitialHydration.current = true;
+          return;
+        }
+
+        const payload = await res.json() as { state?: OSState };
+        if (payload.state && Array.isArray(payload.state.agents) && payload.state.workspace) {
+          dispatch({ type: "HYDRATE", state: payload.state });
+          hydratedFromRemote.current = true;
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.warn("[inovense-os] Supabase hydrate failed, continuing with local state.", error);
+        }
+      } finally {
+        if (!cancelled) {
+          finishedInitialHydration.current = true;
+        }
+      }
+    };
+
+    hydrateFromSupabase();
+
+    return () => {
+      cancelled = true;
+    };
+  // Initial bootstrap only. State updates are persisted separately.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch {
       // Ignore storage failures.
     }
+  }, [state]);
+
+  useEffect(() => {
+    if (!finishedInitialHydration.current) return;
+    if (persistTimeout.current) {
+      clearTimeout(persistTimeout.current);
+    }
+    persistTimeout.current = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/os/state", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ state }),
+        });
+        if (res.status === 503) {
+          const payload = await res.json().catch(() => ({} as { message?: string }));
+          if (payload?.message && !hydratedFromRemote.current) {
+            console.warn(`[inovense-os] ${payload.message}`);
+          }
+        }
+      } catch (error) {
+        console.warn("[inovense-os] Supabase persist failed, state remains local.", error);
+      }
+    }, 450);
+
+    return () => {
+      if (persistTimeout.current) clearTimeout(persistTimeout.current);
+    };
   }, [state]);
 
   const deployAgent = useCallback((config: DeployConfig): Agent => {
@@ -467,6 +660,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ...state.workspace,
         name: input.companyName,
         environment: "production",
+        plan: "preview",
+        planTier: "preview",
+        billingStatus: "preview",
+        trialEndsAt: undefined,
       },
       currentUser,
       connectors: input.initialConnectors,
@@ -479,6 +676,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const runAgent = useCallback((agentId: string) => {
     const agent = state.agents.find((a) => a.id === agentId);
     if (!agent) return;
+    if (!getEntitlements(state.workspace).canRunRealActions) {
+      dispatch({ type: "APPLY_RUNTIME_RESULT", result: makePreviewRun(agent, "Follow up new inbound lead") });
+      return;
+    }
     const result = runAgentRuntime({
       state,
       agentId: agent.id,
@@ -496,6 +697,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!workflow) return;
     const agent = state.agents.find((a) => a.id === workflow.agentId);
     if (!agent || agent.status === "paused") return;
+    if (!getEntitlements(state.workspace).canRunRealActions) {
+      dispatch({ type: "RUN_WORKFLOW", workflowId });
+      dispatch({ type: "APPLY_RUNTIME_RESULT", result: makePreviewRun(agent, `Run workflow ${workflow.name}`, workflow.id) });
+      return;
+    }
     const result = runAgentRuntime({
       state,
       agentId: agent.id,
@@ -553,9 +759,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, [state.connectors]);
 
-  const connectConnector = useCallback((connectorId: string) => {
+  const connectConnector = useCallback((connectorId: string, mode: "preview" | "real" = "preview") => {
+    const entitlement = getEntitlements(state.workspace);
+    const connector = state.connectors.find((c) => c.id === connectorId);
+    if (!connector) return;
+    if (mode === "real" && !entitlement.canUseRealConnectors) {
+      dispatch({
+        type: "APPEND_LOG",
+        log: logEntry(`Blocked real connector connect for ${connector.name}. Real execution requires an active plan.`, "connector.real_connect_blocked", "warn"),
+      });
+      return;
+    }
     setConnectorConnected(connectorId, true);
-  }, [setConnectorConnected]);
+    dispatch({
+      type: "UPDATE_CONNECTOR",
+      connectorId,
+      patch: {
+        records: mode === "preview" ? "Preview connector connected" : connector.records,
+      },
+    });
+  }, [setConnectorConnected, state.connectors, state.workspace]);
 
   const disconnectConnector = useCallback((connectorId: string) => {
     setConnectorConnected(connectorId, false);
@@ -678,11 +901,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [state]);
 
   const pendingApprovals = state.approvals.filter((a) => a.status === "pending").length;
+  const entitlements = getEntitlements(state.workspace);
 
   return (
     <OSContext.Provider
       value={{
         state,
+        entitlements,
         completeOnboarding,
         deployAgent,
         runAgent,

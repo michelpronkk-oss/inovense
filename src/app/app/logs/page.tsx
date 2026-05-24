@@ -11,6 +11,7 @@ export default function LogsPage() {
   const [agentFilter, setAgentFilter] = useState("All agents");
   const [eventFilter, setEventFilter] = useState("All events");
 
+
   const agentMarks = useMemo(() => {
     const marks = Array.from(new Set(state.logs.map((l) => l.agentMark)));
     return ["All agents", ...marks];
@@ -35,7 +36,7 @@ export default function LogsPage() {
           <div className="os-page-sub">Real-time log stream across all operators. Every action, tool call, and output recorded.</div>
         </div>
         <div className="os-page-actions">
-          <button className="btn btn-ghost btn-sm"><FilterIcon size={12} /> Export</button>
+          <button className="btn btn-ghost btn-sm" disabled aria-disabled="true" title="Export is coming soon"><FilterIcon size={12} /> Export</button>
         </div>
       </div>
 

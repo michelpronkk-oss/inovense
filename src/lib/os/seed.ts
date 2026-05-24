@@ -324,7 +324,9 @@ export const SEED_WORKSPACE = {
   name: "Workspace",
   environment: "setup",
   region: "eu-west-1",
-  plan: "Inovense OS - Growth",
+  plan: "preview",
+  planTier: "preview" as const,
+  billingStatus: "preview" as const,
 };
 
 export const SEED_CURRENT_USER = {
@@ -351,7 +353,7 @@ export const SEED_SETTINGS = {
     name: "Atlas & Co.",
     environment: "production",
     region: "eu-west-1",
-    plan: "Inovense OS - Growth",
+    plan: "preview",
   },
   approvalPolicy: {
     outboundComms: "Always require approval",

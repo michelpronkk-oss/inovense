@@ -5,6 +5,7 @@ import { ShieldIcon } from "@/components/dashboard/icons";
 import { useOS } from "@/lib/os/app-provider";
 import { evaluatePolicy, type PolicyEvaluationAction, type PolicyEvaluationResult } from "@/lib/os/policy-engine";
 import type { Policy, PolicyActionType, PolicyCategory, PolicyEffect } from "@/lib/os/types";
+import { getEntitlements } from "@/lib/os/entitlements";
 
 const POLICY_CATEGORIES: PolicyCategory[] = ["communication", "crm", "pricing", "payments", "memory", "calendar", "files", "internal", "security"];
 const POLICY_ACTIONS: PolicyActionType[] = [
@@ -160,6 +161,8 @@ function decisionBadge(decision: PolicyEffect): { text: string; bg: string; colo
 
 export default function PoliciesPage() {
   const { state, upsertPolicy, setPolicyActive } = useOS();
+  const entitlements = getEntitlements(state.workspace);
+  const isPreview = entitlements.billingStatus === "preview";
   const [draft, setDraft] = useState<PolicyDraft | null>(null);
   const [error, setError] = useState("");
   const [testAction, setTestAction] = useState<PolicyEvaluationAction>({
@@ -215,6 +218,11 @@ export default function PoliciesPage() {
           <span className="os-greet">Execution guardrails - {activePolicies.length} enforced</span>
           <h1>Policies</h1>
           <div className="os-page-sub">Policies are enforced before operators can execute tool actions. Operators can propose actions, but guardrails decide what can run.</div>
+          {isPreview && (
+            <div style={{ marginTop: 8, color: "#9DEFEA", fontSize: 12.5 }}>
+              Policies are enforced before live execution. Preview mode uses demo actions.
+            </div>
+          )}
         </div>
         <div className="os-page-actions">
           <button className="btn btn-primary btn-sm" onClick={() => openEdit()}>Add policy</button>

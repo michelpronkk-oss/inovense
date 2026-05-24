@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useOS } from "@/lib/os/app-provider";
 import { DatabaseIcon, PlusIcon, SearchIcon } from "@/components/dashboard/icons";
 import type { MemoryEntry } from "@/lib/os/types";
+import { getEntitlements } from "@/lib/os/entitlements";
 
 const TYPE_COLORS: Record<string, string> = {
   client: "#4DE8E1",
@@ -27,6 +28,8 @@ function relativeTime(iso: string): string {
 
 export default function MemoryPage() {
   const { state } = useOS();
+  const entitlements = getEntitlements(state.workspace);
+  const isPreview = entitlements.billingStatus === "preview";
   const [q, setQ] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [draftEntries, setDraftEntries] = useState<MemoryEntry[]>([]);
@@ -61,6 +64,11 @@ export default function MemoryPage() {
           <span className="os-greet">Business context - {entries.length} entries</span>
           <h1>Memory</h1>
           <div className="os-page-sub">Structured business knowledge that operators reference during execution. Clients, brand voice, processes, market intelligence.</div>
+          {isPreview && (
+            <div style={{ marginTop: 8, color: "#9DEFEA", fontSize: 12.5 }}>
+              Preview mode includes basic memory entries. Synced company memory graph activates on paid plans.
+            </div>
+          )}
         </div>
         <div className="os-page-actions">
           <button

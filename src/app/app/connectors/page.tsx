@@ -1,9 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useOS } from "@/lib/os/app-provider";
 import { LinkIcon, PlusIcon } from "@/components/dashboard/icons";
 import type { Connector } from "@/lib/os/types";
+import { getPlanLimits, isAtConnectorLimit } from "@/lib/os/plans";
+import { UsageBanner } from "@/components/upgrade-prompt";
+import { getEntitlements } from "@/lib/os/entitlements";
+import { UpgradeModal } from "@/components/upgrade-modal";
 
 const CATEGORY_ORDER = [
   "All",
@@ -33,6 +38,7 @@ export default function ConnectorsPage() {
   const [setupConnectorId, setSetupConnectorId] = useState<string | null>(null);
   const [drawerConnectorId, setDrawerConnectorId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("");
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const activeConnectors = useMemo(() => state.connectors.filter((c) => c.isConnected), [state.connectors]);
   const availableConnectors = useMemo(() => state.connectors.filter((c) => !c.isConnected), [state.connectors]);
@@ -50,6 +56,11 @@ export default function ConnectorsPage() {
   const setupConnector = state.connectors.find((c) => c.id === setupConnectorId) ?? null;
   const drawerConnector = state.connectors.find((c) => c.id === drawerConnectorId) ?? null;
 
+  const limits = getPlanLimits(state.workspace.plan);
+  const atConnectorLimit = isAtConnectorLimit(state.workspace.plan, activeConnectors.length);
+  const entitlements = getEntitlements(state.workspace);
+  const isPreview = entitlements.billingStatus === "preview";
+
   return (
     <div className="os-page">
       <div className="os-page-head">
@@ -59,13 +70,32 @@ export default function ConnectorsPage() {
           <div className="os-page-sub">
             Safe system access for operators. {healthyCount === activeConnectors.length ? "All active connectors healthy." : `${healthyCount} of ${activeConnectors.length} healthy.`}
           </div>
+          {isPreview && (
+            <div style={{ marginTop: 8, color: "#9DEFEA", fontSize: 12.5 }}>
+              Preview mode: connectors run in local mock mode. Activate Starter to connect real accounts.
+            </div>
+          )}
         </div>
         <div className="os-page-actions">
-          <button className="btn btn-primary btn-sm" onClick={() => { setAddOpen(true); setSetupConnectorId(null); setSearch(""); setCategory("All"); }}>
-            <PlusIcon size={12} /> Add connector
-          </button>
+          {atConnectorLimit ? (
+            <Link
+              href="/pricing"
+              className="btn btn-sm"
+              style={{ background: "rgba(77,232,225,0.08)", color: "#4DE8E1", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.22)" }}
+            >
+              <PlusIcon size={12} /> Upgrade to add more
+            </Link>
+          ) : (
+            <button className="btn btn-primary btn-sm" onClick={() => { setAddOpen(true); setSetupConnectorId(null); setSearch(""); setCategory("All"); }}>
+              <PlusIcon size={12} /> Add connector
+            </button>
+          )}
         </div>
       </div>
+
+      {limits.maxConnectors !== -1 && (
+        <UsageBanner used={activeConnectors.length} max={limits.maxConnectors} label="connectors" planLabel={limits.name} />
+      )}
 
       {feedback && <div style={{ color: "#64ffd7", fontSize: 12 }}>{feedback}</div>}
 
@@ -145,15 +175,25 @@ export default function ConnectorsPage() {
                   <h3>Setup connector</h3>
                   <button className="appr-btn deny" onClick={() => setSetupConnectorId(null)}>Back</button>
                 </div>
-                <ConnectorSetupView connector={setupConnector} />
+                <ConnectorSetupView connector={setupConnector} isPreview={isPreview} />
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
                   <button className="btn btn-ghost btn-sm" onClick={() => setSetupConnectorId(null)}>Cancel</button>
-                  <button className="btn btn-primary btn-sm" onClick={() => {
-                    connectConnector(setupConnector.id);
+                  <button className="btn btn-ghost btn-sm" onClick={() => {
+                    connectConnector(setupConnector.id, "preview");
                     setFeedback(`${setupConnector.name} connected.`);
                     setAddOpen(false);
                     setSetupConnectorId(null);
-                  }}>Connect</button>
+                  }}>Preview connector</button>
+                  <button className="btn btn-primary btn-sm" onClick={() => {
+                    if (isPreview) {
+                      setUpgradeOpen(true);
+                      return;
+                    }
+                    connectConnector(setupConnector.id, "real");
+                    setFeedback(`${setupConnector.name} real account connected.`);
+                    setAddOpen(false);
+                    setSetupConnectorId(null);
+                  }}>Connect real account</button>
                 </div>
               </>
             )}
@@ -168,7 +208,7 @@ export default function ConnectorsPage() {
               <h3>{drawerConnector.name} details</h3>
               <button className="appr-btn deny" onClick={() => setDrawerConnectorId(null)}>Close</button>
             </div>
-            <ConnectorSetupView connector={drawerConnector} />
+            <ConnectorSetupView connector={drawerConnector} isPreview={isPreview} />
             <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
               <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Recent sync events</div>
               {(drawerConnector.recentSyncEvents.length ? drawerConnector.recentSyncEvents : ["No sync events yet"]).map((ev) => (
@@ -192,11 +232,18 @@ export default function ConnectorsPage() {
           </div>
         </div>
       )}
+
+      <UpgradeModal
+        open={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        title="Activate real connectors"
+        body="Preview connectors let you model your stack. Activate Starter to connect real accounts and run operators live."
+      />
     </div>
   );
 }
 
-function ConnectorSetupView({ connector }: { connector: Connector }) {
+function ConnectorSetupView({ connector, isPreview }: { connector: Connector; isPreview: boolean }) {
   return (
     <div style={{ display: "grid", gap: 10 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -207,6 +254,11 @@ function ConnectorSetupView({ connector }: { connector: Connector }) {
         </div>
       </div>
       <div style={{ fontSize: 12.5, color: "var(--text-dim)" }}>{connector.description}</div>
+      {isPreview && (
+        <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>
+          Preview only. Activate Starter to connect real account.
+        </div>
+      )}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <TagList title="Required permissions" items={connector.permissions} />
         <TagList title="Read scopes" items={connector.readScopes} />
@@ -244,4 +296,3 @@ function Stat({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-

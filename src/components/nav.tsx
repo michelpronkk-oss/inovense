@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { usePublicUserState } from "@/lib/public-user-state";
+import { appHref } from "@/lib/urls";
 import {
   Sheet,
   SheetContent,
@@ -31,10 +32,10 @@ export default function Nav() {
   const userState = usePublicUserState();
   const primaryCta =
     userState === "signed_in"
-      ? { label: "Open dashboard", href: "/app" }
+      ? { label: "Open dashboard", href: appHref("/app") }
       : userState === "registered"
-        ? { label: "Sign in", href: "/app" }
-        : { label: "Get Started", href: "/app/onboarding" };
+        ? { label: "Sign in", href: appHref("/app") }
+        : { label: "Get Started", href: appHref("/app/onboarding") };
   const showSecondarySignIn = userState === "guest" || userState === "loading";
 
   return (
@@ -85,7 +86,7 @@ export default function Nav() {
         <div className="hidden items-center gap-4 lg:flex">
           {showSecondarySignIn && (
             <Link
-              href="/app"
+              href={appHref("/app")}
               className="text-[13px] text-zinc-400 transition-colors duration-150 hover:text-zinc-200"
             >
               Sign in
@@ -155,7 +156,7 @@ export default function Nav() {
                 })}
                 {showSecondarySignIn && (
                   <Link
-                    href="/app"
+                    href={appHref("/app")}
                     onClick={() => setOpen(false)}
                     className="border-b border-zinc-800/60 py-4 text-sm text-zinc-400 transition-colors hover:text-zinc-100"
                   >

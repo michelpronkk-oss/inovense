@@ -4,6 +4,8 @@
 import React from 'react';
 import './claude-home.css';
 import { usePublicUserState } from '@/lib/public-user-state';
+import { pricingPlans, resolvePublicPlanCta } from '@/lib/pricing';
+import { appHref } from '@/lib/urls';
 // Inovense  -  Premium line icons (24x24, 1.5 stroke)
 const Icon = ({ children, size = 18, stroke = 1.5, className = "", style }) => (
   <svg
@@ -98,12 +100,14 @@ const Header = () => {
   const [scrolled, setScrolled] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const userState = usePublicUserState();
+  const appDashboardHref = appHref("/app");
+  const appOnboardingHref = appHref("/app/onboarding");
   const primaryCta =
     userState === "signed_in"
-      ? { label: "Open dashboard", href: "/app" }
+      ? { label: "Open dashboard", href: appDashboardHref }
       : userState === "registered"
-        ? { label: "Sign in", href: "/app" }
-        : { label: "Get Started", href: "/app/onboarding" };
+        ? { label: "Sign in", href: appDashboardHref }
+        : { label: "Get Started", href: appOnboardingHref };
   const showSignIn = userState === "guest" || userState === "loading";
 
   React.useEffect(() => {
@@ -132,7 +136,7 @@ const Header = () => {
             ))}
           </nav>
           <div className="header-cta">
-            {showSignIn && <a href="/app" className="btn btn-link" style={{ fontSize: 13.5, color: "var(--text-dim)" }}>Sign in</a>}
+            {showSignIn && <a href={appDashboardHref} className="btn btn-link" style={{ fontSize: 13.5, color: "var(--text-dim)" }}>Sign in</a>}
             <a href={primaryCta.href} className="btn btn-primary btn-sm">
               {primaryCta.label} <I.arrow size={14} />
             </a>
@@ -187,7 +191,7 @@ const Header = () => {
               ))}
               {showSignIn && (
                 <a
-                  href="/app"
+                  href={appDashboardHref}
                   className="mobile-nav-link"
                   onClick={() => setMobileOpen(false)}
                 >
@@ -765,6 +769,7 @@ const HeroScrollCue = () => (
 );
 
 const Hero = () => {
+  const appOnboardingHref = appHref("/app/onboarding");
   return (
     <section className="hero" id="top">
       <div className="hero-glow" />
@@ -787,7 +792,7 @@ const Hero = () => {
           </p>
 
           <div className="hero-ctas fade-in" style={{ animationDelay: ".15s" }}>
-            <a href="/app/onboarding" className="btn btn-primary btn-lg">
+            <a href={appOnboardingHref} className="btn btn-primary btn-lg">
               Get Started <I.arrow size={14} />
             </a>
             <a href="/workflows" className="btn btn-ghost btn-lg">
@@ -2349,89 +2354,7 @@ const OnboardingSection = () => {
 // ============================================================================
 const PricingSection = () => {
   const userState = usePublicUserState();
-  const tiers = [
-    {
-      name: "Starter",
-      tagline: "For teams starting with one controlled AI operator.",
-      price: "$149",
-      unit: "/mo",
-      hint: "Self-serve onboarding",
-      bullets: [
-        "1 active operator",
-        "5 connected tools",
-        "2,000 actions per month",
-        "Core workflows",
-        "Approval inbox",
-        "30-day execution logs",
-        "Basic company memory",
-        "Email support",
-      ],
-      cta: "Get Starter",
-      style: "ghost",
-    },
-    {
-      name: "Growth",
-      tagline: "For teams running AI across revenue, client work and operations.",
-      price: "$699",
-      unit: "/mo",
-      hint: "Monthly or annual",
-      bullets: [
-        "Up to 5 active operators",
-        "15 connected tools",
-        "25,000 actions per month",
-        "Suggested workflows",
-        "Advanced approval policies",
-        "Company memory graph",
-        "90-day execution logs",
-        "Slack and email approvals",
-        "Priority support",
-      ],
-      cta: "Get Growth",
-      style: "primary",
-      featured: true,
-    },
-    {
-      name: "Operator",
-      tagline: "For companies that want their first AI operating layer implemented with us.",
-      price: "$2,500",
-      unit: "/mo",
-      hint: "Setup support included",
-      bullets: [
-        "Revenue Operator implementation",
-        "Custom workflow setup",
-        "Client onboarding flows",
-        "Up to 12 active operators",
-        "All standard connectors",
-        "100,000 actions per month",
-        "Advanced policy guardrails",
-        "180-day audit logs",
-        "Private onboarding session",
-        "Dedicated success support",
-      ],
-      cta: "Get Operator",
-      style: "ghost",
-    },
-    {
-      name: "Enterprise",
-      tagline: "For regulated, multi-team or high-volume operations.",
-      price: "Custom",
-      unit: "",
-      hint: "Annual contract",
-      bullets: [
-        "Unlimited operators",
-        "Custom connectors and private tools",
-        "SSO and SCIM",
-        "SOC 2 readiness support",
-        "Data residency options",
-        "Custom retention and audit logs",
-        "Security review",
-        "SLA and dedicated success",
-        "Procurement support",
-      ],
-      cta: "Contact sales",
-      style: "ghost",
-    },
-  ];
+  const tiers = pricingPlans;
 
   return (
     <section className="section" id="pricing">
@@ -2444,28 +2367,23 @@ const PricingSection = () => {
 
         <div className="pr-grid">
           {tiers.map((t) => {
-            const dynamicCta =
-              t.name !== "Enterprise" && userState === "signed_in"
-                ? { label: "Open dashboard", href: "/app" }
-                : t.name !== "Enterprise" && userState === "registered"
-                  ? { label: "Sign in", href: "/app" }
-                  : { label: t.cta, href: t.name === "Enterprise" || t.name === "Operator" ? "/contact" : "/app/onboarding" };
+            const dynamicCta = resolvePublicPlanCta(t, userState);
             return (
-            <div className={`pr-card ${t.featured ? "pr-featured" : ""}`} key={t.name}>
+            <div className={`pr-card ${t.featured ? "pr-featured" : ""}`} key={t.plan_tier}>
               {t.featured && <span className="pr-tag">Most chosen</span>}
-              <div className="pr-name">{t.name}</div>
+              <div className="pr-name">{t.plan_name.replace("Inovense OS ", "")}</div>
               <div className="pr-tagline">{t.tagline}</div>
               <div className="pr-price-row">
                 <span className="pr-price">{t.price}</span>
-                <span className="pr-unit">{t.unit}</span>
+                <span className="pr-unit">{t.period}</span>
               </div>
-              <div className="pr-hint">{t.hint}</div>
-              <a href={dynamicCta.href} className={`btn ${t.style === "primary" ? "btn-primary" : "btn-ghost"} pr-cta`}>
+              <div className="pr-hint">{t.billingLabel}</div>
+              <a href={dynamicCta.href} className={`btn ${t.featured ? "btn-primary" : "btn-ghost"} pr-cta`}>
                 {dynamicCta.label} <I.arrow size={13} />
               </a>
               <div className="pr-divider" />
               <ul className="pr-bullets">
-                {t.bullets.map((b) => <li key={b}><I.check size={11} /> {b}</li>)}
+                {t.features.map((b) => <li key={b}><I.check size={11} /> {b}</li>)}
               </ul>
             </div>
           );})}
@@ -2531,12 +2449,14 @@ const PricingSection = () => {
 // ============================================================================
 const FinalCTA = () => {
   const userState = usePublicUserState();
+  const appDashboardHref = appHref("/app");
+  const appOnboardingHref = appHref("/app/onboarding");
   const primaryCta =
     userState === "signed_in"
-      ? { label: "Open dashboard", href: "/app" }
+      ? { label: "Open dashboard", href: appDashboardHref }
       : userState === "registered"
-        ? { label: "Sign in", href: "/app" }
-        : { label: "Get Started", href: "/app/onboarding" };
+        ? { label: "Sign in", href: appDashboardHref }
+        : { label: "Get Started", href: appOnboardingHref };
   return (
     <section className="section section-sm" id="start">
       <div className="container">

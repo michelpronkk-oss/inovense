@@ -1,8 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useOS } from "@/lib/os/app-provider";
 import { PlusIcon, ZapIcon, FilterIcon } from "@/components/dashboard/icons";
+import { getPlanLimits, isAtOperatorLimit } from "@/lib/os/plans";
+import { UsageBanner } from "@/components/upgrade-prompt";
+import { getEntitlements } from "@/lib/os/entitlements";
 
 const TABS = ["All", "Running", "Awaiting", "Paused"];
 
@@ -18,11 +22,16 @@ function relativeTime(iso: string): string {
 
 export default function AgentsPage() {
   const { state, runAgent, toggleAgentPause } = useOS();
+  const entitlements = getEntitlements(state.workspace);
+  const isPreview = entitlements.billingStatus === "preview" || !entitlements.canRunRealActions;
   const [tab, setTab] = useState("All");
   const [runningAgentId, setRunningAgentId] = useState<string | null>(null);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
 
   const agents = state.agents;
+  const limits = getPlanLimits(state.workspace.plan);
+  const activeOperators = agents.filter((a) => a.status !== "paused").length;
+  const atLimit = isAtOperatorLimit(state.workspace.plan, activeOperators);
 
   const filtered = agents.filter((a) => {
     if (tab === "All") return true;
@@ -46,17 +55,36 @@ export default function AgentsPage() {
           <span className="os-greet">Agent layer - {running} running{awaiting > 0 ? `, ${awaiting} awaiting` : ""}</span>
           <h1>Agents</h1>
           <div className="os-page-sub">{agents.length} operators deployed - Inovense OS manages execution.</div>
+          {isPreview && (
+            <div style={{ marginTop: 8, color: "#9DEFEA", fontSize: 12.5 }}>
+              Preview mode: operators run demo tasks. Real execution requires an active plan.
+            </div>
+          )}
         </div>
         <div className="os-page-actions">
           <button className="btn btn-ghost btn-sm" disabled aria-disabled="true" title="Advanced filters are coming soon"><FilterIcon size={12} /> Filter</button>
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={() => window.dispatchEvent(new Event("os:open-deploy"))}
-          >
-            <PlusIcon size={12} /> Deploy agent
-          </button>
+          {atLimit ? (
+            <Link
+              href="/pricing"
+              className="btn btn-sm"
+              style={{ background: "rgba(77,232,225,0.08)", color: "#4DE8E1", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.22)" }}
+            >
+              <PlusIcon size={12} /> Upgrade to deploy more
+            </Link>
+          ) : (
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => window.dispatchEvent(new Event("os:open-deploy"))}
+            >
+              <PlusIcon size={12} /> Deploy agent
+            </button>
+          )}
         </div>
       </div>
+
+      {limits.maxOperators !== -1 && (
+        <UsageBanner used={activeOperators} max={limits.maxOperators} label="operators" planLabel={limits.name} />
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
         {[
@@ -141,7 +169,7 @@ export default function AgentsPage() {
                   disabled={runningAgentId === a.id || a.status === "paused"}
                   style={{ opacity: (runningAgentId === a.id || a.status === "paused") ? 0.4 : 1 }}
                 >
-                  {runningAgentId === a.id ? "Running..." : "Run now"}
+                  {runningAgentId === a.id ? "Running..." : isPreview ? "Run demo" : "Run live"}
                 </button>
                 <button
                   className="appr-btn approve"

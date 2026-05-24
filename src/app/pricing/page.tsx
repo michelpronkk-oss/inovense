@@ -4,109 +4,29 @@ import Footer from "@/components/footer";
 import { PageShell, PageHero, SectionDivider, PageCTA, MktCard, MockupWindow } from "@/components/marketing-ui";
 import Reveal from "@/components/reveal";
 import { PricingPlans } from "@/components/pricing/pricing-plans";
+import { pricingPlans } from "@/lib/pricing";
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: "Start with one operator, free forever. Expand to Growth at $149/mo or Scale with custom pricing. Transparent plans for operators at every stage.",
+  description: "Pay for operating capacity, not seats. Start with Inovense OS Starter and scale operators, connected tools, approvals, and execution volume as your workflows expand.",
   alternates: {
     canonical: "https://inovense.com/pricing",
   },
   openGraph: {
     url: "https://inovense.com/pricing",
     title: "Pricing | Inovense",
-    description: "Start with one operator, free forever. Expand to Growth at $149/mo or Scale with custom pricing. Transparent plans for operators at every stage.",
+    description: "Pay for operating capacity, not seats. Start with Inovense OS Starter and scale operators, connected tools, approvals, and execution volume as your workflows expand.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "Pricing | Inovense",
-    description: "Start with one operator, free forever. Expand to Growth at $149/mo or Scale with custom pricing. Transparent plans for operators at every stage.",
+    description: "Pay for operating capacity, not seats. Start with Inovense OS Starter and scale operators, connected tools, approvals, and execution volume as your workflows expand.",
   },
 };
 
-const plans = [
-  {
-    name: "Starter",
-    price: "$149",
-    period: "/mo",
-    tagline: "For teams starting with one controlled AI operator.",
-    features: [
-      "1 active operator",
-      "5 connected tools",
-      "2,000 actions per month",
-      "Core workflows",
-      "Approval inbox",
-      "30-day execution logs",
-      "Basic company memory",
-      "Email support",
-    ],
-    cta: "Get Starter",
-    ctaHref: "/app/onboarding",
-  },
-  {
-    name: "Growth",
-    price: "$699",
-    period: "/mo",
-    tagline: "For teams running AI across revenue, client work and operations.",
-    hint: "Most chosen",
-    features: [
-      "Up to 5 active operators",
-      "15 connected tools",
-      "25,000 actions per month",
-      "Suggested workflows",
-      "Advanced approval policies",
-      "Company memory graph",
-      "90-day execution logs",
-      "Slack and email approvals",
-      "Priority support",
-    ],
-    cta: "Get Growth",
-    ctaHref: "/app/onboarding",
-    featured: true,
-  },
-  {
-    name: "Operator",
-    price: "$2,500",
-    period: "/mo",
-    tagline: "For companies that want their first AI operating layer implemented with us.",
-    features: [
-      "Revenue Operator implementation",
-      "Custom workflow setup",
-      "Client onboarding flows",
-      "Up to 12 active operators",
-      "All standard connectors",
-      "100,000 actions per month",
-      "Advanced policy guardrails",
-      "180-day audit logs",
-      "Private onboarding session",
-      "Dedicated success support",
-    ],
-    cta: "Get Operator",
-    ctaHref: "/contact",
-  },
-  {
-    name: "Enterprise",
-    price: "Custom",
-    period: "",
-    tagline: "For regulated, multi-team or high-volume operations.",
-    features: [
-      "Unlimited operators",
-      "Custom connectors and private tools",
-      "SSO and SCIM",
-      "Designed for SOC 2 readiness",
-      "Data residency options",
-      "Custom retention and audit logs",
-      "Security review",
-      "SLA and dedicated success",
-      "Procurement support",
-    ],
-    cta: "Contact sales",
-    ctaHref: "/contact",
-  },
-];
-
 const capacityRows = [
-  { label: "Operators", values: ["1", "Up to 5", "Up to 12", "Unlimited"] },
+  { label: "Operators", values: ["2", "Up to 5", "Up to 12", "Unlimited"] },
   { label: "Connected tools", values: ["5", "15", "All standard", "Custom and private"] },
   { label: "Actions per month", values: ["2,000", "25,000", "100,000", "Custom volume"] },
   { label: "Execution logs", values: ["30 days", "90 days", "180 days", "Custom retention"] },
@@ -158,7 +78,7 @@ export default function PricingPage() {
           <section className="relative py-12 md:py-20">
             <SectionDivider />
             <div className="mx-auto max-w-6xl px-6 pt-8 md:pt-16">
-              <PricingPlans plans={plans} />
+              <PricingPlans plans={pricingPlans} />
               <p className="mt-8 text-center font-mono text-[11px]" style={{ color: "#4A4F57" }}>
                 Start self-serve. Upgrade when your operators need higher volume, custom workflows or private connector setup.
               </p>
@@ -197,7 +117,7 @@ export default function PricingPage() {
           <PageCTA
             heading="Pick a plan that matches your current operating capacity."
             sub="Deploy one operator first. Expand once workflows, approvals, and logs prove value."
-            primary="Get Starter"
+            primary="Get Started"
             primaryHref="/app/onboarding"
             secondary="Book a 20-min demo"
             secondaryHref="/contact"

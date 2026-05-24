@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { ChartIcon, TrendIcon } from "@/components/dashboard/icons";
 import { useOS } from "@/lib/os/app-provider";
+import { getPlanLimits } from "@/lib/os/plans";
+import { UpgradePrompt } from "@/components/upgrade-prompt";
 
 function BarChart({ data, color = "#4DE8E1" }: { data: { label: string; val: number }[]; color?: string }) {
   const max = Math.max(...data.map((d) => d.val));
@@ -69,6 +71,7 @@ function asCSV(rows: string[][]): string {
 
 export default function InsightsPage() {
   const { state, appendExecutionLog } = useOS();
+  const limits = getPlanLimits(state.workspace.plan);
   const [exportOpen, setExportOpen] = useState(false);
   const [feedback, setFeedback] = useState("");
 
@@ -153,6 +156,25 @@ export default function InsightsPage() {
     appendExecutionLog("insights_exported", `Exported insights report as Visual PDF (${state.workspace.name})`);
     setFeedback("Visual PDF exported.");
   };
+
+  if (!limits.insights) {
+    return (
+      <div className="os-page" style={{ display: "flex", flexDirection: "column" }}>
+        <div className="os-page-head">
+          <div>
+            <span className="os-greet">Performance layer</span>
+            <h1>Insights</h1>
+            <div className="os-page-sub">Operating metrics across all agents.</div>
+          </div>
+        </div>
+        <UpgradePrompt
+          feature="Operating insights"
+          description="Cross-operator performance metrics, trend analysis, and exportable board-ready reports. See exactly where your operators deliver and where to optimize."
+          requiredPlan="operator"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="os-page">

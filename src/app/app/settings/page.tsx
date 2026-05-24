@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { SettingsIcon } from "@/components/dashboard/icons";
 import { useOS } from "@/lib/os/app-provider";
 import type { OSSettings } from "@/lib/os/types";
 import { saveWorkspaceSettings } from "./actions";
+import { getEntitlements } from "@/lib/os/entitlements";
 
 type SectionKey = keyof OSSettings;
 type ApprovalMode = "Always require approval" | "Auto-approve within policy" | "Auto-approve" | "Blocked";
@@ -24,7 +26,7 @@ const APPROVAL_OPTIONS: ApprovalMode[] = [
 
 const ENV_OPTIONS = ["production", "staging", "development"];
 const REGION_OPTIONS = ["eu-west-1", "us-east-1", "us-west-2"];
-const PLAN_OPTIONS = ["Inovense OS - Growth", "Inovense OS - Scale", "Inovense OS - Enterprise"];
+const PLAN_OPTIONS = ["starter", "growth", "operator", "enterprise"];
 
 const NOTIFICATION_LABELS: Record<keyof OSSettings["notifications"], string> = {
   approvalInbox: "Approval inbox",
@@ -86,10 +88,14 @@ function serializeNotificationValue(row: NotificationDraftRow): string {
 
 export default function SettingsPage() {
   const { state, updateSettingsSection, updateWorkspace } = useOS();
+  const searchParams = useSearchParams();
   const [editing, setEditing] = useState<SectionKey | null>(null);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [billingBusy, setBillingBusy] = useState(false);
+  const entitlements = getEntitlements(state.workspace);
+  const showManageBilling = entitlements.billingStatus === "active" || entitlements.billingStatus === "trialing" || entitlements.billingStatus === "past_due";
 
   const [workspaceDraft, setWorkspaceDraft] = useState(state.settings.workspace);
   const [approvalDraft, setApprovalDraft] = useState(state.settings.approvalPolicy);
@@ -189,6 +195,32 @@ export default function SettingsPage() {
     setFeedback("Settings saved.");
   };
 
+  const openBillingPortal = async () => {
+    setBillingBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/billing/dodo/portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: state.workspace.id,
+          userId: state.currentUser.id,
+          userEmail: state.currentUser.email,
+        }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { portalUrl?: string; error?: string };
+      if (!res.ok || !json.portalUrl) {
+        setError(json.error || "No active billing profile found. Activate a plan first.");
+        setBillingBusy(false);
+        return;
+      }
+      window.location.href = json.portalUrl;
+    } catch {
+      setError("Could not open billing portal.");
+      setBillingBusy(false);
+    }
+  };
+
   return (
     <div className="os-page">
       <div className="os-page-head">
@@ -196,6 +228,28 @@ export default function SettingsPage() {
           <span className="os-greet">Workspace - {state.workspace.name}</span>
           <h1>Settings</h1>
           <div className="os-page-sub">Workspace configuration, approval policies, notification preferences and billing.</div>
+        </div>
+      </div>
+
+      {searchParams.get("billing") === "returned" && (
+        <div style={{ color: "#64ffd7", fontSize: 12 }}>Billing settings updated.</div>
+      )}
+
+      <div className="p">
+        <div className="p-head">
+          <h3><SettingsIcon size={13} /> Billing</h3>
+          {showManageBilling ? (
+            <button className="btn btn-ghost btn-sm" onClick={openBillingPortal} disabled={billingBusy} style={{ opacity: billingBusy ? 0.7 : 1 }}>
+              {billingBusy ? "Opening..." : "Manage billing"}
+            </button>
+          ) : (
+            <a className="btn btn-primary btn-sm" href="/api/billing/dodo/checkout?plan=starter">Activate Starter</a>
+          )}
+        </div>
+        <div style={{ padding: "12px 18px", fontSize: 12.5, color: "var(--text-dim)" }}>
+          {showManageBilling
+            ? "Use Dodo Customer Portal to manage subscription, invoices, payment method and cancellation."
+            : "No active billing profile found. Activate a plan first."}
         </div>
       </div>
 

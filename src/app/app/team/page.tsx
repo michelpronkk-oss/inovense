@@ -1,10 +1,13 @@
 ﻿"use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { UsersIcon, PlusIcon } from "@/components/dashboard/icons";
 import { useOS } from "@/lib/os/app-provider";
 import type { TeamMember } from "@/lib/os/types";
 import { inviteWorkspaceMember } from "./actions";
+import { getPlanLimits, isAtMemberLimit } from "@/lib/os/plans";
+import { UsageBanner } from "@/components/upgrade-prompt";
 
 const rolePerms: Record<string, string[]> = {
   "Operator - Admin": ["All operators", "Approvals", "Settings"],
@@ -14,6 +17,8 @@ const rolePerms: Record<string, string[]> = {
 
 export default function TeamPage() {
   const { state, inviteMember, updateMember } = useOS();
+  const limits = getPlanLimits(state.workspace.plan);
+  const atMemberLimit = isAtMemberLimit(state.workspace.plan, state.teamMembers.length);
   const [showInvite, setShowInvite] = useState(false);
   const [editing, setEditing] = useState<TeamMember | null>(null);
   const [email, setEmail] = useState("");
@@ -60,9 +65,23 @@ export default function TeamPage() {
           <div className="os-page-sub">Manage who can view, approve, and configure operators in this workspace.</div>
         </div>
         <div className="os-page-actions">
-          <button className="btn btn-primary btn-sm" onClick={() => setShowInvite(true)}><PlusIcon size={12} /> Invite member</button>
+          {atMemberLimit ? (
+            <Link
+              href="/pricing"
+              className="btn btn-sm"
+              style={{ background: "rgba(77,232,225,0.08)", color: "#4DE8E1", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.22)" }}
+            >
+              <PlusIcon size={12} /> Upgrade to add members
+            </Link>
+          ) : (
+            <button className="btn btn-primary btn-sm" onClick={() => setShowInvite(true)}><PlusIcon size={12} /> Invite member</button>
+          )}
         </div>
       </div>
+
+      {limits.maxTeamMembers !== -1 && (
+        <UsageBanner used={state.teamMembers.length} max={limits.maxTeamMembers} label="team members" planLabel={limits.name} />
+      )}
 
       <div className="p">
         <div className="p-head">
