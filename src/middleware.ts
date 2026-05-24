@@ -58,8 +58,15 @@ export async function middleware(request: NextRequest) {
   if (surface === "app") {
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set("x-pathname", originalPathname);
-    const target =
-      originalPathname === "/" ? "/app" : `/app${originalPathname}`;
+    if (originalPathname.startsWith("/api")) {
+      return NextResponse.next({ request: { headers: requestHeaders } });
+    }
+
+    const target = originalPathname === "/"
+      ? "/app"
+      : originalPathname.startsWith("/app")
+        ? originalPathname
+        : `/app${originalPathname}`;
     return rewriteTo(request, target, requestHeaders);
   }
 
