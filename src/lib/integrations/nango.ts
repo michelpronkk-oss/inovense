@@ -1,6 +1,15 @@
 import { Nango } from "@nangohq/node";
-import type { PostConnectSessionsBody } from "@nangohq/types/dist/connect/api.js";
 import crypto from "crypto";
+
+type NangoConnectSessionBody = {
+  allowed_integrations?: string[];
+  end_user: {
+    id: string;
+    email?: string;
+    tags?: Record<string, string>;
+  };
+  tags: Record<string, string>;
+};
 
 export type SupportedNangoConnectorKey = "hubspot";
 
@@ -55,7 +64,7 @@ export async function createNangoConnectSession(input: {
   const providerConfigKey = getNangoProviderConfigKey(input.connectorKey);
   if (!providerConfigKey) throw new Error(`Unsupported connector key: ${input.connectorKey}`);
 
-  const body: PostConnectSessionsBody = {
+  const body: NangoConnectSessionBody = {
     allowed_integrations: [providerConfigKey],
     end_user: {
       id: input.endUserId,
@@ -88,4 +97,3 @@ export function verifyNangoWebhook(rawBody: string, headers: Record<string, unkn
   if (sigBuffer.length !== expBuffer.length) return false;
   return crypto.timingSafeEqual(sigBuffer, expBuffer);
 }
-
