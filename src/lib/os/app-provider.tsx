@@ -727,6 +727,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             workspaceId: state.workspace.id,
+            userId: state.currentUser.id,
             userEmail: state.currentUser.email,
           }),
         });

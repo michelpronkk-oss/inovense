@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Inovense — Operators</title>
+<link rel="icon" type="image/svg+xml" href="assets/inovense-favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg: #06070A;
+  --bg-1: #0A0C10;
+  --card: #0E1117;
+  --line: rgba(255,255,255,0.055);
+  --line-2: rgba(255,255,255,0.09);
+  --line-strong: rgba(255,255,255,0.14);
+  --text: #ECEFF3;
+  --text-dim: #9AA1AA;
+  --text-mute: #646A72;
+  --text-faint: #454A51;
+  --cyan: #4DE8E1;
+  --cyan-bright: #7EF6F0;
+  --cyan-soft: rgba(77,232,225,0.10);
+  --cyan-line: rgba(77,232,225,0.26);
+  --amber: #F5C26B;
+  --amber-soft: rgba(245,194,107,0.12);
+  --amber-line: rgba(245,194,107,0.30);
+  --green: #51D88A;
+  --container: 1240px;
+  --font-sans: "Geist", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+html { color-scheme: dark; scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body {
+  font-family: var(--font-sans);
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+a { color: inherit; text-decoration: none; }
+::selection { background: rgba(77,232,225,0.28); color: #fff; }
+
+.container { width: 100%; max-width: var(--container); margin: 0 auto; padding: 0 32px; }
+
+/* ============ HEADER ============ */
+.header {
+  position: sticky; top: 0; z-index: 100;
+  border-bottom: 1px solid transparent;
+  transition: background .2s ease, border-color .2s ease, backdrop-filter .2s ease;
+}
+.header.scrolled {
+  background: rgba(6,7,10,0.72);
+  border-bottom-color: var(--line);
+  backdrop-filter: saturate(150%) blur(16px);
+  -webkit-backdrop-filter: saturate(150%) blur(16px);
+}
+.header-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+.brand { display: inline-flex; align-items: center; gap: 11px; font-weight: 600; letter-spacing: 0.16em; font-size: 14px; }
+.nav { display: flex; gap: 28px; }
+.nav a { font-size: 13.5px; color: var(--text-dim); transition: color .15s ease; }
+.nav a:hover, .nav a.active { color: var(--text); }
+.nav a.active { color: var(--cyan); }
+.header-cta { display: flex; align-items: center; gap: 16px; }
+.h-signin { font-size: 13.5px; color: var(--text-dim); }
+.h-signin:hover { color: var(--text); }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  border-radius: 10px; font-weight: 500; letter-spacing: -0.003em;
+  transition: all .15s ease; white-space: nowrap; cursor: pointer; border: none;
+}
+.btn-primary { background: var(--cyan); color: #04130F; box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 8px 24px -10px rgba(77,232,225,0.55); }
+.btn-primary:hover { background: var(--cyan-bright); transform: translateY(-1px); }
+.btn-ghost { background: rgba(255,255,255,0.025); color: var(--text); box-shadow: inset 0 0 0 1px var(--line-2); }
+.btn-ghost:hover { background: rgba(255,255,255,0.06); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.btn-sm { padding: 9px 15px; font-size: 13px; }
+.btn-lg { padding: 14px 22px; font-size: 15px; }
+
+/* ============ HERO ============ */
+.intro { position: relative; padding: 96px 0 40px; overflow: hidden; isolation: isolate; }
+.intro-glow {
+  position: absolute; top: -260px; left: 50%; transform: translateX(-50%);
+  width: 900px; height: 620px; z-index: -1; pointer-events: none;
+  background: radial-gradient(ellipse 50% 60% at 50% 40%, rgba(77,232,225,0.16), transparent 62%);
+  filter: blur(40px);
+}
+.intro-grid {
+  position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 20%, #000 20%, transparent 75%);
+}
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--cyan); margin-bottom: 18px;
+}
+.eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+.intro h1 {
+  font-size: clamp(40px, 5.4vw, 68px); line-height: 1.0; letter-spacing: -0.035em;
+  font-weight: 500; margin: 0; max-width: 16ch; text-wrap: balance;
+}
+.intro h1 .acc { color: var(--cyan); }
+.intro-sub {
+  font-size: 18px; line-height: 1.55; color: var(--text-dim);
+  max-width: 56ch; margin: 22px 0 0; text-wrap: pretty;
+}
+
+/* Loop legend */
+.loop {
+  display: flex; align-items: stretch; flex-wrap: wrap; gap: 10px;
+  margin-top: 40px; padding: 18px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(13,16,21,0.7), rgba(8,10,14,0.5));
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.loop-lead {
+  display: flex; flex-direction: column; justify-content: center; gap: 3px;
+  padding: 4px 18px 4px 6px; margin-right: 6px;
+  border-right: 1px solid var(--line);
+}
+.loop-lead-k { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-mute); }
+.loop-lead-v { font-size: 14px; font-weight: 500; color: var(--text); letter-spacing: -0.01em; }
+.loop-flow { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.loop-step {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 13px; border-radius: 10px;
+  background: rgba(255,255,255,0.025); box-shadow: inset 0 0 0 1px var(--line);
+  font-size: 13px; font-weight: 500; color: var(--text-dim);
+}
+.loop-step .d { width: 6px; height: 6px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
+.loop-step.gate { background: var(--amber-soft); box-shadow: inset 0 0 0 1px var(--amber-line); color: var(--amber); }
+.loop-step.gate .d { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+.loop-arrow { color: var(--text-faint); font-size: 14px; }
+
+/* ============ WAVE SECTION ============ */
+.wave { padding: 64px 0 0; }
+.wave:last-of-type { padding-bottom: 0; }
+.wave-head {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
+  margin-bottom: 28px; padding-bottom: 22px; border-bottom: 1px solid var(--line);
+}
+.wave-head h2 { font-size: 27px; line-height: 1.1; letter-spacing: -0.025em; font-weight: 500; margin: 8px 0 0; }
+.wave-head p { font-size: 14.5px; color: var(--text-mute); margin: 0; max-width: 42ch; }
+.wave-tag {
+  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--cyan); padding: 5px 12px; border-radius: 999px;
+  background: var(--cyan-soft); box-shadow: inset 0 0 0 1px var(--cyan-line); white-space: nowrap;
+}
+
+/* ============ OPERATOR GRID ============ */
+.op-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+
+.op {
+  position: relative;
+  padding: 22px 22px 8px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #0E1218, #090C11);
+  box-shadow: inset 0 0 0 1px var(--line);
+  overflow: hidden;
+  transition: box-shadow .25s ease, transform .25s ease;
+}
+.op::before {
+  content: ""; position: absolute; top: 0; left: 22px; right: 22px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--c), transparent); opacity: 0.45;
+}
+.op:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1px var(--line-2), 0 30px 70px -34px rgba(0,0,0,0.75), 0 0 60px -30px var(--c); }
+
+.op-top { display: flex; align-items: center; gap: 14px; }
+.op-av {
+  position: relative; flex: none;
+  width: 48px; height: 48px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: linear-gradient(135deg, color-mix(in oklab, var(--c) 24%, transparent), color-mix(in oklab, var(--c) 4%, transparent));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c) 38%, transparent);
+}
+.op-av .person { width: 26px; height: 26px; color: var(--c); }
+.op-badge {
+  position: absolute; right: -3px; bottom: -3px;
+  width: 20px; height: 20px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: #0A0E12; color: var(--c);
+  box-shadow: 0 0 0 2px var(--bg), inset 0 0 0 1px color-mix(in oklab, var(--c) 45%, transparent);
+}
+.op-badge svg { width: 11px; height: 11px; }
+.op-id { min-width: 0; flex: 1; }
+.op-name { font-size: 16.5px; font-weight: 500; letter-spacing: -0.015em; }
+.op-tag { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-mute); margin-top: 3px; }
+.op-num { font-family: var(--font-mono); font-size: 12px; color: var(--text-faint); letter-spacing: 0.04em; align-self: flex-start; }
+
+.op-mission { font-size: 13.5px; line-height: 1.5; color: var(--text-dim); margin: 14px 0 2px; text-wrap: pretty; }
+
+.op-loop { position: relative; display: flex; flex-direction: column; margin-top: 12px; }
+.op-step { position: relative; display: flex; gap: 13px; padding: 8px 0; }
+.op-step::before {
+  content: ""; position: absolute; left: 4.5px; top: 17px; bottom: -1px; width: 1px;
+  background: var(--line-2);
+}
+.op-step:last-child::before { display: none; }
+.op-node {
+  margin-top: 5px; flex: none; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--c); box-shadow: 0 0 8px -1px var(--c); position: relative; z-index: 1;
+}
+.op-step.gate .op-node { background: var(--amber); box-shadow: 0 0 8px -1px var(--amber); }
+.op-step-body { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.op-step-label {
+  font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-mute);
+}
+.op-step.gate .op-step-label { color: var(--amber); }
+.op-step-text { font-size: 12.5px; line-height: 1.45; color: var(--text-dim); }
+
+/* ============ FINAL CTA ============ */
+.final { padding: 88px 0 40px; }
+.cta {
+  position: relative; overflow: hidden;
+  padding: 64px 32px; border-radius: 24px; text-align: center;
+  background: linear-gradient(180deg, #0A0D12, #06080B);
+  box-shadow: inset 0 0 0 1px var(--line), 0 60px 120px -50px rgba(0,0,0,0.6);
+}
+.cta-glow {
+  position: absolute; top: -200px; left: 50%; transform: translateX(-50%);
+  width: 800px; height: 500px; pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(77,232,225,0.16), transparent 60%); filter: blur(40px);
+}
+.cta-inner { position: relative; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.cta-mark { width: 60px; height: 60px; display: grid; place-items: center; border-radius: 16px; background: rgba(77,232,225,0.06); box-shadow: inset 0 0 0 1px var(--cyan-line); margin-bottom: 6px; }
+.cta h2 { font-size: clamp(28px, 3.4vw, 40px); line-height: 1.12; letter-spacing: -0.025em; font-weight: 500; margin: 0; max-width: 20ch; }
+.cta p { font-size: 16px; color: var(--text-dim); margin: 0; max-width: 52ch; }
+.cta-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
+.cta-trust { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; margin-top: 14px; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-mute); }
+.cta-trust .sep { color: var(--text-faint); }
+
+/* ============ FOOTER ============ */
+.footer { padding: 56px 0 40px; border-top: 1px solid var(--line); margin-top: 64px; }
+.footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.footer-brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: 0.16em; font-size: 13px; }
+.footer-meta { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-mute); display: inline-flex; gap: 16px; align-items: center; }
+.footer-meta .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 880px) {
+  .op-grid { grid-template-columns: 1fr; }
+  .nav { display: none; }
+  .wave-head { flex-direction: column; align-items: flex-start; gap: 10px; }
+}
+@media (max-width: 600px) {
+  .container { padding: 0 20px; }
+  .intro { padding-top: 64px; }
+  .h-signin { display: none; }
+  .loop-lead { border-right: 0; border-bottom: 1px solid var(--line); margin-right: 0; padding: 0 0 12px; width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<header class="header" id="hdr">
+  <div class="container header-inner">
+    <a href="index.html" class="brand">
+      <svg width="20" height="20" viewBox="0 0 32 32" fill="#ECEFF3"><rect x="5" y="5" width="22" height="4.5"/><rect x="13" y="9.5" width="6" height="6"/><rect x="13" y="16.5" width="6" height="6"/><rect x="5" y="22.5" width="22" height="4.5"/></svg>
+      INOVENSE
+    </a>
+    <nav class="nav">
+      <a href="index.html#platform">Platform</a>
+      <a href="Operators.html" class="active">Operators</a>
+      <a href="index.html#workflows">Workflows</a>
+      <a href="index.html#integrations">Integrations</a>
+      <a href="index.html#security">Security</a>
+      <a href="index.html#pricing">Pricing</a>
+    </nav>
+    <div class="header-cta">
+      <a href="index.html#signin" class="h-signin">Sign in</a>
+      <a href="index.html#start" class="btn btn-primary btn-sm">Start preview
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </div>
+</header>
+
+<section class="intro">
+  <div class="intro-glow"></div>
+  <div class="intro-grid"></div>
+  <div class="container">
+    <span class="eyebrow">Operators</span>
+    <h1>Fifteen operators.<br/>One operating layer<span class="acc">.</span></h1>
+    <p class="intro-sub">Each Inovense operator owns a role and runs the same disciplined loop: it detects the work, prepares the output, asks for approval where it matters, executes through your real tools, and logs everything it learns.</p>
+
+    <div class="loop">
+      <div class="loop-lead">
+        <span class="loop-lead-k">Every operator</span>
+        <span class="loop-lead-v">runs one loop</span>
+      </div>
+      <div class="loop-flow">
+        <span class="loop-step"><span class="d"></span> Detect</span>
+        <span class="loop-arrow">&rarr;</span>
+        <span class="loop-step"><span class="d"></span> Prepare</span>
+        <span class="loop-arrow">&rarr;</span>
+        <span class="loop-step gate"><span class="d"></span> Approve</span>
+        <span class="loop-arrow">&rarr;</span>
+        <span class="loop-step"><span class="d"></span> Execute</span>
+        <span class="loop-arrow">&rarr;</span>
+        <span class="loop-step"><span class="d"></span> Log</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<main class="container" id="waves"></main>
+
+<section class="final">
+  <div class="container">
+    <div class="cta">
+      <div class="cta-glow"></div>
+      <div class="cta-inner">
+        <div class="cta-mark">
+          <svg width="30" height="30" viewBox="0 0 32 32" fill="#4DE8E1"><rect x="5" y="5" width="22" height="4.5"/><rect x="13" y="9.5" width="6" height="6"/><rect x="13" y="16.5" width="6" height="6"/><rect x="5" y="22.5" width="22" height="4.5"/></svg>
+        </div>
+        <h2>Start with one operator. Add the rest as it earns trust.</h2>
+        <p>Deploy a single operator inside your boundaries today, watch every action it prepares, and expand into a full operating team when the value is undeniable.</p>
+        <div class="cta-row">
+          <a href="index.html#start" class="btn btn-primary btn-lg">Start preview
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+          <a href="index.html#platform" class="btn btn-ghost btn-lg">View platform</a>
+        </div>
+        <div class="cta-trust">
+          <span>Approval before execution</span><span class="sep">&middot;</span>
+          <span>Every action logged</span><span class="sep">&middot;</span>
+          <span>SOC 2 Type II</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <a href="index.html" class="footer-brand">
+      <svg width="16" height="16" viewBox="0 0 32 32" fill="#ECEFF3"><rect x="5" y="5" width="22" height="4.5"/><rect x="13" y="9.5" width="6" height="6"/><rect x="13" y="16.5" width="6" height="6"/><rect x="5" y="22.5" width="22" height="4.5"/></svg>
+      INOVENSE
+    </a>
+    <div class="footer-meta">
+      <span><span class="dot"></span> All systems operational</span>
+      <span>&copy; 2026 Inovense, Inc.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="operators-data.js"></script>
+<script>
+(function () {
+  // sticky header state
+  var hdr = document.getElementById('hdr');
+  var onScroll = function () { hdr.classList.toggle('scrolled', window.scrollY > 8); };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  var PERSON = '<svg class="person" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5z"/></svg>';
+
+  function card(op, idx) {
+    var num = String(idx + 1).padStart(2, '0');
+    var steps = op.loop.map(function (s) {
+      var gate = s.k === 'Approve';
+      return '<div class="op-step' + (gate ? ' gate' : '') + '">'
+        + '<span class="op-node"></span>'
+        + '<div class="op-step-body"><span class="op-step-label">' + s.k + '</span>'
+        + '<span class="op-step-text">' + s.t + '</span></div></div>';
+    }).join('');
+    return '<article class="op" style="--c:' + op.c + '">'
+      + '<div class="op-top">'
+      + '<div class="op-av">' + PERSON + '<span class="op-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">' + GLYPHS[op.g] + '</svg></span></div>'
+      + '<div class="op-id"><div class="op-name">' + op.name + '</div><div class="op-tag">' + op.tag + '</div></div>'
+      + '<div class="op-num">' + num + '</div>'
+      + '</div>'
+      + '<p class="op-mission">' + op.mission + '</p>'
+      + '<div class="op-loop">' + steps + '</div>'
+      + '</article>';
+  }
+
+  var waves = [
+    { tag: 'Launch wave', h: 'The first nine operators.', p: 'The roster that covers revenue, delivery, operations and growth from day one.', items: OPERATORS.slice(0, 9), start: 0 },
+    { tag: 'Expanding', h: 'Six more as you scale.', p: 'Switched on once the first operators have proven their loop inside your business.', items: OPERATORS.slice(9), start: 9 }
+  ];
+
+  document.getElementById('waves').innerHTML = waves.map(function (w) {
+    var cards = w.items.map(function (op, i) { return card(op, w.start + i); }).join('');
+    return '<section class="wave">'
+      + '<div class="wave-head"><div><span class="wave-tag">' + w.tag + '</span>'
+      + '<h2>' + w.h + '</h2></div><p>' + w.p + '</p></div>'
+      + '<div class="op-grid">' + cards + '</div></section>';
+  }).join('');
+})();
+</script>
+</body>
+</html>

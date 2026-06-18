@@ -121,12 +121,17 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!state.workspace.id) return;
     setAccountsLoading(true);
-    fetch(`/api/connectors/accounts?workspaceId=${encodeURIComponent(state.workspace.id)}`)
+    const qs = new URLSearchParams({
+      workspaceId: state.workspace.id,
+      userId: state.currentUser.id,
+      userEmail: state.currentUser.email,
+    });
+    fetch(`/api/connectors/accounts?${qs.toString()}`)
       .then((r) => r.ok ? r.json() as Promise<ConnectedAccount[]> : Promise.resolve([]))
       .then((data) => setConnectedAccounts(Array.isArray(data) ? data : []))
       .catch(() => setConnectedAccounts([]))
       .finally(() => setAccountsLoading(false));
-  }, [state.workspace.id]);
+  }, [state.currentUser.email, state.currentUser.id, state.workspace.id]);
 
   const sections: Array<{ key: SectionKey; title: string; fields: Record<string, string> }> = useMemo(() => ([
     { key: "workspace", title: "Workspace", fields: state.settings.workspace },

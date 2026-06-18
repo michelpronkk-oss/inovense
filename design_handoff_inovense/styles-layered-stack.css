@@ -1,0 +1,325 @@
+/* ============================================================
+   Inovense — Layered OS Stack visual
+   Three glass cards floating in 3D space: audit · memory · approval
+   ============================================================ */
+.ls {
+  position: relative;
+  width: 100%;
+  max-width: 580px;
+  margin-left: auto;
+  min-height: 500px;
+  perspective: 1600px;
+  isolation: isolate;
+  padding: 32px 20px;
+}
+
+.ls-bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, #000 30%, transparent 90%);
+  pointer-events: none;
+  z-index: -2;
+}
+.ls-bg-glow {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 400px; height: 400px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(77,232,225,0.22), transparent 60%);
+  filter: blur(40px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Cyan beam through the stack */
+.ls-beam {
+  position: absolute;
+  left: 50%; top: 0; bottom: 0;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(77,232,225,0.35) 30%, rgba(77,232,225,0.35) 70%, transparent);
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ---------- Cards ---------- */
+.ls-card {
+  position: absolute;
+  width: 360px;
+  background: linear-gradient(180deg, rgba(15,18,24,0.94), rgba(8,11,14,0.92));
+  border-radius: 14px;
+  box-shadow:
+    inset 0 0 0 1px var(--line-2),
+    0 30px 70px -25px rgba(0,0,0,0.7);
+  backdrop-filter: blur(20px);
+  overflow: hidden;
+  transform-origin: center;
+  transition: transform .35s cubic-bezier(.4,.1,.2,1);
+}
+
+.ls-back {
+  top: 12px;
+  left: 50%;
+  transform: translateX(-58%) translateY(0) rotate(-3deg) scale(0.88);
+  z-index: 1;
+  opacity: 0.78;
+}
+.ls-mid {
+  top: 110px;
+  left: 50%;
+  transform: translateX(-50%) rotate(0deg) scale(0.94);
+  z-index: 2;
+  opacity: 0.92;
+}
+.ls-front {
+  top: 220px;
+  left: 50%;
+  transform: translateX(-42%) rotate(2.5deg);
+  z-index: 3;
+  box-shadow:
+    inset 0 0 0 1px rgba(77,232,225,0.32),
+    0 40px 80px -25px rgba(0,0,0,0.8),
+    0 0 100px -25px rgba(77,232,225,0.30);
+}
+.ls-front::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 14px;
+  padding: 1px;
+  background: linear-gradient(180deg, rgba(77,232,225,0.45), transparent 50%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Hover lift */
+.ls:hover .ls-back { transform: translateX(-62%) translateY(-4px) rotate(-3.5deg) scale(0.88); }
+.ls:hover .ls-mid  { transform: translateX(-50%) translateY(-2px) rotate(0deg) scale(0.94); }
+.ls:hover .ls-front { transform: translateX(-42%) translateY(-2px) rotate(2.5deg); }
+
+/* Card head/rail */
+.ls-card-rail {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-mute);
+}
+.ls-rail-tag { color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.10em; }
+.ls-rail-meta { color: var(--text-mute); }
+.ls-rail-live {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+}
+.ls-rail-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 6px var(--cyan);
+  animation: pulseDot 1.6s ease-in-out infinite;
+}
+.ls-rail-time { color: var(--text-mute); font-variant-numeric: tabular-nums; }
+
+/* ---------- Back layer: audit log ---------- */
+.ls-log {
+  padding: 8px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+.ls-log-row {
+  display: grid;
+  grid-template-columns: 38px 38px 60px 1fr;
+  gap: 8px;
+  align-items: center;
+  color: var(--text-mute);
+}
+.ls-log-t { color: var(--text-faint); }
+.ls-log-lvl {
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+}
+.ls-log-ok { background: rgba(81,216,138,0.10); color: var(--green); }
+.ls-log-info { background: rgba(77,232,225,0.08); color: var(--cyan); }
+.ls-log-warn { background: rgba(245,194,107,0.10); color: var(--amber); }
+.ls-log-a { color: var(--text-dim); }
+.ls-log-m { color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Middle layer: memory graph ---------- */
+.ls-memory {
+  position: relative;
+  padding: 24px 14px;
+  height: 140px;
+  display: grid;
+  place-items: center;
+}
+.ls-mem-lines {
+  position: absolute;
+  inset: 24px 14px;
+  width: calc(100% - 28px);
+  height: calc(100% - 48px);
+  pointer-events: none;
+}
+.ls-mem-center {
+  position: relative;
+  z-index: 2;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: rgba(77,232,225,0.08);
+  box-shadow:
+    inset 0 0 0 1px rgba(77,232,225,0.40),
+    0 0 30px -5px rgba(77,232,225,0.40);
+  display: grid;
+  place-items: center;
+}
+.ls-mem-node {
+  position: absolute;
+  padding: 4px 8px;
+  background: rgba(13,16,21,0.92);
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--text-dim);
+  letter-spacing: 0.02em;
+  z-index: 2;
+}
+.ls-mem-tl { top: 18%; left: 8%; }
+.ls-mem-tr { top: 18%; right: 8%; }
+.ls-mem-bl { bottom: 18%; left: 8%; }
+.ls-mem-br { bottom: 18%; right: 8%; }
+
+/* ---------- Front layer: approval ---------- */
+.ls-approval {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ls-appr-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ls-appr-avatar {
+  flex: none;
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  display: grid; place-items: center;
+  background: linear-gradient(135deg, rgba(77,232,225,0.22), rgba(77,232,225,0.06));
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 11px;
+  box-shadow: inset 0 0 0 1px rgba(77,232,225,0.40);
+}
+.ls-appr-name { font-size: 13px; font-weight: 500; color: var(--text); letter-spacing: -0.005em; }
+.ls-appr-meta { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-mute); margin-top: 1px; }
+.ls-appr-status {
+  margin-left: auto;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--amber-soft);
+  color: var(--amber);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow: inset 0 0 0 1px rgba(245,194,107,0.30);
+}
+.ls-appr-body {
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.025);
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+.ls-hl { color: var(--cyan); background: rgba(77,232,225,0.08); padding: 1px 3px; border-radius: 3px; }
+.ls-appr-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ls-btn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 6px 11px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: none;
+  transition: all .15s ease;
+}
+.ls-btn-primary {
+  background: var(--cyan);
+  color: #04130F;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 4px 12px -4px rgba(77,232,225,0.55);
+}
+.ls-btn-primary:hover { background: var(--cyan-bright); }
+.ls-btn-ghost {
+  background: rgba(255,255,255,0.04);
+  color: var(--text-dim);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.ls-btn-ghost:hover { color: var(--text); background: rgba(255,255,255,0.07); }
+.ls-kbd {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.04);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--text-mute);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 880px) {
+  .ls { margin-left: 0; max-width: 100%; min-height: 460px; }
+  .ls-card { width: 340px; }
+}
+@media (max-width: 720px) {
+  .ls {
+    min-height: 420px;
+    padding: 16px 8px;
+    max-width: 100%;
+  }
+  .ls-bg-grid { display: none; }
+  .ls-card {
+    width: 84%;
+    left: 50%;
+  }
+  .ls-back  { top: 6px;   transform: translateX(-58%) rotate(-2.5deg) scale(0.86); opacity: 0.70; }
+  .ls-mid   { top: 80px;  transform: translateX(-50%) rotate(0) scale(0.94); opacity: 0.88; }
+  .ls-front { top: 168px; transform: translateX(-42%) rotate(2deg); }
+  .ls-log-row { grid-template-columns: 36px 36px 56px 1fr; font-size: 10px; }
+  .ls-log-row:nth-child(n+4) { display: none; }
+  .ls-memory { height: 110px; padding: 18px 12px; }
+  .ls-mem-tl, .ls-mem-tr, .ls-mem-bl, .ls-mem-br { font-size: 9px; padding: 3px 6px; }
+  .ls-appr-body { font-size: 11.5px; padding: 9px 11px; }
+  .ls-btn { font-size: 9.5px; padding: 5px 9px; }
+  .ls-kbd { display: none; }
+}

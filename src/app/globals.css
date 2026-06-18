@@ -167,3 +167,37 @@
     transition: none;
   }
 }
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 1.8s ease-in-out infinite;
+}
+
+@keyframes flow-dash {
+  to { stroke-dashoffset: -24; }
+}
+
+.animate-flow-dash {
+  animation: flow-dash 1.6s linear infinite;
+}
+
+@keyframes flow-dash-reverse {
+  to { stroke-dashoffset: 24; }
+}
+
+.animate-flow-dash-reverse {
+  animation: flow-dash-reverse 1.7s linear infinite;
+}
+
+@keyframes ring-expand {
+  0% { transform: translate(-50%, -50%) scale(0.7); opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(1.4); opacity: 0; }
+}
+
+.animate-ring-expand {
+  animation: ring-expand 3.2s ease-out infinite;
+}

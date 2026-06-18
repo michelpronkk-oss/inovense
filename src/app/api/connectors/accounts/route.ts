@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getConnectorTruth } from "@/lib/connectors/truth";
+import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 
 export type ConnectedAccount = {
@@ -20,64 +22,33 @@ export async function GET(req: NextRequest) {
   }
 
   const workspaceId = (req.nextUrl.searchParams.get("workspaceId") || "").trim();
+  const userId = (req.nextUrl.searchParams.get("userId") || "").trim();
+  const userEmail = (req.nextUrl.searchParams.get("userEmail") || "").trim().toLowerCase();
   if (!workspaceId) {
     return NextResponse.json({ error: "workspaceId is required." }, { status: 400 });
   }
 
   const supabase = createSupabaseAdmin();
+  const context = await resolveWorkspaceContext({ workspaceId, userId, userEmail, supabase, allowDevFallback: false });
+  if (!context.ok) {
+    return NextResponse.json({ error: context.error }, { status: context.status });
+  }
 
-  // Gmail: select only safe columns — never tokens
-  const gmailRes = await supabase
-    .from("os_connector_credentials")
-    .select("connector_key, provider_email, scopes, status, created_at")
-    .eq("workspace_id", workspaceId)
-    .eq("connector_key", "gmail")
-    .maybeSingle();
-
-  // HubSpot: select only safe columns from os_connectors
-  const hubspotRes = await supabase
-    .from("os_connectors")
-    .select("connector_key, provider_email, status, connected_at")
-    .eq("workspace_id", workspaceId)
-    .eq("connector_key", "hubspot")
-    .maybeSingle();
-
-  const gmailStatus: ConnectedAccount["status"] =
-    gmailRes.data?.status === "connected" ? "connected"
-    : gmailRes.data ? "error"
-    : "not_connected";
-
-  const hubspotStatus: ConnectedAccount["status"] =
-    hubspotRes.data?.status === "connected" ? "connected"
-    : hubspotRes.data?.status === "error" ? "error"
-    : "not_connected";
-
-  const accounts: ConnectedAccount[] = [
-    {
-      connectorKey: "gmail",
-      displayName: "Gmail",
-      authType: "native",
-      status: gmailStatus,
-      accountEmail: gmailRes.data?.provider_email ?? null,
-      connectedAt: gmailRes.data?.created_at ?? null,
-      scopes: gmailRes.data?.scopes ?? [],
-      permissionsLabel: ["Create email drafts", "Send approved emails"],
-      canReconnect: true,
-      canDisconnect: false,
-    },
-    {
-      connectorKey: "hubspot",
-      displayName: "HubSpot",
-      authType: "managed",
-      status: hubspotStatus,
-      accountEmail: hubspotRes.data?.provider_email ?? null,
-      connectedAt: hubspotRes.data?.connected_at ?? null,
-      scopes: [],
-      permissionsLabel: ["Contacts, companies, deals and owners"],
-      canReconnect: true,
-      canDisconnect: false,
-    },
-  ];
+  const truth = await getConnectorTruth({ workspaceId: context.workspaceId, supabase });
+  const accounts: ConnectedAccount[] = truth.map((connector) => ({
+    connectorKey: connector.connectorKey,
+    displayName: connector.displayName,
+    authType: connector.authType,
+    status: connector.status,
+    accountEmail: connector.accountEmail,
+    connectedAt: connector.connectedAt,
+    scopes: connector.scopes,
+    permissionsLabel: connector.connectorKey === "gmail"
+      ? ["Create email drafts", "Send approved emails"]
+      : ["Contacts, companies, deals and owners"],
+    canReconnect: true,
+    canDisconnect: false,
+  }));
 
   return NextResponse.json(accounts);
 }

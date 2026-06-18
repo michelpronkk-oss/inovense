@@ -46,7 +46,7 @@ export default function ConnectorsPage() {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [hubspotConnectLoading, setHubspotConnectLoading] = useState(false);
   const [hubspotStatus, setHubspotStatus] = useState<{
-    status: "connected" | "error" | "pending";
+    status: "connected" | "error" | "pending" | "not_connected";
     provider_email?: string | null;
     connected_at?: string | null;
   } | null>(null);
@@ -102,12 +102,18 @@ export default function ConnectorsPage() {
   };
 
   const fetchHubspotStatus = async () => {
-    const res = await fetch(`/api/connectors/nango/status?workspaceId=${encodeURIComponent(state.workspace.id)}&connectorKey=hubspot`, {
+    const qs = new URLSearchParams({
+      workspaceId: state.workspace.id,
+      connectorKey: "hubspot",
+      userId: state.currentUser.id,
+      userEmail: state.currentUser.email,
+    });
+    const res = await fetch(`/api/connectors/nango/status?${qs.toString()}`, {
       cache: "no-store",
     });
     if (!res.ok) return;
     const json = await res.json() as {
-      status: "connected" | "error" | "pending";
+      status: "connected" | "error" | "pending" | "not_connected";
       provider_email?: string | null;
       connected_at?: string | null;
     };

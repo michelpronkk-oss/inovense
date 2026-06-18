@@ -14,6 +14,7 @@ import {
 const links = [
   { label: "Platform", href: "/" },
   { label: "Agents", href: "/agents" },
+  { label: "Operators", href: "/operators" },
   { label: "Workflows", href: "/workflows" },
   { label: "Integrations", href: "/integrations" },
   { label: "Security", href: "/security" },

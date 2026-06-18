@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Figtree } from "next/font/google";
 import { headers } from "next/headers";
 import React from "react";
 import "./globals.css";
@@ -14,7 +13,10 @@ import {
   toJsonLd,
 } from "@/lib/geo";
 
-const figtree = Figtree({ subsets: ["latin"], variable: "--font-sans" });
+const sansFallbackStack =
+  'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"';
+const monoFallbackStack =
+  'ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
 
 export const metadata: Metadata = {
   metadataBase: new URL(INOVENSE_URL),
@@ -132,7 +134,14 @@ export default async function RootLayout({
   return (
     <html
       lang={lang}
-      className={`dark h-full antialiased ${figtree.variable} font-sans`}
+      className="dark h-full antialiased font-sans"
+      style={
+        {
+          "--font-sans": sansFallbackStack,
+          "--font-geist-sans": sansFallbackStack,
+          "--font-geist-mono": monoFallbackStack,
+        } as React.CSSProperties
+      }
     >
       <head>
         <script

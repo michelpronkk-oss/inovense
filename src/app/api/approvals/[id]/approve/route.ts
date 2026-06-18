@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createGmailDraft, resolveAccessTokenFromCredential, sendGmailDraft, type StoredConnectorCredential } from "@/lib/connectors/gmail";
+import { logOperatorEvent, recordOperatorUsage } from "@/lib/operators/logging";
+import { createOperatorMemory } from "@/lib/operators/memory";
+import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 
 type ApproveBody = {
   workspaceId?: string;
   userEmail?: string;
+  userId?: string;
 };
 
 type GmailContinuationPayload = {
   kind: "gmail.send_after_approval";
   workspaceId: string;
+  operatorRunId?: string;
+  operatorKey?: string;
   to: string;
   subject: string;
   body: string;
@@ -37,60 +43,47 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const { id } = await ctx.params;
   const body = (await req.json().catch(() => ({}))) as ApproveBody;
   const userEmail = body.userEmail?.toLowerCase() || "";
+  const userId = body.userId || "";
   const workspaceId = body.workspaceId || "";
-  if (!id || !workspaceId || !userEmail) {
-    return NextResponse.json({ error: "approval id, workspaceId and userEmail are required." }, { status: 400 });
+  if (!id || !workspaceId || (!userEmail && !userId)) {
+    return NextResponse.json({ error: "approval id, workspaceId and user identity are required." }, { status: 400 });
   }
 
   const supabase = createSupabaseAdmin();
-
-  const member = await supabase
-    .from("os_workspace_members")
-    .select("workspace_id")
-    .eq("workspace_id", workspaceId)
-    .eq("email", userEmail)
-    .maybeSingle();
-  if (!member.data) return NextResponse.json({ error: "Workspace membership not found." }, { status: 403 });
+  const context = await resolveWorkspaceContext({ workspaceId, userId, userEmail, supabase, allowDevFallback: false });
+  if (!context.ok) {
+    return NextResponse.json({ error: context.error }, { status: context.status === 404 ? 403 : context.status });
+  }
 
   const approvalRes = await supabase
     .from("os_approvals")
     .select("*")
     .eq("id", id)
     .maybeSingle();
-  let approvalRow = approvalRes.data;
-  if (!approvalRow) {
-    const snapshot = await supabase
-      .from("os_state_snapshots")
-      .select("state")
-      .eq("workspace_id", workspaceId)
-      .maybeSingle();
-    const state = snapshot.data?.state as { approvals?: Array<Record<string, unknown>> } | undefined;
-    const found = state?.approvals?.find((item) => item.id === id);
-    if (!found) return NextResponse.json({ error: "Approval not found." }, { status: 404 });
-    approvalRow = {
-      id,
-      status: String(found.status ?? "pending"),
-      run_id: String(found.runId ?? "manual"),
-      agent_id: String(found.agentId ?? "system"),
-      agent_mark: String(found.agentMark ?? "OS"),
-      agent_color: String(found.agentColor ?? "#4DE8E1"),
-      continuation_payload: found.continuationPayload ?? null,
-    };
+
+  if (approvalRes.error) {
+    return NextResponse.json({ error: approvalRes.error.message }, { status: 500 });
   }
-  if (approvalRow.status !== "pending") return NextResponse.json({ error: "Approval is already resolved." }, { status: 409 });
+  const approvalRow = approvalRes.data;
+  if (!approvalRow) {
+    return NextResponse.json({ error: "Approval not found." }, { status: 404 });
+  }
+  if (approvalRow.status !== "pending") {
+    return NextResponse.json({ error: "Approval is already resolved." }, { status: 409 });
+  }
 
   const continuation = approvalRow.continuation_payload;
   if (!isGmailPayload(continuation)) {
     return NextResponse.json({ error: "Approval has no Gmail continuation payload." }, { status: 400 });
   }
-  if (continuation.workspaceId !== workspaceId) {
+  if (continuation.workspaceId !== context.workspaceId) {
     return NextResponse.json({ error: "Workspace mismatch for approval payload." }, { status: 403 });
   }
 
   const ws = await supabase
     .from("os_workspaces")
     .select("billing_status, can_run_real_actions")
-    .eq("id", workspaceId)
+    .eq("id", context.workspaceId)
     .single();
   if (ws.error || !ws.data) return NextResponse.json({ error: "Workspace not found." }, { status: 404 });
   if (!ws.data.can_run_real_actions || ws.data.billing_status === "preview") {
@@ -100,7 +93,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const credentialRes = await supabase
     .from("os_connector_credentials")
     .select("*")
-    .eq("workspace_id", workspaceId)
+    .eq("workspace_id", context.workspaceId)
     .eq("connector_key", "gmail")
     .maybeSingle();
   if (credentialRes.error || !credentialRes.data) {
@@ -119,7 +112,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   await supabase.from("os_approvals").update({
     status: "approved",
     resolved_at: new Date().toISOString(),
-    resolved_by: userEmail,
+    resolved_by: userEmail || userId,
   }).eq("id", id);
 
   await supabase.from("os_execution_logs").insert([
@@ -160,6 +153,53 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       status: "ok",
     },
   ]);
+
+  const operatorRunId = typeof continuation.operatorRunId === "string" ? continuation.operatorRunId : approvalRow.run_id;
+  if (operatorRunId) {
+    const runUpdate = await supabase.from("os_operator_runs").update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+      output: {
+        gmail: {
+          draftId: draft.draftId,
+          messageId: sent.messageId ?? null,
+          to: continuation.to,
+          subject: continuation.subject,
+        },
+      },
+    }).eq("id", operatorRunId).eq("workspace_id", context.workspaceId).eq("approval_id", id);
+
+    if (!runUpdate.error) {
+      await logOperatorEvent({
+        supabase,
+        workspaceId: context.workspaceId,
+        runId: operatorRunId,
+        eventType: "gmail.send.completed",
+        message: `Approved Gmail message sent to ${continuation.to}.`,
+        metadata: { approvalId: id, draftId: draft.draftId, messageId: sent.messageId ?? null },
+      });
+      await recordOperatorUsage({
+        supabase,
+        workspaceId: context.workspaceId,
+        runId: operatorRunId,
+        operatorKey: continuation.operatorKey || "revenue",
+        eventType: "gmail.send",
+        quantity: 1,
+        metadata: { approvalId: id, to: continuation.to, messageId: sent.messageId ?? null },
+      });
+      await createOperatorMemory({
+        supabase,
+        workspaceId: context.workspaceId,
+        operatorKey: continuation.operatorKey || "revenue",
+        memoryType: "email_outcome",
+        title: `Approved follow-up sent to ${continuation.to}`,
+        content: `Subject: ${continuation.subject}`,
+        metadata: { approvalId: id, runId: operatorRunId, messageId: sent.messageId ?? null },
+        sourceRunId: operatorRunId,
+        approvalStatus: "approved",
+      });
+    }
+  }
 
   return NextResponse.json({ ok: true, draftId: draft.draftId, messageId: sent.messageId });
 }
