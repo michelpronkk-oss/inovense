@@ -15,6 +15,10 @@ export type GmailApiErrorDetails = {
   status: number;
   statusText: string;
   responseBody: unknown;
+  draftCreateStatus?: number;
+  draftId?: string | null;
+  messageId?: string | null;
+  sendEndpoint?: "drafts/send" | "messages/send";
 };
 
 export class GmailApiError extends Error {
@@ -143,6 +147,10 @@ function buildMessage(to: string, subject: string, body: string): string {
   ].join("\r\n");
 }
 
+function buildRawMessage(payload: { to: string; subject: string; body: string }): string {
+  return encodeBase64Url(buildMessage(payload.to, payload.subject, payload.body));
+}
+
 async function readGmailJson(res: Response): Promise<unknown> {
   const text = await res.text();
   if (!text) return null;
@@ -163,17 +171,18 @@ function gmailMessageFromBody(body: unknown, fallback: string): string {
   return fallback;
 }
 
-function throwGmailApiError(step: string, res: Response, responseBody: unknown): never {
+function throwGmailApiError(step: string, res: Response, responseBody: unknown, extra?: Partial<GmailApiErrorDetails>): never {
   throw new GmailApiError(gmailMessageFromBody(responseBody, `${step} failed`), {
     step,
     status: res.status,
     statusText: res.statusText,
     responseBody,
+    ...extra,
   });
 }
 
-export async function createGmailDraft(accessToken: string, payload: { to: string; subject: string; body: string }): Promise<{ draftId: string; messageId?: string }> {
-  const raw = encodeBase64Url(buildMessage(payload.to, payload.subject, payload.body));
+export async function createGmailDraft(accessToken: string, payload: { to: string; subject: string; body: string }): Promise<{ draftId: string; messageId?: string; raw: string; draftCreateStatus: number }> {
+  const raw = buildRawMessage(payload);
   const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/drafts", {
     method: "POST",
     headers: {
@@ -183,11 +192,15 @@ export async function createGmailDraft(accessToken: string, payload: { to: strin
     body: JSON.stringify({ message: { raw } }),
   });
   const json = await readGmailJson(res) as { id?: string; message?: { id?: string } };
-  if (!res.ok || !json?.id) throwGmailApiError("gmail.draft.create", res, json);
-  return { draftId: json.id, messageId: json.message?.id };
+  if (!res.ok || !json?.id) throwGmailApiError("gmail.draft.create", res, json, {
+    draftCreateStatus: res.status,
+    draftId: json?.id ?? null,
+    messageId: json?.message?.id ?? null,
+  });
+  return { draftId: json.id, messageId: json.message?.id, raw, draftCreateStatus: res.status };
 }
 
-export async function sendGmailDraft(accessToken: string, draftId: string): Promise<{ messageId?: string }> {
+export async function sendGmailDraft(accessToken: string, draftId: string, debug?: { draftCreateStatus?: number; draftMessageId?: string }): Promise<{ messageId?: string; sendEndpoint: "drafts/send"; googleResponseBody: unknown }> {
   const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/drafts/send", {
     method: "POST",
     headers: {
@@ -197,8 +210,32 @@ export async function sendGmailDraft(accessToken: string, draftId: string): Prom
     body: JSON.stringify({ id: draftId }),
   });
   const json = await readGmailJson(res) as { id?: string };
-  if (!res.ok) throwGmailApiError("gmail.draft.send", res, json);
-  return { messageId: json.id };
+  if (!res.ok) throwGmailApiError("gmail.draft.send", res, json, {
+    draftCreateStatus: debug?.draftCreateStatus,
+    draftId,
+    messageId: debug?.draftMessageId ?? null,
+    sendEndpoint: "drafts/send",
+  });
+  return { messageId: json.id, sendEndpoint: "drafts/send", googleResponseBody: json };
+}
+
+export async function sendGmailMessage(accessToken: string, raw: string, debug?: { draftCreateStatus?: number; draftId?: string; draftMessageId?: string }): Promise<{ messageId?: string; sendEndpoint: "messages/send"; googleResponseBody: unknown }> {
+  const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ raw }),
+  });
+  const json = await readGmailJson(res) as { id?: string };
+  if (!res.ok) throwGmailApiError("gmail.message.send", res, json, {
+    draftCreateStatus: debug?.draftCreateStatus,
+    draftId: debug?.draftId ?? null,
+    messageId: debug?.draftMessageId ?? null,
+    sendEndpoint: "messages/send",
+  });
+  return { messageId: json.id, sendEndpoint: "messages/send", googleResponseBody: json };
 }
 
 export function toStoredCredential(input: {

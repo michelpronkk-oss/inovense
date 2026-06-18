@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createGmailDraft, GmailApiError, resolveAccessTokenFromCredential, sendGmailDraft, type StoredConnectorCredential } from "@/lib/connectors/gmail";
+import { createGmailDraft, GmailApiError, resolveAccessTokenFromCredential, sendGmailDraft, sendGmailMessage, type StoredConnectorCredential } from "@/lib/connectors/gmail";
 import { logOperatorEvent, recordOperatorUsage } from "@/lib/operators/logging";
 import { createOperatorMemory } from "@/lib/operators/memory";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
@@ -175,8 +175,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   });
 
   const credential = credentialRes.data as StoredConnectorCredential;
-  let draft: { draftId: string; messageId?: string };
-  let sent: { messageId?: string };
+  let draft: { draftId: string; messageId?: string; raw: string; draftCreateStatus: number };
+  let sent: { messageId?: string; sendEndpoint: "drafts/send" | "messages/send"; googleResponseBody: unknown };
+  let draftSendFailure: unknown = null;
   try {
     const accessToken = await resolveAccessTokenFromCredential(credential);
     console.info("[gmail-approval] gmail.draft.create", { approvalId: id, workspaceId: context.workspaceId, to: gmailPayload.to });
@@ -185,8 +186,40 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       subject: gmailPayload.subject,
       body: gmailPayload.body,
     });
-    console.info("[gmail-approval] gmail.draft.send", { approvalId: id, workspaceId: context.workspaceId, to: gmailPayload.to });
-    sent = await sendGmailDraft(accessToken, draft.draftId);
+    console.info("[gmail-approval] gmail.draft.created", {
+      approvalId: id,
+      workspaceId: context.workspaceId,
+      to: gmailPayload.to,
+      draftCreateStatus: draft.draftCreateStatus,
+      draftId: draft.draftId,
+      messageId: draft.messageId ?? null,
+    });
+    try {
+      console.info("[gmail-approval] gmail.draft.send", {
+        approvalId: id,
+        workspaceId: context.workspaceId,
+        to: gmailPayload.to,
+        draftId: draft.draftId,
+      });
+      sent = await sendGmailDraft(accessToken, draft.draftId, {
+        draftCreateStatus: draft.draftCreateStatus,
+        draftMessageId: draft.messageId,
+      });
+    } catch (error) {
+      draftSendFailure = error;
+      console.warn("[gmail-approval] gmail.draft.send failed, trying messages.send", {
+        approvalId: id,
+        workspaceId: context.workspaceId,
+        to: gmailPayload.to,
+        draftId: draft.draftId,
+        error: error instanceof Error ? error.message : "Unknown Gmail draft send error",
+      });
+      sent = await sendGmailMessage(accessToken, draft.raw, {
+        draftCreateStatus: draft.draftCreateStatus,
+        draftId: draft.draftId,
+        draftMessageId: draft.messageId,
+      });
+    }
   } catch (error) {
     console.warn("[gmail-approval] failed", {
       approvalId: id,
@@ -229,7 +262,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       agent_mark: approvalRow.agent_mark || "OS",
       agent_color: approvalRow.agent_color || "#4DE8E1",
       event: "gmail.draft_sent",
-      message: `Sent approved draft to ${gmailPayload.to}${sent.messageId ? ` (${sent.messageId})` : ""}`,
+      message: `Sent approved Gmail message to ${gmailPayload.to}${sent.messageId ? ` (${sent.messageId})` : ""} via ${sent.sendEndpoint}`,
       duration: "-",
       status: "ok",
     },
@@ -261,6 +294,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           messageId: sent.messageId ?? null,
           to: gmailPayload.to,
           subject: gmailPayload.subject,
+          sendEndpoint: sent.sendEndpoint,
         },
       },
     }).eq("id", operatorRunId).eq("workspace_id", context.workspaceId).eq("approval_id", id).then((res) => {
@@ -274,7 +308,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         runId: operatorRunId,
         eventType: "gmail.send.completed",
         message: `Approved Gmail message sent to ${gmailPayload.to}.`,
-        metadata: { approvalId: id, draftId: draft.draftId, messageId: sent.messageId ?? null },
+        metadata: { approvalId: id, draftId: draft.draftId, messageId: sent.messageId ?? null, sendEndpoint: sent.sendEndpoint },
       }).then((res) => {
         if (res.error) throw new Error(res.error.message);
         return res;
@@ -286,7 +320,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         operatorKey: gmailPayload.operatorKey || "revenue",
         eventType: "gmail.send",
         quantity: 1,
-        metadata: { approvalId: id, to: gmailPayload.to, messageId: sent.messageId ?? null },
+        metadata: { approvalId: id, to: gmailPayload.to, messageId: sent.messageId ?? null, sendEndpoint: sent.sendEndpoint },
       }).then((res) => {
         if (res.error) throw new Error(res.error.message);
         return res;
@@ -298,7 +332,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         memoryType: "email_outcome",
         title: `Approved follow-up sent to ${gmailPayload.to}`,
         content: `Subject: ${gmailPayload.subject}`,
-        metadata: { approvalId: id, runId: operatorRunId, messageId: sent.messageId ?? null },
+        metadata: { approvalId: id, runId: operatorRunId, messageId: sent.messageId ?? null, sendEndpoint: sent.sendEndpoint },
         sourceRunId: operatorRunId,
         approvalStatus: "approved",
       }).then((res) => {
@@ -307,5 +341,21 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       }));
   }
 
-  return NextResponse.json({ ok: true, draftId: draft.draftId, messageId: sent.messageId, warnings });
+  const draftSendDetails = draftSendFailure instanceof GmailApiError ? draftSendFailure.details : null;
+  return NextResponse.json({
+    ok: true,
+    draftId: draft.draftId,
+    draftMessageId: draft.messageId ?? null,
+    messageId: sent.messageId,
+    sendEndpoint: sent.sendEndpoint,
+    gmailDebug: {
+      draftCreateStatus: draft.draftCreateStatus,
+      draftId: draft.draftId,
+      messageId: draft.messageId ?? null,
+      sendEndpoint: sent.sendEndpoint,
+      draftSendFailure: draftSendDetails,
+      googleResponseBody: sent.googleResponseBody,
+    },
+    warnings,
+  });
 }
