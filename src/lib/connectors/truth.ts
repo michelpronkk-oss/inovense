@@ -1,9 +1,10 @@
 import type { Connector, OSState } from "@/lib/os/types";
+import { GMAIL_COMPOSE_SCOPE, GMAIL_SEND_SCOPE, getMissingGmailScopes } from "@/lib/connectors/gmail";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
-export type ConnectorTruthStatus = "connected" | "not_connected" | "error";
+export type ConnectorTruthStatus = "connected" | "healthy" | "disabled" | "reconnect_required" | "missing" | "not_connected" | "error";
 
 export type SafeConnectorTruth = {
   connectorKey: "gmail" | "hubspot";
@@ -13,6 +14,10 @@ export type SafeConnectorTruth = {
   accountEmail: string | null;
   connectedAt: string | null;
   scopes: string[];
+  missingScopes?: string[];
+  reconnectRequired?: boolean;
+  executable?: boolean;
+  statusMessage?: string;
   providerConfigKey?: string | null;
   nangoConnectionId?: string | null;
   source?: "native" | "nango";
@@ -44,6 +49,9 @@ export async function getConnectorTruth(input: {
   ]);
 
   const gmailRow = gmailRes.data;
+  const gmailScopes = asStringArray(gmailRow?.scopes);
+  const gmailMissingScopes = gmailRow ? getMissingGmailScopes(gmailScopes) : [];
+  const gmailReconnectRequired = Boolean(gmailRow && gmailMissingScopes.length > 0);
   const hubspotRow = hubspotRes.data;
   const hubspotConnected = Boolean(
     hubspotRow
@@ -57,10 +65,18 @@ export async function getConnectorTruth(input: {
       connectorKey: "gmail",
       displayName: "Gmail",
       authType: "native",
-      status: gmailRes.error ? "error" : gmailRow ? "connected" : "not_connected",
+      status: gmailRes.error ? "error" : gmailReconnectRequired ? "reconnect_required" : gmailRow ? "healthy" : "missing",
       accountEmail: gmailRow?.provider_email ?? null,
       connectedAt: gmailRow?.created_at ?? null,
-      scopes: asStringArray(gmailRow?.scopes),
+      scopes: gmailScopes,
+      missingScopes: gmailMissingScopes,
+      reconnectRequired: gmailReconnectRequired,
+      executable: Boolean(gmailRow && !gmailReconnectRequired),
+      statusMessage: gmailReconnectRequired
+        ? "Reconnect required to enable send permissions"
+        : gmailRow
+          ? "Ready for approval-gated Gmail sends"
+          : "Not connected",
       source: gmailRow ? "native" : undefined,
     },
     {
@@ -79,7 +95,43 @@ export async function getConnectorTruth(input: {
 }
 
 function applyTruth(connector: Connector, truth: SafeConnectorTruth): Connector {
-  if (truth.status !== "connected") {
+  if (truth.connectorKey === "gmail") {
+    const hasCredential = truth.status !== "missing" && truth.status !== "not_connected" && truth.status !== "error";
+    const reconnectRequired = truth.status === "reconnect_required";
+    return {
+      ...connector,
+      isConnected: hasCredential,
+      status: hasCredential ? "connected" : truth.status === "error" ? "error" : "available",
+      health: reconnectRequired || !hasCredential ? "disabled" : "healthy",
+      lastSync: "-",
+      lastSynced: truth.connectedAt ?? "",
+      syncMode: "manual",
+      syncFreq: "Approval-gated",
+      permissions: ["Compose approved emails", "Send approved emails"],
+      readScopes: [
+        `Compose access: ${truth.scopes.includes(GMAIL_COMPOSE_SCOPE) ? "granted" : "missing"}`,
+        `Send access: ${truth.scopes.includes(GMAIL_SEND_SCOPE) ? "granted" : "missing"}`,
+        "Approval required for external email",
+      ],
+      writeScopes: truth.scopes.filter((scope) => scope === GMAIL_COMPOSE_SCOPE || scope === GMAIL_SEND_SCOPE),
+      approvalRequiredFor: ["External email send"],
+      blockedActions: ["Read full inbox", "Read threads", "Read labels", "Send without approval"],
+      operatorsAllowed: ["Revenue Operator", "Client Flow Operator"],
+      records: reconnectRequired
+        ? "Reconnect required to enable send permissions"
+        : truth.accountEmail
+          ? `Real account connected: ${truth.accountEmail}`
+          : hasCredential
+            ? "Real account connected"
+            : "Not connected",
+      eventsSynced: 0,
+      recentSyncEvents: [],
+      authErrors: reconnectRequired || truth.status === "error" ? 1 : 0,
+      source: hasCredential ? truth.source : undefined,
+    };
+  }
+
+  if (truth.status !== "connected" && truth.status !== "healthy") {
     return {
       ...connector,
       isConnected: false,

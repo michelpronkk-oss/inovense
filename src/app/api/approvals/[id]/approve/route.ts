@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createGmailDraft, GmailApiError, resolveAccessTokenFromCredential, sendGmailDraft, sendGmailMessage, type StoredConnectorCredential } from "@/lib/connectors/gmail";
+import { createGmailDraft, GmailApiError, getMissingGmailScopes, hasGmailSendScope, resolveAccessTokenFromCredential, sendGmailDraft, sendGmailMessage, type StoredConnectorCredential } from "@/lib/connectors/gmail";
 import { logOperatorEvent, recordOperatorUsage } from "@/lib/operators/logging";
 import { createOperatorMemory } from "@/lib/operators/memory";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
@@ -175,6 +175,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   });
 
   const credential = credentialRes.data as StoredConnectorCredential;
+  const missingScopes = getMissingGmailScopes(credential.scopes);
+  if (missingScopes.length > 0 || !hasGmailSendScope(credential.scopes)) {
+    return NextResponse.json({
+      error: "gmail_reconnect_required",
+      message: "Reconnect Gmail to grant send permission.",
+      details: {
+        step: "gmail.scope_check",
+        missingScopes,
+        reconnectRequired: true,
+      },
+    }, { status: 409 });
+  }
+
   let draft: { draftId: string; messageId?: string; raw: string; draftCreateStatus: number };
   let sent: { messageId?: string; sendEndpoint: "drafts/send" | "messages/send"; googleResponseBody: unknown };
   let draftSendFailure: unknown = null;

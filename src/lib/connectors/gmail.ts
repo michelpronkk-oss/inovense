@@ -1,6 +1,8 @@
 import { decryptToken, encryptToken } from "@/lib/connectors/crypto";
 
-const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.compose";
+export const GMAIL_COMPOSE_SCOPE = "https://www.googleapis.com/auth/gmail.compose";
+export const GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
+export const GMAIL_REQUIRED_SCOPES = [GMAIL_COMPOSE_SCOPE, GMAIL_SEND_SCOPE];
 
 type TokenExchangeResult = {
   access_token: string;
@@ -64,7 +66,7 @@ export function buildGoogleAuthUrl(state: string): string {
     response_type: "code",
     access_type: "offline",
     prompt: "consent",
-    scope: GMAIL_SCOPE,
+    scope: GMAIL_REQUIRED_SCOPES.join(" "),
     state,
   });
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
@@ -219,6 +221,15 @@ export async function sendGmailDraft(accessToken: string, draftId: string, debug
   return { messageId: json.id, sendEndpoint: "drafts/send", googleResponseBody: json };
 }
 
+export function getMissingGmailScopes(scopes: string[] | null | undefined, requiredScopes: string[] = GMAIL_REQUIRED_SCOPES): string[] {
+  const granted = new Set(scopes ?? []);
+  return requiredScopes.filter((scope) => !granted.has(scope));
+}
+
+export function hasGmailSendScope(scopes: string[] | null | undefined): boolean {
+  return !getMissingGmailScopes(scopes, [GMAIL_SEND_SCOPE]).length;
+}
+
 export async function sendGmailMessage(accessToken: string, raw: string, debug?: { draftCreateStatus?: number; draftId?: string; draftMessageId?: string }): Promise<{ messageId?: string; sendEndpoint: "messages/send"; googleResponseBody: unknown }> {
   const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
     method: "POST",
@@ -256,7 +267,7 @@ export function toStoredCredential(input: {
     encrypted_access_token: encryptToken(input.accessToken),
     encrypted_refresh_token: input.refreshToken ? encryptToken(input.refreshToken) : null,
     token_expires_at: expiresAt,
-    scopes: input.scopes ? input.scopes.split(" ").filter(Boolean) : [GMAIL_SCOPE],
+    scopes: input.scopes ? input.scopes.split(" ").filter(Boolean) : GMAIL_REQUIRED_SCOPES,
     status: "connected",
     metadata: {
       provider: "google",
@@ -275,5 +286,3 @@ export async function resolveAccessTokenFromCredential(credential: StoredConnect
   const refreshed = await refreshAccessToken(refreshToken);
   return refreshed.access_token;
 }
-
-export const GMAIL_COMPOSE_SCOPE = GMAIL_SCOPE;

@@ -133,7 +133,7 @@ export default function ConnectorsPage() {
   useEffect(() => {
     const connected = searchParams.get("connected");
     if (connected === "gmail") {
-      setFeedback("Gmail connected. Account is now active.");
+      setFeedback("Gmail connected. Approval-gated compose/send permissions are now active.");
       router.replace("/app/connectors");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -398,7 +398,14 @@ export default function ConnectorsPage() {
             </div>
             <ConnectorSetupView connector={drawerConnector} isRealConnected={isRealConnectedConnector(drawerConnector)} isPreview={isPreview} />
             {drawerConnector.id === "gmail" && (
-              <div style={{ marginTop: 10, fontSize: 11.5, color: "#9DEFEA" }}>Secure connection via Google OAuth</div>
+              <div style={{ marginTop: 10, fontSize: 11.5, color: "#9DEFEA" }}>
+                Secure connection via Google OAuth - compose/send only, no inbox sync.
+              </div>
+            )}
+            {drawerConnector.id === "gmail" && drawerConnector.isConnected && drawerConnector.health !== "healthy" && (
+              <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "rgba(245,194,107,0.08)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.2)", fontSize: 12, color: "var(--amber)" }}>
+                Reconnect required to enable send permissions. Existing Gmail credentials do not include Gmail send scope.
+              </div>
             )}
             {drawerConnector.id === "hubspot" && hubspotStatus?.status === "connected" && (
               <div style={{ marginTop: 10, fontSize: 11.5, color: "#9DEFEA" }}>
@@ -413,7 +420,7 @@ export default function ConnectorsPage() {
             {isRealConnectedConnector(drawerConnector) && (
               <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Recent sync events</div>
-                {(drawerConnector.recentSyncEvents.length ? drawerConnector.recentSyncEvents : ["No sync events yet"]).map((ev) => (
+                {(drawerConnector.recentSyncEvents.length ? drawerConnector.recentSyncEvents : ["No DB-backed sync events. Gmail compose/send does not sync inbox data."]).map((ev) => (
                   <div key={ev} style={{ fontSize: 12, color: "var(--text-dim)", padding: "8px 10px", borderRadius: 8, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)" }}>{ev}</div>
                 ))}
               </div>
@@ -423,7 +430,12 @@ export default function ConnectorsPage() {
                 {isRealConnectedConnector(drawerConnector) && (
                   <>
                     <button className="btn btn-ghost btn-sm" onClick={() => { testConnector(drawerConnector.id); setFeedback(`${drawerConnector.name} tested.`); }}>Test connection</button>
-                    <button className="btn btn-ghost btn-sm" onClick={() => { resyncConnector(drawerConnector.id); setFeedback(`${drawerConnector.name} resynced.`); }}>Resync</button>
+                    {drawerConnector.id !== "gmail" && (
+                      <button className="btn btn-ghost btn-sm" onClick={() => { resyncConnector(drawerConnector.id); setFeedback(`${drawerConnector.name} resynced.`); }}>Resync</button>
+                    )}
+                    {drawerConnector.id === "gmail" && (
+                      <button className="btn btn-primary btn-sm" onClick={startRealGmailOAuth}>Reconnect Gmail</button>
+                    )}
                   </>
                 )}
                 <button className="btn btn-ghost btn-sm" onClick={() => {

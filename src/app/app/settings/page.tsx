@@ -300,9 +300,10 @@ export default function SettingsPage() {
             const color = acct.connectorKey === "gmail" ? "#EA4335" : "#FF7A59";
             const letter = acct.connectorKey === "gmail" ? "G" : "Hs";
             const authLabel = acct.authType === "native" ? "Native connector" : "Secure connector";
-            const isConnected = acct.status === "connected";
-            const statusColor = isConnected ? "var(--green)" : acct.status === "error" ? "var(--red, #F2767C)" : "var(--text-faint)";
-            const statusLabel = isConnected ? "Connected" : acct.status === "error" ? "Error" : "Not connected";
+            const isConnected = acct.status === "connected" || acct.status === "healthy";
+            const reconnectRequired = acct.status === "reconnect_required";
+            const statusColor = isConnected ? "var(--green)" : reconnectRequired ? "var(--amber)" : acct.status === "error" ? "var(--red, #F2767C)" : "var(--text-faint)";
+            const statusLabel = isConnected ? "Connected" : reconnectRequired ? "Reconnect required" : acct.status === "error" ? "Error" : "Not connected";
             const connectedDate = acct.connectedAt
               ? new Date(acct.connectedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
               : null;
@@ -317,9 +318,9 @@ export default function SettingsPage() {
                 <div>
                   <div style={{ fontSize: 13.5, fontWeight: 500 }}>{acct.displayName}</div>
                   <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)", marginTop: 2 }}>
-                    {isConnected && acct.accountEmail
+                    {(isConnected || reconnectRequired) && acct.accountEmail
                       ? acct.accountEmail
-                      : isConnected
+                      : isConnected || reconnectRequired
                         ? "Connected account"
                         : statusLabel}
                     {" · "}{authLabel}

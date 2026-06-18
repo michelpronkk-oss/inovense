@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getConnectorTruth } from "@/lib/connectors/truth";
+import { getConnectorTruth, type ConnectorTruthStatus } from "@/lib/connectors/truth";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 
@@ -7,10 +7,14 @@ export type ConnectedAccount = {
   connectorKey: string;
   displayName: string;
   authType: "native" | "managed";
-  status: "connected" | "not_connected" | "error";
+  status: ConnectorTruthStatus;
   accountEmail: string | null;
   connectedAt: string | null;
   scopes: string[];
+  missingScopes: string[];
+  reconnectRequired: boolean;
+  executable: boolean;
+  statusMessage: string | null;
   permissionsLabel: string[];
   canReconnect: boolean;
   canDisconnect: boolean;
@@ -43,8 +47,16 @@ export async function GET(req: NextRequest) {
     accountEmail: connector.accountEmail,
     connectedAt: connector.connectedAt,
     scopes: connector.scopes,
+    missingScopes: connector.missingScopes ?? [],
+    reconnectRequired: Boolean(connector.reconnectRequired),
+    executable: Boolean(connector.executable),
+    statusMessage: connector.statusMessage ?? null,
     permissionsLabel: connector.connectorKey === "gmail"
-      ? ["Create email drafts", "Send approved emails"]
+      ? [
+          "Compose access",
+          connector.scopes.includes("https://www.googleapis.com/auth/gmail.send") ? "Send access" : "Send access missing",
+          "Approval required for external email",
+        ]
       : ["Contacts, companies, deals and owners"],
     canReconnect: true,
     canDisconnect: false,

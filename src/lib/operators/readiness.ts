@@ -32,7 +32,10 @@ type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
 function connectorConnected(connectorKey: ConnectorKey, truth: SafeConnectorTruth[]): boolean {
   if (connectorKey !== "gmail" && connectorKey !== "hubspot") return false;
-  return truth.some((connector) => connector.connectorKey === connectorKey && connector.status === "connected");
+  return truth.some((connector) =>
+    connector.connectorKey === connectorKey
+    && (connector.status === "connected" || connector.status === "healthy")
+  );
 }
 
 function getConnectedRequiredConnectors(operator: OperatorDefinition, truth: SafeConnectorTruth[]): ConnectorKey[] {
