@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   const supabase = createSupabaseAdmin();
   const context = await resolveWorkspaceContext({ workspaceId, userId, userEmail, supabase, allowDevFallback: false });
   if (!context.ok) {
-    return NextResponse.json({ error: context.error }, { status: context.status });
+    return NextResponse.json({ error: context.error, code: context.code }, { status: context.status });
   }
 
   const truth = await getConnectorTruth({ workspaceId: context.workspaceId, supabase });

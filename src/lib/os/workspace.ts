@@ -1,3 +1,6 @@
+import { cookies } from "next/headers";
+import { createClient } from "@supabase/supabase-js";
+import { getSessionUsername, SESSION_COOKIE } from "@/lib/session";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 function isUuid(v: string | null | undefined): v is string {
@@ -27,12 +30,114 @@ export type WorkspaceContext =
     }
   | {
       ok: false;
-      status: 400 | 403 | 404;
+      status: 400 | 401 | 403 | 404;
       error: string;
-      code: "invalid_params" | "workspace_membership_not_found" | "workspace_not_found";
+      code: "invalid_params" | "unauthenticated" | "workspace_not_found" | "workspace_forbidden" | "missing_membership";
     };
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
+
+type ResolvedIdentity = {
+  userId?: string;
+  userEmail?: string;
+  userName?: string;
+  source: "input" | "supabase_cookie" | "admin_session";
+};
+
+function normalizeEmail(value: string | undefined): string | undefined {
+  const trimmed = value?.trim().toLowerCase();
+  return trimmed || undefined;
+}
+
+function readJsonCookie(value: string): unknown {
+  const decoded = decodeURIComponent(value);
+  return JSON.parse(decoded);
+}
+
+function getString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function getAccessTokenFromAuthCookie(value: string): string | undefined {
+  try {
+    const parsed = readJsonCookie(value);
+    if (Array.isArray(parsed)) return getString(parsed[0]);
+    if (parsed && typeof parsed === "object") {
+      const rec = parsed as Record<string, unknown>;
+      return getString(rec.access_token) ?? getString(rec.accessToken);
+    }
+  } catch {
+    return undefined;
+  }
+}
+
+function getSupabaseAuthCookieValue(cookieStore: Awaited<ReturnType<typeof cookies>>): string | undefined {
+  const all = cookieStore.getAll();
+  const whole = all.find((cookie) => cookie.name.startsWith("sb-") && cookie.name.endsWith("-auth-token"));
+  if (whole) return whole.value;
+
+  const chunked = all
+    .filter((cookie) => /^sb-.+-auth-token\.\d+$/.test(cookie.name))
+    .sort((a, b) => {
+      const aIndex = Number(a.name.split(".").pop() ?? "0");
+      const bIndex = Number(b.name.split(".").pop() ?? "0");
+      return aIndex - bIndex;
+    });
+
+  return chunked.length ? chunked.map((cookie) => cookie.value).join("") : undefined;
+}
+
+async function getSupabaseCookieIdentity(): Promise<ResolvedIdentity | null> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) return null;
+
+  const cookieStore = await cookies();
+  const authCookieValue = getSupabaseAuthCookieValue(cookieStore);
+  const token = authCookieValue ? getAccessTokenFromAuthCookie(authCookieValue) : undefined;
+  if (!token) return null;
+
+  const supabase = createClient(url, anonKey, { auth: { persistSession: false } });
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) return null;
+
+  return {
+    userId: data.user.id,
+    userEmail: normalizeEmail(data.user.email ?? undefined),
+    userName: getString(data.user.user_metadata?.full_name) ?? getString(data.user.user_metadata?.name),
+    source: "supabase_cookie",
+  };
+}
+
+async function getAdminSessionIdentity(): Promise<ResolvedIdentity | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+
+  const username = await getSessionUsername(token);
+  if (!username) return null;
+
+  return {
+    userEmail: normalizeEmail(username),
+    userName: username,
+    source: "admin_session",
+  };
+}
+
+async function resolveRequestIdentity(input: {
+  userId?: string;
+  userEmail?: string;
+  userName?: string;
+}): Promise<ResolvedIdentity | null> {
+  const userId = input.userId?.trim() || undefined;
+  const userEmail = normalizeEmail(input.userEmail);
+  const userName = input.userName?.trim() || undefined;
+  if (userId || userEmail) {
+    return { userId, userEmail, userName, source: "input" };
+  }
+
+  return await getSupabaseCookieIdentity() ?? await getAdminSessionIdentity();
+}
 
 async function findMembership(input: {
   supabase: SupabaseAdmin;
@@ -124,12 +229,14 @@ export async function resolveWorkspaceContext(input: {
 }): Promise<WorkspaceContext> {
   const supabase = input.supabase ?? createSupabaseAdmin();
   const workspaceId = input.workspaceId?.trim() || undefined;
-  const userId = input.userId?.trim() || undefined;
-  const userEmail = input.userEmail?.trim().toLowerCase() || undefined;
+  const identity = await resolveRequestIdentity(input);
+  const userId = identity?.userId;
+  const userEmail = identity?.userEmail;
+  const userName = identity?.userName ?? input.userName;
   const allowDevFallback = input.allowDevFallback !== false && process.env.NODE_ENV !== "production";
 
   if (!userId && !userEmail) {
-    return { ok: false, status: 400, error: "User identity is required.", code: "invalid_params" };
+    return { ok: false, status: 401, error: "Unauthenticated request. Sign in before accessing workspace APIs.", code: "unauthenticated" };
   }
 
   const membership = await findMembership({ supabase, workspaceId, userId, userEmail });
@@ -145,7 +252,7 @@ export async function resolveWorkspaceContext(input: {
   }
 
   if (allowDevFallback) {
-    return ensureDevWorkspace({ supabase, workspaceId, userId, userEmail, userName: input.userName });
+    return ensureDevWorkspace({ supabase, workspaceId, userId, userEmail, userName });
   }
 
   if (workspaceId) {
@@ -156,14 +263,21 @@ export async function resolveWorkspaceContext(input: {
       .maybeSingle();
 
     if (!workspace.data) {
-      return { ok: false, status: 404, error: "Workspace not found.", code: "workspace_not_found" };
+      return { ok: false, status: 404, error: "workspace_not_found: Workspace not found.", code: "workspace_not_found" };
     }
+
+    return {
+      ok: false,
+      status: 403,
+      error: "workspace_forbidden: Signed-in user is not allowed to access this workspace.",
+      code: "workspace_forbidden",
+    };
   }
 
   return {
     ok: false,
     status: 403,
-    error: "Workspace membership not found.",
-    code: "workspace_membership_not_found",
+    error: "missing_membership: No workspace membership was found for the signed-in user.",
+    code: "missing_membership",
   };
 }

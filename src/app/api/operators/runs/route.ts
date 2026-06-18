@@ -12,14 +12,14 @@ export async function GET(req: NextRequest) {
   const userEmail = (req.nextUrl.searchParams.get("userEmail") || "").trim().toLowerCase();
   const operatorKey = (req.nextUrl.searchParams.get("operatorKey") || "").trim();
 
-  if (!workspaceId || (!userEmail && !userId)) {
-    return NextResponse.json({ error: "workspaceId and user identity are required." }, { status: 400 });
+  if (!workspaceId) {
+    return NextResponse.json({ error: "workspaceId is required." }, { status: 400 });
   }
 
   const supabase = createSupabaseAdmin();
   const context = await resolveWorkspaceContext({ workspaceId, userId, userEmail, supabase, allowDevFallback: false });
   if (!context.ok) {
-    return NextResponse.json({ error: context.error }, { status: context.status });
+    return NextResponse.json({ error: context.error, code: context.code }, { status: context.status });
   }
 
   let query = supabase

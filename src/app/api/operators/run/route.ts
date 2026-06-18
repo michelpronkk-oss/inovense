@@ -22,14 +22,14 @@ export async function POST(req: NextRequest) {
   const userId = body.userId?.trim() || "";
   const operatorKey = body.operatorKey?.trim() || "";
 
-  if (!workspaceId || !operatorKey || !body.input || (!userEmail && !userId)) {
-    return NextResponse.json({ error: "workspaceId, operatorKey, input and user identity are required." }, { status: 400 });
+  if (!workspaceId || !operatorKey || !body.input) {
+    return NextResponse.json({ error: "workspaceId, operatorKey and input are required." }, { status: 400 });
   }
 
   const supabase = createSupabaseAdmin();
   const context = await resolveWorkspaceContext({ workspaceId, userId, userEmail, supabase, allowDevFallback: false });
   if (!context.ok) {
-    return NextResponse.json({ error: context.error }, { status: context.status });
+    return NextResponse.json({ error: context.error, code: context.code }, { status: context.status });
   }
 
   const result = await runRevenueOperator({

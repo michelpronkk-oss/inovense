@@ -116,3 +116,16 @@ export async function verifySessionToken(token: string): Promise<boolean> {
     return false;
   }
 }
+
+export async function getSessionUsername(token: string): Promise<string | null> {
+  const valid = await verifySessionToken(token);
+  if (!valid) return null;
+
+  const lastColon = token.lastIndexOf(":");
+  if (lastColon === -1) return null;
+  const payload = token.substring(0, lastColon);
+  const secondLastColon = payload.lastIndexOf(":");
+  if (secondLastColon === -1) return null;
+  const username = payload.substring(0, secondLastColon).trim();
+  return username || null;
+}

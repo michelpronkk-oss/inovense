@@ -45,14 +45,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const userEmail = body.userEmail?.toLowerCase() || "";
   const userId = body.userId || "";
   const workspaceId = body.workspaceId || "";
-  if (!id || !workspaceId || (!userEmail && !userId)) {
-    return NextResponse.json({ error: "approval id, workspaceId and user identity are required." }, { status: 400 });
+  if (!id || !workspaceId) {
+    return NextResponse.json({ error: "approval id and workspaceId are required." }, { status: 400 });
   }
 
   const supabase = createSupabaseAdmin();
   const context = await resolveWorkspaceContext({ workspaceId, userId, userEmail, supabase, allowDevFallback: false });
   if (!context.ok) {
-    return NextResponse.json({ error: context.error }, { status: context.status === 404 ? 403 : context.status });
+    return NextResponse.json({ error: context.error, code: context.code }, { status: context.status });
   }
 
   const approvalRes = await supabase
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   await supabase.from("os_approvals").update({
     status: "approved",
     resolved_at: new Date().toISOString(),
-    resolved_by: userEmail || userId,
+    resolved_by: context.userEmail || context.userId || userEmail || userId,
   }).eq("id", id);
 
   await supabase.from("os_execution_logs").insert([
