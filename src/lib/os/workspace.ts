@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
-import { getSessionUsername, SESSION_COOKIE } from "@/lib/session";
+import { APP_SESSION_COOKIE, getSessionUsername, SESSION_COOKIE } from "@/lib/session";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 function isUuid(v: string | null | undefined): v is string {
@@ -41,7 +41,7 @@ type ResolvedIdentity = {
   userId?: string;
   userEmail?: string;
   userName?: string;
-  source: "input" | "supabase_cookie" | "admin_session";
+  source: "input" | "supabase_cookie" | "app_session" | "admin_session";
 };
 
 function normalizeEmail(value: string | undefined): string | undefined {
@@ -109,9 +109,9 @@ async function getSupabaseCookieIdentity(): Promise<ResolvedIdentity | null> {
   };
 }
 
-async function getAdminSessionIdentity(): Promise<ResolvedIdentity | null> {
+async function getSignedCookieIdentity(cookieName: string, source: "app_session" | "admin_session"): Promise<ResolvedIdentity | null> {
   const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
+  const token = cookieStore.get(cookieName)?.value;
   if (!token) return null;
 
   const username = await getSessionUsername(token);
@@ -120,7 +120,7 @@ async function getAdminSessionIdentity(): Promise<ResolvedIdentity | null> {
   return {
     userEmail: normalizeEmail(username),
     userName: username,
-    source: "admin_session",
+    source,
   };
 }
 
@@ -136,7 +136,9 @@ async function resolveRequestIdentity(input: {
     return { userId, userEmail, userName, source: "input" };
   }
 
-  return await getSupabaseCookieIdentity() ?? await getAdminSessionIdentity();
+  return await getSupabaseCookieIdentity()
+    ?? await getSignedCookieIdentity(APP_SESSION_COOKIE, "app_session")
+    ?? await getSignedCookieIdentity(SESSION_COOKIE, "admin_session");
 }
 
 async function findMembership(input: {

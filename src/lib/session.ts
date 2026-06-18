@@ -12,6 +12,7 @@
  */
 
 export const SESSION_COOKIE = "inovense_admin_session";
+export const APP_SESSION_COOKIE = "inovense_app_session";
 export const SESSION_MAX_AGE_SEC = 60 * 60 * 24 * 7; // 7 days
 const SESSION_MAX_AGE_MS = SESSION_MAX_AGE_SEC * 1000;
 

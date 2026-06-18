@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { applyConnectorTruthToState, getConnectorTruth } from "@/lib/connectors/truth";
 import { buildSeedState } from "@/lib/os/seed";
 import type { OSState } from "@/lib/os/types";
-import { resolveWorkspaceContext } from "@/lib/os/workspace";
+import { resolveWorkspaceContext, type WorkspaceContext } from "@/lib/os/workspace";
+import { APP_SESSION_COOKIE, createSessionToken, SESSION_MAX_AGE_SEC } from "@/lib/session";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 
 type JsonRecord = Record<string, unknown>;
@@ -94,6 +95,19 @@ async function buildStateFromDatabase(workspaceId: string, supabase: ReturnType<
   return seeded;
 }
 
+async function withAppSessionCookie(response: NextResponse, context: Extract<WorkspaceContext, { ok: true }>) {
+  if (!context.userEmail || !process.env.SESSION_SECRET) return response;
+  const token = await createSessionToken(context.userEmail);
+  response.cookies.set(APP_SESSION_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: SESSION_MAX_AGE_SEC,
+    path: "/",
+  });
+  return response;
+}
+
 async function loadWorkspaceState(input: { workspaceId?: string; userId?: string; userEmail?: string; userName?: string }) {
   const supabase = createSupabaseAdmin();
   const context = await resolveWorkspaceContext({ ...input, supabase });
@@ -139,7 +153,7 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
   const connectorTruth = await getConnectorTruth({ workspaceId, supabase });
   state = applyConnectorTruthToState(state, connectorTruth);
 
-  return { workspaceId, state };
+  return { workspaceId, state, context };
 }
 
 export async function GET(req: NextRequest) {
@@ -157,7 +171,10 @@ export async function GET(req: NextRequest) {
     const userName = req.nextUrl.searchParams.get("userName") ?? undefined;
 
     const boot = await loadWorkspaceState({ workspaceId, userId, userEmail, userName });
-    return NextResponse.json({ fallback: false, workspaceId: boot.workspaceId, state: boot.state });
+    return withAppSessionCookie(
+      NextResponse.json({ fallback: false, workspaceId: boot.workspaceId, state: boot.state }),
+      boot.context
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown bootstrap error";
     const status = error instanceof StateRouteError ? error.status : 500;
@@ -211,7 +228,7 @@ export async function POST(req: NextRequest) {
       state: stripSnapshotTruth({ ...state, workspace: { ...state.workspace, id: context.workspaceId } }),
     }, { onConflict: "workspace_id" });
 
-    return NextResponse.json({ ok: true });
+    return withAppSessionCookie(NextResponse.json({ ok: true }), context);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to persist state";
     return NextResponse.json({ error: message }, { status: 500 });
