@@ -353,32 +353,9 @@ export default function AgentsPage() {
             </div>
           )}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div style={{ padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 8 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 600 }}>Readiness</div>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: revenueReadiness?.status === "ready" || revenueReadiness?.status === "draft_only" ? "var(--green)" : "var(--amber)" }}>
-                  {revenueReadiness?.status ?? "loading"}
-                </div>
-              </div>
-              <div style={{ height: 8, borderRadius: 999, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${revenueReadiness?.readinessPercent ?? 0}%`, background: "linear-gradient(90deg, #4DE8E1, #51D88A)" }} />
-              </div>
-              <div style={{ fontSize: 12.5, color: "var(--text-dim)" }}>{revenueStatusMessage}</div>
-              <TagList title="Connected required connectors" items={revenueReadiness?.connectedRequiredConnectors ?? []} empty="None" />
-              <TagList title="Missing required connectors" items={revenueReadiness?.missingRequiredConnectors ?? []} empty="None" />
-              <TagList title="Available actions" items={revenueReadiness?.availableActions ?? []} empty="None" />
-              <TagList title="Approval required actions" items={revenueReadiness?.approvalRequiredActions ?? []} empty="None" />
-              <TagList title="Blocked actions" items={revenueReadiness?.blockedActions ?? []} empty="None" />
-              {revenueReadiness?.nextSetupStep && (
-                <div style={{ fontSize: 12, color: "var(--text-mute)" }}>
-                  <strong style={{ color: "var(--text-dim)" }}>Next step:</strong> {revenueReadiness.nextSetupStep}
-                </div>
-              )}
-            </div>
-
             <div style={{ padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 10 }}>
               <div>
-                <div style={{ fontSize: 13.5, fontWeight: 600 }}>Scan for revenue opportunities</div>
+                <div style={{ fontSize: 13.5, fontWeight: 600 }}>Revenue Signal Scanner</div>
                 <div style={{ marginTop: 3, fontSize: 12, color: "var(--text-mute)" }}>
                   Revenue Operator scans recent Gmail messages and prepares follow-ups for approval. Nothing is sent without approval.
                 </div>
@@ -458,6 +435,29 @@ export default function AgentsPage() {
                   </form>
                 )}
               </div>
+            </div>
+
+            <div style={{ padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600 }}>Readiness</div>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: revenueReadiness?.status === "ready" || revenueReadiness?.status === "draft_only" ? "var(--green)" : "var(--amber)" }}>
+                  {revenueReadiness?.status ?? "loading"}
+                </div>
+              </div>
+              <div style={{ height: 8, borderRadius: 999, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${revenueReadiness?.readinessPercent ?? 0}%`, background: "linear-gradient(90deg, #4DE8E1, #51D88A)" }} />
+              </div>
+              <div style={{ fontSize: 12.5, color: "var(--text-dim)" }}>{revenueStatusMessage}</div>
+              <TagList title="Connected required connectors" items={revenueReadiness?.connectedRequiredConnectors ?? []} empty="None" />
+              <TagList title="Missing required connectors" items={revenueReadiness?.missingRequiredConnectors ?? []} empty="None" />
+              <TagList title="Available actions" items={revenueReadiness?.availableActions ?? []} empty="None" />
+              <TagList title="Approval required actions" items={revenueReadiness?.approvalRequiredActions ?? []} empty="None" />
+              <TagList title="Blocked actions" items={revenueReadiness?.blockedActions ?? []} empty="None" />
+              {revenueReadiness?.nextSetupStep && (
+                <div style={{ fontSize: 12, color: "var(--text-mute)" }}>
+                  <strong style={{ color: "var(--text-dim)" }}>Next step:</strong> {revenueReadiness.nextSetupStep}
+                </div>
+              )}
             </div>
           </div>
 
