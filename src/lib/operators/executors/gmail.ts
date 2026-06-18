@@ -62,6 +62,7 @@ export async function createGmailSendApproval(input: {
   const approvalId = operatorRuntimeId("appr-revenue-gmail");
   const insert = await input.supabase.from("os_approvals").insert({
     id: approvalId,
+    workspace_id: input.workspaceId,
     type: "email",
     title: "Approval required before sending",
     body: `Revenue Operator prepared an outbound Gmail message to ${input.to}.`,

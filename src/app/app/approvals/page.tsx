@@ -1,32 +1,154 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useOS } from "@/lib/os/app-provider";
 import { InboxIcon, CheckIcon } from "@/components/dashboard/icons";
 
-const FILTER_TABS = ["All", "Proposal", "Follow-up", "Campaign", "Report"];
+const FILTER_TABS = ["All", "Email", "Follow-up", "Action"];
+
+type ApprovalRow = {
+  id: string;
+  title: string;
+  description: string;
+  status: "pending" | "approved" | "rejected" | string;
+  created_at: string | null;
+  resolved_at: string | null;
+  approval_type: string;
+  category: string;
+  continuation_kind: string | null;
+  run_id: string | null;
+  linked_run_id: string | null;
+  agent_id: string | null;
+  agent_mark: string | null;
+  policy_reason: string | null;
+  payload_preview: {
+    to: string | null;
+    subject: string | null;
+    body: string | null;
+    operatorKey: string | null;
+  };
+};
+
+type ApprovalsResponse = {
+  approvals?: ApprovalRow[];
+  stats?: {
+    pending: number;
+    approvedToday: number;
+    rejectedToday: number;
+    total: number;
+  };
+  error?: string;
+};
 
 function tagClass(type: string): string {
   if (type === "proposal") return "pill-cyan";
   if (type === "campaign") return "pill-rose";
-  return "pill-amber";
+  if (type === "email" || type === "follow-up") return "pill-amber";
+  return "pill-cyan";
+}
+
+function timeAgo(createdAt: string | null): string {
+  if (!createdAt) return "time unknown";
+  const diff = Date.now() - new Date(createdAt).getTime();
+  const mins = Math.max(0, Math.floor(diff / 60000));
+  if (mins < 60) return `${mins}m ago`;
+  if (mins < 60 * 24) return `${Math.floor(mins / 60)}h ago`;
+  return `${Math.floor(mins / (60 * 24))}d ago`;
+}
+
+function displayCategory(item: ApprovalRow): string {
+  if (item.continuation_kind === "gmail.send_after_approval") return "follow-up";
+  return item.category || item.approval_type || "action";
+}
+
+function matchesFilter(item: ApprovalRow, filter: string): boolean {
+  if (filter === "All") return true;
+  const needle = filter.toLowerCase();
+  return displayCategory(item) === needle || item.approval_type === needle;
 }
 
 export default function ApprovalsPage() {
-  const { state, approveItem, skipItem } = useOS();
+  const { state } = useOS();
   const router = useRouter();
   const [filter, setFilter] = useState("All");
+  const [approvals, setApprovals] = useState<ApprovalRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
-  const pending = state.approvals.filter((a) => a.status === "pending");
-  const resolved = state.approvals.filter((a) => a.status !== "pending");
+  const loadApprovals = useCallback(async () => {
+    if (!state.workspace.id) return;
+    setLoading(true);
+    setError("");
+    const qs = new URLSearchParams({
+      workspaceId: state.workspace.id,
+      userId: state.currentUser.id,
+      userEmail: state.currentUser.email,
+    });
 
-  const visible = pending.filter((a) =>
-    filter === "All" || a.type === filter.toLowerCase().replace("-", "-")
-  );
+    try {
+      const res = await fetch(`/api/approvals?${qs.toString()}`, { cache: "no-store" });
+      const json = await res.json().catch(() => ({})) as ApprovalsResponse;
+      if (!res.ok) {
+        setError(json.error || "Could not load approvals.");
+        setApprovals([]);
+        return;
+      }
+      setApprovals(Array.isArray(json.approvals) ? json.approvals : []);
+    } catch {
+      setError("Could not load approvals.");
+      setApprovals([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [state.currentUser.email, state.currentUser.id, state.workspace.id]);
 
-  const approveAll = () => {
-    visible.forEach((a) => approveItem(a.id, a.runId, a.agentId));
+  useEffect(() => {
+    void loadApprovals();
+  }, [loadApprovals]);
+
+  const pending = useMemo(() => approvals.filter((a) => a.status === "pending"), [approvals]);
+  const resolved = useMemo(() => approvals.filter((a) => a.status !== "pending"), [approvals]);
+  const visible = useMemo(() => pending.filter((a) => matchesFilter(a, filter)), [filter, pending]);
+  const approvedToday = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return resolved.filter((a) => a.status === "approved" && a.resolved_at?.startsWith(today)).length;
+  }, [resolved]);
+
+  const actOnApproval = async (item: ApprovalRow, action: "approve" | "reject") => {
+    setBusyId(item.id);
+    setError("");
+    try {
+      const res = await fetch(`/api/approvals/${item.id}/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: state.workspace.id,
+          userId: state.currentUser.id,
+          userEmail: state.currentUser.email,
+        }),
+      });
+      const json = await res.json().catch(() => ({})) as { error?: string };
+      if (!res.ok) {
+        setError(json.error || `Could not ${action} approval.`);
+        return;
+      }
+      await loadApprovals();
+    } catch {
+      setError(`Could not ${action} approval.`);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const approveAll = async () => {
+    if (visible.length === 0) return;
+    const ok = window.confirm(`Approve ${visible.length} pending approval${visible.length === 1 ? "" : "s"}? Email approvals will send after approval.`);
+    if (!ok) return;
+    for (const item of visible) {
+      await actOnApproval(item, "approve");
+    }
   };
 
   return (
@@ -42,8 +164,8 @@ export default function ApprovalsPage() {
           <button
             className="btn btn-primary btn-sm"
             onClick={approveAll}
-            disabled={visible.length === 0}
-            style={{ opacity: visible.length === 0 ? 0.4 : 1 }}
+            disabled={visible.length === 0 || Boolean(busyId)}
+            style={{ opacity: visible.length === 0 || busyId ? 0.4 : 1 }}
           >
             <CheckIcon size={12} /> Approve all
           </button>
@@ -52,10 +174,10 @@ export default function ApprovalsPage() {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
         {[
-          { label: "Pending", val: String(pending.length), sub: "across all operators" },
-          { label: "Approved today", val: String(resolved.filter((a) => a.status === "approved").length + 12), sub: "since session start" },
-          { label: "Avg. review time", val: "4m 12s", sub: "median per item" },
-          { label: "Auto-approved (7d)", val: "84", sub: "within policy bounds" },
+          { label: "Pending", val: String(pending.length), sub: "from database" },
+          { label: "Approved today", val: String(approvedToday), sub: "resolved in DB today" },
+          { label: "Avg. review time", val: "-", sub: "not tracked yet" },
+          { label: "Auto-approved (7d)", val: "-", sub: "not enabled" },
         ].map((s) => (
           <div className="kpi" key={s.label}>
             <div className="kpi-top"><span className="lab">{s.label}</span></div>
@@ -73,6 +195,12 @@ export default function ApprovalsPage() {
         ))}
       </div>
 
+      {error && (
+        <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>
+          {error}
+        </div>
+      )}
+
       <div className="p">
         <div className="p-head">
           <h3><InboxIcon size={13} /> Pending review</h3>
@@ -83,7 +211,11 @@ export default function ApprovalsPage() {
             }
           </div>
         </div>
-        {visible.length === 0 ? (
+        {loading ? (
+          <div style={{ padding: "40px 24px", textAlign: "center", color: "var(--text-mute)", fontSize: 13 }}>
+            Loading approvals...
+          </div>
+        ) : visible.length === 0 ? (
           <div style={{ padding: "40px 24px", textAlign: "center" }}>
             <div style={{ fontSize: 28, marginBottom: 10 }}>
               <CheckIcon size={28} style={{ color: "var(--green)", margin: "0 auto" }} />
@@ -93,47 +225,53 @@ export default function ApprovalsPage() {
           </div>
         ) : (
           visible.map((item) => {
-            const agentName = state.agents.find((a) => a.id === item.agentId)?.name ?? item.agentMark;
-            const timeAgo = (() => {
-              const diff = Date.now() - new Date(item.createdAt).getTime();
-              const mins = Math.floor(diff / 60000);
-              if (mins < 60) return `${mins}m ago`;
-              return `${Math.floor(mins / 60)}h ago`;
-            })();
+            const category = displayCategory(item);
+            const operatorName = item.payload_preview.operatorKey === "revenue" || item.agent_id === "revenue"
+              ? "Revenue Operator"
+              : item.agent_mark || "Operator";
+            const isBusy = busyId === item.id;
 
             return (
               <div key={item.id} className="appr-row">
                 <div className="appr-row-top">
-                  <span className={`pill ${tagClass(item.type)}`}>{item.type}</span>
+                  <span className={`pill ${tagClass(category)}`}>{category}</span>
                   <span className="appr-row-title">{item.title}</span>
                 </div>
-                <div className="appr-row-from">{agentName} - {timeAgo}</div>
-                <div className="appr-row-body">{item.body}</div>
-                {(item.proposedAction || item.draftOutput || (item.policyChecks?.length ?? 0) > 0) && (
-                  <div style={{ marginTop: 8, padding: "9px 10px", borderRadius: 8, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 4 }}>
-                    {item.proposedAction && (
-                      <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
-                        <strong style={{ color: "var(--text)" }}>Proposed action:</strong> {item.proposedAction}
-                      </div>
-                    )}
-                    {item.draftOutput && (
-                      <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
-                        <strong style={{ color: "var(--text)" }}>Draft:</strong> {item.draftOutput}
-                      </div>
-                    )}
-                    {(item.policyChecks?.length ?? 0) > 0 && (
-                      <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
-                        <strong style={{ color: "var(--text)" }}>Policy checks:</strong> {item.policyChecks?.join(" | ")}
-                      </div>
-                    )}
-                  </div>
-                )}
+                <div className="appr-row-from">{operatorName} - {timeAgo(item.created_at)}</div>
+                <div className="appr-row-body">{item.description}</div>
+                <div style={{ marginTop: 8, padding: "9px 10px", borderRadius: 8, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 4 }}>
+                  {item.payload_preview.to && (
+                    <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
+                      <strong style={{ color: "var(--text)" }}>To:</strong> {item.payload_preview.to}
+                    </div>
+                  )}
+                  {item.payload_preview.subject && (
+                    <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
+                      <strong style={{ color: "var(--text)" }}>Subject:</strong> {item.payload_preview.subject}
+                    </div>
+                  )}
+                  {item.payload_preview.body && (
+                    <div style={{ fontSize: 11.5, color: "var(--text-dim)", whiteSpace: "pre-wrap" }}>
+                      <strong style={{ color: "var(--text)" }}>Body:</strong> {item.payload_preview.body}
+                    </div>
+                  )}
+                  {item.policy_reason && (
+                    <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
+                      <strong style={{ color: "var(--text)" }}>Policy:</strong> {item.policy_reason}
+                    </div>
+                  )}
+                  {item.linked_run_id && (
+                    <div style={{ fontSize: 11.5, color: "var(--text-dim)", fontFamily: "var(--font-mono)" }}>
+                      Run: {item.linked_run_id}
+                    </div>
+                  )}
+                </div>
                 <div className="appr-row-actions">
-                  <button className="appr-btn approve" onClick={() => approveItem(item.id, item.runId, item.agentId)}>
-                    {item.type === "email" ? "Approve and send" : "Approve"}
+                  <button className="appr-btn approve" disabled={isBusy} onClick={() => actOnApproval(item, "approve")}>
+                    {item.approval_type === "email" ? "Approve and send" : "Approve"}
                   </button>
                   <button className="appr-btn edit" disabled aria-disabled="true" title="Inline editor is coming soon">Edit</button>
-                  <button className="appr-btn deny" onClick={() => skipItem(item.id, item.runId, item.agentId)}>Skip</button>
+                  <button className="appr-btn deny" disabled={isBusy} onClick={() => actOnApproval(item, "reject")}>Reject</button>
                 </div>
               </div>
             );
@@ -142,7 +280,7 @@ export default function ApprovalsPage() {
       </div>
 
       <div style={{ padding: "14px 18px", borderRadius: 12, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", fontSize: 12.5, color: "var(--text-mute)", lineHeight: 1.6 }}>
-        <strong style={{ color: "var(--text-dim)" }}>Approval policy:</strong> All outbound communications, proposals, and campaign launches require manual approval. Internal reports and digests can be auto-approved if within defined parameters.{" "}
+        <strong style={{ color: "var(--text-dim)" }}>Approval policy:</strong> Outbound communications require manual approval before execution. This inbox now reads real workspace approvals from the database.{" "}
         <button className="lnk-open" style={{ fontSize: 12.5 }} onClick={() => router.push("/app/policies")}>Edit policies</button>
       </div>
     </div>

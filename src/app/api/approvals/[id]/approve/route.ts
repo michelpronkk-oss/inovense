@@ -59,6 +59,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     .from("os_approvals")
     .select("*")
     .eq("id", id)
+    .eq("workspace_id", context.workspaceId)
     .maybeSingle();
 
   if (approvalRes.error) {
@@ -113,7 +114,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     status: "approved",
     resolved_at: new Date().toISOString(),
     resolved_by: context.userEmail || context.userId || userEmail || userId,
-  }).eq("id", id);
+  }).eq("id", id).eq("workspace_id", context.workspaceId);
 
   await supabase.from("os_execution_logs").insert([
     {

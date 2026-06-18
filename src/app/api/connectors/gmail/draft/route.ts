@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
     const nowIso = new Date().toISOString();
     const approvalInsert = await supabase.from("os_approvals").insert({
       id: approvalId,
+      workspace_id: workspaceId,
       type: "email",
       title: "Approval required before sending",
       body: `Proposed outbound Gmail message to ${to}.`,
