@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createGmailDraft, resolveAccessTokenFromCredential, sendGmailDraft, type StoredConnectorCredential } from "@/lib/connectors/gmail";
+import { createGmailDraft, GmailApiError, resolveAccessTokenFromCredential, sendGmailDraft, type StoredConnectorCredential } from "@/lib/connectors/gmail";
 import { logOperatorEvent, recordOperatorUsage } from "@/lib/operators/logging";
 import { createOperatorMemory } from "@/lib/operators/memory";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
@@ -21,18 +21,74 @@ type GmailContinuationPayload = {
   body: string;
 };
 
+type InvalidPayloadDetail = {
+  field: string;
+  issue: string;
+};
+
 function toTs(): string {
   return new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
-function isGmailPayload(value: unknown): value is GmailContinuationPayload {
-  if (!value || typeof value !== "object") return false;
+function isEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function validateGmailPayload(value: unknown): { ok: true; payload: GmailContinuationPayload } | { ok: false; details: InvalidPayloadDetail[] } {
+  const details: InvalidPayloadDetail[] = [];
+  if (!value || typeof value !== "object") {
+    return { ok: false, details: [{ field: "continuation_payload", issue: "Must be an object." }] };
+  }
   const rec = value as Record<string, unknown>;
-  return rec.kind === "gmail.send_after_approval"
-    && typeof rec.workspaceId === "string"
-    && typeof rec.to === "string"
-    && typeof rec.subject === "string"
-    && typeof rec.body === "string";
+  if (rec.kind !== "gmail.send_after_approval") details.push({ field: "kind", issue: "Must equal gmail.send_after_approval." });
+  if (typeof rec.workspaceId !== "string" || !rec.workspaceId.trim()) details.push({ field: "workspaceId", issue: "Required." });
+  if (typeof rec.to !== "string" || !rec.to.trim()) {
+    details.push({ field: "to", issue: "Required." });
+  } else if (!isEmail(rec.to)) {
+    details.push({ field: "to", issue: "Must be a valid-looking email address." });
+  }
+  if (typeof rec.subject !== "string" || !rec.subject.trim()) details.push({ field: "subject", issue: "Required." });
+  if (typeof rec.body !== "string" || !rec.body.trim()) details.push({ field: "body", issue: "Required." });
+  if (details.length > 0) return { ok: false, details };
+  return {
+    ok: true,
+    payload: {
+      kind: "gmail.send_after_approval",
+      workspaceId: String(rec.workspaceId).trim(),
+      operatorRunId: typeof rec.operatorRunId === "string" ? rec.operatorRunId : undefined,
+      operatorKey: typeof rec.operatorKey === "string" ? rec.operatorKey : undefined,
+      to: String(rec.to).trim().toLowerCase(),
+      subject: String(rec.subject).trim(),
+      body: String(rec.body).trim(),
+    },
+  };
+}
+
+function gmailErrorResponse(error: unknown) {
+  if (error instanceof GmailApiError) {
+    return NextResponse.json({
+      error: error.details.step === "gmail.draft.create" ? "gmail_draft_failed" : "gmail_send_failed",
+      message: error.message,
+      details: error.details,
+    }, { status: 502 });
+  }
+
+  const message = error instanceof Error ? error.message : "Gmail execution failed.";
+  return NextResponse.json({
+    error: "gmail_send_failed",
+    message,
+    details: { step: "gmail.execution", status: null, statusText: null, responseBody: null },
+  }, { status: 502 });
+}
+
+async function optionalStep<T>(warnings: string[], label: string, fn: () => PromiseLike<T> | Promise<T>): Promise<T | null> {
+  try {
+    return await fn();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown optional step failure.";
+    warnings.push(`${label}: ${message}`);
+    return null;
+  }
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -74,10 +130,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   const continuation = approvalRow.continuation_payload;
-  if (!isGmailPayload(continuation)) {
-    return NextResponse.json({ error: "Approval has no Gmail continuation payload." }, { status: 400 });
+  const payloadValidation = validateGmailPayload(continuation);
+  if (!payloadValidation.ok) {
+    return NextResponse.json({
+      error: "invalid_payload",
+      message: "Approval has an invalid Gmail continuation payload.",
+      details: payloadValidation.details,
+    }, { status: 400 });
   }
-  if (continuation.workspaceId !== context.workspaceId) {
+  const gmailPayload = payloadValidation.payload;
+  if (gmailPayload.workspaceId !== context.workspaceId || approvalRow.workspace_id !== context.workspaceId) {
     return NextResponse.json({ error: "Workspace mismatch for approval payload." }, { status: 403 });
   }
 
@@ -94,29 +156,59 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const credentialRes = await supabase
     .from("os_connector_credentials")
     .select("*")
-    .eq("workspace_id", context.workspaceId)
+    .eq("workspace_id", approvalRow.workspace_id)
     .eq("connector_key", "gmail")
     .maybeSingle();
   if (credentialRes.error || !credentialRes.data) {
-    return NextResponse.json({ error: "Gmail is not connected for this workspace." }, { status: 409 });
+    return NextResponse.json({
+      error: "missing_gmail_credentials",
+      message: "Gmail credentials are missing for this workspace.",
+    }, { status: 409 });
   }
 
-  const credential = credentialRes.data as StoredConnectorCredential;
-  const accessToken = await resolveAccessTokenFromCredential(credential);
-  const draft = await createGmailDraft(accessToken, {
-    to: continuation.to,
-    subject: continuation.subject,
-    body: continuation.body,
+  console.info("[gmail-approval] starting", {
+    approvalId: id,
+    workspaceId: context.workspaceId,
+    kind: gmailPayload.kind,
+    to: gmailPayload.to,
+    step: "gmail.execution",
   });
-  const sent = await sendGmailDraft(accessToken, draft.draftId);
 
-  await supabase.from("os_approvals").update({
+  const credential = credentialRes.data as StoredConnectorCredential;
+  let draft: { draftId: string; messageId?: string };
+  let sent: { messageId?: string };
+  try {
+    const accessToken = await resolveAccessTokenFromCredential(credential);
+    console.info("[gmail-approval] gmail.draft.create", { approvalId: id, workspaceId: context.workspaceId, to: gmailPayload.to });
+    draft = await createGmailDraft(accessToken, {
+      to: gmailPayload.to,
+      subject: gmailPayload.subject,
+      body: gmailPayload.body,
+    });
+    console.info("[gmail-approval] gmail.draft.send", { approvalId: id, workspaceId: context.workspaceId, to: gmailPayload.to });
+    sent = await sendGmailDraft(accessToken, draft.draftId);
+  } catch (error) {
+    console.warn("[gmail-approval] failed", {
+      approvalId: id,
+      workspaceId: context.workspaceId,
+      to: gmailPayload.to,
+      error: error instanceof Error ? error.message : "Unknown Gmail error",
+    });
+    return gmailErrorResponse(error);
+  }
+
+  const approvalUpdate = await supabase.from("os_approvals").update({
     status: "approved",
     resolved_at: new Date().toISOString(),
     resolved_by: context.userEmail || context.userId || userEmail || userId,
   }).eq("id", id).eq("workspace_id", context.workspaceId);
+  if (approvalUpdate.error) {
+    return NextResponse.json({ error: "approval_update_failed", message: approvalUpdate.error.message }, { status: 500 });
+  }
 
-  await supabase.from("os_execution_logs").insert([
+  const warnings: string[] = [];
+
+  await optionalStep(warnings, "os_execution_logs.insert", () => supabase.from("os_execution_logs").insert([
     {
       id: `log-gmail-draft-${Date.now()}`,
       ts: toTs(),
@@ -125,7 +217,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       agent_mark: approvalRow.agent_mark || "OS",
       agent_color: approvalRow.agent_color || "#4DE8E1",
       event: "gmail.draft_created",
-      message: `Draft ${draft.draftId} created for ${continuation.to}`,
+      message: `Draft ${draft.draftId} created for ${gmailPayload.to}`,
       duration: "-",
       status: "ok",
     },
@@ -137,7 +229,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       agent_mark: approvalRow.agent_mark || "OS",
       agent_color: approvalRow.agent_color || "#4DE8E1",
       event: "gmail.draft_sent",
-      message: `Sent approved draft to ${continuation.to}${sent.messageId ? ` (${sent.messageId})` : ""}`,
+      message: `Sent approved draft to ${gmailPayload.to}${sent.messageId ? ` (${sent.messageId})` : ""}`,
       duration: "-",
       status: "ok",
     },
@@ -153,54 +245,67 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       duration: "-",
       status: "ok",
     },
-  ]);
+  ]).then((res) => {
+    if (res.error) throw new Error(res.error.message);
+    return res;
+  }));
 
-  const operatorRunId = typeof continuation.operatorRunId === "string" ? continuation.operatorRunId : approvalRow.run_id;
+  const operatorRunId = typeof gmailPayload.operatorRunId === "string" ? gmailPayload.operatorRunId : approvalRow.run_id;
   if (operatorRunId) {
-    const runUpdate = await supabase.from("os_operator_runs").update({
+    await optionalStep(warnings, "os_operator_runs.update", () => supabase.from("os_operator_runs").update({
       status: "completed",
       completed_at: new Date().toISOString(),
       output: {
         gmail: {
           draftId: draft.draftId,
           messageId: sent.messageId ?? null,
-          to: continuation.to,
-          subject: continuation.subject,
+          to: gmailPayload.to,
+          subject: gmailPayload.subject,
         },
       },
-    }).eq("id", operatorRunId).eq("workspace_id", context.workspaceId).eq("approval_id", id);
+    }).eq("id", operatorRunId).eq("workspace_id", context.workspaceId).eq("approval_id", id).then((res) => {
+      if (res.error) throw new Error(res.error.message);
+      return res;
+    }));
 
-    if (!runUpdate.error) {
-      await logOperatorEvent({
+    await optionalStep(warnings, "os_operator_run_logs.insert", () => logOperatorEvent({
         supabase,
         workspaceId: context.workspaceId,
         runId: operatorRunId,
         eventType: "gmail.send.completed",
-        message: `Approved Gmail message sent to ${continuation.to}.`,
+        message: `Approved Gmail message sent to ${gmailPayload.to}.`,
         metadata: { approvalId: id, draftId: draft.draftId, messageId: sent.messageId ?? null },
-      });
-      await recordOperatorUsage({
+      }).then((res) => {
+        if (res.error) throw new Error(res.error.message);
+        return res;
+      }));
+    await optionalStep(warnings, "os_operator_usage_events.insert", () => recordOperatorUsage({
         supabase,
         workspaceId: context.workspaceId,
         runId: operatorRunId,
-        operatorKey: continuation.operatorKey || "revenue",
+        operatorKey: gmailPayload.operatorKey || "revenue",
         eventType: "gmail.send",
         quantity: 1,
-        metadata: { approvalId: id, to: continuation.to, messageId: sent.messageId ?? null },
-      });
-      await createOperatorMemory({
+        metadata: { approvalId: id, to: gmailPayload.to, messageId: sent.messageId ?? null },
+      }).then((res) => {
+        if (res.error) throw new Error(res.error.message);
+        return res;
+      }));
+    await optionalStep(warnings, "os_operator_memory.insert", () => createOperatorMemory({
         supabase,
         workspaceId: context.workspaceId,
-        operatorKey: continuation.operatorKey || "revenue",
+        operatorKey: gmailPayload.operatorKey || "revenue",
         memoryType: "email_outcome",
-        title: `Approved follow-up sent to ${continuation.to}`,
-        content: `Subject: ${continuation.subject}`,
+        title: `Approved follow-up sent to ${gmailPayload.to}`,
+        content: `Subject: ${gmailPayload.subject}`,
         metadata: { approvalId: id, runId: operatorRunId, messageId: sent.messageId ?? null },
         sourceRunId: operatorRunId,
         approvalStatus: "approved",
-      });
-    }
+      }).then((res) => {
+        if (res.error) throw new Error(res.error.message);
+        return res;
+      }));
   }
 
-  return NextResponse.json({ ok: true, draftId: draft.draftId, messageId: sent.messageId });
+  return NextResponse.json({ ok: true, draftId: draft.draftId, messageId: sent.messageId, warnings });
 }

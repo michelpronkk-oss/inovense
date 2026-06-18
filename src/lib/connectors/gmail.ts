@@ -10,6 +10,23 @@ type TokenExchangeResult = {
   token_type?: string;
 };
 
+export type GmailApiErrorDetails = {
+  step: string;
+  status: number;
+  statusText: string;
+  responseBody: unknown;
+};
+
+export class GmailApiError extends Error {
+  details: GmailApiErrorDetails;
+
+  constructor(message: string, details: GmailApiErrorDetails) {
+    super(message);
+    this.name = "GmailApiError";
+    this.details = details;
+  }
+}
+
 export type StoredConnectorCredential = {
   id?: string;
   workspace_id: string;
@@ -107,14 +124,52 @@ function encodeBase64Url(raw: string): string {
   return Buffer.from(raw, "utf8").toString("base64url");
 }
 
+function sanitizeHeaderValue(value: string): string {
+  return value.replace(/[\r\n]+/g, " ").trim();
+}
+
+function normalizeBody(value: string): string {
+  return value.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").join("\r\n");
+}
+
 function buildMessage(to: string, subject: string, body: string): string {
   return [
-    `To: ${to}`,
-    `Subject: ${subject}`,
-    "Content-Type: text/plain; charset=UTF-8",
+    `To: ${sanitizeHeaderValue(to)}`,
+    `Subject: ${sanitizeHeaderValue(subject)}`,
+    'Content-Type: text/plain; charset="UTF-8"',
+    "MIME-Version: 1.0",
     "",
-    body,
+    normalizeBody(body),
   ].join("\r\n");
+}
+
+async function readGmailJson(res: Response): Promise<unknown> {
+  const text = await res.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+function gmailMessageFromBody(body: unknown, fallback: string): string {
+  if (body && typeof body === "object") {
+    const rec = body as { error?: string | { message?: string }; error_description?: string };
+    if (typeof rec.error === "object" && typeof rec.error?.message === "string") return rec.error.message;
+    if (typeof rec.error_description === "string") return rec.error_description;
+    if (typeof rec.error === "string") return rec.error;
+  }
+  return fallback;
+}
+
+function throwGmailApiError(step: string, res: Response, responseBody: unknown): never {
+  throw new GmailApiError(gmailMessageFromBody(responseBody, `${step} failed`), {
+    step,
+    status: res.status,
+    statusText: res.statusText,
+    responseBody,
+  });
 }
 
 export async function createGmailDraft(accessToken: string, payload: { to: string; subject: string; body: string }): Promise<{ draftId: string; messageId?: string }> {
@@ -127,8 +182,8 @@ export async function createGmailDraft(accessToken: string, payload: { to: strin
     },
     body: JSON.stringify({ message: { raw } }),
   });
-  const json = await res.json() as { id?: string; message?: { id?: string }; error?: { message?: string } };
-  if (!res.ok || !json.id) throw new Error(json.error?.message || "Failed to create Gmail draft");
+  const json = await readGmailJson(res) as { id?: string; message?: { id?: string } };
+  if (!res.ok || !json?.id) throwGmailApiError("gmail.draft.create", res, json);
   return { draftId: json.id, messageId: json.message?.id };
 }
 
@@ -141,8 +196,8 @@ export async function sendGmailDraft(accessToken: string, draftId: string): Prom
     },
     body: JSON.stringify({ id: draftId }),
   });
-  const json = await res.json() as { id?: string; error?: { message?: string } };
-  if (!res.ok) throw new Error(json.error?.message || "Failed to send Gmail draft");
+  const json = await readGmailJson(res) as { id?: string };
+  if (!res.ok) throwGmailApiError("gmail.draft.send", res, json);
   return { messageId: json.id };
 }
 
