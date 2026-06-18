@@ -399,12 +399,14 @@ export default function ConnectorsPage() {
             <ConnectorSetupView connector={drawerConnector} isRealConnected={isRealConnectedConnector(drawerConnector)} isPreview={isPreview} />
             {drawerConnector.id === "gmail" && (
               <div style={{ marginTop: 10, fontSize: 11.5, color: "#9DEFEA" }}>
-                Secure connection via Google OAuth - compose/send only, no inbox sync.
+                Secure connection via Google OAuth - compose/send plus recent inbox metadata scanning when readonly access is granted.
               </div>
             )}
-            {drawerConnector.id === "gmail" && drawerConnector.isConnected && drawerConnector.health !== "healthy" && (
+            {drawerConnector.id === "gmail" && drawerConnector.isConnected && (drawerConnector.health !== "healthy" || drawerConnector.records.includes("Reconnect required")) && (
               <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "rgba(245,194,107,0.08)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.2)", fontSize: 12, color: "var(--amber)" }}>
-                Reconnect required to enable send permissions. Existing Gmail credentials do not include Gmail send scope.
+                {drawerConnector.records.includes("opportunity scanning")
+                  ? "Reconnect required to enable opportunity scanning. Existing Gmail credentials do not include Gmail readonly scope."
+                  : "Reconnect required to enable send permissions. Existing Gmail credentials do not include Gmail send scope."}
               </div>
             )}
             {drawerConnector.id === "hubspot" && hubspotStatus?.status === "connected" && (
@@ -420,7 +422,7 @@ export default function ConnectorsPage() {
             {isRealConnectedConnector(drawerConnector) && (
               <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Recent sync events</div>
-                {(drawerConnector.recentSyncEvents.length ? drawerConnector.recentSyncEvents : ["No DB-backed sync events. Gmail compose/send does not sync inbox data."]).map((ev) => (
+                {(drawerConnector.recentSyncEvents.length ? drawerConnector.recentSyncEvents : ["No DB-backed sync events. Gmail scans recent metadata only when you run the Revenue scan."]).map((ev) => (
                   <div key={ev} style={{ fontSize: 12, color: "var(--text-dim)", padding: "8px 10px", borderRadius: 8, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)" }}>{ev}</div>
                 ))}
               </div>

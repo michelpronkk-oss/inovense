@@ -53,10 +53,11 @@ export async function GET(req: NextRequest) {
     statusMessage: connector.statusMessage ?? null,
     permissionsLabel: connector.connectorKey === "gmail"
       ? [
-          "Compose access",
-          connector.scopes.includes("https://www.googleapis.com/auth/gmail.send") ? "Send access" : "Send access missing",
-          "Approval required for external email",
-        ]
+        "Compose access",
+        connector.scopes.includes("https://www.googleapis.com/auth/gmail.send") ? "Send access" : "Send access missing",
+        connector.scopes.includes("https://www.googleapis.com/auth/gmail.readonly") ? "Inbox scan access" : "Inbox scan access missing",
+        "Approval required for external email",
+      ]
       : ["Contacts, companies, deals and owners"],
     canReconnect: true,
     canDisconnect: false,

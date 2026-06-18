@@ -301,7 +301,7 @@ export default function SettingsPage() {
             const letter = acct.connectorKey === "gmail" ? "G" : "Hs";
             const authLabel = acct.authType === "native" ? "Native connector" : "Secure connector";
             const isConnected = acct.status === "connected" || acct.status === "healthy";
-            const reconnectRequired = acct.status === "reconnect_required";
+            const reconnectRequired = acct.status === "reconnect_required" || acct.reconnectRequired;
             const statusColor = isConnected ? "var(--green)" : reconnectRequired ? "var(--amber)" : acct.status === "error" ? "var(--red, #F2767C)" : "var(--text-faint)";
             const statusLabel = isConnected ? "Connected" : reconnectRequired ? "Reconnect required" : acct.status === "error" ? "Error" : "Not connected";
             const connectedDate = acct.connectedAt

@@ -2,7 +2,11 @@ import { decryptToken, encryptToken } from "@/lib/connectors/crypto";
 
 export const GMAIL_COMPOSE_SCOPE = "https://www.googleapis.com/auth/gmail.compose";
 export const GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
-export const GMAIL_REQUIRED_SCOPES = [GMAIL_COMPOSE_SCOPE, GMAIL_SEND_SCOPE];
+export const GMAIL_READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
+export const GMAIL_SEND_REQUIRED_SCOPES = [GMAIL_COMPOSE_SCOPE, GMAIL_SEND_SCOPE];
+export const GMAIL_SCAN_REQUIRED_SCOPES = [GMAIL_READONLY_SCOPE];
+export const GMAIL_OAUTH_SCOPES = [GMAIL_COMPOSE_SCOPE, GMAIL_SEND_SCOPE, GMAIL_READONLY_SCOPE];
+export const GMAIL_REQUIRED_SCOPES = GMAIL_SEND_REQUIRED_SCOPES;
 
 type TokenExchangeResult = {
   access_token: string;
@@ -21,6 +25,18 @@ export type GmailApiErrorDetails = {
   draftId?: string | null;
   messageId?: string | null;
   sendEndpoint?: "drafts/send" | "messages/send";
+};
+
+export type SafeGmailMessage = {
+  id: string;
+  threadId?: string;
+  from: string;
+  fromEmail: string;
+  to: string;
+  subject: string;
+  date: string;
+  snippet: string;
+  internalDate?: string;
 };
 
 export class GmailApiError extends Error {
@@ -66,7 +82,7 @@ export function buildGoogleAuthUrl(state: string): string {
     response_type: "code",
     access_type: "offline",
     prompt: "consent",
-    scope: GMAIL_REQUIRED_SCOPES.join(" "),
+    scope: GMAIL_OAUTH_SCOPES.join(" "),
     state,
   });
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
@@ -126,12 +142,79 @@ export async function fetchGmailProfile(accessToken: string): Promise<{ email?: 
   return { email: json.emailAddress };
 }
 
+export async function listRecentMessages(accessToken: string, options?: { maxResults?: number; query?: string }): Promise<{ id: string; threadId?: string }[]> {
+  const maxResults = Math.min(Math.max(options?.maxResults ?? 20, 1), 20);
+  const params = new URLSearchParams({
+    maxResults: String(maxResults),
+    q: options?.query || "newer_than:30d",
+  });
+  const res = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  });
+  const json = await readGmailJson(res) as { messages?: { id?: string; threadId?: string }[] };
+  if (!res.ok) throwGmailApiError("gmail.messages.list", res, json);
+  return (json.messages ?? [])
+    .filter((message): message is { id: string; threadId?: string } => typeof message.id === "string")
+    .map((message) => ({ id: message.id, threadId: message.threadId }));
+}
+
+export async function getMessageDetails(accessToken: string, messageId: string): Promise<SafeGmailMessage> {
+  const params = new URLSearchParams({ format: "metadata" });
+  ["From", "To", "Subject", "Date"].forEach((header) => params.append("metadataHeaders", header));
+  const res = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  });
+  const json = await readGmailJson(res);
+  if (!res.ok) throwGmailApiError("gmail.messages.get", res, json);
+  return parseSafeGmailMessage(json);
+}
+
 function encodeBase64Url(raw: string): string {
   return Buffer.from(raw, "utf8").toString("base64url");
 }
 
 function sanitizeHeaderValue(value: string): string {
   return value.replace(/[\r\n]+/g, " ").trim();
+}
+
+function headerValue(headers: { name?: string; value?: string }[] | undefined, name: string): string {
+  return headers?.find((header) => header.name?.toLowerCase() === name.toLowerCase())?.value?.trim() ?? "";
+}
+
+function extractEmail(value: string): string {
+  const bracketed = value.match(/<([^<>@\s]+@[^<>@\s]+\.[^<>@\s]+)>/);
+  if (bracketed?.[1]) return bracketed[1].toLowerCase();
+  const direct = value.match(/[^\s<>(),;]+@[^\s<>(),;]+\.[^\s<>(),;]+/);
+  return direct?.[0]?.toLowerCase() ?? "";
+}
+
+export function parseSafeGmailMessage(value: unknown): SafeGmailMessage {
+  const message = value && typeof value === "object" ? value as {
+    id?: string;
+    threadId?: string;
+    snippet?: string;
+    internalDate?: string;
+    payload?: { headers?: { name?: string; value?: string }[] };
+  } : {};
+  const headers = message.payload?.headers;
+  const from = sanitizeHeaderValue(headerValue(headers, "From"));
+  const to = sanitizeHeaderValue(headerValue(headers, "To"));
+  const subject = sanitizeHeaderValue(headerValue(headers, "Subject"));
+  const date = sanitizeHeaderValue(headerValue(headers, "Date"));
+
+  return {
+    id: message.id ?? "",
+    threadId: message.threadId,
+    from,
+    fromEmail: extractEmail(from),
+    to,
+    subject,
+    date,
+    snippet: sanitizeHeaderValue(message.snippet ?? ""),
+    internalDate: message.internalDate,
+  };
 }
 
 function normalizeBody(value: string): string {
@@ -230,6 +313,10 @@ export function hasGmailSendScope(scopes: string[] | null | undefined): boolean 
   return !getMissingGmailScopes(scopes, [GMAIL_SEND_SCOPE]).length;
 }
 
+export function hasGmailReadonlyScope(scopes: string[] | null | undefined): boolean {
+  return !getMissingGmailScopes(scopes, GMAIL_SCAN_REQUIRED_SCOPES).length;
+}
+
 export async function sendGmailMessage(accessToken: string, raw: string, debug?: { draftCreateStatus?: number; draftId?: string; draftMessageId?: string }): Promise<{ messageId?: string; sendEndpoint: "messages/send"; googleResponseBody: unknown }> {
   const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
     method: "POST",
@@ -267,7 +354,7 @@ export function toStoredCredential(input: {
     encrypted_access_token: encryptToken(input.accessToken),
     encrypted_refresh_token: input.refreshToken ? encryptToken(input.refreshToken) : null,
     token_expires_at: expiresAt,
-    scopes: input.scopes ? input.scopes.split(" ").filter(Boolean) : GMAIL_REQUIRED_SCOPES,
+    scopes: input.scopes ? input.scopes.split(" ").filter(Boolean) : GMAIL_OAUTH_SCOPES,
     status: "connected",
     metadata: {
       provider: "google",

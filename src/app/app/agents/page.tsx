@@ -91,6 +91,31 @@ type RevenueRunResult = {
   error?: string;
 };
 
+type RevenueScanResult = {
+  status?: string;
+  message?: string;
+  scanned?: number;
+  opportunitiesFound?: number;
+  approvalsCreated?: number;
+  missingScopes?: string[];
+  reconnectRequired?: boolean;
+  opportunities?: {
+    messageId: string;
+    from: string;
+    subject: string;
+    matchedKeywords: string[];
+    runId: string;
+    approvalId: string;
+  }[];
+  skipped?: {
+    messageId: string;
+    subject?: string;
+    from?: string;
+    reason: string;
+  }[];
+  error?: string;
+};
+
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const days = Math.floor(diff / 86400000);
@@ -125,6 +150,9 @@ export default function AgentsPage() {
   const [revenueRuns, setRevenueRuns] = useState<RevenueRun[]>([]);
   const [runtimeLoading, setRuntimeLoading] = useState(true);
   const [runtimeError, setRuntimeError] = useState("");
+  const [scanSubmitting, setScanSubmitting] = useState(false);
+  const [scanResult, setScanResult] = useState<RevenueScanResult | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [runSubmitting, setRunSubmitting] = useState(false);
   const [runResult, setRunResult] = useState<RevenueRunResult | null>(null);
   const [leadName, setLeadName] = useState("");
@@ -187,6 +215,42 @@ export default function AgentsPage() {
     void loadRevenueRuntime();
   }, [loadRevenueRuntime]);
 
+  const startGmailReconnect = () => {
+    const params = new URLSearchParams({
+      workspaceId: state.workspace.id,
+      userEmail: state.currentUser.email,
+    });
+    window.location.href = `/api/connectors/gmail/auth?${params.toString()}`;
+  };
+
+  const submitRevenueScan = async () => {
+    setScanSubmitting(true);
+    setRuntimeError("");
+    setScanResult(null);
+    try {
+      const res = await fetch("/api/operators/revenue/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: state.workspace.id,
+          userId: state.currentUser.id,
+          userEmail: state.currentUser.email,
+          maxResults: 15,
+        }),
+      });
+      const json = await res.json().catch(() => ({})) as RevenueScanResult;
+      setScanResult(json);
+      if (!res.ok && json.status !== "requires_gmail_read_scope") {
+        throw new Error(json.message || json.error || "Revenue scan failed.");
+      }
+      await loadRevenueRuntime();
+    } catch (error) {
+      setRuntimeError(error instanceof Error ? error.message : "Revenue scan failed.");
+    } finally {
+      setScanSubmitting(false);
+    }
+  };
+
   const submitRevenueRun = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setRunSubmitting(true);
@@ -232,6 +296,7 @@ export default function AgentsPage() {
   })();
 
   const canRunRevenue = Boolean(revenueReadiness?.canRunManual && (revenueReadiness.status === "ready" || revenueReadiness.status === "draft_only"));
+  const scanNeedsReconnect = scanResult?.status === "requires_gmail_read_scope" || scanResult?.status === "requires_gmail_send_scope";
 
   return (
     <div className="os-page">
@@ -311,22 +376,89 @@ export default function AgentsPage() {
               )}
             </div>
 
-            <form onSubmit={submitRevenueRun} style={{ padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 10 }}>
+            <div style={{ padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 10 }}>
               <div>
-                <div style={{ fontSize: 13.5, fontWeight: 600 }}>Run Revenue Operator</div>
-                <div style={{ marginTop: 3, fontSize: 12, color: "var(--text-mute)" }}>Creates a follow-up draft and approval. It does not send email directly.</div>
+                <div style={{ fontSize: 13.5, fontWeight: 600 }}>Scan for revenue opportunities</div>
+                <div style={{ marginTop: 3, fontSize: 12, color: "var(--text-mute)" }}>
+                  Revenue Operator scans recent Gmail messages and prepares follow-ups for approval. Nothing is sent without approval.
+                </div>
               </div>
-              <input className="os-input" value={leadName} onChange={(e) => setLeadName(e.target.value)} placeholder="Lead name" required />
-              <input className="os-input" value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} placeholder="Lead email" type="email" required />
-              <textarea className="os-input" value={context} onChange={(e) => setContext(e.target.value)} placeholder="Context for the follow-up" rows={5} required />
-              <input className="os-input" value="follow_up" disabled aria-disabled="true" />
               {!canRunRevenue && (
                 <div style={{ fontSize: 12, color: "var(--amber)" }}>{revenueStatusMessage}</div>
               )}
-              <button className="btn btn-primary btn-sm" type="submit" disabled={!canRunRevenue || runSubmitting} style={{ opacity: !canRunRevenue || runSubmitting ? 0.45 : 1 }}>
-                {runSubmitting ? "Preparing..." : "Prepare follow-up approval"}
+              <button className="btn btn-primary btn-sm" type="button" onClick={submitRevenueScan} disabled={!canRunRevenue || scanSubmitting} style={{ opacity: !canRunRevenue || scanSubmitting ? 0.45 : 1 }}>
+                {scanSubmitting ? "Scanning Gmail..." : "Scan for revenue opportunities"}
               </button>
-            </form>
+              {scanResult && (
+                <div style={{ padding: "10px 12px", borderRadius: 10, background: scanNeedsReconnect ? "rgba(245,194,107,0.06)" : "rgba(77,232,225,0.06)", boxShadow: scanNeedsReconnect ? "inset 0 0 0 1px rgba(245,194,107,0.2)" : "inset 0 0 0 1px rgba(77,232,225,0.18)", display: "grid", gap: 8 }}>
+                  <div style={{ fontSize: 12.8, fontWeight: 600 }}>
+                    {scanNeedsReconnect ? "Reconnect Gmail required" : `Scan ${scanResult.status ?? "completed"}`}
+                  </div>
+                  {scanResult.message && <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{scanResult.message}</div>}
+                  {scanNeedsReconnect && (
+                    <button className="btn btn-primary btn-sm" type="button" onClick={startGmailReconnect} style={{ width: "fit-content" }}>
+                      Reconnect Gmail
+                    </button>
+                  )}
+                  {!scanNeedsReconnect && (
+                    <>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                        {[
+                          { label: "Scanned", val: String(scanResult.scanned ?? 0) },
+                          { label: "Found", val: String(scanResult.opportunitiesFound ?? 0) },
+                          { label: "Approvals", val: String(scanResult.approvalsCreated ?? 0) },
+                        ].map((item) => (
+                          <div key={item.label} style={{ padding: "7px 8px", borderRadius: 8, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+                            <div style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{item.label}</div>
+                            <div style={{ marginTop: 3, fontSize: 13, fontWeight: 600 }}>{item.val}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {(scanResult.opportunities ?? []).length > 0 && (
+                        <div style={{ display: "grid", gap: 6 }}>
+                          {(scanResult.opportunities ?? []).map((opportunity) => (
+                            <div key={opportunity.approvalId} style={{ padding: "8px 9px", borderRadius: 8, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+                              <div style={{ fontSize: 11.8, color: "var(--text-dim)" }}><strong style={{ color: "var(--text)" }}>To approve:</strong> {opportunity.from}</div>
+                              <div style={{ marginTop: 2, fontSize: 11.5, color: "var(--text-mute)" }}>{opportunity.subject || "No subject"} - {opportunity.matchedKeywords.join(", ")}</div>
+                              <div style={{ marginTop: 2, fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-faint)" }}>Approval: {opportunity.approvalId}</div>
+                            </div>
+                          ))}
+                          <Link href="/app/approvals" className="btn btn-ghost btn-sm" style={{ width: "fit-content", textDecoration: "none" }}>View approval inbox</Link>
+                        </div>
+                      )}
+                      {(scanResult.skipped ?? []).length > 0 && (
+                        <div style={{ display: "grid", gap: 5 }}>
+                          <div style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-faint)" }}>Skipped</div>
+                          {(scanResult.skipped ?? []).slice(0, 5).map((item) => (
+                            <div key={item.messageId} style={{ fontSize: 11.5, color: "var(--text-mute)" }}>
+                              {item.subject || item.from || item.messageId}: {item.reason}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10, display: "grid", gap: 10 }}>
+                <button className="appr-btn edit" type="button" onClick={() => setAdvancedOpen((value) => !value)} style={{ width: "fit-content" }}>
+                  {advancedOpen ? "Hide advanced manual follow-up" : "Advanced: prepare one follow-up manually"}
+                </button>
+                {advancedOpen && (
+                  <form onSubmit={submitRevenueRun} style={{ display: "grid", gap: 10 }}>
+                    <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Manual mode creates a single follow-up draft and approval from your input.</div>
+                    <input className="os-input" value={leadName} onChange={(e) => setLeadName(e.target.value)} placeholder="Lead name" required />
+                    <input className="os-input" value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} placeholder="Lead email" type="email" required />
+                    <textarea className="os-input" value={context} onChange={(e) => setContext(e.target.value)} placeholder="Context for the follow-up" rows={4} required />
+                    <input className="os-input" value="follow_up" disabled aria-disabled="true" />
+                    <button className="btn btn-primary btn-sm" type="submit" disabled={!canRunRevenue || runSubmitting} style={{ opacity: !canRunRevenue || runSubmitting ? 0.45 : 1 }}>
+                      {runSubmitting ? "Preparing..." : "Prepare manual follow-up approval"}
+                    </button>
+                  </form>
+                )}
+              </div>
+            </div>
           </div>
 
           {runResult?.run && (

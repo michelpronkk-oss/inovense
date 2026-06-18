@@ -1,5 +1,5 @@
 import type { Connector, OSState } from "@/lib/os/types";
-import { GMAIL_COMPOSE_SCOPE, GMAIL_SEND_SCOPE, getMissingGmailScopes } from "@/lib/connectors/gmail";
+import { GMAIL_COMPOSE_SCOPE, GMAIL_READONLY_SCOPE, GMAIL_SCAN_REQUIRED_SCOPES, GMAIL_SEND_SCOPE, getMissingGmailScopes } from "@/lib/connectors/gmail";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
@@ -50,8 +50,11 @@ export async function getConnectorTruth(input: {
 
   const gmailRow = gmailRes.data;
   const gmailScopes = asStringArray(gmailRow?.scopes);
-  const gmailMissingScopes = gmailRow ? getMissingGmailScopes(gmailScopes) : [];
-  const gmailReconnectRequired = Boolean(gmailRow && gmailMissingScopes.length > 0);
+  const gmailMissingSendScopes = gmailRow ? getMissingGmailScopes(gmailScopes) : [];
+  const gmailMissingScanScopes = gmailRow ? getMissingGmailScopes(gmailScopes, GMAIL_SCAN_REQUIRED_SCOPES) : [];
+  const gmailMissingScopes = Array.from(new Set([...gmailMissingSendScopes, ...gmailMissingScanScopes]));
+  const gmailSendReconnectRequired = Boolean(gmailRow && gmailMissingSendScopes.length > 0);
+  const gmailScanReconnectRequired = Boolean(gmailRow && gmailMissingScanScopes.length > 0);
   const hubspotRow = hubspotRes.data;
   const hubspotConnected = Boolean(
     hubspotRow
@@ -65,16 +68,18 @@ export async function getConnectorTruth(input: {
       connectorKey: "gmail",
       displayName: "Gmail",
       authType: "native",
-      status: gmailRes.error ? "error" : gmailReconnectRequired ? "reconnect_required" : gmailRow ? "healthy" : "missing",
+      status: gmailRes.error ? "error" : gmailSendReconnectRequired ? "reconnect_required" : gmailRow ? "healthy" : "missing",
       accountEmail: gmailRow?.provider_email ?? null,
       connectedAt: gmailRow?.created_at ?? null,
       scopes: gmailScopes,
       missingScopes: gmailMissingScopes,
-      reconnectRequired: gmailReconnectRequired,
-      executable: Boolean(gmailRow && !gmailReconnectRequired),
-      statusMessage: gmailReconnectRequired
+      reconnectRequired: gmailSendReconnectRequired || gmailScanReconnectRequired,
+      executable: Boolean(gmailRow && !gmailSendReconnectRequired),
+      statusMessage: gmailSendReconnectRequired
         ? "Reconnect required to enable send permissions"
-        : gmailRow
+        : gmailScanReconnectRequired
+          ? "Reconnect required to enable opportunity scanning"
+          : gmailRow
           ? "Ready for approval-gated Gmail sends"
           : "Not connected",
       source: gmailRow ? "native" : undefined,
@@ -98,6 +103,7 @@ function applyTruth(connector: Connector, truth: SafeConnectorTruth): Connector 
   if (truth.connectorKey === "gmail") {
     const hasCredential = truth.status !== "missing" && truth.status !== "not_connected" && truth.status !== "error";
     const reconnectRequired = truth.status === "reconnect_required";
+    const scanReconnectRequired = Boolean(hasCredential && truth.missingScopes?.includes(GMAIL_READONLY_SCOPE));
     return {
       ...connector,
       isConnected: hasCredential,
@@ -107,18 +113,23 @@ function applyTruth(connector: Connector, truth: SafeConnectorTruth): Connector 
       lastSynced: truth.connectedAt ?? "",
       syncMode: "manual",
       syncFreq: "Approval-gated",
-      permissions: ["Compose approved emails", "Send approved emails"],
+      permissions: ["Compose approved emails", "Send approved emails", "Scan recent inbox metadata"],
       readScopes: [
         `Compose access: ${truth.scopes.includes(GMAIL_COMPOSE_SCOPE) ? "granted" : "missing"}`,
         `Send access: ${truth.scopes.includes(GMAIL_SEND_SCOPE) ? "granted" : "missing"}`,
+        `Inbox scan access: ${truth.scopes.includes(GMAIL_READONLY_SCOPE) ? "granted" : "missing"}`,
         "Approval required for external email",
       ],
       writeScopes: truth.scopes.filter((scope) => scope === GMAIL_COMPOSE_SCOPE || scope === GMAIL_SEND_SCOPE),
       approvalRequiredFor: ["External email send"],
-      blockedActions: ["Read full inbox", "Read threads", "Read labels", "Send without approval"],
+      blockedActions: truth.scopes.includes(GMAIL_READONLY_SCOPE)
+        ? ["Store full inbox", "Read labels", "Send without approval"]
+        : ["Scan inbox until Gmail readonly is granted", "Read labels", "Send without approval"],
       operatorsAllowed: ["Revenue Operator", "Client Flow Operator"],
       records: reconnectRequired
         ? "Reconnect required to enable send permissions"
+        : scanReconnectRequired
+          ? "Reconnect required to enable opportunity scanning"
         : truth.accountEmail
           ? `Real account connected: ${truth.accountEmail}`
           : hasCredential
