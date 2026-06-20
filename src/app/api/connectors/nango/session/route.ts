@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createNangoConnectSession } from "@/lib/integrations/nango";
+import { createNangoConnectSession, NangoConnectSessionError } from "@/lib/integrations/nango";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { resolveWorkspaceMembership } from "@/lib/server/workspace-membership";
 import { getEntitlements } from "@/lib/os/entitlements";
@@ -87,8 +87,23 @@ export async function POST(req: NextRequest) {
       tags,
     });
 
-    return NextResponse.json({ sessionToken: session.sessionToken });
+    return NextResponse.json({ sessionToken: session.sessionToken, providerConfigKey: session.providerConfigKey });
   } catch (error) {
+    if (error instanceof NangoConnectSessionError) {
+      return NextResponse.json({
+        error: "nango_connect_session_failed",
+        message: error.message,
+        providerConfigKey: error.details.providerConfigKey,
+        endpoint: error.details.endpoint,
+        ...(process.env.NODE_ENV !== "production" ? {
+          debug: {
+            status: error.details.status,
+            statusText: error.details.statusText,
+            responseBody: error.details.responseBody,
+          },
+        } : {}),
+      }, { status: error.details.status ?? 502 });
+    }
     const message = error instanceof Error ? error.message : "Could not start secure connector setup.";
     return NextResponse.json({ error: message }, { status: 500 });
   }

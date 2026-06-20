@@ -158,11 +158,12 @@ export default function ConnectorsPage() {
           userId: state.currentUser.id,
         }),
       });
-      const sessionJson = await sessionRes.json() as { sessionToken?: string; error?: string };
+      const sessionJson = await sessionRes.json() as { sessionToken?: string; providerConfigKey?: string; error?: string; message?: string };
       if (!sessionRes.ok || !sessionJson.sessionToken) {
-        setFeedback(sessionJson.error || "Failed to start HubSpot connect.");
+        setFeedback(sessionJson.message || sessionJson.error || "Failed to start HubSpot connect.");
         return;
       }
+      const sessionProviderConfigKey = sessionJson.providerConfigKey || "hubspot";
 
       const nango = new Nango();
       const finalizeHubspotConnection = async (event: ConnectUIEvent) => {
@@ -187,7 +188,7 @@ export default function ConnectorsPage() {
             connectorKey: "hubspot",
             userId: state.currentUser.id,
             userEmail: state.currentUser.email,
-            providerConfigKey: payload.providerConfigKey || payload.provider_config_key || "hubspot",
+            providerConfigKey: payload.providerConfigKey || payload.provider_config_key || sessionProviderConfigKey,
             nangoConnectionId: connectionId,
             providerEmail: state.currentUser.email,
             providerAccountId: state.currentUser.id || state.currentUser.email,
@@ -205,7 +206,7 @@ export default function ConnectorsPage() {
           status: "connected",
           provider_email: finalizeJson.provider_email ?? state.currentUser.email,
           connected_at: finalizeJson.connected_at ?? null,
-          provider_config_key: finalizeJson.provider_config_key ?? "hubspot",
+          provider_config_key: finalizeJson.provider_config_key ?? sessionProviderConfigKey,
           nango_connection_id: finalizeJson.nango_connection_id ?? connectionId,
         });
         connectConnector("hubspot", "real");

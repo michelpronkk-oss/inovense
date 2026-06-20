@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getNangoProviderConfigKey } from "@/lib/integrations/nango";
+import { HUBSPOT_PROVIDER_CONFIG_KEY, getNangoProviderConfigKey } from "@/lib/integrations/nango";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   const providerConfigKey = asString(body.providerConfigKey)
     || readPayloadField(body.raw, "providerConfigKey", "provider_config_key")
     || getNangoProviderConfigKey(connectorKey)
-    || "";
+    || HUBSPOT_PROVIDER_CONFIG_KEY;
   const nangoConnectionId = asString(body.nangoConnectionId)
     || readPayloadField(body.raw, "connectionId", "connection_id");
   const providerEmail = asString(body.providerEmail)

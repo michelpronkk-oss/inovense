@@ -32,13 +32,31 @@ export type NangoConnectionMetadata = {
   metadata?: Record<string, unknown>;
 };
 
+export const HUBSPOT_PROVIDER_CONFIG_KEY = process.env.NANGO_HUBSPOT_CONFIG_KEY || "hubspot";
+
 const NANGO_CONNECTORS: Record<SupportedNangoConnectorKey, NangoConnectorConfig> = {
   hubspot: {
     connectorKey: "hubspot",
-    providerConfigKey: process.env.NANGO_HUBSPOT_CONFIG_KEY || "hubspot",
+    providerConfigKey: HUBSPOT_PROVIDER_CONFIG_KEY,
     provider: "hubspot",
   },
 };
+
+export class NangoConnectSessionError extends Error {
+  details: {
+    endpoint: string;
+    providerConfigKey: string;
+    status: number | null;
+    statusText: string | null;
+    responseBody: unknown;
+  };
+
+  constructor(message: string, details: NangoConnectSessionError["details"]) {
+    super(message);
+    this.name = "NangoConnectSessionError";
+    this.details = details;
+  }
+}
 
 function required(name: string): string {
   const value = process.env[name];
@@ -53,6 +71,20 @@ export function getNangoProviderConfigKey(connectorKey: string): string | null {
 
 function getNangoClient(): Nango {
   return new Nango({ secretKey: required("NANGO_SECRET_KEY") });
+}
+
+function nangoResponseDetails(error: unknown): {
+  status: number | null;
+  statusText: string | null;
+  responseBody: unknown;
+} {
+  const record = error && typeof error === "object" ? error as Record<string, unknown> : {};
+  const response = record.response && typeof record.response === "object" ? record.response as Record<string, unknown> : {};
+  return {
+    status: typeof response.status === "number" ? response.status : null,
+    statusText: typeof response.statusText === "string" ? response.statusText : null,
+    responseBody: response.data ?? null,
+  };
 }
 
 export async function createNangoConnectSession(input: {
@@ -74,13 +106,32 @@ export async function createNangoConnectSession(input: {
     tags: input.tags,
   };
 
-  const nango = getNangoClient();
-  const session = await nango.createConnectSession(body);
-  return {
-    sessionToken: session.data.token,
-    expiresAt: session.data.expires_at,
-    providerConfigKey,
-  };
+  try {
+    const nango = getNangoClient();
+    const session = await nango.createConnectSession(body);
+    return {
+      sessionToken: session.data.token,
+      expiresAt: session.data.expires_at,
+      providerConfigKey,
+    };
+  } catch (error) {
+    const response = nangoResponseDetails(error);
+    console.error("[nango] createConnectSession failed", {
+      endpoint: "POST /connect/sessions",
+      providerConfigKey,
+      status: response.status,
+      statusText: response.statusText,
+      responseBody: response.responseBody,
+    });
+    throw new NangoConnectSessionError(
+      error instanceof Error ? error.message : "Nango connect session failed.",
+      {
+        endpoint: "POST /connect/sessions",
+        providerConfigKey,
+        ...response,
+      },
+    );
+  }
 }
 
 export function verifyNangoWebhook(rawBody: string, headers: Record<string, unknown>): boolean {

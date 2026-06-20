@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
-import { verifyNangoWebhook } from "@/lib/integrations/nango";
+import { HUBSPOT_PROVIDER_CONFIG_KEY, verifyNangoWebhook } from "@/lib/integrations/nango";
 
 type NangoWebhookPayload = {
   type?: string;
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
       category: "CRM and sales",
       status,
       connected: status === "connected",
-      provider_config_key: providerConfigKey || "hubspot",
+      provider_config_key: providerConfigKey || HUBSPOT_PROVIDER_CONFIG_KEY,
       nango_connection_id: connectionId,
       provider_account_id: providerAccountId,
       provider_email: providerEmail,
