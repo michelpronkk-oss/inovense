@@ -1,4 +1,5 @@
 import { GMAIL_SCAN_REQUIRED_SCOPES, GMAIL_SEND_REQUIRED_SCOPES, GmailApiError, getMessageDetails, getMissingGmailScopes, listRecentMessages, resolveAccessTokenFromCredential, type SafeGmailMessage, type StoredConnectorCredential } from "@/lib/connectors/gmail";
+import { getConnectorTruth } from "@/lib/connectors/truth";
 import { createGmailSendApproval } from "@/lib/operators/executors/gmail";
 import { logOperatorEvent, operatorRuntimeId } from "@/lib/operators/logging";
 import { getOperatorReadiness } from "@/lib/operators/readiness";
@@ -11,6 +12,22 @@ type Opportunity = {
   matchedKeywords: string[];
   classification: "revenue_opportunity";
   confidence: "high";
+};
+
+type CrmPreparation = {
+  contactEmail: string;
+  contactName: string | null;
+  companyName: string | null;
+  source: "gmail";
+  classification: string;
+  confidence: string;
+  gmailMessageId: string;
+  gmailThreadId?: string;
+  summary: string;
+  suggestedNextStep: string;
+  suggestedDealStage: string;
+  suggestedFollowUpTask: string;
+  matchedKeywords: string[];
 };
 
 export type RevenueScanSummary = {
@@ -30,6 +47,7 @@ export type RevenueScanSummary = {
     matchedKeywords: string[];
     classification: string;
     confidence: string;
+    crmPreparationStatus?: string;
     runId: string;
     approvalId: string;
   }[];
@@ -145,6 +163,43 @@ function buildDraftFromOpportunity(opportunity: Opportunity) {
       "Best,",
       "Inovense",
     ].join("\n"),
+  };
+}
+
+function senderName(from: string, email: string): string | null {
+  const name = from.replace(/<[^>]+>/g, "").replace(/"/g, "").trim();
+  if (!name || name.toLowerCase() === email.toLowerCase()) return null;
+  return name;
+}
+
+function companyFromEmail(email: string): string | null {
+  const domain = email.split("@")[1]?.toLowerCase();
+  if (!domain) return null;
+  const root = domain.split(".")[0];
+  if (!root || ["gmail", "outlook", "hotmail", "icloud", "yahoo", "proton", "aol"].includes(root)) return null;
+  return root.split(/[-_]/).filter(Boolean).map((part) => `${part[0]?.toUpperCase() ?? ""}${part.slice(1)}`).join(" ");
+}
+
+function buildCrmPreparation(opportunity: Opportunity): CrmPreparation {
+  const summary = opportunity.message.snippet
+    ? opportunity.message.snippet.slice(0, 280)
+    : `Inbound revenue signal from ${opportunity.message.fromEmail}.`;
+  return {
+    contactEmail: opportunity.message.fromEmail,
+    contactName: senderName(opportunity.message.from, opportunity.message.fromEmail),
+    companyName: companyFromEmail(opportunity.message.fromEmail),
+    source: "gmail",
+    classification: opportunity.classification,
+    confidence: opportunity.confidence,
+    gmailMessageId: opportunity.message.id,
+    gmailThreadId: opportunity.message.threadId,
+    summary,
+    suggestedNextStep: "Review the prepared follow-up and decide whether to move this lead into active qualification.",
+    suggestedDealStage: opportunity.matchedKeywords.some((keyword) => ["pricing", "quote", "proposal"].includes(keyword))
+      ? "Proposal / pricing discussion"
+      : "New inbound opportunity",
+    suggestedFollowUpTask: "Follow up with the contact and capture the next step in HubSpot.",
+    matchedKeywords: opportunity.matchedKeywords,
   };
 }
 
@@ -301,6 +356,13 @@ export async function scanRevenueOpportunities(input: {
   try {
     const accessToken = await resolveAccessTokenFromCredential(credential);
     const providerEmail = normalizeEmail(credential.provider_email);
+    const connectorTruth = await getConnectorTruth({ workspaceId, supabase });
+    const hubspotConnected = connectorTruth.some((connector) =>
+      connector.connectorKey === "hubspot"
+      && connector.status === "connected"
+      && connector.providerConfigKey
+      && connector.nangoConnectionId
+    );
     const maxResults = Math.min(Math.max(Number(input.maxResults) || 15, 1), 20);
     const listed = await listRecentMessages(accessToken, { maxResults, query: "newer_than:30d" });
     const handled = await loadHandledGmailIds({ supabase, workspaceId });
@@ -326,6 +388,11 @@ export async function scanRevenueOpportunities(input: {
     for (const opportunity of opportunities) {
       const runId = operatorRuntimeId("oprun-revenue-scan");
       const draft = buildDraftFromOpportunity(opportunity);
+      const crmPreparation = buildCrmPreparation(opportunity);
+      const crmPreparationStatus = hubspotConnected ? "hubspot_execution_not_ready" : "hubspot_not_connected";
+      const preparedActions = hubspotConnected
+        ? ["send_gmail_follow_up", "update_hubspot_contact", "add_hubspot_note", "create_hubspot_follow_up_task"]
+        : ["send_gmail_follow_up"];
       const runInput = {
         source: "gmail_scan",
         gmailMessageId: opportunity.message.id,
@@ -337,6 +404,9 @@ export async function scanRevenueOpportunities(input: {
         matchedKeywords: opportunity.matchedKeywords,
         classification: opportunity.classification,
         confidence: opportunity.confidence,
+        crmPreparationStatus,
+        crmPreparation,
+        preparedActions,
       };
       const sourceMetadata = {
         gmailMessageId: opportunity.message.id,
@@ -347,6 +417,7 @@ export async function scanRevenueOpportunities(input: {
         classification: opportunity.classification,
         confidence: opportunity.confidence,
         matchedKeywords: opportunity.matchedKeywords,
+        crmPreparationStatus,
       };
 
       const runInsert = await supabase.from("os_operator_runs").insert({
@@ -373,6 +444,14 @@ export async function scanRevenueOpportunities(input: {
       });
       await insertStep({ supabase, workspaceId, runId, stepKey: "scan_gmail", title: "Scan recent Gmail messages", output: { messageId: opportunity.message.id } });
       await insertStep({ supabase, workspaceId, runId, stepKey: "detect_opportunity", title: "Detect revenue opportunity", output: sourceMetadata });
+      await insertStep({
+        supabase,
+        workspaceId,
+        runId,
+        stepKey: "prepare_crm_update",
+        title: "Prepare CRM update",
+        output: { status: crmPreparationStatus, preparedActions, crmPreparation },
+      });
       await insertStep({ supabase, workspaceId, runId, stepKey: "prepare_follow_up", title: "Prepare follow-up email", output: draft });
 
       const approval = await createGmailSendApproval({
@@ -384,6 +463,9 @@ export async function scanRevenueOpportunities(input: {
         body: draft.body,
         policyReason: "External email send requires human approval before Gmail execution.",
         sourceMetadata,
+        preparedActions,
+        crmPreparation,
+        crmPreparationStatus,
       });
 
       await insertStep({ supabase, workspaceId, runId, stepKey: "create_approval", title: "Create approval request", output: { approvalId: approval.approvalId } });
@@ -395,6 +477,9 @@ export async function scanRevenueOpportunities(input: {
         approvalId: approval.approvalId,
         opportunity: runInput,
         sourceMetadata,
+        preparedActions,
+        crmPreparation,
+        crmPreparationStatus,
       };
       const outputInsert = await supabase.from("os_operator_outputs").insert({
         id: operatorRuntimeId("opout"),
@@ -433,6 +518,7 @@ export async function scanRevenueOpportunities(input: {
         matchedKeywords: opportunity.matchedKeywords,
         classification: opportunity.classification,
         confidence: opportunity.confidence,
+        crmPreparationStatus,
         runId,
         approvalId: approval.approvalId,
       });

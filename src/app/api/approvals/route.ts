@@ -10,6 +10,21 @@ type GmailContinuationPayload = {
   to?: string;
   subject?: string;
   body?: string;
+  preparedActions?: string[];
+  crmPreparationStatus?: string;
+  sourceMetadata?: Record<string, unknown> | null;
+  crmPreparation?: {
+    contactEmail?: string;
+    contactName?: string | null;
+    companyName?: string | null;
+    classification?: string;
+    confidence?: string;
+    summary?: string;
+    suggestedNextStep?: string;
+    suggestedDealStage?: string;
+    suggestedFollowUpTask?: string;
+    matchedKeywords?: string[];
+  } | null;
 };
 
 function asPayload(value: unknown): GmailContinuationPayload {
@@ -21,9 +36,61 @@ function preview(value: string | undefined, max = 1200): string | null {
   return value.length > max ? `${value.slice(0, max)}...` : value;
 }
 
+function stringValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function stringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim()) : [];
+}
+
+function approvalReason(continuation: GmailContinuationPayload, policyReason: string | null): string {
+  if (policyReason) return policyReason;
+  if (continuation.kind === "gmail.send_after_approval") return "External email send requires human approval before Gmail execution.";
+  return "Operator action requires human approval.";
+}
+
+function crmStatusText(status: string | undefined): string | null {
+  if (status === "hubspot_not_connected") return "CRM update not prepared because HubSpot is not connected.";
+  if (status === "hubspot_execution_not_ready") return "HubSpot actions are prepared but not executed yet.";
+  return null;
+}
+
+function expectedOutcome(continuation: GmailContinuationPayload): string | null {
+  if (continuation.kind !== "gmail.send_after_approval") return null;
+  if (continuation.crmPreparationStatus === "hubspot_execution_not_ready") {
+    return "Send the approved Gmail follow-up now. HubSpot actions remain prepared only until CRM execution is implemented.";
+  }
+  if (continuation.crmPreparationStatus === "hubspot_not_connected") {
+    return "Send the approved Gmail follow-up now. CRM updates are skipped because HubSpot is not connected.";
+  }
+  return "Send the approved Gmail follow-up now and record the approval decision.";
+}
+
+function afterApprovalText(continuation: GmailContinuationPayload): string | null {
+  if (continuation.kind !== "gmail.send_after_approval") return null;
+  const crmText = crmStatusText(continuation.crmPreparationStatus);
+  return [
+    "Gmail sends this exact draft using the connected workspace Gmail account.",
+    crmText,
+    "The run, logs and operator memory are updated with the approval decision.",
+  ].filter(Boolean).join(" ");
+}
+
 function mapApproval(row: Record<string, unknown>) {
   const continuation = asPayload(row.continuation_payload);
   const runId = typeof row.run_id === "string" ? row.run_id : null;
+  const sourceMetadata = continuation.sourceMetadata && typeof continuation.sourceMetadata === "object" ? continuation.sourceMetadata : {};
+  const classification = stringValue(sourceMetadata.classification) ?? stringValue(continuation.crmPreparation?.classification);
+  const confidence = stringValue(sourceMetadata.confidence) ?? stringValue(continuation.crmPreparation?.confidence);
+  const sourceEmail = stringValue(sourceMetadata.fromEmail) ?? stringValue(sourceMetadata.from) ?? null;
+  const sourceSubject = stringValue(sourceMetadata.subject) ?? null;
+  const matchedKeywords = stringList(sourceMetadata.matchedKeywords).length > 0
+    ? stringList(sourceMetadata.matchedKeywords)
+    : stringList(continuation.crmPreparation?.matchedKeywords);
+  const why = continuation.crmPreparation?.summary
+    ?? (matchedKeywords.length > 0 ? `Matched revenue intent keywords: ${matchedKeywords.join(", ")}.` : null);
+  const policyReason = typeof row.policy_reason === "string" ? row.policy_reason : null;
   return {
     id: String(row.id),
     title: typeof row.title === "string" ? row.title : "Approval required",
@@ -40,12 +107,27 @@ function mapApproval(row: Record<string, unknown>) {
     agent_id: typeof row.agent_id === "string" ? row.agent_id : null,
     agent_mark: typeof row.agent_mark === "string" ? row.agent_mark : null,
     agent_color: typeof row.agent_color === "string" ? row.agent_color : null,
-    policy_reason: typeof row.policy_reason === "string" ? row.policy_reason : null,
+    policy_reason: policyReason,
     payload_preview: {
       to: continuation.to ?? null,
       subject: continuation.subject ?? null,
       body: preview(continuation.body),
       operatorKey: continuation.operatorKey ?? null,
+      preparedActions: Array.isArray(continuation.preparedActions) ? continuation.preparedActions.filter((item): item is string => typeof item === "string") : [],
+      crmPreparationStatus: continuation.crmPreparationStatus ?? null,
+      crmPreparation: continuation.crmPreparation ?? null,
+      sourceMetadata,
+      detectedSignal: sourceSubject ?? continuation.subject ?? null,
+      sourceEmail,
+      classification,
+      confidence,
+      matchedKeywords,
+      whyThisMatters: why,
+      riskLevel: continuation.kind === "gmail.send_after_approval" ? "medium" : "low",
+      expectedOutcome: expectedOutcome(continuation),
+      approvalReason: approvalReason(continuation, policyReason),
+      whatHappensAfterApproval: afterApprovalText(continuation),
+      crmStatusText: crmStatusText(continuation.crmPreparationStatus),
     },
   };
 }

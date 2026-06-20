@@ -19,6 +19,10 @@ type GmailContinuationPayload = {
   to: string;
   subject: string;
   body: string;
+  preparedActions?: string[];
+  crmPreparationStatus?: string | null;
+  crmPreparation?: Record<string, unknown> | null;
+  sourceMetadata?: Record<string, unknown> | null;
 };
 
 type InvalidPayloadDetail = {
@@ -32,6 +36,38 @@ function toTs(): string {
 
 function isEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function stringValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function learningMetadata(input: {
+  approvalId: string;
+  runId: string;
+  payload: GmailContinuationPayload;
+  messageId?: string | null;
+  sendEndpoint?: string | null;
+}) {
+  const sourceMetadata = input.payload.sourceMetadata ?? {};
+  const classification = stringValue(sourceMetadata.classification) ?? stringValue(input.payload.crmPreparation?.classification);
+  const confidence = stringValue(sourceMetadata.confidence) ?? stringValue(input.payload.crmPreparation?.confidence);
+  return {
+    approvalId: input.approvalId,
+    runId: input.runId,
+    decision: "approved",
+    signal: "positive",
+    actionType: "gmail_follow_up",
+    recipient: input.payload.to,
+    subject: input.payload.subject,
+    classification,
+    confidence,
+    crmPreparationStatus: input.payload.crmPreparationStatus ?? null,
+    preparedActions: input.payload.preparedActions ?? ["send_gmail_follow_up"],
+    sourceMetadata,
+    messageId: input.messageId ?? null,
+    sendEndpoint: input.sendEndpoint ?? null,
+  };
 }
 
 function validateGmailPayload(value: unknown): { ok: true; payload: GmailContinuationPayload } | { ok: false; details: InvalidPayloadDetail[] } {
@@ -60,6 +96,10 @@ function validateGmailPayload(value: unknown): { ok: true; payload: GmailContinu
       to: String(rec.to).trim().toLowerCase(),
       subject: String(rec.subject).trim(),
       body: String(rec.body).trim(),
+      preparedActions: Array.isArray(rec.preparedActions) ? rec.preparedActions.filter((item): item is string => typeof item === "string") : undefined,
+      crmPreparationStatus: typeof rec.crmPreparationStatus === "string" ? rec.crmPreparationStatus : null,
+      crmPreparation: rec.crmPreparation && typeof rec.crmPreparation === "object" ? rec.crmPreparation as Record<string, unknown> : null,
+      sourceMetadata: rec.sourceMetadata && typeof rec.sourceMetadata === "object" ? rec.sourceMetadata as Record<string, unknown> : null,
     },
   };
 }
@@ -253,6 +293,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   const warnings: string[] = [];
+  if (gmailPayload.crmPreparationStatus === "hubspot_execution_not_ready") {
+    warnings.push("hubspot_execution_not_ready");
+  }
 
   await optionalStep(warnings, "os_execution_logs.insert", () => supabase.from("os_execution_logs").insert([
     {
@@ -298,6 +341,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   const operatorRunId = typeof gmailPayload.operatorRunId === "string" ? gmailPayload.operatorRunId : approvalRow.run_id;
   if (operatorRunId) {
+    const approvalLearning = learningMetadata({
+      approvalId: id,
+      runId: operatorRunId,
+      payload: gmailPayload,
+      messageId: sent.messageId ?? null,
+      sendEndpoint: sent.sendEndpoint,
+    });
+
     await optionalStep(warnings, "os_operator_runs.update", () => supabase.from("os_operator_runs").update({
       status: "completed",
       completed_at: new Date().toISOString(),
@@ -309,6 +360,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           subject: gmailPayload.subject,
           sendEndpoint: sent.sendEndpoint,
         },
+        crmPreparationStatus: gmailPayload.crmPreparationStatus ?? null,
+        crmPreparation: gmailPayload.crmPreparation ?? null,
+        preparedActions: gmailPayload.preparedActions ?? ["send_gmail_follow_up"],
+        approvalLearning,
       },
     }).eq("id", operatorRunId).eq("workspace_id", context.workspaceId).eq("approval_id", id).then((res) => {
       if (res.error) throw new Error(res.error.message);
@@ -321,7 +376,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         runId: operatorRunId,
         eventType: "gmail.send.completed",
         message: `Approved Gmail message sent to ${gmailPayload.to}.`,
-        metadata: { approvalId: id, draftId: draft.draftId, messageId: sent.messageId ?? null, sendEndpoint: sent.sendEndpoint },
+        metadata: { ...approvalLearning, draftId: draft.draftId },
+      }).then((res) => {
+        if (res.error) throw new Error(res.error.message);
+        return res;
+      }));
+    await optionalStep(warnings, "os_operator_run_logs.learning.insert", () => logOperatorEvent({
+        supabase,
+        workspaceId: context.workspaceId,
+        runId: operatorRunId,
+        eventType: "revenue.approval.learning",
+        message: `Positive approval signal recorded for ${gmailPayload.to}.`,
+        metadata: approvalLearning,
       }).then((res) => {
         if (res.error) throw new Error(res.error.message);
         return res;
@@ -333,7 +399,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         operatorKey: gmailPayload.operatorKey || "revenue",
         eventType: "gmail.send",
         quantity: 1,
-        metadata: { approvalId: id, to: gmailPayload.to, messageId: sent.messageId ?? null, sendEndpoint: sent.sendEndpoint },
+        metadata: approvalLearning,
       }).then((res) => {
         if (res.error) throw new Error(res.error.message);
         return res;
@@ -342,10 +408,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         supabase,
         workspaceId: context.workspaceId,
         operatorKey: gmailPayload.operatorKey || "revenue",
-        memoryType: "email_outcome",
-        title: `Approved follow-up sent to ${gmailPayload.to}`,
-        content: `Subject: ${gmailPayload.subject}`,
-        metadata: { approvalId: id, runId: operatorRunId, messageId: sent.messageId ?? null, sendEndpoint: sent.sendEndpoint },
+        memoryType: "revenue_approval_learning",
+        title: `Approved Revenue follow-up to ${gmailPayload.to}`,
+        content: `Positive approval signal. Subject: ${gmailPayload.subject}`,
+        metadata: approvalLearning,
         sourceRunId: operatorRunId,
         approvalStatus: "approved",
       }).then((res) => {
@@ -370,5 +436,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       googleResponseBody: sent.googleResponseBody,
     },
     warnings,
+    crmPreparationStatus: gmailPayload.crmPreparationStatus ?? null,
   });
 }

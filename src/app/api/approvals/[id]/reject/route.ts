@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logOperatorEvent } from "@/lib/operators/logging";
+import { createOperatorMemory } from "@/lib/operators/memory";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 
@@ -9,6 +10,47 @@ type RejectBody = {
   userId?: string;
   reason?: string;
 };
+
+type RejectionContinuationPayload = {
+  operatorRunId?: string;
+  operatorKey?: string;
+  to?: string;
+  subject?: string;
+  preparedActions?: string[];
+  crmPreparationStatus?: string | null;
+  crmPreparation?: Record<string, unknown> | null;
+  sourceMetadata?: Record<string, unknown> | null;
+};
+
+function stringValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function asContinuationPayload(value: unknown): RejectionContinuationPayload {
+  if (!value || typeof value !== "object") return {};
+  const rec = value as Record<string, unknown>;
+  return {
+    operatorRunId: stringValue(rec.operatorRunId) ?? undefined,
+    operatorKey: stringValue(rec.operatorKey) ?? undefined,
+    to: stringValue(rec.to) ?? undefined,
+    subject: stringValue(rec.subject) ?? undefined,
+    preparedActions: Array.isArray(rec.preparedActions) ? rec.preparedActions.filter((item): item is string => typeof item === "string") : undefined,
+    crmPreparationStatus: stringValue(rec.crmPreparationStatus),
+    crmPreparation: rec.crmPreparation && typeof rec.crmPreparation === "object" ? rec.crmPreparation as Record<string, unknown> : null,
+    sourceMetadata: rec.sourceMetadata && typeof rec.sourceMetadata === "object" ? rec.sourceMetadata as Record<string, unknown> : null,
+  };
+}
+
+async function optionalLearningStep(label: string, fn: () => PromiseLike<unknown> | Promise<unknown>) {
+  try {
+    await fn();
+  } catch (error) {
+    console.warn("[approval-reject] optional learning step failed", {
+      label,
+      error: error instanceof Error ? error.message : "Unknown optional learning failure",
+    });
+  }
+}
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   if (!hasSupabaseAdminConfig()) {
@@ -49,6 +91,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   const resolvedBy = context.userEmail || context.userId || userEmail || userId;
+  const rejectionReason = body.reason?.trim() || "Needs manual review";
   const update = await supabase.from("os_approvals").update({
     status: "rejected",
     resolved_at: new Date().toISOString(),
@@ -59,12 +102,30 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ error: update.error.message }, { status: 500 });
   }
 
-  const continuation = approval.data.continuation_payload as { operatorRunId?: string; operatorKey?: string } | null;
+  const continuation = asContinuationPayload(approval.data.continuation_payload);
   const operatorRunId = continuation?.operatorRunId || approval.data.run_id;
   if (operatorRunId) {
+    const sourceMetadata = continuation.sourceMetadata ?? {};
+    const learningMetadata = {
+      approvalId: id,
+      runId: operatorRunId,
+      decision: "rejected",
+      signal: "negative",
+      actionType: "gmail_follow_up",
+      recipient: continuation.to ?? null,
+      subject: continuation.subject ?? null,
+      rejectionReason,
+      classification: stringValue(sourceMetadata.classification) ?? stringValue(continuation.crmPreparation?.classification),
+      confidence: stringValue(sourceMetadata.confidence) ?? stringValue(continuation.crmPreparation?.confidence),
+      crmPreparationStatus: continuation.crmPreparationStatus ?? null,
+      preparedActions: continuation.preparedActions ?? ["send_gmail_follow_up"],
+      sourceMetadata,
+      resolvedBy,
+    };
+
     await supabase.from("os_operator_runs").update({
       status: "blocked",
-      error: body.reason || "Approval rejected.",
+      error: rejectionReason,
       completed_at: new Date().toISOString(),
     }).eq("id", operatorRunId).eq("workspace_id", context.workspaceId).eq("approval_id", id);
 
@@ -74,9 +135,37 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       runId: operatorRunId,
       level: "warn",
       eventType: "approval.rejected",
-      message: body.reason || "Approval rejected by reviewer.",
-      metadata: { approvalId: id, resolvedBy },
+      message: rejectionReason,
+      metadata: learningMetadata,
     });
+
+    await optionalLearningStep("os_operator_run_logs.learning.insert", () => logOperatorEvent({
+      supabase,
+      workspaceId: context.workspaceId,
+      runId: operatorRunId,
+      level: "warn",
+      eventType: "revenue.rejection.learning",
+      message: `Negative approval signal recorded: ${rejectionReason}`,
+      metadata: learningMetadata,
+    }).then((res) => {
+      if (res.error) throw new Error(res.error.message);
+      return res;
+    }));
+
+    await optionalLearningStep("os_operator_memory.insert", () => createOperatorMemory({
+      supabase,
+      workspaceId: context.workspaceId,
+      operatorKey: continuation.operatorKey || "revenue",
+      memoryType: "revenue_rejection_learning",
+      title: `Rejected Revenue follow-up${continuation.to ? ` to ${continuation.to}` : ""}`,
+      content: `Negative approval signal: ${rejectionReason}${continuation.subject ? ` | Subject: ${continuation.subject}` : ""}`,
+      metadata: learningMetadata,
+      sourceRunId: operatorRunId,
+      approvalStatus: "rejected",
+    }).then((res) => {
+      if (res.error) throw new Error(res.error.message);
+      return res;
+    }));
   }
 
   await supabase.from("os_execution_logs").insert({
@@ -87,7 +176,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     agent_mark: approval.data.agent_mark || "OS",
     agent_color: approval.data.agent_color || "#4DE8E1",
     event: "approval.rejected",
-    message: body.reason || "Approval rejected by reviewer.",
+    message: rejectionReason,
     duration: "-",
     status: "warn",
   });

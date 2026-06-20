@@ -95,6 +95,13 @@ export async function GET(req: NextRequest) {
   }
 
   const gmail = connectorTruth.find((connector) => connector.connectorKey === "gmail") ?? null;
+  const hubspot = connectorTruth.find((connector) => connector.connectorKey === "hubspot") ?? null;
+  const hubspotConnected = Boolean(
+    hubspot
+    && hubspot.status === "connected"
+    && hubspot.providerConfigKey
+    && hubspot.nangoConnectionId
+  );
   const gmailScopes = gmail?.scopes ?? [];
   const reconnectRequired = Boolean(gmail && !gmailScopes.includes(GMAIL_READONLY_SCOPE));
   const latestScanRow = (runs.data ?? []).find((run) => asScanSummary(run.output));
@@ -121,6 +128,14 @@ export async function GET(req: NextRequest) {
         readonly: gmailScopes.includes(GMAIL_READONLY_SCOPE),
       },
     } : null,
+    hubspot: hubspot ? {
+      status: hubspot.status,
+      accountEmail: hubspot.accountEmail,
+      connected: hubspotConnected,
+      providerConfigKey: hubspot.providerConfigKey,
+      hasNangoConnection: Boolean(hubspot.nangoConnectionId),
+    } : null,
+    revenueMode: hubspotConnected ? "full_crm_mode" : "email_only_mode",
     monitoring: {
       status: monitoringStatus,
       message: hasScan ? "Latest scan loaded from operator run history." : "No scan has run yet.",

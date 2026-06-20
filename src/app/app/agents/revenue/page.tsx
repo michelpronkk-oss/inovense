@@ -63,6 +63,13 @@ type RevenueStatus = {
     reconnectRequired?: boolean;
     permissions?: { compose?: boolean; send?: boolean; readonly?: boolean };
   } | null;
+  hubspot?: {
+    status?: string;
+    accountEmail?: string | null;
+    connected?: boolean;
+    hasNangoConnection?: boolean;
+  } | null;
+  revenueMode?: "email_only_mode" | "full_crm_mode" | string;
   monitoring?: {
     status: string;
     message: string;
@@ -221,6 +228,10 @@ export default function RevenueOperatorPage() {
   const scanNeedsReconnect = gmailReconnectRequired || scanResult?.status === "requires_gmail_read_scope" || scanResult?.status === "requires_gmail_send_scope";
   const canRunRevenue = Boolean(revenueReadiness?.canRunManual && (revenueReadiness.status === "ready" || revenueReadiness.status === "draft_only"));
   const latestScanHadNoOpportunities = Boolean(monitoring?.lastScanTime && monitoring.opportunitiesFound === 0);
+  const modeLabel = revenueStatus?.revenueMode === "full_crm_mode" ? "Full CRM mode" : "Email-only mode";
+  const modeHelp = revenueStatus?.revenueMode === "full_crm_mode"
+    ? "Gmail and HubSpot are connected. CRM updates are prepared for approval, but HubSpot execution is not enabled yet."
+    : "Gmail is connected. HubSpot is missing, so Revenue Operator prepares email follow-ups only.";
   const revenueStatusMessage = (() => {
     if (!revenueReadiness) return "Loading Revenue Operator readiness.";
     if (revenueReadiness.status === "missing_connector") return "Connect Gmail to run Revenue Operator.";
@@ -257,6 +268,13 @@ export default function RevenueOperatorPage() {
         </div>
         <div style={{ padding: "16px 18px", display: "grid", gap: 14 }}>
           <div style={{ fontSize: 13, color: "var(--text-dim)", maxWidth: 760 }}>Revenue Operator is monitoring Gmail for revenue opportunities. It prepares follow-ups for approval. Nothing is sent without approval.</div>
+          <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>{modeLabel}</div>
+              <div style={{ marginTop: 3, fontSize: 12, color: "var(--text-mute)" }}>{modeHelp}</div>
+            </div>
+            <span className="appr-btn edit" style={{ cursor: "default" }}>{revenueStatus?.hubspot?.connected ? "HubSpot connected" : "HubSpot missing"}</span>
+          </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10 }}>
             <MetricCard label="Monitoring status" value={monitoring?.status ?? "loading"} />
             <MetricCard label="Last scan" value={monitoring?.lastScanTime ? relativeTime(monitoring.lastScanTime) : "No scan yet"} />

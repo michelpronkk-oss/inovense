@@ -27,6 +27,32 @@ type ApprovalRow = {
     subject: string | null;
     body: string | null;
     operatorKey: string | null;
+    preparedActions?: string[];
+    crmPreparationStatus?: string | null;
+    crmStatusText?: string | null;
+    sourceMetadata?: Record<string, unknown>;
+    detectedSignal?: string | null;
+    sourceEmail?: string | null;
+    classification?: string | null;
+    confidence?: string | null;
+    matchedKeywords?: string[];
+    whyThisMatters?: string | null;
+    riskLevel?: string | null;
+    expectedOutcome?: string | null;
+    approvalReason?: string | null;
+    whatHappensAfterApproval?: string | null;
+    crmPreparation?: {
+      contactEmail?: string;
+      contactName?: string | null;
+      companyName?: string | null;
+      classification?: string;
+      confidence?: string;
+      summary?: string;
+      suggestedNextStep?: string;
+      suggestedDealStage?: string;
+      suggestedFollowUpTask?: string;
+      matchedKeywords?: string[];
+    } | null;
   };
 };
 
@@ -68,6 +94,31 @@ function matchesFilter(item: ApprovalRow, filter: string): boolean {
   return displayCategory(item) === needle || item.approval_type === needle;
 }
 
+function actionLabel(action: string): string {
+  if (action === "send_gmail_follow_up") return "Send Gmail follow-up";
+  if (action === "update_hubspot_contact") return "Update HubSpot contact/deal";
+  if (action === "add_hubspot_note") return "Add CRM note";
+  if (action === "create_hubspot_follow_up_task") return "Create follow-up task";
+  return action.replace(/_/g, " ");
+}
+
+const REJECTION_REASONS = [
+  "Not a real opportunity",
+  "Wrong tone",
+  "Too pushy",
+  "Wrong recipient",
+  "Needs manual review",
+  "Other",
+];
+
+function valueOrDash(value: string | null | undefined): string {
+  return value && value.trim() ? value : "-";
+}
+
+function isRevenueApproval(item: ApprovalRow): boolean {
+  return item.payload_preview.operatorKey === "revenue" || item.agent_id === "revenue";
+}
+
 export default function ApprovalsPage() {
   const { state } = useOS();
   const router = useRouter();
@@ -76,6 +127,7 @@ export default function ApprovalsPage() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [rejectReasons, setRejectReasons] = useState<Record<string, string>>({});
 
   const loadApprovals = useCallback(async () => {
     if (!state.workspace.id) return;
@@ -116,7 +168,7 @@ export default function ApprovalsPage() {
     return resolved.filter((a) => a.status === "approved" && a.resolved_at?.startsWith(today)).length;
   }, [resolved]);
 
-  const actOnApproval = async (item: ApprovalRow, action: "approve" | "reject") => {
+  const actOnApproval = async (item: ApprovalRow, action: "approve" | "reject", reason?: string) => {
     setBusyId(item.id);
     setError("");
     try {
@@ -127,6 +179,7 @@ export default function ApprovalsPage() {
           workspaceId: state.workspace.id,
           userId: state.currentUser.id,
           userEmail: state.currentUser.email,
+          reason,
         }),
       });
       const json = await res.json().catch(() => ({})) as { error?: string };
@@ -230,6 +283,15 @@ export default function ApprovalsPage() {
               ? "Revenue Operator"
               : item.agent_mark || "Operator";
             const isBusy = busyId === item.id;
+            const revenueApproval = isRevenueApproval(item);
+            const preparedActions = item.payload_preview.preparedActions ?? [];
+            const crmStatus = item.payload_preview.crmStatusText
+              ?? (item.payload_preview.crmPreparationStatus === "hubspot_not_connected"
+                ? "CRM update not prepared because HubSpot is not connected."
+                : item.payload_preview.crmPreparationStatus === "hubspot_execution_not_ready"
+                  ? "HubSpot actions are prepared but not executed yet."
+                  : null);
+            const rejectionReason = rejectReasons[item.id] ?? "Needs manual review";
 
             return (
               <div key={item.id} className="appr-row">
@@ -239,25 +301,111 @@ export default function ApprovalsPage() {
                 </div>
                 <div className="appr-row-from">{operatorName} - {timeAgo(item.created_at)}</div>
                 <div className="appr-row-body">{item.description}</div>
-                <div style={{ marginTop: 8, padding: "9px 10px", borderRadius: 8, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 4 }}>
+                <div style={{ marginTop: 10, padding: revenueApproval ? "14px" : "9px 10px", borderRadius: revenueApproval ? 14 : 8, background: revenueApproval ? "linear-gradient(135deg, rgba(77,232,225,0.06), rgba(255,255,255,0.025))" : "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: revenueApproval ? 12 : 4 }}>
+                  {revenueApproval && (
+                    <>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8 }}>
+                        {[
+                          { label: "Detected signal", value: valueOrDash(item.payload_preview.detectedSignal) },
+                          { label: "Source email", value: valueOrDash(item.payload_preview.sourceEmail) },
+                          { label: "Classification", value: valueOrDash(item.payload_preview.classification) },
+                          { label: "Confidence", value: valueOrDash(item.payload_preview.confidence) },
+                        ].map((field) => (
+                          <div key={field.label} style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(0,0,0,0.16)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)", minWidth: 0 }}>
+                            <div style={{ fontSize: 10, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>{field.label}</div>
+                            <div style={{ fontSize: 12.5, color: "var(--text)", overflowWrap: "anywhere" }}>{field.value}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 10 }}>
+                        <div style={{ padding: "10px 12px", borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
+                          <div style={{ fontSize: 11, color: "var(--text-mute)", marginBottom: 5 }}>Why this matters</div>
+                          <div style={{ fontSize: 12.5, color: "var(--text-dim)", lineHeight: 1.55 }}>
+                            {item.payload_preview.whyThisMatters || "Revenue Operator detected a high-confidence inbound revenue signal and prepared an approval-gated follow-up."}
+                          </div>
+                        </div>
+                        <div style={{ padding: "10px 12px", borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
+                          <div style={{ fontSize: 11, color: "var(--text-mute)", marginBottom: 5 }}>Risk / expected outcome</div>
+                          <div style={{ fontSize: 12.5, color: "var(--text-dim)", lineHeight: 1.55 }}>
+                            <strong style={{ color: "var(--text)" }}>Risk:</strong> {valueOrDash(item.payload_preview.riskLevel)}<br />
+                            {item.payload_preview.expectedOutcome || "Approval records the decision and executes only the approved action."}
+                          </div>
+                        </div>
+                      </div>
+
+                      {preparedActions.length > 0 && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                          {preparedActions.map((action) => (
+                            <span key={action} className="pill pill-cyan" style={{ fontSize: 11 }}>{actionLabel(action)}</span>
+                          ))}
+                        </div>
+                      )}
+
+                      {crmStatus && (
+                        <div style={{ fontSize: 12, color: "var(--text-dim)", padding: "8px 10px", borderRadius: 10, background: "rgba(255,255,255,0.025)" }}>
+                          {crmStatus}
+                        </div>
+                      )}
+
+                      {item.payload_preview.crmPreparation && (
+                        <div style={{ fontSize: 12, color: "var(--text-dim)", display: "grid", gap: 4 }}>
+                          {item.payload_preview.crmPreparation.suggestedNextStep && (
+                            <div><strong style={{ color: "var(--text)" }}>Suggested next step:</strong> {item.payload_preview.crmPreparation.suggestedNextStep}</div>
+                          )}
+                          {item.payload_preview.crmPreparation.suggestedDealStage && (
+                            <div><strong style={{ color: "var(--text)" }}>Suggested deal stage:</strong> {item.payload_preview.crmPreparation.suggestedDealStage}</div>
+                          )}
+                          {item.payload_preview.crmPreparation.suggestedFollowUpTask && (
+                            <div><strong style={{ color: "var(--text)" }}>Suggested task:</strong> {item.payload_preview.crmPreparation.suggestedFollowUpTask}</div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
                   {item.payload_preview.to && (
                     <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
-                      <strong style={{ color: "var(--text)" }}>To:</strong> {item.payload_preview.to}
+                      <strong style={{ color: "var(--text)" }}>{revenueApproval ? "Recipient:" : "To:"}</strong> {item.payload_preview.to}
                     </div>
                   )}
                   {item.payload_preview.subject && (
                     <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
-                      <strong style={{ color: "var(--text)" }}>Subject:</strong> {item.payload_preview.subject}
+                      <strong style={{ color: "var(--text)" }}>{revenueApproval ? "Draft subject:" : "Subject:"}</strong> {item.payload_preview.subject}
                     </div>
                   )}
                   {item.payload_preview.body && (
                     <div style={{ fontSize: 11.5, color: "var(--text-dim)", whiteSpace: "pre-wrap" }}>
-                      <strong style={{ color: "var(--text)" }}>Body:</strong> {item.payload_preview.body}
+                      <strong style={{ color: "var(--text)" }}>{revenueApproval ? "Draft body:" : "Body:"}</strong> {item.payload_preview.body}
                     </div>
                   )}
-                  {item.policy_reason && (
+                  {(item.payload_preview.approvalReason || item.policy_reason) && (
                     <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
-                      <strong style={{ color: "var(--text)" }}>Policy:</strong> {item.policy_reason}
+                      <strong style={{ color: "var(--text)" }}>Approval reason:</strong> {item.payload_preview.approvalReason || item.policy_reason}
+                    </div>
+                  )}
+                  {!revenueApproval && preparedActions.length > 0 && (
+                    <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
+                      <strong style={{ color: "var(--text)" }}>Prepared actions:</strong> {preparedActions.map(actionLabel).join(" / ")}
+                    </div>
+                  )}
+                  {!revenueApproval && item.payload_preview.crmPreparationStatus === "hubspot_not_connected" && (
+                    <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
+                      CRM update not prepared because HubSpot is not connected.
+                    </div>
+                  )}
+                  {!revenueApproval && item.payload_preview.crmPreparationStatus === "hubspot_execution_not_ready" && (
+                    <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
+                      <strong style={{ color: "var(--text)" }}>CRM:</strong> HubSpot update prepared, execution not implemented yet.
+                    </div>
+                  )}
+                  {!revenueApproval && item.payload_preview.crmPreparation && (
+                    <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
+                      <strong style={{ color: "var(--text)" }}>CRM summary:</strong> {item.payload_preview.crmPreparation.summary}
+                    </div>
+                  )}
+                  {revenueApproval && item.payload_preview.whatHappensAfterApproval && (
+                    <div style={{ fontSize: 11.5, color: "var(--text-dim)", paddingTop: 2 }}>
+                      <strong style={{ color: "var(--text)" }}>What happens after approval:</strong> {item.payload_preview.whatHappensAfterApproval}
                     </div>
                   )}
                   {item.linked_run_id && (
@@ -266,12 +414,24 @@ export default function ApprovalsPage() {
                     </div>
                   )}
                 </div>
+                <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 11.5, color: "var(--text-mute)" }}>Reject reason</span>
+                  <select
+                    value={rejectionReason}
+                    onChange={(event) => setRejectReasons((current) => ({ ...current, [item.id]: event.target.value }))}
+                    style={{ background: "rgba(255,255,255,0.04)", color: "var(--text-dim)", border: "1px solid var(--line)", borderRadius: 9, padding: "7px 9px", fontSize: 12 }}
+                  >
+                    {REJECTION_REASONS.map((reason) => (
+                      <option key={reason} value={reason}>{reason}</option>
+                    ))}
+                  </select>
+                </div>
                 <div className="appr-row-actions">
                   <button className="appr-btn approve" disabled={isBusy} onClick={() => actOnApproval(item, "approve")}>
                     {item.approval_type === "email" ? "Approve and send" : "Approve"}
                   </button>
                   <button className="appr-btn edit" disabled aria-disabled="true" title="Inline editor is coming soon">Edit</button>
-                  <button className="appr-btn deny" disabled={isBusy} onClick={() => actOnApproval(item, "reject")}>Reject</button>
+                  <button className="appr-btn deny" disabled={isBusy} onClick={() => actOnApproval(item, "reject", rejectionReason)}>Reject</button>
                 </div>
               </div>
             );

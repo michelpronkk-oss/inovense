@@ -59,6 +59,9 @@ export async function createGmailSendApproval(input: {
   body: string;
   policyReason: string;
   sourceMetadata?: Record<string, unknown>;
+  preparedActions?: string[];
+  crmPreparation?: Record<string, unknown>;
+  crmPreparationStatus?: string;
 }) {
   const approvalId = operatorRuntimeId("appr-revenue-gmail");
   const insert = await input.supabase.from("os_approvals").insert({
@@ -82,6 +85,9 @@ export async function createGmailSendApproval(input: {
       subject: input.subject,
       body: input.body,
       sourceMetadata: input.sourceMetadata ?? {},
+      preparedActions: input.preparedActions ?? ["send_gmail_follow_up"],
+      crmPreparation: input.crmPreparation ?? null,
+      crmPreparationStatus: input.crmPreparationStatus ?? null,
     },
     policy_reason: input.policyReason,
   });
