@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Nango from "@nangohq/frontend";
+import type { ConnectUIEvent } from "@nangohq/frontend";
 import { useOS } from "@/lib/os/app-provider";
 import { LinkIcon, PlusIcon } from "@/components/dashboard/icons";
 import type { Connector } from "@/lib/os/types";
@@ -49,6 +50,8 @@ export default function ConnectorsPage() {
     status: "connected" | "error" | "pending" | "not_connected";
     provider_email?: string | null;
     connected_at?: string | null;
+    provider_config_key?: string | null;
+    nango_connection_id?: string | null;
   } | null>(null);
 
   // Real connected = authenticated via native OAuth or managed OAuth integration
@@ -116,6 +119,8 @@ export default function ConnectorsPage() {
       status: "connected" | "error" | "pending" | "not_connected";
       provider_email?: string | null;
       connected_at?: string | null;
+      provider_config_key?: string | null;
+      nango_connection_id?: string | null;
     };
     setHubspotStatus(json);
     if (json.status === "connected") {
@@ -141,6 +146,7 @@ export default function ConnectorsPage() {
 
   const startHubspotNangoConnect = async () => {
     setHubspotConnectLoading(true);
+    setFeedback("");
     try {
       const sessionRes = await fetch("/api/connectors/nango/session", {
         method: "POST",
@@ -159,6 +165,54 @@ export default function ConnectorsPage() {
       }
 
       const nango = new Nango();
+      const finalizeHubspotConnection = async (event: ConnectUIEvent) => {
+        if (event.type !== "connect") return;
+        const payload = event.payload as {
+          providerConfigKey?: string;
+          provider_config_key?: string;
+          connectionId?: string;
+          connection_id?: string;
+        };
+        const connectionId = payload.connectionId || payload.connection_id || "";
+        if (!connectionId) {
+          setFeedback("HubSpot OAuth succeeded, but Nango did not return a connection id to save.");
+          return;
+        }
+
+        const finalizeRes = await fetch("/api/connectors/nango/finalize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workspaceId: state.workspace.id,
+            connectorKey: "hubspot",
+            userId: state.currentUser.id,
+            userEmail: state.currentUser.email,
+            providerConfigKey: payload.providerConfigKey || payload.provider_config_key || "hubspot",
+            nangoConnectionId: connectionId,
+            providerEmail: state.currentUser.email,
+            providerAccountId: state.currentUser.id || state.currentUser.email,
+            provider: "hubspot",
+            raw: payload,
+          }),
+        });
+        const finalizeJson = await finalizeRes.json().catch(() => ({})) as { error?: string; message?: string; provider_email?: string | null; connected_at?: string | null; provider_config_key?: string | null; nango_connection_id?: string | null };
+        if (!finalizeRes.ok) {
+          setFeedback(finalizeJson.message || finalizeJson.error || "HubSpot OAuth succeeded, but Inovense could not save the connector.");
+          return;
+        }
+
+        setHubspotStatus({
+          status: "connected",
+          provider_email: finalizeJson.provider_email ?? state.currentUser.email,
+          connected_at: finalizeJson.connected_at ?? null,
+          provider_config_key: finalizeJson.provider_config_key ?? "hubspot",
+          nango_connection_id: finalizeJson.nango_connection_id ?? connectionId,
+        });
+        connectConnector("hubspot", "real");
+        setFeedback("HubSpot connected. Revenue Operator can now prepare CRM actions for approval.");
+        setAddOpen(false);
+        setSetupConnectorId(null);
+      };
       const pollStatus = () => {
         let tries = 0;
         const timer = setInterval(() => {
@@ -170,8 +224,13 @@ export default function ConnectorsPage() {
 
       nango.openConnectUI({
         sessionToken: sessionJson.sessionToken,
-        onEvent: (event) => {
-          if (event.type === "connect" || event.type === "close") {
+        onEvent: async (event) => {
+          if (event.type === "connect") {
+            await finalizeHubspotConnection(event);
+            pollStatus();
+          } else if (event.type === "error") {
+            setFeedback(event.payload.errorMessage || "HubSpot OAuth failed.");
+          } else if (event.type === "close") {
             pollStatus();
           }
         },

@@ -73,9 +73,18 @@ export async function POST(req: NextRequest) {
 
   const status = isFailure ? "error" : isSuccess ? "connected" : "pending";
   const nowIso = new Date().toISOString();
-  const connectorRowId = `${workspaceId}:${connectorKey}`;
 
   const supabase = createSupabaseAdmin();
+  const existing = await supabase
+    .from("os_connectors")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("connector_key", connectorKey)
+    .maybeSingle();
+  if (existing.error) {
+    return NextResponse.json({ error: existing.error.message }, { status: 500 });
+  }
+  const connectorRowId = existing.data?.id ?? `${workspaceId}:${connectorKey}`;
   const upsert = await supabase
     .from("os_connectors")
     .upsert({
@@ -88,7 +97,7 @@ export async function POST(req: NextRequest) {
       category: "CRM and sales",
       status,
       connected: status === "connected",
-      provider_config_key: providerConfigKey || "hubspot-inovense",
+      provider_config_key: providerConfigKey || "hubspot",
       nango_connection_id: connectionId,
       provider_account_id: providerAccountId,
       provider_email: providerEmail,
@@ -133,4 +142,3 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true });
 }
-

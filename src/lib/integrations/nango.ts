@@ -35,7 +35,7 @@ export type NangoConnectionMetadata = {
 const NANGO_CONNECTORS: Record<SupportedNangoConnectorKey, NangoConnectorConfig> = {
   hubspot: {
     connectorKey: "hubspot",
-    providerConfigKey: "hubspot-inovense",
+    providerConfigKey: process.env.NANGO_HUBSPOT_CONFIG_KEY || "hubspot",
     provider: "hubspot",
   },
 };

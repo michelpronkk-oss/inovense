@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     status: hubspot?.status ?? "not_connected",
     provider_config_key: hubspot?.providerConfigKey ?? null,
+    nango_connection_id: hubspot?.nangoConnectionId ?? null,
     provider_email: hubspot?.accountEmail ?? null,
     connected_at: hubspot?.connectedAt ?? null,
   });
