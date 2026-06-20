@@ -30,6 +30,7 @@ export type GmailApiErrorDetails = {
 export type SafeGmailMessage = {
   id: string;
   threadId?: string;
+  labelIds: string[];
   from: string;
   fromEmail: string;
   to: string;
@@ -194,6 +195,7 @@ export function parseSafeGmailMessage(value: unknown): SafeGmailMessage {
   const message = value && typeof value === "object" ? value as {
     id?: string;
     threadId?: string;
+    labelIds?: string[];
     snippet?: string;
     internalDate?: string;
     payload?: { headers?: { name?: string; value?: string }[] };
@@ -207,6 +209,7 @@ export function parseSafeGmailMessage(value: unknown): SafeGmailMessage {
   return {
     id: message.id ?? "",
     threadId: message.threadId,
+    labelIds: Array.isArray(message.labelIds) ? message.labelIds.filter((label): label is string => typeof label === "string") : [],
     from,
     fromEmail: extractEmail(from),
     to,

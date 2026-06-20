@@ -58,6 +58,7 @@ export async function createGmailSendApproval(input: {
   subject: string;
   body: string;
   policyReason: string;
+  sourceMetadata?: Record<string, unknown>;
 }) {
   const approvalId = operatorRuntimeId("appr-revenue-gmail");
   const insert = await input.supabase.from("os_approvals").insert({
@@ -80,6 +81,7 @@ export async function createGmailSendApproval(input: {
       to: input.to,
       subject: input.subject,
       body: input.body,
+      sourceMetadata: input.sourceMetadata ?? {},
     },
     policy_reason: input.policyReason,
   });

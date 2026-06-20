@@ -116,6 +116,38 @@ type RevenueScanResult = {
   error?: string;
 };
 
+type RevenueStatus = {
+  readiness?: OperatorReadiness | null;
+  gmail?: {
+    reconnectRequired?: boolean;
+    permissions?: {
+      compose?: boolean;
+      send?: boolean;
+      readonly?: boolean;
+    };
+  } | null;
+  monitoring?: {
+    status: string;
+    message: string;
+    lastScanTime: string | null;
+    lastScannedCount: number;
+    opportunitiesFound: number;
+    approvalsCreated: number;
+    skippedSafelyCount: number;
+    routedItemCount: number | null;
+    reconnectRequired: boolean;
+    nextScanLabel: string;
+    recentPendingApprovals: {
+      id: string;
+      title: string;
+      created_at: string | null;
+      to: string | null;
+      subject: string | null;
+    }[];
+  };
+  error?: string;
+};
+
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const days = Math.floor(diff / 86400000);
@@ -147,6 +179,7 @@ export default function AgentsPage() {
   const [runningAgentId, setRunningAgentId] = useState<string | null>(null);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [revenueReadiness, setRevenueReadiness] = useState<OperatorReadiness | null>(null);
+  const [revenueStatus, setRevenueStatus] = useState<RevenueStatus | null>(null);
   const [revenueRuns, setRevenueRuns] = useState<RevenueRun[]>([]);
   const [runtimeLoading, setRuntimeLoading] = useState(true);
   const [runtimeError, setRuntimeError] = useState("");
@@ -193,16 +226,21 @@ export default function AgentsPage() {
       readinessQs.set("operatorKey", "revenue");
       const runsQs = new URLSearchParams(identityParams);
       runsQs.set("operatorKey", "revenue");
+      const statusQs = new URLSearchParams(identityParams);
 
-      const [readinessRes, runsRes] = await Promise.all([
+      const [readinessRes, runsRes, statusRes] = await Promise.all([
         fetch(`/api/operators/readiness?${readinessQs.toString()}`, { cache: "no-store" }),
         fetch(`/api/operators/runs?${runsQs.toString()}`, { cache: "no-store" }),
+        fetch(`/api/operators/revenue/status?${statusQs.toString()}`, { cache: "no-store" }),
       ]);
       const readinessJson = await readinessRes.json().catch(() => ({})) as { readiness?: OperatorReadiness; error?: string };
       const runsJson = await runsRes.json().catch(() => ({})) as { runs?: RevenueRun[]; error?: string };
+      const statusJson = await statusRes.json().catch(() => ({})) as RevenueStatus;
       if (!readinessRes.ok) throw new Error(readinessJson.error || "Could not load Revenue Operator readiness.");
       if (!runsRes.ok) throw new Error(runsJson.error || "Could not load Revenue Operator runs.");
-      setRevenueReadiness(readinessJson.readiness ?? null);
+      if (!statusRes.ok) throw new Error(statusJson.error || "Could not load Revenue Operator status.");
+      setRevenueReadiness(statusJson.readiness ?? readinessJson.readiness ?? null);
+      setRevenueStatus(statusJson);
       setRevenueRuns(Array.isArray(runsJson.runs) ? runsJson.runs : []);
     } catch (error) {
       setRuntimeError(error instanceof Error ? error.message : "Could not load Revenue Operator runtime.");
@@ -296,7 +334,10 @@ export default function AgentsPage() {
   })();
 
   const canRunRevenue = Boolean(revenueReadiness?.canRunManual && (revenueReadiness.status === "ready" || revenueReadiness.status === "draft_only"));
-  const scanNeedsReconnect = scanResult?.status === "requires_gmail_read_scope" || scanResult?.status === "requires_gmail_send_scope";
+  const monitoring = revenueStatus?.monitoring;
+  const gmailReconnectRequired = Boolean(revenueStatus?.gmail?.reconnectRequired || monitoring?.reconnectRequired);
+  const scanNeedsReconnect = gmailReconnectRequired || scanResult?.status === "requires_gmail_read_scope" || scanResult?.status === "requires_gmail_send_scope";
+  const latestScanHadNoOpportunities = Boolean(monitoring?.lastScanTime && monitoring.opportunitiesFound === 0);
 
   return (
     <div className="os-page">
@@ -355,17 +396,52 @@ export default function AgentsPage() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div style={{ padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 10 }}>
               <div>
-                <div style={{ fontSize: 13.5, fontWeight: 600 }}>Revenue Signal Scanner</div>
+                <div style={{ fontSize: 13.5, fontWeight: 600 }}>Revenue Operator</div>
                 <div style={{ marginTop: 3, fontSize: 12, color: "var(--text-mute)" }}>
-                  Revenue Operator scans recent Gmail messages and prepares follow-ups for approval. Nothing is sent without approval.
+                  Revenue Operator is monitoring Gmail for revenue opportunities. It prepares follow-ups for approval. Nothing is sent without approval.
                 </div>
               </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                {[
+                  { label: "Monitoring status", val: monitoring?.status ?? "loading" },
+                  { label: "Last scan", val: monitoring?.lastScanTime ? relativeTime(monitoring.lastScanTime) : "No scan yet" },
+                  { label: "Emails scanned", val: String(monitoring?.lastScannedCount ?? 0) },
+                  { label: "Opportunities found", val: String(monitoring?.opportunitiesFound ?? 0) },
+                  { label: "Approvals prepared", val: String(monitoring?.approvalsCreated ?? 0) },
+                  { label: "Skipped safely", val: String(monitoring?.skippedSafelyCount ?? 0) },
+                ].map((item) => (
+                  <div key={item.label} style={{ padding: "8px 9px", borderRadius: 8, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{item.label}</div>
+                    <div style={{ marginTop: 4, fontSize: 12.8, fontWeight: 600 }}>{item.val}</div>
+                  </div>
+                ))}
+              </div>
+              {gmailReconnectRequired && (
+                <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(245,194,107,0.06)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.2)", color: "var(--amber)", fontSize: 12 }}>
+                  Reconnect Gmail to enable inbox monitoring.
+                </div>
+              )}
+              {!gmailReconnectRequired && monitoring?.message === "No scan has run yet." && (
+                <div style={{ fontSize: 12, color: "var(--text-mute)" }}>No scan has run yet.</div>
+              )}
+              {!gmailReconnectRequired && latestScanHadNoOpportunities && (
+                <div style={{ fontSize: 12, color: "var(--text-mute)" }}>No high-confidence revenue opportunities found in the latest scan.</div>
+              )}
               {!canRunRevenue && (
                 <div style={{ fontSize: 12, color: "var(--amber)" }}>{revenueStatusMessage}</div>
               )}
-              <button className="btn btn-primary btn-sm" type="button" onClick={submitRevenueScan} disabled={!canRunRevenue || scanSubmitting} style={{ opacity: !canRunRevenue || scanSubmitting ? 0.45 : 1 }}>
-                {scanSubmitting ? "Scanning Gmail..." : "Scan for revenue opportunities"}
-              </button>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <Link href="/app/approvals" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>View approvals</Link>
+                <button className="btn btn-ghost btn-sm" type="button" onClick={submitRevenueScan} disabled={!canRunRevenue || scanSubmitting} style={{ opacity: !canRunRevenue || scanSubmitting ? 0.45 : 1 }}>
+                  {scanSubmitting ? "Scanning..." : "Run scan now"}
+                </button>
+                {gmailReconnectRequired && (
+                  <button className="btn btn-ghost btn-sm" type="button" onClick={startGmailReconnect}>Reconnect Gmail</button>
+                )}
+              </div>
+              {monitoring?.nextScanLabel && (
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-faint)" }}>{monitoring.nextScanLabel}</div>
+              )}
               {scanResult && (
                 <div style={{ padding: "10px 12px", borderRadius: 10, background: scanNeedsReconnect ? "rgba(245,194,107,0.06)" : "rgba(77,232,225,0.06)", boxShadow: scanNeedsReconnect ? "inset 0 0 0 1px rgba(245,194,107,0.2)" : "inset 0 0 0 1px rgba(77,232,225,0.18)", display: "grid", gap: 8 }}>
                   <div style={{ fontSize: 12.8, fontWeight: 600 }}>
