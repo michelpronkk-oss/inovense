@@ -57,6 +57,9 @@ function crmStatusText(status: string | undefined): string | null {
 }
 
 function expectedOutcome(continuation: GmailContinuationPayload): string | null {
+  const sourceMetadata = continuation.sourceMetadata && typeof continuation.sourceMetadata === "object" ? continuation.sourceMetadata : {};
+  const aiExpectedOutcome = stringValue(sourceMetadata.expectedOutcome);
+  if (aiExpectedOutcome) return aiExpectedOutcome;
   if (continuation.kind !== "gmail.send_after_approval") return null;
   if (continuation.crmPreparationStatus === "hubspot_execution_not_ready") {
     return "Send the approved Gmail follow-up now. HubSpot actions remain prepared only until CRM execution is implemented.";
@@ -88,8 +91,10 @@ function mapApproval(row: Record<string, unknown>) {
   const matchedKeywords = stringList(sourceMetadata.matchedKeywords).length > 0
     ? stringList(sourceMetadata.matchedKeywords)
     : stringList(continuation.crmPreparation?.matchedKeywords);
-  const why = continuation.crmPreparation?.summary
+  const why = stringValue(sourceMetadata.whyThisMatters)
+    ?? continuation.crmPreparation?.summary
     ?? (matchedKeywords.length > 0 ? `Matched revenue intent keywords: ${matchedKeywords.join(", ")}.` : null);
+  const detectedSignal = stringValue(sourceMetadata.detectedSignalSummary) ?? sourceSubject ?? continuation.subject ?? null;
   const policyReason = typeof row.policy_reason === "string" ? row.policy_reason : null;
   return {
     id: String(row.id),
@@ -117,13 +122,14 @@ function mapApproval(row: Record<string, unknown>) {
       crmPreparationStatus: continuation.crmPreparationStatus ?? null,
       crmPreparation: continuation.crmPreparation ?? null,
       sourceMetadata,
-      detectedSignal: sourceSubject ?? continuation.subject ?? null,
+      detectedSignal,
       sourceEmail,
       classification,
       confidence,
       matchedKeywords,
       whyThisMatters: why,
       riskLevel: continuation.kind === "gmail.send_after_approval" ? "medium" : "low",
+      riskNotes: stringValue(sourceMetadata.riskNotes),
       expectedOutcome: expectedOutcome(continuation),
       approvalReason: approvalReason(continuation, policyReason),
       whatHappensAfterApproval: afterApprovalText(continuation),

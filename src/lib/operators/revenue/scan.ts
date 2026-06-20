@@ -3,11 +3,13 @@ import { getConnectorTruth } from "@/lib/connectors/truth";
 import { createGmailSendApproval } from "@/lib/operators/executors/gmail";
 import { logOperatorEvent, operatorRuntimeId } from "@/lib/operators/logging";
 import { getOperatorReadiness } from "@/lib/operators/readiness";
+import { draftRevenueFollowUpWithAI } from "@/lib/operators/revenue/ai-drafting";
+import { loadRevenueCompanyGraphContext } from "@/lib/operators/revenue/context";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
-type Opportunity = {
+export type Opportunity = {
   message: SafeGmailMessage;
   matchedKeywords: string[];
   classification: "revenue_opportunity";
@@ -366,6 +368,7 @@ export async function scanRevenueOpportunities(input: {
     const maxResults = Math.min(Math.max(Number(input.maxResults) || 15, 1), 20);
     const listed = await listRecentMessages(accessToken, { maxResults, query: "newer_than:30d" });
     const handled = await loadHandledGmailIds({ supabase, workspaceId });
+    const companyGraphContext = await loadRevenueCompanyGraphContext({ supabase, workspaceId });
     const skipped: NonNullable<RevenueScanSummary["skipped"]> = [];
     const opportunities: Opportunity[] = [];
 
@@ -387,8 +390,16 @@ export async function scanRevenueOpportunities(input: {
 
     for (const opportunity of opportunities) {
       const runId = operatorRuntimeId("oprun-revenue-scan");
-      const draft = buildDraftFromOpportunity(opportunity);
+      const deterministicDraft = buildDraftFromOpportunity(opportunity);
       const crmPreparation = buildCrmPreparation(opportunity);
+      const aiDraft = await draftRevenueFollowUpWithAI({
+        opportunity,
+        deterministicDraft,
+        context: companyGraphContext,
+      });
+      const draft = aiDraft.draft;
+      crmPreparation.summary = aiDraft.detectedSignalSummary || crmPreparation.summary;
+      crmPreparation.suggestedNextStep = aiDraft.suggestedAction || crmPreparation.suggestedNextStep;
       const crmPreparationStatus = hubspotConnected ? "hubspot_execution_not_ready" : "hubspot_not_connected";
       const preparedActions = hubspotConnected
         ? ["send_gmail_follow_up", "update_hubspot_contact", "add_hubspot_note", "create_hubspot_follow_up_task"]
@@ -407,6 +418,14 @@ export async function scanRevenueOpportunities(input: {
         crmPreparationStatus,
         crmPreparation,
         preparedActions,
+        drafting: {
+          detectedSignalSummary: aiDraft.detectedSignalSummary,
+          whyThisMatters: aiDraft.whyThisMatters,
+          suggestedAction: aiDraft.suggestedAction,
+          expectedOutcome: aiDraft.expectedOutcome,
+          riskNotes: aiDraft.riskNotes,
+          metadata: aiDraft.draftingMetadata,
+        },
       };
       const sourceMetadata = {
         gmailMessageId: opportunity.message.id,
@@ -418,6 +437,12 @@ export async function scanRevenueOpportunities(input: {
         confidence: opportunity.confidence,
         matchedKeywords: opportunity.matchedKeywords,
         crmPreparationStatus,
+        detectedSignalSummary: aiDraft.detectedSignalSummary,
+        whyThisMatters: aiDraft.whyThisMatters,
+        suggestedAction: aiDraft.suggestedAction,
+        expectedOutcome: aiDraft.expectedOutcome,
+        riskNotes: aiDraft.riskNotes,
+        draftingMetadata: aiDraft.draftingMetadata,
       };
 
       const runInsert = await supabase.from("os_operator_runs").insert({
@@ -444,6 +469,31 @@ export async function scanRevenueOpportunities(input: {
       });
       await insertStep({ supabase, workspaceId, runId, stepKey: "scan_gmail", title: "Scan recent Gmail messages", output: { messageId: opportunity.message.id } });
       await insertStep({ supabase, workspaceId, runId, stepKey: "detect_opportunity", title: "Detect revenue opportunity", output: sourceMetadata });
+      await insertStep({
+        supabase,
+        workspaceId,
+        runId,
+        stepKey: "load_company_graph_context",
+        title: "Load Company Graph context",
+        output: {
+          memoryKeysUsed: companyGraphContext.memoryKeysUsed,
+          approvedExamples: companyGraphContext.approvedExamples.length,
+          rejectedExamples: companyGraphContext.rejectedExamples.length,
+        },
+      });
+      await insertStep({
+        supabase,
+        workspaceId,
+        runId,
+        stepKey: "draft_follow_up_with_context",
+        title: "Draft follow-up with Company Graph context",
+        output: {
+          fallbackUsed: aiDraft.draftingMetadata.fallbackUsed,
+          modelUsed: aiDraft.draftingMetadata.modelUsed,
+          promptVersion: aiDraft.draftingMetadata.promptVersion,
+          memoryKeysUsed: aiDraft.draftingMetadata.memoryKeysUsed,
+        },
+      });
       await insertStep({
         supabase,
         workspaceId,
@@ -477,6 +527,14 @@ export async function scanRevenueOpportunities(input: {
         approvalId: approval.approvalId,
         opportunity: runInput,
         sourceMetadata,
+        drafting: {
+          detectedSignalSummary: aiDraft.detectedSignalSummary,
+          whyThisMatters: aiDraft.whyThisMatters,
+          suggestedAction: aiDraft.suggestedAction,
+          expectedOutcome: aiDraft.expectedOutcome,
+          riskNotes: aiDraft.riskNotes,
+          metadata: aiDraft.draftingMetadata,
+        },
         preparedActions,
         crmPreparation,
         crmPreparationStatus,

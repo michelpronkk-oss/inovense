@@ -38,6 +38,7 @@ type ApprovalRow = {
     matchedKeywords?: string[];
     whyThisMatters?: string | null;
     riskLevel?: string | null;
+    riskNotes?: string | null;
     expectedOutcome?: string | null;
     approvalReason?: string | null;
     whatHappensAfterApproval?: string | null;
@@ -329,6 +330,7 @@ export default function ApprovalsPage() {
                           <div style={{ fontSize: 11, color: "var(--text-mute)", marginBottom: 5 }}>Risk / expected outcome</div>
                           <div style={{ fontSize: 12.5, color: "var(--text-dim)", lineHeight: 1.55 }}>
                             <strong style={{ color: "var(--text)" }}>Risk:</strong> {valueOrDash(item.payload_preview.riskLevel)}<br />
+                            {item.payload_preview.riskNotes ? <>{item.payload_preview.riskNotes}<br /></> : null}
                             {item.payload_preview.expectedOutcome || "Approval records the decision and executes only the approved action."}
                           </div>
                         </div>
