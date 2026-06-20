@@ -78,6 +78,7 @@ export async function POST(req: NextRequest) {
       connector_key: connectorKey,
       end_user_id: userId || userEmail,
       end_user_email: userEmail,
+      end_user_display_name: userEmail,
     };
 
     const session = await createNangoConnectSession({
@@ -87,7 +88,13 @@ export async function POST(req: NextRequest) {
       tags,
     });
 
-    return NextResponse.json({ sessionToken: session.sessionToken, providerConfigKey: session.providerConfigKey });
+    return NextResponse.json({
+      token: session.token,
+      sessionToken: session.sessionToken,
+      connectLink: session.connectLink,
+      expiresAt: session.expiresAt,
+      providerConfigKey: session.providerConfigKey,
+    });
   } catch (error) {
     if (error instanceof NangoConnectSessionError) {
       return NextResponse.json({
@@ -100,6 +107,7 @@ export async function POST(req: NextRequest) {
             status: error.details.status,
             statusText: error.details.statusText,
             responseBody: error.details.responseBody,
+            validationErrors: error.details.validationErrors,
           },
         } : {}),
       }, { status: error.details.status ?? 502 });

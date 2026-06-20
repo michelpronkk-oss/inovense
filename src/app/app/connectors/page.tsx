@@ -158,8 +158,17 @@ export default function ConnectorsPage() {
           userId: state.currentUser.id,
         }),
       });
-      const sessionJson = await sessionRes.json() as { sessionToken?: string; providerConfigKey?: string; error?: string; message?: string };
-      if (!sessionRes.ok || !sessionJson.sessionToken) {
+      const sessionJson = await sessionRes.json() as {
+        token?: string;
+        sessionToken?: string;
+        connectLink?: string | null;
+        expiresAt?: string | null;
+        providerConfigKey?: string;
+        error?: string;
+        message?: string;
+      };
+      const nangoSessionToken = sessionJson.token || sessionJson.sessionToken;
+      if (!sessionRes.ok || !nangoSessionToken) {
         setFeedback(sessionJson.message || sessionJson.error || "Failed to start HubSpot connect.");
         return;
       }
@@ -224,7 +233,7 @@ export default function ConnectorsPage() {
       };
 
       nango.openConnectUI({
-        sessionToken: sessionJson.sessionToken,
+        sessionToken: nangoSessionToken,
         onEvent: async (event) => {
           if (event.type === "connect") {
             await finalizeHubspotConnection(event);
