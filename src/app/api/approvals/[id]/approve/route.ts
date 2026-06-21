@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { createGmailDraft, GmailApiError, getMissingGmailScopes, hasGmailSendScope, resolveAccessTokenFromCredential, sendGmailDraft, sendGmailMessage, type StoredConnectorCredential } from "@/lib/connectors/gmail";
 import { executeHubSpotRevenueActions, HubSpotExecutionError, type HubSpotExecutionResult, type PreparedHubSpotActions } from "@/lib/operators/executors/hubspot";
 import { logOperatorEvent, recordOperatorUsage } from "@/lib/operators/logging";
@@ -20,6 +21,15 @@ type GmailContinuationPayload = {
   to: string;
   subject: string;
   body: string;
+  draftSubject?: string;
+  draftBody?: string;
+  originalDraftSubject?: string;
+  originalDraftBody?: string;
+  editedDraftSubject?: string | null;
+  editedDraftBody?: string | null;
+  wasEdited?: boolean;
+  editedAt?: string | null;
+  editedBy?: string | null;
   preparedActions?: string[];
   crmPreparationStatus?: string | null;
   crmPreparation?: Record<string, unknown> | null;
@@ -44,6 +54,28 @@ function stringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function effectiveDraft(payload: GmailContinuationPayload): {
+  subject: string;
+  body: string;
+  usedEditedDraft: boolean;
+  bodyPreview: string;
+  bodyHash: string;
+} {
+  const editedSubject = stringValue(payload.editedDraftSubject);
+  const editedBody = stringValue(payload.editedDraftBody);
+  const draftSubject = stringValue(payload.draftSubject);
+  const draftBody = stringValue(payload.draftBody);
+  const subject = editedSubject ?? draftSubject ?? payload.subject;
+  const body = editedBody ?? draftBody ?? payload.body;
+  return {
+    subject,
+    body,
+    usedEditedDraft: Boolean(editedSubject || editedBody || payload.wasEdited),
+    bodyPreview: body.length > 240 ? `${body.slice(0, 240)}...` : body,
+    bodyHash: crypto.createHash("sha256").update(body).digest("hex"),
+  };
+}
+
 function learningMetadata(input: {
   approvalId: string;
   runId: string;
@@ -61,7 +93,7 @@ function learningMetadata(input: {
     signal: "positive",
     actionType: "gmail_follow_up",
     recipient: input.payload.to,
-    subject: input.payload.subject,
+    subject: effectiveDraft(input.payload).subject,
     classification,
     confidence,
     crmPreparationStatus: input.payload.crmPreparationStatus ?? null,
@@ -99,6 +131,15 @@ function validateGmailPayload(value: unknown): { ok: true; payload: GmailContinu
       to: String(rec.to).trim().toLowerCase(),
       subject: String(rec.subject).trim(),
       body: String(rec.body).trim(),
+      draftSubject: typeof rec.draftSubject === "string" ? rec.draftSubject.trim() : undefined,
+      draftBody: typeof rec.draftBody === "string" ? rec.draftBody.trim() : undefined,
+      originalDraftSubject: typeof rec.originalDraftSubject === "string" ? rec.originalDraftSubject.trim() : undefined,
+      originalDraftBody: typeof rec.originalDraftBody === "string" ? rec.originalDraftBody.trim() : undefined,
+      editedDraftSubject: typeof rec.editedDraftSubject === "string" ? rec.editedDraftSubject.trim() : null,
+      editedDraftBody: typeof rec.editedDraftBody === "string" ? rec.editedDraftBody.trim() : null,
+      wasEdited: rec.wasEdited === true,
+      editedAt: typeof rec.editedAt === "string" ? rec.editedAt : null,
+      editedBy: typeof rec.editedBy === "string" ? rec.editedBy : null,
       preparedActions: Array.isArray(rec.preparedActions) ? rec.preparedActions.filter((item): item is string => typeof item === "string") : undefined,
       crmPreparationStatus: typeof rec.crmPreparationStatus === "string" ? rec.crmPreparationStatus : null,
       crmPreparation: rec.crmPreparation && typeof rec.crmPreparation === "object" ? rec.crmPreparation as Record<string, unknown> : null,
@@ -256,6 +297,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (gmailPayload.workspaceId !== context.workspaceId || approvalRow.workspace_id !== context.workspaceId) {
     return NextResponse.json({ error: "Workspace mismatch for approval payload." }, { status: 403 });
   }
+  const finalDraft = effectiveDraft(gmailPayload);
 
   const ws = await supabase
     .from("os_workspaces")
@@ -310,8 +352,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     console.info("[gmail-approval] gmail.draft.create", { approvalId: id, workspaceId: context.workspaceId, to: gmailPayload.to });
     draft = await createGmailDraft(accessToken, {
       to: gmailPayload.to,
-      subject: gmailPayload.subject,
-      body: gmailPayload.body,
+      subject: finalDraft.subject,
+      body: finalDraft.body,
     });
     console.info("[gmail-approval] gmail.draft.created", {
       approvalId: id,
@@ -377,7 +419,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       });
       hubspotResult = await executeHubSpotRevenueActions(context.workspaceId, {
         to: gmailPayload.to,
-        subject: gmailPayload.subject,
+        subject: finalDraft.subject,
         crmPreparation: gmailPayload.crmPreparation,
         preparedHubSpotActions: gmailPayload.preparedHubSpotActions,
       });
@@ -425,9 +467,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       draftId: draft.draftId,
       messageId: sent.messageId ?? null,
       to: gmailPayload.to,
-      subject: gmailPayload.subject,
+      subject: finalDraft.subject,
       sendEndpoint: sent.sendEndpoint,
     },
+    usedEditedDraft: finalDraft.usedEditedDraft,
+    finalSubject: finalDraft.subject,
+    finalBodyPreview: finalDraft.bodyPreview,
+    finalBodyHash: finalDraft.bodyHash,
     hubspot: hubspotResult,
   };
 
@@ -578,7 +624,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         operatorKey: gmailPayload.operatorKey || "revenue",
         memoryType: "revenue_approval_learning",
         title: `Approved Revenue follow-up to ${gmailPayload.to}`,
-        content: `Positive approval signal. Subject: ${gmailPayload.subject}`,
+        content: `Positive approval signal. Subject: ${finalDraft.subject}`,
         metadata: approvalLearning,
         sourceRunId: operatorRunId,
         approvalStatus: "approved",

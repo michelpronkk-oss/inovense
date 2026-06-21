@@ -10,6 +10,15 @@ type GmailContinuationPayload = {
   to?: string;
   subject?: string;
   body?: string;
+  draftSubject?: string;
+  draftBody?: string;
+  originalDraftSubject?: string;
+  originalDraftBody?: string;
+  editedDraftSubject?: string | null;
+  editedDraftBody?: string | null;
+  wasEdited?: boolean;
+  editedAt?: string | null;
+  editedBy?: string | null;
   preparedActions?: string[];
   crmPreparationStatus?: string;
   sourceMetadata?: Record<string, unknown> | null;
@@ -46,6 +55,16 @@ function preview(value: string | undefined, max = 1200): string | null {
 
 function stringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function effectiveDraft(continuation: GmailContinuationPayload) {
+  const subject = continuation.editedDraftSubject || continuation.draftSubject || continuation.subject || null;
+  const body = continuation.editedDraftBody || continuation.draftBody || continuation.body || null;
+  return {
+    subject,
+    body,
+    wasEdited: Boolean(continuation.wasEdited || continuation.editedDraftSubject || continuation.editedDraftBody),
+  };
 }
 
 function stringList(value: unknown): string[] {
@@ -110,6 +129,7 @@ function mapApproval(row: Record<string, unknown>) {
     ?? (matchedKeywords.length > 0 ? `Matched revenue intent keywords: ${matchedKeywords.join(", ")}.` : null);
   const detectedSignal = stringValue(sourceMetadata.detectedSignalSummary) ?? sourceSubject ?? continuation.subject ?? null;
   const policyReason = typeof row.policy_reason === "string" ? row.policy_reason : null;
+  const draft = effectiveDraft(continuation);
   return {
     id: String(row.id),
     title: typeof row.title === "string" ? row.title : "Approval required",
@@ -129,8 +149,18 @@ function mapApproval(row: Record<string, unknown>) {
     policy_reason: policyReason,
     payload_preview: {
       to: continuation.to ?? null,
-      subject: continuation.subject ?? null,
-      body: preview(continuation.body),
+      subject: draft.subject,
+      body: preview(draft.body ?? undefined),
+      fullBody: draft.body,
+      draftSubject: continuation.draftSubject ?? continuation.subject ?? null,
+      draftBody: continuation.draftBody ?? continuation.body ?? null,
+      originalDraftSubject: continuation.originalDraftSubject ?? continuation.subject ?? null,
+      originalDraftBody: continuation.originalDraftBody ?? continuation.body ?? null,
+      editedDraftSubject: continuation.editedDraftSubject ?? null,
+      editedDraftBody: continuation.editedDraftBody ?? null,
+      wasEdited: draft.wasEdited,
+      editedAt: continuation.editedAt ?? null,
+      editedBy: continuation.editedBy ?? null,
       operatorKey: continuation.operatorKey ?? null,
       preparedActions: Array.isArray(continuation.preparedActions) ? continuation.preparedActions.filter((item): item is string => typeof item === "string") : [],
       crmPreparationStatus: continuation.crmPreparationStatus ?? null,

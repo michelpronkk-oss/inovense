@@ -37,6 +37,7 @@ export type SafeGmailMessage = {
   subject: string;
   date: string;
   snippet: string;
+  bodyText?: string;
   internalDate?: string;
 };
 
@@ -161,8 +162,7 @@ export async function listRecentMessages(accessToken: string, options?: { maxRes
 }
 
 export async function getMessageDetails(accessToken: string, messageId: string): Promise<SafeGmailMessage> {
-  const params = new URLSearchParams({ format: "metadata" });
-  ["From", "To", "Subject", "Date"].forEach((header) => params.append("metadataHeaders", header));
+  const params = new URLSearchParams({ format: "full" });
   const res = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}?${params.toString()}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
     cache: "no-store",
@@ -191,6 +191,58 @@ function extractEmail(value: string): string {
   return direct?.[0]?.toLowerCase() ?? "";
 }
 
+function decodeBase64UrlText(value: string | undefined): string {
+  if (!value) return "";
+  try {
+    return Buffer.from(value, "base64url").toString("utf8");
+  } catch {
+    return "";
+  }
+}
+
+function stripHtml(value: string): string {
+  return value
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
+function extractBodyText(payload: unknown): string {
+  const root = payload && typeof payload === "object" ? payload as {
+    mimeType?: string;
+    body?: { data?: string };
+    parts?: unknown[];
+  } : {};
+  const plain: string[] = [];
+  const html: string[] = [];
+
+  function visit(part: unknown) {
+    const node = part && typeof part === "object" ? part as {
+      mimeType?: string;
+      body?: { data?: string };
+      parts?: unknown[];
+    } : {};
+    if (Array.isArray(node.parts)) node.parts.forEach(visit);
+    const decoded = decodeBase64UrlText(node.body?.data);
+    if (!decoded) return;
+    if (node.mimeType?.toLowerCase().startsWith("text/plain")) plain.push(decoded);
+    if (node.mimeType?.toLowerCase().startsWith("text/html")) html.push(stripHtml(decoded));
+  }
+
+  visit(root);
+  const text = (plain.join("\n") || html.join("\n")).replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+  return text.length > 4000 ? `${text.slice(0, 4000)}...` : text;
+}
+
 export function parseSafeGmailMessage(value: unknown): SafeGmailMessage {
   const message = value && typeof value === "object" ? value as {
     id?: string;
@@ -216,6 +268,7 @@ export function parseSafeGmailMessage(value: unknown): SafeGmailMessage {
     subject,
     date,
     snippet: sanitizeHeaderValue(message.snippet ?? ""),
+    bodyText: extractBodyText(message.payload),
     internalDate: message.internalDate,
   };
 }

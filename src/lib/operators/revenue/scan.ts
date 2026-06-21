@@ -44,6 +44,8 @@ type Personalization = {
   lastname: string | null;
   greetingUsed: string;
   personalizationSource: "hubspot" | "signature" | "from_display" | "email_local" | "fallback";
+  signatureCandidate?: string | null;
+  rejectedNameCandidates?: { candidate: string; reason: string; source: string }[];
 };
 
 export type RevenueScanSummary = {
@@ -114,7 +116,7 @@ const SKIP_PATTERNS = [
 ];
 
 function safeText(message: SafeGmailMessage): string {
-  return [message.from, message.subject, message.snippet].join(" ").toLowerCase();
+  return [message.from, message.subject, message.snippet, message.bodyText].join(" ").toLowerCase();
 }
 
 function normalizeEmail(value: string | null | undefined): string {
@@ -183,27 +185,31 @@ function isGenericName(value: string): boolean {
   return cleaned.split(/[\s._+-]+/).some((part) => GENERIC_NAME_PARTS.has(part));
 }
 
-function safeHumanName(value: string | null | undefined): string | null {
-  if (!value) return null;
+function safeHumanName(value: string | null | undefined): { name: string | null; reason?: string } {
+  if (!value) return { name: null, reason: "empty" };
   const cleaned = value
     .replace(/<[^>]+>/g, " ")
     .replace(/["“”]/g, "")
     .replace(/\s+/g, " ")
     .trim();
-  if (!cleaned || cleaned.includes("@") || /\d/.test(cleaned)) return null;
-  if (/\b(?:www\.|\.com|\.net|\.org|\.io|\.co|https?:\/\/)\b/i.test(cleaned)) return null;
-  if ((cleaned.match(/[^\p{L}\s'-]/gu) ?? []).length > 0) return null;
+  if (!cleaned) return { name: null, reason: "empty" };
+  if (cleaned.includes("@")) return { name: null, reason: "contains_email" };
+  if (/\d/.test(cleaned)) return { name: null, reason: "contains_number" };
+  if (/\b(?:www\.|\.com|\.net|\.org|\.io|\.co|https?:\/\/)\b/i.test(cleaned)) return { name: null, reason: "contains_domain" };
+  if ((cleaned.match(/[^\p{L}\s'-]/gu) ?? []).length > 0) return { name: null, reason: "punctuation_heavy" };
   const parts = cleaned.split(/\s+/).filter(Boolean);
-  if (parts.length === 0 || parts.length > 3) return null;
-  if (parts.some((part) => part.length < 2 || isGenericName(part) || !/^\p{L}[\p{L}'-]*$/u.test(part))) return null;
-  return titleCaseName(parts.join(" "));
+  if (parts.length === 0 || parts.length > 3) return { name: null, reason: "invalid_word_count" };
+  if (parts.some((part) => part.length < 2)) return { name: null, reason: "too_short" };
+  if (parts.some((part) => isGenericName(part))) return { name: null, reason: "generic" };
+  if (parts.some((part) => !/^\p{L}[\p{L}'-]*$/u.test(part))) return { name: null, reason: "username_like" };
+  return { name: titleCaseName(parts.join(" ")) };
 }
 
 function displayNameFromHeader(from: string, email: string): string | null {
   const rawName = from.replace(/<[^>]+>/g, "").replace(/"/g, "").trim();
   if (!rawName || rawName.toLowerCase() === email.toLowerCase() || rawName.includes("@")) return null;
   const cleaned = rawName.replace(/\s+via\s+.+$/i, "").trim();
-  return safeHumanName(cleaned);
+  return safeHumanName(cleaned).name;
 }
 
 function humanNameFromEmailLocal(email: string): string | null {
@@ -212,15 +218,26 @@ function humanNameFromEmailLocal(email: string): string | null {
   const parts = local.split(/[._+-]+/).filter(Boolean);
   if (parts.length === 0 || parts.length > 3) return null;
   if (parts.some((part) => part.length < 2 || isGenericName(part))) return null;
-  return safeHumanName(parts.join(" "));
+  return safeHumanName(parts.join(" ")).name;
 }
 
-function nameFromSnippetSignature(snippet: string): string | null {
-  const normalized = snippet.replace(/\r?\n/g, " ").replace(/\s+/g, " ").trim();
+function nameFromSignatureText(text: string): { name: string | null; candidate?: string; rejected?: { candidate: string; reason: string; source: string } } {
+  const lastLines = text
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(-20);
+  const normalized = lastLines.join("\n");
   const signoff = "(?:best regards|kind regards|vriendelijke groet|met vriendelijke groet|best|regards|thanks|thank you|groet)";
-  const pattern = new RegExp(`\\b${signoff}\\s*,?\\s+([\\p{L}][\\p{L}'-]*(?:\\s+[\\p{L}][\\p{L}'-]*){0,2})\\b`, "iu");
+  const pattern = new RegExp(`\\b${signoff}\\s*,?\\s*(?:\\n|\\s)+([\\p{L}][\\p{L}'-]*(?:\\s+[\\p{L}][\\p{L}'-]*){0,2})\\b`, "iu");
   const match = normalized.match(pattern);
-  return safeHumanName(match?.[1]);
+  const candidate = match?.[1]?.trim();
+  if (!candidate) return { name: null };
+  const safe = safeHumanName(candidate);
+  if (safe.name) return { name: safe.name, candidate };
+  return { name: null, candidate, rejected: { candidate, reason: safe.reason ?? "unsafe", source: "signature" } };
 }
 
 async function buildPersonalization(input: {
@@ -229,15 +246,16 @@ async function buildPersonalization(input: {
   hubspotConnected: boolean;
 }): Promise<Personalization> {
   const email = input.opportunity.message.fromEmail;
+  const rejectedNameCandidates: { candidate: string; reason: string; source: string }[] = [];
   if (input.hubspotConnected) {
     try {
       const contact = await findContactByEmail(input.workspaceId, email);
       const first = typeof contact?.properties?.firstname === "string" ? contact.properties.firstname.trim() : "";
       const last = typeof contact?.properties?.lastname === "string" ? contact.properties.lastname.trim() : "";
-      const contactName = safeHumanName([first, last].filter(Boolean).join(" "));
+      const contactName = safeHumanName([first, last].filter(Boolean).join(" ")).name;
       if (contactName) {
         const split = splitHumanName(contactName);
-        return { contactEmail: email, contactName, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? contactName},`, personalizationSource: "hubspot" };
+        return { contactEmail: email, contactName, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? contactName},`, personalizationSource: "hubspot", rejectedNameCandidates };
       }
     } catch (error) {
       console.warn("[revenue-scan] hubspot contact personalization skipped", {
@@ -248,25 +266,26 @@ async function buildPersonalization(input: {
     }
   }
 
-  const snippetName = nameFromSnippetSignature(input.opportunity.message.snippet);
-  if (snippetName) {
-    const split = splitHumanName(snippetName);
-    return { contactEmail: email, contactName: snippetName, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? snippetName},`, personalizationSource: "signature" };
+  const signature = nameFromSignatureText([input.opportunity.message.bodyText, input.opportunity.message.snippet].filter(Boolean).join("\n"));
+  if (signature.rejected) rejectedNameCandidates.push(signature.rejected);
+  if (signature.name) {
+    const split = splitHumanName(signature.name);
+    return { contactEmail: email, contactName: signature.name, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? signature.name},`, personalizationSource: "signature", signatureCandidate: signature.candidate ?? signature.name, rejectedNameCandidates };
   }
 
   const fromName = displayNameFromHeader(input.opportunity.message.from, email);
   if (fromName) {
     const split = splitHumanName(fromName);
-    return { contactEmail: email, contactName: fromName, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? fromName},`, personalizationSource: "from_display" };
+    return { contactEmail: email, contactName: fromName, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? fromName},`, personalizationSource: "from_display", signatureCandidate: signature.candidate ?? null, rejectedNameCandidates };
   }
 
   const localName = humanNameFromEmailLocal(email);
   if (localName) {
     const split = splitHumanName(localName);
-    return { contactEmail: email, contactName: localName, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? localName},`, personalizationSource: "email_local" };
+    return { contactEmail: email, contactName: localName, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? localName},`, personalizationSource: "email_local", signatureCandidate: signature.candidate ?? null, rejectedNameCandidates };
   }
 
-  return { contactEmail: email, contactName: null, firstname: null, lastname: null, greetingUsed: "Hi there,", personalizationSource: "fallback" };
+  return { contactEmail: email, contactName: null, firstname: null, lastname: null, greetingUsed: "Hi there,", personalizationSource: "fallback", signatureCandidate: signature.candidate ?? null, rejectedNameCandidates };
 }
 
 function applyGreeting(body: string, greeting: string): string {
@@ -608,6 +627,8 @@ export async function scanRevenueOpportunities(input: {
         contactEmail: personalization.contactEmail,
         personalizationSource: personalization.personalizationSource,
         greetingUsed: personalization.greetingUsed,
+        signatureCandidate: personalization.signatureCandidate ?? null,
+        rejectedNameCandidates: personalization.rejectedNameCandidates ?? [],
         crmPreparationStatus,
         detectedSignalSummary: aiDraft.detectedSignalSummary,
         whyThisMatters: aiDraft.whyThisMatters,

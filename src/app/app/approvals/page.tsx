@@ -26,6 +26,16 @@ type ApprovalRow = {
     to: string | null;
     subject: string | null;
     body: string | null;
+    fullBody?: string | null;
+    draftSubject?: string | null;
+    draftBody?: string | null;
+    originalDraftSubject?: string | null;
+    originalDraftBody?: string | null;
+    editedDraftSubject?: string | null;
+    editedDraftBody?: string | null;
+    wasEdited?: boolean;
+    editedAt?: string | null;
+    editedBy?: string | null;
     operatorKey: string | null;
     preparedActions?: string[];
     crmPreparationStatus?: string | null;
@@ -162,6 +172,9 @@ export default function ApprovalsPage() {
   const [error, setError] = useState("");
   const [rejectReasons, setRejectReasons] = useState<Record<string, string>>({});
   const [detailsOpen, setDetailsOpen] = useState<Record<string, boolean>>({});
+  const [fullEmailOpen, setFullEmailOpen] = useState<Record<string, boolean>>({});
+  const [editingDrafts, setEditingDrafts] = useState<Record<string, { subject: string; body: string }>>({});
+  const [savingEditId, setSavingEditId] = useState<string | null>(null);
 
   const loadApprovals = useCallback(async () => {
     if (!state.workspace.id) return;
@@ -226,6 +239,56 @@ export default function ApprovalsPage() {
       setError(`Could not ${action} approval.`);
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const startEditingDraft = (item: ApprovalRow) => {
+    setEditingDrafts((current) => ({
+      ...current,
+      [item.id]: {
+        subject: item.payload_preview.editedDraftSubject || item.payload_preview.draftSubject || item.payload_preview.subject || "",
+        body: item.payload_preview.editedDraftBody || item.payload_preview.draftBody || item.payload_preview.fullBody || item.payload_preview.body || "",
+      },
+    }));
+    setFullEmailOpen((current) => ({ ...current, [item.id]: true }));
+  };
+
+  const cancelEditingDraft = (id: string) => {
+    setEditingDrafts((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+  };
+
+  const saveDraftEdit = async (item: ApprovalRow) => {
+    const draft = editingDrafts[item.id];
+    if (!draft) return;
+    setSavingEditId(item.id);
+    setError("");
+    try {
+      const res = await fetch(`/api/approvals/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: state.workspace.id,
+          userId: state.currentUser.id,
+          userEmail: state.currentUser.email,
+          draftSubject: draft.subject,
+          draftBody: draft.body,
+        }),
+      });
+      const json = await res.json().catch(() => ({})) as { error?: string; message?: string };
+      if (!res.ok) {
+        setError(json.message || json.error || "Could not save draft changes.");
+        return;
+      }
+      cancelEditingDraft(item.id);
+      await loadApprovals();
+    } catch {
+      setError("Could not save draft changes.");
+    } finally {
+      setSavingEditId(null);
     }
   };
 
@@ -330,6 +393,9 @@ export default function ApprovalsPage() {
             const rejectionReason = rejectReasons[item.id] ?? "Needs manual review";
             const hubspotPreview = item.payload_preview.preparedHubSpotActions;
             const showDetails = Boolean(detailsOpen[item.id]);
+            const showFullEmail = Boolean(fullEmailOpen[item.id]);
+            const draftEdit = editingDrafts[item.id];
+            const isSavingEdit = savingEditId === item.id;
             const hubspotActionSummary = item.payload_preview.crmPreparationStatus === "hubspot_not_connected"
               ? "not prepared because HubSpot is not connected"
               : item.payload_preview.crmPreparationStatus === "hubspot_execution_enabled"
@@ -389,13 +455,46 @@ export default function ApprovalsPage() {
                       </div>
 
                       <div style={{ padding: "10px 12px", borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
-                        <div style={{ fontSize: 11, color: "var(--text-mute)", marginBottom: 5 }}>Draft reply preview</div>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", marginBottom: 5 }}>
+                          <div style={{ fontSize: 11, color: "var(--text-mute)" }}>Draft reply preview</div>
+                          {item.payload_preview.wasEdited && <span className="pill pill-amber" style={{ fontSize: 10.5 }}>Edited</span>}
+                        </div>
                         {item.payload_preview.subject && (
                           <div style={{ fontSize: 12.5, color: "var(--text)", marginBottom: 6 }}>{item.payload_preview.subject}</div>
                         )}
-                        <div style={{ fontSize: 12.5, color: "var(--text-dim)", whiteSpace: "pre-wrap", lineHeight: 1.55 }}>
-                          {shortPreview(item.payload_preview.body)}
-                        </div>
+                        {draftEdit ? (
+                          <div style={{ display: "grid", gap: 8 }}>
+                            <input
+                              value={draftEdit.subject}
+                              onChange={(event) => setEditingDrafts((current) => ({ ...current, [item.id]: { ...draftEdit, subject: event.target.value } }))}
+                              disabled={isSavingEdit}
+                              style={{ width: "100%", borderRadius: 10, border: "1px solid var(--line)", background: "rgba(255,255,255,0.04)", color: "var(--text)", padding: "9px 10px", fontSize: 12.5 }}
+                            />
+                            <textarea
+                              value={draftEdit.body}
+                              onChange={(event) => setEditingDrafts((current) => ({ ...current, [item.id]: { ...draftEdit, body: event.target.value } }))}
+                              disabled={isSavingEdit}
+                              rows={12}
+                              style={{ width: "100%", resize: "vertical", borderRadius: 10, border: "1px solid var(--line)", background: "rgba(255,255,255,0.04)", color: "var(--text)", padding: "10px 11px", fontSize: 12.5, lineHeight: 1.55 }}
+                            />
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button className="appr-btn approve" type="button" disabled={isSavingEdit} onClick={() => saveDraftEdit(item)}>{isSavingEdit ? "Saving..." : "Save changes"}</button>
+                              <button className="appr-btn edit" type="button" disabled={isSavingEdit} onClick={() => cancelEditingDraft(item.id)}>Cancel</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div style={{ fontSize: 12.5, color: "var(--text-dim)", whiteSpace: "pre-wrap", lineHeight: 1.55 }}>
+                              {showFullEmail ? (item.payload_preview.fullBody || item.payload_preview.body || "-") : shortPreview(item.payload_preview.body)}
+                            </div>
+                            <div style={{ marginTop: 9, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                              <button className="appr-btn edit" type="button" onClick={() => setFullEmailOpen((current) => ({ ...current, [item.id]: !current[item.id] }))}>
+                                {showFullEmail ? "Hide full email" : "View full email"}
+                              </button>
+                              <button className="appr-btn edit" type="button" onClick={() => startEditingDraft(item)}>Edit draft</button>
+                            </div>
+                          </>
+                        )}
                       </div>
 
                       <button
@@ -538,11 +637,11 @@ export default function ApprovalsPage() {
                   </select>
                 </div>
                 <div className="appr-row-actions">
-                  <button className="appr-btn approve" disabled={isBusy} onClick={() => actOnApproval(item, "approve")}>
+                  <button className="appr-btn approve" disabled={isBusy || isSavingEdit} onClick={() => actOnApproval(item, "approve")}>
                     {item.approval_type === "email" ? "Approve and send" : "Approve"}
                   </button>
-                  <button className="appr-btn edit" disabled aria-disabled="true" title="Inline editor is coming soon">Edit</button>
-                  <button className="appr-btn deny" disabled={isBusy} onClick={() => actOnApproval(item, "reject", rejectionReason)}>Reject</button>
+                  <button className="appr-btn edit" disabled={isBusy || isSavingEdit} onClick={() => startEditingDraft(item)}>Edit</button>
+                  <button className="appr-btn deny" disabled={isBusy || isSavingEdit} onClick={() => actOnApproval(item, "reject", rejectionReason)}>Reject</button>
                 </div>
               </div>
             );
