@@ -220,7 +220,7 @@ function evaluateOperator(input: {
       missingRequired: [],
       entitlements,
       reason: "Gmail and HubSpot connector truth are both present.",
-      nextSetupStep: "Ready for manual preparation once execution is implemented.",
+      nextSetupStep: "Ready for approval-gated Gmail send and HubSpot contact/deal updates.",
       canRunManual: true,
     });
   }

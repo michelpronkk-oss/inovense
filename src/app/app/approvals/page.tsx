@@ -42,6 +42,31 @@ type ApprovalRow = {
     expectedOutcome?: string | null;
     approvalReason?: string | null;
     whatHappensAfterApproval?: string | null;
+    executionResult?: Record<string, unknown> | null;
+    preparedHubSpotActions?: {
+      contact?: {
+        email?: string | null;
+        firstname?: string | null;
+        lastname?: string | null;
+        companyName?: string | null;
+        source?: string | null;
+      };
+      deal?: {
+        dealname?: string | null;
+        stageLabel?: string | null;
+        pipelineLabel?: string | null;
+        amount?: number | null;
+      };
+      note?: {
+        body?: string | null;
+      };
+      task?: {
+        title?: string | null;
+        dueSuggestion?: string | null;
+        type?: string | null;
+      };
+      executionStatus?: string | null;
+    } | null;
     crmPreparation?: {
       contactEmail?: string;
       contactName?: string | null;
@@ -98,6 +123,7 @@ function matchesFilter(item: ApprovalRow, filter: string): boolean {
 function actionLabel(action: string): string {
   if (action === "send_gmail_follow_up") return "Send Gmail follow-up";
   if (action === "update_hubspot_contact") return "Update HubSpot contact/deal";
+  if (action === "update_hubspot_deal") return "Update HubSpot deal";
   if (action === "add_hubspot_note") return "Add CRM note";
   if (action === "create_hubspot_follow_up_task") return "Create follow-up task";
   return action.replace(/_/g, " ");
@@ -166,7 +192,7 @@ export default function ApprovalsPage() {
   const visible = useMemo(() => pending.filter((a) => matchesFilter(a, filter)), [filter, pending]);
   const approvedToday = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
-    return resolved.filter((a) => a.status === "approved" && a.resolved_at?.startsWith(today)).length;
+    return resolved.filter((a) => ["approved", "partially_completed"].includes(a.status) && a.resolved_at?.startsWith(today)).length;
   }, [resolved]);
 
   const actOnApproval = async (item: ApprovalRow, action: "approve" | "reject", reason?: string) => {
@@ -291,8 +317,11 @@ export default function ApprovalsPage() {
                 ? "CRM update not prepared because HubSpot is not connected."
                 : item.payload_preview.crmPreparationStatus === "hubspot_execution_not_ready"
                   ? "HubSpot actions are prepared but not executed yet."
+                  : item.payload_preview.crmPreparationStatus === "hubspot_execution_enabled"
+                    ? "HubSpot contact and deal updates will execute after approval. Notes and tasks remain prepared only."
                   : null);
             const rejectionReason = rejectReasons[item.id] ?? "Needs manual review";
+            const hubspotPreview = item.payload_preview.preparedHubSpotActions;
 
             return (
               <div key={item.id} className="appr-row">
@@ -347,6 +376,41 @@ export default function ApprovalsPage() {
                       {crmStatus && (
                         <div style={{ fontSize: 12, color: "var(--text-dim)", padding: "8px 10px", borderRadius: 10, background: "rgba(255,255,255,0.025)" }}>
                           {crmStatus}
+                        </div>
+                      )}
+
+                      {hubspotPreview && (
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
+                          <div style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(0,0,0,0.16)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
+                            <div style={{ fontSize: 10, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>HubSpot contact</div>
+                            <div style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.5 }}>
+                              <strong style={{ color: "var(--text)" }}>{valueOrDash([hubspotPreview.contact?.firstname, hubspotPreview.contact?.lastname].filter(Boolean).join(" ") || null)}</strong><br />
+                              {valueOrDash(hubspotPreview.contact?.email)}<br />
+                              Source: {valueOrDash(hubspotPreview.contact?.source)}
+                            </div>
+                          </div>
+                          <div style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(0,0,0,0.16)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
+                            <div style={{ fontSize: 10, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>HubSpot deal</div>
+                            <div style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.5 }}>
+                              <strong style={{ color: "var(--text)" }}>{valueOrDash(hubspotPreview.deal?.dealname)}</strong><br />
+                              Stage: {valueOrDash(hubspotPreview.deal?.stageLabel)}<br />
+                              Pipeline: {valueOrDash(hubspotPreview.deal?.pipelineLabel)}
+                            </div>
+                          </div>
+                          <div style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(0,0,0,0.16)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
+                            <div style={{ fontSize: 10, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>CRM note</div>
+                            <div style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.5 }}>{valueOrDash(hubspotPreview.note?.body)}</div>
+                            <div style={{ marginTop: 4, fontSize: 11, color: "var(--text-mute)" }}>Prepared only in this version.</div>
+                          </div>
+                          <div style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(0,0,0,0.16)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
+                            <div style={{ fontSize: 10, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>Follow-up task</div>
+                            <div style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.5 }}>
+                              <strong style={{ color: "var(--text)" }}>{valueOrDash(hubspotPreview.task?.title)}</strong><br />
+                              Due: {valueOrDash(hubspotPreview.task?.dueSuggestion)}<br />
+                              Type: {valueOrDash(hubspotPreview.task?.type)}
+                            </div>
+                            <div style={{ marginTop: 4, fontSize: 11, color: "var(--text-mute)" }}>Prepared only in this version.</div>
+                          </div>
                         </div>
                       )}
 

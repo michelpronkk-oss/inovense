@@ -136,6 +136,9 @@ export async function GET(req: NextRequest) {
       hasNangoConnection: Boolean(hubspot.nangoConnectionId),
     } : null,
     revenueMode: hubspotConnected ? "full_crm_mode" : "email_only_mode",
+    revenueModeMessage: hubspotConnected
+      ? "Gmail and HubSpot are connected. CRM contact and deal updates execute after approval."
+      : "Gmail is connected. HubSpot is missing, so Revenue Operator prepares email follow-ups only.",
     monitoring: {
       status: monitoringStatus,
       message: hasScan ? "Latest scan loaded from operator run history." : "No scan has run yet.",

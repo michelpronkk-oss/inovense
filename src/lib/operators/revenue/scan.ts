@@ -1,6 +1,7 @@
 import { GMAIL_SCAN_REQUIRED_SCOPES, GMAIL_SEND_REQUIRED_SCOPES, GmailApiError, getMessageDetails, getMissingGmailScopes, listRecentMessages, resolveAccessTokenFromCredential, type SafeGmailMessage, type StoredConnectorCredential } from "@/lib/connectors/gmail";
 import { getConnectorTruth } from "@/lib/connectors/truth";
 import { createGmailSendApproval } from "@/lib/operators/executors/gmail";
+import { findContactByEmail, type PreparedHubSpotActions } from "@/lib/operators/executors/hubspot";
 import { logOperatorEvent, operatorRuntimeId } from "@/lib/operators/logging";
 import { getOperatorReadiness } from "@/lib/operators/readiness";
 import { draftRevenueFollowUpWithAI } from "@/lib/operators/revenue/ai-drafting";
@@ -19,6 +20,8 @@ export type Opportunity = {
 type CrmPreparation = {
   contactEmail: string;
   contactName: string | null;
+  firstname?: string | null;
+  lastname?: string | null;
   companyName: string | null;
   source: "gmail";
   classification: string;
@@ -30,6 +33,17 @@ type CrmPreparation = {
   suggestedDealStage: string;
   suggestedFollowUpTask: string;
   matchedKeywords: string[];
+  personalizationSource?: string;
+  greetingUsed?: string;
+};
+
+type Personalization = {
+  contactEmail: string;
+  contactName: string | null;
+  firstname: string | null;
+  lastname: string | null;
+  greetingUsed: string;
+  personalizationSource: "from_display_name" | "email_local_part" | "hubspot_contact" | "snippet_signature" | "fallback";
 };
 
 export type RevenueScanSummary = {
@@ -89,6 +103,7 @@ const OPPORTUNITY_KEYWORDS = [
 ];
 
 const STRONG_KEYWORDS = new Set(["pricing", "quote", "proposal", "demo", "interested", "can you help", "automation", "website"]);
+const GENERIC_NAME_PARTS = new Set(["info", "sales", "support", "hello", "admin", "noreply", "no-reply", "contact", "team", "newsletter", "office", "service", "help"]);
 
 const SKIP_PATTERNS = [
   { reason: "newsletter", pattern: /\b(newsletter|digest|unsubscribe|view in browser)\b/i },
@@ -145,7 +160,107 @@ function detectOpportunity(message: SafeGmailMessage, providerEmail: string): Op
   return { skipped: matchedKeywords.length > 0 ? "low_confidence" : "noise" };
 }
 
-function buildDraftFromOpportunity(opportunity: Opportunity) {
+function titleCaseName(value: string): string {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => `${part[0]?.toUpperCase() ?? ""}${part.slice(1).toLowerCase()}`)
+    .join(" ");
+}
+
+function splitHumanName(value: string | null): { firstname: string | null; lastname: string | null } {
+  if (!value) return { firstname: null, lastname: null };
+  const parts = value.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { firstname: null, lastname: null };
+  if (parts.length === 1) return { firstname: parts[0], lastname: null };
+  return { firstname: parts[0], lastname: parts.slice(1).join(" ") };
+}
+
+function isGenericName(value: string): boolean {
+  const cleaned = value.trim().toLowerCase();
+  if (!cleaned) return true;
+  if (GENERIC_NAME_PARTS.has(cleaned)) return true;
+  return cleaned.split(/[\s._+-]+/).some((part) => GENERIC_NAME_PARTS.has(part));
+}
+
+function displayNameFromHeader(from: string, email: string): string | null {
+  const rawName = from.replace(/<[^>]+>/g, "").replace(/"/g, "").trim();
+  if (!rawName || rawName.toLowerCase() === email.toLowerCase() || rawName.includes("@")) return null;
+  const cleaned = rawName.replace(/\s+via\s+.+$/i, "").trim();
+  if (!cleaned || isGenericName(cleaned)) return null;
+  const parts = cleaned.split(/\s+/).filter((part) => /^[a-z][a-z'-]{1,}$/i.test(part));
+  if (parts.length === 0 || parts.length > 4) return null;
+  return titleCaseName(parts.join(" "));
+}
+
+function humanNameFromEmailLocal(email: string): string | null {
+  const local = email.split("@")[0]?.toLowerCase() ?? "";
+  if (!local || /\d/.test(local)) return null;
+  const parts = local.split(/[._+-]+/).filter(Boolean);
+  if (parts.length === 0 || parts.length > 3) return null;
+  if (parts.some((part) => part.length < 2 || isGenericName(part))) return null;
+  return titleCaseName(parts.join(" "));
+}
+
+function nameFromSnippetSignature(snippet: string): string | null {
+  const match = snippet.match(/\b(?:best|thanks|regards|cheers),?\s+([A-Z][a-z]{1,}(?:\s+[A-Z][a-z]{1,})?)/);
+  return match?.[1] && !isGenericName(match[1]) ? match[1] : null;
+}
+
+async function buildPersonalization(input: {
+  workspaceId: string;
+  opportunity: Opportunity;
+  hubspotConnected: boolean;
+}): Promise<Personalization> {
+  const email = input.opportunity.message.fromEmail;
+  const fromName = displayNameFromHeader(input.opportunity.message.from, email);
+  if (fromName) {
+    const split = splitHumanName(fromName);
+    return { contactEmail: email, contactName: fromName, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? fromName},`, personalizationSource: "from_display_name" };
+  }
+
+  const localName = humanNameFromEmailLocal(email);
+  if (localName) {
+    const split = splitHumanName(localName);
+    return { contactEmail: email, contactName: localName, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? localName},`, personalizationSource: "email_local_part" };
+  }
+
+  if (input.hubspotConnected) {
+    try {
+      const contact = await findContactByEmail(input.workspaceId, email);
+      const first = typeof contact?.properties?.firstname === "string" ? contact.properties.firstname.trim() : "";
+      const last = typeof contact?.properties?.lastname === "string" ? contact.properties.lastname.trim() : "";
+      const contactName = [first, last].filter(Boolean).join(" ").trim();
+      if (contactName && !isGenericName(contactName)) {
+        return { contactEmail: email, contactName, firstname: first || null, lastname: last || null, greetingUsed: `Hi ${first || contactName},`, personalizationSource: "hubspot_contact" };
+      }
+    } catch (error) {
+      console.warn("[revenue-scan] hubspot contact personalization skipped", {
+        workspaceId: input.workspaceId,
+        email,
+        error: error instanceof Error ? error.message : "Unknown HubSpot lookup error",
+      });
+    }
+  }
+
+  const snippetName = nameFromSnippetSignature(input.opportunity.message.snippet);
+  if (snippetName) {
+    const split = splitHumanName(snippetName);
+    return { contactEmail: email, contactName: snippetName, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? snippetName},`, personalizationSource: "snippet_signature" };
+  }
+
+  return { contactEmail: email, contactName: null, firstname: null, lastname: null, greetingUsed: "Hi there,", personalizationSource: "fallback" };
+}
+
+function applyGreeting(body: string, greeting: string): string {
+  const lines = body.trim().split(/\r?\n/);
+  if (lines[0] && /^hi\b/i.test(lines[0].trim())) {
+    return [greeting, ...lines.slice(1)].join("\n");
+  }
+  return [greeting, "", body.trim()].join("\n");
+}
+
+function buildDraftFromOpportunity(opportunity: Opportunity, personalization: Personalization) {
   const subject = opportunity.message.subject
     ? `Re: ${opportunity.message.subject}`
     : "Following up on your message";
@@ -154,7 +269,7 @@ function buildDraftFromOpportunity(opportunity: Opportunity) {
     to: opportunity.message.fromEmail,
     subject,
     body: [
-      "Hi there,",
+      personalization.greetingUsed,
       "",
       `Thanks for reaching out. I saw your note about "${context.slice(0, 180)}${context.length > 180 ? "..." : ""}" and wanted to follow up while it is fresh.`,
       "",
@@ -168,12 +283,6 @@ function buildDraftFromOpportunity(opportunity: Opportunity) {
   };
 }
 
-function senderName(from: string, email: string): string | null {
-  const name = from.replace(/<[^>]+>/g, "").replace(/"/g, "").trim();
-  if (!name || name.toLowerCase() === email.toLowerCase()) return null;
-  return name;
-}
-
 function companyFromEmail(email: string): string | null {
   const domain = email.split("@")[1]?.toLowerCase();
   if (!domain) return null;
@@ -182,13 +291,15 @@ function companyFromEmail(email: string): string | null {
   return root.split(/[-_]/).filter(Boolean).map((part) => `${part[0]?.toUpperCase() ?? ""}${part.slice(1)}`).join(" ");
 }
 
-function buildCrmPreparation(opportunity: Opportunity): CrmPreparation {
+function buildCrmPreparation(opportunity: Opportunity, personalization: Personalization): CrmPreparation {
   const summary = opportunity.message.snippet
     ? opportunity.message.snippet.slice(0, 280)
     : `Inbound revenue signal from ${opportunity.message.fromEmail}.`;
   return {
     contactEmail: opportunity.message.fromEmail,
-    contactName: senderName(opportunity.message.from, opportunity.message.fromEmail),
+    contactName: personalization.contactName,
+    firstname: personalization.firstname,
+    lastname: personalization.lastname,
     companyName: companyFromEmail(opportunity.message.fromEmail),
     source: "gmail",
     classification: opportunity.classification,
@@ -202,6 +313,39 @@ function buildCrmPreparation(opportunity: Opportunity): CrmPreparation {
       : "New inbound opportunity",
     suggestedFollowUpTask: "Follow up with the contact and capture the next step in HubSpot.",
     matchedKeywords: opportunity.matchedKeywords,
+    personalizationSource: personalization.personalizationSource,
+    greetingUsed: personalization.greetingUsed,
+  };
+}
+
+function buildPreparedHubSpotActions(input: {
+  crmPreparation: CrmPreparation;
+  hubspotConnected: boolean;
+}): PreparedHubSpotActions {
+  const contactLabel = input.crmPreparation.contactName || input.crmPreparation.contactEmail;
+  return {
+    contact: {
+      email: input.crmPreparation.contactEmail,
+      firstname: input.crmPreparation.firstname ?? null,
+      lastname: input.crmPreparation.lastname ?? null,
+      companyName: input.crmPreparation.companyName,
+      source: "gmail",
+    },
+    deal: {
+      dealname: `${input.crmPreparation.suggestedDealStage}: ${contactLabel}`,
+      stageLabel: input.crmPreparation.suggestedDealStage,
+      pipelineLabel: "Default HubSpot pipeline",
+      amount: null,
+    },
+    note: {
+      body: input.crmPreparation.summary,
+    },
+    task: {
+      title: input.crmPreparation.suggestedFollowUpTask,
+      dueSuggestion: "Next business day",
+      type: "follow_up",
+    },
+    executionStatus: input.hubspotConnected ? "execution_enabled" : "prepared_not_enabled",
   };
 }
 
@@ -390,17 +534,22 @@ export async function scanRevenueOpportunities(input: {
 
     for (const opportunity of opportunities) {
       const runId = operatorRuntimeId("oprun-revenue-scan");
-      const deterministicDraft = buildDraftFromOpportunity(opportunity);
-      const crmPreparation = buildCrmPreparation(opportunity);
+      const personalization = await buildPersonalization({ workspaceId, opportunity, hubspotConnected });
+      const deterministicDraft = buildDraftFromOpportunity(opportunity, personalization);
+      const crmPreparation = buildCrmPreparation(opportunity, personalization);
       const aiDraft = await draftRevenueFollowUpWithAI({
         opportunity,
         deterministicDraft,
         context: companyGraphContext,
       });
-      const draft = aiDraft.draft;
+      const draft = {
+        ...aiDraft.draft,
+        body: applyGreeting(aiDraft.draft.body, personalization.greetingUsed),
+      };
       crmPreparation.summary = aiDraft.detectedSignalSummary || crmPreparation.summary;
       crmPreparation.suggestedNextStep = aiDraft.suggestedAction || crmPreparation.suggestedNextStep;
-      const crmPreparationStatus = hubspotConnected ? "hubspot_execution_not_ready" : "hubspot_not_connected";
+      const preparedHubSpotActions = buildPreparedHubSpotActions({ crmPreparation, hubspotConnected });
+      const crmPreparationStatus = hubspotConnected ? "hubspot_execution_enabled" : "hubspot_not_connected";
       const preparedActions = hubspotConnected
         ? ["send_gmail_follow_up", "update_hubspot_contact", "add_hubspot_note", "create_hubspot_follow_up_task"]
         : ["send_gmail_follow_up"];
@@ -415,8 +564,10 @@ export async function scanRevenueOpportunities(input: {
         matchedKeywords: opportunity.matchedKeywords,
         classification: opportunity.classification,
         confidence: opportunity.confidence,
+        personalization,
         crmPreparationStatus,
         crmPreparation,
+        preparedHubSpotActions,
         preparedActions,
         drafting: {
           detectedSignalSummary: aiDraft.detectedSignalSummary,
@@ -436,6 +587,10 @@ export async function scanRevenueOpportunities(input: {
         classification: opportunity.classification,
         confidence: opportunity.confidence,
         matchedKeywords: opportunity.matchedKeywords,
+        contactName: personalization.contactName,
+        contactEmail: personalization.contactEmail,
+        personalizationSource: personalization.personalizationSource,
+        greetingUsed: personalization.greetingUsed,
         crmPreparationStatus,
         detectedSignalSummary: aiDraft.detectedSignalSummary,
         whyThisMatters: aiDraft.whyThisMatters,
@@ -500,7 +655,7 @@ export async function scanRevenueOpportunities(input: {
         runId,
         stepKey: "prepare_crm_update",
         title: "Prepare CRM update",
-        output: { status: crmPreparationStatus, preparedActions, crmPreparation },
+        output: { status: crmPreparationStatus, preparedActions, crmPreparation, preparedHubSpotActions },
       });
       await insertStep({ supabase, workspaceId, runId, stepKey: "prepare_follow_up", title: "Prepare follow-up email", output: draft });
 
@@ -516,6 +671,7 @@ export async function scanRevenueOpportunities(input: {
         preparedActions,
         crmPreparation,
         crmPreparationStatus,
+        preparedHubSpotActions,
       });
 
       await insertStep({ supabase, workspaceId, runId, stepKey: "create_approval", title: "Create approval request", output: { approvalId: approval.approvalId } });
@@ -538,6 +694,7 @@ export async function scanRevenueOpportunities(input: {
         preparedActions,
         crmPreparation,
         crmPreparationStatus,
+        preparedHubSpotActions,
       };
       const outputInsert = await supabase.from("os_operator_outputs").insert({
         id: operatorRuntimeId("opout"),

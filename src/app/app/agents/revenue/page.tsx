@@ -230,7 +230,7 @@ export default function RevenueOperatorPage() {
   const latestScanHadNoOpportunities = Boolean(monitoring?.lastScanTime && monitoring.opportunitiesFound === 0);
   const modeLabel = revenueStatus?.revenueMode === "full_crm_mode" ? "Full CRM mode" : "Email-only mode";
   const modeHelp = revenueStatus?.revenueMode === "full_crm_mode"
-    ? "Gmail and HubSpot are connected. CRM updates are prepared for approval, but HubSpot execution is not enabled yet."
+    ? "Gmail and HubSpot are connected. CRM contact and deal updates execute after approval."
     : "Gmail is connected. HubSpot is missing, so Revenue Operator prepares email follow-ups only.";
   const revenueStatusMessage = (() => {
     if (!revenueReadiness) return "Loading Revenue Operator readiness.";

@@ -25,6 +25,14 @@ type GmailContinuationPayload = {
     suggestedFollowUpTask?: string;
     matchedKeywords?: string[];
   } | null;
+  preparedHubSpotActions?: {
+    contact?: Record<string, unknown>;
+    deal?: Record<string, unknown>;
+    note?: Record<string, unknown>;
+    task?: Record<string, unknown>;
+    executionStatus?: string;
+  } | null;
+  executionResult?: Record<string, unknown> | null;
 };
 
 function asPayload(value: unknown): GmailContinuationPayload {
@@ -53,6 +61,9 @@ function approvalReason(continuation: GmailContinuationPayload, policyReason: st
 function crmStatusText(status: string | undefined): string | null {
   if (status === "hubspot_not_connected") return "CRM update not prepared because HubSpot is not connected.";
   if (status === "hubspot_execution_not_ready") return "HubSpot actions are prepared but not executed yet.";
+  if (status === "hubspot_execution_enabled") return "HubSpot contact and deal updates will execute after approval. Notes and tasks remain prepared only.";
+  if (status === "hubspot_execution_completed") return "HubSpot contact and deal updates completed after approval.";
+  if (status === "hubspot_execution_failed") return "Gmail was sent, but HubSpot execution failed.";
   return null;
 }
 
@@ -61,6 +72,9 @@ function expectedOutcome(continuation: GmailContinuationPayload): string | null 
   const aiExpectedOutcome = stringValue(sourceMetadata.expectedOutcome);
   if (aiExpectedOutcome) return aiExpectedOutcome;
   if (continuation.kind !== "gmail.send_after_approval") return null;
+  if (continuation.crmPreparationStatus === "hubspot_execution_enabled") {
+    return "Send the approved Gmail follow-up now, then create or update the HubSpot contact/deal. CRM notes and tasks remain prepared only.";
+  }
   if (continuation.crmPreparationStatus === "hubspot_execution_not_ready") {
     return "Send the approved Gmail follow-up now. HubSpot actions remain prepared only until CRM execution is implemented.";
   }
@@ -121,6 +135,8 @@ function mapApproval(row: Record<string, unknown>) {
       preparedActions: Array.isArray(continuation.preparedActions) ? continuation.preparedActions.filter((item): item is string => typeof item === "string") : [],
       crmPreparationStatus: continuation.crmPreparationStatus ?? null,
       crmPreparation: continuation.crmPreparation ?? null,
+      preparedHubSpotActions: continuation.preparedHubSpotActions ?? null,
+      executionResult: continuation.executionResult ?? null,
       sourceMetadata,
       detectedSignal,
       sourceEmail,
@@ -179,7 +195,7 @@ export async function GET(req: NextRequest) {
   const todayKey = now.toISOString().slice(0, 10);
   const stats = {
     pending: data.filter((approval) => approval.status === "pending").length,
-    approvedToday: data.filter((approval) => approval.status === "approved" && approval.resolved_at?.startsWith(todayKey)).length,
+    approvedToday: data.filter((approval) => ["approved", "partially_completed"].includes(approval.status) && approval.resolved_at?.startsWith(todayKey)).length,
     rejectedToday: data.filter((approval) => approval.status === "rejected" && approval.resolved_at?.startsWith(todayKey)).length,
     total: data.length,
   };

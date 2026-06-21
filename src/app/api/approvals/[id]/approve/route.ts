@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createGmailDraft, GmailApiError, getMissingGmailScopes, hasGmailSendScope, resolveAccessTokenFromCredential, sendGmailDraft, sendGmailMessage, type StoredConnectorCredential } from "@/lib/connectors/gmail";
+import { executeHubSpotRevenueActions, HubSpotExecutionError, type HubSpotExecutionResult, type PreparedHubSpotActions } from "@/lib/operators/executors/hubspot";
 import { logOperatorEvent, recordOperatorUsage } from "@/lib/operators/logging";
 import { createOperatorMemory } from "@/lib/operators/memory";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
@@ -22,6 +23,7 @@ type GmailContinuationPayload = {
   preparedActions?: string[];
   crmPreparationStatus?: string | null;
   crmPreparation?: Record<string, unknown> | null;
+  preparedHubSpotActions?: PreparedHubSpotActions | null;
   sourceMetadata?: Record<string, unknown> | null;
 };
 
@@ -64,6 +66,7 @@ function learningMetadata(input: {
     confidence,
     crmPreparationStatus: input.payload.crmPreparationStatus ?? null,
     preparedActions: input.payload.preparedActions ?? ["send_gmail_follow_up"],
+    preparedHubSpotActions: input.payload.preparedHubSpotActions ?? null,
     sourceMetadata,
     messageId: input.messageId ?? null,
     sendEndpoint: input.sendEndpoint ?? null,
@@ -99,9 +102,80 @@ function validateGmailPayload(value: unknown): { ok: true; payload: GmailContinu
       preparedActions: Array.isArray(rec.preparedActions) ? rec.preparedActions.filter((item): item is string => typeof item === "string") : undefined,
       crmPreparationStatus: typeof rec.crmPreparationStatus === "string" ? rec.crmPreparationStatus : null,
       crmPreparation: rec.crmPreparation && typeof rec.crmPreparation === "object" ? rec.crmPreparation as Record<string, unknown> : null,
+      preparedHubSpotActions: rec.preparedHubSpotActions && typeof rec.preparedHubSpotActions === "object" ? rec.preparedHubSpotActions as PreparedHubSpotActions : null,
       sourceMetadata: rec.sourceMetadata && typeof rec.sourceMetadata === "object" ? rec.sourceMetadata as Record<string, unknown> : null,
     },
   };
+}
+
+function shouldExecuteHubSpot(payload: GmailContinuationPayload): boolean {
+  const actions = payload.preparedActions ?? [];
+  const hasHubSpotAction = actions.some((action) => action.includes("hubspot"));
+  return Boolean(
+    hasHubSpotAction
+    && payload.crmPreparationStatus !== "hubspot_not_connected"
+    && payload.preparedHubSpotActions?.executionStatus === "execution_enabled"
+  );
+}
+
+function hubspotErrorPayload(error: unknown) {
+  if (error instanceof HubSpotExecutionError) {
+    return {
+      error: "hubspot_execution_failed",
+      message: error.message,
+      details: error.details,
+    };
+  }
+  return {
+    error: "hubspot_execution_failed",
+    message: error instanceof Error ? error.message : "HubSpot execution failed.",
+    details: null,
+  };
+}
+
+async function markGmailFailure(input: {
+  supabase: ReturnType<typeof createSupabaseAdmin>;
+  approvalId: string;
+  workspaceId: string;
+  resolvedBy: string;
+  approvalRow: Record<string, unknown>;
+  payload: GmailContinuationPayload;
+  error: unknown;
+}) {
+  const errorPayload = input.error instanceof GmailApiError
+    ? { message: input.error.message, details: input.error.details }
+    : { message: input.error instanceof Error ? input.error.message : "Gmail execution failed.", details: null };
+  const continuation = input.approvalRow.continuation_payload && typeof input.approvalRow.continuation_payload === "object"
+    ? input.approvalRow.continuation_payload as Record<string, unknown>
+    : {};
+  const executionResult = {
+    gmailStatus: "failed",
+    hubspotStatus: "not_attempted",
+    error: errorPayload,
+  };
+
+  await input.supabase.from("os_approvals").update({
+    status: "failed",
+    resolved_at: new Date().toISOString(),
+    resolved_by: input.resolvedBy,
+    continuation_payload: { ...continuation, executionResult },
+  }).eq("id", input.approvalId).eq("workspace_id", input.workspaceId);
+
+  const operatorRunId = input.payload.operatorRunId || (typeof input.approvalRow.run_id === "string" ? input.approvalRow.run_id : "");
+  if (operatorRunId) {
+    await input.supabase.from("os_operator_runs").update({
+      status: "failed",
+      completed_at: new Date().toISOString(),
+      output: {
+        gmail: executionResult,
+        crmPreparationStatus: input.payload.crmPreparationStatus ?? null,
+        crmPreparation: input.payload.crmPreparation ?? null,
+        preparedActions: input.payload.preparedActions ?? ["send_gmail_follow_up"],
+        preparedHubSpotActions: input.payload.preparedHubSpotActions ?? null,
+      },
+      error: errorPayload.message,
+    }).eq("id", operatorRunId).eq("workspace_id", input.workspaceId);
+  }
 }
 
 function gmailErrorResponse(error: unknown) {
@@ -280,21 +354,94 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       to: gmailPayload.to,
       error: error instanceof Error ? error.message : "Unknown Gmail error",
     });
+    await markGmailFailure({
+      supabase,
+      approvalId: id,
+      workspaceId: context.workspaceId,
+      resolvedBy: context.userEmail || context.userId || userEmail || userId,
+      approvalRow: approvalRow as Record<string, unknown>,
+      payload: gmailPayload,
+      error,
+    });
     return gmailErrorResponse(error);
   }
 
+  const warnings: string[] = [];
+  let hubspotResult: HubSpotExecutionResult | null = null;
+  if (shouldExecuteHubSpot(gmailPayload)) {
+    try {
+      console.info("[approval] hubspot.execution.starting", {
+        approvalId: id,
+        workspaceId: context.workspaceId,
+        to: gmailPayload.to,
+      });
+      hubspotResult = await executeHubSpotRevenueActions(context.workspaceId, {
+        to: gmailPayload.to,
+        subject: gmailPayload.subject,
+        crmPreparation: gmailPayload.crmPreparation,
+        preparedHubSpotActions: gmailPayload.preparedHubSpotActions,
+      });
+      console.info("[approval] hubspot.execution.completed", {
+        approvalId: id,
+        workspaceId: context.workspaceId,
+        status: hubspotResult.status,
+        contactId: hubspotResult.contactId ?? null,
+        dealId: hubspotResult.dealId ?? null,
+      });
+    } catch (error) {
+      const safeError = hubspotErrorPayload(error);
+      hubspotResult = {
+        status: "failed",
+        error: safeError,
+        note: { status: "prepared_not_enabled", reason: "HubSpot note execution is intentionally not enabled in v1.6." },
+        task: { status: "prepared_not_enabled", reason: "HubSpot task execution is intentionally not enabled in v1.6." },
+      };
+      warnings.push("hubspot_execution_failed");
+      console.warn("[approval] hubspot.execution.failed", {
+        approvalId: id,
+        workspaceId: context.workspaceId,
+        to: gmailPayload.to,
+        error: safeError.message,
+        details: safeError.details,
+      });
+    }
+  } else if (gmailPayload.crmPreparationStatus === "hubspot_not_connected") {
+    hubspotResult = { status: "skipped", error: { code: "hubspot_not_connected" } };
+    warnings.push("hubspot_not_connected");
+  } else if (gmailPayload.preparedActions?.some((action) => action.includes("hubspot"))) {
+    hubspotResult = { status: "skipped", error: { code: "hubspot_execution_not_enabled" } };
+    warnings.push("hubspot_execution_not_enabled");
+  }
+
+  const hubspotFailed = hubspotResult?.status === "failed";
+  const finalStatus = hubspotFailed ? "partially_completed" : "approved";
+  const runFinalStatus = hubspotFailed ? "partially_completed" : "completed";
+  const executionResult = {
+    gmailStatus: "sent",
+    hubspotStatus: hubspotResult?.status ?? "not_applicable",
+    hubspotContactId: hubspotResult?.contactId ?? null,
+    hubspotDealId: hubspotResult?.dealId ?? null,
+    gmail: {
+      draftId: draft.draftId,
+      messageId: sent.messageId ?? null,
+      to: gmailPayload.to,
+      subject: gmailPayload.subject,
+      sendEndpoint: sent.sendEndpoint,
+    },
+    hubspot: hubspotResult,
+  };
+
   const approvalUpdate = await supabase.from("os_approvals").update({
-    status: "approved",
+    status: finalStatus,
     resolved_at: new Date().toISOString(),
     resolved_by: context.userEmail || context.userId || userEmail || userId,
+    continuation_payload: {
+      ...(approvalRow.continuation_payload && typeof approvalRow.continuation_payload === "object" ? approvalRow.continuation_payload as Record<string, unknown> : {}),
+      executionResult,
+    },
   }).eq("id", id).eq("workspace_id", context.workspaceId);
   if (approvalUpdate.error) {
     return NextResponse.json({ error: "approval_update_failed", message: approvalUpdate.error.message }, { status: 500 });
-  }
-
-  const warnings: string[] = [];
-  if (gmailPayload.crmPreparationStatus === "hubspot_execution_not_ready") {
-    warnings.push("hubspot_execution_not_ready");
   }
 
   await optionalStep(warnings, "os_execution_logs.insert", () => supabase.from("os_execution_logs").insert([
@@ -330,9 +477,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       agent_mark: approvalRow.agent_mark || "OS",
       agent_color: approvalRow.agent_color || "#4DE8E1",
       event: "approval.approved",
-      message: "Approval approved and Gmail send completed",
+      message: hubspotFailed ? "Approval approved, Gmail send completed, HubSpot execution failed" : "Approval approved and Gmail send completed",
       duration: "-",
-      status: "ok",
+      status: hubspotFailed ? "warn" : "ok",
     },
   ]).then((res) => {
     if (res.error) throw new Error(res.error.message);
@@ -341,30 +488,34 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   const operatorRunId = typeof gmailPayload.operatorRunId === "string" ? gmailPayload.operatorRunId : approvalRow.run_id;
   if (operatorRunId) {
-    const approvalLearning = learningMetadata({
-      approvalId: id,
-      runId: operatorRunId,
-      payload: gmailPayload,
-      messageId: sent.messageId ?? null,
-      sendEndpoint: sent.sendEndpoint,
-    });
+    const approvalLearning = {
+      ...learningMetadata({
+        approvalId: id,
+        runId: operatorRunId,
+        payload: gmailPayload,
+        messageId: sent.messageId ?? null,
+        sendEndpoint: sent.sendEndpoint,
+      }),
+      hubspotStatus: hubspotResult?.status ?? null,
+      hubspotContactId: hubspotResult?.contactId ?? null,
+      hubspotDealId: hubspotResult?.dealId ?? null,
+      executionResult,
+    };
 
     await optionalStep(warnings, "os_operator_runs.update", () => supabase.from("os_operator_runs").update({
-      status: "completed",
+      status: runFinalStatus,
       completed_at: new Date().toISOString(),
       output: {
-        gmail: {
-          draftId: draft.draftId,
-          messageId: sent.messageId ?? null,
-          to: gmailPayload.to,
-          subject: gmailPayload.subject,
-          sendEndpoint: sent.sendEndpoint,
-        },
+        gmail: executionResult.gmail,
+        hubspot: hubspotResult,
+        executionResult,
         crmPreparationStatus: gmailPayload.crmPreparationStatus ?? null,
         crmPreparation: gmailPayload.crmPreparation ?? null,
+        preparedHubSpotActions: gmailPayload.preparedHubSpotActions ?? null,
         preparedActions: gmailPayload.preparedActions ?? ["send_gmail_follow_up"],
         approvalLearning,
       },
+      error: hubspotFailed ? "HubSpot execution failed after Gmail send." : null,
     }).eq("id", operatorRunId).eq("workspace_id", context.workspaceId).eq("approval_id", id).then((res) => {
       if (res.error) throw new Error(res.error.message);
       return res;
@@ -374,13 +525,30 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         supabase,
         workspaceId: context.workspaceId,
         runId: operatorRunId,
-        eventType: "gmail.send.completed",
-        message: `Approved Gmail message sent to ${gmailPayload.to}.`,
-        metadata: { ...approvalLearning, draftId: draft.draftId },
+        eventType: hubspotFailed ? "approval.partially_completed" : "gmail.send.completed",
+        message: hubspotFailed
+          ? `Gmail message sent to ${gmailPayload.to}, but HubSpot execution failed.`
+          : `Approved Gmail message sent to ${gmailPayload.to}.`,
+        metadata: { ...approvalLearning, draftId: draft.draftId, executionResult },
       }).then((res) => {
         if (res.error) throw new Error(res.error.message);
         return res;
       }));
+    if (hubspotResult) {
+      await optionalStep(warnings, "os_operator_run_logs.hubspot.insert", () => logOperatorEvent({
+          supabase,
+          workspaceId: context.workspaceId,
+          runId: operatorRunId,
+          eventType: hubspotFailed ? "hubspot.execution.failed" : `hubspot.execution.${hubspotResult.status}`,
+          message: hubspotFailed
+            ? "HubSpot contact/deal execution failed after Gmail send."
+            : `HubSpot execution status: ${hubspotResult.status}.`,
+          metadata: hubspotResult,
+        }).then((res) => {
+          if (res.error) throw new Error(res.error.message);
+          return res;
+        }));
+    }
     await optionalStep(warnings, "os_operator_run_logs.learning.insert", () => logOperatorEvent({
         supabase,
         workspaceId: context.workspaceId,
@@ -437,5 +605,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     },
     warnings,
     crmPreparationStatus: gmailPayload.crmPreparationStatus ?? null,
+    gmailStatus: executionResult.gmailStatus,
+    hubspotStatus: executionResult.hubspotStatus,
+    hubspotContactId: executionResult.hubspotContactId,
+    hubspotDealId: executionResult.hubspotDealId,
+    executionResult,
   });
 }
