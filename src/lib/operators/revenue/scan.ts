@@ -6,9 +6,12 @@ import { logOperatorEvent, operatorRuntimeId } from "@/lib/operators/logging";
 import { getOperatorReadiness } from "@/lib/operators/readiness";
 import { draftRevenueFollowUpWithAI } from "@/lib/operators/revenue/ai-drafting";
 import { loadRevenueCompanyGraphContext } from "@/lib/operators/revenue/context";
+import { normalizeEmailToSignalEvent, routeSignalCandidate, classifySignalCandidateLightweight } from "@/lib/signals/intake";
+import type { SignalCandidate } from "@/lib/signals/types";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
+type RevenueScanSourceMode = "scheduled" | "manual" | "event_ready";
 
 export type Opportunity = {
   message: SafeGmailMessage;
@@ -64,6 +67,7 @@ type Personalization = {
 export type RevenueScanSummary = {
   status?: string;
   message?: string;
+  sourceMode?: RevenueScanSourceMode;
   scanned?: number;
   opportunitiesFound?: number;
   approvalsCreated?: number;
@@ -80,6 +84,7 @@ export type RevenueScanSummary = {
     confidence: string;
     crmPreparationStatus?: string;
     dedupeKey?: string;
+    signalCandidate?: SignalCandidate;
     runId: string;
     approvalId: string;
   }[];
@@ -484,6 +489,41 @@ async function insertStep(input: {
   });
 }
 
+function nextDailyRunFrom(lastRunAt: string): string {
+  return new Date(new Date(lastRunAt).getTime() + 24 * 60 * 60 * 1000).toISOString();
+}
+
+async function upsertRevenueMonitoringConfig(input: {
+  supabase: SupabaseAdmin;
+  workspaceId: string;
+  sourceMode: RevenueScanSourceMode;
+  lastRunAt: string;
+  lastRunStatus: string;
+  lastRunSummary: Record<string, unknown>;
+}) {
+  const cadence = "daily";
+  const triggerId = `optrig-${input.workspaceId}-revenue-monitoring`;
+  return input.supabase.from("os_operator_triggers").upsert({
+    id: triggerId,
+    workspace_id: input.workspaceId,
+    operator_key: "revenue",
+    trigger_type: "scheduled_monitoring",
+    enabled: true,
+    config: {
+      monitoringEnabled: true,
+      cadence,
+      scheduleProvider: "trigger.dev",
+      triggerTaskId: "revenue-operator-daily-scan",
+      lastRunAt: input.lastRunAt,
+      nextRunAt: nextDailyRunFrom(input.lastRunAt),
+      lastRunStatus: input.lastRunStatus,
+      lastRunSummary: input.lastRunSummary,
+      manualRunAvailable: true,
+      sourceMode: input.sourceMode,
+    },
+  });
+}
+
 function normalizeSubjectForDedupe(subject: string | undefined | null): string {
   return (subject || "")
     .toLowerCase()
@@ -624,10 +664,12 @@ function scanFailure(error: unknown): RevenueScanResult {
 export async function scanRevenueOpportunities(input: {
   workspaceId: string;
   maxResults?: number;
+  sourceMode?: RevenueScanSourceMode;
   supabase?: SupabaseAdmin;
 }): Promise<RevenueScanResult> {
   const supabase = input.supabase ?? createSupabaseAdmin();
   const workspaceId = input.workspaceId.trim();
+  const sourceMode = input.sourceMode ?? "manual";
 
   const readiness = await getOperatorReadiness({ workspaceId, operatorKey: "revenue" });
   if (!readiness) {
@@ -702,6 +744,7 @@ export async function scanRevenueOpportunities(input: {
     const companyGraphContext = await loadRevenueCompanyGraphContext({ supabase, workspaceId });
     const skipped: NonNullable<RevenueScanSummary["skipped"]> = [];
     const opportunities: Opportunity[] = [];
+    const signalCandidates: SignalCandidate[] = [];
 
     for (const item of listed) {
       const message = await getMessageDetails(accessToken, item.id);
@@ -715,6 +758,17 @@ export async function scanRevenueOpportunities(input: {
       if ("skipped" in detected) {
         skipped.push({ messageId: message.id || item.id, subject: message.subject, from: message.from, reason: detected.skipped });
       } else {
+        const signalEvent = normalizeEmailToSignalEvent({
+          workspaceId,
+          message,
+          rawRef: `gmail:${message.id}`,
+          metadata: {
+            dedupeKey: dedupe.dedupeKey,
+            sourceMode,
+          },
+        });
+        const signalCandidate = routeSignalCandidate(classifySignalCandidateLightweight(signalEvent));
+        signalCandidates.push(signalCandidate);
         opportunities.push(detected);
       }
     }
@@ -752,6 +806,7 @@ export async function scanRevenueOpportunities(input: {
         : ["send_gmail_follow_up"];
       const runInput = {
         source: "gmail_scan",
+        sourceMode,
         gmailMessageId: opportunity.message.id,
         gmailThreadId: opportunity.message.threadId,
         dedupeKey: dedupe.dedupeKey,
@@ -779,6 +834,7 @@ export async function scanRevenueOpportunities(input: {
           metadata: aiDraft.draftingMetadata,
         },
       };
+      const signalCandidate = signalCandidates.find((candidate) => candidate.sourceId === opportunity.message.id) ?? null;
       const sourceMetadata = {
         gmailMessageId: opportunity.message.id,
         gmailThreadId: opportunity.message.threadId,
@@ -806,6 +862,7 @@ export async function scanRevenueOpportunities(input: {
         expectedOutcome: aiDraft.expectedOutcome,
         riskNotes: aiDraft.riskNotes,
         draftingMetadata: aiDraft.draftingMetadata,
+        signalCandidate,
       };
 
       const runInsert = await supabase.from("os_operator_runs").insert({
@@ -894,6 +951,7 @@ export async function scanRevenueOpportunities(input: {
         opportunity: runInput,
         dedupeKey: dedupe.dedupeKey,
         dedupeMetadata: dedupe,
+        signalCandidate,
         sourceMetadata,
         drafting: {
           detectedSignalSummary: aiDraft.detectedSignalSummary,
@@ -947,6 +1005,7 @@ export async function scanRevenueOpportunities(input: {
         confidence: opportunity.confidence,
         crmPreparationStatus,
         dedupeKey: dedupe.dedupeKey,
+        signalCandidate: signalCandidate ? { ...signalCandidate, status: "approval_created" } : undefined,
         runId,
         approvalId: approval.approvalId,
       });
@@ -959,6 +1018,9 @@ export async function scanRevenueOpportunities(input: {
     const scanSummary = {
       type: "gmail_scan_summary",
       status: "completed",
+      sourceMode,
+      monitoringEnabled: true,
+      cadence: "daily",
       scanned: listed.length,
       opportunitiesFound: opportunities.length,
       approvalsCreated: created.length,
@@ -974,7 +1036,7 @@ export async function scanRevenueOpportunities(input: {
       operator_key: "revenue",
       trigger_type: "gmail_scan",
       status: "completed",
-      input: { source: "gmail_scan_monitor", maxResults },
+      input: { source: "gmail_scan_monitor", sourceMode, maxResults },
       output: scanSummary,
       readiness,
       risk_level: "low",
@@ -1003,12 +1065,27 @@ export async function scanRevenueOpportunities(input: {
       requires_approval: false,
     });
     if (scanOutputInsert.error) throw new Error(scanOutputInsert.error.message);
+    const monitoringUpdate = await upsertRevenueMonitoringConfig({
+      supabase,
+      workspaceId,
+      sourceMode,
+      lastRunAt: completedAt,
+      lastRunStatus: "completed",
+      lastRunSummary: scanSummary,
+    });
+    if (monitoringUpdate.error) {
+      console.warn("[revenue-scan] monitoring config update skipped", {
+        workspaceId,
+        error: monitoringUpdate.error.message,
+      });
+    }
 
     return {
       ok: true,
       status: 200,
       body: {
         status: "completed",
+        sourceMode,
         scanned: listed.length,
         opportunitiesFound: opportunities.length,
         approvalsCreated: created.length,

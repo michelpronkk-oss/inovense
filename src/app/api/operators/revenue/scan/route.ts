@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
   const result = await scanRevenueOpportunities({
     workspaceId: context.workspaceId,
     maxResults: body.maxResults,
+    sourceMode: "manual",
     supabase,
   });
 

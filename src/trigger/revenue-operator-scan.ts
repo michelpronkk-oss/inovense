@@ -18,7 +18,7 @@ export const revenueOperatorScan = task({
       };
     }
 
-    const result = await scanRevenueOpportunities({ workspaceId });
+    const result = await scanRevenueOpportunities({ workspaceId, sourceMode: "manual" });
     return result.body;
   },
 });
@@ -34,6 +34,7 @@ export const revenueOperatorDailyScan = schedules.task({
     // operator scheduling settings exist per workspace.
     const result = await scanRevenueOpportunities({
       workspaceId: DEFAULT_REVENUE_SCAN_WORKSPACE_ID,
+      sourceMode: "scheduled",
     });
     return {
       workspaceId: DEFAULT_REVENUE_SCAN_WORKSPACE_ID,

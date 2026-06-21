@@ -96,6 +96,14 @@ type RevenueStatus = {
   monitoring?: {
     status: string;
     message: string;
+    monitoringEnabled?: boolean;
+    cadence?: string;
+    sourceMode?: "scheduled" | "manual" | "event_ready" | string;
+    lastRunAt?: string | null;
+    nextRunAt?: string | null;
+    lastRunStatus?: string | null;
+    lastRunSummary?: Record<string, unknown> | null;
+    manualRunAvailable?: boolean;
     lastScanTime: string | null;
     lastScannedCount: number;
     opportunitiesFound: number;
@@ -117,6 +125,13 @@ function relativeTime(iso: string): string {
   if (hours > 0) return `${hours}h ago`;
   const mins = Math.floor(diff / 60000);
   return mins > 0 ? `${mins}m ago` : "just now";
+}
+
+function dateTimeLabel(iso: string | null | undefined): string {
+  if (!iso) return "Not scheduled";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "Unknown";
+  return date.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 function TagList({ title, items, empty }: { title: string; items: string[]; empty: string }) {
@@ -250,7 +265,8 @@ export default function RevenueOperatorPage() {
   const gmailReconnectRequired = Boolean(revenueStatus?.gmail?.reconnectRequired || monitoring?.reconnectRequired);
   const scanNeedsReconnect = gmailReconnectRequired || scanResult?.status === "requires_gmail_read_scope" || scanResult?.status === "requires_gmail_send_scope";
   const canRunRevenue = Boolean(revenueReadiness?.canRunManual && (revenueReadiness.status === "ready" || revenueReadiness.status === "draft_only"));
-  const latestScanHadNoOpportunities = Boolean(monitoring?.lastScanTime && monitoring.opportunitiesFound === 0);
+  const latestScanHadNoOpportunities = Boolean((monitoring?.lastRunAt || monitoring?.lastScanTime) && monitoring.opportunitiesFound === 0);
+  const lastCheckAt = monitoring?.lastRunAt ?? monitoring?.lastScanTime ?? null;
   const scanSkippedSummary = scanResult?.skipped?.length
     ? Object.entries(scanResult.skipped.reduce<Record<string, number>>((counts, item) => {
       counts[item.reason] = (counts[item.reason] ?? 0) + 1;
@@ -276,12 +292,12 @@ export default function RevenueOperatorPage() {
         <div>
           <span className="os-greet"><Link href="/app/agents" style={{ color: "inherit", textDecoration: "none" }}>Operators</Link> / Revenue</span>
           <h1>Revenue Operator</h1>
-          <div className="os-page-sub">Monitoring Gmail for revenue signals and preparing approval-gated follow-ups.</div>
+          <div className="os-page-sub">Inovense watches revenue signals in the background and asks for approval only when action is needed.</div>
         </div>
         <div className="os-page-actions">
           <Link href="/app/approvals" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>View approvals</Link>
           <button className="btn btn-ghost btn-sm" type="button" onClick={submitRevenueScan} disabled={!canRunRevenue || scanSubmitting} style={{ opacity: !canRunRevenue || scanSubmitting ? 0.45 : 1 }}>
-            {scanSubmitting ? "Scanning..." : "Run scan now"}
+            {scanSubmitting ? "Checking..." : "Run manual check"}
           </button>
         </div>
       </div>
@@ -291,13 +307,13 @@ export default function RevenueOperatorPage() {
       <div className="p" style={{ gap: 0 }}>
         <div className="p-head">
           <div>
-            <h3>Monitoring</h3>
+            <h3>Monitoring active</h3>
             <div className="p-meta" style={{ marginTop: 4 }}>{runtimeLoading ? "Loading real operator state..." : monitoring?.nextScanLabel ?? "Daily scan ready"}</div>
           </div>
           {gmailReconnectRequired && <button className="btn btn-primary btn-sm" type="button" onClick={startGmailReconnect}>Reconnect Gmail</button>}
         </div>
         <div style={{ padding: "16px 18px", display: "grid", gap: 14 }}>
-          <div style={{ fontSize: 13, color: "var(--text-dim)", maxWidth: 760 }}>Revenue Operator is monitoring Gmail for revenue opportunities. It prepares follow-ups for approval. Nothing is sent without approval.</div>
+          <div style={{ fontSize: 13, color: "var(--text-dim)", maxWidth: 820 }}>Inovense monitors in the background and only creates approvals for high-confidence revenue opportunities. Manual checks remain available for testing or one-off review.</div>
           <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
             <div>
               <div style={{ fontSize: 13, fontWeight: 600 }}>{revenueStatus?.v1Readiness?.status ?? modeLabel}</div>
@@ -328,18 +344,23 @@ export default function RevenueOperatorPage() {
           )}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10 }}>
             <MetricCard label="Monitoring status" value={monitoring?.status ?? "loading"} />
-            <MetricCard label="Last scan" value={monitoring?.lastScanTime ? relativeTime(monitoring.lastScanTime) : "No scan yet"} />
-            <MetricCard label="Emails scanned" value={String(monitoring?.lastScannedCount ?? 0)} />
+            <MetricCard label="Last check" value={lastCheckAt ? relativeTime(lastCheckAt) : "No check yet"} />
+            <MetricCard label="Next check" value={dateTimeLabel(monitoring?.nextRunAt)} />
+            <MetricCard label="Cadence" value={monitoring?.cadence ?? "daily"} />
             <MetricCard label="Opportunities" value={String(monitoring?.opportunitiesFound ?? 0)} />
             <MetricCard label="Approvals" value={String(monitoring?.approvalsCreated ?? 0)} />
-            <MetricCard label="Skipped safely" value={String(monitoring?.skippedSafelyCount ?? 0)} />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+            <MetricCard label="Emails checked last run" value={String(monitoring?.lastScannedCount ?? 0)} />
+            <MetricCard label="Skipped duplicates/noise" value={String(monitoring?.skippedSafelyCount ?? 0)} />
+            <MetricCard label="Source mode" value={monitoring?.sourceMode ?? "scheduled"} />
           </div>
           {gmailReconnectRequired && <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(245,194,107,0.06)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.2)", color: "var(--amber)", fontSize: 12 }}>Reconnect Gmail to enable inbox monitoring.</div>}
-          {!gmailReconnectRequired && monitoring?.message === "No scan has run yet." && <div style={{ fontSize: 12, color: "var(--text-mute)" }}>No scan has run yet.</div>}
-          {!gmailReconnectRequired && latestScanHadNoOpportunities && <div style={{ fontSize: 12, color: "var(--text-mute)" }}>No high-confidence revenue opportunities found in the latest scan.</div>}
+          {!gmailReconnectRequired && !monitoring?.lastRunAt && !monitoring?.lastScanTime && <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Monitoring is active. No background check has run yet.</div>}
+          {!gmailReconnectRequired && latestScanHadNoOpportunities && <div style={{ fontSize: 12, color: "var(--text-mute)" }}>No high-confidence revenue opportunities found in the latest check.</div>}
           {scanResult && (
             <div style={{ padding: "10px 12px", borderRadius: 10, background: scanNeedsReconnect ? "rgba(245,194,107,0.06)" : "rgba(77,232,225,0.06)", boxShadow: scanNeedsReconnect ? "inset 0 0 0 1px rgba(245,194,107,0.2)" : "inset 0 0 0 1px rgba(77,232,225,0.18)", display: "grid", gap: 6 }}>
-              <div style={{ fontSize: 12.8, fontWeight: 600 }}>{scanNeedsReconnect ? "Reconnect Gmail required" : `Scan ${scanResult.status ?? "completed"}`}</div>
+              <div style={{ fontSize: 12.8, fontWeight: 600 }}>{scanNeedsReconnect ? "Reconnect Gmail required" : `Manual check ${scanResult.status ?? "completed"}`}</div>
               {scanResult.message && <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{scanResult.message}</div>}
               {!scanNeedsReconnect && <div style={{ fontSize: 12, color: "var(--text-mute)" }}>{scanResult.scanned ?? 0} scanned / {scanResult.opportunitiesFound ?? 0} found / {scanResult.approvalsCreated ?? 0} approvals prepared.</div>}
               {!scanNeedsReconnect && scanSkippedSummary && <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>Skipped safely: {scanSkippedSummary}</div>}
