@@ -37,6 +37,8 @@ type ApprovalRow = {
     editedAt?: string | null;
     editedBy?: string | null;
     operatorKey: string | null;
+    dedupeKey?: string | null;
+    dedupeMetadata?: Record<string, unknown> | null;
     preparedActions?: string[];
     crmPreparationStatus?: string | null;
     crmStatusText?: string | null;
@@ -160,6 +162,14 @@ function shortPreview(value: string | null | undefined, max = 420): string {
   if (!value) return "-";
   const trimmed = value.trim();
   return trimmed.length > max ? `${trimmed.slice(0, max)}...` : trimmed;
+}
+
+function recordValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" ? value as Record<string, unknown> : {};
+}
+
+function textValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 function confidenceLabel(value: string | null | undefined): string {
@@ -411,11 +421,21 @@ export default function ApprovalsPage() {
             const draftEdit = editingDrafts[item.id];
             const isSavingEdit = savingEditId === item.id;
             const sourceMetadata = item.payload_preview.sourceMetadata ?? {};
+            const executionResult = recordValue(item.payload_preview.executionResult);
+            const hubspotExecution = recordValue(executionResult.hubspot);
             const originalSubject = typeof sourceMetadata.subject === "string"
               ? sourceMetadata.subject
               : item.payload_preview.crmPreparation?.sourceSubject ?? item.payload_preview.subject ?? "-";
             const contactNameSource = item.payload_preview.crmPreparation?.personalizationSource
               || (typeof sourceMetadata.personalizationSource === "string" ? sourceMetadata.personalizationSource : "fallback");
+            const hubspotSetupText = (() => {
+              const status = textValue(hubspotExecution.propertySetupStatus);
+              if (status === "custom_properties_ready") return "Full attribution ready";
+              if (status === "custom_properties_partial") return "Partial attribution properties";
+              if (status === "custom_properties_missing") return "Standard fields only";
+              if (status === "property_check_failed") return "Property check failed";
+              return null;
+            })();
             const hubspotActionSummary = item.payload_preview.crmPreparationStatus === "hubspot_not_connected"
               ? "not prepared because HubSpot is not connected"
               : item.payload_preview.crmPreparationStatus === "hubspot_execution_enabled"
@@ -447,87 +467,30 @@ export default function ApprovalsPage() {
                 <div style={{ marginTop: 12, padding: revenueApproval ? "0" : "9px 10px", borderRadius: revenueApproval ? 18 : 8, background: revenueApproval ? "linear-gradient(145deg, rgba(255,255,255,0.055), rgba(77,232,225,0.025) 45%, rgba(0,0,0,0.12))" : "rgba(255,255,255,0.025)", boxShadow: revenueApproval ? "inset 0 0 0 1px rgba(255,255,255,0.09), 0 18px 60px rgba(0,0,0,0.22)" : "inset 0 0 0 1px var(--line)", overflow: "hidden", display: "grid", gap: revenueApproval ? 0 : 4 }}>
                   {revenueApproval && (
                     <>
-                      <div style={{ padding: "16px 18px 14px", display: "grid", gap: 14 }}>
-                        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 210px", gap: 18, alignItems: "start" }}>
-                          <div style={{ display: "grid", gap: 10 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                              <span style={{ width: 7, height: 7, borderRadius: 999, background: "#4DE8E1", boxShadow: "0 0 18px rgba(77,232,225,0.72)" }} />
-                              <span style={{ fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.14em" }}>Decision brief</span>
-                              {item.payload_preview.wasEdited && <span className="pill pill-amber" style={{ fontSize: 10.5 }}>Edited</span>}
-                            </div>
-                            <div style={{ fontSize: 18, lineHeight: 1.22, color: "var(--text)", fontWeight: 650, letterSpacing: "-0.02em" }}>
-                              {valueOrDash(item.payload_preview.detectedSignal)}
-                            </div>
-                            <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.55, maxWidth: 760 }}>
-                              {item.payload_preview.whyThisMatters || "Revenue Operator detected a high-confidence inbound revenue signal and prepared an approval-gated follow-up."}
-                            </div>
-                          </div>
-                          <div style={{ justifySelf: "end", minWidth: 190, borderRadius: 14, background: "rgba(0,0,0,0.2)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.075)", padding: "11px 12px", display: "grid", gap: 8 }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                              <span style={{ fontSize: 10, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.12em" }}>Confidence</span>
-                              <span style={{ fontSize: 11, color: "#8df5cf", fontWeight: 700, letterSpacing: "0.08em" }}>{confidenceLabel(item.payload_preview.confidence)}</span>
-                            </div>
-                            <div style={{ height: 5, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
-                              <div style={{ width: item.payload_preview.confidence === "high" ? "92%" : "58%", height: "100%", background: "linear-gradient(90deg, #4DE8E1, #51D88A)", borderRadius: 999 }} />
-                            </div>
-                            <div style={{ fontSize: 11.5, color: "var(--text-mute)", lineHeight: 1.45 }}>
-                              Risk: <span style={{ color: "var(--text-dim)" }}>{valueOrDash(item.payload_preview.riskLevel)}</span>
-                            </div>
-                          </div>
+                      <div style={{ padding: "12px 18px", borderBottom: "1px solid rgba(255,255,255,0.075)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                          <span style={{ width: 7, height: 7, borderRadius: 999, background: "#4DE8E1", boxShadow: "0 0 18px rgba(77,232,225,0.72)" }} />
+                          <span style={{ fontSize: 11.5, color: "var(--text-dim)", fontWeight: 650 }}>{operatorName}</span>
+                          <span style={{ color: "var(--text-mute)", fontSize: 11 }}>prepared an email for approval</span>
+                          {item.payload_preview.wasEdited && <span className="pill pill-amber" style={{ fontSize: 10.5 }}>Edited</span>}
                         </div>
-
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                          <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 11 }}>
-                            <div style={{ fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 5 }}>Recommended move</div>
-                            <div style={{ fontSize: 12.7, color: "var(--text-dim)", lineHeight: 1.55 }}>
-                              {item.payload_preview.crmPreparation?.suggestedNextStep || item.payload_preview.expectedOutcome || "Review and approve the prepared follow-up."}
-                            </div>
-                          </div>
-                          <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 11 }}>
-                            <div style={{ fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 5 }}>Expected outcome</div>
-                            <div style={{ fontSize: 12.7, color: "var(--text-dim)", lineHeight: 1.55 }}>
-                              {item.payload_preview.expectedOutcome || "Approval records the decision and executes only the approved action."}
-                            </div>
-                          </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+                          <span className="pill pill-cyan" style={{ fontSize: 10.5 }}>Gmail send after approval</span>
+                          {item.payload_preview.crmPreparationStatus === "hubspot_execution_enabled" && <span className="pill pill-cyan" style={{ fontSize: 10.5 }}>HubSpot contact/deal after approval</span>}
+                          <span style={{ fontSize: 10.5, color: "#8df5cf", fontWeight: 700, letterSpacing: "0.08em" }}>{confidenceLabel(item.payload_preview.confidence)}</span>
                         </div>
                       </div>
 
-                      <div style={{ padding: "13px 18px", borderTop: "1px solid rgba(255,255,255,0.075)", borderBottom: "1px solid rgba(255,255,255,0.075)", background: "rgba(0,0,0,0.16)", display: "grid", gap: 9 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-                          <div style={{ fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.12em" }}>Execution summary</div>
-                          {crmStatus && <div style={{ fontSize: 11.5, color: "var(--text-mute)", textAlign: "right" }}>{crmStatus}</div>}
-                        </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8 }}>
-                          {executionItems.map((action) => {
-                            const tone = executionTone(action.status);
-                            return (
-                              <div key={action.label} style={{ borderRadius: 12, padding: "9px 10px", background: tone.background, boxShadow: `inset 0 0 0 1px ${tone.border}`, minWidth: 0 }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
-                                  <span style={{ width: 6, height: 6, borderRadius: 999, background: tone.color }} />
-                                  <span style={{ fontSize: 12.2, color: "var(--text)", fontWeight: 650 }}>{action.label}</span>
-                                </div>
-                                <div style={{ fontSize: 11.5, color: "var(--text-mute)", lineHeight: 1.35 }}>{action.text}</div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      <div style={{ margin: "16px 18px", borderRadius: 16, background: "linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.022))", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                      <div style={{ margin: "14px 18px 12px", borderRadius: 16, background: "linear-gradient(180deg, rgba(255,255,255,0.052), rgba(255,255,255,0.024))", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.09), 0 12px 36px rgba(0,0,0,0.16)", overflow: "hidden" }}>
                         <div style={{ padding: "12px 14px", borderBottom: "1px solid rgba(255,255,255,0.075)", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
                           <div>
-                            <div style={{ fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 4 }}>Draft reply</div>
-                            <div style={{ fontSize: 12.5, color: "var(--text-dim)" }}>This exact email will be sent after approval.</div>
+                            <div style={{ fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 4 }}>Email draft</div>
+                            <div style={{ fontSize: 12.5, color: "var(--text-dim)" }}>Review and edit the full email before approving.</div>
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                             {item.payload_preview.wasEdited && <span className="pill pill-amber" style={{ fontSize: 10.5 }}>Edited</span>}
                             {!draftEdit && (
-                              <>
-                                <button className="appr-btn edit" type="button" onClick={() => setFullEmailOpen((current) => ({ ...current, [item.id]: !current[item.id] }))}>
-                                  {showFullEmail ? "Hide full email" : "View full email"}
-                                </button>
-                                <button className="appr-btn edit" type="button" onClick={() => startEditingDraft(item)}>Edit draft</button>
-                              </>
+                              <button className="appr-btn edit" type="button" onClick={() => startEditingDraft(item)}>Edit draft</button>
                             )}
                           </div>
                         </div>
@@ -563,8 +526,8 @@ export default function ApprovalsPage() {
                             {item.payload_preview.subject && (
                               <div style={{ fontSize: 13.5, color: "var(--text)", fontWeight: 650, marginBottom: 10, letterSpacing: "-0.01em" }}>{item.payload_preview.subject}</div>
                             )}
-                            <div style={{ fontSize: 12.5, color: "var(--text-dim)", whiteSpace: "pre-wrap", lineHeight: 1.55 }}>
-                              {showFullEmail ? (item.payload_preview.fullBody || item.payload_preview.body || "-") : shortPreview(item.payload_preview.body)}
+                            <div style={{ fontSize: 13, color: "var(--text-dim)", whiteSpace: "pre-wrap", lineHeight: 1.65 }}>
+                              {item.payload_preview.fullBody || item.payload_preview.body || "-"}
                             </div>
                           </>
                         )}
@@ -590,6 +553,10 @@ export default function ApprovalsPage() {
                               { label: "Source email", value: valueOrDash(item.payload_preview.sourceEmail) },
                               { label: "Original subject", value: valueOrDash(originalSubject) },
                               { label: "Contact name source", value: contactNameSource },
+                              { label: "HubSpot setup", value: hubspotSetupText ?? "Pending execution" },
+                              { label: "Pipeline", value: textValue(hubspotExecution.pipelineLabel) ?? "-" },
+                              { label: "Stage", value: textValue(hubspotExecution.dealstageLabel) ?? "-" },
+                              { label: "Dedupe key", value: valueOrDash(item.payload_preview.dedupeKey) },
                               { label: "Classification", value: valueOrDash(item.payload_preview.classification) },
                               { label: "Approval reason", value: item.payload_preview.approvalReason || item.policy_reason || "-" },
                             ].map((field) => (

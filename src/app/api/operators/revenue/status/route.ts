@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { GMAIL_READONLY_SCOPE } from "@/lib/connectors/gmail";
 import { getConnectorTruth } from "@/lib/connectors/truth";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
+import { getHubSpotDealPipelineMapping, getHubSpotPropertyReadiness } from "@/lib/operators/executors/hubspot";
 import { getOperatorReadiness } from "@/lib/operators/readiness";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 
@@ -112,6 +113,12 @@ export async function GET(req: NextRequest) {
     : hasScan
       ? latestScanRow?.status ?? latestScan?.status ?? "completed"
       : "idle";
+  const [hubspotPropertyReadiness, hubspotPipelineMapping] = hubspotConnected
+    ? await Promise.all([
+      getHubSpotPropertyReadiness(context.workspaceId),
+      getHubSpotDealPipelineMapping(context.workspaceId),
+    ])
+    : [null, null] as const;
 
   return NextResponse.json({
     readiness,
@@ -139,6 +146,26 @@ export async function GET(req: NextRequest) {
     revenueModeMessage: hubspotConnected
       ? "Gmail and HubSpot are connected. CRM contact and deal updates execute after approval."
       : "Gmail is connected. HubSpot is missing, so Revenue Operator prepares email follow-ups only.",
+    v1Readiness: {
+      status: gmail?.executable && hubspotConnected ? "Revenue Operator v1 ready" : "Setup required",
+      checks: {
+        gmailSendAfterApproval: gmail?.executable ? "ready" : "missing",
+        hubspotContactDealExecution: hubspotConnected ? "ready" : "missing",
+        contactDealAssociation: hubspotConnected ? "ready" : "missing",
+        hubspotAttributionProperties: hubspotPropertyReadiness?.status ?? "not_checked",
+        pipelineMapping: hubspotPipelineMapping?.status ?? "not_checked",
+      },
+      optionalCrmEnrichmentMissing: hubspotPropertyReadiness
+        ? ["custom_properties_missing", "custom_properties_partial", "property_check_failed"].includes(hubspotPropertyReadiness.status)
+        : false,
+      hubspotSetupRecommendation: hubspotPropertyReadiness && hubspotPropertyReadiness.status !== "custom_properties_ready" ? {
+        missingContactProperties: hubspotPropertyReadiness.missingContactProperties,
+        missingDealProperties: hubspotPropertyReadiness.missingDealProperties,
+        suggestedAction: "Create Inovense attribution properties in HubSpot to preserve full source context.",
+        severity: "non_blocking",
+      } : null,
+      pipeline: hubspotPipelineMapping,
+    },
     monitoring: {
       status: monitoringStatus,
       message: hasScan ? "Latest scan loaded from operator run history." : "No scan has run yet.",

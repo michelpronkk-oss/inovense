@@ -51,7 +51,7 @@ type RevenueScanResult = {
   approvalsCreated?: number;
   reconnectRequired?: boolean;
   opportunities?: { messageId: string; from: string; subject: string; matchedKeywords: string[]; runId: string; approvalId: string }[];
-  skipped?: { messageId: string; subject?: string; from?: string; reason: string }[];
+  skipped?: { messageId: string; subject?: string; from?: string; reason: string; dedupeKey?: string }[];
   error?: string;
 };
 
@@ -70,6 +70,29 @@ type RevenueStatus = {
     hasNangoConnection?: boolean;
   } | null;
   revenueMode?: "email_only_mode" | "full_crm_mode" | string;
+  v1Readiness?: {
+    status: string;
+    checks: {
+      gmailSendAfterApproval?: string;
+      hubspotContactDealExecution?: string;
+      contactDealAssociation?: string;
+      hubspotAttributionProperties?: string;
+      pipelineMapping?: string;
+    };
+    optionalCrmEnrichmentMissing?: boolean;
+    hubspotSetupRecommendation?: {
+      missingContactProperties?: string[];
+      missingDealProperties?: string[];
+      suggestedAction?: string;
+      severity?: string;
+    } | null;
+    pipeline?: {
+      status?: string;
+      pipelineLabel?: string | null;
+      dealstageLabel?: string | null;
+      pipelineSelectionReason?: string | null;
+    } | null;
+  };
   monitoring?: {
     status: string;
     message: string;
@@ -228,6 +251,12 @@ export default function RevenueOperatorPage() {
   const scanNeedsReconnect = gmailReconnectRequired || scanResult?.status === "requires_gmail_read_scope" || scanResult?.status === "requires_gmail_send_scope";
   const canRunRevenue = Boolean(revenueReadiness?.canRunManual && (revenueReadiness.status === "ready" || revenueReadiness.status === "draft_only"));
   const latestScanHadNoOpportunities = Boolean(monitoring?.lastScanTime && monitoring.opportunitiesFound === 0);
+  const scanSkippedSummary = scanResult?.skipped?.length
+    ? Object.entries(scanResult.skipped.reduce<Record<string, number>>((counts, item) => {
+      counts[item.reason] = (counts[item.reason] ?? 0) + 1;
+      return counts;
+    }, {})).map(([reason, count]) => `${reason}: ${count}`).join(" / ")
+    : "";
   const modeLabel = revenueStatus?.revenueMode === "full_crm_mode" ? "Full CRM mode" : "Email-only mode";
   const modeHelp = revenueStatus?.revenueMode === "full_crm_mode"
     ? "Gmail and HubSpot are connected. CRM contact and deal updates execute after approval."
@@ -239,6 +268,7 @@ export default function RevenueOperatorPage() {
     if (revenueReadiness.status === "upgrade_required") return "Upgrade your plan to run Revenue Operator.";
     return revenueReadiness.reason;
   })();
+  const v1Checks = revenueStatus?.v1Readiness?.checks;
 
   return (
     <div className="os-page">
@@ -270,11 +300,32 @@ export default function RevenueOperatorPage() {
           <div style={{ fontSize: 13, color: "var(--text-dim)", maxWidth: 760 }}>Revenue Operator is monitoring Gmail for revenue opportunities. It prepares follow-ups for approval. Nothing is sent without approval.</div>
           <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>{modeLabel}</div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>{revenueStatus?.v1Readiness?.status ?? modeLabel}</div>
               <div style={{ marginTop: 3, fontSize: 12, color: "var(--text-mute)" }}>{modeHelp}</div>
+              {revenueStatus?.v1Readiness?.optionalCrmEnrichmentMissing && (
+                <div style={{ marginTop: 5, fontSize: 11.5, color: "var(--amber)" }}>Optional CRM enrichment missing: HubSpot custom attribution properties are not fully configured.</div>
+              )}
             </div>
             <span className="appr-btn edit" style={{ cursor: "default" }}>{revenueStatus?.hubspot?.connected ? "HubSpot connected" : "HubSpot missing"}</span>
           </div>
+          {v1Checks && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 8 }}>
+              {[
+                ["Gmail send after approval", v1Checks.gmailSendAfterApproval],
+                ["HubSpot contact/deal", v1Checks.hubspotContactDealExecution],
+                ["Contact/deal association", v1Checks.contactDealAssociation],
+                ["Attribution properties", v1Checks.hubspotAttributionProperties],
+                ["Pipeline mapping", v1Checks.pipelineMapping],
+              ].map(([label, value]) => (
+                <MetricCard key={label} label={label || ""} value={value || "unknown"} />
+              ))}
+            </div>
+          )}
+          {revenueStatus?.v1Readiness?.pipeline && (
+            <div style={{ fontSize: 12, color: "var(--text-mute)" }}>
+              Pipeline: {revenueStatus.v1Readiness.pipeline.pipelineLabel || "-"} · Stage: {revenueStatus.v1Readiness.pipeline.dealstageLabel || "-"} · {revenueStatus.v1Readiness.pipeline.pipelineSelectionReason || ""}
+            </div>
+          )}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10 }}>
             <MetricCard label="Monitoring status" value={monitoring?.status ?? "loading"} />
             <MetricCard label="Last scan" value={monitoring?.lastScanTime ? relativeTime(monitoring.lastScanTime) : "No scan yet"} />
@@ -291,6 +342,7 @@ export default function RevenueOperatorPage() {
               <div style={{ fontSize: 12.8, fontWeight: 600 }}>{scanNeedsReconnect ? "Reconnect Gmail required" : `Scan ${scanResult.status ?? "completed"}`}</div>
               {scanResult.message && <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{scanResult.message}</div>}
               {!scanNeedsReconnect && <div style={{ fontSize: 12, color: "var(--text-mute)" }}>{scanResult.scanned ?? 0} scanned / {scanResult.opportunitiesFound ?? 0} found / {scanResult.approvalsCreated ?? 0} approvals prepared.</div>}
+              {!scanNeedsReconnect && scanSkippedSummary && <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>Skipped safely: {scanSkippedSummary}</div>}
             </div>
           )}
         </div>

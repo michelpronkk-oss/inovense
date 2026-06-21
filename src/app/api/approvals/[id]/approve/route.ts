@@ -31,6 +31,8 @@ type GmailContinuationPayload = {
   editedAt?: string | null;
   editedBy?: string | null;
   preparedActions?: string[];
+  dedupeKey?: string | null;
+  dedupeMetadata?: Record<string, unknown> | null;
   crmPreparationStatus?: string | null;
   crmPreparation?: Record<string, unknown> | null;
   preparedHubSpotActions?: PreparedHubSpotActions | null;
@@ -97,6 +99,8 @@ function learningMetadata(input: {
     classification,
     confidence,
     crmPreparationStatus: input.payload.crmPreparationStatus ?? null,
+    dedupeKey: input.payload.dedupeKey ?? null,
+    dedupeMetadata: input.payload.dedupeMetadata ?? null,
     preparedActions: input.payload.preparedActions ?? ["send_gmail_follow_up"],
     preparedHubSpotActions: input.payload.preparedHubSpotActions ?? null,
     sourceMetadata,
@@ -141,6 +145,8 @@ function validateGmailPayload(value: unknown): { ok: true; payload: GmailContinu
       editedAt: typeof rec.editedAt === "string" ? rec.editedAt : null,
       editedBy: typeof rec.editedBy === "string" ? rec.editedBy : null,
       preparedActions: Array.isArray(rec.preparedActions) ? rec.preparedActions.filter((item): item is string => typeof item === "string") : undefined,
+      dedupeKey: typeof rec.dedupeKey === "string" ? rec.dedupeKey : null,
+      dedupeMetadata: rec.dedupeMetadata && typeof rec.dedupeMetadata === "object" ? rec.dedupeMetadata as Record<string, unknown> : null,
       crmPreparationStatus: typeof rec.crmPreparationStatus === "string" ? rec.crmPreparationStatus : null,
       crmPreparation: rec.crmPreparation && typeof rec.crmPreparation === "object" ? rec.crmPreparation as Record<string, unknown> : null,
       preparedHubSpotActions: rec.preparedHubSpotActions && typeof rec.preparedHubSpotActions === "object" ? rec.preparedHubSpotActions as PreparedHubSpotActions : null,
@@ -246,6 +252,29 @@ async function optionalStep<T>(warnings: string[], label: string, fn: () => Prom
   }
 }
 
+function alreadyResolvedResponse(approvalRow: Record<string, unknown>) {
+  const continuation = approvalRow.continuation_payload && typeof approvalRow.continuation_payload === "object"
+    ? approvalRow.continuation_payload as Record<string, unknown>
+    : {};
+  const executionResult = continuation.executionResult && typeof continuation.executionResult === "object"
+    ? continuation.executionResult as Record<string, unknown>
+    : null;
+  const gmail = executionResult?.gmail && typeof executionResult.gmail === "object"
+    ? executionResult.gmail as Record<string, unknown>
+    : null;
+  return NextResponse.json({
+    ok: true,
+    status: "already_resolved",
+    alreadyResolved: true,
+    message: "Approval was already resolved. Gmail was not sent again.",
+    approvalStatus: typeof approvalRow.status === "string" ? approvalRow.status : null,
+    resolvedAt: typeof approvalRow.resolved_at === "string" ? approvalRow.resolved_at : null,
+    messageId: typeof gmail?.messageId === "string" ? gmail.messageId : null,
+    sendEndpoint: typeof gmail?.sendEndpoint === "string" ? gmail.sendEndpoint : null,
+    executionResult,
+  });
+}
+
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   if (!hasSupabaseAdminConfig()) {
     return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
@@ -281,6 +310,26 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ error: "Approval not found." }, { status: 404 });
   }
   if (approvalRow.status !== "pending") {
+    const continuationRecord = approvalRow.continuation_payload && typeof approvalRow.continuation_payload === "object"
+      ? approvalRow.continuation_payload as Record<string, unknown>
+      : {};
+    const existingExecution = continuationRecord.executionResult && typeof continuationRecord.executionResult === "object"
+      ? continuationRecord.executionResult as Record<string, unknown>
+      : null;
+    if (
+      approvalRow.status === "approved"
+      || approvalRow.status === "partially_completed"
+      || approvalRow.resolved_at
+      || existingExecution
+    ) {
+      return alreadyResolvedResponse(approvalRow as Record<string, unknown>);
+    }
+    if (approvalRow.status === "executing") {
+      return NextResponse.json({
+        error: "approval_execution_in_progress",
+        message: "Approval execution is already in progress. Gmail was not sent again.",
+      }, { status: 409 });
+    }
     return NextResponse.json({ error: "Approval is already resolved." }, { status: 409 });
   }
 
@@ -341,6 +390,41 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         missingScopes,
         reconnectRequired: true,
       },
+    }, { status: 409 });
+  }
+
+  const executionClaim = await supabase
+    .from("os_approvals")
+    .update({
+      status: "executing",
+      resolved_by: context.userEmail || context.userId || userEmail || userId,
+    })
+    .eq("id", id)
+    .eq("workspace_id", context.workspaceId)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+
+  if (executionClaim.error || !executionClaim.data) {
+    const latest = await supabase
+      .from("os_approvals")
+      .select("*")
+      .eq("id", id)
+      .eq("workspace_id", context.workspaceId)
+      .maybeSingle();
+    if (latest.data) {
+      const latestRow = latest.data as Record<string, unknown>;
+      if (latestRow.status === "approved" || latestRow.status === "partially_completed" || latestRow.resolved_at) {
+        return alreadyResolvedResponse(latestRow);
+      }
+      return NextResponse.json({
+        error: "approval_execution_in_progress",
+        message: "Approval execution is already in progress. Gmail was not sent again.",
+      }, { status: 409 });
+    }
+    return NextResponse.json({
+      error: "approval_claim_failed",
+      message: executionClaim.error?.message || "Could not claim approval for execution.",
     }, { status: 409 });
   }
 

@@ -18,14 +18,19 @@ export type HubSpotContactInput = {
   companyName?: string | null;
   source?: string | null;
   attribution?: HubSpotAttributionInput | null;
+  propertyReadiness?: HubSpotPropertyReadiness | null;
 };
 
 export type HubSpotDealInput = {
   dealname: string;
+  contactEmail?: string | null;
   amount?: number | null;
   stageLabel?: string | null;
   pipelineLabel?: string | null;
   attribution?: HubSpotAttributionInput | null;
+  pipelineId?: string | null;
+  dealstageId?: string | null;
+  propertyReadiness?: HubSpotPropertyReadiness | null;
 };
 
 export type HubSpotAttributionInput = {
@@ -34,6 +39,11 @@ export type HubSpotAttributionInput = {
   classification?: string | null;
   confidence?: string | null;
   suggestedNextStep?: string | null;
+  dedupeKey?: string | null;
+  gmailMessageId?: string | null;
+  gmailThreadId?: string | null;
+  contactEmail?: string | null;
+  normalizedSubject?: string | null;
 };
 
 export type PreparedHubSpotActions = {
@@ -61,6 +71,22 @@ export type HubSpotExecutionResult = {
   task?: { status: "prepared_not_enabled"; reason: string };
   error?: Record<string, unknown>;
   attributionWriteStatus?: "standard_only" | "custom_properties_written" | "custom_properties_missing" | "failed";
+  propertySetupStatus?: HubSpotPropertySetupStatus;
+  missingCustomProperties?: {
+    contacts: string[];
+    deals: string[];
+  };
+  hubspotSetupRecommendation?: {
+    missingContactProperties: string[];
+    missingDealProperties: string[];
+    suggestedAction: string;
+    severity: "non_blocking";
+  } | null;
+  pipelineId?: string | null;
+  pipelineLabel?: string | null;
+  dealstageId?: string | null;
+  dealstageLabel?: string | null;
+  pipelineSelectionReason?: string | null;
 };
 
 type HubSpotSearchResult = {
@@ -76,6 +102,43 @@ type HubSpotObjectResult = {
 };
 
 const HUBSPOT_NAME_CONTAMINATION = new Set(["hi", "hello", "hey", "dear", "hoi", "hallo", "michel"]);
+const ENABLE_HUBSPOT_PROPERTY_AUTO_CREATE = false;
+const INOVENSE_CUSTOM_PROPERTY_NAMES = [
+  "inovense_source",
+  "inovense_operator",
+  "inovense_signal_source",
+  "inovense_signal_type",
+  "inovense_confidence",
+  "inovense_original_subject",
+  "inovense_workspace_id",
+  "inovense_created_by_operator",
+] as const;
+
+export type HubSpotPropertySetupStatus =
+  | "custom_properties_ready"
+  | "custom_properties_partial"
+  | "custom_properties_missing"
+  | "property_check_failed";
+
+export type HubSpotPropertyReadiness = {
+  status: HubSpotPropertySetupStatus;
+  contactExistingProperties: string[];
+  dealExistingProperties: string[];
+  missingContactProperties: string[];
+  missingDealProperties: string[];
+  autoCreateEnabled: boolean;
+  error?: unknown;
+};
+
+export type HubSpotPipelineMapping = {
+  status: "ready" | "fallback" | "failed";
+  pipelineId: string | null;
+  pipelineLabel: string | null;
+  dealstageId: string | null;
+  dealstageLabel: string | null;
+  pipelineSelectionReason: string;
+  error?: unknown;
+};
 
 export class HubSpotExecutionError extends Error {
   details: {
@@ -161,6 +224,8 @@ function buildDealProperties(input: HubSpotDealInput): Record<string, string> {
   const properties: Record<string, string> = {
     dealname: input.dealname.trim(),
   };
+  if (input.pipelineId) properties.pipeline = input.pipelineId;
+  if (input.dealstageId) properties.dealstage = input.dealstageId;
   if (typeof input.amount === "number" && Number.isFinite(input.amount)) {
     properties.amount = String(input.amount);
   }
@@ -185,6 +250,145 @@ function buildCustomAttribution(input: HubSpotAttributionInput | null | undefine
     inovense_workspace_id: input?.workspaceId || "",
     inovense_created_by_operator: "true",
   };
+}
+
+function filterProperties(properties: Record<string, string>, allowed: string[]): Record<string, string> {
+  const allowedSet = new Set(allowed);
+  return Object.fromEntries(Object.entries(properties).filter(([key]) => allowedSet.has(key)));
+}
+
+function propertySetupStatus(missingContact: string[], missingDeal: string[]): HubSpotPropertySetupStatus {
+  const missingTotal = missingContact.length + missingDeal.length;
+  if (missingTotal === 0) return "custom_properties_ready";
+  if (missingTotal === INOVENSE_CUSTOM_PROPERTY_NAMES.length * 2) return "custom_properties_missing";
+  return "custom_properties_partial";
+}
+
+function setupRecommendation(readiness: HubSpotPropertyReadiness) {
+  if (readiness.status === "custom_properties_ready") return null;
+  return {
+    missingContactProperties: readiness.missingContactProperties,
+    missingDealProperties: readiness.missingDealProperties,
+    suggestedAction: "Create Inovense attribution properties in HubSpot to preserve full source context.",
+    severity: "non_blocking" as const,
+  };
+}
+
+export async function getHubSpotPropertyReadiness(workspaceId: string): Promise<HubSpotPropertyReadiness> {
+  try {
+    const [contactProperties, dealProperties] = await Promise.all([
+      hubspotRequest<{ results?: { name?: string }[] }>(workspaceId, "GET", "/crm/v3/properties/contacts"),
+      hubspotRequest<{ results?: { name?: string }[] }>(workspaceId, "GET", "/crm/v3/properties/deals"),
+    ]);
+    const contactExistingProperties = (contactProperties.results ?? []).map((property) => property.name).filter((name): name is string => typeof name === "string");
+    const dealExistingProperties = (dealProperties.results ?? []).map((property) => property.name).filter((name): name is string => typeof name === "string");
+    const missingContactProperties = INOVENSE_CUSTOM_PROPERTY_NAMES.filter((name) => !contactExistingProperties.includes(name));
+    const missingDealProperties = INOVENSE_CUSTOM_PROPERTY_NAMES.filter((name) => !dealExistingProperties.includes(name));
+    return {
+      status: propertySetupStatus(missingContactProperties, missingDealProperties),
+      contactExistingProperties,
+      dealExistingProperties,
+      missingContactProperties,
+      missingDealProperties,
+      autoCreateEnabled: ENABLE_HUBSPOT_PROPERTY_AUTO_CREATE,
+    };
+  } catch (error) {
+    return {
+      status: "property_check_failed",
+      contactExistingProperties: [],
+      dealExistingProperties: [],
+      missingContactProperties: [...INOVENSE_CUSTOM_PROPERTY_NAMES],
+      missingDealProperties: [...INOVENSE_CUSTOM_PROPERTY_NAMES],
+      autoCreateEnabled: ENABLE_HUBSPOT_PROPERTY_AUTO_CREATE,
+      error: error instanceof HubSpotExecutionError ? error.details : error instanceof Error ? error.message : "HubSpot property check failed.",
+    };
+  }
+}
+
+type HubSpotPipelineResult = {
+  results?: {
+    id?: string;
+    label?: string;
+    displayOrder?: number;
+    stages?: {
+      id?: string;
+      label?: string;
+      displayOrder?: number;
+      metadata?: Record<string, unknown>;
+    }[];
+  }[];
+};
+
+function isClosedStage(stage: { label?: string; metadata?: Record<string, unknown> }): boolean {
+  const label = (stage.label ?? "").toLowerCase();
+  const metadata = stage.metadata ?? {};
+  return label.includes("closed") || label.includes("won") || label.includes("lost") || metadata.isClosed === "true" || metadata.isClosed === true;
+}
+
+function scorePipeline(label: string): number {
+  const normalized = label.toLowerCase();
+  if (normalized.includes("sales pipeline")) return 100;
+  if (normalized.includes("sales")) return 80;
+  if (normalized.includes("deal")) return 40;
+  return 10;
+}
+
+function scoreStage(label: string): number {
+  const normalized = label.toLowerCase();
+  const preferred = [
+    { needle: "new inbound opportunity", score: 100 },
+    { needle: "appointment scheduled", score: 92 },
+    { needle: "qualified to buy", score: 88 },
+    { needle: "discovery", score: 84 },
+    { needle: "proposal", score: 72 },
+    { needle: "pricing", score: 70 },
+    { needle: "new", score: 64 },
+  ];
+  return preferred.find((item) => normalized.includes(item.needle))?.score ?? 10;
+}
+
+export async function getHubSpotDealPipelineMapping(workspaceId: string): Promise<HubSpotPipelineMapping> {
+  try {
+    const pipelines = await hubspotRequest<HubSpotPipelineResult>(workspaceId, "GET", "/crm/v3/pipelines/deals");
+    const available = (pipelines.results ?? []).filter((pipeline) => pipeline.id && Array.isArray(pipeline.stages));
+    if (available.length === 0) {
+      return { status: "failed", pipelineId: null, pipelineLabel: null, dealstageId: null, dealstageLabel: null, pipelineSelectionReason: "No HubSpot deal pipelines were returned." };
+    }
+    const pipeline = [...available].sort((a, b) => {
+      const scoreDiff = scorePipeline(b.label ?? "") - scorePipeline(a.label ?? "");
+      if (scoreDiff !== 0) return scoreDiff;
+      return (a.displayOrder ?? 999) - (b.displayOrder ?? 999);
+    })[0];
+    const stages = (pipeline.stages ?? []).filter((stage) => stage.id && !isClosedStage(stage));
+    const stage = [...stages].sort((a, b) => {
+      const scoreDiff = scoreStage(b.label ?? "") - scoreStage(a.label ?? "");
+      if (scoreDiff !== 0) return scoreDiff;
+      return (a.displayOrder ?? 999) - (b.displayOrder ?? 999);
+    })[0];
+    if (!stage?.id) {
+      return { status: "failed", pipelineId: pipeline.id ?? null, pipelineLabel: pipeline.label ?? null, dealstageId: null, dealstageLabel: null, pipelineSelectionReason: "No non-closed deal stage was available." };
+    }
+    const pipelineScore = scorePipeline(pipeline.label ?? "");
+    const stageScore = scoreStage(stage.label ?? "");
+    return {
+      status: pipelineScore >= 80 && stageScore >= 64 ? "ready" : "fallback",
+      pipelineId: pipeline.id ?? null,
+      pipelineLabel: pipeline.label ?? null,
+      dealstageId: stage.id,
+      dealstageLabel: stage.label ?? null,
+      pipelineSelectionReason: `Selected ${pipeline.label ?? "pipeline"} / ${stage.label ?? "stage"} using ${pipelineScore >= 80 && stageScore >= 64 ? "preferred" : "fallback"} matching.`,
+    };
+  } catch (error) {
+    return {
+      status: "failed",
+      pipelineId: null,
+      pipelineLabel: null,
+      dealstageId: null,
+      dealstageLabel: null,
+      pipelineSelectionReason: "HubSpot pipeline discovery failed.",
+      error: error instanceof HubSpotExecutionError ? error.details : error instanceof Error ? error.message : "HubSpot pipeline discovery failed.",
+    };
+  }
 }
 
 function buildDealAttributionDescription(input: HubSpotAttributionInput | null | undefined): string {
@@ -288,6 +492,7 @@ async function writeHubSpotObject(input: {
   existingId?: string | null;
   baseProperties: Record<string, string>;
   enhancedProperties: Record<string, string>;
+  hasCustomProperties: boolean;
 }) {
   const path = input.existingId
     ? `/crm/v3/objects/${input.objectType}/${input.existingId}`
@@ -297,7 +502,7 @@ async function writeHubSpotObject(input: {
     const result = await hubspotRequest<HubSpotObjectResult>(input.workspaceId, method, path, { properties: input.enhancedProperties });
     return {
       result,
-      attributionWriteStatus: "custom_properties_written" as const,
+      attributionWriteStatus: input.hasCustomProperties ? "custom_properties_written" as const : "standard_only" as const,
     };
   } catch (error) {
     const fallback = await hubspotRequest<HubSpotObjectResult>(input.workspaceId, method, path, { properties: input.baseProperties });
@@ -312,10 +517,13 @@ async function writeHubSpotObject(input: {
 export async function createOrUpdateContact(workspaceId: string, input: HubSpotContactInput): Promise<Record<string, unknown>> {
   const existing = await findContactByEmail(workspaceId, input.email);
   const baseProperties = buildContactProperties(input);
+  const customProperties = input.propertyReadiness?.status === "property_check_failed"
+    ? {}
+    : filterProperties(buildCustomAttribution(input.attribution), input.propertyReadiness?.contactExistingProperties ?? []);
   const enhancedProperties = {
     ...baseProperties,
     ...buildStandardContactAttribution(),
-    ...buildCustomAttribution(input.attribution),
+    ...customProperties,
   };
   const write = await writeHubSpotObject({
     workspaceId,
@@ -323,6 +531,7 @@ export async function createOrUpdateContact(workspaceId: string, input: HubSpotC
     existingId: existing?.id,
     baseProperties,
     enhancedProperties,
+    hasCustomProperties: Object.keys(customProperties).length > 0,
   });
   return {
     status: existing?.id ? "updated" : "created",
@@ -333,12 +542,24 @@ export async function createOrUpdateContact(workspaceId: string, input: HubSpotC
   };
 }
 
-async function findDealByName(workspaceId: string, dealname: string): Promise<HubSpotObjectResult | null> {
+async function findMatchingOpenDeal(workspaceId: string, input: {
+  dealname: string;
+  sourceSubject?: string | null;
+  propertyReadiness?: HubSpotPropertyReadiness | null;
+}): Promise<HubSpotObjectResult | null> {
+  const filters: Record<string, string>[] = [{ propertyName: "dealname", operator: "EQ", value: input.dealname }];
+  const canFilterBySubject = Boolean(
+    input.sourceSubject
+    && input.propertyReadiness?.dealExistingProperties?.includes("inovense_original_subject")
+  );
+  if (canFilterBySubject && input.sourceSubject) {
+    filters.push({ propertyName: "inovense_original_subject", operator: "EQ", value: input.sourceSubject });
+  }
   const data = await hubspotRequest<HubSpotSearchResult>(workspaceId, "POST", "/crm/v3/objects/deals/search", {
     filterGroups: [{
-      filters: [{ propertyName: "dealname", operator: "EQ", value: dealname }],
+      filters,
     }],
-    properties: ["dealname", "amount", "dealstage", "pipeline"],
+    properties: ["dealname", "amount", "dealstage", "pipeline", "inovense_original_subject"],
     limit: 1,
   });
   return data.results?.[0] ?? null;
@@ -346,21 +567,29 @@ async function findDealByName(workspaceId: string, dealname: string): Promise<Hu
 
 export async function createOrUpdateDeal(workspaceId: string, input: HubSpotDealInput): Promise<Record<string, unknown>> {
   const baseProperties = buildDealProperties(input);
+  const customProperties = input.propertyReadiness?.status === "property_check_failed"
+    ? {}
+    : filterProperties(buildCustomAttribution(input.attribution), input.propertyReadiness?.dealExistingProperties ?? []);
   const enhancedProperties = {
     ...baseProperties,
     description: buildDealAttributionDescription(input.attribution),
-    ...buildCustomAttribution(input.attribution),
+    ...customProperties,
   };
-  const existing = await findDealByName(workspaceId, baseProperties.dealname);
+  const existing = await findMatchingOpenDeal(workspaceId, {
+    dealname: baseProperties.dealname,
+    sourceSubject: input.attribution?.sourceSubject,
+    propertyReadiness: input.propertyReadiness,
+  });
   const write = await writeHubSpotObject({
     workspaceId,
     objectType: "deals",
     existingId: existing?.id,
     baseProperties,
     enhancedProperties,
+    hasCustomProperties: Object.keys(customProperties).length > 0,
   });
   return {
-    status: existing?.id ? "updated" : "created",
+    status: existing?.id ? "updated_existing" : "created",
     id: write.result.id ?? existing?.id ?? null,
     properties: write.result.properties ?? baseProperties,
     attributionWriteStatus: write.attributionWriteStatus,
@@ -401,12 +630,21 @@ export async function executeHubSpotRevenueActions(workspaceId: string, payload:
   const contactName = cleanString(crm.contactName);
   const split = splitName(contactName);
   const safeContactLabel = [split.firstname, split.lastname].filter(Boolean).join(" ").trim();
+  const [propertyReadiness, pipelineMapping] = await Promise.all([
+    getHubSpotPropertyReadiness(workspaceId),
+    getHubSpotDealPipelineMapping(workspaceId),
+  ]);
   const attribution = {
     workspaceId,
     sourceSubject: cleanString(crm.sourceSubject) ?? cleanString(payload.subject),
     classification: cleanString(crm.classification),
     confidence: cleanString(crm.confidence),
     suggestedNextStep: cleanString(crm.suggestedNextStep),
+    dedupeKey: cleanString(crm.dedupeKey),
+    gmailMessageId: cleanString(crm.gmailMessageId),
+    gmailThreadId: cleanString(crm.gmailThreadId),
+    contactEmail,
+    normalizedSubject: cleanString(crm.normalizedSubject),
   };
   const contact = await createOrUpdateContact(workspaceId, {
     email: contactEmail,
@@ -415,14 +653,19 @@ export async function executeHubSpotRevenueActions(workspaceId: string, payload:
     companyName: cleanString(prepared.contact?.companyName) ?? cleanString(crm.companyName),
     source: "gmail",
     attribution,
+    propertyReadiness,
   });
 
   const deal = await createOrUpdateDeal(workspaceId, {
     dealname: safeContactLabel ? `New inbound opportunity: ${safeContactLabel}` : safeDealName(prepared.deal?.dealname, contactEmail),
+    contactEmail,
     amount: typeof prepared.deal?.amount === "number" ? prepared.deal.amount : null,
     stageLabel: prepared.deal?.stageLabel ?? cleanString(crm.suggestedDealStage),
     pipelineLabel: prepared.deal?.pipelineLabel ?? "Default",
+    pipelineId: pipelineMapping.pipelineId,
+    dealstageId: pipelineMapping.dealstageId,
     attribution,
+    propertyReadiness,
   });
 
   const contactId = cleanString(contact.id);
@@ -438,9 +681,20 @@ export async function executeHubSpotRevenueActions(workspaceId: string, payload:
     contact,
     deal,
     association,
+    propertySetupStatus: propertyReadiness.status,
+    missingCustomProperties: {
+      contacts: propertyReadiness.missingContactProperties,
+      deals: propertyReadiness.missingDealProperties,
+    },
+    hubspotSetupRecommendation: setupRecommendation(propertyReadiness),
+    pipelineId: pipelineMapping.pipelineId,
+    pipelineLabel: pipelineMapping.pipelineLabel,
+    dealstageId: pipelineMapping.dealstageId,
+    dealstageLabel: pipelineMapping.dealstageLabel,
+    pipelineSelectionReason: pipelineMapping.pipelineSelectionReason,
     attributionWriteStatus: contact.attributionWriteStatus === "custom_properties_written" || deal.attributionWriteStatus === "custom_properties_written"
       ? "custom_properties_written"
-      : contact.attributionWriteStatus === "custom_properties_missing" || deal.attributionWriteStatus === "custom_properties_missing"
+      : propertyReadiness.status === "custom_properties_missing" || propertyReadiness.status === "custom_properties_partial" || contact.attributionWriteStatus === "custom_properties_missing" || deal.attributionWriteStatus === "custom_properties_missing"
         ? "custom_properties_missing"
         : "standard_only",
     note: { status: "prepared_not_enabled", reason: "HubSpot note execution is intentionally not enabled in v1.6." },

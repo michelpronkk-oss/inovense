@@ -58,6 +58,8 @@ export async function createGmailSendApproval(input: {
   subject: string;
   body: string;
   policyReason: string;
+  dedupeKey?: string;
+  dedupeMetadata?: Record<string, unknown>;
   sourceMetadata?: Record<string, unknown>;
   preparedActions?: string[];
   crmPreparation?: Record<string, unknown>;
@@ -76,12 +78,15 @@ export async function createGmailSendApproval(input: {
     agent_color: "#4DE8E1",
     run_id: input.runId,
     status: "pending",
+    dedupe_key: input.dedupeKey ?? null,
     created_at: new Date().toISOString(),
     continuation_payload: {
       kind: "gmail.send_after_approval",
       workspaceId: input.workspaceId,
       operatorRunId: input.runId,
       operatorKey: "revenue",
+      dedupeKey: input.dedupeKey ?? null,
+      dedupeMetadata: input.dedupeMetadata ?? null,
       to: input.to,
       subject: input.subject,
       body: input.body,

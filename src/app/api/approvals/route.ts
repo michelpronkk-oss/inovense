@@ -19,6 +19,8 @@ type GmailContinuationPayload = {
   wasEdited?: boolean;
   editedAt?: string | null;
   editedBy?: string | null;
+  dedupeKey?: string | null;
+  dedupeMetadata?: Record<string, unknown> | null;
   preparedActions?: string[];
   crmPreparationStatus?: string;
   sourceMetadata?: Record<string, unknown> | null;
@@ -166,6 +168,8 @@ function mapApproval(row: Record<string, unknown>) {
       editedAt: continuation.editedAt ?? null,
       editedBy: continuation.editedBy ?? null,
       operatorKey: continuation.operatorKey ?? null,
+      dedupeKey: continuation.dedupeKey ?? (typeof row.dedupe_key === "string" ? row.dedupe_key : null),
+      dedupeMetadata: continuation.dedupeMetadata ?? null,
       preparedActions: Array.isArray(continuation.preparedActions) ? continuation.preparedActions.filter((item): item is string => typeof item === "string") : [],
       crmPreparationStatus: continuation.crmPreparationStatus ?? null,
       crmPreparation: continuation.crmPreparation ?? null,

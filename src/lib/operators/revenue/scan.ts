@@ -29,6 +29,8 @@ type CrmPreparation = {
   confidence: string;
   gmailMessageId: string;
   gmailThreadId?: string;
+  dedupeKey?: string;
+  normalizedSubject?: string;
   summary: string;
   suggestedNextStep: string;
   suggestedDealStage: string;
@@ -77,6 +79,7 @@ export type RevenueScanSummary = {
     classification: string;
     confidence: string;
     crmPreparationStatus?: string;
+    dedupeKey?: string;
     runId: string;
     approvalId: string;
   }[];
@@ -85,6 +88,7 @@ export type RevenueScanSummary = {
     subject?: string;
     from?: string;
     reason: string;
+    dedupeKey?: string;
   }[];
   readiness?: unknown;
   error?: string;
@@ -114,6 +118,25 @@ const OPPORTUNITY_KEYWORDS = [
   "meeting",
   "offer",
 ];
+
+type DedupeReason =
+  | "existing_pending_approval"
+  | "already_approved"
+  | "previously_rejected"
+  | "already_handled";
+
+type RevenueDedupeMetadata = {
+  dedupeKey: string;
+  messageDedupeKey?: string;
+  threadDedupeKey?: string;
+  contactSubjectDedupeKey?: string;
+  gmailMessageId: string;
+  gmailThreadId?: string;
+  contactEmail: string;
+  normalizedSubject: string;
+  sourceProvider: "gmail";
+  operatorKey: "revenue";
+};
 
 const STRONG_KEYWORDS = new Set(["pricing", "quote", "proposal", "demo", "interested", "can you help", "automation", "website"]);
 const GENERIC_NAME_PARTS = new Set(["info", "sales", "support", "hello", "admin", "noreply", "no-reply", "contact", "team", "newsletter", "office", "service", "help", "marketing", "founder", "agency"]);
@@ -461,7 +484,54 @@ async function insertStep(input: {
   });
 }
 
-function collectHandledIds(value: unknown, messages: Set<string>, threads: Set<string>) {
+function normalizeSubjectForDedupe(subject: string | undefined | null): string {
+  return (subject || "")
+    .toLowerCase()
+    .replace(/^(\s*(re|fw|fwd)\s*:\s*)+/i, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 180);
+}
+
+function buildDedupeMetadata(message: SafeGmailMessage): RevenueDedupeMetadata {
+  const gmailMessageId = message.id;
+  const gmailThreadId = message.threadId || undefined;
+  const contactEmail = normalizeEmail(message.fromEmail || message.from);
+  const normalizedSubject = normalizeSubjectForDedupe(message.subject);
+  const messageDedupeKey = gmailMessageId ? `revenue:gmail:message:${gmailMessageId}` : undefined;
+  const threadDedupeKey = gmailThreadId ? `revenue:gmail:thread:${gmailThreadId}` : undefined;
+  const contactSubjectDedupeKey = contactEmail && normalizedSubject
+    ? `revenue:contact_subject:${contactEmail}:${normalizedSubject}`
+    : undefined;
+  return {
+    dedupeKey: messageDedupeKey ?? threadDedupeKey ?? contactSubjectDedupeKey ?? `revenue:gmail:message:${Date.now()}`,
+    messageDedupeKey,
+    threadDedupeKey,
+    contactSubjectDedupeKey,
+    gmailMessageId,
+    gmailThreadId,
+    contactEmail,
+    normalizedSubject,
+    sourceProvider: "gmail",
+    operatorKey: "revenue",
+  };
+}
+
+function reasonFromApprovalStatus(status: unknown): DedupeReason {
+  if (status === "pending" || status === "executing") return "existing_pending_approval";
+  if (status === "approved" || status === "partially_completed" || status === "completed") return "already_approved";
+  if (status === "rejected") return "previously_rejected";
+  return "already_handled";
+}
+
+function setDedupeReason(map: Map<string, DedupeReason>, key: string | undefined | null, reason: DedupeReason) {
+  if (!key) return;
+  const current = map.get(key);
+  if (current === "already_approved" || current === "existing_pending_approval") return;
+  map.set(key, reason);
+}
+
+function collectDedupeRefs(value: unknown, refs: Map<string, DedupeReason>, reason: DedupeReason) {
   if (!value || typeof value !== "object") return;
   const record = value as Record<string, unknown>;
   const messageId = typeof record.gmailMessageId === "string"
@@ -474,33 +544,58 @@ function collectHandledIds(value: unknown, messages: Set<string>, threads: Set<s
     : typeof record.threadId === "string"
       ? record.threadId
       : undefined;
-  if (messageId) messages.add(messageId);
-  if (threadId) threads.add(threadId);
-  Object.values(record).forEach((nested) => collectHandledIds(nested, messages, threads));
+  const contactEmail = typeof record.contactEmail === "string" ? normalizeEmail(record.contactEmail) : "";
+  const normalizedSubject = typeof record.normalizedSubject === "string"
+    ? normalizeSubjectForDedupe(record.normalizedSubject)
+    : typeof record.subject === "string"
+      ? normalizeSubjectForDedupe(record.subject)
+      : "";
+  setDedupeReason(refs, typeof record.dedupeKey === "string" ? record.dedupeKey : undefined, reason);
+  setDedupeReason(refs, messageId ? `revenue:gmail:message:${messageId}` : undefined, reason);
+  setDedupeReason(refs, threadId ? `revenue:gmail:thread:${threadId}` : undefined, reason);
+  setDedupeReason(refs, contactEmail && normalizedSubject ? `revenue:contact_subject:${contactEmail}:${normalizedSubject}` : undefined, reason);
+  Object.values(record).forEach((nested) => collectDedupeRefs(nested, refs, reason));
 }
 
-async function loadHandledGmailIds(input: {
+async function loadRevenueDedupeState(input: {
   supabase: SupabaseAdmin;
   workspaceId: string;
-}): Promise<{ messages: Set<string>; threads: Set<string> }> {
-  const messages = new Set<string>();
-  const threads = new Set<string>();
+}): Promise<Map<string, DedupeReason>> {
+  const refs = new Map<string, DedupeReason>();
   const [runs, outputs, approvals, logs] = await Promise.all([
     input.supabase.from("os_operator_runs").select("input,output").eq("workspace_id", input.workspaceId).eq("operator_key", "revenue").limit(500),
     input.supabase.from("os_operator_outputs").select("payload").eq("workspace_id", input.workspaceId).eq("operator_key", "revenue").limit(500),
-    input.supabase.from("os_approvals").select("continuation_payload").eq("workspace_id", input.workspaceId).eq("agent_id", "revenue").limit(500),
+    input.supabase.from("os_approvals").select("status,dedupe_key,continuation_payload").eq("workspace_id", input.workspaceId).eq("agent_id", "revenue").limit(500),
     input.supabase.from("os_operator_run_logs").select("metadata").eq("workspace_id", input.workspaceId).limit(500),
   ]);
 
   (runs.data ?? []).forEach((row) => {
-    collectHandledIds(row.input, messages, threads);
-    collectHandledIds(row.output, messages, threads);
+    collectDedupeRefs(row.input, refs, "already_handled");
+    collectDedupeRefs(row.output, refs, "already_handled");
   });
-  (outputs.data ?? []).forEach((row) => collectHandledIds(row.payload, messages, threads));
-  (approvals.data ?? []).forEach((row) => collectHandledIds(row.continuation_payload, messages, threads));
-  (logs.data ?? []).forEach((row) => collectHandledIds(row.metadata, messages, threads));
+  (outputs.data ?? []).forEach((row) => collectDedupeRefs(row.payload, refs, "already_handled"));
+  (approvals.data ?? []).forEach((row) => {
+    const reason = reasonFromApprovalStatus(row.status);
+    setDedupeReason(refs, typeof row.dedupe_key === "string" ? row.dedupe_key : undefined, reason);
+    collectDedupeRefs(row.continuation_payload, refs, reason);
+  });
+  (logs.data ?? []).forEach((row) => collectDedupeRefs(row.metadata, refs, "already_handled"));
 
-  return { messages, threads };
+  return refs;
+}
+
+function findDuplicateReason(metadata: RevenueDedupeMetadata, refs: Map<string, DedupeReason>): DedupeReason | null {
+  const keys = [
+    metadata.messageDedupeKey,
+    metadata.threadDedupeKey,
+    metadata.dedupeKey,
+    metadata.contactSubjectDedupeKey,
+  ].filter((key): key is string => Boolean(key));
+  for (const key of keys) {
+    const reason = refs.get(key);
+    if (reason) return reason;
+  }
+  return null;
 }
 
 function scanFailure(error: unknown): RevenueScanResult {
@@ -603,15 +698,17 @@ export async function scanRevenueOpportunities(input: {
     );
     const maxResults = Math.min(Math.max(Number(input.maxResults) || 15, 1), 20);
     const listed = await listRecentMessages(accessToken, { maxResults, query: "newer_than:30d" });
-    const handled = await loadHandledGmailIds({ supabase, workspaceId });
+    const handled = await loadRevenueDedupeState({ supabase, workspaceId });
     const companyGraphContext = await loadRevenueCompanyGraphContext({ supabase, workspaceId });
     const skipped: NonNullable<RevenueScanSummary["skipped"]> = [];
     const opportunities: Opportunity[] = [];
 
     for (const item of listed) {
       const message = await getMessageDetails(accessToken, item.id);
-      if (handled.messages.has(message.id || item.id) || (message.threadId && handled.threads.has(message.threadId))) {
-        skipped.push({ messageId: message.id || item.id, subject: message.subject, from: message.from, reason: "already_handled" });
+      const dedupe = buildDedupeMetadata(message);
+      const duplicateReason = findDuplicateReason(dedupe, handled);
+      if (duplicateReason) {
+        skipped.push({ messageId: message.id || item.id, subject: message.subject, from: message.from, reason: duplicateReason, dedupeKey: dedupe.dedupeKey });
         continue;
       }
       const detected = detectOpportunity(message, providerEmail);
@@ -626,9 +723,17 @@ export async function scanRevenueOpportunities(input: {
 
     for (const opportunity of opportunities) {
       const runId = operatorRuntimeId("oprun-revenue-scan");
+      const dedupe = buildDedupeMetadata(opportunity.message);
+      const duplicateReason = findDuplicateReason(dedupe, handled);
+      if (duplicateReason) {
+        skipped.push({ messageId: opportunity.message.id, subject: opportunity.message.subject, from: opportunity.message.from, reason: duplicateReason, dedupeKey: dedupe.dedupeKey });
+        continue;
+      }
       const personalization = await buildPersonalization({ workspaceId, opportunity, hubspotConnected });
       const deterministicDraft = buildDraftFromOpportunity(opportunity, personalization);
       const crmPreparation = buildCrmPreparation(opportunity, personalization);
+      crmPreparation.dedupeKey = dedupe.dedupeKey;
+      crmPreparation.normalizedSubject = dedupe.normalizedSubject;
       const aiDraft = await draftRevenueFollowUpWithAI({
         opportunity,
         deterministicDraft,
@@ -649,6 +754,10 @@ export async function scanRevenueOpportunities(input: {
         source: "gmail_scan",
         gmailMessageId: opportunity.message.id,
         gmailThreadId: opportunity.message.threadId,
+        dedupeKey: dedupe.dedupeKey,
+        normalizedSubject: dedupe.normalizedSubject,
+        sourceProvider: dedupe.sourceProvider,
+        operatorKey: dedupe.operatorKey,
         from: opportunity.message.from,
         fromEmail: opportunity.message.fromEmail,
         subject: opportunity.message.subject,
@@ -673,6 +782,10 @@ export async function scanRevenueOpportunities(input: {
       const sourceMetadata = {
         gmailMessageId: opportunity.message.id,
         gmailThreadId: opportunity.message.threadId,
+        dedupeKey: dedupe.dedupeKey,
+        normalizedSubject: dedupe.normalizedSubject,
+        sourceProvider: dedupe.sourceProvider,
+        operatorKey: dedupe.operatorKey,
         from: opportunity.message.from,
         fromEmail: opportunity.message.fromEmail,
         subject: opportunity.message.subject,
@@ -763,6 +876,8 @@ export async function scanRevenueOpportunities(input: {
         body: draft.body,
         policyReason: "External email send requires human approval before Gmail execution.",
         sourceMetadata,
+        dedupeKey: dedupe.dedupeKey,
+        dedupeMetadata: dedupe,
         preparedActions,
         crmPreparation,
         crmPreparationStatus,
@@ -777,6 +892,8 @@ export async function scanRevenueOpportunities(input: {
         draft,
         approvalId: approval.approvalId,
         opportunity: runInput,
+        dedupeKey: dedupe.dedupeKey,
+        dedupeMetadata: dedupe,
         sourceMetadata,
         drafting: {
           detectedSignalSummary: aiDraft.detectedSignalSummary,
@@ -817,7 +934,7 @@ export async function scanRevenueOpportunities(input: {
         runId,
         eventType: "approval.created",
         message: `Created Gmail send approval ${approval.approvalId}.`,
-        metadata: { approvalId: approval.approvalId },
+        metadata: { approvalId: approval.approvalId, ...dedupe },
       });
 
       created.push({
@@ -829,9 +946,13 @@ export async function scanRevenueOpportunities(input: {
         classification: opportunity.classification,
         confidence: opportunity.confidence,
         crmPreparationStatus,
+        dedupeKey: dedupe.dedupeKey,
         runId,
         approvalId: approval.approvalId,
       });
+      [dedupe.dedupeKey, dedupe.messageDedupeKey, dedupe.threadDedupeKey, dedupe.contactSubjectDedupeKey]
+        .filter((key): key is string => Boolean(key))
+        .forEach((key) => setDedupeReason(handled, key, "existing_pending_approval"));
     }
 
     const completedAt = new Date().toISOString();
@@ -842,6 +963,7 @@ export async function scanRevenueOpportunities(input: {
       opportunitiesFound: opportunities.length,
       approvalsCreated: created.length,
       skippedCount: skipped.length,
+      skipped,
       routedItemCount: created.length,
       completedAt,
     };
