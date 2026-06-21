@@ -164,12 +164,23 @@ export default function ConnectorsPage() {
         connectLink?: string | null;
         expiresAt?: string | null;
         providerConfigKey?: string;
+        data?: {
+          token?: string;
+          sessionToken?: string;
+          connect_link?: string | null;
+          connectLink?: string | null;
+          expires_at?: string | null;
+          expiresAt?: string | null;
+        };
         error?: string;
         message?: string;
       };
-      const nangoSessionToken = sessionJson.token || sessionJson.sessionToken;
+      const nangoSessionToken = sessionJson.token || sessionJson.sessionToken || sessionJson.data?.token || sessionJson.data?.sessionToken;
+      const nangoConnectLink = sessionJson.connectLink || sessionJson.data?.connectLink || sessionJson.data?.connect_link || null;
       if (!sessionRes.ok || !nangoSessionToken) {
-        setFeedback(sessionJson.message || sessionJson.error || "Failed to start HubSpot connect.");
+        setFeedback(sessionJson.message || sessionJson.error || (nangoConnectLink
+          ? "Nango returned a connect link but no session token for the embedded connector."
+          : "Failed to start HubSpot connect."));
         return;
       }
       const sessionProviderConfigKey = sessionJson.providerConfigKey || "hubspot";

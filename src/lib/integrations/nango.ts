@@ -7,8 +7,11 @@ type NangoConnectSessionBody = {
 
 type NangoConnectSessionResponse = {
   token?: string;
+  connectLink?: string;
   connect_link?: string;
+  expiresAt?: string;
   expires_at?: string;
+  data?: NangoConnectSessionResponse;
 };
 
 export type SupportedNangoConnectorKey = "hubspot";
@@ -81,6 +84,23 @@ function readValidationErrors(responseBody: unknown): unknown {
   return error?.errors;
 }
 
+function readObject(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" ? value as Record<string, unknown> : null;
+}
+
+function responseShapeDebug(responseBody: unknown) {
+  const body = readObject(responseBody);
+  const data = readObject(body?.data);
+  const sessionData = data || body;
+  return {
+    responseKeys: body ? Object.keys(body) : [],
+    dataExists: Boolean(data),
+    dataKeys: data ? Object.keys(data) : [],
+    tokenExists: typeof sessionData?.token === "string" && sessionData.token.length > 0,
+    connectLinkExists: Boolean(sessionData?.connect_link || sessionData?.connectLink),
+  };
+}
+
 export async function createNangoConnectSession(input: {
   connectorKey: SupportedNangoConnectorKey;
   endUserId: string;
@@ -111,9 +131,22 @@ export async function createNangoConnectSession(input: {
   });
 
   const responseBody = await response.json().catch(() => null) as NangoConnectSessionResponse | Record<string, unknown> | null;
+  const shapeDebug = responseShapeDebug(responseBody);
+  console.info("[nango] createConnectSession response shape", {
+    endpoint,
+    providerConfigKey,
+    status: response.status,
+    ...shapeDebug,
+  });
+
   if (response.ok) {
-    const session = responseBody as NangoConnectSessionResponse | null;
-    if (!session?.token) {
+    const json = responseBody as NangoConnectSessionResponse | null;
+    const sessionData = json?.data ?? json;
+    const token = sessionData?.token;
+    const connectLink = sessionData?.connect_link ?? sessionData?.connectLink ?? null;
+    const expiresAt = sessionData?.expires_at ?? sessionData?.expiresAt ?? null;
+
+    if (!token) {
       throw new NangoConnectSessionError("Nango connect session response did not include a token.", {
         endpoint,
         providerConfigKey,
@@ -124,10 +157,10 @@ export async function createNangoConnectSession(input: {
       });
     }
     return {
-      token: session.token,
-      sessionToken: session.token,
-      connectLink: session.connect_link ?? null,
-      expiresAt: session.expires_at ?? null,
+      token,
+      sessionToken: token,
+      connectLink,
+      expiresAt,
       providerConfigKey,
     };
   }
@@ -138,6 +171,7 @@ export async function createNangoConnectSession(input: {
     providerConfigKey,
     status: response.status,
     statusText: response.statusText,
+    responseShape: shapeDebug,
     responseBody,
     validationErrors,
   });

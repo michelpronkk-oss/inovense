@@ -90,7 +90,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       token: session.token,
-      sessionToken: session.sessionToken,
       connectLink: session.connectLink,
       expiresAt: session.expiresAt,
       providerConfigKey: session.providerConfigKey,
