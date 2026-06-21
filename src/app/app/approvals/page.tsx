@@ -81,6 +81,7 @@ type ApprovalRow = {
       contactEmail?: string;
       contactName?: string | null;
       companyName?: string | null;
+      sourceSubject?: string;
       classification?: string;
       confidence?: string;
       summary?: string;
@@ -88,6 +89,9 @@ type ApprovalRow = {
       suggestedDealStage?: string;
       suggestedFollowUpTask?: string;
       matchedKeywords?: string[];
+      personalizationSource?: string;
+      signatureCandidateRaw?: string | null;
+      signatureCandidateAccepted?: string | null;
     } | null;
   };
 };
@@ -156,6 +160,16 @@ function shortPreview(value: string | null | undefined, max = 420): string {
   if (!value) return "-";
   const trimmed = value.trim();
   return trimmed.length > max ? `${trimmed.slice(0, max)}...` : trimmed;
+}
+
+function confidenceLabel(value: string | null | undefined): string {
+  return value?.trim() ? value.trim().toUpperCase() : "UNKNOWN";
+}
+
+function executionTone(status: "ready" | "prepared" | "blocked") {
+  if (status === "ready") return { color: "#8df5cf", border: "rgba(81,216,138,0.24)", background: "rgba(81,216,138,0.07)" };
+  if (status === "blocked") return { color: "#f5c26b", border: "rgba(245,194,107,0.24)", background: "rgba(245,194,107,0.07)" };
+  return { color: "#b8c5c8", border: "rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.035)" };
 }
 
 function isRevenueApproval(item: ApprovalRow): boolean {
@@ -396,11 +410,31 @@ export default function ApprovalsPage() {
             const showFullEmail = Boolean(fullEmailOpen[item.id]);
             const draftEdit = editingDrafts[item.id];
             const isSavingEdit = savingEditId === item.id;
+            const sourceMetadata = item.payload_preview.sourceMetadata ?? {};
+            const originalSubject = typeof sourceMetadata.subject === "string"
+              ? sourceMetadata.subject
+              : item.payload_preview.crmPreparation?.sourceSubject ?? item.payload_preview.subject ?? "-";
+            const contactNameSource = item.payload_preview.crmPreparation?.personalizationSource
+              || (typeof sourceMetadata.personalizationSource === "string" ? sourceMetadata.personalizationSource : "fallback");
             const hubspotActionSummary = item.payload_preview.crmPreparationStatus === "hubspot_not_connected"
               ? "not prepared because HubSpot is not connected"
               : item.payload_preview.crmPreparationStatus === "hubspot_execution_enabled"
                 ? "contact/deal will be created or updated after approval"
                 : "prepared only";
+            const executionItems = [
+              { label: "Gmail", text: "Reply sends after approval", status: "ready" as const },
+              {
+                label: "HubSpot",
+                text: hubspotActionSummary,
+                status: item.payload_preview.crmPreparationStatus === "hubspot_execution_enabled"
+                  ? "ready" as const
+                  : item.payload_preview.crmPreparationStatus === "hubspot_not_connected"
+                    ? "blocked" as const
+                    : "prepared" as const,
+              },
+              { label: "Note", text: "Prepared only", status: "prepared" as const },
+              { label: "Task", text: "Prepared only", status: "prepared" as const },
+            ];
 
             return (
               <div key={item.id} className="appr-row">
@@ -410,107 +444,152 @@ export default function ApprovalsPage() {
                 </div>
                 <div className="appr-row-from">{operatorName} - {timeAgo(item.created_at)}</div>
                 <div className="appr-row-body">{item.description}</div>
-                <div style={{ marginTop: 10, padding: revenueApproval ? "14px" : "9px 10px", borderRadius: revenueApproval ? 14 : 8, background: revenueApproval ? "linear-gradient(135deg, rgba(77,232,225,0.06), rgba(255,255,255,0.025))" : "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: revenueApproval ? 12 : 4 }}>
+                <div style={{ marginTop: 12, padding: revenueApproval ? "0" : "9px 10px", borderRadius: revenueApproval ? 18 : 8, background: revenueApproval ? "linear-gradient(145deg, rgba(255,255,255,0.055), rgba(77,232,225,0.025) 45%, rgba(0,0,0,0.12))" : "rgba(255,255,255,0.025)", boxShadow: revenueApproval ? "inset 0 0 0 1px rgba(255,255,255,0.09), 0 18px 60px rgba(0,0,0,0.22)" : "inset 0 0 0 1px var(--line)", overflow: "hidden", display: "grid", gap: revenueApproval ? 0 : 4 }}>
                   {revenueApproval && (
                     <>
-                      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 0.55fr", gap: 8 }}>
-                        {[
-                          { label: "Detected signal", value: valueOrDash(item.payload_preview.detectedSignal) },
-                          { label: "Recommended move", value: item.payload_preview.crmPreparation?.suggestedNextStep || item.payload_preview.expectedOutcome || "Review and approve the prepared follow-up." },
-                          { label: "Confidence", value: valueOrDash(item.payload_preview.confidence) },
-                        ].map((field) => (
-                          <div key={field.label} style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(0,0,0,0.16)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)", minWidth: 0 }}>
-                            <div style={{ fontSize: 10, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>{field.label}</div>
-                            <div style={{ fontSize: 12.5, color: "var(--text)", overflowWrap: "anywhere" }}>{field.value}</div>
+                      <div style={{ padding: "16px 18px 14px", display: "grid", gap: 14 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 210px", gap: 18, alignItems: "start" }}>
+                          <div style={{ display: "grid", gap: 10 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                              <span style={{ width: 7, height: 7, borderRadius: 999, background: "#4DE8E1", boxShadow: "0 0 18px rgba(77,232,225,0.72)" }} />
+                              <span style={{ fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.14em" }}>Decision brief</span>
+                              {item.payload_preview.wasEdited && <span className="pill pill-amber" style={{ fontSize: 10.5 }}>Edited</span>}
+                            </div>
+                            <div style={{ fontSize: 18, lineHeight: 1.22, color: "var(--text)", fontWeight: 650, letterSpacing: "-0.02em" }}>
+                              {valueOrDash(item.payload_preview.detectedSignal)}
+                            </div>
+                            <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.55, maxWidth: 760 }}>
+                              {item.payload_preview.whyThisMatters || "Revenue Operator detected a high-confidence inbound revenue signal and prepared an approval-gated follow-up."}
+                            </div>
                           </div>
-                        ))}
+                          <div style={{ justifySelf: "end", minWidth: 190, borderRadius: 14, background: "rgba(0,0,0,0.2)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.075)", padding: "11px 12px", display: "grid", gap: 8 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                              <span style={{ fontSize: 10, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.12em" }}>Confidence</span>
+                              <span style={{ fontSize: 11, color: "#8df5cf", fontWeight: 700, letterSpacing: "0.08em" }}>{confidenceLabel(item.payload_preview.confidence)}</span>
+                            </div>
+                            <div style={{ height: 5, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                              <div style={{ width: item.payload_preview.confidence === "high" ? "92%" : "58%", height: "100%", background: "linear-gradient(90deg, #4DE8E1, #51D88A)", borderRadius: 999 }} />
+                            </div>
+                            <div style={{ fontSize: 11.5, color: "var(--text-mute)", lineHeight: 1.45 }}>
+                              Risk: <span style={{ color: "var(--text-dim)" }}>{valueOrDash(item.payload_preview.riskLevel)}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                          <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 11 }}>
+                            <div style={{ fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 5 }}>Recommended move</div>
+                            <div style={{ fontSize: 12.7, color: "var(--text-dim)", lineHeight: 1.55 }}>
+                              {item.payload_preview.crmPreparation?.suggestedNextStep || item.payload_preview.expectedOutcome || "Review and approve the prepared follow-up."}
+                            </div>
+                          </div>
+                          <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 11 }}>
+                            <div style={{ fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 5 }}>Expected outcome</div>
+                            <div style={{ fontSize: 12.7, color: "var(--text-dim)", lineHeight: 1.55 }}>
+                              {item.payload_preview.expectedOutcome || "Approval records the decision and executes only the approved action."}
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
-                      <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 10 }}>
-                        <div style={{ padding: "10px 12px", borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
-                          <div style={{ fontSize: 11, color: "var(--text-mute)", marginBottom: 5 }}>Detected signal</div>
-                          <div style={{ fontSize: 12.5, color: "var(--text-dim)", lineHeight: 1.55 }}>
-                            {item.payload_preview.whyThisMatters || "Revenue Operator detected a high-confidence inbound revenue signal and prepared an approval-gated follow-up."}
-                          </div>
+                      <div style={{ padding: "13px 18px", borderTop: "1px solid rgba(255,255,255,0.075)", borderBottom: "1px solid rgba(255,255,255,0.075)", background: "rgba(0,0,0,0.16)", display: "grid", gap: 9 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+                          <div style={{ fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.12em" }}>Execution summary</div>
+                          {crmStatus && <div style={{ fontSize: 11.5, color: "var(--text-mute)", textAlign: "right" }}>{crmStatus}</div>}
                         </div>
-                        <div style={{ padding: "10px 12px", borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
-                          <div style={{ fontSize: 11, color: "var(--text-mute)", marginBottom: 5 }}>Risk / expected outcome</div>
-                          <div style={{ fontSize: 12.5, color: "var(--text-dim)", lineHeight: 1.55 }}>
-                            <strong style={{ color: "var(--text)" }}>Risk:</strong> {valueOrDash(item.payload_preview.riskLevel)}<br />
-                            {item.payload_preview.riskNotes ? <>{item.payload_preview.riskNotes}<br /></> : null}
-                            {item.payload_preview.expectedOutcome || "Approval records the decision and executes only the approved action."}
-                          </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8 }}>
+                          {executionItems.map((action) => {
+                            const tone = executionTone(action.status);
+                            return (
+                              <div key={action.label} style={{ borderRadius: 12, padding: "9px 10px", background: tone.background, boxShadow: `inset 0 0 0 1px ${tone.border}`, minWidth: 0 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
+                                  <span style={{ width: 6, height: 6, borderRadius: 999, background: tone.color }} />
+                                  <span style={{ fontSize: 12.2, color: "var(--text)", fontWeight: 650 }}>{action.label}</span>
+                                </div>
+                                <div style={{ fontSize: 11.5, color: "var(--text-mute)", lineHeight: 1.35 }}>{action.text}</div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
 
-                      <div style={{ padding: "10px 12px", borderRadius: 12, background: "rgba(0,0,0,0.14)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)", display: "grid", gap: 7 }}>
-                        <div style={{ fontSize: 11, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Prepared actions</div>
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 7 }}>
-                          <div style={{ fontSize: 12, color: "var(--text-dim)" }}><strong style={{ color: "var(--text)" }}>Gmail:</strong> reply will be sent after approval</div>
-                          <div style={{ fontSize: 12, color: "var(--text-dim)" }}><strong style={{ color: "var(--text)" }}>HubSpot:</strong> {hubspotActionSummary}</div>
-                          <div style={{ fontSize: 12, color: "var(--text-dim)" }}><strong style={{ color: "var(--text)" }}>Note:</strong> prepared only</div>
-                          <div style={{ fontSize: 12, color: "var(--text-dim)" }}><strong style={{ color: "var(--text)" }}>Task:</strong> prepared only</div>
+                      <div style={{ margin: "16px 18px", borderRadius: 16, background: "linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.022))", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                        <div style={{ padding: "12px 14px", borderBottom: "1px solid rgba(255,255,255,0.075)", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+                          <div>
+                            <div style={{ fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 4 }}>Draft reply</div>
+                            <div style={{ fontSize: 12.5, color: "var(--text-dim)" }}>This exact email will be sent after approval.</div>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                            {item.payload_preview.wasEdited && <span className="pill pill-amber" style={{ fontSize: 10.5 }}>Edited</span>}
+                            {!draftEdit && (
+                              <>
+                                <button className="appr-btn edit" type="button" onClick={() => setFullEmailOpen((current) => ({ ...current, [item.id]: !current[item.id] }))}>
+                                  {showFullEmail ? "Hide full email" : "View full email"}
+                                </button>
+                                <button className="appr-btn edit" type="button" onClick={() => startEditingDraft(item)}>Edit draft</button>
+                              </>
+                            )}
+                          </div>
                         </div>
-                        {crmStatus && <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>{crmStatus}</div>}
-                      </div>
-
-                      <div style={{ padding: "10px 12px", borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", marginBottom: 5 }}>
-                          <div style={{ fontSize: 11, color: "var(--text-mute)" }}>Draft reply preview</div>
-                          {item.payload_preview.wasEdited && <span className="pill pill-amber" style={{ fontSize: 10.5 }}>Edited</span>}
-                        </div>
-                        {item.payload_preview.subject && (
-                          <div style={{ fontSize: 12.5, color: "var(--text)", marginBottom: 6 }}>{item.payload_preview.subject}</div>
-                        )}
+                        <div style={{ padding: "14px 16px" }}>
                         {draftEdit ? (
                           <div style={{ display: "grid", gap: 8 }}>
+                            <label style={{ display: "grid", gap: 5 }}>
+                              <span style={{ fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Subject</span>
                             <input
                               value={draftEdit.subject}
                               onChange={(event) => setEditingDrafts((current) => ({ ...current, [item.id]: { ...draftEdit, subject: event.target.value } }))}
                               disabled={isSavingEdit}
-                              style={{ width: "100%", borderRadius: 10, border: "1px solid var(--line)", background: "rgba(255,255,255,0.04)", color: "var(--text)", padding: "9px 10px", fontSize: 12.5 }}
+                                style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(255,255,255,0.11)", background: "rgba(0,0,0,0.24)", color: "var(--text)", padding: "10px 11px", fontSize: 13 }}
                             />
+                            </label>
+                            <label style={{ display: "grid", gap: 5 }}>
+                              <span style={{ fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Body</span>
                             <textarea
                               value={draftEdit.body}
                               onChange={(event) => setEditingDrafts((current) => ({ ...current, [item.id]: { ...draftEdit, body: event.target.value } }))}
                               disabled={isSavingEdit}
                               rows={12}
-                              style={{ width: "100%", resize: "vertical", borderRadius: 10, border: "1px solid var(--line)", background: "rgba(255,255,255,0.04)", color: "var(--text)", padding: "10px 11px", fontSize: 12.5, lineHeight: 1.55 }}
+                                style={{ width: "100%", resize: "vertical", borderRadius: 12, border: "1px solid rgba(255,255,255,0.11)", background: "rgba(0,0,0,0.24)", color: "var(--text)", padding: "12px 13px", fontSize: 13, lineHeight: 1.62 }}
                             />
-                            <div style={{ display: "flex", gap: 8 }}>
+                            </label>
+                            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                               <button className="appr-btn approve" type="button" disabled={isSavingEdit} onClick={() => saveDraftEdit(item)}>{isSavingEdit ? "Saving..." : "Save changes"}</button>
                               <button className="appr-btn edit" type="button" disabled={isSavingEdit} onClick={() => cancelEditingDraft(item.id)}>Cancel</button>
                             </div>
                           </div>
                         ) : (
                           <>
+                            {item.payload_preview.subject && (
+                              <div style={{ fontSize: 13.5, color: "var(--text)", fontWeight: 650, marginBottom: 10, letterSpacing: "-0.01em" }}>{item.payload_preview.subject}</div>
+                            )}
                             <div style={{ fontSize: 12.5, color: "var(--text-dim)", whiteSpace: "pre-wrap", lineHeight: 1.55 }}>
                               {showFullEmail ? (item.payload_preview.fullBody || item.payload_preview.body || "-") : shortPreview(item.payload_preview.body)}
                             </div>
-                            <div style={{ marginTop: 9, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                              <button className="appr-btn edit" type="button" onClick={() => setFullEmailOpen((current) => ({ ...current, [item.id]: !current[item.id] }))}>
-                                {showFullEmail ? "Hide full email" : "View full email"}
-                              </button>
-                              <button className="appr-btn edit" type="button" onClick={() => startEditingDraft(item)}>Edit draft</button>
-                            </div>
                           </>
                         )}
+                        </div>
                       </div>
 
                       <button
                         className="appr-btn edit"
                         type="button"
                         onClick={() => setDetailsOpen((current) => ({ ...current, [item.id]: !current[item.id] }))}
-                        style={{ width: "fit-content", fontSize: 11.5 }}
+                        style={{ width: "fit-content", fontSize: 11.5, margin: "0 18px 16px" }}
                       >
                         {showDetails ? "Hide full details" : "View full details"}
                       </button>
 
                       {showDetails && (
-                        <div style={{ display: "grid", gap: 10 }}>
+                        <div style={{ margin: "0 18px 16px", padding: "13px", borderRadius: 14, background: "rgba(0,0,0,0.14)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)", display: "grid", gap: 10 }}>
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
                             {[
+                              { label: "Lead source", value: "Inovense OS" },
+                              { label: "Signal source", value: "Gmail" },
+                              { label: "Operator", value: "Revenue Operator" },
                               { label: "Source email", value: valueOrDash(item.payload_preview.sourceEmail) },
+                              { label: "Original subject", value: valueOrDash(originalSubject) },
+                              { label: "Contact name source", value: contactNameSource },
                               { label: "Classification", value: valueOrDash(item.payload_preview.classification) },
                               { label: "Approval reason", value: item.payload_preview.approvalReason || item.policy_reason || "-" },
                             ].map((field) => (
@@ -557,7 +636,7 @@ export default function ApprovalsPage() {
                           )}
 
                           {item.payload_preview.crmPreparation && (
-                        <div style={{ fontSize: 12, color: "var(--text-dim)", display: "grid", gap: 4 }}>
+                        <div style={{ fontSize: 12, color: "var(--text-dim)", display: "grid", gap: 4, paddingTop: 2 }}>
                           {item.payload_preview.crmPreparation.suggestedNextStep && (
                             <div><strong style={{ color: "var(--text)" }}>Suggested next step:</strong> {item.payload_preview.crmPreparation.suggestedNextStep}</div>
                           )}
@@ -624,24 +703,26 @@ export default function ApprovalsPage() {
                     </div>
                   )}
                 </div>
-                <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 11.5, color: "var(--text-mute)" }}>Reject reason</span>
-                  <select
-                    value={rejectionReason}
-                    onChange={(event) => setRejectReasons((current) => ({ ...current, [item.id]: event.target.value }))}
-                    style={{ background: "rgba(255,255,255,0.04)", color: "var(--text-dim)", border: "1px solid var(--line)", borderRadius: 9, padding: "7px 9px", fontSize: 12 }}
-                  >
-                    {REJECTION_REASONS.map((reason) => (
-                      <option key={reason} value={reason}>{reason}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="appr-row-actions">
-                  <button className="appr-btn approve" disabled={isBusy || isSavingEdit} onClick={() => actOnApproval(item, "approve")}>
-                    {item.approval_type === "email" ? "Approve and send" : "Approve"}
-                  </button>
-                  <button className="appr-btn edit" disabled={isBusy || isSavingEdit} onClick={() => startEditingDraft(item)}>Edit</button>
-                  <button className="appr-btn deny" disabled={isBusy || isSavingEdit} onClick={() => actOnApproval(item, "reject", rejectionReason)}>Reject</button>
+                <div style={{ marginTop: 12, padding: "11px 12px", borderRadius: 14, background: "rgba(0,0,0,0.16)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.065)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 280 }}>
+                    <span style={{ fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.1em", whiteSpace: "nowrap" }}>Reject reason</span>
+                    <select
+                      value={rejectionReason}
+                      onChange={(event) => setRejectReasons((current) => ({ ...current, [item.id]: event.target.value }))}
+                      style={{ minWidth: 190, background: "rgba(255,255,255,0.045)", color: "var(--text-dim)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "8px 10px", fontSize: 12 }}
+                    >
+                      {REJECTION_REASONS.map((reason) => (
+                        <option key={reason} value={reason}>{reason}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="appr-row-actions" style={{ marginTop: 0 }}>
+                    <button className="appr-btn deny" disabled={isBusy || isSavingEdit} onClick={() => actOnApproval(item, "reject", rejectionReason)}>Reject</button>
+                    <button className="appr-btn edit" disabled={isBusy || isSavingEdit} onClick={() => startEditingDraft(item)}>Edit draft</button>
+                    <button className="appr-btn approve" disabled={isBusy || isSavingEdit} onClick={() => actOnApproval(item, "approve")}>
+                      {item.approval_type === "email" ? "Approve and send" : "Approve"}
+                    </button>
+                  </div>
                 </div>
               </div>
             );

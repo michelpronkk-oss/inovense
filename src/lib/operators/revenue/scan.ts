@@ -24,6 +24,7 @@ type CrmPreparation = {
   lastname?: string | null;
   companyName: string | null;
   source: "gmail";
+  sourceSubject?: string;
   classification: string;
   confidence: string;
   gmailMessageId: string;
@@ -35,6 +36,15 @@ type CrmPreparation = {
   matchedKeywords: string[];
   personalizationSource?: string;
   greetingUsed?: string;
+  signatureCandidateRaw?: string | null;
+  signatureCandidateAccepted?: string | null;
+  rejectedNameCandidates?: { candidate: string; reason: string; source: string }[];
+  attribution?: {
+    leadSource: "Inovense OS";
+    operator: "revenue";
+    signalSource: "gmail";
+    signalType: "revenue_opportunity";
+  };
 };
 
 type Personalization = {
@@ -45,6 +55,7 @@ type Personalization = {
   greetingUsed: string;
   personalizationSource: "hubspot" | "signature" | "from_display" | "email_local" | "fallback";
   signatureCandidate?: string | null;
+  signatureCandidateAccepted?: string | null;
   rejectedNameCandidates?: { candidate: string; reason: string; source: string }[];
 };
 
@@ -105,7 +116,8 @@ const OPPORTUNITY_KEYWORDS = [
 ];
 
 const STRONG_KEYWORDS = new Set(["pricing", "quote", "proposal", "demo", "interested", "can you help", "automation", "website"]);
-const GENERIC_NAME_PARTS = new Set(["info", "sales", "support", "hello", "admin", "noreply", "no-reply", "contact", "team", "newsletter", "office", "service", "help", "marketing"]);
+const GENERIC_NAME_PARTS = new Set(["info", "sales", "support", "hello", "admin", "noreply", "no-reply", "contact", "team", "newsletter", "office", "service", "help", "marketing", "founder", "agency"]);
+const NAME_CONTAMINATION_PARTS = new Set(["hi", "hello", "hey", "dear", "hoi", "hallo", "michel"]);
 
 const SKIP_PATTERNS = [
   { reason: "newsletter", pattern: /\b(newsletter|digest|unsubscribe|view in browser)\b/i },
@@ -201,6 +213,7 @@ function safeHumanName(value: string | null | undefined): { name: string | null;
   if (parts.length === 0 || parts.length > 3) return { name: null, reason: "invalid_word_count" };
   if (parts.some((part) => part.length < 2)) return { name: null, reason: "too_short" };
   if (parts.some((part) => isGenericName(part))) return { name: null, reason: "generic" };
+  if (parts.some((part) => NAME_CONTAMINATION_PARTS.has(part.toLowerCase()))) return { name: null, reason: "contains_greeting_or_body_word" };
   if (parts.some((part) => !/^\p{L}[\p{L}'-]*$/u.test(part))) return { name: null, reason: "username_like" };
   return { name: titleCaseName(parts.join(" ")) };
 }
@@ -221,7 +234,31 @@ function humanNameFromEmailLocal(email: string): string | null {
   return safeHumanName(parts.join(" ")).name;
 }
 
-function nameFromSignatureText(text: string): { name: string | null; candidate?: string; rejected?: { candidate: string; reason: string; source: string } } {
+function cleanSignatureCandidate(candidate: string): { candidate: string; reduced?: boolean } {
+  const parts = candidate.trim().split(/\s+/).filter(Boolean);
+  const contaminationIndex = parts.findIndex((part, index) => index > 0 && NAME_CONTAMINATION_PARTS.has(part.toLowerCase()));
+  if (contaminationIndex > 0) {
+    return { candidate: parts.slice(0, contaminationIndex).join(" "), reduced: true };
+  }
+  return { candidate: candidate.trim() };
+}
+
+function isSignoffLine(line: string): boolean {
+  const normalized = line.trim().replace(/[,.\s]+$/g, "").toLowerCase();
+  return [
+    "best",
+    "best regards",
+    "kind regards",
+    "regards",
+    "thanks",
+    "thank you",
+    "met vriendelijke groet",
+    "groet",
+    "vriendelijke groet",
+  ].includes(normalized);
+}
+
+function nameFromSignatureText(text: string): { name: string | null; candidate?: string; accepted?: string; rejected?: { candidate: string; reason: string; source: string } } {
   const lastLines = text
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
@@ -229,15 +266,15 @@ function nameFromSignatureText(text: string): { name: string | null; candidate?:
     .map((line) => line.trim())
     .filter(Boolean)
     .slice(-20);
-  const normalized = lastLines.join("\n");
-  const signoff = "(?:best regards|kind regards|vriendelijke groet|met vriendelijke groet|best|regards|thanks|thank you|groet)";
-  const pattern = new RegExp(`\\b${signoff}\\s*,?\\s*(?:\\n|\\s)+([\\p{L}][\\p{L}'-]*(?:\\s+[\\p{L}][\\p{L}'-]*){0,2})\\b`, "iu");
-  const match = normalized.match(pattern);
-  const candidate = match?.[1]?.trim();
-  if (!candidate) return { name: null };
-  const safe = safeHumanName(candidate);
-  if (safe.name) return { name: safe.name, candidate };
-  return { name: null, candidate, rejected: { candidate, reason: safe.reason ?? "unsafe", source: "signature" } };
+  for (let index = lastLines.length - 2; index >= 0; index -= 1) {
+    if (!isSignoffLine(lastLines[index])) continue;
+    const rawCandidate = lastLines[index + 1] ?? "";
+    const cleaned = cleanSignatureCandidate(rawCandidate);
+    const safe = safeHumanName(cleaned.candidate);
+    if (safe.name) return { name: safe.name, candidate: rawCandidate, accepted: safe.name };
+    return { name: null, candidate: rawCandidate, rejected: { candidate: rawCandidate, reason: safe.reason ?? "unsafe", source: "signature" } };
+  }
+  return { name: null };
 }
 
 async function buildPersonalization(input: {
@@ -270,7 +307,7 @@ async function buildPersonalization(input: {
   if (signature.rejected) rejectedNameCandidates.push(signature.rejected);
   if (signature.name) {
     const split = splitHumanName(signature.name);
-    return { contactEmail: email, contactName: signature.name, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? signature.name},`, personalizationSource: "signature", signatureCandidate: signature.candidate ?? signature.name, rejectedNameCandidates };
+    return { contactEmail: email, contactName: signature.name, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? signature.name},`, personalizationSource: "signature", signatureCandidate: signature.candidate ?? signature.name, signatureCandidateAccepted: signature.accepted ?? signature.name, rejectedNameCandidates };
   }
 
   const fromName = displayNameFromHeader(input.opportunity.message.from, email);
@@ -338,6 +375,7 @@ function buildCrmPreparation(opportunity: Opportunity, personalization: Personal
     lastname: personalization.lastname,
     companyName: companyFromEmail(opportunity.message.fromEmail),
     source: "gmail",
+    sourceSubject: opportunity.message.subject,
     classification: opportunity.classification,
     confidence: opportunity.confidence,
     gmailMessageId: opportunity.message.id,
@@ -351,6 +389,15 @@ function buildCrmPreparation(opportunity: Opportunity, personalization: Personal
     matchedKeywords: opportunity.matchedKeywords,
     personalizationSource: personalization.personalizationSource,
     greetingUsed: personalization.greetingUsed,
+    signatureCandidateRaw: personalization.signatureCandidate ?? null,
+    signatureCandidateAccepted: personalization.signatureCandidateAccepted ?? null,
+    rejectedNameCandidates: personalization.rejectedNameCandidates ?? [],
+    attribution: {
+      leadSource: "Inovense OS",
+      operator: "revenue",
+      signalSource: "gmail",
+      signalType: "revenue_opportunity",
+    },
   };
 }
 
@@ -368,13 +415,22 @@ function buildPreparedHubSpotActions(input: {
       source: "gmail",
     },
     deal: {
-      dealname: `${input.crmPreparation.suggestedDealStage}: ${contactLabel}`,
+      dealname: `New inbound opportunity: ${contactLabel}`,
       stageLabel: input.crmPreparation.suggestedDealStage,
       pipelineLabel: "Default HubSpot pipeline",
       amount: null,
     },
     note: {
-      body: input.crmPreparation.summary,
+      body: [
+        "Created by Inovense OS Revenue Operator.",
+        "Source channel: Gmail/email.",
+        `Source subject: ${input.crmPreparation.sourceSubject || "-"}.`,
+        `Classification: ${input.crmPreparation.classification}.`,
+        `Confidence: ${input.crmPreparation.confidence}.`,
+        `Suggested next step: ${input.crmPreparation.suggestedNextStep}`,
+        "",
+        input.crmPreparation.summary,
+      ].join("\n"),
     },
     task: {
       title: input.crmPreparation.suggestedFollowUpTask,
@@ -628,6 +684,7 @@ export async function scanRevenueOpportunities(input: {
         personalizationSource: personalization.personalizationSource,
         greetingUsed: personalization.greetingUsed,
         signatureCandidate: personalization.signatureCandidate ?? null,
+        signatureCandidateAccepted: personalization.signatureCandidateAccepted ?? null,
         rejectedNameCandidates: personalization.rejectedNameCandidates ?? [],
         crmPreparationStatus,
         detectedSignalSummary: aiDraft.detectedSignalSummary,

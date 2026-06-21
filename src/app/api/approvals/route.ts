@@ -26,6 +26,7 @@ type GmailContinuationPayload = {
     contactEmail?: string;
     contactName?: string | null;
     companyName?: string | null;
+    sourceSubject?: string;
     classification?: string;
     confidence?: string;
     summary?: string;
@@ -33,6 +34,9 @@ type GmailContinuationPayload = {
     suggestedDealStage?: string;
     suggestedFollowUpTask?: string;
     matchedKeywords?: string[];
+    personalizationSource?: string;
+    signatureCandidateRaw?: string | null;
+    signatureCandidateAccepted?: string | null;
   } | null;
   preparedHubSpotActions?: {
     contact?: Record<string, unknown>;
