@@ -142,6 +142,12 @@ function valueOrDash(value: string | null | undefined): string {
   return value && value.trim() ? value : "-";
 }
 
+function shortPreview(value: string | null | undefined, max = 420): string {
+  if (!value) return "-";
+  const trimmed = value.trim();
+  return trimmed.length > max ? `${trimmed.slice(0, max)}...` : trimmed;
+}
+
 function isRevenueApproval(item: ApprovalRow): boolean {
   return item.payload_preview.operatorKey === "revenue" || item.agent_id === "revenue";
 }
@@ -155,6 +161,7 @@ export default function ApprovalsPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [rejectReasons, setRejectReasons] = useState<Record<string, string>>({});
+  const [detailsOpen, setDetailsOpen] = useState<Record<string, boolean>>({});
 
   const loadApprovals = useCallback(async () => {
     if (!state.workspace.id) return;
@@ -322,6 +329,12 @@ export default function ApprovalsPage() {
                   : null);
             const rejectionReason = rejectReasons[item.id] ?? "Needs manual review";
             const hubspotPreview = item.payload_preview.preparedHubSpotActions;
+            const showDetails = Boolean(detailsOpen[item.id]);
+            const hubspotActionSummary = item.payload_preview.crmPreparationStatus === "hubspot_not_connected"
+              ? "not prepared because HubSpot is not connected"
+              : item.payload_preview.crmPreparationStatus === "hubspot_execution_enabled"
+                ? "contact/deal will be created or updated after approval"
+                : "prepared only";
 
             return (
               <div key={item.id} className="appr-row">
@@ -334,11 +347,10 @@ export default function ApprovalsPage() {
                 <div style={{ marginTop: 10, padding: revenueApproval ? "14px" : "9px 10px", borderRadius: revenueApproval ? 14 : 8, background: revenueApproval ? "linear-gradient(135deg, rgba(77,232,225,0.06), rgba(255,255,255,0.025))" : "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: revenueApproval ? 12 : 4 }}>
                   {revenueApproval && (
                     <>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 0.55fr", gap: 8 }}>
                         {[
                           { label: "Detected signal", value: valueOrDash(item.payload_preview.detectedSignal) },
-                          { label: "Source email", value: valueOrDash(item.payload_preview.sourceEmail) },
-                          { label: "Classification", value: valueOrDash(item.payload_preview.classification) },
+                          { label: "Recommended move", value: item.payload_preview.crmPreparation?.suggestedNextStep || item.payload_preview.expectedOutcome || "Review and approve the prepared follow-up." },
                           { label: "Confidence", value: valueOrDash(item.payload_preview.confidence) },
                         ].map((field) => (
                           <div key={field.label} style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(0,0,0,0.16)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)", minWidth: 0 }}>
@@ -350,7 +362,7 @@ export default function ApprovalsPage() {
 
                       <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 10 }}>
                         <div style={{ padding: "10px 12px", borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
-                          <div style={{ fontSize: 11, color: "var(--text-mute)", marginBottom: 5 }}>Why this matters</div>
+                          <div style={{ fontSize: 11, color: "var(--text-mute)", marginBottom: 5 }}>Detected signal</div>
                           <div style={{ fontSize: 12.5, color: "var(--text-dim)", lineHeight: 1.55 }}>
                             {item.payload_preview.whyThisMatters || "Revenue Operator detected a high-confidence inbound revenue signal and prepared an approval-gated follow-up."}
                           </div>
@@ -365,21 +377,52 @@ export default function ApprovalsPage() {
                         </div>
                       </div>
 
-                      {preparedActions.length > 0 && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-                          {preparedActions.map((action) => (
-                            <span key={action} className="pill pill-cyan" style={{ fontSize: 11 }}>{actionLabel(action)}</span>
-                          ))}
+                      <div style={{ padding: "10px 12px", borderRadius: 12, background: "rgba(0,0,0,0.14)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)", display: "grid", gap: 7 }}>
+                        <div style={{ fontSize: 11, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Prepared actions</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 7 }}>
+                          <div style={{ fontSize: 12, color: "var(--text-dim)" }}><strong style={{ color: "var(--text)" }}>Gmail:</strong> reply will be sent after approval</div>
+                          <div style={{ fontSize: 12, color: "var(--text-dim)" }}><strong style={{ color: "var(--text)" }}>HubSpot:</strong> {hubspotActionSummary}</div>
+                          <div style={{ fontSize: 12, color: "var(--text-dim)" }}><strong style={{ color: "var(--text)" }}>Note:</strong> prepared only</div>
+                          <div style={{ fontSize: 12, color: "var(--text-dim)" }}><strong style={{ color: "var(--text)" }}>Task:</strong> prepared only</div>
                         </div>
-                      )}
+                        {crmStatus && <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>{crmStatus}</div>}
+                      </div>
 
-                      {crmStatus && (
-                        <div style={{ fontSize: 12, color: "var(--text-dim)", padding: "8px 10px", borderRadius: 10, background: "rgba(255,255,255,0.025)" }}>
-                          {crmStatus}
+                      <div style={{ padding: "10px 12px", borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
+                        <div style={{ fontSize: 11, color: "var(--text-mute)", marginBottom: 5 }}>Draft reply preview</div>
+                        {item.payload_preview.subject && (
+                          <div style={{ fontSize: 12.5, color: "var(--text)", marginBottom: 6 }}>{item.payload_preview.subject}</div>
+                        )}
+                        <div style={{ fontSize: 12.5, color: "var(--text-dim)", whiteSpace: "pre-wrap", lineHeight: 1.55 }}>
+                          {shortPreview(item.payload_preview.body)}
                         </div>
-                      )}
+                      </div>
 
-                      {hubspotPreview && (
+                      <button
+                        className="appr-btn edit"
+                        type="button"
+                        onClick={() => setDetailsOpen((current) => ({ ...current, [item.id]: !current[item.id] }))}
+                        style={{ width: "fit-content", fontSize: 11.5 }}
+                      >
+                        {showDetails ? "Hide full details" : "View full details"}
+                      </button>
+
+                      {showDetails && (
+                        <div style={{ display: "grid", gap: 10 }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+                            {[
+                              { label: "Source email", value: valueOrDash(item.payload_preview.sourceEmail) },
+                              { label: "Classification", value: valueOrDash(item.payload_preview.classification) },
+                              { label: "Approval reason", value: item.payload_preview.approvalReason || item.policy_reason || "-" },
+                            ].map((field) => (
+                              <div key={field.label} style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(0,0,0,0.16)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)", minWidth: 0 }}>
+                                <div style={{ fontSize: 10, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>{field.label}</div>
+                                <div style={{ fontSize: 12.5, color: "var(--text)", overflowWrap: "anywhere" }}>{field.value}</div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {hubspotPreview && (
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
                           <div style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(0,0,0,0.16)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
                             <div style={{ fontSize: 10, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>HubSpot contact</div>
@@ -412,9 +455,9 @@ export default function ApprovalsPage() {
                             <div style={{ marginTop: 4, fontSize: 11, color: "var(--text-mute)" }}>Prepared only in this version.</div>
                           </div>
                         </div>
-                      )}
+                          )}
 
-                      {item.payload_preview.crmPreparation && (
+                          {item.payload_preview.crmPreparation && (
                         <div style={{ fontSize: 12, color: "var(--text-dim)", display: "grid", gap: 4 }}>
                           {item.payload_preview.crmPreparation.suggestedNextStep && (
                             <div><strong style={{ color: "var(--text)" }}>Suggested next step:</strong> {item.payload_preview.crmPreparation.suggestedNextStep}</div>
@@ -426,25 +469,27 @@ export default function ApprovalsPage() {
                             <div><strong style={{ color: "var(--text)" }}>Suggested task:</strong> {item.payload_preview.crmPreparation.suggestedFollowUpTask}</div>
                           )}
                         </div>
+                          )}
+                        </div>
                       )}
                     </>
                   )}
-                  {item.payload_preview.to && (
+                  {!revenueApproval && item.payload_preview.to && (
                     <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
                       <strong style={{ color: "var(--text)" }}>{revenueApproval ? "Recipient:" : "To:"}</strong> {item.payload_preview.to}
                     </div>
                   )}
-                  {item.payload_preview.subject && (
+                  {!revenueApproval && item.payload_preview.subject && (
                     <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
                       <strong style={{ color: "var(--text)" }}>{revenueApproval ? "Draft subject:" : "Subject:"}</strong> {item.payload_preview.subject}
                     </div>
                   )}
-                  {item.payload_preview.body && (
+                  {!revenueApproval && item.payload_preview.body && (
                     <div style={{ fontSize: 11.5, color: "var(--text-dim)", whiteSpace: "pre-wrap" }}>
                       <strong style={{ color: "var(--text)" }}>{revenueApproval ? "Draft body:" : "Body:"}</strong> {item.payload_preview.body}
                     </div>
                   )}
-                  {(item.payload_preview.approvalReason || item.policy_reason) && (
+                  {!revenueApproval && (item.payload_preview.approvalReason || item.policy_reason) && (
                     <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
                       <strong style={{ color: "var(--text)" }}>Approval reason:</strong> {item.payload_preview.approvalReason || item.policy_reason}
                     </div>
@@ -469,12 +514,12 @@ export default function ApprovalsPage() {
                       <strong style={{ color: "var(--text)" }}>CRM summary:</strong> {item.payload_preview.crmPreparation.summary}
                     </div>
                   )}
-                  {revenueApproval && item.payload_preview.whatHappensAfterApproval && (
+                  {revenueApproval && showDetails && item.payload_preview.whatHappensAfterApproval && (
                     <div style={{ fontSize: 11.5, color: "var(--text-dim)", paddingTop: 2 }}>
                       <strong style={{ color: "var(--text)" }}>What happens after approval:</strong> {item.payload_preview.whatHappensAfterApproval}
                     </div>
                   )}
-                  {item.linked_run_id && (
+                  {item.linked_run_id && (!revenueApproval || showDetails) && (
                     <div style={{ fontSize: 11.5, color: "var(--text-dim)", fontFamily: "var(--font-mono)" }}>
                       Run: {item.linked_run_id}
                     </div>

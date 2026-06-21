@@ -43,7 +43,7 @@ type Personalization = {
   firstname: string | null;
   lastname: string | null;
   greetingUsed: string;
-  personalizationSource: "from_display_name" | "email_local_part" | "hubspot_contact" | "snippet_signature" | "fallback";
+  personalizationSource: "hubspot" | "signature" | "from_display" | "email_local" | "fallback";
 };
 
 export type RevenueScanSummary = {
@@ -103,7 +103,7 @@ const OPPORTUNITY_KEYWORDS = [
 ];
 
 const STRONG_KEYWORDS = new Set(["pricing", "quote", "proposal", "demo", "interested", "can you help", "automation", "website"]);
-const GENERIC_NAME_PARTS = new Set(["info", "sales", "support", "hello", "admin", "noreply", "no-reply", "contact", "team", "newsletter", "office", "service", "help"]);
+const GENERIC_NAME_PARTS = new Set(["info", "sales", "support", "hello", "admin", "noreply", "no-reply", "contact", "team", "newsletter", "office", "service", "help", "marketing"]);
 
 const SKIP_PATTERNS = [
   { reason: "newsletter", pattern: /\b(newsletter|digest|unsubscribe|view in browser)\b/i },
@@ -183,14 +183,27 @@ function isGenericName(value: string): boolean {
   return cleaned.split(/[\s._+-]+/).some((part) => GENERIC_NAME_PARTS.has(part));
 }
 
+function safeHumanName(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const cleaned = value
+    .replace(/<[^>]+>/g, " ")
+    .replace(/["“”]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!cleaned || cleaned.includes("@") || /\d/.test(cleaned)) return null;
+  if (/\b(?:www\.|\.com|\.net|\.org|\.io|\.co|https?:\/\/)\b/i.test(cleaned)) return null;
+  if ((cleaned.match(/[^\p{L}\s'-]/gu) ?? []).length > 0) return null;
+  const parts = cleaned.split(/\s+/).filter(Boolean);
+  if (parts.length === 0 || parts.length > 3) return null;
+  if (parts.some((part) => part.length < 2 || isGenericName(part) || !/^\p{L}[\p{L}'-]*$/u.test(part))) return null;
+  return titleCaseName(parts.join(" "));
+}
+
 function displayNameFromHeader(from: string, email: string): string | null {
   const rawName = from.replace(/<[^>]+>/g, "").replace(/"/g, "").trim();
   if (!rawName || rawName.toLowerCase() === email.toLowerCase() || rawName.includes("@")) return null;
   const cleaned = rawName.replace(/\s+via\s+.+$/i, "").trim();
-  if (!cleaned || isGenericName(cleaned)) return null;
-  const parts = cleaned.split(/\s+/).filter((part) => /^[a-z][a-z'-]{1,}$/i.test(part));
-  if (parts.length === 0 || parts.length > 4) return null;
-  return titleCaseName(parts.join(" "));
+  return safeHumanName(cleaned);
 }
 
 function humanNameFromEmailLocal(email: string): string | null {
@@ -199,12 +212,15 @@ function humanNameFromEmailLocal(email: string): string | null {
   const parts = local.split(/[._+-]+/).filter(Boolean);
   if (parts.length === 0 || parts.length > 3) return null;
   if (parts.some((part) => part.length < 2 || isGenericName(part))) return null;
-  return titleCaseName(parts.join(" "));
+  return safeHumanName(parts.join(" "));
 }
 
 function nameFromSnippetSignature(snippet: string): string | null {
-  const match = snippet.match(/\b(?:best|thanks|regards|cheers),?\s+([A-Z][a-z]{1,}(?:\s+[A-Z][a-z]{1,})?)/);
-  return match?.[1] && !isGenericName(match[1]) ? match[1] : null;
+  const normalized = snippet.replace(/\r?\n/g, " ").replace(/\s+/g, " ").trim();
+  const signoff = "(?:best regards|kind regards|vriendelijke groet|met vriendelijke groet|best|regards|thanks|thank you|groet)";
+  const pattern = new RegExp(`\\b${signoff}\\s*,?\\s+([\\p{L}][\\p{L}'-]*(?:\\s+[\\p{L}][\\p{L}'-]*){0,2})\\b`, "iu");
+  const match = normalized.match(pattern);
+  return safeHumanName(match?.[1]);
 }
 
 async function buildPersonalization(input: {
@@ -213,26 +229,15 @@ async function buildPersonalization(input: {
   hubspotConnected: boolean;
 }): Promise<Personalization> {
   const email = input.opportunity.message.fromEmail;
-  const fromName = displayNameFromHeader(input.opportunity.message.from, email);
-  if (fromName) {
-    const split = splitHumanName(fromName);
-    return { contactEmail: email, contactName: fromName, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? fromName},`, personalizationSource: "from_display_name" };
-  }
-
-  const localName = humanNameFromEmailLocal(email);
-  if (localName) {
-    const split = splitHumanName(localName);
-    return { contactEmail: email, contactName: localName, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? localName},`, personalizationSource: "email_local_part" };
-  }
-
   if (input.hubspotConnected) {
     try {
       const contact = await findContactByEmail(input.workspaceId, email);
       const first = typeof contact?.properties?.firstname === "string" ? contact.properties.firstname.trim() : "";
       const last = typeof contact?.properties?.lastname === "string" ? contact.properties.lastname.trim() : "";
-      const contactName = [first, last].filter(Boolean).join(" ").trim();
-      if (contactName && !isGenericName(contactName)) {
-        return { contactEmail: email, contactName, firstname: first || null, lastname: last || null, greetingUsed: `Hi ${first || contactName},`, personalizationSource: "hubspot_contact" };
+      const contactName = safeHumanName([first, last].filter(Boolean).join(" "));
+      if (contactName) {
+        const split = splitHumanName(contactName);
+        return { contactEmail: email, contactName, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? contactName},`, personalizationSource: "hubspot" };
       }
     } catch (error) {
       console.warn("[revenue-scan] hubspot contact personalization skipped", {
@@ -246,7 +251,19 @@ async function buildPersonalization(input: {
   const snippetName = nameFromSnippetSignature(input.opportunity.message.snippet);
   if (snippetName) {
     const split = splitHumanName(snippetName);
-    return { contactEmail: email, contactName: snippetName, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? snippetName},`, personalizationSource: "snippet_signature" };
+    return { contactEmail: email, contactName: snippetName, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? snippetName},`, personalizationSource: "signature" };
+  }
+
+  const fromName = displayNameFromHeader(input.opportunity.message.from, email);
+  if (fromName) {
+    const split = splitHumanName(fromName);
+    return { contactEmail: email, contactName: fromName, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? fromName},`, personalizationSource: "from_display" };
+  }
+
+  const localName = humanNameFromEmailLocal(email);
+  if (localName) {
+    const split = splitHumanName(localName);
+    return { contactEmail: email, contactName: localName, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? localName},`, personalizationSource: "email_local" };
   }
 
   return { contactEmail: email, contactName: null, firstname: null, lastname: null, greetingUsed: "Hi there,", personalizationSource: "fallback" };
