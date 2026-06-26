@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { getProviderConfigKey, isSupportedNangoConnector } from "@/lib/connectors/registry";
 
 type NangoConnectSessionBody = {
   tags: Record<string, string>;
@@ -35,15 +36,9 @@ export type NangoConnectionMetadata = {
   metadata?: Record<string, unknown>;
 };
 
-export const HUBSPOT_PROVIDER_CONFIG_KEY = process.env.NANGO_HUBSPOT_CONFIG_KEY || "hubspot";
-
-const NANGO_CONNECTORS: Record<SupportedNangoConnectorKey, NangoConnectorConfig> = {
-  hubspot: {
-    connectorKey: "hubspot",
-    providerConfigKey: HUBSPOT_PROVIDER_CONFIG_KEY,
-    provider: "hubspot",
-  },
-};
+// Provider config keys now live in the connector catalog (registry.ts).
+// Kept as a named export for existing imports (finalize/webhook/hubspot executor).
+export const HUBSPOT_PROVIDER_CONFIG_KEY = getProviderConfigKey("hubspot") || "hubspot";
 
 export class NangoConnectSessionError extends Error {
   details: {
@@ -69,8 +64,8 @@ function required(name: string): string {
 }
 
 export function getNangoProviderConfigKey(connectorKey: string): string | null {
-  if (connectorKey !== "hubspot") return null;
-  return NANGO_CONNECTORS.hubspot.providerConfigKey;
+  if (!isSupportedNangoConnector(connectorKey)) return null;
+  return getProviderConfigKey(connectorKey);
 }
 
 function getNangoHost(): string {
@@ -102,11 +97,14 @@ function responseShapeDebug(responseBody: unknown) {
 }
 
 export async function createNangoConnectSession(input: {
-  connectorKey: SupportedNangoConnectorKey;
+  connectorKey: string;
   endUserId: string;
   endUserEmail?: string;
   tags: Record<string, string>;
 }) {
+  if (!isSupportedNangoConnector(input.connectorKey)) {
+    throw new Error(`Unsupported connector key: ${input.connectorKey}`);
+  }
   const providerConfigKey = getNangoProviderConfigKey(input.connectorKey);
   if (!providerConfigKey) throw new Error(`Unsupported connector key: ${input.connectorKey}`);
 

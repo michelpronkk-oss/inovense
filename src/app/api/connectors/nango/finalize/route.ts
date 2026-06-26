@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { HUBSPOT_PROVIDER_CONFIG_KEY, getNangoProviderConfigKey } from "@/lib/integrations/nango";
+import { getConnectorDefinition, isSupportedNangoConnector } from "@/lib/connectors/registry";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 
@@ -60,9 +61,10 @@ export async function POST(req: NextRequest) {
     || userEmail
     || null;
 
-  if (!workspaceId || connectorKey !== "hubspot") {
-    return NextResponse.json({ error: "workspaceId and connectorKey=hubspot are required.", code: "invalid_params" }, { status: 400 });
+  if (!workspaceId || !isSupportedNangoConnector(connectorKey)) {
+    return NextResponse.json({ error: "workspaceId and a supported Nango connectorKey are required.", code: "invalid_params" }, { status: 400 });
   }
+  const connectorDef = getConnectorDefinition(connectorKey);
   if (!nangoConnectionId) {
     return NextResponse.json({
       error: "missing_nango_connection_id",
@@ -84,20 +86,20 @@ export async function POST(req: NextRequest) {
     .from("os_connectors")
     .select("id")
     .eq("workspace_id", context.workspaceId)
-    .eq("connector_key", "hubspot")
+    .eq("connector_key", connectorKey)
     .maybeSingle();
   if (existing.error) {
-    return NextResponse.json({ error: "hubspot_lookup_failed", message: existing.error.message }, { status: 500 });
+    return NextResponse.json({ error: "connector_lookup_failed", message: existing.error.message }, { status: 500 });
   }
-  const connectorRowId = existing.data?.id ?? `${context.workspaceId}:hubspot`;
+  const connectorRowId = existing.data?.id ?? `${context.workspaceId}:${connectorKey}`;
   const upsert = await supabase.from("os_connectors").upsert({
     id: connectorRowId,
     workspace_id: context.workspaceId,
-    connector_key: "hubspot",
-    name: "HubSpot",
-    letter: "Hs",
-    color: "#FF7A59",
-    category: "CRM and sales",
+    connector_key: connectorKey,
+    name: connectorDef?.displayName ?? "HubSpot",
+    letter: connectorDef?.letter ?? "Hs",
+    color: connectorDef?.color ?? "#FF7A59",
+    category: connectorDef?.category ?? "crm",
     status: "connected",
     connected: true,
     provider_config_key: providerConfigKey,

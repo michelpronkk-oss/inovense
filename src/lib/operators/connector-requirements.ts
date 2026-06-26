@@ -1,0 +1,205 @@
+// Operator -> capability requirements.
+//
+// Operators declare what capabilities they need in stable capability terms,
+// not specific connectors. Readiness is then computed against real workspace
+// connector truth (what is actually connected). This keeps operator logic
+// connector-agnostic so new connectors light operators up automatically.
+
+import {
+  getCapabilitiesForConnectors,
+  type Capability,
+} from "@/lib/connectors/capabilities";
+import {
+  getConnectorDefinition,
+  listConnectors,
+  type ConnectorDefinition,
+} from "@/lib/connectors/registry";
+import type { OperatorKey } from "@/lib/operators/registry";
+
+export type OperatorConnectorRequirement = {
+  operatorKey: OperatorKey;
+  required: Capability[];
+  optional: Capability[];
+};
+
+export const OPERATOR_CONNECTOR_REQUIREMENTS: Record<OperatorKey, OperatorConnectorRequirement> = {
+  revenue: {
+    operatorKey: "revenue",
+    required: ["email.read", "email.send_after_approval"],
+    optional: ["crm.contacts.write", "crm.deals.write", "calendar.events.read"],
+  },
+  client_flow: {
+    operatorKey: "client_flow",
+    required: ["email.read"],
+    optional: ["docs.read", "pm.tasks.write_after_approval", "chat.messages.send_after_approval"],
+  },
+  operations: {
+    operatorKey: "operations",
+    required: [],
+    optional: ["chat.channels.read", "pm.tasks.read", "calendar.events.read", "automation.workflow.trigger_after_approval"],
+  },
+  finance_billing: {
+    operatorKey: "finance_billing",
+    required: ["billing.payment_status.read"],
+    optional: ["billing.invoices.read", "email.send_after_approval"],
+  },
+  support: {
+    operatorKey: "support",
+    required: ["support.tickets.read", "support.replies.send_after_approval"],
+    optional: ["email.read"],
+  },
+  marketing: {
+    operatorKey: "marketing",
+    required: [],
+    optional: ["docs.read", "marketing.posts.write_after_approval", "analytics.read"],
+  },
+  website_conversion: {
+    operatorKey: "website_conversion",
+    required: ["website.pages.read"],
+    optional: ["website.pages.write_after_approval", "analytics.read"],
+  },
+  knowledge_memory: {
+    operatorKey: "knowledge_memory",
+    required: ["docs.read"],
+    optional: ["crm.contacts.read", "approved_outputs.read"],
+  },
+  approval_risk: {
+    operatorKey: "approval_risk",
+    required: ["approvals.read", "audit_logs.write"],
+    optional: [],
+  },
+  automation_architect: {
+    operatorKey: "automation_architect",
+    required: ["automation.webhook.receive"],
+    optional: ["automation.workflow.trigger_after_approval"],
+  },
+  // Operators without a dedicated capability spec yet. Optional-only so they
+  // never report missing required capabilities.
+  seo_implementation: {
+    operatorKey: "seo_implementation",
+    required: [],
+    optional: ["website.pages.read", "analytics.read", "docs.read"],
+  },
+  proposal_quote: {
+    operatorKey: "proposal_quote",
+    required: [],
+    optional: ["email.send_after_approval", "crm.deals.write", "docs.read"],
+  },
+  review_proof: {
+    operatorKey: "review_proof",
+    required: [],
+    optional: ["docs.read"],
+  },
+  hiring_team: {
+    operatorKey: "hiring_team",
+    required: [],
+    optional: ["email.send_after_approval", "calendar.events.read"],
+  },
+  social_community: {
+    operatorKey: "social_community",
+    required: [],
+    optional: ["marketing.posts.write_after_approval"],
+  },
+};
+
+export type WorkspaceConnectorTruthInput =
+  | string[]
+  | Array<{ connectorKey: string; connected?: boolean; status?: string }>;
+
+function normalizeConnectedKeys(truth: WorkspaceConnectorTruthInput): string[] {
+  if (truth.length === 0) return [];
+  if (typeof truth[0] === "string") {
+    return (truth as string[]).filter(Boolean);
+  }
+  return (truth as Array<{ connectorKey: string; connected?: boolean; status?: string }>)
+    .filter((row) => row.connected === true || row.status === "connected" || row.status === "healthy")
+    .map((row) => row.connectorKey)
+    .filter(Boolean);
+}
+
+export function getOperatorConnectorRequirement(operatorKey: string): OperatorConnectorRequirement | null {
+  return (OPERATOR_CONNECTOR_REQUIREMENTS as Record<string, OperatorConnectorRequirement>)[operatorKey] ?? null;
+}
+
+export type OperatorConnectorReadiness = {
+  operatorKey: OperatorKey;
+  ready: boolean;
+  connectedCapabilities: Capability[];
+  requiredCapabilities: Capability[];
+  satisfiedRequired: Capability[];
+  missingRequired: Capability[];
+  satisfiedOptional: Capability[];
+  missingOptional: Capability[];
+};
+
+export function getOperatorConnectorReadiness(
+  operatorKey: string,
+  workspaceConnectorTruth: WorkspaceConnectorTruthInput,
+): OperatorConnectorReadiness | null {
+  const requirement = getOperatorConnectorRequirement(operatorKey);
+  if (!requirement) return null;
+
+  const connectedKeys = normalizeConnectedKeys(workspaceConnectorTruth);
+  const connectedCapabilities = getCapabilitiesForConnectors(connectedKeys);
+  const has = (capability: Capability) => connectedCapabilities.includes(capability);
+
+  const satisfiedRequired = requirement.required.filter(has);
+  const missingRequired = requirement.required.filter((capability) => !has(capability));
+  const satisfiedOptional = requirement.optional.filter(has);
+  const missingOptional = requirement.optional.filter((capability) => !has(capability));
+
+  return {
+    operatorKey: requirement.operatorKey,
+    ready: missingRequired.length === 0,
+    connectedCapabilities,
+    requiredCapabilities: requirement.required,
+    satisfiedRequired,
+    missingRequired,
+    satisfiedOptional,
+    missingOptional,
+  };
+}
+
+export function getMissingRequiredCapabilities(
+  operatorKey: string,
+  workspaceConnectorTruth: WorkspaceConnectorTruthInput,
+): Capability[] {
+  return getOperatorConnectorReadiness(operatorKey, workspaceConnectorTruth)?.missingRequired ?? [];
+}
+
+/**
+ * Connectors that would add still-missing optional capabilities for an operator
+ * and are not already connected. Ranked available -> coming_soon -> planned so
+ * upsell never points at a connector that cannot be built yet over one that can.
+ */
+export function getOptionalUpsellConnectors(
+  operatorKey: string,
+  workspaceConnectorTruth: WorkspaceConnectorTruthInput,
+): ConnectorDefinition[] {
+  const readiness = getOperatorConnectorReadiness(operatorKey, workspaceConnectorTruth);
+  if (!readiness) return [];
+
+  const stillMissing = new Set<Capability>([...readiness.missingRequired, ...readiness.missingOptional]);
+  if (stillMissing.size === 0) return [];
+
+  const connectedKeys = new Set(normalizeConnectedKeys(workspaceConnectorTruth));
+  const statusRank: Record<ConnectorDefinition["status"], number> = {
+    available: 0,
+    coming_soon: 1,
+    planned: 2,
+    internal_only: 3,
+  };
+
+  return listConnectors()
+    .filter((def) => !connectedKeys.has(def.connectorKey))
+    .filter((def) => def.capabilities.some((capability) => stillMissing.has(capability)))
+    .sort((a, b) => statusRank[a.status] - statusRank[b.status]);
+}
+
+/** Convenience: connector definitions an operator can use, from the catalog. */
+export function getOperatorCatalogConnectors(operatorKey: OperatorKey): ConnectorDefinition[] {
+  return listConnectors().filter((def) => def.usedByOperators.includes(operatorKey));
+}
+
+// Re-export for callers that only import this module.
+export { getConnectorDefinition };

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getConnectorTruth } from "@/lib/connectors/truth";
+import { isSupportedNangoConnector } from "@/lib/connectors/registry";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 
@@ -15,8 +16,8 @@ export async function GET(req: NextRequest) {
   if (!workspaceId || !connectorKey) {
     return NextResponse.json({ error: "workspaceId and connectorKey are required." }, { status: 400 });
   }
-  if (connectorKey !== "hubspot") {
-    return NextResponse.json({ error: "Only HubSpot is supported in this pass." }, { status: 400 });
+  if (!isSupportedNangoConnector(connectorKey)) {
+    return NextResponse.json({ error: "This connector is not available to connect yet." }, { status: 400 });
   }
 
   const supabase = createSupabaseAdmin();
@@ -26,13 +27,13 @@ export async function GET(req: NextRequest) {
   }
 
   const truth = await getConnectorTruth({ workspaceId: context.workspaceId, supabase });
-  const hubspot = truth.find((connector) => connector.connectorKey === "hubspot");
+  const connector = truth.find((row) => row.connectorKey === connectorKey);
 
   return NextResponse.json({
-    status: hubspot?.status ?? "not_connected",
-    provider_config_key: hubspot?.providerConfigKey ?? null,
-    nango_connection_id: hubspot?.nangoConnectionId ?? null,
-    provider_email: hubspot?.accountEmail ?? null,
-    connected_at: hubspot?.connectedAt ?? null,
+    status: connector?.status ?? "not_connected",
+    provider_config_key: connector?.providerConfigKey ?? null,
+    nango_connection_id: connector?.nangoConnectionId ?? null,
+    provider_email: connector?.accountEmail ?? null,
+    connected_at: connector?.connectedAt ?? null,
   });
 }

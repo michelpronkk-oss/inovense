@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createNangoConnectSession, NangoConnectSessionError } from "@/lib/integrations/nango";
+import { isSupportedNangoConnector } from "@/lib/connectors/registry";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { resolveWorkspaceMembership } from "@/lib/server/workspace-membership";
 import { getEntitlements } from "@/lib/os/entitlements";
@@ -27,8 +28,8 @@ export async function POST(req: NextRequest) {
     if (!workspaceId || !connectorKey) {
       return NextResponse.json({ error: "workspaceId and connectorKey are required.", code: "invalid_params" }, { status: 400 });
     }
-    if (connectorKey !== "hubspot") {
-      return NextResponse.json({ error: "Only HubSpot is supported in this pass.", code: "unsupported_connector" }, { status: 400 });
+    if (!isSupportedNangoConnector(connectorKey)) {
+      return NextResponse.json({ error: "This connector is not available to connect yet.", code: "unsupported_connector" }, { status: 400 });
     }
     if (!userEmail) {
       return NextResponse.json({ error: "userEmail is required.", code: "not_authenticated" }, { status: 400 });
@@ -82,7 +83,7 @@ export async function POST(req: NextRequest) {
     };
 
     const session = await createNangoConnectSession({
-      connectorKey: "hubspot",
+      connectorKey,
       endUserId: userId || userEmail,
       endUserEmail: userEmail,
       tags,

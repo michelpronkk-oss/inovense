@@ -12,6 +12,23 @@ import { UsageBanner } from "@/components/upgrade-prompt";
 import { getEntitlements } from "@/lib/os/entitlements";
 import { UpgradeModal } from "@/components/upgrade-modal";
 import { isRealConnector, isRealConnectedConnector } from "@/lib/os/truth";
+import {
+  isConnectorAvailableForAuth,
+  CONNECTOR_CATEGORY_LABELS,
+  type ConnectorCategory,
+} from "@/lib/connectors/registry";
+import { getComingSoonConnectors } from "@/lib/connectors/capabilities";
+import { getOperatorDefinition } from "@/lib/operators/registry";
+
+// Seed connector ids use hyphens (e.g. "google-calendar"); catalog keys use
+// underscores (e.g. "google_calendar"). Normalize before catalog lookups.
+function normalizeConnectorKey(id: string): string {
+  return id.replace(/-/g, "_");
+}
+
+function operatorLabel(operatorKey: string): string {
+  return getOperatorDefinition(operatorKey)?.name ?? operatorKey;
+}
 
 const CATEGORY_ORDER = [
   "All",
@@ -46,6 +63,7 @@ export default function ConnectorsPage() {
   const [feedback, setFeedback] = useState("");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [hubspotConnectLoading, setHubspotConnectLoading] = useState(false);
+  const [catalogCategory, setCatalogCategory] = useState<ConnectorCategory | "all">("all");
   const [hubspotStatus, setHubspotStatus] = useState<{
     status: "connected" | "error" | "pending" | "not_connected";
     provider_email?: string | null;
@@ -83,6 +101,18 @@ export default function ConnectorsPage() {
       return byCategory && bySearch;
     });
   }, [availableConnectors, category, search]);
+
+  // Catalog of connectors that are not functional yet (registry-driven, honest).
+  const comingSoonConnectors = useMemo(() => getComingSoonConnectors(), []);
+  const comingSoonCategories = useMemo(() => {
+    const set = new Set<ConnectorCategory>();
+    comingSoonConnectors.forEach((c) => set.add(c.category));
+    return Array.from(set);
+  }, [comingSoonConnectors]);
+  const filteredComingSoon = useMemo(
+    () => (catalogCategory === "all" ? comingSoonConnectors : comingSoonConnectors.filter((c) => c.category === catalogCategory)),
+    [comingSoonConnectors, catalogCategory]
+  );
 
   const setupConnector = state.connectors.find((c) => c.id === setupConnectorId) ?? null;
   const drawerConnector = state.connectors.find((c) => c.id === drawerConnectorId) ?? null;
@@ -384,6 +414,48 @@ export default function ConnectorsPage() {
         </div>
       )}
 
+      {/* Coming soon catalog (registry-driven, visibly disabled) */}
+      <div className="p">
+        <div className="p-head">
+          <h3>Coming soon</h3>
+          <div className="p-meta">{comingSoonConnectors.length} on the roadmap - not connectable yet</div>
+        </div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", padding: "12px 18px 0" }}>
+          <button className={`appr-btn ${catalogCategory === "all" ? "approve" : "edit"}`} onClick={() => setCatalogCategory("all")}>All</button>
+          {comingSoonCategories.map((cat) => (
+            <button key={cat} className={`appr-btn ${catalogCategory === cat ? "approve" : "edit"}`} onClick={() => setCatalogCategory(cat)}>
+              {CONNECTOR_CATEGORY_LABELS[cat]}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10, padding: 18 }}>
+          {filteredComingSoon.map((c) => (
+            <div key={c.connectorKey} style={{ padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", opacity: 0.72 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: `${c.color}18`, boxShadow: `inset 0 0 0 1px ${c.color}45`, display: "grid", placeItems: "center", color: c.color, fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{c.letter}</div>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>{c.displayName}</div>
+              </div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-mute)" }}>
+                {CONNECTOR_CATEGORY_LABELS[c.category]} - {c.riskLevel} risk
+              </div>
+              <div style={{ fontSize: 11.5, color: "var(--text-dim)", marginTop: 6 }}>{c.description}</div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.06em", marginTop: 8 }}>
+                {c.capabilities.length} capabilities
+              </div>
+              {c.usedByOperators.length > 0 && (
+                <div style={{ fontSize: 10.5, color: "var(--text-mute)", marginTop: 4 }}>
+                  Used by {c.usedByOperators.slice(0, 3).map(operatorLabel).join(", ")}
+                </div>
+              )}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
+                <span className="appr-btn edit" style={{ cursor: "default" }}>{c.status === "coming_soon" ? "Coming soon" : "Planned"}</span>
+                <button className="btn btn-ghost btn-sm" disabled style={{ opacity: 0.6, cursor: "not-allowed" }}>Request connector</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Add connector modal */}
       {addOpen && (
         <div className="os-modal-backdrop" onClick={() => { setAddOpen(false); setSetupConnectorId(null); }}>
@@ -443,24 +515,26 @@ export default function ConnectorsPage() {
                     setAddOpen(false);
                     setSetupConnectorId(null);
                   }}>Add as preview</button>
-                  <button className="btn btn-primary btn-sm" onClick={() => {
-                    if (isPreview || atConnectorLimit) {
-                      setUpgradeOpen(true);
-                      return;
-                    }
-                    if (setupConnector.id === "gmail") {
-                      startRealGmailOAuth();
-                      return;
-                    }
-                    if (setupConnector.id === "hubspot") {
-                      startHubspotNangoConnect();
-                      return;
-                    }
-                    connectConnector(setupConnector.id, "real");
-                    setFeedback(`${setupConnector.name} real account connected.`);
-                    setAddOpen(false);
-                    setSetupConnectorId(null);
-                  }}>{hubspotConnectLoading && setupConnector.id === "hubspot" ? "Connecting..." : "Connect real account"}</button>
+                  {isConnectorAvailableForAuth(normalizeConnectorKey(setupConnector.id)) ? (
+                    <button className="btn btn-primary btn-sm" onClick={() => {
+                      if (isPreview || atConnectorLimit) {
+                        setUpgradeOpen(true);
+                        return;
+                      }
+                      if (setupConnector.id === "gmail") {
+                        startRealGmailOAuth();
+                        return;
+                      }
+                      if (setupConnector.id === "hubspot") {
+                        startHubspotNangoConnect();
+                        return;
+                      }
+                    }}>{hubspotConnectLoading && setupConnector.id === "hubspot" ? "Connecting..." : "Connect real account"}</button>
+                  ) : (
+                    <button className="btn btn-sm" disabled title="This connector is not available to connect yet." style={{ opacity: 0.55, cursor: "not-allowed" }}>
+                      Coming soon
+                    </button>
+                  )}
                 </div>
               </>
             )}

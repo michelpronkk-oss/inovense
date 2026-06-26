@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { HUBSPOT_PROVIDER_CONFIG_KEY, verifyNangoWebhook } from "@/lib/integrations/nango";
+import { getConnectorDefinition, isSupportedNangoConnector } from "@/lib/connectors/registry";
 
 type NangoWebhookPayload = {
   type?: string;
@@ -57,9 +58,10 @@ export async function POST(req: NextRequest) {
   const providerAccountId = payload.endUser?.id || payload.end_user?.id || mergedTags.end_user_id || null;
   const eventType = payload.type || "";
 
-  if (!workspaceId || connectorKey !== "hubspot" || !connectionId) {
+  if (!workspaceId || !isSupportedNangoConnector(connectorKey) || !connectionId) {
     return NextResponse.json({ ok: true, ignored: true });
   }
+  const connectorDef = getConnectorDefinition(connectorKey);
 
   const isSuccess = payload.success === true
     || eventType.includes("auth.success")
@@ -91,10 +93,10 @@ export async function POST(req: NextRequest) {
       id: connectorRowId,
       workspace_id: workspaceId,
       connector_key: connectorKey,
-      name: "HubSpot",
-      letter: "Hs",
-      color: "#FF7A59",
-      category: "CRM and sales",
+      name: connectorDef?.displayName ?? "HubSpot",
+      letter: connectorDef?.letter ?? "Hs",
+      color: connectorDef?.color ?? "#FF7A59",
+      category: connectorDef?.category ?? "crm",
       status,
       connected: status === "connected",
       provider_config_key: providerConfigKey || HUBSPOT_PROVIDER_CONFIG_KEY,

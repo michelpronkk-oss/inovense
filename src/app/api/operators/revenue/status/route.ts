@@ -4,6 +4,7 @@ import { getConnectorTruth } from "@/lib/connectors/truth";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { getHubSpotDealPipelineMapping, getHubSpotPropertyReadiness } from "@/lib/operators/executors/hubspot";
 import { getOperatorReadiness } from "@/lib/operators/readiness";
+import { getOperatorConnectorReadiness, getOptionalUpsellConnectors } from "@/lib/operators/connector-requirements";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 
 type ScanSummaryOutput = {
@@ -161,6 +162,17 @@ export async function GET(req: NextRequest) {
     ])
     : [null, null] as const;
 
+  // Capability-based readiness. Connector keys are only counted as connected
+  // when they can actually execute (Gmail with send scope, HubSpot with a live
+  // Nango connection), so this never reports readiness the workspace lacks.
+  const connectedConnectorKeys: string[] = [];
+  if (gmail?.executable) connectedConnectorKeys.push("gmail");
+  if (hubspotConnected) connectedConnectorKeys.push("hubspot");
+  const revenueCapabilityReadiness = getOperatorConnectorReadiness("revenue", connectedConnectorKeys);
+  const connectedCapabilities = revenueCapabilityReadiness?.connectedCapabilities ?? [];
+  const emailExecutionReady = connectedCapabilities.includes("email.read") && connectedCapabilities.includes("email.send_after_approval");
+  const crmExecutionReady = connectedCapabilities.includes("crm.contacts.write") && connectedCapabilities.includes("crm.deals.write");
+
   return NextResponse.json({
     readiness,
     gmail: gmail ? {
@@ -183,6 +195,18 @@ export async function GET(req: NextRequest) {
       providerConfigKey: hubspot.providerConfigKey,
       hasNangoConnection: Boolean(hubspot.nangoConnectionId),
     } : null,
+    capabilityReadiness: {
+      connectedConnectors: connectedConnectorKeys,
+      connectedCapabilities,
+      emailExecutionReady,
+      crmExecutionReady,
+      missingRequiredCapabilities: revenueCapabilityReadiness?.missingRequired ?? [],
+      optionalUpsellConnectors: getOptionalUpsellConnectors("revenue", connectedConnectorKeys).map((def) => ({
+        connectorKey: def.connectorKey,
+        displayName: def.displayName,
+        status: def.status,
+      })),
+    },
     revenueMode: hubspotConnected ? "full_crm_mode" : "email_only_mode",
     revenueModeMessage: hubspotConnected
       ? "Gmail and HubSpot are connected. CRM contact and deal updates execute after approval."
