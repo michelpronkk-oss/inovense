@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { applyConnectorTruthToState, getConnectorTruth } from "@/lib/connectors/truth";
+import { isSupportedNangoConnector } from "@/lib/connectors/registry";
 import { buildSeedState, reconcileConnectorsWithRegistry } from "@/lib/os/seed";
 import type { OSState } from "@/lib/os/types";
 import { resolveWorkspaceContext, type WorkspaceContext } from "@/lib/os/workspace";
@@ -56,7 +57,7 @@ function stripSnapshotTruth(state: OSState): OSState {
     ...state,
     workspace: safeWorkspace,
     connectors: reconcileConnectorsWithRegistry(state.connectors).map((connector) => {
-      if (connector.id !== "gmail" && connector.id !== "hubspot") return connector;
+      if (connector.id !== "gmail" && !isSupportedNangoConnector(connector.id)) return connector;
       return {
         ...connector,
         isConnected: false,

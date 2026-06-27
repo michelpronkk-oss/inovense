@@ -15,7 +15,7 @@ type NangoConnectSessionResponse = {
   data?: NangoConnectSessionResponse;
 };
 
-export type SupportedNangoConnectorKey = "hubspot" | "slack";
+export type SupportedNangoConnectorKey = string;
 
 export type NangoConnectorConfig = {
   connectorKey: SupportedNangoConnectorKey;
@@ -40,6 +40,7 @@ export type NangoConnectionMetadata = {
 // Kept as a named export for existing imports (finalize/webhook/hubspot executor).
 export const HUBSPOT_PROVIDER_CONFIG_KEY = getProviderConfigKey("hubspot") || "hubspot";
 export const SLACK_PROVIDER_CONFIG_KEY = getProviderConfigKey("slack") || "slack";
+export const TRELLO_PROVIDER_CONFIG_KEY = getProviderConfigKey("trello") || "trello";
 
 export class NangoConnectSessionError extends Error {
   details: {

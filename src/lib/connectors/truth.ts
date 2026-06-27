@@ -8,7 +8,7 @@ type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 export type ConnectorTruthStatus = "connected" | "healthy" | "disabled" | "reconnect_required" | "missing" | "not_connected" | "error";
 
 export type SafeConnectorTruth = {
-  connectorKey: "gmail" | "hubspot" | "slack";
+  connectorKey: string;
   displayName: string;
   authType: "native" | "managed";
   status: ConnectorTruthStatus;
@@ -62,7 +62,7 @@ export async function getConnectorTruth(input: {
     const row = nangoRows.find((item) => item.connector_key === connectorKey);
     const connected = Boolean(row && row.status === "connected" && row.provider_config_key && row.nango_connection_id);
     return {
-      connectorKey: connectorKey as SafeConnectorTruth["connectorKey"],
+      connectorKey,
       displayName: def?.displayName ?? connectorKey,
       authType: "managed",
       status: nangoRes.error ? "error" : connected ? "connected" : row?.status === "error" ? "error" : "not_connected",
@@ -172,7 +172,7 @@ function applyTruth(connector: Connector, truth: SafeConnectorTruth): Connector 
 }
 
 function isTruthConnectorKey(connectorId: string): connectorId is SafeConnectorTruth["connectorKey"] {
-  return connectorId === "gmail" || connectorId === "hubspot" || connectorId === "slack";
+  return connectorId === "gmail" || listSupportedNangoConnectors().some((def) => def.connectorKey === connectorId);
 }
 
 export function applyConnectorTruthToState(state: OSState, truthRows: SafeConnectorTruth[]): OSState {

@@ -39,8 +39,11 @@ export type Capability =
   | "chat.messages.send_after_approval"
   | "chat.alerts.send_after_approval"
   // project management
+  | "pm.projects.read"
   | "pm.tasks.read"
   | "pm.tasks.write_after_approval"
+  | "pm.tasks.update_after_approval"
+  | "pm.comments.write_after_approval"
   // docs and knowledge
   | "docs.read"
   | "docs.write_after_approval"

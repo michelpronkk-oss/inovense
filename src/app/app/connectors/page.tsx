@@ -42,6 +42,25 @@ type SlackAlertSettings = {
   notifyOnExecutionFailed: boolean;
 };
 
+type TrelloBoard = {
+  id: string;
+  name: string;
+  url?: string | null;
+};
+
+type TrelloList = {
+  id: string;
+  name: string;
+  boardId?: string | null;
+};
+
+type TrelloSettings = {
+  defaultBoardId: string | null;
+  defaultBoardName: string | null;
+  defaultListId: string | null;
+  defaultListName: string | null;
+};
+
 // Seed connector ids use hyphens (e.g. "google-calendar"); catalog keys use
 // underscores (e.g. "google_calendar"). Normalize before catalog lookups.
 function normalizeConnectorKey(id: string): string {
@@ -97,6 +116,17 @@ export default function ConnectorsPage() {
     notifyOnApprovalApproved: true,
     notifyOnApprovalRejected: true,
     notifyOnExecutionFailed: true,
+  });
+  const [trelloBoards, setTrelloBoards] = useState<TrelloBoard[]>([]);
+  const [trelloLists, setTrelloLists] = useState<TrelloList[]>([]);
+  const [trelloLoading, setTrelloLoading] = useState(false);
+  const [trelloSaving, setTrelloSaving] = useState(false);
+  const [trelloSetupError, setTrelloSetupError] = useState("");
+  const [trelloSettings, setTrelloSettings] = useState<TrelloSettings>({
+    defaultBoardId: null,
+    defaultBoardName: null,
+    defaultListId: null,
+    defaultListName: null,
   });
 
   // Real connected = authenticated via native OAuth or managed OAuth integration
@@ -404,12 +434,114 @@ export default function ConnectorsPage() {
     }
   };
 
+  const fetchTrelloSettings = async () => {
+    setTrelloSetupError("");
+    try {
+      const res = await fetch(`/api/connectors/trello/settings?${slackQueryString()}`, { cache: "no-store" });
+      const json = await res.json().catch(() => ({})) as { settings?: TrelloSettings; message?: string; error?: string };
+      if (!res.ok || !json.settings) {
+        setTrelloSetupError(json.message || json.error || "Could not load Trello settings.");
+        return;
+      }
+      setTrelloSettings(json.settings);
+    } catch {
+      setTrelloSetupError("Could not load Trello settings.");
+    }
+  };
+
+  const fetchTrelloBoards = async () => {
+    setTrelloLoading(true);
+    setTrelloSetupError("");
+    try {
+      const res = await fetch(`/api/connectors/trello/boards?${slackQueryString()}`, { cache: "no-store" });
+      const json = await res.json().catch(() => ({})) as { boards?: TrelloBoard[]; message?: string; error?: string };
+      if (!res.ok || !Array.isArray(json.boards)) {
+        setTrelloBoards([]);
+        setTrelloSetupError(json.message || json.error || "Could not load Trello boards.");
+        return;
+      }
+      setTrelloBoards(json.boards);
+    } catch {
+      setTrelloBoards([]);
+      setTrelloSetupError("Could not load Trello boards.");
+    } finally {
+      setTrelloLoading(false);
+    }
+  };
+
+  const fetchTrelloLists = async (boardId: string) => {
+    if (!boardId) {
+      setTrelloLists([]);
+      return;
+    }
+    setTrelloLoading(true);
+    setTrelloSetupError("");
+    try {
+      const qs = new URLSearchParams(slackQueryString());
+      qs.set("boardId", boardId);
+      const res = await fetch(`/api/connectors/trello/lists?${qs.toString()}`, { cache: "no-store" });
+      const json = await res.json().catch(() => ({})) as { lists?: TrelloList[]; message?: string; error?: string };
+      if (!res.ok || !Array.isArray(json.lists)) {
+        setTrelloLists([]);
+        setTrelloSetupError(json.message || json.error || "Could not load Trello lists.");
+        return;
+      }
+      setTrelloLists(json.lists);
+    } catch {
+      setTrelloLists([]);
+      setTrelloSetupError("Could not load Trello lists.");
+    } finally {
+      setTrelloLoading(false);
+    }
+  };
+
+  const saveTrelloSettings = async (patch: Partial<TrelloSettings>) => {
+    setTrelloSaving(true);
+    setTrelloSetupError("");
+    try {
+      const res = await fetch("/api/connectors/trello/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: state.workspace.id,
+          userId: state.currentUser.id,
+          userEmail: state.currentUser.email,
+          ...patch,
+        }),
+      });
+      const json = await res.json().catch(() => ({})) as { settings?: TrelloSettings; message?: string; error?: string };
+      if (!res.ok || !json.settings) {
+        setTrelloSetupError(json.message || json.error || "Could not save Trello settings.");
+        return;
+      }
+      setTrelloSettings(json.settings);
+      setFeedback("Trello settings saved.");
+    } catch {
+      setTrelloSetupError("Could not save Trello settings.");
+    } finally {
+      setTrelloSaving(false);
+    }
+  };
+
   useEffect(() => {
     if (drawerConnectorId !== "slack" || !drawerConnector || !isRealConnectedConnector(drawerConnector)) return;
     void fetchSlackSettings();
     void fetchSlackChannels();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drawerConnectorId]);
+
+  useEffect(() => {
+    if (drawerConnectorId !== "trello" || !drawerConnector || !isRealConnectedConnector(drawerConnector)) return;
+    void fetchTrelloSettings();
+    void fetchTrelloBoards();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawerConnectorId]);
+
+  useEffect(() => {
+    if (drawerConnectorId !== "trello" || !trelloSettings.defaultBoardId) return;
+    void fetchTrelloLists(trelloSettings.defaultBoardId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawerConnectorId, trelloSettings.defaultBoardId]);
 
   return (
     <div className="os-page">
@@ -756,6 +888,63 @@ export default function ConnectorsPage() {
                 {slackSetupError && (
                   <div style={{ fontSize: 11.5, color: "#ffaaaa" }}>{slackSetupError}</div>
                 )}
+              </div>
+            )}
+            {drawerConnector.id === "trello" && isRealConnectedConnector(drawerConnector) && (
+              <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                  <div>
+                    <div style={{ fontSize: 12.5, fontWeight: 600 }}>Trello task execution setup</div>
+                    <div style={{ fontSize: 11.5, color: "var(--text-mute)", marginTop: 2 }}>
+                      Cards are created only after approval.
+                    </div>
+                  </div>
+                  <button className="btn btn-ghost btn-sm" onClick={fetchTrelloBoards} disabled={trelloLoading}>
+                    Refresh boards
+                  </button>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <select
+                    className="os-input"
+                    value={trelloSettings.defaultBoardId ?? ""}
+                    disabled={trelloLoading || trelloSaving}
+                    onChange={(event) => {
+                      const selected = trelloBoards.find((board) => board.id === event.target.value) ?? null;
+                      setTrelloLists([]);
+                      void saveTrelloSettings({
+                        defaultBoardId: selected?.id ?? null,
+                        defaultBoardName: selected?.name ?? null,
+                        defaultListId: null,
+                        defaultListName: null,
+                      });
+                    }}
+                  >
+                    <option value="">{trelloLoading ? "Loading boards..." : "Select default board"}</option>
+                    {trelloBoards.map((board) => <option key={board.id} value={board.id}>{board.name}</option>)}
+                  </select>
+                  <select
+                    className="os-input"
+                    value={trelloSettings.defaultListId ?? ""}
+                    disabled={trelloLoading || trelloSaving || !trelloSettings.defaultBoardId}
+                    onChange={(event) => {
+                      const selected = trelloLists.find((list) => list.id === event.target.value) ?? null;
+                      void saveTrelloSettings({
+                        defaultBoardId: trelloSettings.defaultBoardId,
+                        defaultListId: selected?.id ?? null,
+                        defaultListName: selected?.name ?? null,
+                      });
+                    }}
+                  >
+                    <option value="">{trelloSettings.defaultBoardId ? "Select default list" : "Select board first"}</option>
+                    {trelloLists.map((list) => <option key={list.id} value={list.id}>{list.name}</option>)}
+                  </select>
+                </div>
+                <div style={{ fontSize: 11.5, color: trelloSettings.defaultBoardId && trelloSettings.defaultListId ? "#9DEFEA" : "var(--amber)" }}>
+                  {trelloSettings.defaultBoardId && trelloSettings.defaultListId
+                    ? `Default target: ${trelloSettings.defaultBoardName || "Selected board"} / ${trelloSettings.defaultListName || "Selected list"}`
+                    : "Trello is connected, but task execution setup is incomplete. Select a board and list before creating task approvals."}
+                </div>
+                {trelloSetupError && <div style={{ fontSize: 11.5, color: "#ffaaaa" }}>{trelloSetupError}</div>}
               </div>
             )}
             {!isRealConnectedConnector(drawerConnector) && drawerConnector.source === "preview" && (

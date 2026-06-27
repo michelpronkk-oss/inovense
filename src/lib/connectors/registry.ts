@@ -7,7 +7,8 @@
 // connectable. Everything else is "coming_soon" / "planned" and must render
 // as visibly disabled. Presence in this catalog never implies a connection.
 //
-// Today gmail (direct OAuth), hubspot (Nango), and slack (Nango) are available.
+// Today gmail (direct OAuth), hubspot (Nango), slack (Nango), and Trello
+// (Nango) are available.
 
 import type { Capability } from "@/lib/connectors/capabilities";
 import type { OperatorKey } from "@/lib/operators/registry";
@@ -72,6 +73,7 @@ export const CONNECTOR_CATEGORY_LABELS: Record<ConnectorCategory, string> = {
 
 const HUBSPOT_PROVIDER_CONFIG_KEY = process.env.NANGO_HUBSPOT_CONFIG_KEY || "hubspot";
 const SLACK_PROVIDER_CONFIG_KEY = process.env.NANGO_SLACK_CONFIG_KEY || "slack";
+const TRELLO_PROVIDER_CONFIG_KEY = process.env.NANGO_TRELLO_CONFIG_KEY || "trello";
 
 export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
   // ── Available (real, functional today) ───────────────────────────────
@@ -216,10 +218,11 @@ export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
   // ── Planned (later) ──────────────────────────────────────────────────
   trello: {
     connectorKey: "trello", displayName: "Trello", category: "project_management", authType: "nango",
+    providerConfigKey: TRELLO_PROVIDER_CONFIG_KEY,
     letter: "Tr", color: "#0079BF", description: "Read boards and prepare approval-gated card updates.",
-    status: "planned", capabilities: ["pm.tasks.read", "pm.tasks.write_after_approval"], usedByOperators: ["operations"],
-    readActions: ["Read cards"], writeActions: ["Write card after approval"], approvalRequiredActions: ["Card write"],
-    eventTypes: ["pm.task.updated"], riskLevel: "low", setupNotes: "Planned via Trello API (Nango).",
+    status: "available", capabilities: ["pm.projects.read", "pm.tasks.read", "pm.tasks.write_after_approval", "pm.tasks.update_after_approval", "pm.comments.write_after_approval"], usedByOperators: ["client_flow", "operations", "automation_architect", "revenue"],
+    readActions: ["Read boards", "Read lists", "Read cards"], writeActions: ["Create card after approval", "Move card after approval", "Add card comment after approval"], approvalRequiredActions: ["create_card", "move_card", "add_card_comment"],
+    eventTypes: ["trello.card.created", "trello.card.updated", "trello.card.moved", "trello.comment.created"], riskLevel: "medium", setupNotes: "Connect Trello workspace. Select default board/list later.",
   },
   clickup: {
     connectorKey: "clickup", displayName: "ClickUp", category: "project_management", authType: "nango",

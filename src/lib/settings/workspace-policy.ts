@@ -15,6 +15,13 @@ export type SlackNotificationSettings = {
   notifyOnExecutionFailed: boolean;
 };
 
+export type TrelloProjectSettings = {
+  defaultBoardId: string | null;
+  defaultBoardName: string | null;
+  defaultListId: string | null;
+  defaultListName: string | null;
+};
+
 export const DEFAULT_CUSTOMER_EMAIL_MODE: CustomerEmailMode = "approval_required";
 
 export const DEFAULT_APPROVAL_POLICY = {
@@ -34,6 +41,13 @@ export const DEFAULT_SLACK_NOTIFICATION_SETTINGS: SlackNotificationSettings = {
   notifyOnApprovalApproved: true,
   notifyOnApprovalRejected: true,
   notifyOnExecutionFailed: true,
+};
+
+export const DEFAULT_TRELLO_PROJECT_SETTINGS: TrelloProjectSettings = {
+  defaultBoardId: null,
+  defaultBoardName: null,
+  defaultListId: null,
+  defaultListName: null,
 };
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -67,6 +81,18 @@ export function parseSlackNotificationSettings(value: unknown): SlackNotificatio
   };
 }
 
+export function parseTrelloProjectSettings(value: unknown): TrelloProjectSettings {
+  const root = asRecord(value);
+  const pm = asRecord(root.project_management);
+  const trello = asRecord(pm.trello);
+  return {
+    defaultBoardId: stringOrNull(trello.defaultBoardId),
+    defaultBoardName: stringOrNull(trello.defaultBoardName),
+    defaultListId: stringOrNull(trello.defaultListId),
+    defaultListName: stringOrNull(trello.defaultListName),
+  };
+}
+
 export async function loadWorkspacePolicySettings(input: {
   supabase?: SupabaseAdmin;
   workspaceId: string;
@@ -75,6 +101,7 @@ export async function loadWorkspacePolicySettings(input: {
   notifications: Record<string, unknown>;
   customerEmailMode: CustomerEmailMode;
   slack: SlackNotificationSettings;
+  trello: TrelloProjectSettings;
 }> {
   const supabase = input.supabase ?? createSupabaseAdmin();
   const settings = await supabase
@@ -91,6 +118,7 @@ export async function loadWorkspacePolicySettings(input: {
     notifications,
     customerEmailMode: customerEmailMode(approvalPolicy.customerEmailMode),
     slack: parseSlackNotificationSettings(notifications),
+    trello: parseTrelloProjectSettings(notifications),
   };
 }
 
@@ -109,4 +137,28 @@ export async function saveSlackNotificationSettings(input: {
   }, { onConflict: "workspace_id" });
   if (update.error) throw new Error(update.error.message);
   return next;
+}
+
+export async function saveTrelloProjectSettings(input: {
+  supabase?: SupabaseAdmin;
+  workspaceId: string;
+  patch: Partial<TrelloProjectSettings>;
+}): Promise<TrelloProjectSettings> {
+  const supabase = input.supabase ?? createSupabaseAdmin();
+  const current = await loadWorkspacePolicySettings({ supabase, workspaceId: input.workspaceId });
+  const currentPm = asRecord(current.notifications.project_management);
+  const next = { ...current.trello, ...input.patch };
+  const update = await supabase.from("os_workspace_settings").upsert({
+    workspace_id: input.workspaceId,
+    approval_policy: current.approvalPolicy,
+    notifications: {
+      ...current.notifications,
+      project_management: {
+        ...currentPm,
+        trello: next,
+      },
+    },
+  }, { onConflict: "workspace_id" });
+  if (update.error) throw new Error(update.error.message);
+  return parseTrelloProjectSettings({ project_management: { trello: next } });
 }

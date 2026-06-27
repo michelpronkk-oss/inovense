@@ -50,6 +50,22 @@ type GmailContinuationPayload = {
     executionStatus?: string;
   } | null;
   executionResult?: Record<string, unknown> | null;
+  preparedAction?: {
+    id?: string;
+    actionType?: string;
+    connectorKey?: string;
+    capability?: string;
+    riskLevel?: string;
+    requiresApproval?: boolean;
+    title?: string;
+    summary?: string;
+    input?: Record<string, unknown>;
+    preview?: {
+      label?: string;
+      fields?: Array<{ label: string; value: string }>;
+      bodyPreview?: string | null;
+    };
+  } | null;
   customerEmailPolicy?: {
     mode?: string;
     customerEmail?: string;
@@ -107,6 +123,7 @@ function expectedOutcome(continuation: GmailContinuationPayload): string | null 
   const aiExpectedOutcome = stringValue(sourceMetadata.expectedOutcome);
   if (aiExpectedOutcome) return aiExpectedOutcome;
   if (continuation.kind === "slack.send_after_approval") return "Post the approved Slack message and record the approval decision.";
+  if (continuation.kind === "shared_action.execute_after_approval") return "Execute the approved action through the selected connector and record the result.";
   if (continuation.kind !== "gmail.send_after_approval") return null;
   if (continuation.crmPreparationStatus === "hubspot_execution_enabled") {
     return "Send the approved Gmail follow-up now, then create or update the HubSpot contact/deal. CRM notes and tasks remain prepared only.";
@@ -121,6 +138,9 @@ function expectedOutcome(continuation: GmailContinuationPayload): string | null 
 }
 
 function afterApprovalText(continuation: GmailContinuationPayload): string | null {
+  if (continuation.kind === "shared_action.execute_after_approval") {
+    return "Inovense executes this prepared action through the connected Trello account after approval.";
+  }
   if (continuation.kind === "slack.send_after_approval") {
     return "Slack posts this exact message to the selected channel using the connected workspace Slack account.";
   }
@@ -159,7 +179,7 @@ function mapApproval(row: Record<string, unknown>) {
     resolved_at: typeof row.resolved_at === "string" ? row.resolved_at : null,
     resolved_by: typeof row.resolved_by === "string" ? row.resolved_by : null,
     approval_type: typeof row.type === "string" ? row.type : "action",
-    category: continuation.kind === "gmail.send_after_approval" ? "follow-up" : continuation.kind === "slack.send_after_approval" ? "slack-message" : typeof row.type === "string" ? row.type : "action",
+    category: continuation.kind === "gmail.send_after_approval" ? "follow-up" : continuation.kind === "slack.send_after_approval" ? "slack-message" : continuation.kind === "shared_action.execute_after_approval" ? "task-action" : typeof row.type === "string" ? row.type : "action",
     continuation_kind: continuation.kind ?? null,
     run_id: runId,
     linked_run_id: continuation.operatorRunId ?? runId,
@@ -191,6 +211,7 @@ function mapApproval(row: Record<string, unknown>) {
       crmPreparation: continuation.crmPreparation ?? null,
       preparedHubSpotActions: continuation.preparedHubSpotActions ?? null,
       executionResult: continuation.executionResult ?? null,
+      preparedAction: continuation.preparedAction ?? null,
       customerEmailPolicy: continuation.customerEmailPolicy ?? {
         mode: "approval_required",
         customerEmail: "Customer emails require approval before sending.",
@@ -205,7 +226,7 @@ function mapApproval(row: Record<string, unknown>) {
       confidence,
       matchedKeywords,
       whyThisMatters: why,
-      riskLevel: continuation.kind === "gmail.send_after_approval" || continuation.kind === "slack.send_after_approval" ? "medium" : "low",
+      riskLevel: continuation.kind === "gmail.send_after_approval" || continuation.kind === "slack.send_after_approval" || continuation.kind === "shared_action.execute_after_approval" ? "medium" : "low",
       riskNotes: stringValue(sourceMetadata.riskNotes),
       expectedOutcome: expectedOutcome(continuation),
       approvalReason: approvalReason(continuation, policyReason),

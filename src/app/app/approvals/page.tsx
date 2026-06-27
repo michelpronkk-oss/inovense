@@ -55,6 +55,22 @@ type ApprovalRow = {
     approvalReason?: string | null;
     whatHappensAfterApproval?: string | null;
     executionResult?: Record<string, unknown> | null;
+    preparedAction?: {
+      id?: string;
+      actionType?: string;
+      connectorKey?: string;
+      capability?: string;
+      riskLevel?: string;
+      requiresApproval?: boolean;
+      title?: string;
+      summary?: string;
+      input?: Record<string, unknown>;
+      preview?: {
+        label?: string;
+        fields?: Array<{ label: string; value: string }>;
+        bodyPreview?: string | null;
+      };
+    } | null;
     customerEmailPolicy?: {
       mode?: string;
       customerEmail?: string;
@@ -191,6 +207,10 @@ function executionTone(status: "ready" | "prepared" | "blocked") {
 
 function isRevenueApproval(item: ApprovalRow): boolean {
   return item.payload_preview.operatorKey === "revenue" || item.agent_id === "revenue";
+}
+
+function isSharedActionApproval(item: ApprovalRow): boolean {
+  return item.continuation_kind === "shared_action.execute_after_approval" && Boolean(item.payload_preview.preparedAction);
 }
 
 export default function ApprovalsPage() {
@@ -412,6 +432,7 @@ export default function ApprovalsPage() {
               : item.agent_mark || "Operator";
             const isBusy = busyId === item.id;
             const revenueApproval = isRevenueApproval(item);
+            const sharedActionApproval = isSharedActionApproval(item);
             const preparedActions = item.payload_preview.preparedActions ?? [];
             const crmStatus = item.payload_preview.crmStatusText
               ?? (item.payload_preview.crmPreparationStatus === "hubspot_not_connected"
@@ -429,6 +450,8 @@ export default function ApprovalsPage() {
             const isSavingEdit = savingEditId === item.id;
             const sourceMetadata = item.payload_preview.sourceMetadata ?? {};
             const executionResult = recordValue(item.payload_preview.executionResult);
+            const sharedActionExecution = recordValue(executionResult.action);
+            const sharedActionResult = recordValue(sharedActionExecution.result);
             const hubspotExecution = recordValue(executionResult.hubspot);
             const originalSubject = typeof sourceMetadata.subject === "string"
               ? sourceMetadata.subject
@@ -646,6 +669,39 @@ export default function ApprovalsPage() {
                         </div>
                       )}
                     </>
+                  )}
+                  {sharedActionApproval && item.payload_preview.preparedAction && (
+                    <div style={{ padding: "12px 14px", display: "grid", gap: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <div>
+                          <div style={{ fontSize: 13.5, fontWeight: 650 }}>{item.payload_preview.preparedAction.preview?.label || item.payload_preview.preparedAction.title || "Prepared action"}</div>
+                          <div style={{ fontSize: 11.5, color: "var(--text-mute)", marginTop: 2 }}>
+                            Trello - Risk: {item.payload_preview.preparedAction.riskLevel || "medium"} - Requires approval
+                          </div>
+                        </div>
+                        <span className="pill pill-cyan" style={{ fontSize: 10.5 }}>{item.payload_preview.preparedAction.actionType?.replace(/_/g, " ") || "task action"}</span>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
+                        {(item.payload_preview.preparedAction.preview?.fields ?? []).map((field) => (
+                          <div key={field.label} style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(0,0,0,0.14)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
+                            <div style={{ fontSize: 10, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>{field.label}</div>
+                            <div style={{ fontSize: 12.5, color: "var(--text)", overflowWrap: "anywhere" }}>{field.value}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {item.payload_preview.preparedAction.preview?.bodyPreview && (
+                        <div style={{ fontSize: 12.5, color: "var(--text-dim)", whiteSpace: "pre-wrap", lineHeight: 1.55 }}>
+                          {item.payload_preview.preparedAction.preview.bodyPreview}
+                        </div>
+                      )}
+                      {executionResult.status === "executed" && (
+                        <div style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(81,216,138,0.08)", boxShadow: "inset 0 0 0 1px rgba(81,216,138,0.22)", color: "#8df5cf", fontSize: 12 }}>
+                          Trello card created{typeof sharedActionResult.cardUrl === "string" && sharedActionResult.cardUrl ? (
+                            <> - <a className="lnk-open" href={sharedActionResult.cardUrl} target="_blank" rel="noreferrer">Open card</a></>
+                          ) : "."}
+                        </div>
+                      )}
+                    </div>
                   )}
                   {!revenueApproval && item.payload_preview.to && (
                     <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
