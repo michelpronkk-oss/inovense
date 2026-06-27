@@ -252,6 +252,89 @@ export async function sendSlackMessageAfterApproval(input: {
   };
 }
 
+export type SlackJoinResult = {
+  joined: boolean;
+  skipped?: boolean;
+  alreadyMember?: boolean;
+  reason?: string;
+  errorCode?: string;
+};
+
+/**
+ * Attempt to join a public channel so Inovense can post internal alerts there.
+ * Never joins private channels (Slack requires an explicit invite) and never
+ * sends a message. Tokens are never logged.
+ *
+ * Throws SlackExecutionError with code "missing_channels_join_scope" when the
+ * Slack app lacks the channels:join scope, so callers can surface a reconnect
+ * instruction. All other ok:false outcomes are returned as non-joined results
+ * so a setup flow can stay responsive instead of throwing.
+ */
+export async function joinSlackChannelIfPublic(input: {
+  workspaceId: string;
+  channelId: string;
+  isPrivate: boolean;
+}): Promise<SlackJoinResult> {
+  if (input.isPrivate) {
+    return { joined: false, skipped: true, reason: "private_channel_requires_invite" };
+  }
+
+  const channelId = input.channelId.trim();
+  if (!channelId) {
+    throw new SlackExecutionError("Slack channelId is required.", { step: "slack.validate", code: "missing_channel_id" });
+  }
+
+  try {
+    await slackRequest(input.workspaceId, "POST", "/conversations.join", { channel: channelId });
+    return { joined: true };
+  } catch (error) {
+    if (error instanceof SlackExecutionError) {
+      const code = error.details.code;
+      if (code === "already_in_channel") return { joined: true, alreadyMember: true };
+      if (code === "missing_scope") {
+        throw new SlackExecutionError(
+          "Slack is connected, but the channels:join scope is missing. Reconnect Slack with updated permissions.",
+          { ...error.details, code: "missing_channels_join_scope" },
+        );
+      }
+      // method_not_supported_for_channel_type, not_in_channel, channel_not_found,
+      // rate limits, or any other ok:false. Surface as a non-joined result.
+      return { joined: false, reason: code || "slack_join_failed", errorCode: code };
+    }
+    throw error;
+  }
+}
+
+export type SlackChannelValidation = {
+  ready: boolean;
+  joined: boolean;
+  channelType: "public" | "private";
+  reason: string;
+};
+
+/**
+ * Decide whether a channel is usable as the default internal alert channel.
+ * Public channels are auto-joined; private channels are only ready when the app
+ * is already a member (Slack requires a manual invite for private channels).
+ */
+export async function validateSlackAlertChannel(input: {
+  workspaceId: string;
+  channelId: string;
+  isPrivate: boolean;
+  isMember?: boolean;
+}): Promise<SlackChannelValidation> {
+  if (input.isPrivate) {
+    if (input.isMember) return { ready: true, joined: false, channelType: "private", reason: "already_member" };
+    return { ready: false, joined: false, channelType: "private", reason: "private_channel_requires_invite" };
+  }
+
+  const join = await joinSlackChannelIfPublic({ workspaceId: input.workspaceId, channelId: input.channelId, isPrivate: false });
+  if (join.joined) {
+    return { ready: true, joined: !join.alreadyMember, channelType: "public", reason: join.alreadyMember ? "already_member" : "joined" };
+  }
+  return { ready: false, joined: false, channelType: "public", reason: join.reason || "slack_join_failed" };
+}
+
 export async function sendSlackInternalNotification(input: {
   workspaceId: string;
   channelId: string;

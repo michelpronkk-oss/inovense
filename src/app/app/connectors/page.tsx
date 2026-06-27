@@ -168,6 +168,7 @@ export default function ConnectorsPage() {
   const [slackSettingsLoading, setSlackSettingsLoading] = useState(false);
   const [slackSettingsSaving, setSlackSettingsSaving] = useState(false);
   const [slackSetupError, setSlackSetupError] = useState("");
+  const [slackChannelStatus, setSlackChannelStatus] = useState("");
   const [slackAlertSettings, setSlackAlertSettings] = useState<SlackAlertSettings>({
     slackNotificationsEnabled: false,
     slackApprovalAlertsEnabled: false,
@@ -477,6 +478,8 @@ export default function ConnectorsPage() {
   const saveSlackAlertSettings = async (patch: Partial<SlackAlertSettings>) => {
     setSlackSettingsSaving(true);
     setSlackSetupError("");
+    const touchesChannel = Object.prototype.hasOwnProperty.call(patch, "slackDefaultChannelId");
+    if (touchesChannel) setSlackChannelStatus("");
     try {
       const res = await fetch("/api/connectors/slack/settings", {
         method: "PATCH",
@@ -488,12 +491,14 @@ export default function ConnectorsPage() {
           ...patch,
         }),
       });
-      const json = await res.json().catch(() => ({})) as { settings?: SlackAlertSettings; message?: string; error?: string };
+      const json = await res.json().catch(() => ({})) as { settings?: SlackAlertSettings; message?: string; error?: string; channelStatus?: string };
       if (!res.ok || !json.settings) {
         setSlackSetupError(json.message || json.error || "Could not save Slack alert settings.");
+        if (touchesChannel && json.channelStatus) setSlackChannelStatus(json.channelStatus);
         return;
       }
       setSlackAlertSettings(json.settings);
+      if (touchesChannel) setSlackChannelStatus(json.channelStatus || "");
       setFeedback("Slack alert settings saved.");
     } catch {
       setSlackSetupError("Could not save Slack alert settings.");
@@ -934,7 +939,7 @@ export default function ConnectorsPage() {
                     <option value="">{slackChannelsLoading ? "Loading channels..." : "Select alert channel"}</option>
                     {slackChannels.map((channel) => (
                       <option key={channel.id} value={channel.id}>
-                        {channel.isPrivate ? "private: " : "#"}{channel.name}{channel.isMember ? "" : " - invite app first"}
+                        {channel.isPrivate ? "private: " : "#"}{channel.name}{channel.isPrivate && !channel.isMember ? " - invite required" : ""}
                       </option>
                     ))}
                   </select>
@@ -942,11 +947,33 @@ export default function ConnectorsPage() {
                     Refresh
                   </button>
                 </div>
-                <div style={{ fontSize: 11.5, color: slackAlertSettings.slackDefaultChannelId ? "#9DEFEA" : "var(--amber)" }}>
-                  {slackAlertSettings.slackDefaultChannelId
-                    ? `Default channel: ${slackAlertSettings.slackDefaultChannelName ? `#${slackAlertSettings.slackDefaultChannelName}` : slackAlertSettings.slackDefaultChannelId}`
-                    : "No default channel selected. Inovense will not send Slack approval alerts."}
-                </div>
+                {(() => {
+                  const selected = slackChannels.find((channel) => channel.id === slackAlertSettings.slackDefaultChannelId) ?? null;
+                  const guidance = (() => {
+                    if (slackChannelStatus === "reconnect_required") return { text: "Reconnect Slack to allow Inovense to join public channels automatically.", tone: "var(--amber)" };
+                    if (!selected) {
+                      if (!slackAlertSettings.slackDefaultChannelId) return { text: "No default channel selected. Inovense will not send Slack approval alerts.", tone: "var(--amber)" };
+                      return { text: `Default channel: ${slackAlertSettings.slackDefaultChannelName ? `#${slackAlertSettings.slackDefaultChannelName}` : slackAlertSettings.slackDefaultChannelId}`, tone: "#9DEFEA" };
+                    }
+                    if (selected.isPrivate && !selected.isMember) return { text: "Private channel: invite Inovense to this channel first, then refresh.", tone: "var(--amber)" };
+                    if (!selected.isPrivate && !selected.isMember && !slackChannelStatus) return { text: "Inovense will join this public channel automatically when you save.", tone: "var(--text-mute)" };
+                    return { text: "Inovense can send internal approval alerts to this channel.", tone: "#9DEFEA" };
+                  })();
+                  return <div style={{ fontSize: 11.5, color: guidance.tone }}>{guidance.text}</div>;
+                })()}
+                {slackChannelStatus && (
+                  <div style={{ fontSize: 11, fontWeight: 600, color: slackChannelStatus === "channel_ready" || slackChannelStatus === "joined_public" ? "var(--green)" : "var(--amber)" }}>
+                    {slackChannelStatus === "joined_public"
+                      ? "Joined public channel"
+                      : slackChannelStatus === "channel_ready"
+                        ? "Channel ready for internal alerts"
+                        : slackChannelStatus === "invite_required"
+                          ? "Invite required for private channel"
+                          : slackChannelStatus === "reconnect_required"
+                            ? "Reconnect Slack required"
+                            : "Channel not saved"}
+                  </div>
+                )}
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {[
                     ["notifyOnRevenueApprovalCreated", "Approval created"],

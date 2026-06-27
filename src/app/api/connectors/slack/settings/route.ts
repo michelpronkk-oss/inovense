@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listSlackChannels, SlackExecutionError } from "@/lib/operators/executors/slack";
+import { listSlackChannels, SlackExecutionError, validateSlackAlertChannel } from "@/lib/operators/executors/slack";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { loadWorkspacePolicySettings, saveSlackNotificationSettings, type SlackNotificationSettings } from "@/lib/settings/workspace-policy";
@@ -79,6 +79,10 @@ export async function PATCH(req: NextRequest) {
     if (value !== undefined) patch[key] = value;
   }
 
+  // Track what happened to the selected channel so the UI can show an honest
+  // status. Saving a default channel auto-joins public channels first and never
+  // saves an unusable channel. No Slack message is sent during setup.
+  let channelStatus: string | undefined;
   if (patch.slackDefaultChannelId) {
     try {
       const channels = await listSlackChannels(context.workspaceId);
@@ -86,15 +90,46 @@ export async function PATCH(req: NextRequest) {
       if (!selected) {
         return NextResponse.json({ error: "slack_channel_not_found", message: "Slack channel was not found or is not accessible." }, { status: 404 });
       }
-      if (!selected.isMember) {
-        return NextResponse.json({ error: "slack_bot_not_in_channel", message: "Invite the Slack app to this channel before using it for Inovense alerts." }, { status: 409 });
+      if (selected.isArchived) {
+        return NextResponse.json({ error: "slack_channel_archived", message: "This channel is archived. Choose an active channel for alerts." }, { status: 409 });
       }
+
+      const validation = await validateSlackAlertChannel({
+        workspaceId: context.workspaceId,
+        channelId: selected.id,
+        isPrivate: selected.isPrivate,
+        isMember: selected.isMember,
+      });
+
+      if (!validation.ready) {
+        if (validation.channelType === "private") {
+          return NextResponse.json({
+            error: "slack_private_channel_invite_required",
+            message: "Invite Inovense to this private channel first, then refresh channels.",
+            channelStatus: "invite_required",
+          }, { status: 409 });
+        }
+        return NextResponse.json({
+          error: "slack_channel_join_failed",
+          message: validation.reason === "slack_rate_limited"
+            ? "Slack rate limit reached. Try again in a moment."
+            : "Inovense could not join this public channel automatically. Try again or pick another channel.",
+          channelStatus: "join_failed",
+          details: { reason: validation.reason },
+        }, { status: 409 });
+      }
+
       patch.slackDefaultChannelName = selected.name;
+      channelStatus = validation.channelType === "public" && validation.joined ? "joined_public" : "channel_ready";
     } catch (error) {
       if (error instanceof SlackExecutionError) {
+        const missingJoinScope = error.details.code === "missing_channels_join_scope";
         return NextResponse.json({
           error: error.details.code || "slack_channels_failed",
-          message: error.message,
+          message: missingJoinScope
+            ? "Reconnect Slack with channels:join permission to let Inovense join public channels automatically."
+            : error.message,
+          channelStatus: missingJoinScope ? "reconnect_required" : undefined,
           details: error.details,
         }, { status: error.details.status ?? 502 });
       }
@@ -103,5 +138,5 @@ export async function PATCH(req: NextRequest) {
   }
 
   const settings = await saveSlackNotificationSettings({ supabase, workspaceId: context.workspaceId, patch });
-  return NextResponse.json({ settings });
+  return NextResponse.json({ settings, channelStatus });
 }
