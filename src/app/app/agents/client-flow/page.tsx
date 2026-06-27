@@ -44,13 +44,30 @@ type ClientFlowScanResult = {
   error?: string;
 };
 
+type ClientFlowSetup = {
+  state?: "ready" | "setup_incomplete" | "needs_setup";
+  readinessPercent?: number;
+  coreReady?: boolean;
+  gmailReady?: boolean;
+  slackConnected?: boolean;
+  slackChannelSelected?: boolean;
+  slackAlertsReady?: boolean;
+  slackRecommendedMissing?: boolean;
+  trelloConnected?: boolean;
+  trelloDestinationSet?: boolean;
+  trelloTaskExecutionReady?: boolean;
+  customerEmailPolicySet?: boolean;
+  approvalFlowActive?: boolean;
+};
+
 type ClientFlowStatus = {
   readiness?: OperatorReadiness | null;
   gmail?: { status?: string; accountEmail?: string | null; executable?: boolean; reconnectRequired?: boolean; permissions?: { compose?: boolean; send?: boolean; readonly?: boolean } } | null;
-  slack?: { status?: string; connected?: boolean; notificationsEnabled?: boolean; approvalAlertsEnabled?: boolean; defaultChannelName?: string | null } | null;
+  slack?: { status?: string; connected?: boolean; channelSelected?: boolean; notificationsEnabled?: boolean; approvalAlertsEnabled?: boolean; defaultChannelName?: string | null } | null;
   trello?: { status?: string; connected?: boolean; defaultBoardName?: string | null; defaultListName?: string | null } | null;
   customerEmailMode?: string;
   readinessChecks?: { emailReady?: boolean; slackAlertsReady?: boolean; trelloTaskExecutionReady?: boolean };
+  setup?: ClientFlowSetup;
   monitoring?: {
     status: string;
     message: string;
@@ -58,6 +75,8 @@ type ClientFlowStatus = {
     sourceMode?: string;
     lastRunAt?: string | null;
     nextRunAt?: string | null;
+    lastRunStatus?: string | null;
+    lastRunSummary?: Record<string, unknown> | null;
     lastScanTime: string | null;
     emailsChecked: number;
     signalsFound: number;
@@ -81,30 +100,91 @@ function relativeTime(iso: string): string {
   return mins > 0 ? `${mins}m ago` : "just now";
 }
 
-function dateTimeLabel(iso: string | null | undefined): string {
-  if (!iso) return "Not scheduled";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "Unknown";
-  return date.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+function CheckIcon({ ok }: { ok: boolean }) {
+  return (
+    <span
+      aria-hidden
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 22,
+        height: 22,
+        borderRadius: 999,
+        flexShrink: 0,
+        color: ok ? "var(--green)" : "var(--amber)",
+        background: ok ? "rgba(81,216,138,0.12)" : "rgba(245,194,107,0.12)",
+        boxShadow: `inset 0 0 0 1px ${ok ? "rgba(81,216,138,0.4)" : "rgba(245,194,107,0.4)"}`,
+        fontSize: 12,
+      }}
+    >
+      {ok ? "✓" : "!"}
+    </span>
+  );
 }
 
-function MetricCard({ label, value }: { label: string; value: string }) {
+type ChecklistItem = {
+  label: string;
+  ok: boolean;
+  detail: string;
+  recommended?: boolean;
+  action?: { label: string; href: string };
+};
+
+function ChecklistRow({ item }: { item: ChecklistItem }) {
+  const showAction = item.action && (!item.ok || item.recommended);
   return (
-    <div style={{ padding: "12px 13px", borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
-      <div style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</div>
-      <div style={{ marginTop: 5, fontSize: 15, fontWeight: 600 }}>{value}</div>
+    <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 0" }}>
+      <CheckIcon ok={item.ok} />
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 13.5, fontWeight: 600 }}>{item.label}</span>
+          {item.recommended && !item.ok && (
+            <span style={{ fontSize: 10.5, fontWeight: 600, color: "var(--blue)", background: "rgba(91,141,239,0.12)", padding: "2px 7px", borderRadius: 999 }}>Recommended</span>
+          )}
+        </div>
+        <div style={{ marginTop: 3, fontSize: 12.5, color: "var(--text-mute)" }}>{item.detail}</div>
+      </div>
+      {showAction && item.action ? (
+        <Link href={item.action.href} className="btn btn-ghost btn-sm" style={{ textDecoration: "none", flexShrink: 0 }}>{item.action.label}</Link>
+      ) : (
+        <span style={{ fontSize: 12, fontWeight: 600, color: item.ok ? "var(--green)" : "var(--amber)", flexShrink: 0 }}>{item.ok ? "Ready" : "Needs setup"}</span>
+      )}
     </div>
   );
 }
 
-function ReadyRow({ label, ready, help }: { label: string; ready: boolean; help: string }) {
+function ToolCard({ name, tone, ready, headline, note }: { name: string; tone: string; ready: boolean; headline: string; note?: string }) {
   return (
-    <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 12.8, fontWeight: 600 }}>{label}</div>
-        <div style={{ marginTop: 2, fontSize: 11.5, color: "var(--text-mute)" }}>{help}</div>
+    <div style={{ padding: "16px 18px", borderRadius: 14, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+          <span style={{ width: 8, height: 8, borderRadius: 999, background: ready ? "var(--green)" : "var(--amber)", boxShadow: `0 0 8px ${ready ? "rgba(81,216,138,0.6)" : "rgba(245,194,107,0.5)"}` }} />
+          <span style={{ fontSize: 13.5, fontWeight: 600 }}>{name}</span>
+        </div>
+        <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{tone}</span>
       </div>
-      <span className="appr-btn edit" style={{ cursor: "default", color: ready ? "var(--green)" : "var(--text-mute)", flexShrink: 0 }}>{ready ? "Ready" : "Not ready"}</span>
+      <div style={{ fontSize: 12.8, color: "var(--text-dim)" }}>{headline}</div>
+      {note && <div style={{ fontSize: 12, color: "var(--amber)" }}>{note}</div>}
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ padding: "16px 16px", borderRadius: 14, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+      <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em" }}>{value}</div>
+      <div style={{ marginTop: 4, fontSize: 12, color: "var(--text-mute)" }}>{label}</div>
+    </div>
+  );
+}
+
+function PolicyRow({ label, value, tone }: { label: string; value: string; tone: "amber" | "green" | "neutral" }) {
+  const color = tone === "amber" ? "var(--amber)" : tone === "green" ? "var(--green)" : "var(--text-dim)";
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 0" }}>
+      <span style={{ fontSize: 13, color: "var(--text-dim)" }}>{label}</span>
+      <span style={{ fontSize: 12.5, fontWeight: 600, color }}>{value}</span>
     </div>
   );
 }
@@ -186,18 +266,84 @@ export default function ClientFlowOperatorPage() {
   };
 
   const monitoring = status?.monitoring;
-  const checks = status?.readinessChecks;
+  const setup = status?.setup;
   const gmailReconnectRequired = Boolean(status?.gmail?.reconnectRequired || monitoring?.reconnectRequired);
   const scanNeedsReconnect = gmailReconnectRequired || scanResult?.status === "requires_gmail_read_scope" || scanResult?.status === "requires_gmail_send_scope";
   const canRun = Boolean(readiness?.canRunManual && (readiness.status === "ready" || readiness.status === "draft_only"));
   const lastCheckAt = monitoring?.lastRunAt ?? monitoring?.lastScanTime ?? null;
-  const scanSkippedSummary = scanResult?.skipped?.length
-    ? Object.entries(scanResult.skipped.reduce<Record<string, number>>((counts, item) => {
-      counts[item.reason] = (counts[item.reason] ?? 0) + 1;
-      return counts;
-    }, {})).map(([reason, count]) => `${reason}: ${count}`).join(" / ")
-    : "";
-  const emailModeLabel = status?.customerEmailMode === "draft_only" ? "Draft only" : "Approval required";
+  const hasRunScan = Boolean(lastCheckAt);
+  const monitoringActive = monitoring?.status === "monitoring_active";
+  const setupState = setup?.state ?? (status?.gmail?.executable ? "setup_incomplete" : "needs_setup");
+  const readinessPercent = setup?.readinessPercent ?? readiness?.readinessPercent ?? 0;
+  const emailMode = status?.customerEmailMode === "draft_only" ? "Draft only" : "Approval required";
+
+  const pill = (() => {
+    if (gmailReconnectRequired) return { label: "Needs setup", color: "var(--amber)", bg: "rgba(245,194,107,0.1)" };
+    if (setupState === "needs_setup") return { label: "Needs setup", color: "var(--rose)", bg: "rgba(242,118,124,0.1)" };
+    if (setupState === "setup_incomplete") return { label: "Setup incomplete", color: "var(--amber)", bg: "rgba(245,194,107,0.1)" };
+    if (monitoringActive) return { label: "Monitoring active", color: "var(--green)", bg: "rgba(81,216,138,0.1)" };
+    return { label: "Ready", color: "var(--green)", bg: "rgba(81,216,138,0.1)" };
+  })();
+
+  const heroTitle = setupState === "needs_setup"
+    ? "Connect Gmail to start Client Flow"
+    : setupState === "setup_incomplete"
+      ? "Client Flow is almost ready"
+      : "Client Flow is ready to monitor client requests";
+  const heroSub = (() => {
+    if (setupState === "needs_setup") return "Client Flow reads client emails and prepares approved replies. Connect Gmail to begin.";
+    if (setupState === "setup_incomplete") {
+      if (!setup?.trelloTaskExecutionReady) return "Select a Trello board and list so Client Flow can turn requests into approved tasks.";
+      return "A couple of setup steps remain. Complete them to unlock the full flow.";
+    }
+    return "Monitoring client communication in the background. Approvals appear only when action is needed.";
+  })();
+
+  const checklist: ChecklistItem[] = [
+    {
+      label: "Gmail connected",
+      ok: Boolean(status?.gmail?.executable) && !gmailReconnectRequired,
+      detail: gmailReconnectRequired
+        ? "Reconnect Gmail to restore reading and approval-gated replies."
+        : status?.gmail?.accountEmail
+          ? `Reading client emails as ${status.gmail.accountEmail}.`
+          : "Reads client emails and prepares approved replies.",
+      action: { label: gmailReconnectRequired ? "Reconnect Gmail" : "Open connectors", href: "/app/connectors" },
+    },
+    {
+      label: "Trello board and list selected",
+      ok: Boolean(setup?.trelloTaskExecutionReady),
+      detail: setup?.trelloConnected
+        ? setup?.trelloDestinationSet
+          ? `Tasks are created on ${status?.trello?.defaultListName || "the selected list"} after approval.`
+          : "Connected, but a task destination is not selected yet."
+        : "Connect Trello to create project tasks after approval.",
+      action: { label: "Select Trello board/list", href: "/app/connectors" },
+    },
+    {
+      label: "Customer email policy set",
+      ok: Boolean(setup?.customerEmailPolicySet ?? true),
+      detail: `Client replies are set to ${emailMode.toLowerCase()}.`,
+      action: { label: "Review approval policy", href: "/app/policies" },
+    },
+    {
+      label: "Approval flow active",
+      ok: Boolean(setup?.approvalFlowActive ?? true),
+      detail: "Every client reply and task waits for human approval before it runs.",
+      action: { label: "View approvals", href: "/app/approvals" },
+    },
+    {
+      label: "Slack alert channel selected",
+      ok: Boolean(setup?.slackAlertsReady),
+      recommended: true,
+      detail: setup?.slackConnected
+        ? setup?.slackChannelSelected
+          ? `Internal alerts post to ${status?.slack?.defaultChannelName ? `#${status.slack.defaultChannelName}` : "the selected channel"}.`
+          : "Connected, but alerts are disabled. Select a channel to enable."
+        : "Connect Slack to get internal alerts when client approvals are created.",
+      action: { label: "Select Slack channel", href: "/app/connectors" },
+    },
+  ];
 
   return (
     <div className="os-page">
@@ -205,9 +351,10 @@ export default function ClientFlowOperatorPage() {
         <div>
           <span className="os-greet"><Link href="/app/agents" style={{ color: "inherit", textDecoration: "none" }}>Operators</Link> / Client Flow</span>
           <h1>Client Flow Operator</h1>
-          <div className="os-page-sub">Client Flow monitors client communication, prepares follow-ups, and turns requests into approved project actions.</div>
+          <div className="os-page-sub">Monitors client communication, prepares follow-ups, and turns requests into approved project actions.</div>
         </div>
-        <div className="os-page-actions">
+        <div className="os-page-actions" style={{ alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: pill.color, background: pill.bg, padding: "6px 12px", borderRadius: 999 }}>{pill.label}</span>
           <Link href="/app/approvals" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>View approvals</Link>
           <button className="btn btn-ghost btn-sm" type="button" onClick={submitScan} disabled={!canRun || scanSubmitting} style={{ opacity: !canRun || scanSubmitting ? 0.45 : 1 }}>
             {scanSubmitting ? "Checking..." : "Run manual check"}
@@ -215,88 +362,184 @@ export default function ClientFlowOperatorPage() {
         </div>
       </div>
 
-      {error && <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>{error}</div>}
+      {error && <div style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>{error}</div>}
 
+      {/* Hero readiness */}
+      <div className="p" style={{ gap: 0, overflow: "hidden" }}>
+        <div style={{ padding: "24px 26px", display: "grid", gap: 20 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 20, flexWrap: "wrap" }}>
+            <div style={{ minWidth: 240, flex: 1 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.01em" }}>{loading ? "Loading operator state..." : heroTitle}</h2>
+              <div style={{ marginTop: 6, fontSize: 13.5, color: "var(--text-dim)", maxWidth: 560 }}>{heroSub}</div>
+            </div>
+            <div style={{ textAlign: "right", minWidth: 120 }}>
+              <div style={{ fontSize: 30, fontWeight: 600, color: readinessPercent >= 100 ? "var(--green)" : "var(--text)" }}>{readinessPercent}%</div>
+              <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>setup complete</div>
+            </div>
+          </div>
+          <div style={{ height: 8, borderRadius: 999, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${readinessPercent}%`, background: "linear-gradient(90deg, #5FD3A8, #4DE8E1)", transition: "width 0.4s ease" }} />
+          </div>
+          {setup?.slackRecommendedMissing && setupState === "ready" && (
+            <div style={{ fontSize: 12.5, color: "var(--blue)" }}>Recommended setup missing: select a Slack channel to receive internal alerts when client approvals are created.</div>
+          )}
+          <div style={{ display: "grid", gap: 0 }}>
+            {checklist.map((item, index) => (
+              <div key={item.label} style={{ borderTop: index === 0 ? "none" : "1px solid var(--line)" }}>
+                <ChecklistRow item={item} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Connected tools */}
+      <div className="p" style={{ gap: 0 }}>
+        <div className="p-head"><h3>Connected tools</h3></div>
+        <div style={{ padding: "18px 20px", display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
+          <ToolCard
+            name="Gmail"
+            tone="Client inbox"
+            ready={Boolean(status?.gmail?.executable) && !gmailReconnectRequired}
+            headline="Reads client emails and prepares approved replies."
+            note={gmailReconnectRequired ? "Reconnect Gmail to restore access." : undefined}
+          />
+          <ToolCard
+            name="Slack"
+            tone="Internal alerts"
+            ready={Boolean(setup?.slackAlertsReady)}
+            headline="Sends internal alerts when client approvals are created."
+            note={setup?.slackConnected && !setup?.slackAlertsReady ? "Connected, but alerts are disabled. Select a channel to enable." : undefined}
+          />
+          <ToolCard
+            name="Trello"
+            tone="Project tasks"
+            ready={Boolean(setup?.trelloTaskExecutionReady)}
+            headline="Creates project tasks after approval."
+            note={setup?.trelloConnected && !setup?.trelloDestinationSet ? "Connected, but task destination is not selected." : undefined}
+          />
+        </div>
+      </div>
+
+      {/* Monitoring summary + policy */}
+      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 14 }}>
+        <div className="p" style={{ gap: 0 }}>
+          <div className="p-head">
+            <div>
+              <h3>Monitoring</h3>
+              <div className="p-meta" style={{ marginTop: 4 }}>{loading ? "Loading..." : monitoring?.nextScanLabel ?? "Daily scan ready"}{lastCheckAt ? ` · Last check ${relativeTime(lastCheckAt)}` : ""}</div>
+            </div>
+          </div>
+          <div style={{ padding: "18px 20px" }}>
+            {!hasRunScan ? (
+              <div style={{ display: "grid", gap: 12, justifyItems: "start" }}>
+                <div style={{ fontSize: 13, color: "var(--text-dim)" }}>No client check has run yet. Run a manual check to test the operator.</div>
+                <button className="btn btn-ghost btn-sm" type="button" onClick={submitScan} disabled={!canRun || scanSubmitting} style={{ opacity: !canRun || scanSubmitting ? 0.45 : 1 }}>{scanSubmitting ? "Checking..." : "Run manual check"}</button>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
+                <Stat label="Emails checked" value={String(monitoring?.emailsChecked ?? 0)} />
+                <Stat label="Client requests" value={String(monitoring?.signalsFound ?? 0)} />
+                <Stat label="Approvals created" value={String(monitoring?.approvalsCreated ?? 0)} />
+                <Stat label="Routed to Revenue" value={String(monitoring?.routedToRevenueCount ?? 0)} />
+                <Stat label="Skipped noise" value={String(monitoring?.skippedSafelyCount ?? 0)} />
+                <Stat label="Last check" value={lastCheckAt ? relativeTime(lastCheckAt) : "-"} />
+              </div>
+            )}
+            {scanResult && (
+              <div style={{ marginTop: 14, padding: "12px 14px", borderRadius: 12, background: scanNeedsReconnect ? "rgba(245,194,107,0.06)" : "rgba(95,211,168,0.06)", boxShadow: scanNeedsReconnect ? "inset 0 0 0 1px rgba(245,194,107,0.2)" : "inset 0 0 0 1px rgba(95,211,168,0.18)", display: "grid", gap: 5 }}>
+                <div style={{ fontSize: 12.8, fontWeight: 600 }}>{scanNeedsReconnect ? "Reconnect Gmail required" : `Manual check ${scanResult.status ?? "completed"}`}</div>
+                {scanResult.message && <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{scanResult.message}</div>}
+                {!scanNeedsReconnect && <div style={{ fontSize: 12, color: "var(--text-mute)" }}>{scanResult.scanned ?? 0} checked · {scanResult.signalsFound ?? 0} client requests · {scanResult.approvalsCreated ?? 0} approvals · {scanResult.routedToRevenueCount ?? 0} routed to Revenue.</div>}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="p" style={{ gap: 0 }}>
+          <div className="p-head"><h3>Policy</h3></div>
+          <div style={{ padding: "8px 20px 16px" }}>
+            <PolicyRow label="Customer email" value={emailMode} tone="amber" />
+            <div style={{ borderTop: "1px solid var(--line)" }} />
+            <PolicyRow label="Trello task changes" value="Approval required" tone="amber" />
+            <div style={{ borderTop: "1px solid var(--line)" }} />
+            <PolicyRow label="Slack alerts" value={setup?.slackAlertsReady ? "Enabled" : "Disabled"} tone={setup?.slackAlertsReady ? "green" : "neutral"} />
+            <div style={{ borderTop: "1px solid var(--line)" }} />
+            <PolicyRow label="Human review" value="Required" tone="green" />
+          </div>
+        </div>
+      </div>
+
+      {/* Last run and pending approvals */}
       <div className="p" style={{ gap: 0 }}>
         <div className="p-head">
-          <div>
-            <h3>Monitoring active</h3>
-            <div className="p-meta" style={{ marginTop: 4 }}>{loading ? "Loading real operator state..." : monitoring?.nextScanLabel ?? "Daily scan ready"}</div>
-          </div>
-          {gmailReconnectRequired && <button className="btn btn-primary btn-sm" type="button" onClick={startGmailReconnect}>Reconnect Gmail</button>}
+          <h3>Last run and pending approvals</h3>
+          <button className="btn btn-ghost btn-sm" type="button" onClick={submitScan} disabled={!canRun || scanSubmitting} style={{ opacity: !canRun || scanSubmitting ? 0.45 : 1 }}>{scanSubmitting ? "Checking..." : "Run manual check"}</button>
         </div>
-        <div style={{ padding: "16px 18px", display: "grid", gap: 14 }}>
-          <div style={{ fontSize: 13, color: "var(--text-dim)", maxWidth: 820 }}>Client Flow watches existing client threads in the background and only creates approvals for real client requests. New leads and pricing questions are routed back to Revenue Operator.</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10 }}>
-            <MetricCard label="Monitoring status" value={monitoring?.status ?? "loading"} />
-            <MetricCard label="Last check" value={lastCheckAt ? relativeTime(lastCheckAt) : "No check yet"} />
-            <MetricCard label="Next check" value={dateTimeLabel(monitoring?.nextRunAt)} />
-            <MetricCard label="Emails checked" value={String(monitoring?.emailsChecked ?? 0)} />
-            <MetricCard label="Client signals" value={String(monitoring?.signalsFound ?? 0)} />
-            <MetricCard label="Approvals" value={String(monitoring?.approvalsCreated ?? 0)} />
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
-            <MetricCard label="Skipped / noise" value={String(monitoring?.skippedSafelyCount ?? 0)} />
-            <MetricCard label="Routed to Revenue" value={String(monitoring?.routedToRevenueCount ?? 0)} />
-            <MetricCard label="Customer email policy" value={emailModeLabel} />
-          </div>
-          {gmailReconnectRequired && <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(245,194,107,0.06)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.2)", color: "var(--amber)", fontSize: 12 }}>Reconnect Gmail to enable client communication monitoring.</div>}
-          {!gmailReconnectRequired && !lastCheckAt && <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Monitoring is active. No background check has run yet.</div>}
-          {scanResult && (
-            <div style={{ padding: "10px 12px", borderRadius: 10, background: scanNeedsReconnect ? "rgba(245,194,107,0.06)" : "rgba(95,211,168,0.06)", boxShadow: scanNeedsReconnect ? "inset 0 0 0 1px rgba(245,194,107,0.2)" : "inset 0 0 0 1px rgba(95,211,168,0.18)", display: "grid", gap: 6 }}>
-              <div style={{ fontSize: 12.8, fontWeight: 600 }}>{scanNeedsReconnect ? "Reconnect Gmail required" : `Manual check ${scanResult.status ?? "completed"}`}</div>
-              {scanResult.message && <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{scanResult.message}</div>}
-              {!scanNeedsReconnect && <div style={{ fontSize: 12, color: "var(--text-mute)" }}>{scanResult.scanned ?? 0} checked / {scanResult.signalsFound ?? 0} signals / {scanResult.approvalsCreated ?? 0} approvals / {scanResult.routedToRevenueCount ?? 0} routed to Revenue.</div>}
-              {!scanNeedsReconnect && scanSkippedSummary && <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>Skipped safely: {scanSkippedSummary}</div>}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-        <div className="p" style={{ gap: 0 }}>
-          <div className="p-head"><h3>Connected tools</h3><span className="appr-btn edit" style={{ cursor: "default" }}>{readiness?.status ?? "loading"}</span></div>
-          <div style={{ padding: "16px 18px", display: "grid", gap: 10 }}>
-            <ReadyRow label="Gmail" ready={Boolean(status?.gmail?.executable)} help={status?.gmail?.accountEmail ? String(status.gmail.accountEmail) : "Connect Gmail to prepare and send client replies after approval."} />
-            <ReadyRow label="Slack" ready={Boolean(status?.slack?.connected)} help={status?.slack?.connected ? `Internal alerts: ${status.slack.approvalAlertsEnabled ? "enabled" : "disabled"}${status.slack.defaultChannelName ? ` (#${status.slack.defaultChannelName})` : ""}` : "Connect Slack for internal approval alerts."} />
-            <ReadyRow label="Trello" ready={Boolean(status?.trello?.connected)} help={status?.trello?.connected ? `Default list: ${status.trello.defaultListName || "not set"}` : "Connect Trello and set a default board/list for task execution."} />
-          </div>
-        </div>
-
-        <div className="p" style={{ gap: 0 }}>
-          <div className="p-head"><h3>Readiness</h3><span className="appr-btn edit" style={{ cursor: "default" }}>{readiness?.readinessPercent ?? 0}%</span></div>
-          <div style={{ padding: "16px 18px", display: "grid", gap: 10 }}>
-            <div style={{ height: 8, borderRadius: 999, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}><div style={{ height: "100%", width: `${readiness?.readinessPercent ?? 0}%`, background: "linear-gradient(90deg, #5FD3A8, #4DE8E1)" }} /></div>
-            <ReadyRow label="Email ready" ready={Boolean(checks?.emailReady)} help="Approval-gated client replies through Gmail." />
-            <ReadyRow label="Slack alerts ready" ready={Boolean(checks?.slackAlertsReady)} help="Internal alert when a client approval is created." />
-            <ReadyRow label="Trello task execution ready" ready={Boolean(checks?.trelloTaskExecutionReady)} help="Create a Trello task after approval on the default list." />
-          </div>
-        </div>
-      </div>
-
-      <div className="p" style={{ gap: 0 }}>
-        <div className="p-head"><h3>Last run and pending approvals</h3><Link href="/app/approvals" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Approval inbox</Link></div>
-        <div style={{ padding: "16px 18px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <div style={{ display: "grid", gap: 8 }}>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Pending approvals</div>
+        <div style={{ padding: "18px 20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Pending approvals</div>
             {(monitoring?.recentPendingApprovals?.length ?? 0) === 0 ? <div style={{ color: "var(--text-mute)", fontSize: 12.5 }}>No pending Client Flow approvals.</div> : monitoring?.recentPendingApprovals.map((approval) => (
-              <div key={approval.id} style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
-                <div style={{ fontSize: 12.8, fontWeight: 500 }}>{approval.subject || approval.title}</div>
+              <div key={approval.id} style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>{approval.subject || approval.title}</div>
                 <div style={{ marginTop: 3, fontSize: 11.5, color: "var(--text-mute)" }}>{approval.to || "Unknown recipient"} · {approval.created_at ? relativeTime(approval.created_at) : "unknown time"}</div>
               </div>
             ))}
           </div>
-          <div style={{ display: "grid", gap: 8 }}>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Recent runs</div>
-            {runs.length === 0 ? <div style={{ color: "var(--text-mute)", fontSize: 12.5 }}>No Client Flow runs yet.</div> : runs.slice(0, 5).map((run) => (
-              <div key={run.id} style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}><div style={{ fontSize: 12.8, fontWeight: 500 }}>{run.output?.title || run.output?.type || "Client Flow run"}</div><div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: run.status === "completed" ? "var(--green)" : run.status === "failed" ? "var(--rose)" : "var(--amber)" }}>{run.status}</div></div>
+          <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Recent runs</div>
+            {runs.length === 0 ? <div style={{ color: "var(--text-mute)", fontSize: 12.5 }}>No Client Flow checks have run yet.</div> : runs.slice(0, 5).map((run) => (
+              <div key={run.id} style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}><div style={{ fontSize: 13, fontWeight: 500 }}>{run.output?.title || run.output?.type || "Client Flow run"}</div><div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: run.status === "completed" ? "var(--green)" : run.status === "failed" ? "var(--rose)" : "var(--amber)" }}>{run.status}</div></div>
                 <div style={{ marginTop: 3, fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)" }}>{relativeTime(run.created_at)} · Approval: {run.approval_id || "none"}</div>
               </div>
             ))}
           </div>
         </div>
       </div>
+
+      {/* Advanced details */}
+      <details className="p" style={{ gap: 0 }}>
+        <summary style={{ listStyle: "none", cursor: "pointer", padding: "14px 20px", fontSize: 13, fontWeight: 600, color: "var(--text-dim)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          Advanced details
+          <span style={{ fontSize: 11, color: "var(--text-faint)" }}>readiness, schedule, skipped reasons, connector ids</span>
+        </summary>
+        <div style={{ padding: "0 20px 20px", display: "grid", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-faint)" }}>Schedule</div>
+              <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Cadence: {monitoring?.cadence ?? "daily"}</div>
+              <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Source mode: {monitoring?.sourceMode ?? "scheduled"}</div>
+              <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Last run status: {monitoring?.lastRunStatus ?? "none"}</div>
+              <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Next run: {monitoring?.nextRunAt ?? "not scheduled"}</div>
+            </div>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-faint)" }}>Connectors</div>
+              <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Gmail: {status?.gmail?.status ?? "missing"}{status?.gmail?.accountEmail ? ` (${status.gmail.accountEmail})` : ""}</div>
+              <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Slack: {status?.slack?.status ?? "not_connected"} · channel {status?.slack?.defaultChannelName || "none"}</div>
+              <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Trello: {status?.trello?.status ?? "not_connected"} · list {status?.trello?.defaultListName || "none"}</div>
+            </div>
+          </div>
+          {scanResult?.skipped && scanResult.skipped.length > 0 && (
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-faint)" }}>Skipped reasons (last manual check)</div>
+              <div style={{ fontSize: 12, color: "var(--text-mute)" }}>
+                {Object.entries(scanResult.skipped.reduce<Record<string, number>>((counts, item) => { counts[item.reason] = (counts[item.reason] ?? 0) + 1; return counts; }, {})).map(([reason, count]) => `${reason}: ${count}`).join(" · ")}
+              </div>
+            </div>
+          )}
+          <div style={{ display: "grid", gap: 6 }}>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-faint)" }}>Readiness object</div>
+            <pre style={{ margin: 0, padding: "12px 14px", borderRadius: 10, background: "rgba(0,0,0,0.25)", boxShadow: "inset 0 0 0 1px var(--line)", fontSize: 11, color: "var(--text-mute)", overflowX: "auto", whiteSpace: "pre-wrap" }}>{JSON.stringify(readiness ?? {}, null, 2)}</pre>
+          </div>
+          {monitoring?.lastRunSummary && (
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-faint)" }}>Last run summary</div>
+              <pre style={{ margin: 0, padding: "12px 14px", borderRadius: 10, background: "rgba(0,0,0,0.25)", boxShadow: "inset 0 0 0 1px var(--line)", fontSize: 11, color: "var(--text-mute)", overflowX: "auto", whiteSpace: "pre-wrap" }}>{JSON.stringify(monitoring.lastRunSummary, null, 2)}</pre>
+            </div>
+          )}
+        </div>
+      </details>
     </div>
   );
 }

@@ -129,8 +129,21 @@ export async function GET(req: NextRequest) {
   const reconnectRequired = Boolean(gmail && !gmailScopes.includes(GMAIL_READONLY_SCOPE));
 
   const emailReady = Boolean(gmail?.executable);
-  const slackAlertsReady = slackConnected && policy.slack.slackNotificationsEnabled && policy.slack.slackApprovalAlertsEnabled;
-  const trelloTaskExecutionReady = trelloConnected && Boolean(policy.trello.defaultBoardId && policy.trello.defaultListId);
+  const slackChannelSelected = Boolean(policy.slack.slackDefaultChannelId);
+  const slackAlertsReady = slackConnected && slackChannelSelected && policy.slack.slackNotificationsEnabled && policy.slack.slackApprovalAlertsEnabled;
+  const trelloDestinationSet = Boolean(policy.trello.defaultBoardId && policy.trello.defaultListId);
+  const trelloTaskExecutionReady = trelloConnected && trelloDestinationSet;
+
+  // Core readiness: Client Flow can fully operate (read, draft, approve, create
+  // tasks) once Gmail, Trello task destination, and the customer email policy
+  // are in place. Slack is optional but recommended for internal alerts.
+  const customerEmailPolicySet = true; // workspace policy always resolves to a safe default
+  const approvalFlowActive = true; // approvals + execution path are always available
+  const requiredChecks = [emailReady, trelloTaskExecutionReady, customerEmailPolicySet, approvalFlowActive];
+  const readinessPercent = Math.round((requiredChecks.filter(Boolean).length / requiredChecks.length) * 100);
+  const coreReady = requiredChecks.every(Boolean);
+  const slackRecommendedMissing = !slackAlertsReady;
+  const setupState = !emailReady ? "needs_setup" : coreReady ? "ready" : "setup_incomplete";
 
   const latestScanRow = (runs.data ?? []).find((run) => asScanSummary(run.output));
   const latestScan = latestScanRow ? asScanSummary(latestScanRow.output) : null;
@@ -165,10 +178,11 @@ export async function GET(req: NextRequest) {
       status: slack.status,
       accountEmail: slack.accountEmail,
       connected: slackConnected,
+      channelSelected: slackChannelSelected,
       notificationsEnabled: policy.slack.slackNotificationsEnabled,
       approvalAlertsEnabled: policy.slack.slackApprovalAlertsEnabled,
       defaultChannelName: policy.slack.slackDefaultChannelName,
-    } : { status: "not_connected", connected: false, notificationsEnabled: policy.slack.slackNotificationsEnabled, approvalAlertsEnabled: policy.slack.slackApprovalAlertsEnabled, defaultChannelName: policy.slack.slackDefaultChannelName },
+    } : { status: "not_connected", connected: false, channelSelected: slackChannelSelected, notificationsEnabled: policy.slack.slackNotificationsEnabled, approvalAlertsEnabled: policy.slack.slackApprovalAlertsEnabled, defaultChannelName: policy.slack.slackDefaultChannelName },
     trello: trello ? {
       status: trello.status,
       accountEmail: trello.accountEmail,
@@ -181,6 +195,21 @@ export async function GET(req: NextRequest) {
       emailReady,
       slackAlertsReady,
       trelloTaskExecutionReady,
+    },
+    setup: {
+      state: setupState,
+      readinessPercent,
+      coreReady,
+      gmailReady: emailReady,
+      slackConnected,
+      slackChannelSelected,
+      slackAlertsReady,
+      slackRecommendedMissing,
+      trelloConnected,
+      trelloDestinationSet,
+      trelloTaskExecutionReady,
+      customerEmailPolicySet,
+      approvalFlowActive,
     },
     monitoring: {
       status: monitoringStatus,
