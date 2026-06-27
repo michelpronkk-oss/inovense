@@ -6,9 +6,11 @@ import { logOperatorEvent, operatorRuntimeId } from "@/lib/operators/logging";
 import { getOperatorReadiness } from "@/lib/operators/readiness";
 import { draftRevenueFollowUpWithAI } from "@/lib/operators/revenue/ai-drafting";
 import { loadRevenueCompanyGraphContext } from "@/lib/operators/revenue/context";
+import { sendSlackApprovalNotification } from "@/lib/notifications/slack";
 import { normalizeEmailToSignalEvent, routeSignalCandidate, classifySignalCandidateLightweight } from "@/lib/signals/intake";
 import type { SignalCandidate } from "@/lib/signals/types";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 type RevenueScanSourceMode = "scheduled" | "manual" | "event_ready";
@@ -742,6 +744,7 @@ export async function scanRevenueOpportunities(input: {
     const listed = await listRecentMessages(accessToken, { maxResults, query: "newer_than:30d" });
     const handled = await loadRevenueDedupeState({ supabase, workspaceId });
     const companyGraphContext = await loadRevenueCompanyGraphContext({ supabase, workspaceId });
+    const workspacePolicy = await loadWorkspacePolicySettings({ supabase, workspaceId });
     const skipped: NonNullable<RevenueScanSummary["skipped"]> = [];
     const opportunities: Opportunity[] = [];
     const signalCandidates: SignalCandidate[] = [];
@@ -931,7 +934,9 @@ export async function scanRevenueOpportunities(input: {
         to: draft.to,
         subject: draft.subject,
         body: draft.body,
-        policyReason: "External email send requires human approval before Gmail execution.",
+        policyReason: workspacePolicy.customerEmailMode === "draft_only"
+          ? "Customer email policy is draft-only. This email will not be sent automatically."
+          : "External email send requires human approval before Gmail execution.",
         sourceMetadata,
         dedupeKey: dedupe.dedupeKey,
         dedupeMetadata: dedupe,
@@ -939,6 +944,8 @@ export async function scanRevenueOpportunities(input: {
         crmPreparation,
         crmPreparationStatus,
         preparedHubSpotActions,
+        customerEmailMode: workspacePolicy.customerEmailMode,
+        slackNotificationSettings: workspacePolicy.slack,
       });
 
       await insertStep({ supabase, workspaceId, runId, stepKey: "create_approval", title: "Create approval request", output: { approvalId: approval.approvalId } });
@@ -994,6 +1001,61 @@ export async function scanRevenueOpportunities(input: {
         message: `Created Gmail send approval ${approval.approvalId}.`,
         metadata: { approvalId: approval.approvalId, ...dedupe },
       });
+      await logOperatorEvent({
+        supabase,
+        workspaceId,
+        runId,
+        eventType: workspacePolicy.customerEmailMode === "draft_only" ? "customer_email_draft_only" : "customer_email_approval_required",
+        message: workspacePolicy.customerEmailMode === "draft_only"
+          ? "Customer email policy applied: draft only."
+          : "Customer email policy applied: approval required.",
+        metadata: {
+          approvalId: approval.approvalId,
+          customerEmailMode: workspacePolicy.customerEmailMode,
+          dedupeKey: dedupe.dedupeKey,
+        },
+      });
+      await logOperatorEvent({
+        supabase,
+        workspaceId,
+        runId,
+        eventType: "customer_email_policy_applied",
+        message: `Customer email policy applied: ${workspacePolicy.customerEmailMode}.`,
+        metadata: {
+          approvalId: approval.approvalId,
+          customerEmailMode: workspacePolicy.customerEmailMode,
+          dedupeKey: dedupe.dedupeKey,
+        },
+      });
+      try {
+        await sendSlackApprovalNotification({
+          supabase,
+          workspaceId,
+          approvalId: approval.approvalId,
+          runId,
+          eventType: "revenue_approval_created",
+          operatorKey: "revenue",
+          title: `Revenue Operator found a high-intent lead${personalization.firstname ? ` from ${personalization.firstname}` : ""}.`,
+          summary: aiDraft.detectedSignalSummary,
+          confidence: opportunity.confidence,
+          risk: "medium",
+          source: "gmail",
+          actionLabel: hubspotConnected ? "send follow-up email and update HubSpot" : "send follow-up email",
+          approvalUrl: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://app.inovense.com"}/app/approvals`,
+          metadata: {
+            dedupeKey: dedupe.dedupeKey,
+            fromEmail: opportunity.message.fromEmail,
+            subject: opportunity.message.subject,
+            preparedActions,
+          },
+        });
+      } catch (error) {
+        console.warn("[revenue-scan] slack approval notification skipped", {
+          workspaceId,
+          approvalId: approval.approvalId,
+          error: error instanceof Error ? error.message : "Unknown Slack notification error",
+        });
+      }
 
       created.push({
         messageId: opportunity.message.id,

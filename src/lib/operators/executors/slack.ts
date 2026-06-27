@@ -251,3 +251,52 @@ export async function sendSlackMessageAfterApproval(input: {
     raw: data,
   };
 }
+
+export async function sendSlackInternalNotification(input: {
+  workspaceId: string;
+  channelId: string;
+  text: string;
+  eventType: string;
+  approvalId?: string;
+  context?: Record<string, unknown> | null;
+}): Promise<SlackSendResult> {
+  const channelId = input.channelId.trim();
+  const text = input.text.trim();
+  if (!channelId) {
+    throw new SlackExecutionError("Slack channelId is required.", {
+      step: "slack.validate",
+      code: "missing_channel_id",
+    });
+  }
+  if (!text) {
+    throw new SlackExecutionError("Slack message text is required.", {
+      step: "slack.validate",
+      code: "missing_text",
+    });
+  }
+
+  const data = await slackRequest<{
+    ok?: boolean;
+    channel?: string;
+    ts?: string;
+  }>(input.workspaceId, "POST", "/chat.postMessage", {
+    channel: channelId,
+    text,
+    metadata: {
+      event_type: "inovense_internal_notification",
+      event_payload: {
+        event_type: input.eventType,
+        approval_id: input.approvalId ?? null,
+        source: "inovense",
+        ...(input.context ? { context: input.context } : {}),
+      },
+    },
+  });
+
+  return {
+    status: "sent",
+    channelId: data.channel || channelId,
+    messageTs: data.ts ?? null,
+    raw: data,
+  };
+}

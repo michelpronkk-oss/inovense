@@ -50,6 +50,13 @@ type GmailContinuationPayload = {
     executionStatus?: string;
   } | null;
   executionResult?: Record<string, unknown> | null;
+  customerEmailPolicy?: {
+    mode?: string;
+    customerEmail?: string;
+    humanReview?: string;
+    crmUpdate?: string;
+    slackAlert?: string;
+  } | null;
 };
 
 function asPayload(value: unknown): GmailContinuationPayload {
@@ -184,6 +191,13 @@ function mapApproval(row: Record<string, unknown>) {
       crmPreparation: continuation.crmPreparation ?? null,
       preparedHubSpotActions: continuation.preparedHubSpotActions ?? null,
       executionResult: continuation.executionResult ?? null,
+      customerEmailPolicy: continuation.customerEmailPolicy ?? {
+        mode: "approval_required",
+        customerEmail: "Customer emails require approval before sending.",
+        humanReview: "Required",
+        crmUpdate: "Approval required",
+        slackAlert: "Disabled",
+      },
       sourceMetadata,
       detectedSignal,
       sourceEmail,

@@ -55,6 +55,13 @@ type ApprovalRow = {
     approvalReason?: string | null;
     whatHappensAfterApproval?: string | null;
     executionResult?: Record<string, unknown> | null;
+    customerEmailPolicy?: {
+      mode?: string;
+      customerEmail?: string;
+      humanReview?: string;
+      crmUpdate?: string;
+      slackAlert?: string;
+    } | null;
     preparedHubSpotActions?: {
       contact?: {
         email?: string | null;
@@ -455,6 +462,13 @@ export default function ApprovalsPage() {
               { label: "Note", text: "Prepared only", status: "prepared" as const },
               { label: "Task", text: "Prepared only", status: "prepared" as const },
             ];
+            const customerEmailMode = item.payload_preview.customerEmailPolicy?.mode ?? "approval_required";
+            const policyItems = [
+              { label: "Customer email", value: customerEmailMode === "draft_only" ? "Draft only" : "Approval required" },
+              { label: "Slack alert", value: item.payload_preview.customerEmailPolicy?.slackAlert ?? "Disabled" },
+              { label: "CRM update", value: item.payload_preview.customerEmailPolicy?.crmUpdate ?? "Approval required" },
+              { label: "Human review", value: item.payload_preview.customerEmailPolicy?.humanReview ?? "Required" },
+            ];
 
             return (
               <div key={item.id} className="appr-row">
@@ -533,6 +547,20 @@ export default function ApprovalsPage() {
                         )}
                         </div>
                       </div>
+
+                      <div style={{ margin: "0 18px 14px", display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8 }}>
+                        {policyItems.map((policy) => (
+                          <div key={policy.label} style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(0,0,0,0.14)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
+                            <div style={{ fontSize: 10, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>{policy.label}</div>
+                            <div style={{ fontSize: 12.5, color: "var(--text)", fontWeight: 600 }}>{policy.value}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {customerEmailMode === "draft_only" && (
+                        <div style={{ margin: "0 18px 14px", padding: "9px 10px", borderRadius: 10, background: "rgba(245,194,107,0.08)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.22)", color: "var(--amber)", fontSize: 12 }}>
+                          Draft only mode. This email will not be sent automatically.
+                        </div>
+                      )}
 
                       <button
                         className="appr-btn edit"
@@ -687,7 +715,7 @@ export default function ApprovalsPage() {
                     <button className="appr-btn deny" disabled={isBusy || isSavingEdit} onClick={() => actOnApproval(item, "reject", rejectionReason)}>Reject</button>
                     <button className="appr-btn edit" disabled={isBusy || isSavingEdit} onClick={() => startEditingDraft(item)}>Edit draft</button>
                     <button className="appr-btn approve" disabled={isBusy || isSavingEdit} onClick={() => actOnApproval(item, "approve")}>
-                      {item.approval_type === "email" ? "Approve and send" : "Approve"}
+                      {customerEmailMode === "draft_only" ? "Mark reviewed" : item.approval_type === "email" ? "Approve and send" : "Approve"}
                     </button>
                   </div>
                 </div>

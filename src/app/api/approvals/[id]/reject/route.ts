@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sendSlackApprovalNotification } from "@/lib/notifications/slack";
 import { logOperatorEvent } from "@/lib/operators/logging";
 import { createOperatorMemory } from "@/lib/operators/memory";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
@@ -180,6 +181,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     duration: "-",
     status: "warn",
   });
+
+  await optionalLearningStep("slack_notification.approval_rejected", () => sendSlackApprovalNotification({
+    supabase,
+    workspaceId: context.workspaceId,
+    approvalId: id,
+    runId: operatorRunId,
+    eventType: "approval_rejected",
+    operatorKey: continuation.operatorKey || "revenue",
+    title: "Approval rejected.",
+    summary: rejectionReason,
+    approvalUrl: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://app.inovense.com"}/app/approvals`,
+    metadata: { reason: rejectionReason, to: continuation.to ?? null },
+  }));
 
   return NextResponse.json({ ok: true });
 }

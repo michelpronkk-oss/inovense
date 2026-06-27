@@ -23,6 +23,25 @@ import { getAvailableConnectors, getComingSoonConnectors } from "@/lib/connector
 import { getOperatorDefinition } from "@/lib/operators/registry";
 import { connectorDefinitionToSeedConnector } from "@/lib/os/seed";
 
+type SlackChannel = {
+  id: string;
+  name: string;
+  isPrivate: boolean;
+  isArchived: boolean;
+  isMember: boolean;
+};
+
+type SlackAlertSettings = {
+  slackNotificationsEnabled: boolean;
+  slackApprovalAlertsEnabled: boolean;
+  slackDefaultChannelId: string | null;
+  slackDefaultChannelName: string | null;
+  notifyOnRevenueApprovalCreated: boolean;
+  notifyOnApprovalApproved: boolean;
+  notifyOnApprovalRejected: boolean;
+  notifyOnExecutionFailed: boolean;
+};
+
 // Seed connector ids use hyphens (e.g. "google-calendar"); catalog keys use
 // underscores (e.g. "google_calendar"). Normalize before catalog lookups.
 function normalizeConnectorKey(id: string): string {
@@ -64,6 +83,21 @@ export default function ConnectorsPage() {
     provider_config_key?: string | null;
     nango_connection_id?: string | null;
   }>>({});
+  const [slackChannels, setSlackChannels] = useState<SlackChannel[]>([]);
+  const [slackChannelsLoading, setSlackChannelsLoading] = useState(false);
+  const [slackSettingsLoading, setSlackSettingsLoading] = useState(false);
+  const [slackSettingsSaving, setSlackSettingsSaving] = useState(false);
+  const [slackSetupError, setSlackSetupError] = useState("");
+  const [slackAlertSettings, setSlackAlertSettings] = useState<SlackAlertSettings>({
+    slackNotificationsEnabled: false,
+    slackApprovalAlertsEnabled: false,
+    slackDefaultChannelId: null,
+    slackDefaultChannelName: null,
+    notifyOnRevenueApprovalCreated: true,
+    notifyOnApprovalApproved: true,
+    notifyOnApprovalRejected: true,
+    notifyOnExecutionFailed: true,
+  });
 
   // Real connected = authenticated via native OAuth or managed OAuth integration
   const realConnectedConnectors = useMemo(
@@ -297,6 +331,85 @@ export default function ConnectorsPage() {
       setNangoConnectLoadingId(null);
     }
   };
+
+  const slackQueryString = () => new URLSearchParams({
+    workspaceId: state.workspace.id,
+    userId: state.currentUser.id,
+    userEmail: state.currentUser.email,
+  }).toString();
+
+  const fetchSlackSettings = async () => {
+    setSlackSettingsLoading(true);
+    setSlackSetupError("");
+    try {
+      const res = await fetch(`/api/connectors/slack/settings?${slackQueryString()}`, { cache: "no-store" });
+      const json = await res.json().catch(() => ({})) as { settings?: SlackAlertSettings; message?: string; error?: string };
+      if (!res.ok || !json.settings) {
+        setSlackSetupError(json.message || json.error || "Could not load Slack alert settings.");
+        return;
+      }
+      setSlackAlertSettings(json.settings);
+    } catch {
+      setSlackSetupError("Could not load Slack alert settings.");
+    } finally {
+      setSlackSettingsLoading(false);
+    }
+  };
+
+  const fetchSlackChannels = async () => {
+    setSlackChannelsLoading(true);
+    setSlackSetupError("");
+    try {
+      const res = await fetch(`/api/connectors/slack/channels?${slackQueryString()}`, { cache: "no-store" });
+      const json = await res.json().catch(() => ({})) as { channels?: SlackChannel[]; message?: string; error?: string };
+      if (!res.ok || !Array.isArray(json.channels)) {
+        setSlackChannels([]);
+        setSlackSetupError(json.message || json.error || "Could not load Slack channels.");
+        return;
+      }
+      setSlackChannels(json.channels);
+    } catch {
+      setSlackChannels([]);
+      setSlackSetupError("Could not load Slack channels.");
+    } finally {
+      setSlackChannelsLoading(false);
+    }
+  };
+
+  const saveSlackAlertSettings = async (patch: Partial<SlackAlertSettings>) => {
+    setSlackSettingsSaving(true);
+    setSlackSetupError("");
+    try {
+      const res = await fetch("/api/connectors/slack/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: state.workspace.id,
+          userId: state.currentUser.id,
+          userEmail: state.currentUser.email,
+          ...patch,
+        }),
+      });
+      const json = await res.json().catch(() => ({})) as { settings?: SlackAlertSettings; message?: string; error?: string };
+      if (!res.ok || !json.settings) {
+        setSlackSetupError(json.message || json.error || "Could not save Slack alert settings.");
+        return;
+      }
+      setSlackAlertSettings(json.settings);
+      setFeedback("Slack alert settings saved.");
+    } catch {
+      setSlackSetupError("Could not save Slack alert settings.");
+    } finally {
+      setSlackSettingsSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    if (drawerConnectorId !== "slack" || !drawerConnector || !isRealConnectedConnector(drawerConnector)) return;
+    void fetchSlackSettings();
+    void fetchSlackChannels();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawerConnectorId]);
 
   return (
     <div className="os-page">
@@ -571,7 +684,78 @@ export default function ConnectorsPage() {
             )}
             {drawerConnector.id === "slack" && isRealConnectedConnector(drawerConnector) && (
               <div style={{ marginTop: 10, fontSize: 11.5, color: "#9DEFEA" }}>
-                Team chat alerts and operator updates are enabled for approval-gated Slack actions.
+                Team chat alerts and operator updates can be sent to a configured internal channel.
+              </div>
+            )}
+            {drawerConnector.id === "slack" && isRealConnectedConnector(drawerConnector) && (
+              <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                  <div>
+                    <div style={{ fontSize: 12.5, fontWeight: 600 }}>Internal Slack alerts</div>
+                    <div style={{ fontSize: 11.5, color: "var(--text-mute)", marginTop: 2 }}>
+                      Customer email still requires approval before sending.
+                    </div>
+                  </div>
+                  <button
+                    className={`appr-btn ${slackAlertSettings.slackNotificationsEnabled && slackAlertSettings.slackApprovalAlertsEnabled ? "approve" : "edit"}`}
+                    disabled={slackSettingsLoading || slackSettingsSaving}
+                    onClick={() => saveSlackAlertSettings({
+                      slackNotificationsEnabled: !(slackAlertSettings.slackNotificationsEnabled && slackAlertSettings.slackApprovalAlertsEnabled),
+                      slackApprovalAlertsEnabled: !(slackAlertSettings.slackNotificationsEnabled && slackAlertSettings.slackApprovalAlertsEnabled),
+                    })}
+                  >
+                    {slackAlertSettings.slackNotificationsEnabled && slackAlertSettings.slackApprovalAlertsEnabled ? "Enabled" : "Disabled"}
+                  </button>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "center" }}>
+                  <select
+                    className="os-input"
+                    value={slackAlertSettings.slackDefaultChannelId ?? ""}
+                    disabled={slackChannelsLoading || slackSettingsSaving}
+                    onChange={(event) => {
+                      const selected = slackChannels.find((channel) => channel.id === event.target.value) ?? null;
+                      void saveSlackAlertSettings({
+                        slackDefaultChannelId: selected?.id ?? null,
+                        slackDefaultChannelName: selected?.name ?? null,
+                      });
+                    }}
+                  >
+                    <option value="">{slackChannelsLoading ? "Loading channels..." : "Select alert channel"}</option>
+                    {slackChannels.map((channel) => (
+                      <option key={channel.id} value={channel.id}>
+                        {channel.isPrivate ? "private: " : "#"}{channel.name}{channel.isMember ? "" : " - invite app first"}
+                      </option>
+                    ))}
+                  </select>
+                  <button className="btn btn-ghost btn-sm" onClick={fetchSlackChannels} disabled={slackChannelsLoading}>
+                    Refresh
+                  </button>
+                </div>
+                <div style={{ fontSize: 11.5, color: slackAlertSettings.slackDefaultChannelId ? "#9DEFEA" : "var(--amber)" }}>
+                  {slackAlertSettings.slackDefaultChannelId
+                    ? `Default channel: ${slackAlertSettings.slackDefaultChannelName ? `#${slackAlertSettings.slackDefaultChannelName}` : slackAlertSettings.slackDefaultChannelId}`
+                    : "No default channel selected. Inovense will not send Slack approval alerts."}
+                </div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {[
+                    ["notifyOnRevenueApprovalCreated", "Approval created"],
+                    ["notifyOnApprovalApproved", "Approved"],
+                    ["notifyOnApprovalRejected", "Rejected"],
+                    ["notifyOnExecutionFailed", "Execution failed"],
+                  ].map(([key, label]) => (
+                    <button
+                      key={key}
+                      className={`appr-btn ${slackAlertSettings[key as keyof SlackAlertSettings] ? "approve" : "edit"}`}
+                      disabled={slackSettingsSaving}
+                      onClick={() => saveSlackAlertSettings({ [key]: !slackAlertSettings[key as keyof SlackAlertSettings] } as Partial<SlackAlertSettings>)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {slackSetupError && (
+                  <div style={{ fontSize: 11.5, color: "#ffaaaa" }}>{slackSetupError}</div>
+                )}
               </div>
             )}
             {!isRealConnectedConnector(drawerConnector) && drawerConnector.source === "preview" && (

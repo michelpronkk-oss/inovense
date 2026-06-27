@@ -1,5 +1,6 @@
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { operatorRuntimeId } from "@/lib/operators/logging";
+import type { CustomerEmailMode, SlackNotificationSettings } from "@/lib/settings/workspace-policy";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
@@ -65,8 +66,11 @@ export async function createGmailSendApproval(input: {
   crmPreparation?: Record<string, unknown>;
   crmPreparationStatus?: string;
   preparedHubSpotActions?: Record<string, unknown>;
+  customerEmailMode?: CustomerEmailMode;
+  slackNotificationSettings?: SlackNotificationSettings;
 }) {
   const approvalId = operatorRuntimeId("appr-revenue-gmail");
+  const customerEmailMode = input.customerEmailMode ?? "approval_required";
   const insert = await input.supabase.from("os_approvals").insert({
     id: approvalId,
     workspace_id: input.workspaceId,
@@ -104,6 +108,17 @@ export async function createGmailSendApproval(input: {
       crmPreparation: input.crmPreparation ?? null,
       crmPreparationStatus: input.crmPreparationStatus ?? null,
       preparedHubSpotActions: input.preparedHubSpotActions ?? null,
+      customerEmailPolicy: {
+        mode: customerEmailMode,
+        customerEmail: customerEmailMode === "draft_only"
+          ? "Draft only mode. This email will not be sent automatically."
+          : "Customer emails require approval before sending.",
+        humanReview: "Required",
+        crmUpdate: "Approval required",
+        slackAlert: input.slackNotificationSettings?.slackNotificationsEnabled && input.slackNotificationSettings?.slackApprovalAlertsEnabled
+          ? "Enabled"
+          : "Disabled",
+      },
     },
     policy_reason: input.policyReason,
   });

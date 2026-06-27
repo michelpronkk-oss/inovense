@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { createGmailDraft, GmailApiError, getMissingGmailScopes, hasGmailSendScope, resolveAccessTokenFromCredential, sendGmailDraft, sendGmailMessage, type StoredConnectorCredential } from "@/lib/connectors/gmail";
 import { executeHubSpotRevenueActions, HubSpotExecutionError, type HubSpotExecutionResult, type PreparedHubSpotActions } from "@/lib/operators/executors/hubspot";
 import { sendSlackMessageAfterApproval, SlackExecutionError, type PreparedSlackMessageAction } from "@/lib/operators/executors/slack";
+import { sendSlackApprovalNotification } from "@/lib/notifications/slack";
 import { logOperatorEvent, recordOperatorUsage } from "@/lib/operators/logging";
 import { createOperatorMemory } from "@/lib/operators/memory";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
@@ -38,6 +39,13 @@ type GmailContinuationPayload = {
   crmPreparation?: Record<string, unknown> | null;
   preparedHubSpotActions?: PreparedHubSpotActions | null;
   sourceMetadata?: Record<string, unknown> | null;
+  customerEmailPolicy?: {
+    mode?: string;
+    customerEmail?: string;
+    humanReview?: string;
+    crmUpdate?: string;
+    slackAlert?: string;
+  } | null;
 };
 
 type SlackContinuationPayload = PreparedSlackMessageAction;
@@ -154,6 +162,7 @@ function validateGmailPayload(value: unknown): { ok: true; payload: GmailContinu
       crmPreparation: rec.crmPreparation && typeof rec.crmPreparation === "object" ? rec.crmPreparation as Record<string, unknown> : null,
       preparedHubSpotActions: rec.preparedHubSpotActions && typeof rec.preparedHubSpotActions === "object" ? rec.preparedHubSpotActions as PreparedHubSpotActions : null,
       sourceMetadata: rec.sourceMetadata && typeof rec.sourceMetadata === "object" ? rec.sourceMetadata as Record<string, unknown> : null,
+      customerEmailPolicy: rec.customerEmailPolicy && typeof rec.customerEmailPolicy === "object" ? rec.customerEmailPolicy as GmailContinuationPayload["customerEmailPolicy"] : null,
     },
   };
 }
@@ -191,6 +200,12 @@ function shouldExecuteHubSpot(payload: GmailContinuationPayload): boolean {
     && payload.crmPreparationStatus !== "hubspot_not_connected"
     && payload.preparedHubSpotActions?.executionStatus === "execution_enabled"
   );
+}
+
+function customerEmailMode(payload: GmailContinuationPayload): "approval_required" | "draft_only" | "auto_send_low_risk" {
+  const mode = payload.customerEmailPolicy?.mode;
+  if (mode === "draft_only" || mode === "auto_send_low_risk" || mode === "approval_required") return mode;
+  return "approval_required";
 }
 
 function hubspotErrorPayload(error: unknown) {
@@ -251,6 +266,96 @@ async function markGmailFailure(input: {
       error: errorPayload.message,
     }).eq("id", operatorRunId).eq("workspace_id", input.workspaceId);
   }
+}
+
+async function markDraftOnlyReviewed(input: {
+  supabase: ReturnType<typeof createSupabaseAdmin>;
+  approvalId: string;
+  workspaceId: string;
+  resolvedBy: string;
+  approvalRow: Record<string, unknown>;
+  payload: GmailContinuationPayload;
+}) {
+  const finalDraft = effectiveDraft(input.payload);
+  const continuation = input.approvalRow.continuation_payload && typeof input.approvalRow.continuation_payload === "object"
+    ? input.approvalRow.continuation_payload as Record<string, unknown>
+    : {};
+  const executionResult = {
+    gmailStatus: "draft_only_not_sent",
+    hubspotStatus: "not_attempted",
+    usedEditedDraft: finalDraft.usedEditedDraft,
+    finalSubject: finalDraft.subject,
+    finalBodyPreview: finalDraft.bodyPreview,
+    finalBodyHash: finalDraft.bodyHash,
+  };
+  const update = await input.supabase.from("os_approvals").update({
+    status: "approved",
+    resolved_at: new Date().toISOString(),
+    resolved_by: input.resolvedBy,
+    continuation_payload: { ...continuation, executionResult },
+  }).eq("id", input.approvalId).eq("workspace_id", input.workspaceId);
+  if (update.error) {
+    return NextResponse.json({ error: "approval_update_failed", message: update.error.message }, { status: 500 });
+  }
+
+  const operatorRunId = input.payload.operatorRunId || (typeof input.approvalRow.run_id === "string" ? input.approvalRow.run_id : "");
+  if (operatorRunId) {
+    await input.supabase.from("os_operator_runs").update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+      output: {
+        gmail: executionResult,
+        crmPreparationStatus: input.payload.crmPreparationStatus ?? null,
+        crmPreparation: input.payload.crmPreparation ?? null,
+        preparedActions: input.payload.preparedActions ?? ["send_gmail_follow_up"],
+        preparedHubSpotActions: input.payload.preparedHubSpotActions ?? null,
+      },
+      error: null,
+    }).eq("id", operatorRunId).eq("workspace_id", input.workspaceId).eq("approval_id", input.approvalId);
+
+    await optionalStep([], "os_operator_run_logs.customer_email_draft_only", () => logOperatorEvent({
+      supabase: input.supabase,
+      workspaceId: input.workspaceId,
+      runId: operatorRunId,
+      eventType: "customer_email_draft_only",
+      message: "Customer email policy is draft-only. No Gmail message was sent.",
+      metadata: { approvalId: input.approvalId, to: input.payload.to, subject: finalDraft.subject },
+    }).then((res) => {
+      if (res.error) throw new Error(res.error.message);
+      return res;
+    }));
+  }
+
+  await optionalStep([], "os_execution_logs.customer_email_draft_only", () => input.supabase.from("os_execution_logs").insert({
+    id: `log-customer-email-draft-only-${Date.now()}`,
+    ts: toTs(),
+    run_id: input.approvalRow.run_id || "manual",
+    agent_id: input.approvalRow.agent_id || "system",
+    agent_mark: input.approvalRow.agent_mark || "OS",
+    agent_color: input.approvalRow.agent_color || "#4DE8E1",
+    event: "customer_email_draft_only",
+    message: `Reviewed draft-only customer email to ${input.payload.to}. No message was sent.`,
+    duration: "-",
+    status: "ok",
+  }).then((res) => {
+    if (res.error) throw new Error(res.error.message);
+    return res;
+  }));
+
+  await optionalStep([], "slack_notification.approval_approved", () => sendSlackApprovalNotification({
+    supabase: input.supabase,
+    workspaceId: input.workspaceId,
+    approvalId: input.approvalId,
+    runId: operatorRunId,
+    eventType: "approval_approved",
+    operatorKey: input.payload.operatorKey || "revenue",
+    title: "Approval approved.",
+    summary: "Draft-only customer email was reviewed. No Gmail message was sent.",
+    approvalUrl: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://app.inovense.com"}/app/approvals`,
+    metadata: { customerEmailMode: "draft_only" },
+  }));
+
+  return NextResponse.json({ ok: true, status: "draft_only_reviewed", executionResult });
 }
 
 function gmailErrorResponse(error: unknown) {
@@ -524,6 +629,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     .eq("id", context.workspaceId)
     .single();
   if (ws.error || !ws.data) return NextResponse.json({ error: "Workspace not found." }, { status: 404 });
+  if (customerEmailMode(gmailPayload) === "draft_only") {
+    return markDraftOnlyReviewed({
+      supabase,
+      approvalId: id,
+      workspaceId: context.workspaceId,
+      resolvedBy: context.userEmail || context.userId || userEmail || userId,
+      approvalRow: approvalRow as Record<string, unknown>,
+      payload: gmailPayload,
+    });
+  }
   if (!ws.data.can_run_real_actions || ws.data.billing_status === "preview") {
     return NextResponse.json({ error: "Real execution requires an active plan." }, { status: 402 });
   }
@@ -659,6 +774,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       payload: gmailPayload,
       error,
     });
+    await optionalStep([], "slack_notification.execution_failed", () => sendSlackApprovalNotification({
+      supabase,
+      workspaceId: context.workspaceId,
+      approvalId: id,
+      runId: gmailPayload.operatorRunId || (typeof approvalRow.run_id === "string" ? approvalRow.run_id : null),
+      eventType: "execution_failed",
+      operatorKey: gmailPayload.operatorKey || "revenue",
+      title: "Execution failed.",
+      summary: "Gmail execution failed before the customer email could be sent.",
+      approvalUrl: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://app.inovense.com"}/app/approvals`,
+      metadata: { to: gmailPayload.to, error: error instanceof Error ? error.message : "Unknown Gmail error" },
+    }));
     return gmailErrorResponse(error);
   }
 
@@ -781,6 +908,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       duration: "-",
       status: hubspotFailed ? "warn" : "ok",
     },
+    {
+      id: `log-customer-email-sent-${Date.now() + 3}`,
+      ts: toTs(),
+      run_id: approvalRow.run_id || "manual",
+      agent_id: approvalRow.agent_id || "system",
+      agent_mark: approvalRow.agent_mark || "OS",
+      agent_color: approvalRow.agent_color || "#4DE8E1",
+      event: "customer_email_sent_after_approval",
+      message: `Customer email sent after approval to ${gmailPayload.to}`,
+      duration: "-",
+      status: "ok",
+    },
   ]).then((res) => {
     if (res.error) throw new Error(res.error.message);
     return res;
@@ -887,6 +1026,21 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         return res;
       }));
   }
+
+  await optionalStep(warnings, hubspotFailed ? "slack_notification.execution_failed" : "slack_notification.approval_approved", () => sendSlackApprovalNotification({
+    supabase,
+    workspaceId: context.workspaceId,
+    approvalId: id,
+    runId: operatorRunId || (typeof approvalRow.run_id === "string" ? approvalRow.run_id : null),
+    eventType: hubspotFailed ? "execution_failed" : "approval_approved",
+    operatorKey: gmailPayload.operatorKey || "revenue",
+    title: hubspotFailed ? "Execution failed." : "Approval approved.",
+    summary: hubspotFailed
+      ? "Gmail was sent, but HubSpot execution failed. Review the approval logs in Inovense."
+      : "Revenue Operator sent the email and updated the run.",
+    approvalUrl: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://app.inovense.com"}/app/approvals`,
+    metadata: { to: gmailPayload.to, hubspotStatus: hubspotResult?.status ?? null },
+  }));
 
   const draftSendDetails = draftSendFailure instanceof GmailApiError ? draftSendFailure.details : null;
   return NextResponse.json({
