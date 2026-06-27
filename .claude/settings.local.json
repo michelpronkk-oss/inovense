@@ -42,7 +42,8 @@
       "Bash(chromium-cli --help)",
       "Bash(git check-ignore *)",
       "PowerShell(pnpm.cmd run build 2>&1)",
-      "PowerShell(pnpm.cmd run build)"
+      "PowerShell(pnpm.cmd run build)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\(p.scripts,null,2\\)\\); console.log\\('--- trigger deps ---'\\); console.log\\(Object.entries\\({...p.dependencies,...p.devDependencies}\\).filter\\(\\([k]\\)=>k.includes\\('trigger'\\)\\).map\\(e=>e.join\\(': '\\)\\).join\\('\\\\n'\\)\\)\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\miche\\Desktop\\inovense-app\\src",
