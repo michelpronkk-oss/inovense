@@ -42,11 +42,14 @@ type GmailContinuationPayload = {
   crmPreparation?: Record<string, unknown> | null;
   preparedHubSpotActions?: PreparedHubSpotActions | null;
   sourceMetadata?: Record<string, unknown> | null;
+  clientFlowTrelloAction?: PreparedAction | null;
+  clientFlow?: Record<string, unknown> | null;
   customerEmailPolicy?: {
     mode?: string;
     customerEmail?: string;
     humanReview?: string;
     crmUpdate?: string;
+    trelloTask?: string;
     slackAlert?: string;
   } | null;
 };
@@ -172,9 +175,40 @@ function validateGmailPayload(value: unknown): { ok: true; payload: GmailContinu
       crmPreparation: rec.crmPreparation && typeof rec.crmPreparation === "object" ? rec.crmPreparation as Record<string, unknown> : null,
       preparedHubSpotActions: rec.preparedHubSpotActions && typeof rec.preparedHubSpotActions === "object" ? rec.preparedHubSpotActions as PreparedHubSpotActions : null,
       sourceMetadata: rec.sourceMetadata && typeof rec.sourceMetadata === "object" ? rec.sourceMetadata as Record<string, unknown> : null,
+      clientFlowTrelloAction: rec.clientFlowTrelloAction && typeof rec.clientFlowTrelloAction === "object" ? rec.clientFlowTrelloAction as PreparedAction : null,
+      clientFlow: rec.clientFlow && typeof rec.clientFlow === "object" ? rec.clientFlow as Record<string, unknown> : null,
       customerEmailPolicy: rec.customerEmailPolicy && typeof rec.customerEmailPolicy === "object" ? rec.customerEmailPolicy as GmailContinuationPayload["customerEmailPolicy"] : null,
     },
   };
+}
+
+/**
+ * Client Flow can bundle a prepared Trello task into a Gmail approval. The
+ * Trello action stays approval-gated and only runs after the human approves.
+ * Failures are non-fatal: the email/draft result is preserved and the Trello
+ * failure is surfaced in the execution result. Gated on operatorKey so Revenue
+ * approvals are never affected.
+ */
+async function executeClientFlowTrelloAction(input: {
+  payload: GmailContinuationPayload;
+  approvalId: string;
+  canRunRealActions: boolean;
+}): Promise<Record<string, unknown> | null> {
+  if (input.payload.operatorKey !== "client_flow") return null;
+  const action = input.payload.clientFlowTrelloAction;
+  if (!action || action.connectorKey !== "trello") return null;
+  if (!input.canRunRealActions) {
+    return { status: "skipped", reason: "real_execution_requires_active_plan", actionType: action.actionType };
+  }
+  try {
+    const result = await executePreparedActionAfterApproval({ action, approvalId: input.approvalId });
+    return { status: "executed", action: result };
+  } catch (error) {
+    const errorPayload = error instanceof TrelloExecutionError
+      ? { message: error.message, details: error.details }
+      : { message: error instanceof Error ? error.message : "Trello action execution failed.", details: null };
+    return { status: "failed", error: errorPayload, actionType: action.actionType };
+  }
 }
 
 function validateSlackPayload(value: unknown): { ok: true; payload: SlackContinuationPayload } | { ok: false; details: InvalidPayloadDetail[] } {
@@ -309,14 +343,23 @@ async function markDraftOnlyReviewed(input: {
   resolvedBy: string;
   approvalRow: Record<string, unknown>;
   payload: GmailContinuationPayload;
+  canRunRealActions: boolean;
 }) {
   const finalDraft = effectiveDraft(input.payload);
   const continuation = input.approvalRow.continuation_payload && typeof input.approvalRow.continuation_payload === "object"
     ? input.approvalRow.continuation_payload as Record<string, unknown>
     : {};
+  // Trello task is independent of the email send policy. It stays approval-gated
+  // and runs even when the customer email is draft-only.
+  const clientFlowTrello = await executeClientFlowTrelloAction({
+    payload: input.payload,
+    approvalId: input.approvalId,
+    canRunRealActions: input.canRunRealActions,
+  });
   const executionResult = {
     gmailStatus: "draft_only_not_sent",
     hubspotStatus: "not_attempted",
+    clientFlowTrello,
     usedEditedDraft: finalDraft.usedEditedDraft,
     finalSubject: finalDraft.subject,
     finalBodyPreview: finalDraft.bodyPreview,
@@ -358,6 +401,37 @@ async function markDraftOnlyReviewed(input: {
       if (res.error) throw new Error(res.error.message);
       return res;
     }));
+
+    if (input.payload.operatorKey === "client_flow") {
+      await optionalStep([], "os_operator_run_logs.client_flow_draft_only", () => logOperatorEvent({
+        supabase: input.supabase,
+        workspaceId: input.workspaceId,
+        runId: operatorRunId,
+        eventType: "client_flow_draft_only",
+        message: "Client Flow email policy is draft-only. The client reply was reviewed but not sent.",
+        metadata: { approvalId: input.approvalId, to: input.payload.to, subject: finalDraft.subject },
+      }));
+      if (clientFlowTrello?.status === "executed") {
+        await optionalStep([], "os_operator_run_logs.client_flow_trello_task_created", () => logOperatorEvent({
+          supabase: input.supabase,
+          workspaceId: input.workspaceId,
+          runId: operatorRunId,
+          eventType: "client_flow_trello_task_created",
+          message: "Client Flow Trello task created after approval.",
+          metadata: { approvalId: input.approvalId, clientFlowTrello },
+        }));
+      } else if (clientFlowTrello?.status === "failed") {
+        await optionalStep([], "os_operator_run_logs.client_flow_execution_failed", () => logOperatorEvent({
+          supabase: input.supabase,
+          workspaceId: input.workspaceId,
+          runId: operatorRunId,
+          level: "warn",
+          eventType: "client_flow_execution_failed",
+          message: "Client Flow Trello task execution failed after approval.",
+          metadata: { approvalId: input.approvalId, clientFlowTrello },
+        }));
+      }
+    }
   }
 
   await optionalStep([], "os_execution_logs.customer_email_draft_only", () => input.supabase.from("os_execution_logs").insert({
@@ -840,6 +914,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       resolvedBy: context.userEmail || context.userId || userEmail || userId,
       approvalRow: approvalRow as Record<string, unknown>,
       payload: gmailPayload,
+      canRunRealActions: Boolean(ws.data.can_run_real_actions) && ws.data.billing_status !== "preview",
     });
   }
   if (!ws.data.can_run_real_actions || ws.data.billing_status === "preview") {
@@ -1039,6 +1114,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     warnings.push("hubspot_execution_not_enabled");
   }
 
+  // Client Flow can bundle a prepared Trello task. Reaching here means billing
+  // already allows real execution. The task stays approval-gated and failures
+  // are non-fatal to the completed email send.
+  const clientFlowTrello = await executeClientFlowTrelloAction({
+    payload: gmailPayload,
+    approvalId: id,
+    canRunRealActions: true,
+  });
+  if (clientFlowTrello?.status === "failed") warnings.push("client_flow_trello_failed");
+
   const hubspotFailed = hubspotResult?.status === "failed";
   const finalStatus = hubspotFailed ? "partially_completed" : "approved";
   const runFinalStatus = hubspotFailed ? "partially_completed" : "completed";
@@ -1047,6 +1132,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     hubspotStatus: hubspotResult?.status ?? "not_applicable",
     hubspotContactId: hubspotResult?.contactId ?? null,
     hubspotDealId: hubspotResult?.dealId ?? null,
+    clientFlowTrello,
     gmail: {
       draftId: draft.draftId,
       messageId: sent.messageId ?? null,
@@ -1129,6 +1215,38 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }));
 
   const operatorRunId = typeof gmailPayload.operatorRunId === "string" ? gmailPayload.operatorRunId : approvalRow.run_id;
+
+  if (gmailPayload.operatorKey === "client_flow" && operatorRunId) {
+    await optionalStep(warnings, "os_operator_run_logs.client_flow_email_sent", () => logOperatorEvent({
+      supabase,
+      workspaceId: context.workspaceId,
+      runId: operatorRunId,
+      eventType: "client_flow_email_sent_after_approval",
+      message: `Client reply sent after approval to ${gmailPayload.to}.`,
+      metadata: { approvalId: id, to: gmailPayload.to, subject: finalDraft.subject, clientFlowTrello },
+    }));
+    if (clientFlowTrello?.status === "executed") {
+      await optionalStep(warnings, "os_operator_run_logs.client_flow_trello_task_created", () => logOperatorEvent({
+        supabase,
+        workspaceId: context.workspaceId,
+        runId: operatorRunId,
+        eventType: "client_flow_trello_task_created",
+        message: "Client Flow Trello task created after approval.",
+        metadata: { approvalId: id, clientFlowTrello },
+      }));
+    } else if (clientFlowTrello?.status === "failed") {
+      await optionalStep(warnings, "os_operator_run_logs.client_flow_execution_failed", () => logOperatorEvent({
+        supabase,
+        workspaceId: context.workspaceId,
+        runId: operatorRunId,
+        level: "warn",
+        eventType: "client_flow_execution_failed",
+        message: "Client Flow Trello task execution failed after the client reply was sent.",
+        metadata: { approvalId: id, clientFlowTrello },
+      }));
+    }
+  }
+
   if (operatorRunId) {
     const approvalLearning = {
       ...learningMetadata({

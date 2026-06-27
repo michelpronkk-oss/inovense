@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Nango from "@nangohq/frontend";
@@ -73,6 +73,67 @@ function operatorLabel(operatorKey: string): string {
 
 const CATEGORY_ORDER: Array<ConnectorCategory | "all"> = ["all", ...Array.from(new Set(listConnectors().map((def) => def.category)))];
 
+function connectorPurpose(connectorId: string): string {
+  if (connectorId === "gmail") return "Email follow-ups";
+  if (connectorId === "hubspot") return "CRM execution";
+  if (connectorId === "slack") return "Team alerts";
+  if (connectorId === "trello") return "Project tasks";
+  return "Operator actions";
+}
+
+function connectorValueSentence(connectorId: string, fallback: string): string {
+  if (connectorId === "gmail") return "Reads recent inbox context and sends follow-up emails after approval.";
+  if (connectorId === "hubspot") return "Creates and updates contacts, deals and CRM context after approval.";
+  if (connectorId === "slack") return "Sends internal team alerts and approval updates to a selected channel.";
+  if (connectorId === "trello") return "Reads project boards and creates task updates after approval.";
+  return fallback;
+}
+
+function connectorCapabilities(connectorId: string): string[] {
+  if (connectorId === "gmail") return ["Read recent inbox metadata", "Draft customer replies", "Send emails after approval"];
+  if (connectorId === "hubspot") return ["Create or update contacts", "Create or update deals", "Link contacts to deals"];
+  if (connectorId === "slack") return ["Read available channels", "Send internal approval alerts", "Notify the team after important actions"];
+  if (connectorId === "trello") return ["Read boards, lists and cards", "Create cards after approval", "Move cards after approval", "Add comments after approval"];
+  const def = getConnectorDefinition(connectorId);
+  return def?.writeActions.length ? def.writeActions : def?.readActions ?? ["Connect account"];
+}
+
+function connectorSafetyNotes(connectorId: string): string[] {
+  if (connectorId === "gmail") return ["External customer emails require approval before sending.", "Inovense never sends from Gmail without a reviewed approval."];
+  if (connectorId === "hubspot") return ["CRM changes require approval.", "Customer records are updated only through approved actions."];
+  if (connectorId === "slack") return ["Slack alerts are internal.", "Customer-facing Slack messages are not sent automatically."];
+  if (connectorId === "trello") return ["Trello task changes require approval.", "Cards, moves and comments execute only after review."];
+  return ["Approval rules stay enforced for risky actions."];
+}
+
+function shortOperatorLabel(label: string): string {
+  return label
+    .replace(" Operator", "")
+    .replace("Approval Risk", "Approval & Risk")
+    .replace("Automation Architect", "Automation");
+}
+
+function connectorStatusLabel(input: {
+  connector: Connector;
+  isRealConnected: boolean;
+  slackReady?: boolean;
+  trelloReady?: boolean;
+}): { label: string; color: string; background: string; border: string } {
+  if (!input.isRealConnected) return { label: "Not connected", color: "#b8c5c8", background: "rgba(255,255,255,0.04)", border: "rgba(255,255,255,0.12)" };
+  if (input.connector.id === "slack" && !input.slackReady) return { label: "Setup incomplete", color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
+  if (input.connector.id === "trello" && !input.trelloReady) return { label: "Setup incomplete", color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
+  return { label: "Connected", color: "#8df5cf", background: "rgba(81,216,138,0.08)", border: "rgba(81,216,138,0.24)" };
+}
+
+function connectionCopy(connector: Connector): string {
+  if (!connector.isConnected) return "Connect this account to enable real operator actions.";
+  if (connector.id === "gmail") return connector.records.includes("Reconnect") ? connector.records : "Ready for approved email follow-ups.";
+  if (connector.id === "slack") return "Ready for internal alerts once a channel is selected.";
+  if (connector.id === "trello") return "Ready for approved task updates once a board and list are selected.";
+  if (connector.id === "hubspot") return "Ready for approved CRM updates.";
+  return "Connected and ready for approved actions.";
+}
+
 export default function ConnectorsPage() {
   const {
     state,
@@ -128,6 +189,7 @@ export default function ConnectorsPage() {
     defaultListId: null,
     defaultListName: null,
   });
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   // Real connected = authenticated via native OAuth or managed OAuth integration
   const realConnectedConnectors = useMemo(
@@ -176,6 +238,8 @@ export default function ConnectorsPage() {
 
   const setupConnector = availableCatalogConnectors.find((c) => c.id === setupConnectorId) ?? null;
   const drawerConnector = state.connectors.find((c) => c.id === drawerConnectorId) ?? null;
+  const drawerSlackReady = Boolean(slackAlertSettings.slackNotificationsEnabled && slackAlertSettings.slackApprovalAlertsEnabled && slackAlertSettings.slackDefaultChannelId);
+  const drawerTrelloReady = Boolean(trelloSettings.defaultBoardId && trelloSettings.defaultListId);
 
   const entitlements = getEntitlements(state.workspace);
   const isPreview = entitlements.billingStatus === "preview";
@@ -237,6 +301,10 @@ export default function ConnectorsPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    setAdvancedOpen(false);
+  }, [drawerConnectorId]);
 
   const startNangoConnect = async (connectorKey: string) => {
     const connectorDef = getConnectorDefinition(connectorKey);
@@ -611,29 +679,38 @@ export default function ConnectorsPage() {
         </div>
         {realConnectedConnectors.length === 0 ? (
           <div style={{ padding: "24px 18px", fontSize: 12.5, color: "var(--text-faint)" }}>
-            No real accounts connected. Click <strong>Add connector</strong> to connect Gmail, HubSpot, or Slack.
+            No real accounts connected. Click <strong>Add connector</strong> to connect Gmail, HubSpot, Slack, or Trello.
           </div>
         ) : (
-          realConnectedConnectors.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setDrawerConnectorId(c.id)}
-              style={{ width: "100%", textAlign: "left", border: "none", background: "none", borderBottom: "1px solid var(--line)", padding: "14px 18px", display: "grid", gridTemplateColumns: "40px 1fr 160px 130px 120px", alignItems: "center", gap: 14, cursor: "pointer" }}
-            >
-              <div style={{ width: 34, height: 34, borderRadius: 10, background: `${c.color}18`, boxShadow: `inset 0 0 0 1px ${c.color}45`, display: "grid", placeItems: "center", color: c.color, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 700 }}>
-                {c.letter}
-              </div>
-              <div>
-                <div style={{ fontSize: 13.5, fontWeight: 500 }}>{c.name}</div>
-                <div style={{ fontSize: 10.5, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>
-                  {c.category} - {c.syncFreq} - {c.id === "gmail" ? "Secure OAuth" : getConnectorDefinition(c.id)?.authType === "nango" ? "Managed connector" : "Connector"}
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "40px 1.4fr 1fr 1fr 120px 90px", gap: 14, padding: "10px 18px", borderBottom: "1px solid var(--line)", color: "var(--text-mute)", fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              <div />
+              <div>Connector</div>
+              <div>Purpose</div>
+              <div>Setup</div>
+              <div>Last checked</div>
+              <div>Manage</div>
+            </div>
+            {realConnectedConnectors.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setDrawerConnectorId(c.id)}
+                style={{ width: "100%", textAlign: "left", border: "none", background: "none", borderBottom: "1px solid var(--line)", padding: "14px 18px", display: "grid", gridTemplateColumns: "40px 1.4fr 1fr 1fr 120px 90px", alignItems: "center", gap: 14, cursor: "pointer" }}
+              >
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: `${c.color}18`, boxShadow: `inset 0 0 0 1px ${c.color}45`, display: "grid", placeItems: "center", color: c.color, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 700 }}>
+                  {c.letter}
                 </div>
-              </div>
-              <div style={{ fontSize: 10.5, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>{c.eventsSynced} events</div>
-              <div style={{ fontSize: 10.5, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>synced {c.lastSync}</div>
-              <div style={{ fontSize: 10.5, color: c.health === "healthy" ? "var(--green)" : "var(--amber)", fontFamily: "var(--font-mono)" }}>{c.health}</div>
-            </button>
-          ))
+                <div>
+                  <div style={{ fontSize: 13.5, fontWeight: 500 }}>{c.name}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>{c.category}</div>
+                </div>
+                <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{connectorPurpose(c.id)}</div>
+                <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{connectionCopy(c)}</div>
+                <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>{c.lastSynced ? new Date(c.lastSynced).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "Just now"}</div>
+                <div style={{ justifySelf: "start", fontSize: 11.5, color: "#8df5cf", padding: "5px 8px", borderRadius: 999, background: "rgba(81,216,138,0.08)", boxShadow: "inset 0 0 0 1px rgba(81,216,138,0.2)" }}>Manage</div>
+              </button>
+            ))}
+          </>
         )}
       </div>
 
@@ -796,12 +873,19 @@ export default function ConnectorsPage() {
               <h3>{drawerConnector.name} details</h3>
               <button className="appr-btn deny" onClick={() => setDrawerConnectorId(null)}>Close</button>
             </div>
-            <ConnectorSetupView connector={drawerConnector} isRealConnected={isRealConnectedConnector(drawerConnector)} isPreview={isPreview} />
-            {drawerConnector.id === "gmail" && (
-              <div style={{ marginTop: 10, fontSize: 11.5, color: "#9DEFEA" }}>
-                Secure connection via Google OAuth - compose/send plus recent inbox metadata scanning when readonly access is granted.
-              </div>
-            )}
+            <ConnectorSetupView
+              connector={drawerConnector}
+              isRealConnected={isRealConnectedConnector(drawerConnector)}
+              isPreview={isPreview}
+              advancedOpen={advancedOpen}
+              onToggleAdvanced={() => setAdvancedOpen((open) => !open)}
+              statusMeta={connectorStatusLabel({
+                connector: drawerConnector,
+                isRealConnected: isRealConnectedConnector(drawerConnector),
+                slackReady: drawerSlackReady,
+                trelloReady: drawerTrelloReady,
+              })}
+            />
             {drawerConnector.id === "gmail" && drawerConnector.isConnected && (drawerConnector.health !== "healthy" || drawerConnector.records.includes("Reconnect required")) && (
               <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "rgba(245,194,107,0.08)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.2)", fontSize: 12, color: "var(--amber)" }}>
                 {drawerConnector.records.includes("opportunity scanning")
@@ -810,13 +894,8 @@ export default function ConnectorsPage() {
               </div>
             )}
             {getConnectorDefinition(drawerConnector.id)?.authType === "nango" && nangoStatuses[drawerConnector.id]?.status === "connected" && (
-              <div style={{ marginTop: 10, fontSize: 11.5, color: "#9DEFEA" }}>
-                {drawerConnector.name} account connected{nangoStatuses[drawerConnector.id].provider_email ? ` - ${nangoStatuses[drawerConnector.id].provider_email}` : ""}
-              </div>
-            )}
-            {drawerConnector.id === "slack" && isRealConnectedConnector(drawerConnector) && (
-              <div style={{ marginTop: 10, fontSize: 11.5, color: "#9DEFEA" }}>
-                Team chat alerts and operator updates can be sent to a configured internal channel.
+              <div style={{ marginTop: 10, fontSize: 11.5, color: "#9DEFEA", padding: "9px 10px", borderRadius: 10, background: "rgba(77,232,225,0.055)", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.16)" }}>
+                Connected through Nango{nangoStatuses[drawerConnector.id].provider_email ? ` as ${nangoStatuses[drawerConnector.id].provider_email}` : ""}
               </div>
             )}
             {drawerConnector.id === "slack" && isRealConnectedConnector(drawerConnector) && (
@@ -952,14 +1031,6 @@ export default function ConnectorsPage() {
                 Preview connection only. Connect a real account to sync live data and enable operator actions.
               </div>
             )}
-            {isRealConnectedConnector(drawerConnector) && (
-              <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Recent sync events</div>
-                {(drawerConnector.recentSyncEvents.length ? drawerConnector.recentSyncEvents : ["No DB-backed sync events. Gmail scans recent metadata only when you run the Revenue scan."]).map((ev) => (
-                  <div key={ev} style={{ fontSize: 12, color: "var(--text-dim)", padding: "8px 10px", borderRadius: 8, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)" }}>{ev}</div>
-                ))}
-              </div>
-            )}
             <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
               <div style={{ display: "flex", gap: 8 }}>
                 {isRealConnectedConnector(drawerConnector) && (
@@ -1003,45 +1074,112 @@ function getConnectorSetupMessage({ isPreview, isConnected }: { isPreview: boole
   return "Connect your account to enable this connector.";
 }
 
-function ConnectorSetupView({ connector, isRealConnected, isPreview }: { connector: Connector; isRealConnected: boolean; isPreview: boolean }) {
-  // Only show real stats (health, sync, event counts) for genuinely connected accounts.
-  // For available or preview connectors, show neutral placeholder values.
-  const displayHealth = isRealConnected ? connector.health : "Not connected";
-  const displayLastSync = isRealConnected ? connector.lastSync : "—";
-  const displayEvents = isRealConnected ? String(connector.eventsSynced) : "—";
-  const displayErrors = isRealConnected ? String(connector.authErrors) : "—";
+function ConnectorSetupView({
+  connector,
+  isRealConnected,
+  isPreview,
+  advancedOpen = false,
+  onToggleAdvanced,
+  statusMeta,
+}: {
+  connector: Connector;
+  isRealConnected: boolean;
+  isPreview: boolean;
+  advancedOpen?: boolean;
+  onToggleAdvanced?: () => void;
+  statusMeta?: { label: string; color: string; background: string; border: string };
+}) {
   const setupMessage = getConnectorSetupMessage({ isPreview, isConnected: isRealConnected });
+  const status = statusMeta ?? connectorStatusLabel({ connector, isRealConnected });
+  const def = getConnectorDefinition(connector.id);
+  const lastChecked = connector.lastSynced ? new Date(connector.lastSynced).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Just now";
 
   return (
-    <div style={{ display: "grid", gap: 10 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ width: 34, height: 34, borderRadius: 10, background: `${connector.color}18`, boxShadow: `inset 0 0 0 1px ${connector.color}45`, display: "grid", placeItems: "center", color: connector.color, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{connector.letter}</div>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 600 }}>{connector.name}</div>
-          <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)" }}>
-            {connector.category} - {connector.syncMode} - {connector.syncFreq} - {connector.id === "gmail" ? "Secure OAuth" : getConnectorDefinition(connector.id)?.authType === "nango" ? "Managed connector" : "Connector"}
+    <div style={{ display: "grid", gap: 14 }}>
+      <div style={{ padding: 16, borderRadius: 16, background: "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.022))", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.085)", display: "grid", gap: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 42, height: 42, borderRadius: 12, background: `${connector.color}18`, boxShadow: `inset 0 0 0 1px ${connector.color}45`, display: "grid", placeItems: "center", color: connector.color, fontSize: 12, fontFamily: "var(--font-mono)", fontWeight: 800 }}>{connector.letter}</div>
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 700 }}>{connector.name}</div>
+              <div style={{ fontSize: 12, color: "var(--text-mute)", marginTop: 2 }}>{connector.category}</div>
+            </div>
           </div>
+          <span style={{ color: status.color, background: status.background, boxShadow: `inset 0 0 0 1px ${status.border}`, borderRadius: 999, padding: "6px 10px", fontSize: 11.5, fontWeight: 650 }}>
+            {status.label}
+          </span>
         </div>
-      </div>
-      <div style={{ fontSize: 12.5, color: "var(--text-dim)" }}>{connector.description}</div>
-      {!isRealConnected && (
-        <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>
-          {setupMessage}
+        <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.55 }}>
+          {connectorValueSentence(connector.id, connector.description)}
         </div>
-      )}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <TagList title="Required access" items={connector.readScopes.length ? connector.readScopes : connector.permissions} />
-        <TagList title="Write access" items={connector.writeScopes.length ? connector.writeScopes : ["None"]} />
-        <TagList title="Approval required for" items={connector.approvalRequiredFor.length ? connector.approvalRequiredFor : ["None"]} />
-        <TagList title="Blocked actions" items={connector.blockedActions.length ? connector.blockedActions : ["None"]} />
-        <TagList title="Operators allowed" items={connector.operatorsAllowed.length ? connector.operatorsAllowed : ["All operators"]} />
+        {!isRealConnected && <div style={{ fontSize: 12, color: "#9DEFEA" }}>{setupMessage}</div>}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
-        <Stat label="Status" value={displayHealth} />
-        <Stat label="Last synced" value={displayLastSync} />
-        <Stat label="Events synced" value={displayEvents} />
-        <Stat label="Auth errors" value={displayErrors} />
+
+      <SectionBlock title="What Inovense can do">
+        <div style={{ display: "grid", gap: 8 }}>
+          {connectorCapabilities(connector.id).map((item) => (
+            <div key={item} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--text-dim)" }}>
+              <span style={{ width: 6, height: 6, borderRadius: 999, background: connector.color }} />
+              <span>{item}</span>
+            </div>
+          ))}
+        </div>
+      </SectionBlock>
+
+      <div style={{ padding: 12, borderRadius: 12, background: "rgba(245,194,107,0.06)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.18)", display: "grid", gap: 7 }}>
+        <div style={{ fontSize: 12.5, color: "var(--text)", fontWeight: 650 }}>Safety</div>
+        {connectorSafetyNotes(connector.id).map((item) => (
+          <div key={item} style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.45 }}>{item}</div>
+        ))}
       </div>
+
+      <SectionBlock title="Used by operators">
+        <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+          {(connector.operatorsAllowed.length ? connector.operatorsAllowed : ["All operators"]).map((item) => (
+            <span key={item} style={{ fontSize: 11.5, color: "var(--text-dim)", padding: "6px 9px", borderRadius: 999, background: "rgba(255,255,255,0.04)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}>
+              {shortOperatorLabel(item)}
+            </span>
+          ))}
+        </div>
+      </SectionBlock>
+
+      <div style={{ borderRadius: 12, overflow: "hidden", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}>
+        <button
+          type="button"
+          onClick={onToggleAdvanced}
+          style={{ width: "100%", border: "none", background: "rgba(255,255,255,0.025)", color: "var(--text)", padding: "11px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: onToggleAdvanced ? "pointer" : "default" }}
+        >
+          <span style={{ fontSize: 12.5, fontWeight: 650 }}>Advanced details</span>
+          <span style={{ fontSize: 12, color: "var(--text-mute)" }}>{advancedOpen ? "Hide" : "Show"}</span>
+        </button>
+        {advancedOpen && (
+          <div style={{ padding: 12, display: "grid", gap: 10, background: "rgba(0,0,0,0.14)" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <TagList title="Required access" items={connector.readScopes.length ? connector.readScopes : connector.permissions} />
+              <TagList title="Write access" items={connector.writeScopes.length ? connector.writeScopes : ["None"]} />
+              <TagList title="Approval required" items={connector.approvalRequiredFor.length ? connector.approvalRequiredFor : ["None"]} />
+              <TagList title="Blocked actions" items={connector.blockedActions.length ? connector.blockedActions : ["None"]} />
+              <TagList title="Raw capabilities" items={def?.capabilities ?? ["Not listed"]} />
+              <TagList title="Recent activity" items={connector.recentSyncEvents.length ? connector.recentSyncEvents : ["No recent activity recorded"]} />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8 }}>
+              <Stat label="Health" value={isRealConnected ? connector.health : "Not connected"} />
+              <Stat label="Last checked" value={lastChecked} />
+              <Stat label="Events synced" value={isRealConnected ? String(connector.eventsSynced) : "-"} />
+              <Stat label="Auth errors" value={isRealConnected ? String(connector.authErrors) : "-"} />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SectionBlock({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div style={{ padding: 12, borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.075)", display: "grid", gap: 10 }}>
+      <div style={{ fontSize: 12.5, color: "var(--text)", fontWeight: 650 }}>{title}</div>
+      {children}
     </div>
   );
 }

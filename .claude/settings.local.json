@@ -41,7 +41,8 @@
       "Bash(curl -s http://localhost:3000/)",
       "Bash(chromium-cli --help)",
       "Bash(git check-ignore *)",
-      "PowerShell(pnpm.cmd run build 2>&1)"
+      "PowerShell(pnpm.cmd run build 2>&1)",
+      "PowerShell(pnpm.cmd run build)"
     ],
     "additionalDirectories": [
       "C:\\Users\\miche\\Desktop\\inovense-app\\src",
