@@ -169,8 +169,8 @@ export default function AgentsOverviewPage() {
           const item = readinessByKey.get(operator.key);
           const status = statusLabel(operator, item, operator.key === "revenue" ? revenueStatus ?? undefined : undefined);
           const color = CATEGORY_COLORS[operator.category] ?? "#4DE8E1";
-          const href = operator.key === "revenue" ? "/app/agents/revenue" : operator.key === "client_flow" ? "/app/agents/client-flow" : "#";
-          const isOpenable = operator.key === "revenue" || operator.key === "client_flow";
+          const href = operator.key === "revenue" ? "/app/agents/revenue" : operator.key === "client_flow" ? "/app/agents/client-flow" : operator.key === "operations" ? "/app/agents/operations" : "#";
+          const isOpenable = operator.key === "revenue" || operator.key === "client_flow" || operator.key === "operations";
           return (
             <div className="p" key={operator.key} style={{ gap: 0, overflow: "hidden" }}>
               <div className="p-head" style={{ alignItems: "flex-start" }}>

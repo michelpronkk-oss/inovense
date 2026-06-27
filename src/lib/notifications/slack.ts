@@ -25,6 +25,7 @@ export type SendSlackApprovalNotificationInput = {
   risk?: string | null;
   source?: string | null;
   actionLabel?: string | null;
+  contactName?: string | null;
   approvalUrl?: string | null;
   metadata?: Record<string, unknown> | null;
 };
@@ -49,27 +50,85 @@ function eventLogName(eventType: SlackApprovalNotificationEvent): string {
   return "slack_notification_approval_created";
 }
 
+function stripSubjectPrefix(value: string): string {
+  return value.replace(/^(\s*(re|fw|fwd)\s*:\s*)+/i, "").trim();
+}
+
+function shorten(value: string, max: number): string {
+  const clean = value.replace(/\s+/g, " ").trim();
+  return clean.length > max ? `${clean.slice(0, max - 1).trimEnd()}…` : clean;
+}
+
+function resolveContactName(input: SendSlackApprovalNotificationInput): string {
+  const meta = asRecord(input.metadata);
+  const explicit = input.contactName?.trim() || (typeof meta.contactName === "string" ? meta.contactName.trim() : "");
+  if (explicit) return explicit;
+  // Fall back to "... from {name}" embedded in the title, then the email local part.
+  const fromTitle = (input.title || "").match(/\bfrom\s+([^.]+?)\.?\s*$/i);
+  if (fromTitle?.[1]) return fromTitle[1].trim();
+  const email = typeof meta.fromEmail === "string" ? meta.fromEmail : "";
+  const local = email.split("@")[0]?.trim();
+  return local || "A contact";
+}
+
+// Human labels for prepared action keys. Returns null for actions that should
+// not appear as a bullet (e.g. the Slack alert itself).
+function preparedActionLabel(key: string): string | null {
+  const map: Record<string, string> = {
+    send_gmail_follow_up: "Follow-up email",
+    send_client_email: "Client reply",
+    update_hubspot_contact: "HubSpot contact update",
+    add_hubspot_note: "HubSpot note",
+    create_hubspot_follow_up_task: "HubSpot follow-up task",
+    create_trello_task: "Trello task",
+    add_task_comment: "Trello comment",
+    slack_internal_alert: "",
+  };
+  const label = map[key];
+  return label === undefined ? null : label || null;
+}
+
+function preparedBullets(input: SendSlackApprovalNotificationInput): string[] {
+  const meta = asRecord(input.metadata);
+  const raw = Array.isArray(meta.preparedActions)
+    ? meta.preparedActions.filter((item): item is string => typeof item === "string")
+    : [];
+  const labels = raw.map(preparedActionLabel).filter((label): label is string => Boolean(label));
+  const deduped = Array.from(new Set(labels));
+  if (deduped.length > 0) return deduped.slice(0, 4);
+  if (input.actionLabel) {
+    const label = input.actionLabel.trim();
+    return label ? [label.charAt(0).toUpperCase() + label.slice(1)] : [];
+  }
+  return [];
+}
+
+function buildApprovalCreatedMessage(input: SendSlackApprovalNotificationInput): string {
+  const meta = asRecord(input.metadata);
+  const header = input.operatorKey === "client_flow" ? "Client approval ready" : "Revenue approval ready";
+  const contactName = resolveContactName(input);
+  const subject = typeof meta.subject === "string" ? stripSubjectPrefix(meta.subject) : "";
+  const topic = subject || (input.summary ? shorten(input.summary, 90) : "") || "your message";
+  const bullets = preparedBullets(input);
+
+  const lines: string[] = [header, "", `${contactName} asked about ${topic}.`];
+  if (bullets.length > 0) {
+    lines.push("", "Prepared:");
+    bullets.forEach((bullet) => lines.push(`• ${bullet}`));
+  }
+  const meta2: string[] = [];
+  if (input.confidence) meta2.push(`Confidence: ${input.confidence}`);
+  if (input.risk) meta2.push(`Risk: ${input.risk}`);
+  if (meta2.length > 0) lines.push("", ...meta2);
+  if (input.approvalUrl) lines.push("", "Review in Inovense:", input.approvalUrl);
+  return lines.join("\n");
+}
+
 function buildMessage(input: SendSlackApprovalNotificationInput): string {
-  const lines: string[] = [];
-  if (input.eventType === "approval_approved") {
-    lines.push("Approval approved.");
-  } else if (input.eventType === "approval_rejected") {
-    lines.push("Approval rejected. Revenue Operator learned from the decision.");
-  } else if (input.eventType === "execution_failed") {
-    lines.push("Execution failed. Review the approval logs in Inovense.");
-  } else {
-    lines.push(input.title || "Revenue Operator created a new approval.");
-  }
-
-  if (input.eventType === "revenue_approval_created") {
-    if (input.summary) lines.push(input.summary);
-    if (input.actionLabel) lines.push(`Prepared action: ${input.actionLabel}.`);
-    if (input.confidence) lines.push(`Confidence: ${input.confidence}.`);
-    if (input.risk) lines.push(`Risk: ${input.risk}.`);
-  }
-
-  if (input.approvalUrl) lines.push(`Review approval: ${input.approvalUrl}`);
-  return lines.filter(Boolean).join("\n");
+  if (input.eventType === "approval_approved") return "Approval approved.";
+  if (input.eventType === "approval_rejected") return "Approval rejected. The operator learned from the decision.";
+  if (input.eventType === "execution_failed") return "Execution failed. Review the approval logs in Inovense.";
+  return buildApprovalCreatedMessage(input);
 }
 
 async function alreadySent(input: {

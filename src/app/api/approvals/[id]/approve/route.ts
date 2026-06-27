@@ -668,6 +668,187 @@ async function executeSharedActionApproval(input: {
   }
 }
 
+type OperationsContinuationPayload = {
+  kind: "operations.execute_after_approval";
+  workspaceId: string;
+  operatorRunId?: string;
+  operatorKey?: string;
+  preparedSlackAction: PreparedAction | null;
+  preparedTrelloAction: PreparedAction | null;
+};
+
+function validateOperationsPayload(value: unknown): { ok: true; payload: OperationsContinuationPayload } | { ok: false; details: InvalidPayloadDetail[] } {
+  const details: InvalidPayloadDetail[] = [];
+  if (!value || typeof value !== "object") {
+    return { ok: false, details: [{ field: "continuation_payload", issue: "Must be an object." }] };
+  }
+  const rec = value as Record<string, unknown>;
+  const slack = rec.preparedSlackAction && typeof rec.preparedSlackAction === "object" ? rec.preparedSlackAction as Record<string, unknown> : null;
+  const trello = rec.preparedTrelloAction && typeof rec.preparedTrelloAction === "object" ? rec.preparedTrelloAction as Record<string, unknown> : null;
+  if (rec.kind !== "operations.execute_after_approval") details.push({ field: "kind", issue: "Must equal operations.execute_after_approval." });
+  if (typeof rec.workspaceId !== "string" || !rec.workspaceId.trim()) details.push({ field: "workspaceId", issue: "Required." });
+  if (!slack && !trello) details.push({ field: "preparedSlackAction|preparedTrelloAction", issue: "At least one prepared action is required." });
+  if (slack && slack.connectorKey !== "slack") details.push({ field: "preparedSlackAction.connectorKey", issue: "Must be slack." });
+  if (trello && trello.connectorKey !== "trello") details.push({ field: "preparedTrelloAction.connectorKey", issue: "Must be trello." });
+  if (trello && !["create_task", "move_task", "add_task_comment"].includes(String(trello.actionType))) details.push({ field: "preparedTrelloAction.actionType", issue: "Unsupported action type." });
+  if (details.length > 0) return { ok: false, details };
+  return {
+    ok: true,
+    payload: {
+      kind: "operations.execute_after_approval",
+      workspaceId: String(rec.workspaceId).trim(),
+      operatorRunId: typeof rec.operatorRunId === "string" ? rec.operatorRunId : undefined,
+      operatorKey: typeof rec.operatorKey === "string" ? rec.operatorKey : "operations",
+      preparedSlackAction: slack as PreparedAction | null,
+      preparedTrelloAction: trello as PreparedAction | null,
+    },
+  };
+}
+
+function stringField(action: PreparedAction | null, key: string): string {
+  const value = action?.input?.[key];
+  return typeof value === "string" ? value.trim() : "";
+}
+
+async function executeOperationsApproval(input: {
+  supabase: ReturnType<typeof createSupabaseAdmin>;
+  approvalId: string;
+  approvalRow: Record<string, unknown>;
+  payload: OperationsContinuationPayload;
+  resolvedBy: string;
+}) {
+  const continuation = input.approvalRow.continuation_payload && typeof input.approvalRow.continuation_payload === "object"
+    ? input.approvalRow.continuation_payload as Record<string, unknown>
+    : {};
+  if (continuation.executionResult && typeof continuation.executionResult === "object") {
+    return alreadyResolvedResponse(input.approvalRow);
+  }
+
+  // Single-claim guard prevents double execution (e.g. double-click approve).
+  const executionClaim = await input.supabase
+    .from("os_approvals")
+    .update({ status: "executing", resolved_by: input.resolvedBy })
+    .eq("id", input.approvalId)
+    .eq("workspace_id", input.payload.workspaceId)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+  if (executionClaim.error || !executionClaim.data) {
+    return NextResponse.json({ error: "approval_execution_in_progress", message: executionClaim.error?.message || "Could not claim approval for execution." }, { status: 409 });
+  }
+
+  const runId = input.payload.operatorRunId || (typeof input.approvalRow.run_id === "string" ? input.approvalRow.run_id : "");
+  const warnings: string[] = [];
+  let slackStatus = "not_prepared";
+  let trelloStatus = "not_prepared";
+  let cardId: string | null = null;
+  let cardUrl: string | null = null;
+  let actionType: string | null = null;
+  let slackError: Record<string, unknown> | null = null;
+  let trelloError: Record<string, unknown> | null = null;
+
+  // Slack internal message (approval-gated).
+  if (input.payload.preparedSlackAction) {
+    const channelId = stringField(input.payload.preparedSlackAction, "channelId");
+    const text = stringField(input.payload.preparedSlackAction, "text");
+    try {
+      const sent = await sendSlackMessageAfterApproval({ workspaceId: input.payload.workspaceId, channelId, text, approvalId: input.approvalId });
+      slackStatus = "sent";
+      await optionalStep(warnings, "operations.slack.log", () => logOperatorEvent({
+        supabase: input.supabase, workspaceId: input.payload.workspaceId, runId: runId || "manual",
+        eventType: "operations_slack_message_sent",
+        message: `Operations Slack update sent to ${sent.channelId}.`,
+        metadata: { approvalId: input.approvalId, channelId: sent.channelId },
+      }));
+    } catch (error) {
+      slackStatus = "failed";
+      slackError = error instanceof SlackExecutionError ? { message: error.message, details: error.details } : { message: error instanceof Error ? error.message : "Slack send failed." };
+      warnings.push("operations_slack_failed");
+    }
+  }
+
+  // Trello action (approval-gated): comment / move / create card.
+  if (input.payload.preparedTrelloAction) {
+    actionType = input.payload.preparedTrelloAction.actionType;
+    try {
+      const result = await executePreparedActionAfterApproval({ action: input.payload.preparedTrelloAction, approvalId: input.approvalId });
+      trelloStatus = "executed";
+      const resultRecord = result.result as Record<string, unknown>;
+      cardId = typeof resultRecord.cardId === "string" ? resultRecord.cardId : null;
+      cardUrl = typeof resultRecord.cardUrl === "string" ? resultRecord.cardUrl : null;
+      const event = actionType === "move_task" ? "operations_trello_card_moved" : actionType === "create_task" ? "operations_trello_card_created" : "operations_trello_comment_added";
+      await optionalStep(warnings, "operations.trello.log", () => logOperatorEvent({
+        supabase: input.supabase, workspaceId: input.payload.workspaceId, runId: runId || "manual",
+        eventType: event,
+        message: `Operations Trello ${actionType?.replace(/_/g, " ")} executed after approval.`,
+        metadata: { approvalId: input.approvalId, actionType, cardId, cardUrl },
+      }));
+    } catch (error) {
+      trelloStatus = "failed";
+      trelloError = error instanceof TrelloExecutionError ? { message: error.message, details: error.details } : { message: error instanceof Error ? error.message : "Trello action failed." };
+      warnings.push("operations_trello_failed");
+    }
+  }
+
+  const anyFailed = slackStatus === "failed" || trelloStatus === "failed";
+  const anySucceeded = slackStatus === "sent" || trelloStatus === "executed";
+  const finalStatus = anyFailed ? (anySucceeded ? "partially_completed" : "failed") : "approved";
+  const executionResult = {
+    slackStatus,
+    trelloStatus,
+    cardId,
+    cardUrl,
+    actionType,
+    skippedReason: !anySucceeded && !anyFailed ? "no_actions_prepared" : null,
+    slack: slackError ? { status: slackStatus, error: slackError } : { status: slackStatus },
+    trello: trelloError ? { status: trelloStatus, error: trelloError } : { status: trelloStatus },
+    executedAt: new Date().toISOString(),
+  };
+
+  const approvalUpdate = await input.supabase.from("os_approvals").update({
+    status: finalStatus,
+    resolved_at: new Date().toISOString(),
+    resolved_by: input.resolvedBy,
+    continuation_payload: { ...continuation, executionResult },
+  }).eq("id", input.approvalId).eq("workspace_id", input.payload.workspaceId);
+  if (approvalUpdate.error) return NextResponse.json({ error: "approval_update_failed", message: approvalUpdate.error.message }, { status: 500 });
+
+  if (runId) {
+    await optionalStep(warnings, "operations.run.update", () => input.supabase.from("os_operator_runs").update({
+      status: anyFailed ? (anySucceeded ? "partially_completed" : "failed") : "completed",
+      completed_at: new Date().toISOString(),
+      output: { executionResult },
+      error: anyFailed ? "One or more Operations actions failed." : null,
+    }).eq("id", runId).eq("workspace_id", input.payload.workspaceId).eq("approval_id", input.approvalId).then((res) => {
+      if (res.error) throw new Error(res.error.message);
+      return res;
+    }));
+    if (anyFailed) {
+      await optionalStep(warnings, "operations.execution_failed.log", () => logOperatorEvent({
+        supabase: input.supabase, workspaceId: input.payload.workspaceId, runId,
+        level: "warn", eventType: "operations_execution_failed",
+        message: "One or more Operations actions failed after approval.",
+        metadata: { approvalId: input.approvalId, executionResult },
+      }));
+    }
+  }
+
+  await optionalStep(warnings, anyFailed ? "slack_notification.execution_failed" : "slack_notification.approval_approved", () => sendSlackApprovalNotification({
+    supabase: input.supabase,
+    workspaceId: input.payload.workspaceId,
+    approvalId: input.approvalId,
+    runId: runId || (typeof input.approvalRow.run_id === "string" ? input.approvalRow.run_id : null),
+    eventType: anyFailed ? "execution_failed" : "approval_approved",
+    operatorKey: "operations",
+    title: anyFailed ? "Execution failed." : "Approval approved.",
+    summary: anyFailed ? "An Operations action failed after approval. Review the logs in Inovense." : "Operations action executed after approval.",
+    approvalUrl: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://app.inovense.com"}/app/approvals`,
+    metadata: { actionType, slackStatus, trelloStatus },
+  }));
+
+  return NextResponse.json({ ok: true, status: finalStatus, executionResult, warnings });
+}
+
 async function executeSlackApproval(input: {
   supabase: ReturnType<typeof createSupabaseAdmin>;
   approvalId: string;
@@ -820,6 +1001,38 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const continuationKind = continuation && typeof continuation === "object"
     ? (continuation as Record<string, unknown>).kind
     : null;
+
+  if (continuationKind === "operations.execute_after_approval") {
+    const payloadValidation = validateOperationsPayload(continuation);
+    if (!payloadValidation.ok) {
+      return NextResponse.json({
+        error: "invalid_payload",
+        message: "Approval has an invalid Operations continuation payload.",
+        details: payloadValidation.details,
+      }, { status: 400 });
+    }
+    const operationsPayload = payloadValidation.payload;
+    if (operationsPayload.workspaceId !== context.workspaceId || approvalRow.workspace_id !== context.workspaceId) {
+      return NextResponse.json({ error: "Workspace mismatch for approval payload." }, { status: 403 });
+    }
+    const ws = await supabase
+      .from("os_workspaces")
+      .select("billing_status, can_run_real_actions")
+      .eq("id", context.workspaceId)
+      .single();
+    if (ws.error || !ws.data) return NextResponse.json({ error: "Workspace not found." }, { status: 404 });
+    if (!ws.data.can_run_real_actions || ws.data.billing_status === "preview") {
+      return NextResponse.json({ error: "Real execution requires an active plan." }, { status: 402 });
+    }
+
+    return executeOperationsApproval({
+      supabase,
+      approvalId: id,
+      approvalRow: approvalRow as Record<string, unknown>,
+      payload: operationsPayload,
+      resolvedBy: context.userEmail || context.userId || userEmail || userId,
+    });
+  }
 
   if (continuationKind === "shared_action.execute_after_approval") {
     const payloadValidation = validateSharedActionPayload(continuation);

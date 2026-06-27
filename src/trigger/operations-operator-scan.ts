@@ -1,7 +1,5 @@
 import { schedules, task } from "@trigger.dev/sdk/v3";
-import { getConnectorTruth } from "@/lib/connectors/truth";
-import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
-import { recordSystemTaskRun, type SystemTaskSourceMode, type SystemTaskType } from "@/lib/operators/runtime/system-task";
+import { scanOperationsSignals } from "@/lib/operators/operations/scan";
 
 type OperationsOperatorScanPayload = {
   workspaceId?: string;
@@ -9,70 +7,15 @@ type OperationsOperatorScanPayload = {
 
 const DEFAULT_OPERATIONS_WORKSPACE_ID = "ws-atlas";
 
-// Runtime placeholder, NOT a fake operator. This only inspects connector
-// readiness so Trigger.dev shows the future Operations direction. It creates no
-// approvals, moves no cards, and sends no messages.
-async function runOperationsReadiness(input: { workspaceId: string; taskId: string; taskType: SystemTaskType; sourceMode: SystemTaskSourceMode }) {
-  const workspaceId = input.workspaceId.trim();
-  if (!workspaceId) {
-    return { status: "invalid_payload", message: "workspaceId is required." };
-  }
-
-  const [truth, policy] = await Promise.all([
-    getConnectorTruth({ workspaceId }),
-    loadWorkspacePolicySettings({ workspaceId }),
-  ]);
-
-  const isConnected = (key: string) => truth.some((connector) =>
-    connector.connectorKey === key && connector.status === "connected" && connector.providerConfigKey && connector.nangoConnectionId);
-
-  const slackConnected = isConnected("slack");
-  const trelloConnected = isConnected("trello");
-  const trelloDestinationConfigured = Boolean(policy.trello.defaultBoardId && policy.trello.defaultListId);
-
-  const ready = slackConnected && trelloConnected && trelloDestinationConfigured;
-  const status = ready ? "ready_for_v1" : "setup_incomplete";
-
-  const missing: string[] = [];
-  if (!slackConnected) missing.push("Connect Slack.");
-  if (!trelloConnected) missing.push("Connect Trello.");
-  else if (!trelloDestinationConfigured) missing.push("Select a default Trello board and list.");
-
-  const summary = {
-    status,
-    slackConnected,
-    trelloConnected,
-    trelloDestinationConfigured,
-    recommendedSetup: missing,
-    note: "Operations Operator v1 is not built yet. This is a readiness placeholder only.",
-  };
-
-  await recordSystemTaskRun({
-    workspaceId,
-    operatorKey: "operations",
-    taskId: input.taskId,
-    taskType: input.taskType,
-    sourceMode: input.sourceMode,
-    status,
-    eventType: "operations_readiness_checked",
-    message: ready
-      ? "Operations readiness: ready for v1 (Slack and Trello configured)."
-      : `Operations readiness: setup incomplete. ${missing.join(" ")}`.trim(),
-    summary,
-  });
-
-  return { workspaceId, ...summary };
-}
-
+// Operations Operator v1: reads Trello project boards, detects operational
+// signals, and creates approval-gated actions. It never executes Slack messages
+// or Trello changes directly here; everything stays behind approval.
 export const operationsOperatorScan = task({
   id: "operations-operator-scan",
   run: async (payload: OperationsOperatorScanPayload) => {
-    return runOperationsReadiness({
-      workspaceId: payload.workspaceId?.trim() || DEFAULT_OPERATIONS_WORKSPACE_ID,
-      taskId: "operations-operator-scan",
-      taskType: "manual",
-      sourceMode: "manual",
-    });
+    const workspaceId = payload.workspaceId?.trim() || DEFAULT_OPERATIONS_WORKSPACE_ID;
+    const result = await scanOperationsSignals({ workspaceId, sourceMode: "manual" });
+    return { workspaceId, ...result.body };
   },
 });
 
@@ -85,11 +28,10 @@ export const operationsOperatorDailyScan = schedules.task({
   run: async () => {
     // TODO: multi-workspace fanout. List active workspaces, run per workspace,
     // respect plan cadence/entitlements and operator enabled/disabled state.
-    return runOperationsReadiness({
+    const result = await scanOperationsSignals({
       workspaceId: DEFAULT_OPERATIONS_WORKSPACE_ID,
-      taskId: "operations-operator-daily-scan",
-      taskType: "scheduled",
       sourceMode: "scheduled",
     });
+    return { workspaceId: DEFAULT_OPERATIONS_WORKSPACE_ID, ...result.body };
   },
 });

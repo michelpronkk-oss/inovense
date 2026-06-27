@@ -50,6 +50,10 @@ type GmailContinuationPayload = {
     executionStatus?: string;
   } | null;
   executionResult?: Record<string, unknown> | null;
+  preparedSlackAction?: Record<string, unknown> | null;
+  preparedTrelloAction?: Record<string, unknown> | null;
+  operations?: Record<string, unknown> | null;
+  policy?: Record<string, unknown> | null;
   preparedAction?: {
     id?: string;
     actionType?: string;
@@ -106,6 +110,7 @@ function approvalReason(continuation: GmailContinuationPayload, policyReason: st
   if (policyReason) return policyReason;
   if (continuation.kind === "gmail.send_after_approval") return "External email send requires human approval before Gmail execution.";
   if (continuation.kind === "slack.send_after_approval") return "Slack message sends require human approval before posting.";
+  if (continuation.kind === "operations.execute_after_approval") return "Operations actions require human approval before any Slack message or Trello change.";
   return "Operator action requires human approval.";
 }
 
@@ -144,6 +149,9 @@ function afterApprovalText(continuation: GmailContinuationPayload): string | nul
   if (continuation.kind === "slack.send_after_approval") {
     return "Slack posts this exact message to the selected channel using the connected workspace Slack account.";
   }
+  if (continuation.kind === "operations.execute_after_approval") {
+    return "Inovense posts the internal Slack update and applies the prepared Trello change after approval. Nothing runs before approval.";
+  }
   if (continuation.kind !== "gmail.send_after_approval") return null;
   const crmText = crmStatusText(continuation.crmPreparationStatus);
   return [
@@ -179,7 +187,7 @@ function mapApproval(row: Record<string, unknown>) {
     resolved_at: typeof row.resolved_at === "string" ? row.resolved_at : null,
     resolved_by: typeof row.resolved_by === "string" ? row.resolved_by : null,
     approval_type: typeof row.type === "string" ? row.type : "action",
-    category: continuation.kind === "gmail.send_after_approval" ? "follow-up" : continuation.kind === "slack.send_after_approval" ? "slack-message" : continuation.kind === "shared_action.execute_after_approval" ? "task-action" : typeof row.type === "string" ? row.type : "action",
+    category: continuation.kind === "gmail.send_after_approval" ? "follow-up" : continuation.kind === "slack.send_after_approval" ? "slack-message" : continuation.kind === "shared_action.execute_after_approval" ? "task-action" : continuation.kind === "operations.execute_after_approval" ? "operations" : typeof row.type === "string" ? row.type : "action",
     continuation_kind: continuation.kind ?? null,
     run_id: runId,
     linked_run_id: continuation.operatorRunId ?? runId,
@@ -212,6 +220,10 @@ function mapApproval(row: Record<string, unknown>) {
       preparedHubSpotActions: continuation.preparedHubSpotActions ?? null,
       executionResult: continuation.executionResult ?? null,
       preparedAction: continuation.preparedAction ?? null,
+      preparedSlackAction: continuation.preparedSlackAction ?? null,
+      preparedTrelloAction: continuation.preparedTrelloAction ?? null,
+      operations: continuation.operations ?? null,
+      operationsPolicy: continuation.policy ?? null,
       customerEmailPolicy: continuation.customerEmailPolicy ?? {
         mode: "approval_required",
         customerEmail: "Customer emails require approval before sending.",

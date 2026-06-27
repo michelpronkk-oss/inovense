@@ -213,6 +213,43 @@ export async function listTrelloCards(workspaceId: string, listId: string): Prom
   })).filter((card) => card.id && card.name);
 }
 
+export type TrelloCardDetailed = {
+  id: string;
+  name: string;
+  desc: string;
+  due: string | null;
+  dueComplete: boolean;
+  dateLastActivity: string | null;
+  listId: string | null;
+  url: string | null;
+  shortUrl: string | null;
+  closed: boolean;
+};
+
+// Richer read used by Operations Operator to detect operational signals. Reads
+// only safe, cheap fields (no activity stream fetch). Excludes archived cards.
+export async function listTrelloCardsDetailed(workspaceId: string, listId: string): Promise<TrelloCardDetailed[]> {
+  const safeListId = listId.trim();
+  if (!safeListId) throw new TrelloExecutionError("Trello listId is required.", { step: "trello.validate", code: "missing_list_id" });
+  const data = await trelloRequest<Array<Record<string, unknown>>>(
+    workspaceId,
+    "GET",
+    `/1/lists/${encodeURIComponent(safeListId)}/cards?fields=name,desc,due,dueComplete,dateLastActivity,idList,url,shortUrl,closed&filter=open`,
+  );
+  return data.map((card) => ({
+    id: typeof card.id === "string" ? card.id : "",
+    name: typeof card.name === "string" ? card.name : "",
+    desc: typeof card.desc === "string" ? card.desc : "",
+    due: typeof card.due === "string" ? card.due : null,
+    dueComplete: card.dueComplete === true,
+    dateLastActivity: typeof card.dateLastActivity === "string" ? card.dateLastActivity : null,
+    listId: typeof card.idList === "string" ? card.idList : safeListId,
+    url: typeof card.url === "string" ? card.url : null,
+    shortUrl: typeof card.shortUrl === "string" ? card.shortUrl : null,
+    closed: card.closed === true,
+  })).filter((card) => card.id && card.name);
+}
+
 export async function createTrelloCardAfterApproval(input: {
   workspaceId: string;
   boardId: string;

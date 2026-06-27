@@ -87,7 +87,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     name: "Operations Operator",
     category: "operations",
     businessOutcome: "Turn approvals, logs, and workspace activity into operational follow-through.",
-    description: "Prepares internal operating summaries and follow-up lists from verified workspace activity.",
+    description: "Monitors project boards, finds stalled work, and prepares approved internal updates.",
     requiredConnectors: ["gmail"],
     optionalConnectors: ["slack", "notion", "linear"],
     capabilities: ["Internal digest preparation", "Approval queue review", "Execution log summarization"],

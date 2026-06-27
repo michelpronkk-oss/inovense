@@ -71,6 +71,20 @@ type ApprovalRow = {
         bodyPreview?: string | null;
       };
     } | null;
+    operations?: {
+      signalType?: string;
+      severity?: string;
+      boardName?: string;
+      listName?: string;
+      cardName?: string | null;
+      cardUrl?: string | null;
+      plainEnglishSummary?: string;
+      recommendedAction?: string;
+      preparedSlackMessage?: string | null;
+    } | null;
+    operationsPolicy?: { slackMessage?: string; trelloUpdate?: string; humanReview?: string } | null;
+    preparedSlackAction?: { input?: Record<string, unknown> } | null;
+    preparedTrelloAction?: { actionType?: string; title?: string; preview?: { label?: string; fields?: Array<{ label: string; value: string }>; bodyPreview?: string | null } } | null;
     customerEmailPolicy?: {
       mode?: string;
       customerEmail?: string;
@@ -433,6 +447,9 @@ export default function ApprovalsPage() {
             const isBusy = busyId === item.id;
             const revenueApproval = isRevenueApproval(item);
             const sharedActionApproval = isSharedActionApproval(item);
+            const operationsApproval = item.continuation_kind === "operations.execute_after_approval";
+            const operations = item.payload_preview.operations ?? null;
+            const operationsExecution = recordValue(item.payload_preview.executionResult);
             const preparedActions = item.payload_preview.preparedActions ?? [];
             const crmStatus = item.payload_preview.crmStatusText
               ?? (item.payload_preview.crmPreparationStatus === "hubspot_not_connected"
@@ -703,7 +720,54 @@ export default function ApprovalsPage() {
                       )}
                     </div>
                   )}
-                  {!revenueApproval && item.payload_preview.to && (
+                  {operationsApproval && operations && (
+                    <div style={{ padding: "12px 14px", display: "grid", gap: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <div>
+                          <div style={{ fontSize: 13.5, fontWeight: 650 }}>{operations.cardName || operations.listName || "Operational signal"}</div>
+                          <div style={{ fontSize: 11.5, color: "var(--text-mute)", marginTop: 2 }}>
+                            {operations.boardName ? `${operations.boardName} / ` : ""}{operations.listName || "-"} · {(operations.signalType || "signal").replace(/_/g, " ")}
+                          </div>
+                        </div>
+                        <span className="pill pill-cyan" style={{ fontSize: 10.5 }}>Severity: {operations.severity || "medium"}</span>
+                      </div>
+                      {operations.plainEnglishSummary && (
+                        <div style={{ fontSize: 12.5, color: "var(--text-dim)" }}>{operations.plainEnglishSummary}</div>
+                      )}
+                      {operations.recommendedAction && (
+                        <div style={{ fontSize: 12, color: "var(--text-dim)" }}><strong style={{ color: "var(--text)" }}>Recommended:</strong> {operations.recommendedAction}</div>
+                      )}
+                      {operations.preparedSlackMessage && (
+                        <div style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(0,0,0,0.14)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
+                          <div style={{ fontSize: 10, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>Prepared Slack message</div>
+                          <div style={{ fontSize: 12.5, color: "var(--text)", whiteSpace: "pre-wrap" }}>{operations.preparedSlackMessage}</div>
+                        </div>
+                      )}
+                      {item.payload_preview.preparedTrelloAction && (
+                        <div style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(0,0,0,0.14)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
+                          <div style={{ fontSize: 10, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>Prepared Trello action</div>
+                          <div style={{ fontSize: 12.5, color: "var(--text)" }}>{(item.payload_preview.preparedTrelloAction.actionType || "task action").replace(/_/g, " ")}: {item.payload_preview.preparedTrelloAction.preview?.bodyPreview || item.payload_preview.preparedTrelloAction.title || operations.cardName}</div>
+                        </div>
+                      )}
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        <span className="pill" style={{ fontSize: 10 }}>Slack message: {item.payload_preview.operationsPolicy?.slackMessage || "Approval required"}</span>
+                        <span className="pill" style={{ fontSize: 10 }}>Trello update: {item.payload_preview.operationsPolicy?.trelloUpdate || "Approval required"}</span>
+                        <span className="pill" style={{ fontSize: 10 }}>Human review: {item.payload_preview.operationsPolicy?.humanReview || "Required"}</span>
+                      </div>
+                      {operations.cardUrl && (
+                        <a className="lnk-open" href={operations.cardUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12 }}>Open Trello card</a>
+                      )}
+                      {(operationsExecution.slackStatus === "sent" || operationsExecution.trelloStatus === "executed") && (
+                        <div style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(81,216,138,0.08)", boxShadow: "inset 0 0 0 1px rgba(81,216,138,0.22)", color: "#8df5cf", fontSize: 12 }}>
+                          {operationsExecution.slackStatus === "sent" ? "Slack update sent. " : ""}{operationsExecution.trelloStatus === "executed" ? "Trello action applied." : ""}
+                          {typeof operationsExecution.cardUrl === "string" && operationsExecution.cardUrl ? (
+                            <> <a className="lnk-open" href={operationsExecution.cardUrl} target="_blank" rel="noreferrer">Open card</a></>
+                          ) : ""}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {!revenueApproval && !operationsApproval && item.payload_preview.to && (
                     <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
                       <strong style={{ color: "var(--text)" }}>{revenueApproval ? "Recipient:" : "To:"}</strong> {item.payload_preview.to}
                     </div>

@@ -365,6 +365,8 @@ export async function sendSlackInternalNotification(input: {
   }>(input.workspaceId, "POST", "/chat.postMessage", {
     channel: channelId,
     text,
+    unfurl_links: false,
+    unfurl_media: false,
     metadata: {
       event_type: "inovense_internal_notification",
       event_payload: {
