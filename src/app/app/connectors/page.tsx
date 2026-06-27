@@ -15,6 +15,7 @@ import { isRealConnector, isRealConnectedConnector } from "@/lib/os/truth";
 import {
   isConnectorAvailableForAuth,
   CONNECTOR_CATEGORY_LABELS,
+  getConnectorDefinition,
   listConnectors,
   type ConnectorCategory,
 } from "@/lib/connectors/registry";
@@ -54,15 +55,15 @@ export default function ConnectorsPage() {
   const [drawerConnectorId, setDrawerConnectorId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [hubspotConnectLoading, setHubspotConnectLoading] = useState(false);
+  const [nangoConnectLoadingId, setNangoConnectLoadingId] = useState<string | null>(null);
   const [catalogCategory, setCatalogCategory] = useState<ConnectorCategory | "all">("all");
-  const [hubspotStatus, setHubspotStatus] = useState<{
+  const [nangoStatuses, setNangoStatuses] = useState<Record<string, {
     status: "connected" | "error" | "pending" | "not_connected";
     provider_email?: string | null;
     connected_at?: string | null;
     provider_config_key?: string | null;
     nango_connection_id?: string | null;
-  } | null>(null);
+  }>>({});
 
   // Real connected = authenticated via native OAuth or managed OAuth integration
   const realConnectedConnectors = useMemo(
@@ -129,10 +130,10 @@ export default function ConnectorsPage() {
     window.location.href = `/api/connectors/gmail/auth?${qs.toString()}`;
   };
 
-  const fetchHubspotStatus = async () => {
+  const fetchNangoStatus = async (connectorKey: string) => {
     const qs = new URLSearchParams({
       workspaceId: state.workspace.id,
-      connectorKey: "hubspot",
+      connectorKey,
       userId: state.currentUser.id,
       userEmail: state.currentUser.email,
     });
@@ -147,16 +148,20 @@ export default function ConnectorsPage() {
       provider_config_key?: string | null;
       nango_connection_id?: string | null;
     };
-    setHubspotStatus(json);
+    setNangoStatuses((prev) => ({ ...prev, [connectorKey]: json }));
     if (json.status === "connected") {
-      connectConnector("hubspot", "real");
+      connectConnector(connectorKey, "real");
     } else {
-      disconnectConnector("hubspot");
+      disconnectConnector(connectorKey);
     }
   };
 
   useEffect(() => {
-    fetchHubspotStatus().catch(() => undefined);
+    getAvailableConnectors()
+      .filter((connector) => connector.authType === "nango")
+      .forEach((connector) => {
+        fetchNangoStatus(connector.connectorKey).catch(() => undefined);
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.workspace.id]);
 
@@ -169,8 +174,13 @@ export default function ConnectorsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const startHubspotNangoConnect = async () => {
-    setHubspotConnectLoading(true);
+  const startNangoConnect = async (connectorKey: string) => {
+    const connectorDef = getConnectorDefinition(connectorKey);
+    if (!connectorDef || connectorDef.status !== "available" || connectorDef.authType !== "nango") {
+      setFeedback("This connector is not available to connect yet.");
+      return;
+    }
+    setNangoConnectLoadingId(connectorKey);
     setFeedback("");
     try {
       const sessionRes = await fetch("/api/connectors/nango/session", {
@@ -178,7 +188,7 @@ export default function ConnectorsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           workspaceId: state.workspace.id,
-          connectorKey: "hubspot",
+          connectorKey,
           userEmail: state.currentUser.email,
           userId: state.currentUser.id,
         }),
@@ -205,13 +215,13 @@ export default function ConnectorsPage() {
       if (!sessionRes.ok || !nangoSessionToken) {
         setFeedback(sessionJson.message || sessionJson.error || (nangoConnectLink
           ? "Nango returned a connect link but no session token for the embedded connector."
-          : "Failed to start HubSpot connect."));
+          : `Failed to start ${connectorDef.displayName} connect.`));
         return;
       }
-      const sessionProviderConfigKey = sessionJson.providerConfigKey || "hubspot";
+      const sessionProviderConfigKey = sessionJson.providerConfigKey || connectorDef.providerConfigKey || connectorKey;
 
       const nango = new Nango();
-      const finalizeHubspotConnection = async (event: ConnectUIEvent) => {
+      const finalizeNangoConnection = async (event: ConnectUIEvent) => {
         if (event.type !== "connect") return;
         const payload = event.payload as {
           providerConfigKey?: string;
@@ -221,7 +231,7 @@ export default function ConnectorsPage() {
         };
         const connectionId = payload.connectionId || payload.connection_id || "";
         if (!connectionId) {
-          setFeedback("HubSpot OAuth succeeded, but Nango did not return a connection id to save.");
+          setFeedback(`${connectorDef.displayName} OAuth succeeded, but Nango did not return a connection id to save.`);
           return;
         }
 
@@ -230,32 +240,32 @@ export default function ConnectorsPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             workspaceId: state.workspace.id,
-            connectorKey: "hubspot",
+            connectorKey,
             userId: state.currentUser.id,
             userEmail: state.currentUser.email,
             providerConfigKey: payload.providerConfigKey || payload.provider_config_key || sessionProviderConfigKey,
             nangoConnectionId: connectionId,
             providerEmail: state.currentUser.email,
             providerAccountId: state.currentUser.id || state.currentUser.email,
-            provider: "hubspot",
+            provider: connectorKey,
             raw: payload,
           }),
         });
         const finalizeJson = await finalizeRes.json().catch(() => ({})) as { error?: string; message?: string; provider_email?: string | null; connected_at?: string | null; provider_config_key?: string | null; nango_connection_id?: string | null };
         if (!finalizeRes.ok) {
-          setFeedback(finalizeJson.message || finalizeJson.error || "HubSpot OAuth succeeded, but Inovense could not save the connector.");
+          setFeedback(finalizeJson.message || finalizeJson.error || `${connectorDef.displayName} OAuth succeeded, but Inovense could not save the connector.`);
           return;
         }
 
-        setHubspotStatus({
+        setNangoStatuses((prev) => ({ ...prev, [connectorKey]: {
           status: "connected",
           provider_email: finalizeJson.provider_email ?? state.currentUser.email,
           connected_at: finalizeJson.connected_at ?? null,
           provider_config_key: finalizeJson.provider_config_key ?? sessionProviderConfigKey,
           nango_connection_id: finalizeJson.nango_connection_id ?? connectionId,
-        });
-        connectConnector("hubspot", "real");
-        setFeedback("HubSpot connected. Revenue Operator can now prepare CRM actions for approval.");
+        } }));
+        connectConnector(connectorKey, "real");
+        setFeedback(`${connectorDef.displayName} connected.`);
         setAddOpen(false);
         setSetupConnectorId(null);
       };
@@ -263,7 +273,7 @@ export default function ConnectorsPage() {
         let tries = 0;
         const timer = setInterval(() => {
           tries += 1;
-          fetchHubspotStatus().catch(() => undefined);
+          fetchNangoStatus(connectorKey).catch(() => undefined);
           if (tries >= 6) clearInterval(timer);
         }, 1500);
       };
@@ -272,10 +282,10 @@ export default function ConnectorsPage() {
         sessionToken: nangoSessionToken,
         onEvent: async (event) => {
           if (event.type === "connect") {
-            await finalizeHubspotConnection(event);
+            await finalizeNangoConnection(event);
             pollStatus();
           } else if (event.type === "error") {
-            setFeedback(event.payload.errorMessage || "HubSpot OAuth failed.");
+            setFeedback(event.payload.errorMessage || `${connectorDef.displayName} OAuth failed.`);
           } else if (event.type === "close") {
             pollStatus();
           }
@@ -284,7 +294,7 @@ export default function ConnectorsPage() {
     } catch {
       setFeedback("Could not start secure connector setup.");
     } finally {
-      setHubspotConnectLoading(false);
+      setNangoConnectLoadingId(null);
     }
   };
 
@@ -356,7 +366,7 @@ export default function ConnectorsPage() {
         </div>
         {realConnectedConnectors.length === 0 ? (
           <div style={{ padding: "24px 18px", fontSize: 12.5, color: "var(--text-faint)" }}>
-            No real accounts connected. Click <strong>Add connector</strong> to connect Gmail or HubSpot.
+            No real accounts connected. Click <strong>Add connector</strong> to connect Gmail, HubSpot, or Slack.
           </div>
         ) : (
           realConnectedConnectors.map((c) => (
@@ -371,7 +381,7 @@ export default function ConnectorsPage() {
               <div>
                 <div style={{ fontSize: 13.5, fontWeight: 500 }}>{c.name}</div>
                 <div style={{ fontSize: 10.5, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>
-                  {c.category} - {c.syncFreq} - {c.id === "gmail" ? "Secure OAuth" : c.id === "hubspot" ? "Managed connector" : "Connector"}
+                  {c.category} - {c.syncFreq} - {c.id === "gmail" ? "Secure OAuth" : getConnectorDefinition(c.id)?.authType === "nango" ? "Managed connector" : "Connector"}
                 </div>
               </div>
               <div style={{ fontSize: 10.5, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>{c.eventsSynced} events</div>
@@ -478,9 +488,9 @@ export default function ConnectorsPage() {
                           <div style={{ fontSize: 13, fontWeight: 500 }}>{c.name}</div>
                         </div>
                         <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-mute)" }}>{c.category}</div>
-                        {(c.id === "gmail" || c.id === "hubspot") && (
+                        {(c.id === "gmail" || getConnectorDefinition(c.id)?.authType === "nango") && (
                           <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--cyan)", marginTop: 2 }}>
-                            {c.id === "gmail" ? "Secure OAuth" : "Secure OAuth"}
+                            {c.id === "gmail" ? "Secure OAuth" : "Managed OAuth"}
                           </div>
                         )}
                         <div style={{ fontSize: 11.5, color: "var(--text-dim)", marginTop: 6 }}>{c.description}</div>
@@ -499,9 +509,9 @@ export default function ConnectorsPage() {
                 {setupConnector.id === "gmail" && (
                   <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>Secure connection via Google OAuth · Native connector</div>
                 )}
-                {setupConnector.id === "hubspot" && (
+                {getConnectorDefinition(setupConnector.id)?.authType === "nango" && (
                   <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>
-                    Secure OAuth connection{hubspotStatus?.provider_email ? ` · ${hubspotStatus.provider_email}` : ""}
+                    Managed OAuth connection{nangoStatuses[setupConnector.id]?.provider_email ? ` - ${nangoStatuses[setupConnector.id].provider_email}` : ""}
                   </div>
                 )}
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
@@ -516,11 +526,11 @@ export default function ConnectorsPage() {
                         startRealGmailOAuth();
                         return;
                       }
-                      if (setupConnector.id === "hubspot") {
-                        startHubspotNangoConnect();
+                      if (getConnectorDefinition(setupConnector.id)?.authType === "nango") {
+                        startNangoConnect(setupConnector.id);
                         return;
                       }
-                    }}>{hubspotConnectLoading && setupConnector.id === "hubspot" ? "Connecting..." : "Connect real account"}</button>
+                    }}>{nangoConnectLoadingId === setupConnector.id ? "Connecting..." : "Connect real account"}</button>
                   ) : (
                     <button className="btn btn-sm" disabled title="This connector is not available to connect yet." style={{ opacity: 0.55, cursor: "not-allowed" }}>
                       Coming soon
@@ -554,9 +564,14 @@ export default function ConnectorsPage() {
                   : "Reconnect required to enable send permissions. Existing Gmail credentials do not include Gmail send scope."}
               </div>
             )}
-            {drawerConnector.id === "hubspot" && hubspotStatus?.status === "connected" && (
+            {getConnectorDefinition(drawerConnector.id)?.authType === "nango" && nangoStatuses[drawerConnector.id]?.status === "connected" && (
               <div style={{ marginTop: 10, fontSize: 11.5, color: "#9DEFEA" }}>
-                HubSpot account connected{hubspotStatus.provider_email ? ` · ${hubspotStatus.provider_email}` : ""}
+                {drawerConnector.name} account connected{nangoStatuses[drawerConnector.id].provider_email ? ` - ${nangoStatuses[drawerConnector.id].provider_email}` : ""}
+              </div>
+            )}
+            {drawerConnector.id === "slack" && isRealConnectedConnector(drawerConnector) && (
+              <div style={{ marginTop: 10, fontSize: 11.5, color: "#9DEFEA" }}>
+                Team chat alerts and operator updates are enabled for approval-gated Slack actions.
               </div>
             )}
             {!isRealConnectedConnector(drawerConnector) && drawerConnector.source === "preview" && (
@@ -631,7 +646,7 @@ function ConnectorSetupView({ connector, isRealConnected, isPreview }: { connect
         <div>
           <div style={{ fontSize: 14, fontWeight: 600 }}>{connector.name}</div>
           <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)" }}>
-            {connector.category} - {connector.syncMode} - {connector.syncFreq} - {connector.id === "gmail" ? "Secure OAuth" : connector.id === "hubspot" ? "Managed connector" : "Connector"}
+            {connector.category} - {connector.syncMode} - {connector.syncFreq} - {connector.id === "gmail" ? "Secure OAuth" : getConnectorDefinition(connector.id)?.authType === "nango" ? "Managed connector" : "Connector"}
           </div>
         </div>
       </div>

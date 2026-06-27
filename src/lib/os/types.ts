@@ -165,7 +165,7 @@ export interface Approval {
   draftOutput?: string;
   policyChecks?: string[];
   reviewerRole?: string;
-  continuationType?: "inbound_revenue_follow_up";
+  continuationType?: "inbound_revenue_follow_up" | "send_slack_message";
   continuationPayload?: Record<string, unknown>;
 }
 

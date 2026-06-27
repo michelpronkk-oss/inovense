@@ -1,5 +1,6 @@
 import type { Connector, OSState } from "@/lib/os/types";
 import { GMAIL_COMPOSE_SCOPE, GMAIL_READONLY_SCOPE, GMAIL_SCAN_REQUIRED_SCOPES, GMAIL_SEND_SCOPE, getMissingGmailScopes } from "@/lib/connectors/gmail";
+import { getConnectorDefinition, listSupportedNangoConnectors } from "@/lib/connectors/registry";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
@@ -7,7 +8,7 @@ type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 export type ConnectorTruthStatus = "connected" | "healthy" | "disabled" | "reconnect_required" | "missing" | "not_connected" | "error";
 
 export type SafeConnectorTruth = {
-  connectorKey: "gmail" | "hubspot";
+  connectorKey: "gmail" | "hubspot" | "slack";
   displayName: string;
   authType: "native" | "managed";
   status: ConnectorTruthStatus;
@@ -33,7 +34,8 @@ export async function getConnectorTruth(input: {
 }): Promise<SafeConnectorTruth[]> {
   const supabase = input.supabase ?? createSupabaseAdmin();
 
-  const [gmailRes, hubspotRes] = await Promise.all([
+  const supportedNangoKeys = listSupportedNangoConnectors().map((def) => def.connectorKey);
+  const [gmailRes, nangoRes] = await Promise.all([
     supabase
       .from("os_connector_credentials")
       .select("connector_key, provider_email, scopes, status, created_at")
@@ -44,8 +46,7 @@ export async function getConnectorTruth(input: {
       .from("os_connectors")
       .select("connector_key, provider_email, status, connected_at, provider_config_key, nango_connection_id")
       .eq("workspace_id", input.workspaceId)
-      .eq("connector_key", "hubspot")
-      .maybeSingle(),
+      .in("connector_key", supportedNangoKeys),
   ]);
 
   const gmailRow = gmailRes.data;
@@ -55,13 +56,25 @@ export async function getConnectorTruth(input: {
   const gmailMissingScopes = Array.from(new Set([...gmailMissingSendScopes, ...gmailMissingScanScopes]));
   const gmailSendReconnectRequired = Boolean(gmailRow && gmailMissingSendScopes.length > 0);
   const gmailScanReconnectRequired = Boolean(gmailRow && gmailMissingScanScopes.length > 0);
-  const hubspotRow = hubspotRes.data;
-  const hubspotConnected = Boolean(
-    hubspotRow
-      && hubspotRow.status === "connected"
-      && hubspotRow.provider_config_key
-      && hubspotRow.nango_connection_id
-  );
+  const nangoRows = Array.isArray(nangoRes.data) ? nangoRes.data : [];
+  const nangoTruth: SafeConnectorTruth[] = supportedNangoKeys.map((connectorKey) => {
+    const def = getConnectorDefinition(connectorKey);
+    const row = nangoRows.find((item) => item.connector_key === connectorKey);
+    const connected = Boolean(row && row.status === "connected" && row.provider_config_key && row.nango_connection_id);
+    return {
+      connectorKey: connectorKey as SafeConnectorTruth["connectorKey"],
+      displayName: def?.displayName ?? connectorKey,
+      authType: "managed",
+      status: nangoRes.error ? "error" : connected ? "connected" : row?.status === "error" ? "error" : "not_connected",
+      accountEmail: row?.provider_email ?? null,
+      connectedAt: row?.connected_at ?? null,
+      scopes: [],
+      providerConfigKey: row?.provider_config_key ?? null,
+      nangoConnectionId: row?.nango_connection_id ?? null,
+      source: connected ? "nango" : undefined,
+      statusMessage: connected ? "Connected through Nango" : "Not connected",
+    };
+  });
 
   return [
     {
@@ -84,18 +97,7 @@ export async function getConnectorTruth(input: {
           : "Not connected",
       source: gmailRow ? "native" : undefined,
     },
-    {
-      connectorKey: "hubspot",
-      displayName: "HubSpot",
-      authType: "managed",
-      status: hubspotRes.error ? "error" : hubspotConnected ? "connected" : hubspotRow?.status === "error" ? "error" : "not_connected",
-      accountEmail: hubspotRow?.provider_email ?? null,
-      connectedAt: hubspotRow?.connected_at ?? null,
-      scopes: [],
-      providerConfigKey: hubspotRow?.provider_config_key ?? null,
-      nangoConnectionId: hubspotRow?.nango_connection_id ?? null,
-      source: hubspotConnected ? "nango" : undefined,
-    },
+    ...nangoTruth,
   ];
 }
 
@@ -169,12 +171,16 @@ function applyTruth(connector: Connector, truth: SafeConnectorTruth): Connector 
   };
 }
 
+function isTruthConnectorKey(connectorId: string): connectorId is SafeConnectorTruth["connectorKey"] {
+  return connectorId === "gmail" || connectorId === "hubspot" || connectorId === "slack";
+}
+
 export function applyConnectorTruthToState(state: OSState, truthRows: SafeConnectorTruth[]): OSState {
   const byKey = new Map(truthRows.map((truth) => [truth.connectorKey, truth]));
   return {
     ...state,
     connectors: state.connectors.map((connector) => {
-      if (connector.id !== "gmail" && connector.id !== "hubspot") return connector;
+      if (!isTruthConnectorKey(connector.id)) return connector;
       const truth = byKey.get(connector.id);
       return truth ? applyTruth(connector, truth) : connector;
     }),

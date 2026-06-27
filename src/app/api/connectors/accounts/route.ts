@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getConnectorTruth, type ConnectorTruthStatus } from "@/lib/connectors/truth";
+import { getConnectorDefinition } from "@/lib/connectors/registry";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 
@@ -58,7 +59,7 @@ export async function GET(req: NextRequest) {
         connector.scopes.includes("https://www.googleapis.com/auth/gmail.readonly") ? "Inbox scan access" : "Inbox scan access missing",
         "Approval required for external email",
       ]
-      : ["Contacts, companies, deals and owners"],
+      : getConnectorDefinition(connector.connectorKey)?.readActions.concat(getConnectorDefinition(connector.connectorKey)?.writeActions ?? []) ?? ["Managed connector access"],
     canReconnect: true,
     canDisconnect: false,
   }));

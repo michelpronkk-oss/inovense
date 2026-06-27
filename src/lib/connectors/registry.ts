@@ -7,7 +7,7 @@
 // connectable. Everything else is "coming_soon" / "planned" and must render
 // as visibly disabled. Presence in this catalog never implies a connection.
 //
-// Today only gmail (direct OAuth) and hubspot (Nango) are available.
+// Today gmail (direct OAuth), hubspot (Nango), and slack (Nango) are available.
 
 import type { Capability } from "@/lib/connectors/capabilities";
 import type { OperatorKey } from "@/lib/operators/registry";
@@ -70,8 +70,8 @@ export const CONNECTOR_CATEGORY_LABELS: Record<ConnectorCategory, string> = {
   custom_api: "Custom API",
 };
 
-// HubSpot is the only Nango connector with a live provider config key today.
 const HUBSPOT_PROVIDER_CONFIG_KEY = process.env.NANGO_HUBSPOT_CONFIG_KEY || "hubspot";
+const SLACK_PROVIDER_CONFIG_KEY = process.env.NANGO_SLACK_CONFIG_KEY || "slack";
 
 export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
   // ── Available (real, functional today) ───────────────────────────────
@@ -132,11 +132,13 @@ export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
   },
   slack: {
     connectorKey: "slack", displayName: "Slack", category: "team_chat", authType: "nango",
+    providerConfigKey: SLACK_PROVIDER_CONFIG_KEY,
     letter: "Sl", color: "#611F69", description: "Read channels and post approval-gated messages.",
-    status: "coming_soon", capabilities: ["chat.channels.read", "chat.messages.send_after_approval"],
-    usedByOperators: ["operations", "revenue", "approval_risk", "automation_architect"], readActions: ["Read channels"],
-    writeActions: ["Post message after approval"], approvalRequiredActions: ["External channel post"], eventTypes: ["chat.message.posted"],
-    riskLevel: "medium", setupNotes: "Planned via Slack API (Nango). Not connectable yet.",
+    status: "available", capabilities: ["chat.channels.read", "chat.messages.read", "chat.messages.send_after_approval", "chat.alerts.send_after_approval"],
+    usedByOperators: ["operations", "client_flow", "approval_risk", "revenue", "support", "automation_architect"], readActions: ["Read channels", "Read messages"],
+    writeActions: ["Post message after approval", "Send operator alert after approval"], approvalRequiredActions: ["send_channel_message", "send_direct_message", "send_operator_alert"],
+    eventTypes: ["slack.message.received", "slack.mention.detected", "slack.channel.updated"],
+    riskLevel: "medium", setupNotes: "Connect Slack workspace. Select allowed channels later.",
   },
   microsoft_teams: {
     connectorKey: "microsoft_teams", displayName: "Microsoft Teams", category: "team_chat", authType: "nango",

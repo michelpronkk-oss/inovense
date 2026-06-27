@@ -35,7 +35,9 @@ export type Capability =
   | "calendar.events.write_after_approval"
   // team chat
   | "chat.channels.read"
+  | "chat.messages.read"
   | "chat.messages.send_after_approval"
+  | "chat.alerts.send_after_approval"
   // project management
   | "pm.tasks.read"
   | "pm.tasks.write_after_approval"

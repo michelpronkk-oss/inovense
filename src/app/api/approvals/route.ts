@@ -8,7 +8,9 @@ type GmailContinuationPayload = {
   operatorRunId?: string;
   operatorKey?: string;
   to?: string;
+  channelId?: string;
   subject?: string;
+  text?: string;
   body?: string;
   draftSubject?: string;
   draftBody?: string;
@@ -80,6 +82,7 @@ function stringList(value: unknown): string[] {
 function approvalReason(continuation: GmailContinuationPayload, policyReason: string | null): string {
   if (policyReason) return policyReason;
   if (continuation.kind === "gmail.send_after_approval") return "External email send requires human approval before Gmail execution.";
+  if (continuation.kind === "slack.send_after_approval") return "Slack message sends require human approval before posting.";
   return "Operator action requires human approval.";
 }
 
@@ -96,6 +99,7 @@ function expectedOutcome(continuation: GmailContinuationPayload): string | null 
   const sourceMetadata = continuation.sourceMetadata && typeof continuation.sourceMetadata === "object" ? continuation.sourceMetadata : {};
   const aiExpectedOutcome = stringValue(sourceMetadata.expectedOutcome);
   if (aiExpectedOutcome) return aiExpectedOutcome;
+  if (continuation.kind === "slack.send_after_approval") return "Post the approved Slack message and record the approval decision.";
   if (continuation.kind !== "gmail.send_after_approval") return null;
   if (continuation.crmPreparationStatus === "hubspot_execution_enabled") {
     return "Send the approved Gmail follow-up now, then create or update the HubSpot contact/deal. CRM notes and tasks remain prepared only.";
@@ -110,6 +114,9 @@ function expectedOutcome(continuation: GmailContinuationPayload): string | null 
 }
 
 function afterApprovalText(continuation: GmailContinuationPayload): string | null {
+  if (continuation.kind === "slack.send_after_approval") {
+    return "Slack posts this exact message to the selected channel using the connected workspace Slack account.";
+  }
   if (continuation.kind !== "gmail.send_after_approval") return null;
   const crmText = crmStatusText(continuation.crmPreparationStatus);
   return [
@@ -145,7 +152,7 @@ function mapApproval(row: Record<string, unknown>) {
     resolved_at: typeof row.resolved_at === "string" ? row.resolved_at : null,
     resolved_by: typeof row.resolved_by === "string" ? row.resolved_by : null,
     approval_type: typeof row.type === "string" ? row.type : "action",
-    category: continuation.kind === "gmail.send_after_approval" ? "follow-up" : typeof row.type === "string" ? row.type : "action",
+    category: continuation.kind === "gmail.send_after_approval" ? "follow-up" : continuation.kind === "slack.send_after_approval" ? "slack-message" : typeof row.type === "string" ? row.type : "action",
     continuation_kind: continuation.kind ?? null,
     run_id: runId,
     linked_run_id: continuation.operatorRunId ?? runId,
@@ -155,7 +162,9 @@ function mapApproval(row: Record<string, unknown>) {
     policy_reason: policyReason,
     payload_preview: {
       to: continuation.to ?? null,
+      channelId: continuation.channelId ?? null,
       subject: draft.subject,
+      text: continuation.text ?? null,
       body: preview(draft.body ?? undefined),
       fullBody: draft.body,
       draftSubject: continuation.draftSubject ?? continuation.subject ?? null,
@@ -182,7 +191,7 @@ function mapApproval(row: Record<string, unknown>) {
       confidence,
       matchedKeywords,
       whyThisMatters: why,
-      riskLevel: continuation.kind === "gmail.send_after_approval" ? "medium" : "low",
+      riskLevel: continuation.kind === "gmail.send_after_approval" || continuation.kind === "slack.send_after_approval" ? "medium" : "low",
       riskNotes: stringValue(sourceMetadata.riskNotes),
       expectedOutcome: expectedOutcome(continuation),
       approvalReason: approvalReason(continuation, policyReason),

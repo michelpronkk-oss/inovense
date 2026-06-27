@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { createGmailDraft, GmailApiError, getMissingGmailScopes, hasGmailSendScope, resolveAccessTokenFromCredential, sendGmailDraft, sendGmailMessage, type StoredConnectorCredential } from "@/lib/connectors/gmail";
 import { executeHubSpotRevenueActions, HubSpotExecutionError, type HubSpotExecutionResult, type PreparedHubSpotActions } from "@/lib/operators/executors/hubspot";
+import { sendSlackMessageAfterApproval, SlackExecutionError, type PreparedSlackMessageAction } from "@/lib/operators/executors/slack";
 import { logOperatorEvent, recordOperatorUsage } from "@/lib/operators/logging";
 import { createOperatorMemory } from "@/lib/operators/memory";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
@@ -38,6 +39,8 @@ type GmailContinuationPayload = {
   preparedHubSpotActions?: PreparedHubSpotActions | null;
   sourceMetadata?: Record<string, unknown> | null;
 };
+
+type SlackContinuationPayload = PreparedSlackMessageAction;
 
 type InvalidPayloadDetail = {
   field: string;
@@ -155,6 +158,31 @@ function validateGmailPayload(value: unknown): { ok: true; payload: GmailContinu
   };
 }
 
+function validateSlackPayload(value: unknown): { ok: true; payload: SlackContinuationPayload } | { ok: false; details: InvalidPayloadDetail[] } {
+  const details: InvalidPayloadDetail[] = [];
+  if (!value || typeof value !== "object") {
+    return { ok: false, details: [{ field: "continuation_payload", issue: "Must be an object." }] };
+  }
+  const rec = value as Record<string, unknown>;
+  if (rec.kind !== "slack.send_after_approval") details.push({ field: "kind", issue: "Must equal slack.send_after_approval." });
+  if (typeof rec.workspaceId !== "string" || !rec.workspaceId.trim()) details.push({ field: "workspaceId", issue: "Required." });
+  if (typeof rec.channelId !== "string" || !rec.channelId.trim()) details.push({ field: "channelId", issue: "Required." });
+  if (typeof rec.text !== "string" || !rec.text.trim()) details.push({ field: "text", issue: "Required." });
+  if (details.length > 0) return { ok: false, details };
+  return {
+    ok: true,
+    payload: {
+      kind: "slack.send_after_approval",
+      workspaceId: String(rec.workspaceId).trim(),
+      channelId: String(rec.channelId).trim(),
+      text: String(rec.text).trim(),
+      operatorRunId: typeof rec.operatorRunId === "string" ? rec.operatorRunId : undefined,
+      operatorKey: typeof rec.operatorKey === "string" ? rec.operatorKey : undefined,
+      context: rec.context && typeof rec.context === "object" ? rec.context as Record<string, unknown> : null,
+    },
+  };
+}
+
 function shouldExecuteHubSpot(payload: GmailContinuationPayload): boolean {
   const actions = payload.preparedActions ?? [];
   const hasHubSpotAction = actions.some((action) => action.includes("hubspot"));
@@ -266,13 +294,118 @@ function alreadyResolvedResponse(approvalRow: Record<string, unknown>) {
     ok: true,
     status: "already_resolved",
     alreadyResolved: true,
-    message: "Approval was already resolved. Gmail was not sent again.",
+    message: "Approval was already resolved. No action was executed again.",
     approvalStatus: typeof approvalRow.status === "string" ? approvalRow.status : null,
     resolvedAt: typeof approvalRow.resolved_at === "string" ? approvalRow.resolved_at : null,
     messageId: typeof gmail?.messageId === "string" ? gmail.messageId : null,
     sendEndpoint: typeof gmail?.sendEndpoint === "string" ? gmail.sendEndpoint : null,
     executionResult,
   });
+}
+
+function slackErrorResponse(error: unknown) {
+  if (error instanceof SlackExecutionError) {
+    return NextResponse.json({
+      error: error.details.code || "slack_send_failed",
+      message: error.message,
+      details: error.details,
+    }, { status: error.details.status ?? 502 });
+  }
+
+  return NextResponse.json({
+    error: "slack_send_failed",
+    message: error instanceof Error ? error.message : "Slack execution failed.",
+  }, { status: 502 });
+}
+
+async function executeSlackApproval(input: {
+  supabase: ReturnType<typeof createSupabaseAdmin>;
+  approvalId: string;
+  approvalRow: Record<string, unknown>;
+  payload: SlackContinuationPayload;
+  resolvedBy: string;
+}) {
+  const executionClaim = await input.supabase
+    .from("os_approvals")
+    .update({
+      status: "executing",
+      resolved_by: input.resolvedBy,
+    })
+    .eq("id", input.approvalId)
+    .eq("workspace_id", input.payload.workspaceId)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+
+  if (executionClaim.error || !executionClaim.data) {
+    return NextResponse.json({
+      error: "approval_execution_in_progress",
+      message: executionClaim.error?.message || "Could not claim approval for execution.",
+    }, { status: 409 });
+  }
+
+  try {
+    const sent = await sendSlackMessageAfterApproval({
+      workspaceId: input.payload.workspaceId,
+      channelId: input.payload.channelId,
+      text: input.payload.text,
+      approvalId: input.approvalId,
+      context: input.payload.context,
+    });
+    const executionResult = {
+      slackStatus: "sent",
+      channelId: sent.channelId,
+      messageTs: sent.messageTs ?? null,
+    };
+
+    const approvalUpdate = await input.supabase.from("os_approvals").update({
+      status: "approved",
+      resolved_at: new Date().toISOString(),
+      resolved_by: input.resolvedBy,
+      continuation_payload: {
+        ...(input.approvalRow.continuation_payload && typeof input.approvalRow.continuation_payload === "object" ? input.approvalRow.continuation_payload as Record<string, unknown> : {}),
+        executionResult,
+      },
+    }).eq("id", input.approvalId).eq("workspace_id", input.payload.workspaceId);
+    if (approvalUpdate.error) {
+      return NextResponse.json({ error: "approval_update_failed", message: approvalUpdate.error.message }, { status: 500 });
+    }
+
+    await optionalStep([], "os_execution_logs.insert", () => input.supabase.from("os_execution_logs").insert({
+      id: `log-slack-send-${Date.now()}`,
+      ts: toTs(),
+      run_id: input.approvalRow.run_id || "manual",
+      agent_id: input.approvalRow.agent_id || "system",
+      agent_mark: input.approvalRow.agent_mark || "OS",
+      agent_color: input.approvalRow.agent_color || "#4DE8E1",
+      event: "slack.message_sent_after_approval",
+      message: `Sent approved Slack message to ${sent.channelId}${sent.messageTs ? ` (${sent.messageTs})` : ""}`,
+      duration: "-",
+      status: "ok",
+    }).then((res) => {
+      if (res.error) throw new Error(res.error.message);
+      return res;
+    }));
+
+    return NextResponse.json({ ok: true, slackStatus: "sent", executionResult });
+  } catch (error) {
+    const errorPayload = error instanceof SlackExecutionError
+      ? { message: error.message, details: error.details }
+      : { message: error instanceof Error ? error.message : "Slack execution failed.", details: null };
+    await input.supabase.from("os_approvals").update({
+      status: "failed",
+      resolved_at: new Date().toISOString(),
+      resolved_by: input.resolvedBy,
+      continuation_payload: {
+        ...(input.approvalRow.continuation_payload && typeof input.approvalRow.continuation_payload === "object" ? input.approvalRow.continuation_payload as Record<string, unknown> : {}),
+        executionResult: {
+          slackStatus: "failed",
+          error: errorPayload,
+        },
+      },
+    }).eq("id", input.approvalId).eq("workspace_id", input.payload.workspaceId);
+    return slackErrorResponse(error);
+  }
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -334,6 +467,43 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   const continuation = approvalRow.continuation_payload;
+  const continuationKind = continuation && typeof continuation === "object"
+    ? (continuation as Record<string, unknown>).kind
+    : null;
+
+  if (continuationKind === "slack.send_after_approval") {
+    const payloadValidation = validateSlackPayload(continuation);
+    if (!payloadValidation.ok) {
+      return NextResponse.json({
+        error: "invalid_payload",
+        message: "Approval has an invalid Slack continuation payload.",
+        details: payloadValidation.details,
+      }, { status: 400 });
+    }
+    const slackPayload = payloadValidation.payload;
+    if (slackPayload.workspaceId !== context.workspaceId || approvalRow.workspace_id !== context.workspaceId) {
+      return NextResponse.json({ error: "Workspace mismatch for approval payload." }, { status: 403 });
+    }
+
+    const ws = await supabase
+      .from("os_workspaces")
+      .select("billing_status, can_run_real_actions")
+      .eq("id", context.workspaceId)
+      .single();
+    if (ws.error || !ws.data) return NextResponse.json({ error: "Workspace not found." }, { status: 404 });
+    if (!ws.data.can_run_real_actions || ws.data.billing_status === "preview") {
+      return NextResponse.json({ error: "Real execution requires an active plan." }, { status: 402 });
+    }
+
+    return executeSlackApproval({
+      supabase,
+      approvalId: id,
+      approvalRow: approvalRow as Record<string, unknown>,
+      payload: slackPayload,
+      resolvedBy: context.userEmail || context.userId || userEmail || userId,
+    });
+  }
+
   const payloadValidation = validateGmailPayload(continuation);
   if (!payloadValidation.ok) {
     return NextResponse.json({

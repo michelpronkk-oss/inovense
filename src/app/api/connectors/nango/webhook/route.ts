@@ -96,10 +96,10 @@ export async function POST(req: NextRequest) {
       id: connectorRowId,
       workspace_id: workspaceId,
       connector_key: connectorKey,
-      name: connectorDef?.displayName ?? "HubSpot",
-      letter: connectorDef?.letter ?? "Hs",
-      color: connectorDef?.color ?? "#FF7A59",
-      category: connectorDef?.category ?? "crm",
+      name: connectorDef?.displayName ?? connectorKey,
+      letter: connectorDef?.letter ?? connectorKey.slice(0, 2).toUpperCase(),
+      color: connectorDef?.color ?? "#4DE8E1",
+      category: connectorDef?.category ?? "custom_api",
       status,
       connected: status === "connected",
       provider_config_key: providerConfigKey,
@@ -129,8 +129,8 @@ export async function POST(req: NextRequest) {
   const logEvent = status === "connected" ? "connector.nango.connected" : "connector.nango.failed";
   const logStatus = status === "connected" ? "ok" : "error";
   const logMessage = status === "connected"
-    ? `HubSpot account connected${providerEmail ? ` (${providerEmail})` : ""}`
-    : `HubSpot connection failed${eventType ? ` (${eventType})` : ""}`;
+    ? `${connectorDef?.displayName ?? connectorKey} account connected${providerEmail ? ` (${providerEmail})` : ""}`
+    : `${connectorDef?.displayName ?? connectorKey} connection failed${eventType ? ` (${eventType})` : ""}`;
 
   await supabase.from("os_execution_logs").insert({
     id: `log-${connectorKey}-${Date.now()}`,

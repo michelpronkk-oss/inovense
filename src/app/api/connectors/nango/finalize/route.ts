@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { HUBSPOT_PROVIDER_CONFIG_KEY, getNangoProviderConfigKey } from "@/lib/integrations/nango";
+import { getNangoProviderConfigKey } from "@/lib/integrations/nango";
 import { getConnectorDefinition, isSupportedNangoConnector } from "@/lib/connectors/registry";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
@@ -47,8 +47,7 @@ export async function POST(req: NextRequest) {
   const userEmail = asString(body.userEmail).toLowerCase();
   const providerConfigKey = asString(body.providerConfigKey)
     || readPayloadField(body.raw, "providerConfigKey", "provider_config_key")
-    || getNangoProviderConfigKey(connectorKey)
-    || HUBSPOT_PROVIDER_CONFIG_KEY;
+    || getNangoProviderConfigKey(connectorKey);
   const nangoConnectionId = asString(body.nangoConnectionId)
     || readPayloadField(body.raw, "connectionId", "connection_id");
   const providerEmail = asString(body.providerEmail)
@@ -102,10 +101,10 @@ export async function POST(req: NextRequest) {
     id: connectorRowId,
     workspace_id: context.workspaceId,
     connector_key: connectorKey,
-    name: connectorDef?.displayName ?? "HubSpot",
-    letter: connectorDef?.letter ?? "Hs",
-    color: connectorDef?.color ?? "#FF7A59",
-    category: connectorDef?.category ?? "crm",
+    name: connectorDef?.displayName ?? connectorKey,
+    letter: connectorDef?.letter ?? connectorKey.slice(0, 2).toUpperCase(),
+    color: connectorDef?.color ?? "#4DE8E1",
+    category: connectorDef?.category ?? "custom_api",
     status: "connected",
     connected: true,
     provider_config_key: providerConfigKey,
@@ -120,7 +119,7 @@ export async function POST(req: NextRequest) {
     records: providerEmail ? `Real account connected: ${providerEmail}` : "Real account connected",
     metadata: {
       source: "nango",
-      provider: body.provider || "hubspot",
+      provider: body.provider || connectorKey,
       providerConfigKey,
       finalizedBy: context.userEmail || context.userId,
       finalizedAt: nowIso,
@@ -129,20 +128,20 @@ export async function POST(req: NextRequest) {
 
   if (upsert.error) {
     return NextResponse.json({
-      error: "hubspot_persist_failed",
+      error: "connector_persist_failed",
       message: upsert.error.message,
     }, { status: 500 });
   }
 
   await supabase.from("os_execution_logs").insert({
-    id: `log-hubspot-finalized-${Date.now()}`,
+    id: `log-${connectorKey}-finalized-${Date.now()}`,
     ts: ts(),
     run_id: "connector",
     agent_id: "system",
     agent_mark: "OS",
     agent_color: "#4DE8E1",
     event: "connector.nango.finalized",
-    message: `HubSpot account connected${providerEmail ? ` (${providerEmail})` : ""}`,
+    message: `${connectorDef?.displayName ?? connectorKey} account connected${providerEmail ? ` (${providerEmail})` : ""}`,
     duration: "-",
     status: "ok",
   });

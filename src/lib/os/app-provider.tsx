@@ -725,7 +725,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const approveItem = useCallback(async (approvalId: string, runId?: string, agentId?: string) => {
     const approval = state.approvals.find((a) => a.id === approvalId);
     const continuation = approval?.continuationPayload as { kind?: string } | undefined;
-    if (approval && continuation?.kind === "gmail.send_after_approval" && getEntitlements(state.workspace).canRunRealActions) {
+    if (
+      approval
+      && (continuation?.kind === "gmail.send_after_approval" || continuation?.kind === "slack.send_after_approval")
+      && getEntitlements(state.workspace).canRunRealActions
+    ) {
       try {
         const res = await fetch(`/api/approvals/${approvalId}/approve`, {
           method: "POST",
@@ -738,12 +742,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         });
         const json = await res.json().catch(() => ({} as { error?: string }));
         if (!res.ok) {
-          dispatch({ type: "APPEND_LOG", log: logEntry(json.error || "Gmail send failed after approval", "gmail.send_blocked", "warn") });
+          dispatch({ type: "APPEND_LOG", log: logEntry(json.error || "Approved action failed", `${continuation.kind}.blocked`, "warn") });
           return;
         }
-        dispatch({ type: "APPEND_LOG", log: logEntry("Gmail draft sent after approval", "gmail.draft_sent", "ok") });
+        dispatch({ type: "APPEND_LOG", log: logEntry(continuation.kind === "slack.send_after_approval" ? "Slack message sent after approval" : "Gmail draft sent after approval", `${continuation.kind}.completed`, "ok") });
       } catch {
-        dispatch({ type: "APPEND_LOG", log: logEntry("Network error while sending approved Gmail draft", "gmail.send_blocked", "warn") });
+        dispatch({ type: "APPEND_LOG", log: logEntry("Network error while executing approved action", `${continuation.kind}.blocked`, "warn") });
         return;
       }
     }
