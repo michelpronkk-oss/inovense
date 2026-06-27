@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
+import { evaluatePolicy } from "@/lib/policies/evaluate";
+import { buildPolicyInputFromContinuation, loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
+import type { PolicyWorkspaceSettings } from "@/lib/policies/types";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 
 type GmailContinuationPayload = {
@@ -161,7 +164,7 @@ function afterApprovalText(continuation: GmailContinuationPayload): string | nul
   ].filter(Boolean).join(" ");
 }
 
-function mapApproval(row: Record<string, unknown>) {
+function mapApproval(row: Record<string, unknown>, livePolicy: PolicyWorkspaceSettings) {
   const continuation = asPayload(row.continuation_payload);
   const runId = typeof row.run_id === "string" ? row.run_id : null;
   const sourceMetadata = continuation.sourceMetadata && typeof continuation.sourceMetadata === "object" ? continuation.sourceMetadata : {};
@@ -178,6 +181,14 @@ function mapApproval(row: Record<string, unknown>) {
   const detectedSignal = stringValue(sourceMetadata.detectedSignalSummary) ?? sourceSubject ?? continuation.subject ?? null;
   const policyReason = typeof row.policy_reason === "string" ? row.policy_reason : null;
   const draft = effectiveDraft(continuation);
+
+  // Live policy decision (evaluated against current workspace policy, never the
+  // stored snapshot) so the card always shows what would happen right now.
+  const policyInput = continuation.kind
+    ? buildPolicyInputFromContinuation({ workspaceId: String(row.workspace_id ?? ""), kind: continuation.kind, continuation: (row.continuation_payload as Record<string, unknown>) ?? {} })
+    : null;
+  const livePolicyDecision = policyInput ? evaluatePolicy(policyInput, livePolicy) : null;
+
   return {
     id: String(row.id),
     title: typeof row.title === "string" ? row.title : "Approval required",
@@ -224,6 +235,7 @@ function mapApproval(row: Record<string, unknown>) {
       preparedTrelloAction: continuation.preparedTrelloAction ?? null,
       operations: continuation.operations ?? null,
       operationsPolicy: continuation.policy ?? null,
+      livePolicyDecision,
       customerEmailPolicy: continuation.customerEmailPolicy ?? {
         mode: "approval_required",
         customerEmail: "Customer emails require approval before sending.",
@@ -284,7 +296,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: approvals.error.message }, { status: 500 });
   }
 
-  const data = (approvals.data ?? []).map((row) => mapApproval(row as Record<string, unknown>));
+  const livePolicy = await loadPolicyWorkspaceSettings({ supabase, workspaceId: context.workspaceId });
+  const data = (approvals.data ?? []).map((row) => mapApproval(row as Record<string, unknown>, livePolicy));
   const now = new Date();
   const todayKey = now.toISOString().slice(0, 10);
   const stats = {

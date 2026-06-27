@@ -18,6 +18,8 @@ import { draftClientFlowReplyWithAI } from "@/lib/operators/client-flow/ai-draft
 import { applyGreeting, buildContactPersonalization, type SharedPersonalization } from "@/lib/operators/shared/personalization";
 import { sendSlackApprovalNotification } from "@/lib/notifications/slack";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
+import type { PolicyWorkspaceSettings } from "@/lib/policies/types";
 import { loadWorkspacePolicySettings, type TrelloProjectSettings } from "@/lib/settings/workspace-policy";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
@@ -471,6 +473,7 @@ function buildClientFlowTrelloAction(input: {
   taskTitle: string;
   taskDescription: string;
   dedupeKey: string;
+  policySettings: PolicyWorkspaceSettings;
 }): PreparedAction | null {
   if (!input.trello.defaultBoardId || !input.trello.defaultListId) return null;
   return prepareAction({
@@ -497,7 +500,7 @@ function buildClientFlowTrelloAction(input: {
       fromEmail: input.signal.message.fromEmail,
       sourceSubject: input.signal.message.subject,
     },
-  });
+  }, { policySettings: input.policySettings });
 }
 
 export async function scanClientFlowSignals(input: {
@@ -566,6 +569,7 @@ export async function scanClientFlowSignals(input: {
       connector.connectorKey === "trello" && connector.status === "connected" && connector.providerConfigKey && connector.nangoConnectionId);
 
     const workspacePolicy = await loadWorkspacePolicySettings({ supabase, workspaceId });
+    const policySettings = await loadPolicyWorkspaceSettings({ supabase, workspaceId });
     const workspaceRow = await supabase.from("os_workspaces").select("name").eq("id", workspaceId).maybeSingle();
     const signoffName = (typeof workspaceRow.data?.name === "string" && workspaceRow.data.name.trim()) ? workspaceRow.data.name.trim() : "The team";
 
@@ -635,6 +639,7 @@ export async function scanClientFlowSignals(input: {
           taskTitle: aiDraft.trelloTaskTitle,
           taskDescription: aiDraft.trelloTaskDescription,
           dedupeKey: dedupe.dedupeKey,
+          policySettings,
         })
         : null;
       const trelloPrepared = Boolean(clientFlowTrelloAction);

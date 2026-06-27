@@ -7,6 +7,10 @@ import { executeHubSpotRevenueActions, HubSpotExecutionError, type HubSpotExecut
 import { sendSlackMessageAfterApproval, SlackExecutionError, type PreparedSlackMessageAction } from "@/lib/operators/executors/slack";
 import { TrelloExecutionError } from "@/lib/operators/executors/trello";
 import { sendSlackApprovalNotification } from "@/lib/notifications/slack";
+import { evaluatePolicy } from "@/lib/policies/evaluate";
+import { buildPolicyInputFromContinuation, loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
+import { logPolicyDecision } from "@/lib/policies/audit";
+import type { PolicyDecision, PolicyEvaluationEntitlements } from "@/lib/policies/types";
 import { logOperatorEvent, recordOperatorUsage } from "@/lib/operators/logging";
 import { createOperatorMemory } from "@/lib/operators/memory";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
@@ -270,10 +274,41 @@ function shouldExecuteHubSpot(payload: GmailContinuationPayload): boolean {
   );
 }
 
-function customerEmailMode(payload: GmailContinuationPayload): "approval_required" | "draft_only" | "auto_send_low_risk" {
-  const mode = payload.customerEmailPolicy?.mode;
-  if (mode === "draft_only" || mode === "auto_send_low_risk" || mode === "approval_required") return mode;
-  return "approval_required";
+async function markGmailBlockedByPolicy(input: {
+  supabase: ReturnType<typeof createSupabaseAdmin>;
+  approvalId: string;
+  workspaceId: string;
+  resolvedBy: string;
+  approvalRow: Record<string, unknown>;
+  payload: GmailContinuationPayload;
+  decision: PolicyDecision;
+}) {
+  const continuation = input.approvalRow.continuation_payload && typeof input.approvalRow.continuation_payload === "object"
+    ? input.approvalRow.continuation_payload as Record<string, unknown>
+    : {};
+  const executionResult = {
+    gmailStatus: "blocked_by_policy",
+    hubspotStatus: "not_attempted",
+    policyDecision: input.decision,
+    blockedReason: input.decision.reason,
+  };
+  await input.supabase.from("os_approvals").update({
+    status: "failed",
+    resolved_at: new Date().toISOString(),
+    resolved_by: input.resolvedBy,
+    continuation_payload: { ...continuation, executionResult },
+  }).eq("id", input.approvalId).eq("workspace_id", input.workspaceId);
+
+  const operatorRunId = input.payload.operatorRunId || (typeof input.approvalRow.run_id === "string" ? input.approvalRow.run_id : "");
+  if (operatorRunId) {
+    await input.supabase.from("os_operator_runs").update({
+      status: "blocked",
+      completed_at: new Date().toISOString(),
+      output: { gmail: executionResult, policyDecision: input.decision },
+      error: input.decision.reason,
+    }).eq("id", operatorRunId).eq("workspace_id", input.workspaceId);
+  }
+  return NextResponse.json({ ok: false, status: "blocked_by_policy", policyDecision: input.decision, executionResult });
 }
 
 function hubspotErrorPayload(error: unknown) {
@@ -344,6 +379,7 @@ async function markDraftOnlyReviewed(input: {
   approvalRow: Record<string, unknown>;
   payload: GmailContinuationPayload;
   canRunRealActions: boolean;
+  policyDecision?: PolicyDecision;
 }) {
   const finalDraft = effectiveDraft(input.payload);
   const continuation = input.approvalRow.continuation_payload && typeof input.approvalRow.continuation_payload === "object"
@@ -360,6 +396,7 @@ async function markDraftOnlyReviewed(input: {
     gmailStatus: "draft_only_not_sent",
     hubspotStatus: "not_attempted",
     clientFlowTrello,
+    policyDecision: input.policyDecision ?? null,
     usedEditedDraft: finalDraft.usedEditedDraft,
     finalSubject: finalDraft.subject,
     finalBodyPreview: finalDraft.bodyPreview,
@@ -559,6 +596,25 @@ async function executeSharedActionApproval(input: {
     return alreadyResolvedResponse(input.approvalRow);
   }
 
+  // LIVE policy re-evaluation (emergency stop / tightened policy can block).
+  const livePolicy = await loadPolicyWorkspaceSettings({ supabase: input.supabase, workspaceId: input.payload.workspaceId });
+  const policyInput = buildPolicyInputFromContinuation({ workspaceId: input.payload.workspaceId, kind: "shared_action.execute_after_approval", continuation });
+  const policyDecision = policyInput ? evaluatePolicy(policyInput, livePolicy) : null;
+  if (policyInput) {
+    const decision = policyDecision!;
+    if (decision.decision === "blocked") {
+      await logPolicyDecision({ supabase: input.supabase, workspaceId: input.payload.workspaceId, runId: typeof input.approvalRow.run_id === "string" ? input.approvalRow.run_id : null, approvalId: input.approvalId, decision, policyInput, live: true });
+      await input.supabase.from("os_approvals").update({
+        status: "failed",
+        resolved_at: new Date().toISOString(),
+        resolved_by: input.resolvedBy,
+        continuation_payload: { ...continuation, executionResult: { status: "blocked_by_policy", policyDecision: decision } },
+      }).eq("id", input.approvalId).eq("workspace_id", input.payload.workspaceId);
+      return NextResponse.json({ ok: false, status: "blocked_by_policy", policyDecision: decision }, { status: 200 });
+    }
+    await logPolicyDecision({ supabase: input.supabase, workspaceId: input.payload.workspaceId, runId: typeof input.approvalRow.run_id === "string" ? input.approvalRow.run_id : null, approvalId: input.approvalId, decision, policyInput, live: true });
+  }
+
   const executionClaim = await input.supabase
     .from("os_approvals")
     .update({ status: "executing", resolved_by: input.resolvedBy })
@@ -583,6 +639,7 @@ async function executeSharedActionApproval(input: {
     const executionResult = {
       status: "executed",
       action: actionResult,
+      policyDecision,
       executedAt: new Date().toISOString(),
     };
     const approvalUpdate = await input.supabase.from("os_approvals").update({
@@ -747,8 +804,24 @@ async function executeOperationsApproval(input: {
   let slackError: Record<string, unknown> | null = null;
   let trelloError: Record<string, unknown> | null = null;
 
+  // LIVE policy re-evaluation per action (emergency stop / tightened policy can block).
+  const livePolicy = await loadPolicyWorkspaceSettings({ supabase: input.supabase, workspaceId: input.payload.workspaceId });
+  const slackPolicyInput = input.payload.preparedSlackAction
+    ? buildPolicyInputFromContinuation({ workspaceId: input.payload.workspaceId, kind: "operations.execute_after_approval", continuation, preferred: "slack" })
+    : null;
+  const trelloPolicyInput = input.payload.preparedTrelloAction
+    ? buildPolicyInputFromContinuation({ workspaceId: input.payload.workspaceId, kind: "operations.execute_after_approval", continuation, preferred: "trello" })
+    : null;
+  const slackPolicyDecision = slackPolicyInput ? evaluatePolicy(slackPolicyInput, livePolicy) : null;
+  const trelloPolicyDecision = trelloPolicyInput ? evaluatePolicy(trelloPolicyInput, livePolicy) : null;
+  const slackBlocked = slackPolicyDecision?.decision === "blocked";
+  const trelloBlocked = trelloPolicyDecision?.decision === "blocked";
+
   // Slack internal message (approval-gated).
-  if (input.payload.preparedSlackAction) {
+  if (input.payload.preparedSlackAction && slackBlocked) {
+    slackStatus = "blocked_by_policy";
+    await optionalStep(warnings, "operations.slack.blocked", () => logPolicyDecision({ supabase: input.supabase, workspaceId: input.payload.workspaceId, runId: runId || null, approvalId: input.approvalId, decision: slackPolicyDecision!, policyInput: slackPolicyInput!, live: true }));
+  } else if (input.payload.preparedSlackAction) {
     const channelId = stringField(input.payload.preparedSlackAction, "channelId");
     const text = stringField(input.payload.preparedSlackAction, "text");
     try {
@@ -768,7 +841,11 @@ async function executeOperationsApproval(input: {
   }
 
   // Trello action (approval-gated): comment / move / create card.
-  if (input.payload.preparedTrelloAction) {
+  if (input.payload.preparedTrelloAction && trelloBlocked) {
+    actionType = input.payload.preparedTrelloAction.actionType;
+    trelloStatus = "blocked_by_policy";
+    await optionalStep(warnings, "operations.trello.blocked", () => logPolicyDecision({ supabase: input.supabase, workspaceId: input.payload.workspaceId, runId: runId || null, approvalId: input.approvalId, decision: trelloPolicyDecision!, policyInput: trelloPolicyInput!, live: true }));
+  } else if (input.payload.preparedTrelloAction) {
     actionType = input.payload.preparedTrelloAction.actionType;
     try {
       const result = await executePreparedActionAfterApproval({ action: input.payload.preparedTrelloAction, approvalId: input.approvalId });
@@ -790,16 +867,22 @@ async function executeOperationsApproval(input: {
     }
   }
 
+  const anyBlocked = slackStatus === "blocked_by_policy" || trelloStatus === "blocked_by_policy";
   const anyFailed = slackStatus === "failed" || trelloStatus === "failed";
   const anySucceeded = slackStatus === "sent" || trelloStatus === "executed";
-  const finalStatus = anyFailed ? (anySucceeded ? "partially_completed" : "failed") : "approved";
+  const finalStatus = anySucceeded ? (anyFailed || anyBlocked ? "partially_completed" : "approved") : (anyFailed || anyBlocked ? "failed" : "approved");
   const executionResult = {
     slackStatus,
     trelloStatus,
     cardId,
     cardUrl,
     actionType,
-    skippedReason: !anySucceeded && !anyFailed ? "no_actions_prepared" : null,
+    policyDecisions: {
+      slack: slackPolicyDecision,
+      trello: trelloPolicyDecision,
+    },
+    blockedByPolicy: anyBlocked,
+    skippedReason: !anySucceeded && !anyFailed && !anyBlocked ? "no_actions_prepared" : null,
     slack: slackError ? { status: slackStatus, error: slackError } : { status: slackStatus },
     trello: trelloError ? { status: trelloStatus, error: trelloError } : { status: trelloStatus },
     executedAt: new Date().toISOString(),
@@ -815,10 +898,10 @@ async function executeOperationsApproval(input: {
 
   if (runId) {
     await optionalStep(warnings, "operations.run.update", () => input.supabase.from("os_operator_runs").update({
-      status: anyFailed ? (anySucceeded ? "partially_completed" : "failed") : "completed",
+      status: anySucceeded ? (anyFailed || anyBlocked ? "partially_completed" : "completed") : (anyBlocked ? "blocked" : anyFailed ? "failed" : "completed"),
       completed_at: new Date().toISOString(),
       output: { executionResult },
-      error: anyFailed ? "One or more Operations actions failed." : null,
+      error: anyBlocked ? "One or more Operations actions were blocked by live policy." : anyFailed ? "One or more Operations actions failed." : null,
     }).eq("id", runId).eq("workspace_id", input.payload.workspaceId).eq("approval_id", input.approvalId).then((res) => {
       if (res.error) throw new Error(res.error.message);
       return res;
@@ -856,6 +939,42 @@ async function executeSlackApproval(input: {
   payload: SlackContinuationPayload;
   resolvedBy: string;
 }) {
+  const continuation = input.approvalRow.continuation_payload && typeof input.approvalRow.continuation_payload === "object"
+    ? input.approvalRow.continuation_payload as Record<string, unknown>
+    : {};
+  if (continuation.executionResult && typeof continuation.executionResult === "object") {
+    return alreadyResolvedResponse(input.approvalRow);
+  }
+
+  const livePolicy = await loadPolicyWorkspaceSettings({ supabase: input.supabase, workspaceId: input.payload.workspaceId });
+  const policyInput = buildPolicyInputFromContinuation({ workspaceId: input.payload.workspaceId, kind: "slack.send_after_approval", continuation });
+  const policyDecision = policyInput ? evaluatePolicy(policyInput, livePolicy) : null;
+  if (policyDecision && policyInput) {
+    await logPolicyDecision({
+      supabase: input.supabase,
+      workspaceId: input.payload.workspaceId,
+      runId: input.payload.operatorRunId ?? (typeof input.approvalRow.run_id === "string" ? input.approvalRow.run_id : null),
+      approvalId: input.approvalId,
+      decision: policyDecision,
+      policyInput,
+      live: true,
+    });
+    if (policyDecision.decision === "blocked") {
+      const executionResult = {
+        slackStatus: "blocked_by_policy",
+        policyDecision,
+        blockedReason: policyDecision.reason,
+      };
+      await input.supabase.from("os_approvals").update({
+        status: "failed",
+        resolved_at: new Date().toISOString(),
+        resolved_by: input.resolvedBy,
+        continuation_payload: { ...continuation, executionResult },
+      }).eq("id", input.approvalId).eq("workspace_id", input.payload.workspaceId);
+      return NextResponse.json({ ok: false, status: "blocked_by_policy", policyDecision, executionResult }, { status: 200 });
+    }
+  }
+
   const executionClaim = await input.supabase
     .from("os_approvals")
     .update({
@@ -887,6 +1006,7 @@ async function executeSlackApproval(input: {
       slackStatus: "sent",
       channelId: sent.channelId,
       messageTs: sent.messageTs ?? null,
+      policyDecision,
     };
 
     const approvalUpdate = await input.supabase.from("os_approvals").update({
@@ -894,7 +1014,7 @@ async function executeSlackApproval(input: {
       resolved_at: new Date().toISOString(),
       resolved_by: input.resolvedBy,
       continuation_payload: {
-        ...(input.approvalRow.continuation_payload && typeof input.approvalRow.continuation_payload === "object" ? input.approvalRow.continuation_payload as Record<string, unknown> : {}),
+        ...continuation,
         executionResult,
       },
     }).eq("id", input.approvalId).eq("workspace_id", input.payload.workspaceId);
@@ -928,9 +1048,10 @@ async function executeSlackApproval(input: {
       resolved_at: new Date().toISOString(),
       resolved_by: input.resolvedBy,
       continuation_payload: {
-        ...(input.approvalRow.continuation_payload && typeof input.approvalRow.continuation_payload === "object" ? input.approvalRow.continuation_payload as Record<string, unknown> : {}),
+        ...continuation,
         executionResult: {
           slackStatus: "failed",
+          policyDecision,
           error: errorPayload,
         },
       },
@@ -1119,16 +1240,43 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     .eq("id", context.workspaceId)
     .single();
   if (ws.error || !ws.data) return NextResponse.json({ error: "Workspace not found." }, { status: 404 });
-  if (customerEmailMode(gmailPayload) === "draft_only") {
-    return markDraftOnlyReviewed({
-      supabase,
-      approvalId: id,
-      workspaceId: context.workspaceId,
-      resolvedBy: context.userEmail || context.userId || userEmail || userId,
-      approvalRow: approvalRow as Record<string, unknown>,
-      payload: gmailPayload,
-      canRunRealActions: Boolean(ws.data.can_run_real_actions) && ws.data.billing_status !== "preview",
-    });
+
+  // LIVE policy re-evaluation (never trusts the payload snapshot). This is the
+  // enforcement point: if an admin tightened the policy after the approval was
+  // created, the live decision wins.
+  const livePolicy = await loadPolicyWorkspaceSettings({ supabase, workspaceId: context.workspaceId });
+  const liveEntitlements: PolicyEvaluationEntitlements = { canRunRealActions: Boolean(ws.data.can_run_real_actions), billingStatus: String(ws.data.billing_status) };
+  const gmailPolicyInput = buildPolicyInputFromContinuation({ workspaceId: context.workspaceId, kind: "gmail.send_after_approval", continuation: continuation as Record<string, unknown> });
+  const gmailPolicyDecision = gmailPolicyInput ? evaluatePolicy(gmailPolicyInput, livePolicy, liveEntitlements) : null;
+
+  if (gmailPolicyDecision && gmailPolicyInput) {
+    if (gmailPolicyDecision.decision === "blocked") {
+      await logPolicyDecision({ supabase, workspaceId: context.workspaceId, runId: gmailPayload.operatorRunId ?? (typeof approvalRow.run_id === "string" ? approvalRow.run_id : null), approvalId: id, decision: gmailPolicyDecision, policyInput: gmailPolicyInput, live: true });
+      return markGmailBlockedByPolicy({
+        supabase,
+        approvalId: id,
+        workspaceId: context.workspaceId,
+        resolvedBy: context.userEmail || context.userId || userEmail || userId,
+        approvalRow: approvalRow as Record<string, unknown>,
+        payload: gmailPayload,
+        decision: gmailPolicyDecision,
+      });
+    }
+    if (gmailPolicyDecision.decision === "draft_only") {
+      await logPolicyDecision({ supabase, workspaceId: context.workspaceId, runId: gmailPayload.operatorRunId ?? (typeof approvalRow.run_id === "string" ? approvalRow.run_id : null), approvalId: id, decision: gmailPolicyDecision, policyInput: gmailPolicyInput, live: true });
+      return markDraftOnlyReviewed({
+        supabase,
+        approvalId: id,
+        workspaceId: context.workspaceId,
+        resolvedBy: context.userEmail || context.userId || userEmail || userId,
+        approvalRow: approvalRow as Record<string, unknown>,
+        payload: gmailPayload,
+        canRunRealActions: Boolean(ws.data.can_run_real_actions) && ws.data.billing_status !== "preview",
+        policyDecision: gmailPolicyDecision,
+      });
+    }
+    // approval_required / allow_auto: human approval already happened, proceed to send.
+    await logPolicyDecision({ supabase, workspaceId: context.workspaceId, runId: gmailPayload.operatorRunId ?? (typeof approvalRow.run_id === "string" ? approvalRow.run_id : null), approvalId: id, decision: gmailPolicyDecision, policyInput: gmailPolicyInput, live: true });
   }
   if (!ws.data.can_run_real_actions || ws.data.billing_status === "preview") {
     return NextResponse.json({ error: "Real execution requires an active plan." }, { status: 402 });
@@ -1346,6 +1494,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     hubspotContactId: hubspotResult?.contactId ?? null,
     hubspotDealId: hubspotResult?.dealId ?? null,
     clientFlowTrello,
+    policyDecision: gmailPolicyDecision,
     gmail: {
       draftId: draft.draftId,
       messageId: sent.messageId ?? null,

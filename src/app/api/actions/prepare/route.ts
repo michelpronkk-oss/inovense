@@ -3,6 +3,7 @@ import { prepareAction } from "@/lib/actions/execute";
 import type { ActionType } from "@/lib/actions/types";
 import { logOperatorEvent, operatorRuntimeId } from "@/lib/operators/logging";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
+import { loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 
@@ -42,6 +43,7 @@ export async function POST(req: NextRequest) {
   }
 
   const settings = await loadWorkspacePolicySettings({ supabase, workspaceId: context.workspaceId });
+  const policySettings = await loadPolicyWorkspaceSettings({ supabase, workspaceId: context.workspaceId });
   const rawInput = body.input ?? {};
   const input = {
     ...rawInput,
@@ -69,7 +71,7 @@ export async function POST(req: NextRequest) {
     dedupeKey: stringValue(rawInput.dedupeKey) ?? null,
     source: body.source || "manual_demo",
     metadata: body.metadata ?? {},
-  }, { customerEmailMode: settings.customerEmailMode });
+  }, { policySettings });
 
   const approvalId = operatorRuntimeId("appr-action");
   const insert = await supabase.from("os_approvals").insert({
@@ -91,7 +93,7 @@ export async function POST(req: NextRequest) {
       operatorKey: preparedAction.operatorKey,
       preparedAction,
     },
-    policy_reason: "Trello task actions require approval before execution.",
+    policy_reason: preparedAction.policyDecision?.reason ?? "Trello task actions require approval before execution.",
   });
   if (insert.error) return NextResponse.json({ error: insert.error.message }, { status: 500 });
 

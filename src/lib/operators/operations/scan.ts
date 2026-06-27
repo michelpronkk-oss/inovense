@@ -12,6 +12,7 @@ import type { Capability } from "@/lib/connectors/capabilities";
 import { logOperatorEvent, operatorRuntimeId } from "@/lib/operators/logging";
 import { sendSlackApprovalNotification } from "@/lib/notifications/slack";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 import {
   decideOperationsCardSignal,
@@ -215,6 +216,7 @@ export async function scanOperationsSignals(input: {
     getConnectorTruth({ workspaceId, supabase }),
     loadWorkspacePolicySettings({ supabase, workspaceId }),
   ]);
+  const policySettings = await loadPolicyWorkspaceSettings({ supabase, workspaceId });
   const isConnected = (key: string) => truth.some((c) => c.connectorKey === key && c.status === "connected" && c.providerConfigKey && c.nangoConnectionId);
   const trelloConnected = isConnected("trello");
   const slackConnected = isConnected("slack");
@@ -303,7 +305,7 @@ export async function scanOperationsSignals(input: {
           dedupeKey: `${dedupeKey}:slack`,
           source: "trello",
           metadata: { operatorKey: "operations", signalType: decision.signalType },
-        })
+        }, { policySettings })
         : null;
 
       let preparedTrelloAction: PreparedAction | null = null;
@@ -327,7 +329,7 @@ export async function scanOperationsSignals(input: {
           dedupeKey: `${dedupeKey}:trello`,
           source: "trello",
           metadata: { operatorKey: "operations", signalType: decision.signalType, cardUrl: card?.url ?? null },
-        });
+        }, { policySettings });
       }
 
       if (!preparedSlackAction && !preparedTrelloAction) { bump("not_actionable"); continue; }

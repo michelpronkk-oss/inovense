@@ -1,5 +1,6 @@
 import type { Capability } from "@/lib/connectors/capabilities";
 import type { ConnectorCategory, ConnectorRiskLevel } from "@/lib/connectors/registry";
+import type { PolicyDecision, PolicyEvaluationEntitlements, PolicyInput, PolicyWorkspaceSettings } from "@/lib/policies/types";
 
 export type ActionType =
   | "send_email"
@@ -11,6 +12,9 @@ export type ActionType =
   | "add_task_comment";
 
 export type ActionStatus = "prepared" | "approval_required" | "executing" | "executed" | "failed" | "skipped";
+
+export type ActionDestinationType = "internal" | "external" | "customer" | "crm" | "project_tool" | "system";
+export type ActionConfidence = "low" | "medium" | "high";
 
 export type ActionIntent = {
   id?: string;
@@ -24,6 +28,10 @@ export type ActionIntent = {
   input: Record<string, unknown>;
   dedupeKey?: string | null;
   source?: string | null;
+  destinationType?: ActionDestinationType;
+  confidence?: ActionConfidence;
+  riskLevel?: ConnectorRiskLevel;
+  normalizedTarget?: string | null;
   metadata?: Record<string, unknown> | null;
 };
 
@@ -50,6 +58,11 @@ export type PreparedAction = {
   status: ActionStatus;
   dedupeKey: string | null;
   source: string | null;
+  destinationType: ActionDestinationType;
+  confidence?: ActionConfidence;
+  normalizedTarget?: string | null;
+  policyInput?: PolicyInput | null;
+  policyDecision?: PolicyDecision | null;
   metadata: Record<string, unknown>;
 };
 
@@ -64,4 +77,6 @@ export type ActionExecutionResult = {
 export type WorkspaceActionPolicy = {
   customerEmailMode?: "approval_required" | "draft_only" | "auto_send_low_risk";
   internalSlackNotificationsAllowed?: boolean;
+  policySettings?: PolicyWorkspaceSettings;
+  entitlements?: PolicyEvaluationEntitlements;
 };

@@ -1,12 +1,38 @@
-import { getActionDefinition, requiresApprovalForAction } from "@/lib/actions/registry";
+import { getActionDefinition } from "@/lib/actions/registry";
 import { renderActionPreview } from "@/lib/actions/preview";
-import type { ActionExecutionResult, ActionIntent, PreparedAction, WorkspaceActionPolicy } from "@/lib/actions/types";
+import type { ActionExecutionResult, ActionIntent, ActionType, PreparedAction, WorkspaceActionPolicy } from "@/lib/actions/types";
+import { DEFAULT_POLICY_WORKSPACE_SETTINGS, defaultRiskForAction, destinationTypeForAction } from "@/lib/policies/defaults";
+import { evaluatePolicy } from "@/lib/policies/evaluate";
+import type { DestinationType, PolicyInput } from "@/lib/policies/types";
 import {
   addTrelloCardCommentAfterApproval,
   createTrelloCardAfterApproval,
   moveTrelloCardAfterApproval,
 } from "@/lib/operators/executors/trello";
 import { operatorRuntimeId } from "@/lib/operators/logging";
+
+function buildPolicyInput(intent: ActionIntent, prepared: Omit<PreparedAction, "policyInput" | "policyDecision">): PolicyInput {
+  const rawInput = intent.input ?? {};
+  const recipient = typeof rawInput.to === "string" ? rawInput.to.trim().toLowerCase() : undefined;
+  const destinationType = (intent.destinationType ?? prepared.destinationType) as DestinationType;
+  return {
+    workspaceId: intent.workspaceId,
+    operatorKey: intent.operatorKey,
+    actionType: intent.actionType,
+    connectorKey: prepared.connectorKey,
+    capability: prepared.capability,
+    destinationType,
+    riskLevel: prepared.riskLevel ?? defaultRiskForAction(intent.actionType),
+    confidence: intent.confidence,
+    recipient,
+    domain: recipient?.includes("@") ? recipient.split("@")[1] : undefined,
+    channelId: typeof rawInput.channelId === "string" ? rawInput.channelId.trim() : undefined,
+    cardId: typeof rawInput.cardId === "string" ? rawInput.cardId.trim() : undefined,
+    listId: typeof rawInput.listId === "string" ? rawInput.listId.trim() : undefined,
+    source: intent.source ?? undefined,
+    metadata: intent.metadata ?? {},
+  };
+}
 
 export function prepareAction(intent: ActionIntent, workspacePolicy: WorkspaceActionPolicy = {}): PreparedAction {
   const def = getActionDefinition(intent.actionType);
@@ -18,7 +44,7 @@ export function prepareAction(intent: ActionIntent, workspacePolicy: WorkspaceAc
     connectorKey: intent.connectorKey || def.defaultConnectorKey,
     capability: intent.capability || def.capability,
     connectorCategory: def.connectorCategory,
-    riskLevel: def.riskLevel,
+    riskLevel: intent.riskLevel ?? defaultRiskForAction(intent.actionType),
     requiresApproval: true,
     title: intent.title,
     summary: intent.summary,
@@ -27,12 +53,28 @@ export function prepareAction(intent: ActionIntent, workspacePolicy: WorkspaceAc
     status: "prepared",
     dedupeKey: intent.dedupeKey ?? null,
     source: intent.source ?? null,
+    destinationType: intent.destinationType ?? destinationTypeForAction(intent.actionType),
+    confidence: intent.confidence,
+    normalizedTarget: intent.normalizedTarget ?? null,
     metadata: intent.metadata ?? {},
   };
+  const policyInput = buildPolicyInput(intent, prepared);
+  const policyDecision = evaluatePolicy(
+    policyInput,
+    workspacePolicy.policySettings ?? {
+      ...DEFAULT_POLICY_WORKSPACE_SETTINGS,
+      customerEmailMode: workspacePolicy.customerEmailMode ?? DEFAULT_POLICY_WORKSPACE_SETTINGS.customerEmailMode,
+      internalSlackNotificationsAllowed: workspacePolicy.internalSlackNotificationsAllowed ?? DEFAULT_POLICY_WORKSPACE_SETTINGS.internalSlackNotificationsAllowed,
+    },
+    workspacePolicy.entitlements,
+  );
+  const requiresApproval = policyDecision.requiresHumanReview;
   return {
     ...prepared,
-    requiresApproval: requiresApprovalForAction(prepared, workspacePolicy),
-    status: requiresApprovalForAction(prepared, workspacePolicy) ? "approval_required" : "prepared",
+    policyInput,
+    policyDecision,
+    requiresApproval,
+    status: requiresApproval ? "approval_required" : "prepared",
   };
 }
 

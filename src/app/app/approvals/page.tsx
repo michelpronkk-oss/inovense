@@ -83,6 +83,7 @@ type ApprovalRow = {
       preparedSlackMessage?: string | null;
     } | null;
     operationsPolicy?: { slackMessage?: string; trelloUpdate?: string; humanReview?: string } | null;
+    livePolicyDecision?: { decision: string; reason: string; riskLevel: string; matchedRuleId: string; userFacingLabel: string; requiresHumanReview: boolean } | null;
     preparedSlackAction?: { input?: Record<string, unknown> } | null;
     preparedTrelloAction?: { actionType?: string; title?: string; preview?: { label?: string; fields?: Array<{ label: string; value: string }>; bodyPreview?: string | null } } | null;
     customerEmailPolicy?: {
@@ -818,6 +819,31 @@ export default function ApprovalsPage() {
                     </div>
                   )}
                 </div>
+                {item.payload_preview.livePolicyDecision && (() => {
+                  const d = item.payload_preview.livePolicyDecision;
+                  const exec = recordValue(item.payload_preview.executionResult);
+                  const tone = d.decision === "blocked" ? "var(--rose)" : d.decision === "allow_auto" ? "var(--green)" : "var(--amber)";
+                  const postExec = exec.policyDecision || exec.gmailStatus === "blocked_by_policy" || exec.slackStatus === "blocked_by_policy" || exec.trelloStatus === "blocked_by_policy";
+                  const execNote = item.status === "pending"
+                    ? "Rechecked live before execution."
+                    : exec.gmailStatus === "blocked_by_policy" || exec.slackStatus === "blocked_by_policy" || exec.trelloStatus === "blocked_by_policy" || exec.status === "blocked_by_policy"
+                      ? "Blocked by updated policy."
+                      : exec.gmailStatus === "draft_only_not_sent"
+                        ? "Draft-only due to policy. Not sent."
+                        : "Executed under live policy.";
+                  return (
+                    <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: `inset 0 0 0 1px ${tone === "var(--green)" ? "rgba(81,216,138,0.22)" : tone === "var(--rose)" ? "rgba(242,118,124,0.22)" : "rgba(245,194,107,0.22)"}`, display: "grid", gap: 4 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Policy</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: tone }}>{d.userFacingLabel}</span>
+                        <span className="pill" style={{ fontSize: 10 }}>Risk: {d.riskLevel}</span>
+                        {d.requiresHumanReview && <span className="pill" style={{ fontSize: 10 }}>Human review required</span>}
+                        <span style={{ fontSize: 10.5, color: postExec && item.status !== "pending" ? tone : "var(--text-mute)" }}>{execNote}</span>
+                      </div>
+                      <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>{d.reason} <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-faint)" }}>({d.matchedRuleId})</span></div>
+                    </div>
+                  );
+                })()}
                 <div style={{ marginTop: 12, padding: "11px 12px", borderRadius: 14, background: "rgba(0,0,0,0.16)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.065)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                   <label style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 280 }}>
                     <span style={{ fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.1em", whiteSpace: "nowrap" }}>Reject reason</span>

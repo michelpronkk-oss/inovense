@@ -1,6 +1,7 @@
 import type { Capability } from "@/lib/connectors/capabilities";
 import type { ConnectorCategory, ConnectorRiskLevel } from "@/lib/connectors/registry";
 import type { ActionType, PreparedAction, WorkspaceActionPolicy } from "@/lib/actions/types";
+import type { PolicyDecision } from "@/lib/policies/types";
 
 export type ActionDefinition = {
   actionType: ActionType;
@@ -18,7 +19,7 @@ export const ACTION_REGISTRY: Record<ActionType, ActionDefinition> = {
     capability: "email.send_after_approval",
     connectorCategory: "email",
     defaultConnectorKey: "gmail",
-    riskLevel: "medium",
+    riskLevel: "high",
     approvalDefault: true,
     allowedExecutionAdapters: ["gmail", "outlook"],
   },
@@ -27,7 +28,7 @@ export const ACTION_REGISTRY: Record<ActionType, ActionDefinition> = {
     capability: "chat.messages.send_after_approval",
     connectorCategory: "team_chat",
     defaultConnectorKey: "slack",
-    riskLevel: "medium",
+    riskLevel: "low",
     approvalDefault: true,
     allowedExecutionAdapters: ["slack", "microsoft_teams"],
   },
@@ -36,7 +37,7 @@ export const ACTION_REGISTRY: Record<ActionType, ActionDefinition> = {
     capability: "crm.contacts.write",
     connectorCategory: "crm",
     defaultConnectorKey: "hubspot",
-    riskLevel: "medium",
+    riskLevel: "high",
     approvalDefault: true,
     allowedExecutionAdapters: ["hubspot", "pipedrive", "salesforce"],
   },
@@ -45,7 +46,7 @@ export const ACTION_REGISTRY: Record<ActionType, ActionDefinition> = {
     capability: "crm.deals.write",
     connectorCategory: "crm",
     defaultConnectorKey: "hubspot",
-    riskLevel: "medium",
+    riskLevel: "high",
     approvalDefault: true,
     allowedExecutionAdapters: ["hubspot", "pipedrive", "salesforce"],
   },
@@ -72,7 +73,7 @@ export const ACTION_REGISTRY: Record<ActionType, ActionDefinition> = {
     capability: "pm.comments.write_after_approval",
     connectorCategory: "project_management",
     defaultConnectorKey: "trello",
-    riskLevel: "medium",
+    riskLevel: "low",
     approvalDefault: true,
     allowedExecutionAdapters: ["trello"],
   },
@@ -86,8 +87,12 @@ export function requiresApprovalForAction(
   action: Pick<PreparedAction, "actionType" | "connectorKey"> | { actionType: ActionType; connectorKey?: string },
   workspacePolicy: WorkspaceActionPolicy = {},
 ): boolean {
+  const maybeDecision = (action as { policyDecision?: PolicyDecision | null }).policyDecision;
+  if (maybeDecision) {
+    return maybeDecision.requiresHumanReview;
+  }
   if (action.actionType === "send_email") {
-    return workspacePolicy.customerEmailMode !== "auto_send_low_risk";
+    return true;
   }
   if (action.actionType === "send_slack_message") {
     return !workspacePolicy.internalSlackNotificationsAllowed;

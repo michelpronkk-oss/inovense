@@ -49,7 +49,8 @@
       "Bash(ping -n 6 127.0.0.1)",
       "Bash(break)",
       "Bash(ping -n 5 127.0.0.1)",
-      "PowerShell(pnpm.cmd run build 2>&1 | Select-Object -Last 6; \"EXITCODE=$LASTEXITCODE\")"
+      "PowerShell(pnpm.cmd run build 2>&1 | Select-Object -Last 6; \"EXITCODE=$LASTEXITCODE\")",
+      "PowerShell(pnpm.cmd run build 2>&1 | Select-Object -Last 5; \"EXITCODE=$LASTEXITCODE\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\miche\\Desktop\\inovense-app\\src",

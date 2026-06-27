@@ -1,403 +1,234 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ShieldIcon } from "@/components/dashboard/icons";
 import { useOS } from "@/lib/os/app-provider";
-import { evaluatePolicy, type PolicyEvaluationAction, type PolicyEvaluationResult } from "@/lib/os/policy-engine";
-import type { Policy, PolicyActionType, PolicyCategory, PolicyEffect } from "@/lib/os/types";
-import { getEntitlements } from "@/lib/os/entitlements";
 
-const POLICY_CATEGORIES: PolicyCategory[] = ["communication", "crm", "pricing", "payments", "memory", "calendar", "files", "internal", "security"];
-const POLICY_ACTIONS: PolicyActionType[] = [
-  "email.createDraft",
-  "email.send",
-  "crm.createRecord",
-  "crm.updateRecord",
-  "crm.deleteRecord",
-  "pricing.change",
-  "payment.refund",
-  "slack.postMessage",
-  "calendar.createExternalInvite",
-  "memory.read",
-  "memory.write",
-  "memory.delete",
-  "file.read",
-  "file.shareExternal",
-  "internal.logWrite",
-  "internal.approvalCreate",
-];
-const TEST_TOGGLES: Array<{ key: TestToggleKey; label: string }> = [
-  { key: "externalRecipient", label: "External recipient" },
-  { key: "containsPricing", label: "Contains pricing" },
-  { key: "customerFacing", label: "Customer facing" },
-  { key: "destructiveAction", label: "Destructive action" },
-];
+type AutonomyMode = "safe" | "assisted" | "managed";
 
-type PolicyDraft = {
-  id?: string;
-  name: string;
-  description: string;
-  enabled: boolean;
-  category: PolicyCategory;
-  actionType: PolicyActionType;
-  appliesToAgents: string;
-  appliesToConnectors: string;
-  decision: PolicyEffect;
-  reviewerRole: string;
-  limitValue: string;
-  allowlist: string;
-  blockedReason: string;
-  conditions: {
-    externalRecipient: boolean;
-    containsPricing: boolean;
-    containsContractTerms: boolean;
-    customerFacing: boolean;
-    financialAction: boolean;
-    destructiveAction: boolean;
-    adminOnly: boolean;
-    domainNotAllowlisted: boolean;
-    amountOver: string;
-  };
-};
-type TestToggleKey = "externalRecipient" | "containsPricing" | "customerFacing" | "destructiveAction";
-
-const EMPTY_DRAFT: PolicyDraft = {
-  name: "",
-  description: "",
-  enabled: true,
-  category: "communication",
-  actionType: "email.send",
-  appliesToAgents: "all",
-  appliesToConnectors: "all",
-  decision: "require_approval",
-  reviewerRole: "admin",
-  limitValue: "",
-  allowlist: "",
-  blockedReason: "",
-  conditions: {
-    externalRecipient: false,
-    containsPricing: false,
-    containsContractTerms: false,
-    customerFacing: false,
-    financialAction: false,
-    destructiveAction: false,
-    adminOnly: false,
-    domainNotAllowlisted: false,
-    amountOver: "",
-  },
+type PolicySettings = {
+  autonomyMode: AutonomyMode;
+  emergencyStopEnabled: boolean;
+  customerEmailMode: "approval_required" | "draft_only" | "auto_send_low_risk";
+  internalSlackNotificationsAllowed: boolean;
+  dailyBriefAllowed: boolean;
+  connectorHealthChecksAllowed: boolean;
+  lowRiskProjectToolCommentsAllowed: boolean;
+  crmWritesRequireApproval: boolean;
+  projectToolWritesRequireApproval: boolean;
+  customerFacingActionsRequireApproval: boolean;
 };
 
-function toDraft(policy: Policy): PolicyDraft {
-  return {
-    id: policy.id,
-    name: policy.name,
-    description: policy.description,
-    enabled: policy.enabled,
-    category: policy.category,
-    actionType: policy.actionType,
-    appliesToAgents: policy.appliesToAgents.join(", "),
-    appliesToConnectors: policy.appliesToConnectors.join(", "),
-    decision: policy.decision,
-    reviewerRole: policy.reviewerRole ?? "",
-    limitValue: policy.limitValue ?? "",
-    allowlist: (policy.allowlist ?? []).join(", "),
-    blockedReason: policy.blockedReason ?? "",
-    conditions: {
-      externalRecipient: Boolean(policy.conditions.externalRecipient),
-      containsPricing: Boolean(policy.conditions.containsPricing),
-      containsContractTerms: Boolean(policy.conditions.containsContractTerms),
-      customerFacing: Boolean(policy.conditions.customerFacing),
-      financialAction: Boolean(policy.conditions.financialAction),
-      destructiveAction: Boolean(policy.conditions.destructiveAction),
-      adminOnly: Boolean(policy.conditions.adminOnly),
-      domainNotAllowlisted: Boolean(policy.conditions.domainNotAllowlisted),
-      amountOver: policy.conditions.amountOver ? String(policy.conditions.amountOver) : "",
-    },
-  };
-}
+const MODES: { key: AutonomyMode; label: string; help: string; locked?: boolean }[] = [
+  { key: "safe", label: "Safe mode", help: "Approval-first. Only system notifications, daily brief and health checks run automatically." },
+  { key: "assisted", label: "Assisted autopilot", help: "Adds auto-apply for low-risk Trello comments with high confidence. Email, CRM, card create/move still require approval." },
+  { key: "managed", label: "Managed custom", help: "Custom rules. Coming soon.", locked: true },
+];
 
-function fromDraft(draft: PolicyDraft): Policy {
-  const now = new Date().toISOString();
-  return {
-    id: draft.id ?? `pol-${Date.now()}`,
-    name: draft.name.trim(),
-    description: draft.description.trim(),
-    enabled: draft.enabled,
-    category: draft.category,
-    actionType: draft.actionType,
-    appliesToAgents: draft.appliesToAgents.split(",").map((v) => v.trim()).filter(Boolean),
-    appliesToConnectors: draft.appliesToConnectors.split(",").map((v) => v.trim()).filter(Boolean),
-    conditions: {
-      externalRecipient: draft.conditions.externalRecipient || undefined,
-      containsPricing: draft.conditions.containsPricing || undefined,
-      containsContractTerms: draft.conditions.containsContractTerms || undefined,
-      customerFacing: draft.conditions.customerFacing || undefined,
-      financialAction: draft.conditions.financialAction || undefined,
-      destructiveAction: draft.conditions.destructiveAction || undefined,
-      adminOnly: draft.conditions.adminOnly || undefined,
-      domainNotAllowlisted: draft.conditions.domainNotAllowlisted || undefined,
-      amountOver: draft.conditions.amountOver ? Number(draft.conditions.amountOver) : undefined,
-    },
-    decision: draft.decision,
-    reviewerRole: draft.reviewerRole.trim() || undefined,
-    limitValue: draft.limitValue.trim() || undefined,
-    allowlist: draft.allowlist.split(",").map((v) => v.trim()).filter(Boolean),
-    blockedReason: draft.blockedReason.trim() || undefined,
-    createdAt: now,
-    updatedAt: now,
-    active: draft.enabled,
-    action: draft.actionType,
-    effect: draft.decision,
-    scope: ["all"],
-    appliesTo: draft.appliesToAgents,
-  };
-}
-
-function decisionBadge(decision: PolicyEffect): { text: string; bg: string; color: string } {
-  if (decision === "allow") return { text: "allow", bg: "rgba(81,216,138,0.12)", color: "var(--green)" };
-  if (decision === "require_approval") return { text: "approval", bg: "rgba(245,194,107,0.13)", color: "var(--amber)" };
-  return { text: "blocked", bg: "rgba(242,118,124,0.13)", color: "var(--rose)" };
+function Row({ label, value, tone, help }: { label: string; value: string; tone: "green" | "amber" | "rose" | "neutral"; help?: string }) {
+  const color = tone === "green" ? "var(--green)" : tone === "amber" ? "var(--amber)" : tone === "rose" ? "var(--rose)" : "var(--text-dim)";
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "13px 0" }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>{label}</div>
+        {help && <div style={{ marginTop: 2, fontSize: 11.5, color: "var(--text-mute)" }}>{help}</div>}
+      </div>
+      <span style={{ fontSize: 12, fontWeight: 600, color, flexShrink: 0 }}>{value}</span>
+    </div>
+  );
 }
 
 export default function PoliciesPage() {
-  const { state, upsertPolicy, setPolicyActive } = useOS();
-  const entitlements = getEntitlements(state.workspace);
-  const isPreview = entitlements.billingStatus === "preview";
-  const [draft, setDraft] = useState<PolicyDraft | null>(null);
+  const { state } = useOS();
+  const [policy, setPolicy] = useState<PolicySettings | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [testAction, setTestAction] = useState<PolicyEvaluationAction>({
-    id: "policy-test",
-    agentId: state.agents.find((a) => a.name.includes("Revenue"))?.id ?? state.agents[0]?.id ?? "agent",
-    toolId: "gmail.sendEmailMock",
-    connectorId: "gmail",
-    actionType: "email.send",
-    payload: {},
-    riskLevel: "high",
-    customerFacing: true,
-    externalRecipient: true,
-    financialAction: false,
-    destructiveAction: false,
-    containsPricing: false,
-    target: "contact@external.com",
-    metadata: { source: "policy-test-panel" },
-  });
-  const [testResult, setTestResult] = useState<PolicyEvaluationResult | null>(null);
 
-  const activePolicies = useMemo(() => state.policies.filter((p) => p.enabled && p.active), [state.policies]);
-  const reviewedToday = useMemo(() => state.logs.filter((l) => l.event === "policy.evaluated").length, [state.logs]);
-  const approvalsRequired = useMemo(() => state.logs.filter((l) => l.event === "policy.approval_required").length, [state.logs]);
-  const blockedActions = useMemo(() => state.logs.filter((l) => l.event === "policy.blocked").length, [state.logs]);
+  const identityParams = useMemo(() => new URLSearchParams({
+    workspaceId: state.workspace.id,
+    userId: state.currentUser.id,
+    userEmail: state.currentUser.email,
+  }), [state.currentUser.email, state.currentUser.id, state.workspace.id]);
 
-  const openEdit = (policy?: Policy) => {
+  const load = useCallback(async () => {
+    if (!state.workspace.id) return;
+    setLoading(true);
     setError("");
-    setDraft(policy ? toDraft(policy) : { ...EMPTY_DRAFT });
-  };
-
-  const runPolicyTest = () => {
-    const result = evaluatePolicy(testAction, state);
-    setTestResult(result);
-  };
-
-  const savePolicy = () => {
-    if (!draft) return;
-    if (!draft.name.trim() || !draft.description.trim()) {
-      setError("Name and description are required.");
-      return;
+    try {
+      const res = await fetch(`/api/policies?${identityParams.toString()}`, { cache: "no-store" });
+      const json = await res.json().catch(() => ({})) as { policy?: PolicySettings; error?: string };
+      if (!res.ok || !json.policy) throw new Error(json.error || "Could not load policy settings.");
+      setPolicy(json.policy);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load policy settings.");
+    } finally {
+      setLoading(false);
     }
-    const policy = fromDraft(draft);
-    if (draft.id) policy.createdAt = state.policies.find((p) => p.id === draft.id)?.createdAt ?? policy.createdAt;
-    policy.updatedAt = new Date().toISOString();
-    upsertPolicy(policy);
-    setDraft(null);
+  }, [identityParams, state.workspace.id]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const patch = async (body: Partial<Pick<PolicySettings, "autonomyMode" | "emergencyStopEnabled" | "customerEmailMode" | "dailyBriefAllowed">>) => {
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch("/api/policies", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId: state.workspace.id, userId: state.currentUser.id, userEmail: state.currentUser.email, ...body }),
+      });
+      const json = await res.json().catch(() => ({})) as { policy?: PolicySettings; error?: string };
+      if (!res.ok || !json.policy) throw new Error(json.error || "Could not save policy settings.");
+      setPolicy(json.policy);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save policy settings.");
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const assisted = policy?.autonomyMode === "assisted";
+  const stop = Boolean(policy?.emergencyStopEnabled);
 
   return (
     <div className="os-page">
       <div className="os-page-head">
         <div>
-          <span className="os-greet">Execution guardrails - {activePolicies.length} enforced</span>
+          <span className="os-greet">Policy engine v1 - real enforcement</span>
           <h1>Policies</h1>
-          <div className="os-page-sub">Policies are enforced before operators can execute tool actions. Operators can propose actions, but guardrails decide what can run.</div>
-          {isPreview && (
-            <div style={{ marginTop: 8, color: "#9DEFEA", fontSize: 12.5 }}>
-              Policies are enforced before live execution. Preview mode uses demo actions.
-            </div>
-          )}
-        </div>
-        <div className="os-page-actions">
-          <button className="btn btn-primary btn-sm" onClick={() => openEdit()}>Add policy</button>
+          <div className="os-page-sub">Inovense runs automatically where it is safe, and asks for approval where it matters. These settings are enforced live, including a re-check at execution time.</div>
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-        {[
-          { label: "Enforced policies", value: String(activePolicies.length), sub: "active guardrails" },
-          { label: "Actions reviewed today", value: String(reviewedToday), sub: "policy engine evaluations" },
-          { label: "Approvals required", value: String(approvalsRequired), sub: "risky actions waiting" },
-          { label: "Blocked actions", value: String(blockedActions), sub: "blocked before execution" },
-        ].map((metric) => (
-          <div className="kpi" key={metric.label}>
-            <div className="kpi-top"><span className="lab">{metric.label}</span></div>
-            <div className="kpi-val">{metric.value}</div>
-            <div className="kpi-meta"><span className="kpi-delta">{metric.sub}</span></div>
-          </div>
-        ))}
-      </div>
+      {error && <div style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>{error}</div>}
 
-      <div className="p">
-        <div className="p-head">
-          <h3><ShieldIcon size={13} /> Active guardrails</h3>
-          <div className="p-meta">Blocked actions never reach connected tools.</div>
-        </div>
-        {state.policies.map((policy) => {
-          const badge = decisionBadge(policy.decision);
-          const conditionText = Object.entries(policy.conditions)
-            .filter(([, value]) => value !== undefined && value !== false)
-            .map(([key, value]) => `${key}:${String(value)}`)
-            .join(" | ") || "none";
-          const appliesAgents = policy.appliesToAgents.join(", ") || "all";
-          const appliesConnectors = policy.appliesToConnectors.join(", ") || "all";
-          return (
-            <div key={policy.id} style={{ borderBottom: "1px solid var(--line)", padding: "12px 16px", opacity: policy.enabled ? 1 : 0.62 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10 }}>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-                    <span style={{ fontSize: 13.5, fontWeight: 600 }}>{policy.name}</span>
-                    <span style={{ padding: "2px 8px", borderRadius: 6, fontFamily: "var(--font-mono)", fontSize: 10.5, background: badge.bg, color: badge.color }}>{badge.text}</span>
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-faint)" }}>{policy.actionType}</span>
-                  </div>
-                  <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 4 }}>{policy.description}</div>
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)" }}>
-                    agents: {appliesAgents} | connectors: {appliesConnectors} | conditions: {conditionText}
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
-                  <button className="appr-btn edit" onClick={() => openEdit(policy)}>Edit</button>
-                  <button
-                    className="appr-btn edit"
-                    onClick={() => {
-                      setTestAction((prev) => ({ ...prev, actionType: policy.actionType }));
-                      runPolicyTest();
-                    }}
-                  >
-                    Test
-                  </button>
-                  <button className="appr-btn deny" onClick={() => setPolicyActive(policy.id, !policy.enabled)}>{policy.enabled ? "Disable" : "Enable"}</button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="p">
-        <div className="p-head">
-          <h3><ShieldIcon size={13} /> Policy test panel</h3>
-          <div className="p-meta">Approval-required actions wait in the inbox.</div>
-        </div>
-        <div style={{ display: "grid", gap: 10, padding: "10px 14px 16px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-            <select className="os-input" value={testAction.agentId} onChange={(e) => setTestAction((prev) => ({ ...prev, agentId: e.target.value }))}>
-              {state.agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
-            </select>
-            <select className="os-input" value={testAction.actionType} onChange={(e) => setTestAction((prev) => ({ ...prev, actionType: e.target.value as PolicyActionType }))}>
-              {POLICY_ACTIONS.map((action) => <option key={action} value={action}>{action}</option>)}
-            </select>
-            <select className="os-input" value={testAction.riskLevel} onChange={(e) => setTestAction((prev) => ({ ...prev, riskLevel: e.target.value as "low" | "medium" | "high" }))}>
-              <option value="low">risk: low</option>
-              <option value="medium">risk: medium</option>
-              <option value="high">risk: high</option>
-            </select>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, fontSize: 12.5, color: "var(--text-dim)" }}>
-            {TEST_TOGGLES.map((toggle) => (
-              <label key={toggle.key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <input
-                  type="checkbox"
-                  checked={Boolean(testAction[toggle.key])}
-                  onChange={(e) => setTestAction((prev) => ({ ...prev, [toggle.key]: e.target.checked }))}
-                />
-                <span>{toggle.label}</span>
-              </label>
-            ))}
-          </div>
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-            <button className="appr-btn edit" onClick={() => setTestResult(null)}>Clear</button>
-            <button className="appr-btn approve" onClick={runPolicyTest}>Test decision</button>
-          </div>
-          {testResult && (
-            <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
-              <div style={{ marginBottom: 4, fontSize: 12.8, fontWeight: 600, color: testResult.decision === "allow" ? "var(--green)" : testResult.decision === "require_approval" ? "var(--amber)" : "var(--rose)" }}>
-                Result: {testResult.decision}
-              </div>
-              <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 5 }}>{testResult.reason}</div>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)" }}>
-                matched policy: {testResult.matchedPolicies.map((p) => p.name).join(" | ") || "none"}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {draft && (
-        <div className="os-modal-backdrop" onClick={() => setDraft(null)}>
-          <div className="os-modal" style={{ width: "min(760px, 94vw)", maxHeight: "88vh", overflow: "auto" }} onClick={(e) => e.stopPropagation()}>
-            <div className="os-modal-head">
-              <h3>{draft.id ? "Edit policy" : "Add policy"}</h3>
-              <button className="appr-btn deny" onClick={() => setDraft(null)}>Close</button>
-            </div>
-            <div style={{ display: "grid", gap: 10 }}>
-              <input className="os-input" placeholder="Policy name" value={draft.name} onChange={(e) => setDraft((prev) => (prev ? { ...prev, name: e.target.value } : prev))} />
-              <textarea className="os-input" rows={3} placeholder="Description" value={draft.description} onChange={(e) => setDraft((prev) => (prev ? { ...prev, description: e.target.value } : prev))} />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-                <select className="os-input" value={draft.category} onChange={(e) => setDraft((prev) => (prev ? { ...prev, category: e.target.value as PolicyCategory } : prev))}>
-                  {POLICY_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
-                </select>
-                <select className="os-input" value={draft.actionType} onChange={(e) => setDraft((prev) => (prev ? { ...prev, actionType: e.target.value as PolicyActionType } : prev))}>
-                  {POLICY_ACTIONS.map((action) => <option key={action} value={action}>{action}</option>)}
-                </select>
-                <select className="os-input" value={draft.decision} onChange={(e) => setDraft((prev) => (prev ? { ...prev, decision: e.target.value as PolicyEffect } : prev))}>
-                  <option value="allow">allow</option>
-                  <option value="require_approval">require approval</option>
-                  <option value="block">block</option>
-                </select>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <input className="os-input" placeholder="Applies to agents (comma-separated)" value={draft.appliesToAgents} onChange={(e) => setDraft((prev) => (prev ? { ...prev, appliesToAgents: e.target.value } : prev))} />
-                <input className="os-input" placeholder="Applies to connectors (comma-separated)" value={draft.appliesToConnectors} onChange={(e) => setDraft((prev) => (prev ? { ...prev, appliesToConnectors: e.target.value } : prev))} />
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, fontSize: 12.5, color: "var(--text-dim)" }}>
-                {(["externalRecipient", "containsPricing", "containsContractTerms", "customerFacing", "financialAction", "destructiveAction", "adminOnly", "domainNotAllowlisted"] as const).map((key) => (
-                  <label key={key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <input
-                      type="checkbox"
-                      checked={draft.conditions[key]}
-                      onChange={(e) => setDraft((prev) => (prev ? { ...prev, conditions: { ...prev.conditions, [key]: e.target.checked } } : prev))}
-                    />
-                    <span>{key}</span>
-                  </label>
-                ))}
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-                <input className="os-input" placeholder="Reviewer role" value={draft.reviewerRole} onChange={(e) => setDraft((prev) => (prev ? { ...prev, reviewerRole: e.target.value } : prev))} />
-                <input className="os-input" placeholder="Amount over" value={draft.conditions.amountOver} onChange={(e) => setDraft((prev) => (prev ? { ...prev, conditions: { ...prev.conditions, amountOver: e.target.value } } : prev))} />
-                <input className="os-input" placeholder="Limit value" value={draft.limitValue} onChange={(e) => setDraft((prev) => (prev ? { ...prev, limitValue: e.target.value } : prev))} />
-              </div>
-              <input className="os-input" placeholder="Allowlist domains (comma-separated)" value={draft.allowlist} onChange={(e) => setDraft((prev) => (prev ? { ...prev, allowlist: e.target.value } : prev))} />
-              <input className="os-input" placeholder="Blocked reason" value={draft.blockedReason} onChange={(e) => setDraft((prev) => (prev ? { ...prev, blockedReason: e.target.value } : prev))} />
-              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--text-dim)" }}>
-                <input type="checkbox" checked={draft.enabled} onChange={(e) => setDraft((prev) => (prev ? { ...prev, enabled: e.target.checked } : prev))} />
-                <span>Enabled</span>
-              </label>
-              {error && <div style={{ color: "#ff8f8f", fontSize: 12 }}>{error}</div>}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-                <button className="btn btn-ghost btn-sm" onClick={() => setDraft(null)}>Cancel</button>
-                <button className="btn btn-primary btn-sm" onClick={savePolicy}>Save</button>
-              </div>
-            </div>
-          </div>
+      {stop && (
+        <div style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(242,118,124,0.1)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.28)", color: "#ffb4b4", fontSize: 12.8, fontWeight: 600 }}>
+          Emergency stop is ON. Customer emails, CRM writes, project tool changes and operator Slack messages are blocked at execution. System notifications and health checks still run.
         </div>
       )}
+
+      {/* Autonomy mode */}
+      <div className="p" style={{ gap: 0 }}>
+        <div className="p-head"><h3><ShieldIcon size={13} /> Autonomy mode</h3><span className="p-meta">{loading ? "Loading..." : `Current: ${policy?.autonomyMode ?? "safe"}`}</span></div>
+        <div style={{ padding: "16px 18px", display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 12 }}>
+          {MODES.map((mode) => {
+            const active = policy?.autonomyMode === mode.key;
+            return (
+              <button
+                key={mode.key}
+                type="button"
+                disabled={saving || loading || mode.locked}
+                onClick={() => !mode.locked && patch({ autonomyMode: mode.key })}
+                style={{
+                  textAlign: "left",
+                  padding: "14px 15px",
+                  borderRadius: 14,
+                  cursor: mode.locked ? "not-allowed" : "pointer",
+                  background: active ? "rgba(77,232,225,0.07)" : "rgba(255,255,255,0.02)",
+                  boxShadow: `inset 0 0 0 1px ${active ? "rgba(77,232,225,0.4)" : "var(--line)"}`,
+                  opacity: mode.locked ? 0.55 : 1,
+                  color: "inherit",
+                  display: "grid",
+                  gap: 6,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 600 }}>{mode.label}</span>
+                  {mode.locked ? <span className="pill" style={{ fontSize: 10 }}>Coming soon</span> : active ? <span className="pill pill-cyan" style={{ fontSize: 10 }}>Active</span> : null}
+                </div>
+                <div style={{ fontSize: 11.8, color: "var(--text-mute)" }}>{mode.help}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Emergency stop */}
+      <div className="p" style={{ gap: 0 }}>
+        <div className="p-head"><h3>Emergency stop</h3></div>
+        <div style={{ padding: "8px 18px 16px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "13px 0" }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>Block all risky execution</div>
+              <div style={{ marginTop: 2, fontSize: 11.5, color: "var(--text-mute)" }}>Conservative kill switch. Blocks customer emails, CRM, project tool changes and operator Slack messages. Re-checked live at execution.</div>
+            </div>
+            <button
+              type="button"
+              className={`appr-btn ${stop ? "deny" : "edit"}`}
+              disabled={saving || loading}
+              onClick={() => patch({ emergencyStopEnabled: !stop })}
+            >
+              {stop ? "Emergency stop ON" : "Emergency stop OFF"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Customer email */}
+      <div className="p" style={{ gap: 0 }}>
+        <div className="p-head"><h3>Customer email</h3><span className="p-meta">Enforced</span></div>
+        <div style={{ padding: "16px 18px", display: "grid", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
+            {([
+              { key: "approval_required", label: "Approval required", help: "Operators draft the reply; you approve before Gmail sends." },
+              { key: "draft_only", label: "Draft only", help: "Operators prepare the reply but Gmail never sends it." },
+            ] as const).map((opt) => {
+              const active = policy?.customerEmailMode === opt.key;
+              return (
+                <button key={opt.key} type="button" disabled={saving || loading} onClick={() => patch({ customerEmailMode: opt.key })}
+                  style={{ textAlign: "left", padding: "13px 14px", borderRadius: 12, cursor: "pointer", background: active ? "rgba(77,232,225,0.07)" : "rgba(255,255,255,0.02)", boxShadow: `inset 0 0 0 1px ${active ? "rgba(77,232,225,0.4)" : "var(--line)"}`, color: "inherit", display: "grid", gap: 5 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><span style={{ fontSize: 13, fontWeight: 600 }}>{opt.label}</span>{active && <span className="pill pill-cyan" style={{ fontSize: 10 }}>Active</span>}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>{opt.help}</div>
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.015)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 600 }}>Auto-send low risk</div>
+              <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>Customer emails never auto-send in v1.</div>
+            </div>
+            <span className="pill" style={{ fontSize: 10 }}>Not enabled in v1</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Automatic-where-safe + approval-where-it-matters */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div className="p" style={{ gap: 0 }}>
+          <div className="p-head"><h3>Runs automatically</h3></div>
+          <div style={{ padding: "6px 18px 14px" }}>
+            <Row label="Connector health checks" value={policy?.connectorHealthChecksAllowed ? "Auto" : "Off"} tone={policy?.connectorHealthChecksAllowed ? "green" : "neutral"} help="System checks, internal only." />
+            <div style={{ borderTop: "1px solid var(--line)" }} />
+            <Row label="Internal Slack notifications" value={policy?.internalSlackNotificationsAllowed ? "Auto (enabled)" : "Off"} tone={policy?.internalSlackNotificationsAllowed ? "green" : "neutral"} help="Controlled in Slack connector settings." />
+            <div style={{ borderTop: "1px solid var(--line)" }} />
+            <Row label="Daily brief" value={stop ? "Blocked (stop)" : policy?.dailyBriefAllowed ? "Auto" : "Off"} tone={stop ? "rose" : policy?.dailyBriefAllowed ? "green" : "neutral"} help="Internal summary to the default Slack channel." />
+            <div style={{ borderTop: "1px solid var(--line)" }} />
+            <Row label="Low-risk Trello comments" value={stop ? "Blocked (stop)" : assisted ? "Auto if confidence high" : "Approval required"} tone={stop ? "rose" : assisted ? "green" : "amber"} help="Only in Assisted autopilot, low risk and high confidence." />
+          </div>
+        </div>
+
+        <div className="p" style={{ gap: 0 }}>
+          <div className="p-head"><h3>Always needs approval</h3></div>
+          <div style={{ padding: "6px 18px 14px" }}>
+            <Row label="Customer emails" value={stop ? "Blocked (stop)" : policy?.customerEmailMode === "draft_only" ? "Draft only" : "Approval required"} tone={stop ? "rose" : "amber"} />
+            <div style={{ borderTop: "1px solid var(--line)" }} />
+            <Row label="CRM writes (HubSpot)" value={stop ? "Blocked (stop)" : "Approval required"} tone={stop ? "rose" : "amber"} />
+            <div style={{ borderTop: "1px solid var(--line)" }} />
+            <Row label="Trello card create / move" value={stop ? "Blocked (stop)" : "Approval required"} tone={stop ? "rose" : "amber"} />
+            <div style={{ borderTop: "1px solid var(--line)" }} />
+            <Row label="Operator Slack messages" value={stop ? "Blocked (stop)" : "Approval required"} tone={stop ? "rose" : "amber"} />
+            <div style={{ borderTop: "1px solid var(--line)" }} />
+            <Row label="Destructive actions" value="Blocked" tone="rose" help="Never automatic, in any mode." />
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: "14px 18px", borderRadius: 12, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", fontSize: 12.5, color: "var(--text-mute)", lineHeight: 1.6 }}>
+        <strong style={{ color: "var(--text-dim)" }}>How enforcement works:</strong> every operator action is evaluated against this policy when prepared, and <strong style={{ color: "var(--text-dim)" }}>re-evaluated against the live policy at execution time</strong>. Changing a setting affects pending approvals too, so a tightened policy can turn an approval into draft-only or blocked when it runs.
+      </div>
     </div>
   );
 }
