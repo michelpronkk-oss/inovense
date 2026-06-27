@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useOS } from "@/lib/os/app-provider";
 import { getEntitlements } from "@/lib/os/entitlements";
+import { listConnectors } from "@/lib/connectors/registry";
 import "./styles-onboarding.css";
 
 const STEPS = [
@@ -18,21 +19,12 @@ const STEPS = [
   { id: "success", name: "Live", short: "08" },
 ] as const;
 
-const CONNECTOR_OPTIONS = [
-  { id: "gmail", name: "Gmail", req: "Email execution" },
-  { id: "outlook", name: "Outlook", req: "Email alternative" },
-  { id: "hubspot", name: "HubSpot", req: "CRM and pipeline" },
-  { id: "salesforce", name: "Salesforce", req: "CRM alternative" },
-  { id: "slack", name: "Slack", req: "Internal messaging" },
-  { id: "google-calendar", name: "Google Calendar", req: "Scheduling flows" },
-  { id: "notion", name: "Notion", req: "Memory and docs" },
-  { id: "google-drive", name: "Google Drive", req: "Files and content" },
-  { id: "stripe", name: "Stripe", req: "Revenue and billing" },
-  { id: "shopify", name: "Shopify", req: "Commerce data" },
-  { id: "linear", name: "Linear", req: "Engineering workflows" },
-  { id: "clickup", name: "ClickUp", req: "Project management" },
-  { id: "webhooks", name: "Webhooks", req: "Custom integrations" },
-] as const;
+const CONNECTOR_OPTIONS = listConnectors().map((connector) => ({
+  id: connector.connectorKey,
+  name: connector.displayName,
+  req: connector.status === "available" ? connector.setupNotes : "Request connector",
+  status: connector.status,
+}));
 
 const GOAL_OPTIONS = [
   {
@@ -181,7 +173,7 @@ const INITIAL_STATE: FormState = {
   approvalOwner: "",
   mainGoals: [],
   preferredOperator: "Revenue Operator",
-  initialConnectors: ["gmail", "hubspot", "slack"],
+  initialConnectors: ["gmail", "hubspot"],
   memoryDescription: "",
   memoryOffer: "",
   memoryTone: "",
@@ -255,6 +247,8 @@ export default function OnboardingPage() {
   };
 
   const toggleConnector = (id: string) => {
+    const option = CONNECTOR_OPTIONS.find((connector) => connector.id === id);
+    if (option?.status !== "available") return;
     setForm((prev) => ({
       ...prev,
       initialConnectors: prev.initialConnectors.includes(id)
@@ -481,8 +475,15 @@ export default function OnboardingPage() {
                 <div className="card-grid cols-3">
                   {CONNECTOR_OPTIONS.map((c) => {
                     const selected = form.initialConnectors.includes(c.id);
+                    const available = c.status === "available";
                     return (
-                      <button key={c.id} className={`sel-card conn-card ${selected ? "selected" : ""}`} onClick={() => toggleConnector(c.id)}>
+                      <button
+                        key={c.id}
+                        className={`sel-card conn-card ${selected ? "selected" : ""}`}
+                        onClick={() => toggleConnector(c.id)}
+                        disabled={!available}
+                        style={!available ? { opacity: 0.58, cursor: "not-allowed" } : undefined}
+                      >
                         <div className="head">
                           <div className="ident">
                             <div className="lg">{c.name.slice(0, 2).toUpperCase()}</div>
@@ -491,7 +492,7 @@ export default function OnboardingPage() {
                               <div className="desc">{c.req}</div>
                             </div>
                           </div>
-                          <span className={`conn-status ${selected ? "on" : ""}`}>{selected ? "on" : "off"}</span>
+                          <span className={`conn-status ${selected ? "on" : ""}`}>{available ? (selected ? "on" : "off") : "request"}</span>
                         </div>
                       </button>
                     );
@@ -648,7 +649,7 @@ export default function OnboardingPage() {
             <div className="checklist">
               <div className={`ci ${form.companyName ? "on" : ""}`}><span className="ck">✓</span>Workspace named</div>
               <div className={`ci ${form.mainGoals.length > 0 ? "on" : ""}`}><span className="ck">✓</span>Operating focus chosen</div>
-              <div className={`ci ${form.initialConnectors.length > 0 ? "on" : ""}`}><span className="ck">✓</span>{form.initialConnectors.length} tools connected</div>
+              <div className={`ci ${form.initialConnectors.length > 0 ? "on" : ""}`}><span className="ck">✓</span>{form.initialConnectors.length} tools selected</div>
               <div className={`ci ${form.preferredOperator ? "on" : ""}`}><span className="ck">✓</span>First operator selected</div>
               <div className={`ci on`}><span className="ck">✓</span>Boundaries set</div>
               <div className={`ci ${!!form.memoryDescription ? "on" : ""}`}><span className="ck">✓</span>Company memory drafted</div>

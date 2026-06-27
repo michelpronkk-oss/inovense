@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
-import { HUBSPOT_PROVIDER_CONFIG_KEY, verifyNangoWebhook } from "@/lib/integrations/nango";
+import { verifyNangoWebhook } from "@/lib/integrations/nango";
 import { getConnectorDefinition, isSupportedNangoConnector } from "@/lib/connectors/registry";
 
 type NangoWebhookPayload = {
@@ -62,6 +62,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, ignored: true });
   }
   const connectorDef = getConnectorDefinition(connectorKey);
+  if (!connectorDef?.providerConfigKey || providerConfigKey !== connectorDef.providerConfigKey) {
+    return NextResponse.json({ ok: true, ignored: true, reason: "provider_config_mismatch" });
+  }
 
   const isSuccess = payload.success === true
     || eventType.includes("auth.success")
@@ -99,7 +102,7 @@ export async function POST(req: NextRequest) {
       category: connectorDef?.category ?? "crm",
       status,
       connected: status === "connected",
-      provider_config_key: providerConfigKey || HUBSPOT_PROVIDER_CONFIG_KEY,
+      provider_config_key: providerConfigKey,
       nango_connection_id: connectionId,
       provider_account_id: providerAccountId,
       provider_email: providerEmail,

@@ -16,7 +16,7 @@ import type {
   Workspace,
   OnboardingState,
 } from "@/lib/os/types";
-import { buildSeedState } from "@/lib/os/seed";
+import { buildSeedState, reconcileConnectorsWithRegistry } from "@/lib/os/seed";
 import { AGENT_TEMPLATES } from "@/lib/os/templates";
 import { continueRunAfterApproval, runAgent as runAgentRuntime, type AgentRuntimeResult } from "@/lib/os/agents/agent-runtime";
 import { installWorkflowFromSuggestion, type SuggestedWorkflow } from "@/lib/os/workflow-recommendations";
@@ -51,7 +51,7 @@ type OSAction =
 function reducer(state: OSState, action: OSAction): OSState {
   switch (action.type) {
     case "HYDRATE":
-      return action.state;
+      return { ...action.state, connectors: reconcileConnectorsWithRegistry(action.state.connectors) };
     case "COMPLETE_ONBOARDING": {
       const nowIso = new Date().toISOString();
       const preferredMap: Record<string, string> = {
@@ -63,11 +63,15 @@ function reducer(state: OSState, action: OSAction): OSState {
       };
       const templateId = preferredMap[action.preferredOperator] ?? "revenue";
       const template = AGENT_TEMPLATES[templateId];
+      const hasRealConnector = (connectorId: string) => state.connectors.some((connector) =>
+        connector.id === connectorId
+        && connector.isConnected
+        && (connector.source === "native" || connector.source === "nango")
+      );
       const missingRevenueRequirements = action.preferredOperator === "Revenue Operator"
         ? [
-          !(action.connectors.includes("gmail") || action.connectors.includes("outlook")) ? "gmail|outlook" : "",
-          !(action.connectors.includes("hubspot") || action.connectors.includes("salesforce")) ? "hubspot|salesforce" : "",
-          !action.connectors.includes("slack") ? "slack" : "",
+          !hasRealConnector("gmail") ? "gmail" : "",
+          !hasRealConnector("hubspot") ? "hubspot" : "",
         ].filter(Boolean)
         : [];
       const preferredAgent: Agent | null = template
@@ -132,16 +136,17 @@ function reducer(state: OSState, action: OSAction): OSState {
           active: true,
         }],
         connectors: state.connectors.map((connector) => {
-          const shouldConnect = action.connectors.includes(connector.id);
-          if (!shouldConnect) return connector;
+          const selectedForSetup = action.connectors.includes(connector.id);
+          if (!selectedForSetup) return connector;
           return {
             ...connector,
-            isConnected: true,
-            status: "connected",
-            health: "healthy",
-            lastSync: "preview",
-            lastSynced: nowIso,
-            records: "Preview — activate Starter to sync live data",
+            isConnected: false,
+            status: "available",
+            health: "disabled",
+            lastSync: "-",
+            lastSynced: "",
+            records: "Selected in onboarding - connect a real account to sync live data",
+            source: "seed",
           };
         }),
         policies: state.policies.map((policy) => ({ ...policy, enabled: true, active: true, updatedAt: nowIso })),
@@ -787,6 +792,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const entitlement = getEntitlements(state.workspace);
     const connector = state.connectors.find((c) => c.id === connectorId);
     if (!connector) return;
+    if (mode === "preview") {
+      dispatch({
+        type: "APPEND_LOG",
+        log: logEntry(`Preview connector state blocked for ${connector.name}. Connectors require real OAuth or managed auth.`, "connector.preview_connect_blocked", "warn"),
+      });
+      return;
+    }
     if (mode === "real" && !entitlement.canUseRealConnectors) {
       dispatch({
         type: "APPEND_LOG",
@@ -799,8 +811,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       type: "UPDATE_CONNECTOR",
       connectorId,
       patch: {
-        records: mode === "preview" ? "Preview connector connected" : connector.records,
-        source: mode === "preview" ? "preview" : "nango",
+        records: connector.records,
+        source: connectorId === "gmail" ? "native" : "nango",
       },
     });
   }, [setConnectorConnected, state.connectors, state.workspace]);

@@ -74,6 +74,12 @@ export async function POST(req: NextRequest) {
   if (!providerConfigKey) {
     return NextResponse.json({ error: "missing_provider_config_key" }, { status: 400 });
   }
+  if (!connectorDef?.providerConfigKey || providerConfigKey !== connectorDef.providerConfigKey) {
+    return NextResponse.json({
+      error: "provider_config_mismatch",
+      message: "The Nango provider config does not match the registry entry for this connector.",
+    }, { status: 400 });
+  }
 
   const supabase = createSupabaseAdmin();
   const context = await resolveWorkspaceContext({ workspaceId, userId, userEmail, supabase, allowDevFallback: false });

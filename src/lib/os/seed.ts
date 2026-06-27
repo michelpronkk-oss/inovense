@@ -1,3 +1,9 @@
+import {
+  CONNECTOR_CATEGORY_LABELS,
+  listConnectors,
+  type ConnectorDefinition,
+} from "@/lib/connectors/registry";
+import { getOperatorDefinition } from "@/lib/operators/registry";
 import type { OSState, Agent, Workflow, Approval, MemoryEntry, Connector, ExecutionLog, Policy } from "@/lib/os/types";
 
 // Deterministic IDs so seed is stable across reloads
@@ -130,36 +136,64 @@ export const SEED_MEMORY: MemoryEntry[] = [
   { id: "mem-006", type: "product", label: "Service catalogue", summary: "Pricing + scope definitions", content: "Build: from $4,200. Systems: from $3,800. Growth: from $2,200/mo. All scoped, no open-ended retainers. Deposit: 50% upfront. Delivery: 4-8 weeks.", tags: ["product", "pricing"], agentScope: [SEED_AGENT_IDS.rv, SEED_AGENT_IDS.cf], fieldCount: 18, updatedAt: ts(2 * 24 * 60) },
 ];
 
-export const SEED_CONNECTORS: Connector[] = [
-  { id: "gmail", name: "Gmail", letter: "G", color: "#EA4335", category: "Communication", description: "Lead qualification and follow-up inbox actions.", status: "available", health: "disabled", lastSync: "-", syncMode: "realtime", syncFreq: "Real-time", permissions: ["Draft emails", "Send approved emails"], readScopes: ["Create email drafts", "Send approved emails"], writeScopes: [], approvalRequiredFor: ["External email send"], blockedActions: ["Delete email", "Read full inbox", "Change mailbox labels", "Send without approval"], operatorsAllowed: ["Revenue Operator", "Client Flow Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false, source: "seed" as const },
-  { id: "slack", name: "Slack", letter: "Sl", color: "#A77FBC", category: "Communication", description: "Approval inbox and weekly operations digest channel delivery.", status: "available", health: "disabled", lastSync: "-", syncMode: "realtime", syncFreq: "Real-time", permissions: ["read", "write"], readScopes: ["channels.read", "messages.read"], writeScopes: ["messages.write", "reactions.write"], approvalRequiredFor: ["post_external_channel"], blockedActions: [], operatorsAllowed: ["Operations Operator", "Revenue Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false, source: "seed" as const },
-  { id: "hubspot", name: "HubSpot", letter: "Hs", color: "#FF7A59", category: "CRM and sales", description: "CRM enrichment, stage updates and owner assignment.", status: "available", health: "disabled", lastSync: "-", syncMode: "scheduled", syncFreq: "Every 5 min", permissions: ["Read contacts", "Write contacts", "Read companies", "Write companies", "Read deals", "Write deals", "Read owners"], readScopes: ["Read contacts", "Read companies", "Read deals", "Read owners"], writeScopes: ["Write contacts", "Write companies", "Write deals"], approvalRequiredFor: ["Deal stage critical update", "External follow-up handoff"], blockedActions: ["Delete contacts", "Delete companies", "Delete deals"], operatorsAllowed: ["Revenue Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false, source: "seed" as const },
-  { id: "notion", name: "Notion", letter: "N", color: "#ECEFF3", category: "Docs and knowledge", description: "Knowledge capture and structured operating notes.", status: "available", health: "disabled", lastSync: "-", syncMode: "scheduled", syncFreq: "Every 10 min", permissions: ["read", "write"], readScopes: ["pages.read", "databases.read"], writeScopes: ["pages.write", "databases.write"], approvalRequiredFor: [], blockedActions: [], operatorsAllowed: ["Operations Operator", "Marketing Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false, source: "seed" as const },
-  { id: "google-calendar", name: "Google Calendar", letter: "GC", color: "#1A73E8", category: "Calendar and scheduling", description: "Scheduling assistant for client onboarding and sales meetings.", status: "available", health: "disabled", lastSync: "-", syncMode: "scheduled", syncFreq: "Every 5 min", permissions: ["read", "write"], readScopes: ["events.read"], writeScopes: ["events.write"], approvalRequiredFor: ["external_meeting_send"], blockedActions: [], operatorsAllowed: ["Client Flow Operator", "Revenue Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false, source: "seed" as const },
-  { id: "stripe", name: "Stripe", letter: "St", color: "#635BFF", category: "Payments and commerce", description: "Payment and customer event handling for revenue reporting.", status: "available", health: "disabled", lastSync: "-", syncMode: "realtime", syncFreq: "Real-time", permissions: ["read"], readScopes: ["customers.read", "payments.read"], writeScopes: [], approvalRequiredFor: [], blockedActions: ["refund_create"], operatorsAllowed: ["Operations Operator", "Revenue Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false, source: "seed" as const },
-  { id: "google-drive", name: "Google Drive", letter: "GD", color: "#34A853", category: "Docs and knowledge", description: "Content and SEO workflow document source.", status: "available", health: "disabled", lastSync: "-", syncMode: "scheduled", syncFreq: "Every 15 min", permissions: ["read", "write"], readScopes: ["files.read"], writeScopes: ["files.write"], approvalRequiredFor: ["external_share_link"], blockedActions: [], operatorsAllowed: ["Marketing Operator", "Operations Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false, source: "seed" as const },
-  { id: "outlook", name: "Outlook", letter: "O", color: "#0078D4", category: "Communication", description: "Enterprise inbox support for lead follow-up and support drafting.", status: "available", health: "disabled", lastSync: "-", syncMode: "manual", syncFreq: "Manual", permissions: ["read", "write", "send"], readScopes: ["mail.read"], writeScopes: ["mail.send"], approvalRequiredFor: ["send_external_email"], blockedActions: [], operatorsAllowed: ["Revenue Operator", "Support Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false },
-  { id: "salesforce", name: "Salesforce", letter: "SF", color: "#00A1E0", category: "CRM and sales", description: "Enterprise CRM sync for qualification, enrichment and forecasting.", status: "available", health: "disabled", lastSync: "-", syncMode: "scheduled", syncFreq: "Every 5 min", permissions: ["read", "write"], readScopes: ["leads.read", "opps.read"], writeScopes: ["leads.write", "opps.write"], approvalRequiredFor: ["pipeline_close_won"], blockedActions: ["record_delete"], operatorsAllowed: ["Revenue Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false },
-  { id: "shopify", name: "Shopify", letter: "Sh", color: "#95BF47", category: "Payments and commerce", description: "Order and customer event stream for commerce operations.", status: "available", health: "disabled", lastSync: "-", syncMode: "scheduled", syncFreq: "Every 5 min", permissions: ["read"], readScopes: ["orders.read", "customers.read"], writeScopes: [], approvalRequiredFor: [], blockedActions: ["order_cancel"], operatorsAllowed: ["Operations Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false },
-  { id: "intercom", name: "Intercom", letter: "I", color: "#286EFA", category: "Support", description: "Support reply drafting and queue triage.", status: "available", health: "disabled", lastSync: "-", syncMode: "realtime", syncFreq: "Real-time", permissions: ["read", "write"], readScopes: ["tickets.read"], writeScopes: ["replies.write"], approvalRequiredFor: ["reply_send"], blockedActions: [], operatorsAllowed: ["Support Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false },
-  { id: "zendesk", name: "Zendesk", letter: "Z", color: "#03363D", category: "Support", description: "Support case updates and response assistance.", status: "available", health: "disabled", lastSync: "-", syncMode: "scheduled", syncFreq: "Every 10 min", permissions: ["read", "write"], readScopes: ["tickets.read"], writeScopes: ["tickets.write"], approvalRequiredFor: ["reply_send"], blockedActions: [], operatorsAllowed: ["Support Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false },
-  { id: "airtable", name: "Airtable", letter: "At", color: "#18BFFF", category: "CRM and sales", description: "Flexible CRM and ops database enrichment layer.", status: "available", health: "disabled", lastSync: "-", syncMode: "scheduled", syncFreq: "Every 10 min", permissions: ["read", "write"], readScopes: ["records.read"], writeScopes: ["records.write"], approvalRequiredFor: [], blockedActions: [], operatorsAllowed: ["Operations Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false },
-  { id: "linear", name: "Linear", letter: "L", color: "#5E6AD2", category: "Work and project management", description: "Execution tracking for weekly operations digest workflows.", status: "available", health: "disabled", lastSync: "-", syncMode: "scheduled", syncFreq: "Every 2 min", permissions: ["read", "write"], readScopes: ["issues.read"], writeScopes: ["issues.write"], approvalRequiredFor: [], blockedActions: [], operatorsAllowed: ["Operations Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false },
-  { id: "clickup", name: "ClickUp", letter: "CU", color: "#7B68EE", category: "Work and project management", description: "Project and task context for operator routing.", status: "available", health: "disabled", lastSync: "-", syncMode: "scheduled", syncFreq: "Every 5 min", permissions: ["read", "write"], readScopes: ["tasks.read"], writeScopes: ["tasks.write"], approvalRequiredFor: [], blockedActions: [], operatorsAllowed: ["Operations Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false },
-  { id: "monday", name: "Monday", letter: "Mo", color: "#FF3D57", category: "Work and project management", description: "Planning board sync for operational workflows.", status: "available", health: "disabled", lastSync: "-", syncMode: "scheduled", syncFreq: "Every 5 min", permissions: ["read", "write"], readScopes: ["boards.read"], writeScopes: ["boards.write"], approvalRequiredFor: [], blockedActions: [], operatorsAllowed: ["Operations Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false },
-  { id: "asana", name: "Asana", letter: "As", color: "#F06A6A", category: "Work and project management", description: "Project milestone source for weekly digest.", status: "available", health: "disabled", lastSync: "-", syncMode: "scheduled", syncFreq: "Every 5 min", permissions: ["read", "write"], readScopes: ["tasks.read"], writeScopes: ["tasks.write"], approvalRequiredFor: [], blockedActions: [], operatorsAllowed: ["Operations Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false },
-  { id: "pipedrive", name: "Pipedrive", letter: "Pd", color: "#2C8E5A", category: "CRM and sales", description: "Pipeline management and revenue reporting source.", status: "available", health: "disabled", lastSync: "-", syncMode: "scheduled", syncFreq: "Every 5 min", permissions: ["read", "write"], readScopes: ["deals.read"], writeScopes: ["deals.write"], approvalRequiredFor: ["deal_close"], blockedActions: [], operatorsAllowed: ["Revenue Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false },
-  { id: "google-sheets", name: "Google Sheets", letter: "GS", color: "#0F9D58", category: "Docs and knowledge", description: "Reporting and revenue model updates.", status: "available", health: "disabled", lastSync: "-", syncMode: "scheduled", syncFreq: "Every 15 min", permissions: ["read", "write"], readScopes: ["sheets.read"], writeScopes: ["sheets.write"], approvalRequiredFor: [], blockedActions: [], operatorsAllowed: ["Operations Operator", "Revenue Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false },
-  { id: "calendly", name: "Calendly", letter: "Ca", color: "#006BFF", category: "Calendar and scheduling", description: "Inbound scheduling for lead qualification.", status: "available", health: "disabled", lastSync: "-", syncMode: "realtime", syncFreq: "Real-time", permissions: ["read"], readScopes: ["events.read"], writeScopes: [], approvalRequiredFor: [], blockedActions: [], operatorsAllowed: ["Revenue Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false },
-  { id: "zapier", name: "Zapier", letter: "Za", color: "#FF4A00", category: "Automation and custom", description: "Bridge automations for non-native tools.", status: "available", health: "disabled", lastSync: "-", syncMode: "manual", syncFreq: "Manual", permissions: ["read", "write"], readScopes: ["zaps.read"], writeScopes: ["hooks.write"], approvalRequiredFor: ["webhook_dispatch"], blockedActions: [], operatorsAllowed: ["Operations Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false },
-  { id: "make", name: "Make", letter: "Mk", color: "#5A67D8", category: "Automation and custom", description: "Scenario execution for custom orchestration.", status: "available", health: "disabled", lastSync: "-", syncMode: "manual", syncFreq: "Manual", permissions: ["read", "write"], readScopes: ["scenarios.read"], writeScopes: ["scenarios.run"], approvalRequiredFor: ["scenario_execute_external"], blockedActions: [], operatorsAllowed: ["Operations Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false },
-  { id: "n8n", name: "n8n", letter: "N8", color: "#EF4444", category: "Automation and custom", description: "Self-hosted automation runtime connector.", status: "available", health: "disabled", lastSync: "-", syncMode: "manual", syncFreq: "Manual", permissions: ["read", "write"], readScopes: ["workflows.read"], writeScopes: ["executions.run"], approvalRequiredFor: ["execution_dispatch_external"], blockedActions: [], operatorsAllowed: ["Operations Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false },
-  { id: "webhooks", name: "Webhooks", letter: "Wh", color: "#22C55E", category: "Automation and custom", description: "Generic webhook triggers and event forwarding.", status: "available", health: "disabled", lastSync: "-", syncMode: "manual", syncFreq: "Manual", permissions: ["write"], readScopes: [], writeScopes: ["webhook.send"], approvalRequiredFor: ["external_webhook_send"], blockedActions: [], operatorsAllowed: ["Operations Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false },
-  { id: "custom-api", name: "Custom API", letter: "API", color: "#14B8A6", category: "Automation and custom", description: "Custom REST integration endpoint for private systems.", status: "available", health: "disabled", lastSync: "-", syncMode: "manual", syncFreq: "Manual", permissions: ["read", "write"], readScopes: ["custom.read"], writeScopes: ["custom.write"], approvalRequiredFor: ["external_write"], blockedActions: [], operatorsAllowed: ["Operations Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false },
-  { id: "outlook-calendar", name: "Outlook Calendar", letter: "OC", color: "#0A66C2", category: "Calendar and scheduling", description: "Microsoft scheduling source for onboarding and client ops.", status: "available", health: "disabled", lastSync: "-", syncMode: "scheduled", syncFreq: "Every 10 min", permissions: ["read", "write"], readScopes: ["calendar.read"], writeScopes: ["calendar.write"], approvalRequiredFor: ["external_meeting_send"], blockedActions: [], operatorsAllowed: ["Client Flow Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false },
-  { id: "teams", name: "Microsoft Teams", letter: "MT", color: "#6264A7", category: "Communication", description: "Approval and update broadcasting for Microsoft-first teams.", status: "available", health: "disabled", lastSync: "-", syncMode: "realtime", syncFreq: "Real-time", permissions: ["read", "write"], readScopes: ["channels.read"], writeScopes: ["messages.write"], approvalRequiredFor: ["post_external_channel"], blockedActions: [], operatorsAllowed: ["Operations Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false },
-  { id: "confluence", name: "Confluence", letter: "Cf", color: "#0052CC", category: "Docs and knowledge", description: "Knowledge base context for operator memory.", status: "available", health: "disabled", lastSync: "-", syncMode: "scheduled", syncFreq: "Every 15 min", permissions: ["read", "write"], readScopes: ["pages.read"], writeScopes: ["pages.write"], approvalRequiredFor: [], blockedActions: [], operatorsAllowed: ["Operations Operator"], records: "Not connected", lastSynced: "", eventsSynced: 0, authErrors: 0, recentSyncEvents: [], isConnected: false },
-];
+function syncModeForDefinition(def: ConnectorDefinition): Connector["syncMode"] {
+  if (def.eventTypes.length > 0) return "realtime";
+  if (def.authType === "manual" || def.authType === "api_key" || def.authType === "webhook") return "manual";
+  return "scheduled";
+}
+
+function syncFreqForDefinition(def: ConnectorDefinition): string {
+  if (def.status !== "available") return "Not available";
+  if (def.authType === "direct_oauth") return "Approval-gated";
+  if (def.authType === "nango") return "Managed";
+  return "Manual";
+}
+
+export function connectorDefinitionToSeedConnector(def: ConnectorDefinition): Connector {
+  const available = def.status === "available";
+  return {
+    id: def.connectorKey,
+    name: def.displayName,
+    letter: def.letter,
+    color: def.color,
+    category: CONNECTOR_CATEGORY_LABELS[def.category],
+    description: def.description,
+    status: available ? "available" : "disabled",
+    health: "disabled",
+    lastSync: "-",
+    syncMode: syncModeForDefinition(def),
+    syncFreq: syncFreqForDefinition(def),
+    permissions: [...def.readActions, ...def.writeActions],
+    readScopes: def.readActions,
+    writeScopes: def.writeActions,
+    approvalRequiredFor: def.approvalRequiredActions,
+    blockedActions: def.riskLevel === "high" ? ["External write without approval"] : [],
+    operatorsAllowed: def.usedByOperators.map((key) => getOperatorDefinition(key)?.name ?? key),
+    records: available ? "Not connected" : def.setupNotes,
+    lastSynced: "",
+    eventsSynced: 0,
+    authErrors: 0,
+    recentSyncEvents: [],
+    isConnected: false,
+    source: "seed",
+  };
+}
+
+export const SEED_CONNECTORS: Connector[] = listConnectors().map(connectorDefinitionToSeedConnector);
+
+export function reconcileConnectorsWithRegistry(connectors: Connector[]): Connector[] {
+  return listConnectors().map((def) => {
+    const base = connectorDefinitionToSeedConnector(def);
+    const existing = connectors.find((connector) => connector.id.replace(/-/g, "_") === def.connectorKey);
+    const keepRealTruth = Boolean(
+      existing?.isConnected
+      && (existing.source === "native" || existing.source === "nango")
+      && def.status === "available"
+    );
+
+    return keepRealTruth ? { ...base, ...existing, id: def.connectorKey } : base;
+  });
+}
 
 export const SEED_LOGS: ExecutionLog[] = [];
 

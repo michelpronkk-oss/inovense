@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { applyConnectorTruthToState, getConnectorTruth } from "@/lib/connectors/truth";
-import { buildSeedState } from "@/lib/os/seed";
+import { buildSeedState, reconcileConnectorsWithRegistry } from "@/lib/os/seed";
 import type { OSState } from "@/lib/os/types";
 import { resolveWorkspaceContext, type WorkspaceContext } from "@/lib/os/workspace";
 import { APP_SESSION_COOKIE, createSessionToken, SESSION_MAX_AGE_SEC } from "@/lib/session";
@@ -55,7 +55,7 @@ function stripSnapshotTruth(state: OSState): OSState {
   return {
     ...state,
     workspace: safeWorkspace,
-    connectors: state.connectors.map((connector) => {
+    connectors: reconcileConnectorsWithRegistry(state.connectors).map((connector) => {
       if (connector.id !== "gmail" && connector.id !== "hubspot") return connector;
       return {
         ...connector,
@@ -150,6 +150,7 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
     dodoProductId: db.dodo_product_id ?? undefined,
   };
 
+  state = { ...state, connectors: reconcileConnectorsWithRegistry(state.connectors) };
   const connectorTruth = await getConnectorTruth({ workspaceId, supabase });
   state = applyConnectorTruthToState(state, connectorTruth);
 

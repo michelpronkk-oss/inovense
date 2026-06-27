@@ -15,10 +15,12 @@ import { isRealConnector, isRealConnectedConnector } from "@/lib/os/truth";
 import {
   isConnectorAvailableForAuth,
   CONNECTOR_CATEGORY_LABELS,
+  listConnectors,
   type ConnectorCategory,
 } from "@/lib/connectors/registry";
-import { getComingSoonConnectors } from "@/lib/connectors/capabilities";
+import { getAvailableConnectors, getComingSoonConnectors } from "@/lib/connectors/capabilities";
 import { getOperatorDefinition } from "@/lib/operators/registry";
+import { connectorDefinitionToSeedConnector } from "@/lib/os/seed";
 
 // Seed connector ids use hyphens (e.g. "google-calendar"); catalog keys use
 // underscores (e.g. "google_calendar"). Normalize before catalog lookups.
@@ -30,17 +32,7 @@ function operatorLabel(operatorKey: string): string {
   return getOperatorDefinition(operatorKey)?.name ?? operatorKey;
 }
 
-const CATEGORY_ORDER = [
-  "All",
-  "Communication",
-  "CRM and sales",
-  "Calendar and scheduling",
-  "Docs and knowledge",
-  "Payments and commerce",
-  "Support",
-  "Work and project management",
-  "Automation and custom",
-];
+const CATEGORY_ORDER: Array<ConnectorCategory | "all"> = ["all", ...Array.from(new Set(listConnectors().map((def) => def.category)))];
 
 export default function ConnectorsPage() {
   const {
@@ -57,7 +49,7 @@ export default function ConnectorsPage() {
 
   const [addOpen, setAddOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("All");
+  const [category, setCategory] = useState<ConnectorCategory | "all">("all");
   const [setupConnectorId, setSetupConnectorId] = useState<string | null>(null);
   const [drawerConnectorId, setDrawerConnectorId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("");
@@ -82,11 +74,13 @@ export default function ConnectorsPage() {
     () => state.connectors.filter((c) => c.isConnected && !isRealConnector(c) && c.source === "preview"),
     [state.connectors]
   );
-  // Not connected at all
-  const availableConnectors = useMemo(
-    () => state.connectors.filter((c) => !c.isConnected),
-    [state.connectors]
-  );
+  const availableCatalogConnectors = useMemo(() => {
+    return getAvailableConnectors().flatMap((def) => {
+      const connector = state.connectors.find((c) => normalizeConnectorKey(c.id) === def.connectorKey)
+        ?? connectorDefinitionToSeedConnector(def);
+      return isRealConnectedConnector(connector) ? [] : [connector];
+    });
+  }, [state.connectors]);
 
   const healthyCount = useMemo(
     () => realConnectedConnectors.filter((c) => c.health === "healthy").length,
@@ -94,13 +88,14 @@ export default function ConnectorsPage() {
   );
 
   const filteredAvailable = useMemo(() => {
-    return availableConnectors.filter((c) => {
-      const byCategory = category === "All" || c.category === category;
+    return availableCatalogConnectors.filter((c) => {
+      const definitionCategory = listConnectors().find((def) => def.connectorKey === normalizeConnectorKey(c.id))?.category;
+      const byCategory = category === "all" || definitionCategory === category;
       const q = search.trim().toLowerCase();
       const bySearch = !q || c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q);
       return byCategory && bySearch;
     });
-  }, [availableConnectors, category, search]);
+  }, [availableCatalogConnectors, category, search]);
 
   // Catalog of connectors that are not functional yet (registry-driven, honest).
   const comingSoonConnectors = useMemo(() => getComingSoonConnectors(), []);
@@ -114,7 +109,7 @@ export default function ConnectorsPage() {
     [comingSoonConnectors, catalogCategory]
   );
 
-  const setupConnector = state.connectors.find((c) => c.id === setupConnectorId) ?? null;
+  const setupConnector = availableCatalogConnectors.find((c) => c.id === setupConnectorId) ?? null;
   const drawerConnector = state.connectors.find((c) => c.id === drawerConnectorId) ?? null;
 
   const entitlements = getEntitlements(state.workspace);
@@ -323,7 +318,7 @@ export default function ConnectorsPage() {
               <PlusIcon size={12} /> Upgrade to add more
             </Link>
           ) : (
-            <button className="btn btn-primary btn-sm" onClick={() => { setAddOpen(true); setSetupConnectorId(null); setSearch(""); setCategory("All"); }}>
+            <button className="btn btn-primary btn-sm" onClick={() => { setAddOpen(true); setSetupConnectorId(null); setSearch(""); setCategory("all"); }}>
               <PlusIcon size={12} /> Add connector
             </button>
           )}
@@ -339,7 +334,7 @@ export default function ConnectorsPage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
         {[
           { label: "Connected", val: String(realConnectedCount), sub: realConnectedCount > 0 ? `${healthyCount} healthy` : "No real accounts yet" },
-          { label: "Available", val: String(availableConnectors.length), sub: "Ready to connect" },
+          { label: "Available", val: String(availableCatalogConnectors.length), sub: "Ready to connect" },
           { label: "Events synced", val: String(realConnectedConnectors.reduce((sum, c) => sum + c.eventsSynced, 0)), sub: "From connected accounts" },
           { label: "Auth errors", val: String(realConnectedConnectors.reduce((sum, c) => sum + c.authErrors, 0)), sub: "Needs review if non-zero" },
         ].map((s) => (
@@ -361,7 +356,7 @@ export default function ConnectorsPage() {
         </div>
         {realConnectedConnectors.length === 0 ? (
           <div style={{ padding: "24px 18px", fontSize: 12.5, color: "var(--text-faint)" }}>
-            No real accounts connected. Click <strong>Add connector</strong> to connect Gmail, HubSpot, or other accounts.
+            No real accounts connected. Click <strong>Add connector</strong> to connect Gmail or HubSpot.
           </div>
         ) : (
           realConnectedConnectors.map((c) => (
@@ -470,7 +465,9 @@ export default function ConnectorsPage() {
                   <input className="os-input" placeholder="Search connectors..." value={search} onChange={(e) => setSearch(e.target.value)} />
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {CATEGORY_ORDER.map((cat) => (
-                      <button key={cat} className={`appr-btn ${category === cat ? "approve" : "edit"}`} onClick={() => setCategory(cat)}>{cat}</button>
+                      <button key={cat} className={`appr-btn ${category === cat ? "approve" : "edit"}`} onClick={() => setCategory(cat)}>
+                        {cat === "all" ? "All" : CONNECTOR_CATEGORY_LABELS[cat]}
+                      </button>
                     ))}
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
@@ -509,12 +506,6 @@ export default function ConnectorsPage() {
                 )}
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
                   <button className="btn btn-ghost btn-sm" onClick={() => setSetupConnectorId(null)}>Cancel</button>
-                  <button className="btn btn-ghost btn-sm" onClick={() => {
-                    connectConnector(setupConnector.id, "preview");
-                    setFeedback(`${setupConnector.name} added as preview connector.`);
-                    setAddOpen(false);
-                    setSetupConnectorId(null);
-                  }}>Add as preview</button>
                   {isConnectorAvailableForAuth(normalizeConnectorKey(setupConnector.id)) ? (
                     <button className="btn btn-primary btn-sm" onClick={() => {
                       if (isPreview || atConnectorLimit) {
