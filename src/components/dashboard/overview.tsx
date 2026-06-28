@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { CheckIcon, InboxIcon, ZapIcon } from "@/components/dashboard/icons";
 import { useOS } from "@/lib/os/app-provider";
 import type { DashboardOverview, DashboardOperator } from "@/lib/dashboard/overview";
 
@@ -22,35 +21,32 @@ function titleCase(value: string | null | undefined): string {
 }
 
 function timeAgo(value: string | null | undefined): string {
-  if (!value) return "Not checked yet";
+  if (!value) return "not yet";
   const ts = new Date(value).getTime();
-  if (!Number.isFinite(ts)) return "Time unknown";
+  if (!Number.isFinite(ts)) return "unknown";
   const mins = Math.max(0, Math.floor((Date.now() - ts) / 60000));
-  if (mins < 1) return "Just now";
+  if (mins < 1) return "just now";
   if (mins < 60) return `${mins}m ago`;
   if (mins < 60 * 24) return `${Math.floor(mins / 60)}h ago`;
   return `${Math.floor(mins / (60 * 24))}d ago`;
 }
 
+function autonomyModeLabel(mode: DashboardOverview["policy"]["autonomyMode"]): string {
+  if (mode === "assisted") return "Assisted autopilot";
+  if (mode === "managed") return "Managed custom";
+  return "Safe mode";
+}
+
+function customerEmailLabel(mode: DashboardOverview["policy"]["customerEmailMode"]): string {
+  if (mode === "draft_only") return "Customer emails draft only";
+  if (mode === "auto_send_low_risk") return "Customer emails auto-send low risk";
+  return "Customer emails require approval";
+}
+
 function systemTone(status: DashboardOverview["systemStatus"]["status"]) {
-  if (status === "healthy") return { color: "var(--green)", bg: "rgba(81,216,138,0.08)", border: "rgba(81,216,138,0.24)" };
-  if (status === "emergency_stop") return { color: "var(--rose)", bg: "rgba(242,118,124,0.1)", border: "rgba(242,118,124,0.28)" };
-  if (status === "setup_incomplete") return { color: "var(--amber)", bg: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
-  return { color: "var(--amber)", bg: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
-}
-
-function activityTone(severity: string) {
-  if (severity === "success") return "var(--green)";
-  if (severity === "danger") return "var(--rose)";
-  if (severity === "warning") return "var(--amber)";
-  return "var(--cyan)";
-}
-
-function connectorTone(status: string) {
-  if (status === "connected") return "var(--green)";
-  if (status === "error") return "var(--rose)";
-  if (status === "coming_soon") return "var(--text-mute)";
-  return "var(--amber)";
+  if (status === "healthy") return { color: "var(--green)", dot: "var(--green)" };
+  if (status === "emergency_stop") return { color: "var(--rose)", dot: "var(--rose)" };
+  return { color: "var(--amber)", dot: "var(--amber)" };
 }
 
 function operatorStatusLabel(status: DashboardOperator["status"]) {
@@ -60,31 +56,57 @@ function operatorStatusLabel(status: DashboardOperator["status"]) {
   return "Disabled";
 }
 
-function heroCopy(overview: DashboardOverview) {
+function operatorDisplayName(key: string | null | undefined): string {
+  if (key === "client_flow") return "Client Flow";
+  if (key === "operations") return "Operations";
+  if (key === "revenue") return "Revenue";
+  return key ? titleCase(key) : "Operator";
+}
+
+type HeroState = {
+  key: "emergency_stop" | "pending" | "setup" | "failed" | "healthy";
+  title: string;
+  description: string;
+  primary: { href: string; label: string };
+};
+
+function heroState(overview: DashboardOverview): HeroState {
   if (overview.systemStatus.status === "emergency_stop") {
     return {
+      key: "emergency_stop",
       title: "Emergency stop is active",
-      description: "Risky execution is blocked at policy level. Operators can still surface work, but sends and writes will not run.",
-      primary: { href: "/app/policies", label: "Open policies" },
+      description: "Risky execution is paused until policies are updated.",
+      primary: { href: "/app/policies", label: "Manage policies" },
     };
   }
   if (overview.approvals.pendingCount > 0) {
     return {
-      title: `${overview.approvals.pendingCount} approval${overview.approvals.pendingCount === 1 ? "" : "s"} need your review`,
-      description: "Operators are preparing real work and waiting for a human decision before anything risky executes.",
-      primary: { href: "/app/approvals", label: "Review approvals" },
+      key: "pending",
+      title: `${overview.approvals.pendingCount} item${overview.approvals.pendingCount === 1 ? "" : "s"} need review`,
+      description: "Operators prepared work that needs your approval.",
+      primary: { href: "/app/approvals", label: "Open approvals" },
     };
   }
   if (overview.systemStatus.status === "setup_incomplete") {
     return {
-      title: "Finish setup to activate operators",
-      description: "Connect the core tools and choose Slack or Trello destinations before the operating layer is fully healthy.",
+      key: "setup",
+      title: "Finish setup",
+      description: "Connect the required tools to activate your operators.",
       primary: { href: "/app/connectors", label: "Connect tools" },
     };
   }
+  if (overview.today.failedExecutions > 0) {
+    return {
+      key: "failed",
+      title: "Execution needs attention",
+      description: "Something needs review before operators continue safely.",
+      primary: { href: "/app/logs", label: "Open logs" },
+    };
+  }
   return {
-    title: "Your operating layer is running",
-    description: "Revenue, Client Flow and Operations are monitoring connected tools and preparing actions under policy.",
+    key: "healthy",
+    title: "Operating layer is running",
+    description: "Monitoring connected workstreams under policy.",
     primary: { href: "/app/agents", label: "View operators" },
   };
 }
@@ -95,14 +117,14 @@ function Pill({ children, color }: { children: ReactNode; color?: string }) {
       display: "inline-flex",
       alignItems: "center",
       gap: 6,
-      minHeight: 24,
-      padding: "4px 9px",
+      minHeight: 22,
+      padding: "3px 9px",
       borderRadius: 999,
       background: "rgba(255,255,255,0.035)",
-      boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.075)",
+      boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.07)",
       color: color ?? "var(--text-dim)",
       fontSize: 11,
-      fontWeight: 650,
+      fontWeight: 600,
       whiteSpace: "nowrap",
     }}>
       {children}
@@ -121,9 +143,7 @@ function Skeleton() {
         </div>
       </div>
       <div style={{ display: "grid", gap: 14 }}>
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="p" style={{ minHeight: i === 0 ? 170 : 110, opacity: 0.7 }} />
-        ))}
+        {[0, 1].map((i) => <div key={i} className="p" style={{ minHeight: i === 0 ? 180 : 90, opacity: 0.7 }} />)}
       </div>
     </div>
   );
@@ -148,9 +168,7 @@ export function OSOverview() {
     try {
       const res = await fetch(`/api/dashboard/overview?${identityParams.toString()}`, { cache: "no-store" });
       const json = await res.json().catch(() => ({})) as OverviewResponse;
-      if (!res.ok || json.error) {
-        throw new Error(json.message || json.error || "Could not load dashboard overview.");
-      }
+      if (!res.ok || json.error) throw new Error(json.message || json.error || "Could not load dashboard overview.");
       setOverview(json);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load dashboard overview.");
@@ -159,9 +177,7 @@ export function OSOverview() {
     }
   }, [identityParams, state.workspace.id]);
 
-  useEffect(() => {
-    void loadOverview();
-  }, [loadOverview]);
+  useEffect(() => { void loadOverview(); }, [loadOverview]);
 
   const runManualCheck = async (key: ScanKey) => {
     if (busyScan) return;
@@ -171,12 +187,7 @@ export function OSOverview() {
       const res = await fetch(scanRoutes[key], {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workspaceId: state.workspace.id,
-          userId: state.currentUser.id,
-          userEmail: state.currentUser.email,
-          maxResults: 10,
-        }),
+        body: JSON.stringify({ workspaceId: state.workspace.id, userId: state.currentUser.id, userEmail: state.currentUser.email, maxResults: 10 }),
       });
       const json = await res.json().catch(() => ({})) as { error?: string; message?: string };
       if (!res.ok) throw new Error(json.message || json.error || "Manual check could not run.");
@@ -205,28 +216,35 @@ export function OSOverview() {
   }
 
   const tone = systemTone(overview.systemStatus.status);
-  const hero = heroCopy(overview);
+  const hero = heroState(overview);
   const healthyConnectors = overview.connectors.filter((connector) => connector.connected).length;
+  const autonomyLabel = autonomyModeLabel(overview.policy.autonomyMode);
+  const pending = overview.approvals.pendingCount;
+  const reviewRows = overview.approvals.latest.slice(0, 3);
+
   const metrics = [
-    { label: "Pending approvals", value: overview.approvals.pendingCount, sub: overview.approvals.highRiskCount > 0 ? `${overview.approvals.highRiskCount} high risk` : "Waiting for review" },
-    { label: "Actions executed today", value: overview.today.actionsExecuted, sub: "After approval or safe policy" },
-    { label: "Auto-handled today", value: overview.today.autoHandled, sub: "System checks and safe tasks" },
-    { label: "Blocked by policy", value: overview.today.blockedByPolicy, sub: "Live re-check enforced" },
-    { label: "Connectors healthy", value: `${healthyConnectors}/${overview.connectors.length}`, sub: "Real connector truth" },
+    { label: "Pending approvals", value: pending },
+    { label: "Actions today", value: overview.today.actionsExecuted },
+    { label: "Blocked by policy", value: overview.today.blockedByPolicy },
+    { label: "Healthy connectors", value: `${healthyConnectors}/${overview.connectors.length}` },
   ];
+
+  const nextActions = overview.nextBestActions.filter((action) => action.href !== hero.primary.href).slice(0, 2);
 
   return (
     <div className="os-page">
+      {/* Header */}
       <div className="os-page-head">
         <div>
           <span className="os-greet">Inovense OS</span>
           <h1>{overview.workspace.name}</h1>
-          <div className="os-page-sub">Monitoring connected workstreams. Nothing risky runs without policy.</div>
         </div>
-        <div className="os-page-actions" style={{ alignItems: "center", flexWrap: "wrap" }}>
-          <Pill color={tone.color}>{overview.systemStatus.label}</Pill>
-          <Pill>{titleCase(overview.policy.autonomyMode)}</Pill>
-          <Pill>{titleCase(overview.workspace.planTier ?? overview.workspace.billingStatus)}</Pill>
+        <div className="os-page-actions" style={{ alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+          <Pill color={tone.color}>
+            <span style={{ width: 7, height: 7, borderRadius: 999, background: tone.dot }} />
+            {overview.systemStatus.label}
+          </Pill>
+          <Pill>{autonomyLabel}</Pill>
           <span style={{ fontSize: 11.5, color: "var(--text-mute)" }}>Updated {timeAgo(overview.lastUpdatedAt)}</span>
         </div>
       </div>
@@ -237,52 +255,41 @@ export function OSOverview() {
         </div>
       )}
 
-      <section className="p" style={{ padding: 0, overflow: "hidden" }}>
-        <div style={{ padding: "22px 24px", display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 22, alignItems: "center", background: tone.bg, boxShadow: `inset 0 0 0 1px ${tone.border}` }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-              <Pill color={tone.color}>{overview.systemStatus.label}</Pill>
-              <Pill>Rechecked live at execution</Pill>
+      {/* Command area: operating status + review queue */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14 }}>
+        <section className="p" style={{ gap: 0, overflow: "hidden" }}>
+          <div style={{ padding: "24px 24px 22px", display: "grid", gap: 16, minHeight: 196, alignContent: "space-between" }}>
+            <div>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 999, background: tone.dot, boxShadow: `0 0 12px ${tone.dot}` }} />
+                <span style={{ fontSize: 11.5, fontWeight: 600, color: tone.color }}>{overview.systemStatus.label}</span>
+              </div>
+              <h2 style={{ fontSize: 23, lineHeight: 1.15, margin: 0, letterSpacing: "-0.01em" }}>{hero.title}</h2>
+              <p style={{ margin: "9px 0 0", maxWidth: 440, color: "var(--text-dim)", fontSize: 13.5, lineHeight: 1.55 }}>{hero.description}</p>
             </div>
-            <h2 style={{ fontSize: 27, lineHeight: 1.12, margin: 0, letterSpacing: 0 }}>{hero.title}</h2>
-            <p style={{ margin: "10px 0 0", maxWidth: 720, color: "var(--text-dim)", fontSize: 13.5, lineHeight: 1.6 }}>{hero.description}</p>
-            <p style={{ margin: "8px 0 0", maxWidth: 720, color: "var(--text-mute)", fontSize: 12.5, lineHeight: 1.5 }}>{overview.systemStatus.description}</p>
+            <div style={{ display: "grid", gap: 10 }}>
+              <Link className="btn btn-primary btn-sm" href={hero.primary.href} style={{ width: "fit-content" }}>{hero.primary.label}</Link>
+              <span style={{ fontSize: 11.5, color: "var(--text-mute)" }}>Running under {autonomyLabel} · Rechecked before execution</span>
+            </div>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <Link className="btn btn-primary btn-sm" href={hero.primary.href}>{hero.primary.label}</Link>
-            <Link className="btn btn-ghost btn-sm" href="/app/agents">Run manual checks</Link>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12 }}>
-        {metrics.map((metric) => (
-          <div className="kpi" key={metric.label}>
-            <div className="kpi-top"><span className="lab">{metric.label}</span></div>
-            <div className="kpi-val">{metric.value}</div>
-            <div className="kpi-meta"><span className="kpi-delta">{metric.sub}</span></div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
         <section className="p" style={{ gap: 0 }}>
           <div className="p-head">
-            <h3><InboxIcon size={13} /> Approvals queue</h3>
-            <span className="p-meta">{overview.approvals.pendingCount} waiting</span>
+            <h3>{pending > 0 ? "Waiting for review" : "No approvals waiting"}</h3>
+            {pending > 0 && <Link className="lnk-open" href="/app/approvals">Open approvals</Link>}
           </div>
-          <div style={{ padding: "8px 18px 16px", display: "grid", gap: 8 }}>
-            {overview.approvals.latest.length === 0 ? (
-              <div style={{ padding: "22px 0", color: "var(--text-mute)", fontSize: 13 }}>No approvals waiting. Operators will surface work here.</div>
-            ) : overview.approvals.latest.map((approval) => (
-              <div key={approval.id} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 12, alignItems: "center", padding: "11px 0", borderBottom: "1px solid var(--line)" }}>
+          <div style={{ padding: "6px 18px 14px", display: "grid", gap: 2 }}>
+            {pending === 0 ? (
+              <div style={{ padding: "26px 0", color: "var(--text-mute)", fontSize: 13 }}>Operators will surface work here when review is needed.</div>
+            ) : reviewRows.map((approval) => (
+              <div key={approval.id} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 12, alignItems: "center", padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 650, overflowWrap: "anywhere" }}>{approval.title}</div>
-                  <div style={{ marginTop: 4, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                    <Pill>{operatorDisplayName(approval.operatorKey)}</Pill>
-                    <Pill>{titleCase(approval.policyDecision)}</Pill>
+                  <div style={{ fontSize: 13, fontWeight: 600, overflowWrap: "anywhere" }}>{approval.title}</div>
+                  <div style={{ marginTop: 4, display: "flex", gap: 7, flexWrap: "wrap", alignItems: "center" }}>
+                    <span style={{ fontSize: 11.5, color: "var(--text-dim)", fontWeight: 600 }}>{operatorDisplayName(approval.operatorKey)}</span>
                     {approval.riskLevel && <Pill color={approval.riskLevel === "high" ? "var(--rose)" : "var(--amber)"}>Risk: {approval.riskLevel}</Pill>}
-                    <span style={{ fontSize: 11.5, color: "var(--text-mute)" }}>{timeAgo(approval.createdAt)}</span>
+                    <span style={{ fontSize: 11, color: "var(--text-mute)" }}>{timeAgo(approval.createdAt)}</span>
                   </div>
                 </div>
                 <Link className="appr-btn approve" href={approval.href}>Review</Link>
@@ -290,51 +297,44 @@ export function OSOverview() {
             ))}
           </div>
         </section>
-
-        <section className="p" style={{ gap: 0 }}>
-          <div className="p-head">
-            <h3>Policy</h3>
-            <Link className="lnk-open" href="/app/policies">Manage policies</Link>
-          </div>
-          <div style={{ padding: "12px 18px 16px", display: "grid", gap: 12 }}>
-            <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
-              <Pill>{titleCase(overview.policy.autonomyMode)}</Pill>
-              <Pill color={overview.policy.emergencyStopEnabled ? "var(--rose)" : "var(--green)"}>{overview.policy.emergencyStopEnabled ? "Emergency stop on" : "Emergency stop off"}</Pill>
-              <Pill>{titleCase(overview.policy.customerEmailMode)}</Pill>
-            </div>
-            <div style={{ padding: "11px 12px", borderRadius: 10, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", color: "var(--text-dim)", fontSize: 12.5, lineHeight: 1.55 }}>
-              <strong style={{ color: "var(--text)" }}>Approval-first where risk matters.</strong><br />
-              {overview.policy.safeSummary}
-            </div>
-            <div style={{ color: "var(--text-mute)", fontSize: 12.5, lineHeight: 1.55 }}>{overview.policy.assistedSummary}</div>
-          </div>
-        </section>
       </div>
 
+      {/* Metrics strip */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
+        {metrics.map((metric) => (
+          <div className="kpi" key={metric.label}>
+            <div className="kpi-top"><span className="lab">{metric.label}</span></div>
+            <div className="kpi-val">{metric.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Operators (secondary) */}
       <section className="p" style={{ gap: 0 }}>
         <div className="p-head">
-          <h3><ZapIcon size={13} /> Operators</h3>
-          <span className="p-meta">Manual checks never run automatically</span>
+          <h3>Operators</h3>
+          <Link className="lnk-open" href="/app/agents">View all</Link>
         </div>
-        <div style={{ padding: "14px 18px 18px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
+        <div style={{ padding: "6px 18px 14px", display: "grid", gap: 2 }}>
           {overview.operators.map((operator) => (
-            <div key={operator.key} style={{ padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 12 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 700 }}>{operator.name}</div>
-                  <div style={{ marginTop: 4, fontSize: 12, color: "var(--text-mute)", lineHeight: 1.45 }}>{operator.description}</div>
+            <div key={operator.key} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 12, alignItems: "center", padding: "13px 0", borderBottom: "1px solid var(--line)" }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 650 }}>{operator.name}</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: operator.status === "needs_setup" ? "var(--amber)" : "var(--green)" }}>{operatorStatusLabel(operator.status)}</span>
                 </div>
-                <Pill color={operator.status === "needs_setup" ? "var(--amber)" : "var(--green)"}>{operatorStatusLabel(operator.status)}</Pill>
+                <div style={{ marginTop: 3, fontSize: 11.8, color: "var(--text-mute)" }}>
+                  {operator.pendingApprovals} pending · {operator.signalsToday} signals today · checked {timeAgo(operator.lastRunAt)}
+                </div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-                <MiniStat label="Pending" value={operator.pendingApprovals} />
-                <MiniStat label="Signals" value={operator.signalsToday} />
-                <MiniStat label="Actions" value={operator.actionsToday} />
-              </div>
-              <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>Last check: {timeAgo(operator.lastRunAt)}</div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <Link className="btn btn-ghost btn-sm" href={operator.href}>Open</Link>
-                <button className="btn btn-primary btn-sm" disabled={busyScan !== null || operator.status === "needs_setup"} onClick={() => runManualCheck(operator.key)} style={{ opacity: busyScan !== null || operator.status === "needs_setup" ? 0.48 : 1 }}>
+              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                <Link className="lnk-open" href={operator.href} style={{ fontSize: 12 }}>Open</Link>
+                <button
+                  className="btn btn-primary btn-sm"
+                  disabled={busyScan !== null || operator.status === "needs_setup"}
+                  onClick={() => runManualCheck(operator.key)}
+                  style={{ opacity: busyScan !== null || operator.status === "needs_setup" ? 0.48 : 1 }}
+                >
                   {busyScan === operator.key ? "Checking..." : "Run check"}
                 </button>
               </div>
@@ -343,85 +343,81 @@ export function OSOverview() {
         </div>
       </section>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
+      {/* Connectors + Policy (compact) */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14 }}>
         <section className="p" style={{ gap: 0 }}>
           <div className="p-head">
-            <h3>Connector health</h3>
-            <Link className="lnk-open" href="/app/connectors">Manage</Link>
+            <h3>Connectors</h3>
+            <Link className="lnk-open" href="/app/connectors">Manage connectors</Link>
           </div>
-          <div style={{ padding: "8px 18px 16px", display: "grid", gap: 8 }}>
-            {overview.connectors.map((connector) => (
-              <div key={connector.key} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 10, alignItems: "center", padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 13.5, fontWeight: 650 }}>{connector.name}</span>
-                    <span style={{ fontSize: 11, color: connectorTone(connector.status), fontWeight: 700 }}>{connector.status === "connected" ? "Connected" : connector.status === "error" ? "Error" : "Needs setup"}</span>
-                  </div>
-                  <div style={{ marginTop: 3, fontSize: 11.5, color: "var(--text-mute)" }}>{connector.purpose} - {connector.usedBy.slice(0, 3).join(", ")}</div>
-                </div>
-                <Link className="appr-btn edit" href={connector.href}>Manage</Link>
-              </div>
-            ))}
+          <div style={{ padding: "14px 18px 16px", display: "grid", gap: 10 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {overview.connectors.map((connector) => {
+                const ok = connector.connected;
+                return (
+                  <span key={connector.key} style={{
+                    display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 999,
+                    background: "rgba(255,255,255,0.025)",
+                    boxShadow: `inset 0 0 0 1px ${ok ? "rgba(81,216,138,0.28)" : "rgba(245,194,107,0.28)"}`,
+                    fontSize: 12, fontWeight: 600,
+                  }}>
+                    <span style={{ width: 6, height: 6, borderRadius: 999, background: ok ? "var(--green)" : "var(--amber)" }} />
+                    {connector.name}
+                    <span style={{ color: ok ? "var(--green)" : "var(--amber)", fontSize: 11 }}>{ok ? "✓" : "needs setup"}</span>
+                  </span>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 11.8, color: "var(--text-mute)" }}>Monitoring Gmail, HubSpot, Slack and Trello.</div>
           </div>
         </section>
 
         <section className="p" style={{ gap: 0 }}>
           <div className="p-head">
-            <h3>Today activity</h3>
-            <Link className="lnk-open" href="/app/logs">Open logs</Link>
+            <h3>Policy</h3>
+            <Link className="lnk-open" href="/app/policies">Manage policies</Link>
           </div>
-          <div style={{ padding: "8px 18px 16px", display: "grid", gap: 10 }}>
-            {overview.activity.length === 0 ? (
-              <div style={{ padding: "22px 0", color: "var(--text-mute)", fontSize: 13 }}>No activity yet. Operator runs will appear here.</div>
-            ) : overview.activity.map((item) => (
-              <div key={item.id} style={{ display: "grid", gridTemplateColumns: "12px minmax(0, 1fr)", gap: 10 }}>
-                <span style={{ width: 8, height: 8, borderRadius: 999, background: activityTone(item.severity), marginTop: 6 }} />
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 13, fontWeight: 650 }}>{titleCase(item.title)}</span>
-                    <span style={{ fontSize: 11, color: "var(--text-mute)" }}>{timeAgo(item.time)}</span>
-                  </div>
-                  <div style={{ fontSize: 11.8, color: "var(--text-dim)", lineHeight: 1.45, overflowWrap: "anywhere" }}>{item.description}</div>
-                </div>
-              </div>
-            ))}
+          <div style={{ padding: "14px 18px 16px", display: "grid", gap: 7 }}>
+            <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.5 }}>
+              {autonomyLabel} · {overview.policy.emergencyStopEnabled ? "Emergency stop on" : "Emergency stop off"} · {customerEmailLabel(overview.policy.customerEmailMode)}
+            </div>
+            <div style={{ fontSize: 11.8, color: "var(--text-mute)" }}>Approval-first where risk matters.</div>
           </div>
         </section>
       </div>
 
+      {/* Activity */}
       <section className="p" style={{ gap: 0 }}>
         <div className="p-head">
-          <h3>Next best actions</h3>
-          <span className="p-meta">Generated from real state</span>
+          <h3>Recent activity</h3>
+          <Link className="lnk-open" href="/app/logs">Open logs</Link>
         </div>
-        <div style={{ padding: "12px 18px 16px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 10 }}>
-          {overview.nextBestActions.map((action) => (
-            <Link key={action.id} href={action.href} style={{ textDecoration: "none", color: "inherit", padding: 13, borderRadius: 12, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 5 }}>
-              <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 13.3, fontWeight: 700 }}>{action.title}</span>
-                {action.priority === "high" && <CheckIcon size={13} style={{ color: "var(--amber)" }} />}
-              </div>
-              <span style={{ fontSize: 11.8, color: "var(--text-mute)", lineHeight: 1.45 }}>{action.description}</span>
-            </Link>
+        <div style={{ padding: "8px 18px 16px", display: "grid", gap: 12 }}>
+          {overview.activity.length === 0 ? (
+            <div style={{ padding: "18px 0", color: "var(--text-mute)", fontSize: 13 }}>No activity yet. Operator runs will appear here.</div>
+          ) : overview.activity.slice(0, 5).map((item) => (
+            <div key={item.id} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 12, alignItems: "baseline" }}>
+              <span style={{ fontSize: 12.8, color: "var(--text-dim)", overflowWrap: "anywhere" }}>{item.description || titleCase(item.title)}</span>
+              <span style={{ fontSize: 11, color: "var(--text-mute)", whiteSpace: "nowrap" }}>{timeAgo(item.time)}</span>
+            </div>
           ))}
         </div>
       </section>
+
+      {/* Next best actions (only when not duplicating the hero CTA) */}
+      {nextActions.length > 0 && (
+        <section className="p" style={{ gap: 0 }}>
+          <div className="p-head"><h3>Suggested next</h3></div>
+          <div style={{ padding: "12px 18px 16px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 10 }}>
+            {nextActions.map((action) => (
+              <Link key={action.id} href={action.href} style={{ textDecoration: "none", color: "inherit", padding: 13, borderRadius: 12, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 4 }}>
+                <span style={{ fontSize: 13, fontWeight: 650 }}>{action.title}</span>
+                <span style={{ fontSize: 11.8, color: "var(--text-mute)", lineHeight: 1.45 }}>{action.description}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
-}
-
-function MiniStat({ label, value }: { label: string; value: number }) {
-  return (
-    <div style={{ padding: "8px 9px", borderRadius: 10, background: "rgba(0,0,0,0.14)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
-      <div style={{ fontSize: 10.5, color: "var(--text-mute)", marginBottom: 3 }}>{label}</div>
-      <div style={{ fontSize: 16, fontWeight: 750 }}>{value}</div>
-    </div>
-  );
-}
-
-function operatorDisplayName(key: string | null | undefined): string {
-  if (key === "client_flow") return "Client Flow";
-  if (key === "operations") return "Operations";
-  if (key === "revenue") return "Revenue";
-  return key ? titleCase(key) : "Operator";
 }
