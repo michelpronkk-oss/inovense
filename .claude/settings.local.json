@@ -51,7 +51,16 @@
       "Bash(ping -n 5 127.0.0.1)",
       "PowerShell(pnpm.cmd run build 2>&1 | Select-Object -Last 6; \"EXITCODE=$LASTEXITCODE\")",
       "PowerShell(pnpm.cmd run build 2>&1 | Select-Object -Last 5; \"EXITCODE=$LASTEXITCODE\")",
-      "PowerShell(pnpm.cmd run build 2>&1 | Select-String -Pattern \"Compiled|Failed|Type error|Finished TypeScript|error TS|\\\\.tsx?:\" -Context 0,5 | Select-Object -First 40; \"EXITCODE=$LASTEXITCODE\")"
+      "PowerShell(pnpm.cmd run build 2>&1 | Select-String -Pattern \"Compiled|Failed|Type error|Finished TypeScript|error TS|\\\\.tsx?:\" -Context 0,5 | Select-Object -First 40; \"EXITCODE=$LASTEXITCODE\")",
+      "PowerShell(pnpm.cmd run build 2>&1 | Select-String -Pattern \"Compiled|Failed|Type error|Finished TypeScript|error TS|overview\" -Context 0,4 | Select-Object -First 30; \"EXITCODE=$LASTEXITCODE\")",
+      "Bash(node -e \"console.log\\(JSON.stringify\\(require\\('./package.json'\\).scripts,null,2\\)\\)\")",
+      "Bash(gh --version)",
+      "Bash(vercel --version)",
+      "Bash(vercel whoami *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "PowerShell(pnpm.cmd run build 2>&1 | Select-String -Pattern \"Compiled|Failed|Type error|Finished TypeScript|error TS|agents\" -Context 0,4 | Select-Object -First 30; \"EXITCODE=$LASTEXITCODE\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\miche\\Desktop\\inovense-app\\src",
