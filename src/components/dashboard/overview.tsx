@@ -1,18 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useOS } from "@/lib/os/app-provider";
 import type { DashboardOverview, DashboardOperator } from "@/lib/dashboard/overview";
 
 type ScanKey = DashboardOperator["key"];
-
 type OverviewResponse = DashboardOverview & { error?: string; message?: string };
 
 const scanRoutes: Record<ScanKey, string> = {
   revenue: "/api/operators/revenue/scan",
   client_flow: "/api/operators/client-flow/scan",
   operations: "/api/operators/operations/scan",
+};
+
+const operatorMeta: Record<ScanKey, { mark: string; color: string; tag: string }> = {
+  revenue: { mark: "RV", color: "#4DE8E1", tag: "Revenue · Pipeline" },
+  client_flow: { mark: "CF", color: "#5B8DEF", tag: "Client · Onboarding" },
+  operations: { mark: "OP", color: "#51D88A", tag: "Operations · Internal" },
+};
+
+const connectorMeta: Record<string, { letter: string; color: string }> = {
+  gmail: { letter: "G", color: "#EA4335" },
+  hubspot: { letter: "HS", color: "#FF7A59" },
+  slack: { letter: "Sl", color: "#A77FBC" },
+  trello: { letter: "Tr", color: "#4BA3E8" },
 };
 
 function titleCase(value: string | null | undefined): string {
@@ -31,7 +43,14 @@ function timeAgo(value: string | null | undefined): string {
   return `${Math.floor(mins / (60 * 24))}d ago`;
 }
 
-function autonomyModeLabel(mode: DashboardOverview["policy"]["autonomyMode"]): string {
+function clockTime(value: string | null | undefined): string {
+  if (!value) return "--:--";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--:--";
+  return date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+
+function autonomyLabel(mode: DashboardOverview["policy"]["autonomyMode"]): string {
   if (mode === "assisted") return "Assisted autopilot";
   if (mode === "managed") return "Managed custom";
   return "Safe mode";
@@ -43,93 +62,16 @@ function customerEmailLabel(mode: DashboardOverview["policy"]["customerEmailMode
   return "Customer emails require approval";
 }
 
-function systemTone(status: DashboardOverview["systemStatus"]["status"]) {
-  if (status === "healthy") return { color: "var(--green)", dot: "var(--green)" };
-  if (status === "emergency_stop") return { color: "var(--rose)", dot: "var(--rose)" };
-  return { color: "var(--amber)", dot: "var(--amber)" };
+function operatorMark(operatorKey: string | null | undefined): { mark: string; color: string } {
+  if (operatorKey && operatorKey in operatorMeta) return operatorMeta[operatorKey as ScanKey];
+  return { mark: "OS", color: "#4DE8E1" };
 }
 
-function operatorStatusLabel(status: DashboardOperator["status"]) {
-  if (status === "monitoring") return "Monitoring";
-  if (status === "ready") return "Ready";
-  if (status === "needs_setup") return "Needs setup";
-  return "Disabled";
-}
-
-function operatorDisplayName(key: string | null | undefined): string {
-  if (key === "client_flow") return "Client Flow";
-  if (key === "operations") return "Operations";
-  if (key === "revenue") return "Revenue";
-  return key ? titleCase(key) : "Operator";
-}
-
-type HeroState = {
-  key: "emergency_stop" | "pending" | "setup" | "failed" | "healthy";
-  title: string;
-  description: string;
-  primary: { href: string; label: string };
-};
-
-function heroState(overview: DashboardOverview): HeroState {
-  if (overview.systemStatus.status === "emergency_stop") {
-    return {
-      key: "emergency_stop",
-      title: "Emergency stop is active",
-      description: "Risky execution is paused until policies are updated.",
-      primary: { href: "/app/policies", label: "Manage policies" },
-    };
-  }
-  if (overview.approvals.pendingCount > 0) {
-    return {
-      key: "pending",
-      title: `${overview.approvals.pendingCount} item${overview.approvals.pendingCount === 1 ? "" : "s"} need review`,
-      description: "Operators prepared work that needs your approval.",
-      primary: { href: "/app/approvals", label: "Open approvals" },
-    };
-  }
-  if (overview.systemStatus.status === "setup_incomplete") {
-    return {
-      key: "setup",
-      title: "Finish setup",
-      description: "Connect the required tools to activate your operators.",
-      primary: { href: "/app/connectors", label: "Connect tools" },
-    };
-  }
-  if (overview.today.failedExecutions > 0) {
-    return {
-      key: "failed",
-      title: "Execution needs attention",
-      description: "Something needs review before operators continue safely.",
-      primary: { href: "/app/logs", label: "Open logs" },
-    };
-  }
-  return {
-    key: "healthy",
-    title: "Operating layer is running",
-    description: "Monitoring connected workstreams under policy.",
-    primary: { href: "/app/agents", label: "View operators" },
-  };
-}
-
-function Pill({ children, color }: { children: ReactNode; color?: string }) {
-  return (
-    <span style={{
-      display: "inline-flex",
-      alignItems: "center",
-      gap: 6,
-      minHeight: 22,
-      padding: "3px 9px",
-      borderRadius: 999,
-      background: "rgba(255,255,255,0.035)",
-      boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.07)",
-      color: color ?? "var(--text-dim)",
-      fontSize: 11,
-      fontWeight: 600,
-      whiteSpace: "nowrap",
-    }}>
-      {children}
-    </span>
-  );
+function activityColor(severity: string): string {
+  if (severity === "success") return "#51D88A";
+  if (severity === "danger") return "#F2767C";
+  if (severity === "warning") return "#F5C26B";
+  return "#4DE8E1";
 }
 
 function Skeleton() {
@@ -137,14 +79,12 @@ function Skeleton() {
     <div className="os-page">
       <div className="os-page-head">
         <div>
-          <span className="os-greet">Inovense OS</span>
+          <span className="os-greet">Operating</span>
           <h1>Loading overview...</h1>
           <div className="os-page-sub">Reading real workspace state.</div>
         </div>
       </div>
-      <div style={{ display: "grid", gap: 14 }}>
-        {[0, 1].map((i) => <div key={i} className="p" style={{ minHeight: i === 0 ? 180 : 90, opacity: 0.7 }} />)}
-      </div>
+      <div className="kpi-row">{[0, 1, 2, 3].map((i) => <div className="kpi" key={i} style={{ minHeight: 92, opacity: 0.6 }} />)}</div>
     </div>
   );
 }
@@ -155,6 +95,7 @@ export function OSOverview() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyScan, setBusyScan] = useState<ScanKey | null>(null);
+  const [busyApproval, setBusyApproval] = useState<string | null>(null);
 
   const identityParams = useMemo(() => new URLSearchParams({
     workspaceId: state.workspace.id,
@@ -180,7 +121,7 @@ export function OSOverview() {
   useEffect(() => { void loadOverview(); }, [loadOverview]);
 
   const runManualCheck = async (key: ScanKey) => {
-    if (busyScan) return;
+    if (busyScan || busyApproval) return;
     setBusyScan(key);
     setError("");
     try {
@@ -196,6 +137,31 @@ export function OSOverview() {
       setError(err instanceof Error ? err.message : "Manual check could not run.");
     } finally {
       setBusyScan(null);
+    }
+  };
+
+  const actOnApproval = async (id: string, action: "approve" | "reject") => {
+    if (busyApproval || busyScan) return;
+    setBusyApproval(id);
+    setError("");
+    try {
+      const res = await fetch(`/api/approvals/${id}/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: state.workspace.id,
+          userId: state.currentUser.id,
+          userEmail: state.currentUser.email,
+          ...(action === "reject" ? { reason: "Skipped from dashboard" } : {}),
+        }),
+      });
+      const json = await res.json().catch(() => ({})) as { error?: string; message?: string };
+      if (!res.ok) throw new Error(json.message || json.error || "Could not update approval.");
+      await loadOverview();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update approval.");
+    } finally {
+      setBusyApproval(null);
     }
   };
 
@@ -215,37 +181,37 @@ export function OSOverview() {
     );
   }
 
-  const tone = systemTone(overview.systemStatus.status);
-  const hero = heroState(overview);
-  const healthyConnectors = overview.connectors.filter((connector) => connector.connected).length;
-  const autonomyLabel = autonomyModeLabel(overview.policy.autonomyMode);
+  const now = new Date();
+  const hh = now.getHours();
+  const greet = hh < 5 ? "Good night" : hh < 12 ? "Good morning" : hh < 18 ? "Good afternoon" : "Good evening";
+  const firstName = titleCase((state.currentUser.email?.split("@")[0] || "there").split(/[._-]/)[0]);
   const pending = overview.approvals.pendingCount;
-  const reviewRows = overview.approvals.latest.slice(0, 3);
+  const monitoringCount = overview.operators.filter((o) => o.status !== "needs_setup" && o.status !== "disabled").length;
+  const healthyConnectors = overview.connectors.filter((c) => c.connected).length;
+  const mode = autonomyLabel(overview.policy.autonomyMode);
+  const busy = busyScan !== null || busyApproval !== null;
 
-  const metrics = [
-    { label: "Pending approvals", value: pending },
-    { label: "Actions today", value: overview.today.actionsExecuted },
-    { label: "Blocked by policy", value: overview.today.blockedByPolicy },
-    { label: "Healthy connectors", value: `${healthyConnectors}/${overview.connectors.length}` },
+  const kpis = [
+    { label: "Pending approvals", val: pending, sub: overview.approvals.highRiskCount > 0 ? `${overview.approvals.highRiskCount} high risk` : "Waiting for review", subCls: overview.approvals.highRiskCount > 0 ? "amber" : "neutral" },
+    { label: "Actions today", val: overview.today.actionsExecuted, sub: "After approval", subCls: "neutral" },
+    { label: "Blocked by policy", val: overview.today.blockedByPolicy, sub: "Live re-check", subCls: "neutral" },
+    { label: "Healthy connectors", val: `${healthyConnectors}/${overview.connectors.length}`, sub: "Connected", subCls: "neutral" },
   ];
-
-  const nextActions = overview.nextBestActions.filter((action) => action.href !== hero.primary.href).slice(0, 2);
 
   return (
     <div className="os-page">
       {/* Header */}
       <div className="os-page-head">
         <div>
-          <span className="os-greet">Inovense OS</span>
-          <h1>{overview.workspace.name}</h1>
+          <span className="os-greet">{overview.systemStatus.label} · updated {timeAgo(overview.lastUpdatedAt)}</span>
+          <h1>{greet}, {firstName}.</h1>
+          <div className="os-page-sub">{pending} approval{pending === 1 ? "" : "s"} waiting · {monitoringCount} operator{monitoringCount === 1 ? "" : "s"} monitoring · running under {mode}.</div>
         </div>
-        <div className="os-page-actions" style={{ alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-          <Pill color={tone.color}>
-            <span style={{ width: 7, height: 7, borderRadius: 999, background: tone.dot }} />
-            {overview.systemStatus.label}
-          </Pill>
-          <Pill>{autonomyLabel}</Pill>
-          <span style={{ fontSize: 11.5, color: "var(--text-mute)" }}>Updated {timeAgo(overview.lastUpdatedAt)}</span>
+        <div className="os-page-actions" style={{ alignItems: "center" }}>
+          <span className="pill">{mode}</span>
+          {pending > 0
+            ? <Link className="btn btn-primary btn-sm" href="/app/approvals">Open approvals</Link>
+            : <Link className="btn btn-ghost btn-sm" href="/app/agents">View operators</Link>}
         </div>
       </div>
 
@@ -255,169 +221,167 @@ export function OSOverview() {
         </div>
       )}
 
-      {/* Command area: operating status + review queue */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14 }}>
-        <section className="p" style={{ gap: 0, overflow: "hidden" }}>
-          <div style={{ padding: "24px 24px 22px", display: "grid", gap: 16, minHeight: 196, alignContent: "space-between" }}>
-            <div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
-                <span style={{ width: 8, height: 8, borderRadius: 999, background: tone.dot, boxShadow: `0 0 12px ${tone.dot}` }} />
-                <span style={{ fontSize: 11.5, fontWeight: 600, color: tone.color }}>{overview.systemStatus.label}</span>
-              </div>
-              <h2 style={{ fontSize: 23, lineHeight: 1.15, margin: 0, letterSpacing: "-0.01em" }}>{hero.title}</h2>
-              <p style={{ margin: "9px 0 0", maxWidth: 440, color: "var(--text-dim)", fontSize: 13.5, lineHeight: 1.55 }}>{hero.description}</p>
-            </div>
-            <div style={{ display: "grid", gap: 10 }}>
-              <Link className="btn btn-primary btn-sm" href={hero.primary.href} style={{ width: "fit-content" }}>{hero.primary.label}</Link>
-              <span style={{ fontSize: 11.5, color: "var(--text-mute)" }}>Running under {autonomyLabel} · Rechecked before execution</span>
-            </div>
-          </div>
-        </section>
-
-        <section className="p" style={{ gap: 0 }}>
-          <div className="p-head">
-            <h3>{pending > 0 ? "Waiting for review" : "No approvals waiting"}</h3>
-            {pending > 0 && <Link className="lnk-open" href="/app/approvals">Open approvals</Link>}
-          </div>
-          <div style={{ padding: "6px 18px 14px", display: "grid", gap: 2 }}>
-            {pending === 0 ? (
-              <div style={{ padding: "26px 0", color: "var(--text-mute)", fontSize: 13 }}>Operators will surface work here when review is needed.</div>
-            ) : reviewRows.map((approval) => (
-              <div key={approval.id} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 12, alignItems: "center", padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, overflowWrap: "anywhere" }}>{approval.title}</div>
-                  <div style={{ marginTop: 4, display: "flex", gap: 7, flexWrap: "wrap", alignItems: "center" }}>
-                    <span style={{ fontSize: 11.5, color: "var(--text-dim)", fontWeight: 600 }}>{operatorDisplayName(approval.operatorKey)}</span>
-                    {approval.riskLevel && <Pill color={approval.riskLevel === "high" ? "var(--rose)" : "var(--amber)"}>Risk: {approval.riskLevel}</Pill>}
-                    <span style={{ fontSize: 11, color: "var(--text-mute)" }}>{timeAgo(approval.createdAt)}</span>
-                  </div>
-                </div>
-                <Link className="appr-btn approve" href={approval.href}>Review</Link>
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
-
-      {/* Metrics strip */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
-        {metrics.map((metric) => (
-          <div className="kpi" key={metric.label}>
-            <div className="kpi-top"><span className="lab">{metric.label}</span></div>
-            <div className="kpi-val">{metric.value}</div>
+      {/* KPI row (real metrics, no fabricated trends) */}
+      <div className="kpi-row">
+        {kpis.map((k) => (
+          <div className="kpi" key={k.label}>
+            <div className="kpi-top"><span className="lab">{k.label}</span></div>
+            <div className="kpi-val">{k.val}</div>
+            <div className="kpi-meta"><span className={`kpi-delta ${k.subCls}`}>{k.sub}</span></div>
           </div>
         ))}
       </div>
 
-      {/* Operators (secondary) */}
-      <section className="p" style={{ gap: 0 }}>
-        <div className="p-head">
-          <h3>Operators</h3>
-          <Link className="lnk-open" href="/app/agents">View all</Link>
-        </div>
-        <div style={{ padding: "6px 18px 14px", display: "grid", gap: 2 }}>
-          {overview.operators.map((operator) => (
-            <div key={operator.key} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 12, alignItems: "center", padding: "13px 0", borderBottom: "1px solid var(--line)" }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 13.5, fontWeight: 650 }}>{operator.name}</span>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: operator.status === "needs_setup" ? "var(--amber)" : "var(--green)" }}>{operatorStatusLabel(operator.status)}</span>
-                </div>
-                <div style={{ marginTop: 3, fontSize: 11.8, color: "var(--text-mute)" }}>
-                  {operator.pendingApprovals} pending · {operator.signalsToday} signals today · checked {timeAgo(operator.lastRunAt)}
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                <Link className="lnk-open" href={operator.href} style={{ fontSize: 12 }}>Open</Link>
-                <button
-                  className="btn btn-primary btn-sm"
-                  disabled={busyScan !== null || operator.status === "needs_setup"}
-                  onClick={() => runManualCheck(operator.key)}
-                  style={{ opacity: busyScan !== null || operator.status === "needs_setup" ? 0.48 : 1 }}
-                >
-                  {busyScan === operator.key ? "Checking..." : "Run check"}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Connectors + Policy (compact) */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14 }}>
-        <section className="p" style={{ gap: 0 }}>
+      {/* Operators + Approvals */}
+      <div className="os-grid-2">
+        <div className="p">
           <div className="p-head">
-            <h3>Connectors</h3>
-            <Link className="lnk-open" href="/app/connectors">Manage connectors</Link>
+            <h3>Active operators</h3>
+            <span className="p-meta">{overview.operators.length} operators · manual checks only</span>
           </div>
-          <div style={{ padding: "14px 18px 16px", display: "grid", gap: 10 }}>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {overview.connectors.map((connector) => {
-                const ok = connector.connected;
-                return (
-                  <span key={connector.key} style={{
-                    display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 999,
-                    background: "rgba(255,255,255,0.025)",
-                    boxShadow: `inset 0 0 0 1px ${ok ? "rgba(81,216,138,0.28)" : "rgba(245,194,107,0.28)"}`,
-                    fontSize: 12, fontWeight: 600,
-                  }}>
-                    <span style={{ width: 6, height: 6, borderRadius: 999, background: ok ? "var(--green)" : "var(--amber)" }} />
-                    {connector.name}
-                    <span style={{ color: ok ? "var(--green)" : "var(--amber)", fontSize: 11 }}>{ok ? "✓" : "needs setup"}</span>
-                  </span>
-                );
-              })}
-            </div>
-            <div style={{ fontSize: 11.8, color: "var(--text-mute)" }}>Monitoring Gmail, HubSpot, Slack and Trello.</div>
+          <div className="ops-grid">
+            {overview.operators.map((operator) => {
+              const meta = operatorMeta[operator.key];
+              const needsSetup = operator.status === "needs_setup";
+              const awaiting = operator.pendingApprovals > 0;
+              return (
+                <div className="ops-card" key={operator.key}>
+                  <div className="ops-card-head">
+                    <div className="ops-card-avatar" style={{ color: meta.color, background: `linear-gradient(135deg, ${meta.color}22, ${meta.color}06)`, boxShadow: `inset 0 0 0 1px ${meta.color}55` }}>{meta.mark}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="ops-card-name">{operator.name}</div>
+                      <div className="ops-card-tag">{meta.tag}</div>
+                    </div>
+                    <div className="ops-card-status">
+                      {needsSetup ? (
+                        <><span className="dot dot-amber" /><span style={{ color: "var(--amber)" }}>Needs setup</span></>
+                      ) : awaiting ? (
+                        <><span className="dot dot-amber pulsing" /><span style={{ color: "var(--amber)" }}>Awaiting</span></>
+                      ) : (
+                        <><span className="dot pulsing" style={{ background: meta.color, boxShadow: `0 0 8px ${meta.color}` }} /><span style={{ color: meta.color }}>Monitoring</span></>
+                      )}
+                    </div>
+                  </div>
+                  <div className="ops-task">
+                    <span>{operator.pendingApprovals} pending · {operator.signalsToday} signals today · checked {timeAgo(operator.lastRunAt)}</span>
+                  </div>
+                  <div className="ops-foot">
+                    <span className="ops-metric"><strong>{operator.actionsToday}</strong> actions today</span>
+                    <div className="ops-actions">
+                      <span
+                        className="lnk cyan"
+                        role="button"
+                        aria-disabled={busy || needsSetup}
+                        onClick={() => { if (!busy && !needsSetup) void runManualCheck(operator.key); }}
+                        style={{ opacity: busy || needsSetup ? 0.45 : 1, cursor: busy || needsSetup ? "default" : "pointer" }}
+                      >
+                        {busyScan === operator.key ? "Checking..." : "Run check"}
+                      </span>
+                      <Link className="lnk" href={operator.href}>Open</Link>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </section>
+        </div>
 
-        <section className="p" style={{ gap: 0 }}>
+        <div className="p">
+          <div className="p-head">
+            <h3>Approval inbox</h3>
+            <span className="p-meta">{pending > 0 && <span className="dot dot-cyan pulsing" />} {pending} waiting</span>
+          </div>
+          <div>
+            {pending === 0 ? (
+              <div className="appr-row">
+                <div className="appr-row-body" style={{ padding: "8px 0", color: "var(--text-mute)" }}>No approvals waiting. Operators will surface work here when review is needed.</div>
+              </div>
+            ) : overview.approvals.latest.slice(0, 4).map((approval) => {
+              const isBusy = busyApproval === approval.id;
+              return (
+                <div className="appr-row" key={approval.id}>
+                  <div className="appr-row-top">
+                    <span className={`pill ${approval.riskLevel === "high" ? "pill-rose" : "pill-cyan"}`}>{operatorMark(approval.operatorKey).mark}</span>
+                    <span className="appr-row-title">{approval.title}</span>
+                  </div>
+                  <div className="appr-row-from">{titleCase(approval.operatorKey)} · {timeAgo(approval.createdAt)}</div>
+                  <div className="appr-row-body">Risk: {approval.riskLevel || "medium"} · {titleCase(approval.policyDecision) || "Approval required"} · rechecked before execution</div>
+                  <div className="appr-row-actions">
+                    <span className="appr-btn approve" role="button" aria-disabled={busy} onClick={() => { if (!busy) void actOnApproval(approval.id, "approve"); }} style={{ opacity: busy ? 0.5 : 1, cursor: busy ? "default" : "pointer" }}>
+                      {isBusy ? "..." : "Approve"}
+                    </span>
+                    <Link className="appr-btn edit" href={approval.href}>Open</Link>
+                    <span className="appr-btn deny" role="button" aria-disabled={busy} onClick={() => { if (!busy) void actOnApproval(approval.id, "reject"); }} style={{ opacity: busy ? 0.5 : 1, cursor: busy ? "default" : "pointer" }}>Skip</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Activity + Policy */}
+      <div className="os-grid-2">
+        <div className="p">
+          <div className="p-head">
+            <h3>Activity</h3>
+            <Link className="lnk-open" href="/app/logs">Open logs</Link>
+          </div>
+          <div>
+            {overview.activity.length === 0 ? (
+              <div className="act-row" style={{ color: "var(--text-mute)" }}><span /><span /><span>No activity yet. Operator runs will appear here.</span><span /></div>
+            ) : overview.activity.slice(0, 7).map((item) => {
+              const mark = operatorMark(item.operatorKey);
+              return (
+                <div className="act-row" key={item.id}>
+                  <span className="act-time">{clockTime(item.time)}</span>
+                  <span className="act-mark" style={{ color: activityColor(item.severity), background: `${activityColor(item.severity)}18`, boxShadow: `inset 0 0 0 1px ${activityColor(item.severity)}55` }}>{mark.mark}</span>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.description || titleCase(item.title)}</span>
+                  <span className="act-target">{timeAgo(item.time)}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="p">
           <div className="p-head">
             <h3>Policy</h3>
             <Link className="lnk-open" href="/app/policies">Manage policies</Link>
           </div>
-          <div style={{ padding: "14px 18px 16px", display: "grid", gap: 7 }}>
-            <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.5 }}>
-              {autonomyLabel} · {overview.policy.emergencyStopEnabled ? "Emergency stop on" : "Emergency stop off"} · {customerEmailLabel(overview.policy.customerEmailMode)}
+          <div style={{ padding: "14px 18px", display: "grid", gap: 8 }}>
+            <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+              <span className="pill pill-cyan">{mode}</span>
+              <span className={`pill ${overview.policy.emergencyStopEnabled ? "pill-rose" : ""}`}>{overview.policy.emergencyStopEnabled ? "Emergency stop on" : "Emergency stop off"}</span>
             </div>
-            <div style={{ fontSize: 11.8, color: "var(--text-mute)" }}>Approval-first where risk matters.</div>
+            <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.5 }}>{customerEmailLabel(overview.policy.customerEmailMode)}.</div>
+            <div style={{ fontSize: 11.8, color: "var(--text-mute)" }}>Approval-first where risk matters. Rechecked before execution.</div>
           </div>
-        </section>
+        </div>
       </div>
 
-      {/* Activity */}
-      <section className="p" style={{ gap: 0 }}>
+      {/* Connectors */}
+      <div className="p">
         <div className="p-head">
-          <h3>Recent activity</h3>
-          <Link className="lnk-open" href="/app/logs">Open logs</Link>
+          <h3>Connectors</h3>
+          <span className="p-meta">{healthyConnectors}/{overview.connectors.length} healthy</span>
         </div>
-        <div style={{ padding: "8px 18px 16px", display: "grid", gap: 12 }}>
-          {overview.activity.length === 0 ? (
-            <div style={{ padding: "18px 0", color: "var(--text-mute)", fontSize: 13 }}>No activity yet. Operator runs will appear here.</div>
-          ) : overview.activity.slice(0, 5).map((item) => (
-            <div key={item.id} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 12, alignItems: "baseline" }}>
-              <span style={{ fontSize: 12.8, color: "var(--text-dim)", overflowWrap: "anywhere" }}>{item.description || titleCase(item.title)}</span>
-              <span style={{ fontSize: 11, color: "var(--text-mute)", whiteSpace: "nowrap" }}>{timeAgo(item.time)}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Next best actions (only when not duplicating the hero CTA) */}
-      {nextActions.length > 0 && (
-        <section className="p" style={{ gap: 0 }}>
-          <div className="p-head"><h3>Suggested next</h3></div>
-          <div style={{ padding: "12px 18px 16px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 10 }}>
-            {nextActions.map((action) => (
-              <Link key={action.id} href={action.href} style={{ textDecoration: "none", color: "inherit", padding: 13, borderRadius: 12, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 4 }}>
-                <span style={{ fontSize: 13, fontWeight: 650 }}>{action.title}</span>
-                <span style={{ fontSize: 11.8, color: "var(--text-mute)", lineHeight: 1.45 }}>{action.description}</span>
+        <div className="conn-strip" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))" }}>
+          {overview.connectors.map((connector) => {
+            const meta = connectorMeta[connector.key] ?? { letter: connector.name.slice(0, 2), color: "#4DE8E1" };
+            return (
+              <Link key={connector.key} href={connector.href} className="conn-tile" style={{ textDecoration: "none", color: "inherit" }}>
+                <div className="conn-logo" style={{ color: meta.color, background: `${meta.color}15`, boxShadow: `inset 0 0 0 1px ${meta.color}40` }}>{meta.letter}</div>
+                <div className="conn-name">{connector.name}</div>
+                <div className="conn-meta">
+                  <span className={`dot ${connector.connected ? "dot-green" : "dot-amber"}`} />
+                  {connector.connected ? (connector.lastCheckedAt ? timeAgo(connector.lastCheckedAt) : "connected") : "needs setup"}
+                </div>
               </Link>
-            ))}
-          </div>
-        </section>
-      )}
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
