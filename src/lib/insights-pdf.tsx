@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 
 export type InsightsKPI = { label: string; value: string; delta: string };
@@ -78,11 +78,11 @@ function num(v: number) {
 
 export function InsightsReportDocument({ data }: { data: InsightsReportData }) {
   return (
-    <Document title={`Inovense Insights - ${data.workspace}`}>
+    <Document title={`Auterim Insights - ${data.workspace}`}>
       <Page size="A4" style={s.page}>
-        <Text style={s.eyebrow}>Inovense OS · Insights Export</Text>
+        <Text style={s.eyebrow}>Auterim OS Â· Insights Export</Text>
         <Text style={s.h1}>Performance Report</Text>
-        <Text style={s.sub}>{data.workspace} · {data.periodLabel} · Generated {new Date(data.generatedAt).toLocaleString("en-GB")}</Text>
+        <Text style={s.sub}>{data.workspace} Â· {data.periodLabel} Â· Generated {new Date(data.generatedAt).toLocaleString("en-GB")}</Text>
 
         <View style={s.row}>
           {data.kpis.slice(0, 2).map((k) => (
@@ -139,14 +139,13 @@ export function InsightsReportDocument({ data }: { data: InsightsReportData }) {
 
         <Text style={s.section}>Key Shifts This Period</Text>
         <View style={s.digestWrap}>
-          <Text style={s.digestItem}>• Pipeline velocity improved with higher proposal-stage throughput.</Text>
-          <Text style={s.digestItem}>• Output volume increased while maintaining high approval quality.</Text>
-          <Text style={s.digestItem}>• Operating overhead reduced through automation consistency.</Text>
+          <Text style={s.digestItem}>â€¢ Pipeline velocity improved with higher proposal-stage throughput.</Text>
+          <Text style={s.digestItem}>â€¢ Output volume increased while maintaining high approval quality.</Text>
+          <Text style={s.digestItem}>â€¢ Operating overhead reduced through automation consistency.</Text>
         </View>
 
-        <Text style={s.foot}>Inovense OS · Confidential internal performance report</Text>
+        <Text style={s.foot}>Auterim OS Â· Confidential internal performance report</Text>
       </Page>
     </Document>
   );
 }
-

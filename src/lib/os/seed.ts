@@ -386,12 +386,17 @@ export const SEED_SETTINGS = {
     proposals: "Always require approval",
     internalReports: "Auto-approve within policy",
     crmWrites: "Auto-approve",
+    customerEmailMode: "approval_required" as const,
+    autonomyMode: "safe" as const,
   },
   notifications: {
     approvalInbox: "Slack - #revops + email",
     weeklyDigest: "Email - Monday 9AM",
     errorAlerts: "Slack - #ops-alerts",
     newAgentDeployed: "Email - all admins",
+  },
+  activation: {
+    preferredDemoPath: "operations" as const,
   },
 };
 

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import Link from "next/link";
@@ -19,13 +19,13 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/solutions/founders-ops",
-    title: "Founders & Ops | Inovense",
+    title: "Founders & Ops | Auterim",
     description: "AI operators for founders running lean. Business intelligence, communications management, hiring workflow, and finance monitoring without an ops hire.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Founders & Ops | Inovense",
+    title: "Founders & Ops | Auterim",
     description: "AI operators for founders running lean. Business intelligence, communications management, hiring workflow, and finance monitoring without an ops hire.",
   },
 };
@@ -119,7 +119,7 @@ export default function FoundersOpsPage() {
                 className="font-mono text-[11px] uppercase tracking-[0.14em]"
                 style={{ color: "#4A4F57" }}
               >
-                Where founders use Inovense
+                Where founders use Auterim
               </span>
               <h2
                 className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
@@ -188,7 +188,7 @@ export default function FoundersOpsPage() {
           </section>
 
           <PageCTA
-            heading="Start running your business on Inovense."
+            heading="Start running your business on Auterim."
             sub="Start with one controlled operator, then expand into a full operating layer."
             primary="Get Starter"
             primaryHref="/app/onboarding"

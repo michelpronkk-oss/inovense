@@ -1,4 +1,4 @@
-import Reveal from "@/components/reveal";
+﻿import Reveal from "@/components/reveal";
 import { Eyebrow } from "@/components/marketing-ui";
 import { Icon } from "./icons";
 
@@ -38,7 +38,7 @@ export default function SecuritySection() {
             </h2>
           </div>
           <p className="text-[15px] leading-[1.6]" style={{ color: TEXT_MUTE, maxWidth: "46ch" }}>
-            Inovense OS is built for regulated industries from the floor up, with the controls, audits and
+            Auterim OS is built for regulated industries from the floor up, with the controls, audits and
             isolation that procurement, security and legal have already asked you to ship.
           </p>
         </div>

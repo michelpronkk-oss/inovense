@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
@@ -28,7 +28,7 @@ function inviteHtml(args: { workspaceName: string; inviterName: string; role: st
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Inovense OS Invite</title>
+<title>Auterim OS Invite</title>
 </head>
 <body style="margin:0;padding:0;background-color:#07090d;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
   <table role="presentation" cellpadding="0" cellspacing="0" width="100%" bgcolor="#07090d" style="padding:40px 16px;">
@@ -36,7 +36,7 @@ function inviteHtml(args: { workspaceName: string; inviterName: string; role: st
       <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;">
         <tr><td bgcolor="#4DE8E1" style="height:2px;border-radius:2px 2px 0 0;font-size:0;line-height:0;">&nbsp;</td></tr>
         <tr><td bgcolor="#0f1319" style="border:1px solid #1f252e;border-top:none;border-radius:0 0 12px 12px;padding:34px;">
-          <p style="margin:0 0 10px 0;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6b7178;">Inovense OS invite</p>
+          <p style="margin:0 0 10px 0;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6b7178;">Auterim OS invite</p>
           <h1 style="margin:0 0 14px 0;font-size:24px;line-height:1.2;color:#eceff3;">You were invited to ${args.workspaceName}</h1>
           <p style="margin:0 0 20px 0;font-size:14px;line-height:1.7;color:#a4abb4;">${args.inviterName} invited you as <span style="color:#eceff3;font-weight:600;">${args.role}</span> to join the workspace.</p>
           <table role="presentation" cellpadding="0" cellspacing="0">
@@ -65,7 +65,7 @@ export async function inviteWorkspaceMember(input: InviteInput): Promise<InviteR
 
   const inviterUserId = isUuid(input.inviterUserId) ? input.inviterUserId : null;
   const workspaceId = input.workspaceId || "ws-atlas";
-  const workspaceName = input.workspaceName || "Inovense Workspace";
+  const workspaceName = input.workspaceName || "Auterim Workspace";
 
   // Ensure workspace and pending member row exist.
   await supabase.from("os_workspaces").upsert({
@@ -106,7 +106,7 @@ export async function inviteWorkspaceMember(input: InviteInput): Promise<InviteR
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const acceptUrl = `${appUrl}/app?invite=${inviteInsert.data.token}`;
-  const subject = `You are invited to ${workspaceName} on Inovense OS`;
+  const subject = `You are invited to ${workspaceName} on Auterim OS`;
   const textBody = `${input.inviterName} invited you to ${workspaceName} as ${input.role}. Accept invite: ${acceptUrl}`;
   const htmlBody = inviteHtml({ workspaceName, inviterName: input.inviterName, role: input.role, acceptUrl });
 
@@ -117,7 +117,7 @@ export async function inviteWorkspaceMember(input: InviteInput): Promise<InviteR
   const resendKey = process.env.RESEND_API_KEY;
   if (resendKey) {
     const resend = new Resend(resendKey);
-    const from = process.env.RESEND_FROM_EMAIL ?? "Inovense <onboarding@resend.dev>";
+    const from = process.env.RESEND_FROM_EMAIL ?? "Auterim <onboarding@resend.dev>";
     const mail = await resend.emails.send({ from, to: email, subject, text: textBody, html: htmlBody });
     if (!mail.error) sent = true;
     if (mail.error) providerError = String(mail.error.message || mail.error.name || "resend_error");
@@ -156,4 +156,3 @@ export async function inviteWorkspaceMember(input: InviteInput): Promise<InviteR
 
   return { success: true, status: sent ? "sent" : "queued", message: sent ? "Invite email sent." : "Invite queued." };
 }
-

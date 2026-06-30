@@ -1,4 +1,4 @@
-import type { LeadStatus } from "./supabase-server";
+﻿import type { LeadStatus } from "./supabase-server";
 import {
   getClientLocaleForLeadSource,
   isDutchClientLeadSource,
@@ -359,7 +359,7 @@ export function buildEmailHtml({
               <div style="margin:0 0 32px 0;">
                 <img
                   src="${baseUrl}/logo.png"
-                  alt="Inovense"
+                  alt="Auterim"
                   width="110"
                   height="26"
                   border="0"
@@ -379,7 +379,7 @@ export function buildEmailHtml({
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
                   <td>
-                    <p style="margin:0;font-size:11px;color:#3f3f46;">Inovense &nbsp;&middot;&nbsp; <a href="mailto:hello@inovense.com" style="color:#52525b;text-decoration:none;">hello@inovense.com</a></p>
+                    <p style="margin:0;font-size:11px;color:#3f3f46;">Michel<br />Auterim &nbsp;&middot;&nbsp; <a href="mailto:hello@inovense.com" style="color:#52525b;text-decoration:none;">hello@inovense.com</a></p>
                   </td>
                 </tr>
               </table>

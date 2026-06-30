@@ -1,4 +1,4 @@
-import Reveal from "@/components/reveal";
+﻿import Reveal from "@/components/reveal";
 import { Eyebrow } from "@/components/marketing-ui";
 import { Icon } from "./icons";
 
@@ -21,10 +21,10 @@ const STEPS: { icon: Parameters<typeof Icon>[0]["name"]; label: string; sub: str
   { icon: "bolt", label: "Trigger", sub: "New form submission", color: "#A4ABB4" },
   { icon: "spark", label: "Enrich record", sub: "Clearbit + memory", color: "#A78BFA" },
   { icon: "target", label: "Qualify lead", sub: "Revenue operator", color: "#4DE8E1" },
-  { icon: "branch", label: "If ICP score ≥ 70", sub: "Branch", color: "#F5C26B" },
-  { icon: "doc", label: "Draft personalized reply", sub: "Model · brand voice", color: "#4DE8E1", editing: true },
+  { icon: "branch", label: "If ICP score â‰¥ 70", sub: "Branch", color: "#F5C26B" },
+  { icon: "doc", label: "Draft personalized reply", sub: "Model Â· brand voice", color: "#4DE8E1", editing: true },
   { icon: "check2", label: "Human approval", sub: "Slack #revops", color: "#F5C26B" },
-  { icon: "arrowUR", label: "Send & log", sub: "Gmail → HubSpot", color: "#51D88A" },
+  { icon: "arrowUR", label: "Send & log", sub: "Gmail â†’ HubSpot", color: "#51D88A" },
 ];
 
 function WorkflowBuilderMock() {
@@ -37,13 +37,13 @@ function WorkflowBuilderMock() {
         <div className="flex items-center gap-2">
           <Icon name="flow" size={14} style={{ color: CYAN }} />
           <strong className="text-[13px] font-medium" style={{ color: TEXT }}>
-            Inbound · Revenue
+            Inbound Â· Revenue
           </strong>
           <span
             className="rounded-full px-2 py-[3px] font-mono text-[10px] uppercase tracking-[0.06em]"
             style={{ background: CYAN_SOFT, color: CYAN, boxShadow: `inset 0 0 0 1px ${CYAN_LINE}` }}
           >
-            v8 · live
+            v8 Â· live
           </span>
         </div>
         <div className="hidden items-center gap-2 font-mono text-[11px] sm:flex" style={{ color: TEXT_MUTE }}>
@@ -130,7 +130,7 @@ export default function WorkflowsSection() {
               your business actually runs.
             </h2>
             <p className="mt-4 text-[15px] leading-[1.6]" style={{ color: TEXT_MUTE, maxWidth: "48ch" }}>
-              Drag steps together — triggers, operator actions, tool calls, approvals — and Inovense OS runs
+              Drag steps together â€” triggers, operator actions, tool calls, approvals â€” and Auterim OS runs
               them like a production system. Every run is observable, retriable and idempotent.
             </p>
 

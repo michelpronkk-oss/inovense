@@ -307,6 +307,7 @@ export interface OnboardingState {
   industry?: string;
   mainGoals: string[];
   preferredOperator?: string;
+  preferredDemoPath?: "operations" | "client_flow" | "revenue";
   approvalOwner?: string;
   initialConnectors: string[];
 }
@@ -362,12 +363,20 @@ export interface OSSettings {
     proposals: string;
     internalReports: string;
     crmWrites: string;
+    customerEmailMode?: "approval_required" | "draft_only" | "auto_send_low_risk";
+    autonomyMode?: "safe" | "assisted" | "managed";
   };
   notifications: {
     approvalInbox: string;
     weeklyDigest: string;
     errorAlerts: string;
     newAgentDeployed: string;
+  };
+  activation?: {
+    preferredDemoPath: "operations" | "client_flow" | "revenue";
+    completedAt?: string;
+    firstRunAt?: string;
+    firstApprovalCreatedAt?: string;
   };
 }
 

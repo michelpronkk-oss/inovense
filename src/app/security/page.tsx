@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import Link from "next/link";
@@ -21,13 +21,13 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/security",
-    title: "Security | Inovense",
+    title: "Security | Auterim",
     description: "Policy enforcement, approval gates, and immutable audit logs. Every agent action runs inside your defined boundaries. Operators propose, policies enforce, humans approve.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Security | Inovense",
+    title: "Security | Auterim",
     description: "Policy enforcement, approval gates, and immutable audit logs. Every agent action runs inside your defined boundaries. Operators propose, policies enforce, humans approve.",
   },
 };

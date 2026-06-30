@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ShieldIcon } from "@/components/dashboard/icons";
@@ -97,7 +97,7 @@ export default function PoliciesPage() {
         <div>
           <span className="os-greet">Policy engine v1 - real enforcement</span>
           <h1>Policies</h1>
-          <div className="os-page-sub">Inovense runs automatically where it is safe, and asks for approval where it matters. These settings are enforced live, including a re-check at execution time.</div>
+          <div className="os-page-sub">Auterim runs automatically where it is safe, and asks for approval where it matters. These settings are enforced live, including a re-check at execution time.</div>
         </div>
       </div>
 

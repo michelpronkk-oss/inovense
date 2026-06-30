@@ -1,4 +1,4 @@
-import Reveal from "@/components/reveal";
+﻿import Reveal from "@/components/reveal";
 import { Eyebrow } from "@/components/marketing-ui";
 import { Icon } from "./icons";
 
@@ -13,7 +13,7 @@ const CYAN_LINE = "rgba(77,232,225,0.28)";
 const LIST = [
   { h: "Source-of-truth aware", b: "Connects directly to your CRM, docs and warehouse. Memory updates as your business updates." },
   { h: "Scoped retrieval", b: "Each operator only sees the slices of memory it's authorized to read." },
-  { h: "Custom entities", b: "Define accounts, projects, deals, contracts — the way your team already names them." },
+  { h: "Custom entities", b: "Define accounts, projects, deals, contracts â€” the way your team already names them." },
   { h: "Versioned & audit-friendly", b: "Every memory write is logged. Roll back, replay, attribute." },
 ];
 
@@ -21,7 +21,7 @@ const NODES: { pos: string; icon: Parameters<typeof Icon>[0]["name"]; label: str
   { pos: "left-[4%] top-[8%]", icon: "briefcase", label: "Account", val: "Northwind Co." },
   { pos: "right-[4%] top-[8%]", icon: "user", label: "Contact", val: "Aiko Tanaka" },
   { pos: "left-0 top-1/2 -translate-y-1/2", icon: "doc", label: "Document", val: "MSA-v4.pdf" },
-  { pos: "right-0 top-1/2 -translate-y-1/2", icon: "trend", label: "Opportunity", val: "$184k · Series B" },
+  { pos: "right-0 top-1/2 -translate-y-1/2", icon: "trend", label: "Opportunity", val: "$184k Â· Series B" },
   { pos: "left-[8%] bottom-[6%]", icon: "flow", label: "Workflow", val: "Q3 onboarding" },
   { pos: "right-[8%] bottom-[6%]", icon: "message", label: "Thread", val: "#atlas-pilot" },
 ];
@@ -59,10 +59,10 @@ function MemoryVisual() {
         <Icon name="database" size={16} style={{ color: CYAN, flexShrink: 0 }} />
         <div className="min-w-0">
           <div className="truncate text-[13px] font-medium" style={{ color: TEXT }}>
-            Atlas &amp; Co. — business graph
+            Atlas &amp; Co. â€” business graph
           </div>
           <div className="font-mono text-[11px]" style={{ color: TEXT_MUTE }}>
-            14,392 entities · synced 1m ago
+            14,392 entities Â· synced 1m ago
           </div>
         </div>
       </div>
@@ -113,8 +113,8 @@ export default function MemorySection() {
               an indexed graph.
             </h2>
             <p className="mt-4 text-[15px] leading-[1.6]" style={{ color: TEXT_MUTE, maxWidth: "50ch" }}>
-              Inovense OS continuously builds a structured understanding of your company — accounts,
-              opportunities, projects, people, documents — and makes it queryable by every operator. Nothing
+              Auterim OS continuously builds a structured understanding of your company â€” accounts,
+              opportunities, projects, people, documents â€” and makes it queryable by every operator. Nothing
               happens in a context-less chat.
             </p>
 

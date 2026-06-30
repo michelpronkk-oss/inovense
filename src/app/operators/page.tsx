@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
@@ -17,14 +17,14 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/operators",
-    title: "Operators | Inovense",
+    title: "Operators | Auterim",
     description:
       "Fifteen AI operators that run the same Detect, Prepare, Approve, Execute, Log loop across revenue, delivery, operations and growth.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Operators | Inovense",
+    title: "Operators | Auterim",
     description:
       "Fifteen AI operators that run the same Detect, Prepare, Approve, Execute, Log loop across revenue, delivery, operations and growth.",
   },
@@ -83,7 +83,7 @@ export default function OperatorsPage() {
                 className="mt-[22px] text-lg leading-[1.55] text-pretty"
                 style={{ color: "#9AA1AA", maxWidth: "56ch" }}
               >
-                Each Inovense operator owns a role and runs the same disciplined loop: it detects the work, prepares the output, asks for approval where it matters, executes through your real tools, and logs everything it learns.
+                Each Auterim operator owns a role and runs the same disciplined loop: it detects the work, prepares the output, asks for approval where it matters, executes through your real tools, and logs everything it learns.
               </p>
             </Reveal>
 

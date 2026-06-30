@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import Link from "next/link";
@@ -19,13 +19,13 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/solutions/marketing",
-    title: "Marketing | Inovense",
+    title: "Marketing | Auterim",
     description: "AI operators for marketing teams. Content production, campaign tracking, SEO workflow automation, and social scheduling without a coordinator.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Marketing | Inovense",
+    title: "Marketing | Auterim",
     description: "AI operators for marketing teams. Content production, campaign tracking, SEO workflow automation, and social scheduling without a coordinator.",
   },
 };
@@ -119,7 +119,7 @@ export default function MarketingPage() {
                 className="font-mono text-[11px] uppercase tracking-[0.14em]"
                 style={{ color: "#4A4F57" }}
               >
-                Where marketing teams use Inovense
+                Where marketing teams use Auterim
               </span>
               <h2
                 className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"

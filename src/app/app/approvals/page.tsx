@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -616,7 +616,7 @@ export default function ApprovalsPage() {
                         <div style={{ margin: "0 18px 16px", padding: "13px", borderRadius: 14, background: "rgba(0,0,0,0.14)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)", display: "grid", gap: 10 }}>
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
                             {[
-                              { label: "Lead source", value: "Inovense OS" },
+                              { label: "Lead source", value: "Auterim OS" },
                               { label: "Signal source", value: "Gmail" },
                               { label: "Operator", value: "Revenue Operator" },
                               { label: "Source email", value: valueOrDash(item.payload_preview.sourceEmail) },
@@ -727,7 +727,7 @@ export default function ApprovalsPage() {
                         <div>
                           <div style={{ fontSize: 13.5, fontWeight: 650 }}>{operations.cardName || operations.listName || "Operational signal"}</div>
                           <div style={{ fontSize: 11.5, color: "var(--text-mute)", marginTop: 2 }}>
-                            {operations.boardName ? `${operations.boardName} / ` : ""}{operations.listName || "-"} · {(operations.signalType || "signal").replace(/_/g, " ")}
+                            {operations.boardName ? `${operations.boardName} / ` : ""}{operations.listName || "-"} Â· {(operations.signalType || "signal").replace(/_/g, " ")}
                           </div>
                         </div>
                         <span className="pill pill-cyan" style={{ fontSize: 10.5 }}>Severity: {operations.severity || "medium"}</span>

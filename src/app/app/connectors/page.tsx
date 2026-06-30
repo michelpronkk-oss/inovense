@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -99,7 +99,7 @@ function connectorCapabilities(connectorId: string): string[] {
 }
 
 function connectorSafetyNotes(connectorId: string): string[] {
-  if (connectorId === "gmail") return ["External customer emails require approval before sending.", "Inovense never sends from Gmail without a reviewed approval."];
+  if (connectorId === "gmail") return ["External customer emails require approval before sending.", "Auterim never sends from Gmail without a reviewed approval."];
   if (connectorId === "hubspot") return ["CRM changes require approval.", "Customer records are updated only through approved actions."];
   if (connectorId === "slack") return ["Slack alerts are internal.", "Customer-facing Slack messages are not sent automatically."];
   if (connectorId === "trello") return ["Trello task changes require approval.", "Cards, moves and comments execute only after review."];
@@ -304,6 +304,43 @@ export default function ConnectorsPage() {
   }, []);
 
   useEffect(() => {
+    const setup = searchParams.get("setup");
+    if (!setup) return;
+
+    const setupMap: Record<string, string> = {
+      gmail: "gmail",
+      hubspot: "hubspot",
+      slack: "slack",
+      trello: "trello",
+      "slack-channel": "slack",
+      "trello-project": "trello",
+    };
+    const connectorId = setupMap[setup];
+    if (!connectorId) return;
+
+    const existing = state.connectors.find((connector) => normalizeConnectorKey(connector.id) === connectorId);
+    const connected = existing && isRealConnectedConnector(existing);
+    if (connected) {
+      setAddOpen(false);
+      setSetupConnectorId(null);
+      setDrawerConnectorId(existing.id);
+      if (setup === "slack-channel") setFeedback("Choose the Slack channel for internal approval alerts.");
+      if (setup === "trello-project") setFeedback("Choose the Trello board and list for approved task updates.");
+      return;
+    }
+
+    const available = availableCatalogConnectors.find((connector) => normalizeConnectorKey(connector.id) === connectorId);
+    if (available) {
+      setAddOpen(true);
+      setSetupConnectorId(available.id);
+      setSearch("");
+      setCategory("all");
+      if (setup === "slack-channel") setFeedback("Connect Slack first, then choose the alert channel.");
+      if (setup === "trello-project") setFeedback("Connect Trello first, then choose the board and list.");
+    }
+  }, [availableCatalogConnectors, searchParams, state.connectors]);
+
+  useEffect(() => {
     setAdvancedOpen(false);
   }, [drawerConnectorId]);
 
@@ -386,7 +423,7 @@ export default function ConnectorsPage() {
         });
         const finalizeJson = await finalizeRes.json().catch(() => ({})) as { error?: string; message?: string; provider_email?: string | null; connected_at?: string | null; provider_config_key?: string | null; nango_connection_id?: string | null };
         if (!finalizeRes.ok) {
-          setFeedback(finalizeJson.message || finalizeJson.error || `${connectorDef.displayName} OAuth succeeded, but Inovense could not save the connector.`);
+          setFeedback(finalizeJson.message || finalizeJson.error || `${connectorDef.displayName} OAuth succeeded, but Auterim could not save the connector.`);
           return;
         }
 
@@ -834,7 +871,7 @@ export default function ConnectorsPage() {
                 </div>
                 <ConnectorSetupView connector={setupConnector} isRealConnected={false} isPreview={isPreview} />
                 {setupConnector.id === "gmail" && (
-                  <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>Secure connection via Google OAuth · Native connector</div>
+                  <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>Secure connection via Google OAuth Â· Native connector</div>
                 )}
                 {getConnectorDefinition(setupConnector.id)?.authType === "nango" && (
                   <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>
@@ -950,14 +987,14 @@ export default function ConnectorsPage() {
                 {(() => {
                   const selected = slackChannels.find((channel) => channel.id === slackAlertSettings.slackDefaultChannelId) ?? null;
                   const guidance = (() => {
-                    if (slackChannelStatus === "reconnect_required") return { text: "Reconnect Slack to allow Inovense to join public channels automatically.", tone: "var(--amber)" };
+                    if (slackChannelStatus === "reconnect_required") return { text: "Reconnect Slack to allow Auterim to join public channels automatically.", tone: "var(--amber)" };
                     if (!selected) {
-                      if (!slackAlertSettings.slackDefaultChannelId) return { text: "No default channel selected. Inovense will not send Slack approval alerts.", tone: "var(--amber)" };
+                      if (!slackAlertSettings.slackDefaultChannelId) return { text: "No default channel selected. Auterim will not send Slack approval alerts.", tone: "var(--amber)" };
                       return { text: `Default channel: ${slackAlertSettings.slackDefaultChannelName ? `#${slackAlertSettings.slackDefaultChannelName}` : slackAlertSettings.slackDefaultChannelId}`, tone: "#9DEFEA" };
                     }
-                    if (selected.isPrivate && !selected.isMember) return { text: "Private channel: invite Inovense to this channel first, then refresh.", tone: "var(--amber)" };
-                    if (!selected.isPrivate && !selected.isMember && !slackChannelStatus) return { text: "Inovense will join this public channel automatically when you save.", tone: "var(--text-mute)" };
-                    return { text: "Inovense can send internal approval alerts to this channel.", tone: "#9DEFEA" };
+                    if (selected.isPrivate && !selected.isMember) return { text: "Private channel: invite Auterim to this channel first, then refresh.", tone: "var(--amber)" };
+                    if (!selected.isPrivate && !selected.isMember && !slackChannelStatus) return { text: "Auterim will join this public channel automatically when you save.", tone: "var(--text-mute)" };
+                    return { text: "Auterim can send internal approval alerts to this channel.", tone: "#9DEFEA" };
                   })();
                   return <div style={{ fontSize: 11.5, color: guidance.tone }}>{guidance.text}</div>;
                 })()}
@@ -1142,7 +1179,7 @@ function ConnectorSetupView({
         {!isRealConnected && <div style={{ fontSize: 12, color: "#9DEFEA" }}>{setupMessage}</div>}
       </div>
 
-      <SectionBlock title="What Inovense can do">
+      <SectionBlock title="What Auterim can do">
         <div style={{ display: "grid", gap: 8 }}>
           {connectorCapabilities(connector.id).map((item) => (
             <div key={item} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--text-dim)" }}>

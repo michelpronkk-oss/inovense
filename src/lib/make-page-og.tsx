@@ -1,6 +1,6 @@
-/**
- * OG image factory for Inovense OS product/marketing pages.
- * Renders the slab-I mark inline as JSX — no external file dependency.
+﻿/**
+ * OG image factory for Auterim OS product/marketing pages.
+ * Renders the slab-I mark inline as JSX â€” no external file dependency.
  * Right panel is optional: pass `items` (2-3 strings) to show a feature card.
  */
 
@@ -11,11 +11,11 @@ export interface PageOgConfig {
   headline: string;
   /** Short description shown below headline */
   description?: string;
-  /** 2–3 bullet points shown in the right panel. Omit for headline-only layout. */
+  /** 2â€“3 bullet points shown in the right panel. Omit for headline-only layout. */
   items?: [string, string] | [string, string, string];
 }
 
-/** Slab-I mark rendered as absolute-positioned divs. Size: 26×26 px */
+/** Slab-I mark rendered as absolute-positioned divs. Size: 26Ã—26 px */
 function SlabIMark() {
   const s = "#ECEFF3";
   return (
@@ -74,7 +74,7 @@ export function makePageOg(config: PageOgConfig) {
         }}
       />
 
-      {/* Cyan glow — top-left */}
+      {/* Cyan glow â€” top-left */}
       <div
         style={{
           position: "absolute",
@@ -88,7 +88,7 @@ export function makePageOg(config: PageOgConfig) {
         }}
       />
 
-      {/* Blue glow — bottom-right */}
+      {/* Blue glow â€” bottom-right */}
       <div
         style={{
           position: "absolute",
@@ -102,7 +102,7 @@ export function makePageOg(config: PageOgConfig) {
         }}
       />
 
-      {/* Right panel — only when items provided */}
+      {/* Right panel â€” only when items provided */}
       {hasPanel && (
         <>
           {/* Shadow card */}
@@ -229,7 +229,7 @@ export function makePageOg(config: PageOgConfig) {
               letterSpacing: "0.16em",
             }}
           >
-            INOVENSE
+            AUTERIM
           </div>
         </div>
 

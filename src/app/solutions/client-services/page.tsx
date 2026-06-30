@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import Link from "next/link";
@@ -19,13 +19,13 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/solutions/client-services",
-    title: "Client Services | Inovense",
+    title: "Client Services | Auterim",
     description: "AI operators for client-facing teams. Onboarding automation, status reporting, account health monitoring, and escalation routing at scale.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Client Services | Inovense",
+    title: "Client Services | Auterim",
     description: "AI operators for client-facing teams. Onboarding automation, status reporting, account health monitoring, and escalation routing at scale.",
   },
 };
@@ -119,7 +119,7 @@ export default function ClientServicesPage() {
                 className="font-mono text-[11px] uppercase tracking-[0.14em]"
                 style={{ color: "#4A4F57" }}
               >
-                Where client services teams use Inovense
+                Where client services teams use Auterim
               </span>
               <h2
                 className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"

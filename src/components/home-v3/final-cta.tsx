@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import Reveal from "@/components/reveal";
 import { Icon } from "./icons";
 import { appHref } from "@/lib/urls";
@@ -11,7 +11,7 @@ const TEXT_FAINT = "#454A51";
 const CYAN = "#4DE8E1";
 const CYAN_LINE = "rgba(77,232,225,0.26)";
 
-function InovenseMark({ size = 36 }: { size?: number }) {
+function AuterimMark({ size = 36 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-hidden>
       <g fill={CYAN}>
@@ -56,7 +56,7 @@ export default function FinalCTA() {
               className="mb-1.5 rounded-2xl p-4"
               style={{ background: "rgba(77,232,225,0.06)", boxShadow: `inset 0 0 0 1px ${CYAN_LINE}` }}
             >
-              <InovenseMark size={36} />
+              <AuterimMark size={36} />
             </div>
             <h2
               className="font-medium"
@@ -67,7 +67,7 @@ export default function FinalCTA() {
               will be run inside an OS.
             </h2>
             <p className="text-base leading-[1.6]" style={{ color: TEXT_DIM, maxWidth: "52ch" }}>
-              Inovense is building the operating layer it deserves. Start with one operator today, expand
+              Auterim is the operating layer for autonomous AI agents. Start with one operator today, expand
               into a full operating team when the value is undeniable.
             </p>
             <div className="mt-2 flex flex-wrap justify-center gap-3">

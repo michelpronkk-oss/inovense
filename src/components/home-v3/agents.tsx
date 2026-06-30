@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import Reveal from "@/components/reveal";
 import { Eyebrow } from "@/components/marketing-ui";
 import { OperatorAvatar } from "@/components/operators/avatar";
@@ -23,7 +23,7 @@ function findOperator(name: string) {
 const AGENTS = [
   {
     op: findOperator("Revenue Operator"),
-    tag: "Sales · Pipeline",
+    tag: "Sales Â· Pipeline",
     bullets: [
       "Triage inbound, enrich, route by ICP",
       "Draft follow-ups in your brand voice",
@@ -35,7 +35,7 @@ const AGENTS = [
   },
   {
     op: findOperator("Marketing Operator"),
-    tag: "Content · SEO · Campaigns",
+    tag: "Content Â· SEO Â· Campaigns",
     bullets: [
       "Generate briefs, drafts and ad angles",
       "Run SEO research against live data",
@@ -47,7 +47,7 @@ const AGENTS = [
   },
   {
     op: findOperator("Client Flow Operator"),
-    tag: "Intake · Onboarding",
+    tag: "Intake Â· Onboarding",
     bullets: [
       "Run intake forms and clarifying threads",
       "Prepare onboarding kits & SOWs",
@@ -55,11 +55,11 @@ const AGENTS = [
       "Keep clients informed at every step",
     ],
     stat: { num: "42", unit: "intakes / week", delta: "+12%" },
-    hint: "Awaiting approval — Northwind kit",
+    hint: "Awaiting approval â€” Northwind kit",
   },
   {
     op: findOperator("Operations Operator"),
-    tag: "Reports · Internal",
+    tag: "Reports Â· Internal",
     bullets: [
       "Compile weekly summaries across tools",
       "Maintain runbooks & SOP clarity",
@@ -84,9 +84,9 @@ export default function AgentsSection() {
             Operators, not chat threads.
           </h2>
           <p className="mt-4 text-[15px] leading-[1.6]" style={{ color: TEXT_MUTE, maxWidth: "58ch" }}>
-            Inovense operators are scoped to a role and trained on the way your business runs. They plan
+            Auterim operators are scoped to a role and trained on the way your business runs. They plan
             multi-step work, act where you&apos;ve allowed it, and hand the rest to a human. These four lead
-            the launch — fifteen in all.
+            the launch â€” fifteen in all.
           </p>
         </div>
       </Reveal>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useTransition } from "react";
 import { submitOnboarding } from "./actions";
@@ -42,7 +42,7 @@ const ONBOARDING_FORM_COPY: Record<ClientLocale, OnboardingFormCopy> = {
       "We have everything we need to get started. You will hear from us shortly with next steps.",
     submitIdle: "Submit onboarding brief",
     submitPending: "Submitting...",
-    submittedLine: "Submitted directly to the Inovense team.",
+    submittedLine: "Submitted directly to the Auterim team.",
   },
   nl: {
     briefLabel: "Onboarding",
@@ -58,7 +58,7 @@ const ONBOARDING_FORM_COPY: Record<ClientLocale, OnboardingFormCopy> = {
       "We hebben alles om te starten. Je ontvangt snel de volgende stap van ons team.",
     submitIdle: "Onboarding versturen",
     submitPending: "Versturen...",
-    submittedLine: "Wordt direct naar het Inovense team verstuurd.",
+    submittedLine: "Wordt direct naar het Auterim team verstuurd.",
   },
 };
 

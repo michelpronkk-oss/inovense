@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import Link from "next/link";
@@ -12,20 +12,20 @@ import {
 
 export const metadata: Metadata = {
   title: "API Reference",
-  description: "Complete REST API for Inovense. Agents, workflows, connectors, approvals, memory, and execution logs. Full programmatic control over every platform layer.",
+  description: "Complete REST API for Auterim. Agents, workflows, connectors, approvals, memory, and execution logs. Full programmatic control over every platform layer.",
   alternates: {
     canonical: "https://inovense.com/api-reference",
   },
   openGraph: {
     url: "https://inovense.com/api-reference",
-    title: "API Reference | Inovense",
-    description: "Complete REST API for Inovense. Agents, workflows, connectors, approvals, memory, and execution logs. Full programmatic control over every platform layer.",
+    title: "API Reference | Auterim",
+    description: "Complete REST API for Auterim. Agents, workflows, connectors, approvals, memory, and execution logs. Full programmatic control over every platform layer.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "API Reference | Inovense",
-    description: "Complete REST API for Inovense. Agents, workflows, connectors, approvals, memory, and execution logs. Full programmatic control over every platform layer.",
+    title: "API Reference | Auterim",
+    description: "Complete REST API for Auterim. Agents, workflows, connectors, approvals, memory, and execution logs. Full programmatic control over every platform layer.",
   },
 };
 

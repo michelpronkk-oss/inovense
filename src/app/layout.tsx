@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { headers } from "next/headers";
 import React from "react";
 import "./globals.css";
@@ -21,10 +21,10 @@ const monoFallbackStack =
 export const metadata: Metadata = {
   metadataBase: new URL(INOVENSE_URL),
   title: {
-    default: "Inovense OS — The AI Operating Layer for Modern Businesses",
-    template: "%s | Inovense",
+    default: "Auterim OS â€” AI agents that run your work.",
+    template: "%s | Auterim",
   },
-  description: "The AI operating layer for modern businesses. Structured agents, policy enforcement, persistent memory, and human approval gates.",
+  description: "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.",
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" },
@@ -35,15 +35,15 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    siteName: INOVENSE_NAME,
-    title: "Inovense OS — The AI Operating Layer for Modern Businesses",
-    description: "The AI operating layer for modern businesses. Structured agents, policy enforcement, persistent memory, and human approval gates.",
+    siteName: "Auterim",
+    title: "Auterim OS â€” AI agents that run your work.",
+    description: "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.",
     url: INOVENSE_URL,
   },
   twitter: {
     card: "summary_large_image",
-    title: "Inovense OS — The AI Operating Layer for Modern Businesses",
-    description: "The AI operating layer for modern businesses. Structured agents, policy enforcement, persistent memory, and human approval gates.",
+    title: "Auterim OS â€” AI agents that run your work.",
+    description: "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.",
   },
   robots: {
     index: true,
@@ -55,16 +55,16 @@ export const metadata: Metadata = {
   },
 };
 
-/* ─── JSON-LD: Organization + WebSite ──────────────────────────────────── */
+/* â”€â”€â”€ JSON-LD: Organization + WebSite â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 const orgSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
   "@id": INOVENSE_ORGANIZATION_ID,
-  name: INOVENSE_NAME,
+  name: "Auterim",
   url: INOVENSE_URL,
   logo: `${INOVENSE_URL}/logo.png`,
-  description: INOVENSE_DESCRIPTION,
+  description: "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.",
   email: "hello@inovense.com",
   foundingDate: "2024",
   contactPoint: [
@@ -78,12 +78,12 @@ const orgSchema = {
   ],
   hasOfferCatalog: {
     "@type": "OfferCatalog",
-    name: "Inovense service lanes",
+    name: "Auterim service lanes",
     itemListElement: INOVENSE_LANES.map((lane) => ({
       "@type": "Offer",
       itemOffered: {
         "@type": "Service",
-        name: `${lane.name} by ${INOVENSE_NAME}`,
+        name: `${lane.name} by Auterim`,
         url: `${INOVENSE_URL}${lane.path}`,
         description: lane.description,
       },
@@ -105,9 +105,9 @@ const websiteSchema = {
   "@context": "https://schema.org",
   "@type": "WebSite",
   "@id": INOVENSE_WEBSITE_ID,
-  name: INOVENSE_NAME,
+  name: "Auterim",
   url: INOVENSE_URL,
-  description: INOVENSE_DESCRIPTION,
+  description: "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.",
   inLanguage: ["en", "nl"],
   publisher: {
     "@id": INOVENSE_ORGANIZATION_ID,

@@ -10,6 +10,7 @@ import { saveWorkspaceSettings } from "./actions";
 import { getEntitlements } from "@/lib/os/entitlements";
 
 type SectionKey = keyof OSSettings;
+type ApprovalPolicyEditableKey = "outboundComms" | "proposals" | "internalReports" | "crmWrites";
 type ApprovalMode = "Always require approval" | "Auto-approve within policy" | "Auto-approve" | "Blocked";
 type NotifyChannel = "Email" | "Slack" | "Slack + email" | "Off";
 
@@ -24,6 +25,7 @@ const APPROVAL_OPTIONS: ApprovalMode[] = [
   "Auto-approve",
   "Blocked",
 ];
+const APPROVAL_EDITABLE_KEYS: ApprovalPolicyEditableKey[] = ["outboundComms", "proposals", "internalReports", "crmWrites"];
 
 const ENV_OPTIONS = ["production", "staging", "development"];
 const REGION_OPTIONS = ["eu-west-1", "us-east-1", "us-west-2"];
@@ -36,7 +38,7 @@ const NOTIFICATION_LABELS: Record<keyof OSSettings["notifications"], string> = {
   newAgentDeployed: "New agent deployed",
 };
 
-const APPROVAL_LABELS: Record<keyof OSSettings["approvalPolicy"], string> = {
+const APPROVAL_LABELS: Record<ApprovalPolicyEditableKey, string> = {
   outboundComms: "Outbound comms",
   proposals: "Proposals",
   internalReports: "Internal reports",
@@ -133,11 +135,18 @@ export default function SettingsPage() {
       .finally(() => setAccountsLoading(false));
   }, [state.currentUser.email, state.currentUser.id, state.workspace.id]);
 
+  const approvalPolicyFields = useMemo<Record<ApprovalPolicyEditableKey, string>>(() => ({
+    outboundComms: state.settings.approvalPolicy.outboundComms,
+    proposals: state.settings.approvalPolicy.proposals,
+    internalReports: state.settings.approvalPolicy.internalReports,
+    crmWrites: state.settings.approvalPolicy.crmWrites,
+  }), [state.settings.approvalPolicy]);
+
   const sections: Array<{ key: SectionKey; title: string; fields: Record<string, string> }> = useMemo(() => ([
     { key: "workspace", title: "Workspace", fields: state.settings.workspace },
-    { key: "approvalPolicy", title: "Approval policy", fields: state.settings.approvalPolicy },
+    { key: "approvalPolicy", title: "Approval policy", fields: approvalPolicyFields },
     { key: "notifications", title: "Notifications", fields: state.settings.notifications },
-  ]), [state.settings]);
+  ]), [approvalPolicyFields, state.settings.notifications, state.settings.workspace]);
 
   const startEdit = (key: SectionKey) => {
     setEditing(key);
@@ -195,6 +204,7 @@ export default function SettingsPage() {
             newAgentDeployed: serializeNotificationValue(notificationDraft.newAgentDeployed),
           }
         : state.settings.notifications,
+      activation: state.settings.activation,
     };
 
     const saveResult = await saveWorkspaceSettings({
@@ -399,7 +409,7 @@ export default function SettingsPage() {
 
             {editing === "approvalPolicy" && (
               <div style={{ display: "grid", gap: 10 }}>
-                {(Object.keys(approvalDraft) as Array<keyof OSSettings["approvalPolicy"]>).map((key) => (
+                {APPROVAL_EDITABLE_KEYS.map((key) => (
                   <div key={key} style={{ display: "grid", gap: 6 }}>
                     <label style={{ fontSize: 12, color: "var(--text-dim)" }}>{APPROVAL_LABELS[key]}</label>
                     <select

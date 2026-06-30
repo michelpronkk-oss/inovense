@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { INOVENSE_HOME_FAQS } from "@/lib/geo";
 
 const laneClarity = [
@@ -29,12 +29,12 @@ const questionLinks: Record<
   (typeof INOVENSE_HOME_FAQS)[number]["question"],
   { href: string; label: string }
 > = {
-  "What does Inovense do?": { href: "/process", label: "How delivery works" },
+  "What does Auterim do?": { href: "/process", label: "How delivery works" },
   "What is the difference between Build, Systems, and Growth?": {
     href: "/build",
     label: "See Build lane",
   },
-  "Who is Inovense for?": { href: "/intake", label: "Fit and intake" },
+  "Who is Auterim for?": { href: "/intake", label: "Fit and intake" },
   "When should a company invest in systems or automation?": {
     href: "/systems",
     label: "See Systems lane",
@@ -47,7 +47,7 @@ const questionLinks: Record<
     href: "/lead-generation-systems",
     label: "Lead systems service",
   },
-  "What kind of clients are the best fit for Inovense?": {
+  "What kind of teams are the best fit for Auterim?": {
     href: "/intake",
     label: "Best-fit projects",
   },
@@ -175,7 +175,7 @@ export default function GeoAnswers() {
                   </p>
                   <p className="text-xs leading-relaxed text-zinc-500">{faq.answer}</p>
                   <p className="mt-2 text-[11px] text-zinc-600 transition-colors group-hover:text-zinc-400">
-                    {questionLinks[faq.question].label} →
+                    {questionLinks[faq.question].label} â†’
                   </p>
                 </Link>
               ))}

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import { PageShell } from "@/components/marketing-ui";
@@ -23,10 +23,10 @@ import {
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Inovense | AI Operating Layer for Modern Businesses",
+    absolute: "Auterim | AI agents that run your work.",
   },
   description:
-    "Inovense OS is a self-serve AI operating layer for modern businesses. Operators propose, policies enforce, humans approve, and every action is logged.",
+    "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.",
   alternates: {
     canonical: "https://inovense.com",
     languages: {
@@ -37,25 +37,25 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com",
-    title: "Inovense | AI Operating Layer for Modern Businesses",
+    title: "Auterim | AI agents that run your work.",
     description:
-      "Inovense OS is a self-serve AI operating layer for modern businesses. Operators propose, policies enforce, humans approve, and every action is logged.",
+      "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.",
     images: [
       {
         url: "/opengraph-image",
-        alt: "Inovense | Web, Systems, and Growth Built to Perform",
+        alt: "Auterim | AI agents that run your work.",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Inovense | AI Operating Layer for Modern Businesses",
+    title: "Auterim | AI agents that run your work.",
     description:
-      "Inovense OS is a self-serve AI operating layer for modern businesses. Operators propose, policies enforce, humans approve, and every action is logged.",
+      "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.",
     images: [
       {
         url: "/opengraph-image",
-        alt: "Inovense | Web, Systems, and Growth Built to Perform",
+        alt: "Auterim | AI agents that run your work.",
       },
     ],
   },
@@ -66,9 +66,9 @@ const homePageSchema = {
   "@type": "WebPage",
   "@id": `${INOVENSE_URL}/#home`,
   url: INOVENSE_URL,
-  name: "Inovense | AI Operating Layer for Modern Businesses",
+  name: "Auterim | AI agents that run your work.",
   description:
-    "Inovense OS is a self-serve AI operating layer for modern businesses. Connect tools, deploy operators, enforce policies, and execute workflows safely.",
+    "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.",
   isPartOf: {
     "@id": INOVENSE_WEBSITE_ID,
   },

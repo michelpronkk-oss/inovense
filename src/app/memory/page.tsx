@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import Link from "next/link";
@@ -18,13 +18,13 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/memory",
-    title: "Memory & Context | Inovense",
+    title: "Memory & Context | Auterim",
     description: "Persistent company memory that gives every AI operator full context, history, and institutional knowledge across every run and every agent.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Memory & Context | Inovense",
+    title: "Memory & Context | Auterim",
     description: "Persistent company memory that gives every AI operator full context, history, and institutional knowledge across every run and every agent.",
   },
 };

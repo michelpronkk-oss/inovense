@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { listSlackChannels, SlackExecutionError, validateSlackAlertChannel } from "@/lib/operators/executors/slack";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
@@ -105,7 +105,7 @@ export async function PATCH(req: NextRequest) {
         if (validation.channelType === "private") {
           return NextResponse.json({
             error: "slack_private_channel_invite_required",
-            message: "Invite Inovense to this private channel first, then refresh channels.",
+            message: "Invite Auterim to this private channel first, then refresh channels.",
             channelStatus: "invite_required",
           }, { status: 409 });
         }
@@ -113,7 +113,7 @@ export async function PATCH(req: NextRequest) {
           error: "slack_channel_join_failed",
           message: validation.reason === "slack_rate_limited"
             ? "Slack rate limit reached. Try again in a moment."
-            : "Inovense could not join this public channel automatically. Try again or pick another channel.",
+            : "Auterim could not join this public channel automatically. Try again or pick another channel.",
           channelStatus: "join_failed",
           details: { reason: validation.reason },
         }, { status: 409 });
@@ -127,7 +127,7 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({
           error: error.details.code || "slack_channels_failed",
           message: missingJoinScope
-            ? "Reconnect Slack with channels:join permission to let Inovense join public channels automatically."
+            ? "Reconnect Slack with channels:join permission to let Auterim join public channels automatically."
             : error.message,
           channelStatus: missingJoinScope ? "reconnect_required" : undefined,
           details: error.details,

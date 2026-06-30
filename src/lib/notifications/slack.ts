@@ -1,4 +1,4 @@
-import { sendSlackInternalNotification, SlackExecutionError } from "@/lib/operators/executors/slack";
+﻿import { sendSlackInternalNotification, SlackExecutionError } from "@/lib/operators/executors/slack";
 import { logOperatorEvent } from "@/lib/operators/logging";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
@@ -56,7 +56,7 @@ function stripSubjectPrefix(value: string): string {
 
 function shorten(value: string, max: number): string {
   const clean = value.replace(/\s+/g, " ").trim();
-  return clean.length > max ? `${clean.slice(0, max - 1).trimEnd()}…` : clean;
+  return clean.length > max ? `${clean.slice(0, max - 1).trimEnd()}â€¦` : clean;
 }
 
 function resolveContactName(input: SendSlackApprovalNotificationInput): string {
@@ -114,20 +114,20 @@ function buildApprovalCreatedMessage(input: SendSlackApprovalNotificationInput):
   const lines: string[] = [header, "", `${contactName} asked about ${topic}.`];
   if (bullets.length > 0) {
     lines.push("", "Prepared:");
-    bullets.forEach((bullet) => lines.push(`• ${bullet}`));
+    bullets.forEach((bullet) => lines.push(`â€¢ ${bullet}`));
   }
   const meta2: string[] = [];
   if (input.confidence) meta2.push(`Confidence: ${input.confidence}`);
   if (input.risk) meta2.push(`Risk: ${input.risk}`);
   if (meta2.length > 0) lines.push("", ...meta2);
-  if (input.approvalUrl) lines.push("", "Review in Inovense:", input.approvalUrl);
+  if (input.approvalUrl) lines.push("", "Review in Auterim:", input.approvalUrl);
   return lines.join("\n");
 }
 
 function buildMessage(input: SendSlackApprovalNotificationInput): string {
   if (input.eventType === "approval_approved") return "Approval approved.";
   if (input.eventType === "approval_rejected") return "Approval rejected. The operator learned from the decision.";
-  if (input.eventType === "execution_failed") return "Execution failed. Review the approval logs in Inovense.";
+  if (input.eventType === "execution_failed") return "Execution failed. Review the approval logs in Auterim.";
   return buildApprovalCreatedMessage(input);
 }
 

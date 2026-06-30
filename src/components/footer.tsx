@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 
 const platformLinks = [
   { label: "Overview", href: "/" },
@@ -87,9 +87,9 @@ export default function Footer() {
         {/* Main grid */}
         <div className="grid grid-cols-2 gap-12 md:grid-cols-[1.4fr_1fr_1fr_1fr_1fr] md:gap-8">
 
-          {/* Brand column — spans full width on mobile */}
+          {/* Brand column â€” spans full width on mobile */}
           <div className="col-span-2 flex flex-col items-start md:col-span-1">
-            <Link href="/" className="mb-5 inline-flex items-center gap-2.5 self-start transition-opacity hover:opacity-75" aria-label="Inovense">
+            <Link href="/" className="mb-5 inline-flex items-center gap-2.5 self-start transition-opacity hover:opacity-75" aria-label="Auterim">
               <svg width="18" height="18" viewBox="0 0 64 64" fill="none" aria-hidden="true">
                 <g fill="#ECEFF3">
                   <rect x="10" y="10" width="44" height="9"/>
@@ -98,11 +98,11 @@ export default function Footer() {
                   <rect x="10" y="45" width="44" height="9"/>
                 </g>
               </svg>
-              <span className="text-[13px] font-semibold tracking-[0.16em] text-zinc-200">INOVENSE</span>
+              <span className="text-[13px] font-semibold tracking-[0.16em] text-zinc-200">AUTERIM</span>
             </Link>
 
             <p className="max-w-[220px] text-sm leading-relaxed text-zinc-500">
-              The AI operating layer for modern businesses. Built for serious operators.
+              AI agents that run your work. Built for serious operators.
             </p>
 
             {/* Status indicator */}
@@ -126,7 +126,7 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="mt-16 flex flex-col items-start justify-between gap-3 border-t border-white/[0.05] pt-7 sm:flex-row sm:items-center">
           <p className="text-xs text-zinc-700">
-            &copy; 2026 Inovense, Inc. All rights reserved.
+            &copy; 2026 Auterim, Inc. All rights reserved.
           </p>
           <div className="flex items-center gap-5">
             {legalLinks.map(({ label, href }) => (

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import Link from "next/link";
@@ -12,20 +12,20 @@ import {
 
 export const metadata: Metadata = {
   title: "Architecture",
-  description: "Technical overview of the Inovense operating layer. Agent runtime, policy engine, approval gates, persistent memory, and the connector framework.",
+  description: "Technical overview of the Auterim operating layer. Agent runtime, policy engine, approval gates, persistent memory, and the connector framework.",
   alternates: {
     canonical: "https://inovense.com/architecture",
   },
   openGraph: {
     url: "https://inovense.com/architecture",
-    title: "Architecture | Inovense",
-    description: "Technical overview of the Inovense operating layer. Agent runtime, policy engine, approval gates, persistent memory, and the connector framework.",
+    title: "Architecture | Auterim",
+    description: "Technical overview of the Auterim operating layer. Agent runtime, policy engine, approval gates, persistent memory, and the connector framework.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Architecture | Inovense",
-    description: "Technical overview of the Inovense operating layer. Agent runtime, policy engine, approval gates, persistent memory, and the connector framework.",
+    title: "Architecture | Auterim",
+    description: "Technical overview of the Auterim operating layer. Agent runtime, policy engine, approval gates, persistent memory, and the connector framework.",
   },
 };
 
@@ -100,7 +100,7 @@ export default function ArchitecturePage() {
           <PageHero
             eyebrow="Resources"
             heading="Built to run your business, not just assist it."
-            description="A technical overview of how the Inovense operating layer works. Five distinct layers, each with a clear responsibility."
+            description="A technical overview of how the Auterim operating layer works. Five distinct layers, each with a clear responsibility."
           >
             <Link
               href="/docs"

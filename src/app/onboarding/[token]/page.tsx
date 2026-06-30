@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { getClientLocaleForLeadSource, type ClientLocale } from "@/lib/client-locale";
@@ -62,12 +62,12 @@ export async function generateMetadata({
     const lead = await getOnboardingLeadByToken(token);
     const locale = getClientLocaleForLeadSource(lead?.lead_source);
     return {
-      title: `${ONBOARDING_PAGE_COPY[locale].pageTitle} | Inovense`,
+      title: `${ONBOARDING_PAGE_COPY[locale].pageTitle} | Auterim`,
       robots: { index: false, follow: false },
     };
   } catch {
     return {
-      title: "Onboarding | Inovense",
+      title: "Onboarding | Auterim",
       robots: { index: false, follow: false },
     };
   }

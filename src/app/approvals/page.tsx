@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import Link from "next/link";
@@ -19,13 +19,13 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/approvals",
-    title: "Approvals | Inovense",
+    title: "Approvals | Auterim",
     description: "Human-in-the-loop approval gates between agent proposals and execution. Operators act at speed, humans stay in control. Every decision is logged.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Approvals | Inovense",
+    title: "Approvals | Auterim",
     description: "Human-in-the-loop approval gates between agent proposals and execution. Operators act at speed, humans stay in control. Every decision is logged.",
   },
 };

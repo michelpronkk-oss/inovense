@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -44,7 +44,7 @@ export default function Nav() {
       <div className="mx-auto flex h-18 max-w-[1360px] items-center justify-between px-6 pt-3">
 
         {/* Logo */}
-        <Link href="/" className="flex shrink-0 items-center gap-2.5 transition-opacity hover:opacity-80" aria-label="Inovense">
+        <Link href="/" className="flex shrink-0 items-center gap-2.5 transition-opacity hover:opacity-80" aria-label="Auterim">
           <svg width="20" height="20" viewBox="0 0 64 64" fill="none" aria-hidden="true">
             <g fill="#ECEFF3">
               <rect x="10" y="10" width="44" height="9"/>
@@ -53,7 +53,7 @@ export default function Nav() {
               <rect x="10" y="45" width="44" height="9"/>
             </g>
           </svg>
-          <span className="text-sm font-semibold tracking-[0.16em] text-zinc-100">INOVENSE</span>
+          <span className="text-sm font-semibold tracking-[0.16em] text-zinc-100">AUTERIM</span>
         </Link>
 
         {/* Desktop nav */}
@@ -127,7 +127,7 @@ export default function Nav() {
           <SheetContent side="right" className="w-72 border-zinc-800 bg-zinc-950 px-6">
             <div className="flex h-full flex-col">
 
-              <Link href="/" onClick={() => setOpen(false)} className="mt-1 inline-flex items-center gap-2.5" aria-label="Inovense">
+              <Link href="/" onClick={() => setOpen(false)} className="mt-1 inline-flex items-center gap-2.5" aria-label="Auterim">
                 <svg width="20" height="20" viewBox="0 0 64 64" fill="none" aria-hidden="true">
                   <g fill="#ECEFF3">
                     <rect x="10" y="10" width="44" height="9"/>
@@ -136,7 +136,7 @@ export default function Nav() {
                     <rect x="10" y="45" width="44" height="9"/>
                   </g>
                 </svg>
-                <span className="text-sm font-semibold tracking-[0.16em] text-zinc-100">INOVENSE</span>
+                <span className="text-sm font-semibold tracking-[0.16em] text-zinc-100">AUTERIM</span>
               </Link>
 
               <nav className="mt-10 flex flex-col">

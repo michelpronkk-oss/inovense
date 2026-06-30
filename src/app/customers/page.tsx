@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import Link from "next/link";
@@ -12,36 +12,36 @@ import {
 
 export const metadata: Metadata = {
   title: "Customers",
-  description: "How operators use Inovense to run more of their business with fewer manual handoffs. Real use cases from revenue teams, founders, and content operators.",
+  description: "How operators use Auterim to run more of their business with fewer manual handoffs. Real use cases from revenue teams, founders, and content operators.",
   alternates: {
     canonical: "https://inovense.com/customers",
   },
   openGraph: {
     url: "https://inovense.com/customers",
-    title: "Customers | Inovense",
-    description: "How operators use Inovense to run more of their business with fewer manual handoffs. Real use cases from revenue teams, founders, and content operators.",
+    title: "Customers | Auterim",
+    description: "How operators use Auterim to run more of their business with fewer manual handoffs. Real use cases from revenue teams, founders, and content operators.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Customers | Inovense",
-    description: "How operators use Inovense to run more of their business with fewer manual handoffs. Real use cases from revenue teams, founders, and content operators.",
+    title: "Customers | Auterim",
+    description: "How operators use Auterim to run more of their business with fewer manual handoffs. Real use cases from revenue teams, founders, and content operators.",
   },
 };
 
 const useCases = [
   {
-    context: "Design partner · consulting team",
+    context: "Design partner Â· consulting team",
     description:
-      "A founder running a 4-person consultancy uses Inovense to manage client follow-ups and onboarding without a dedicated ops hire. One operator handles the work that would otherwise require a full-time coordinator.",
+      "A founder running a 4-person consultancy uses Auterim to manage client follow-ups and onboarding without a dedicated ops hire. One operator handles the work that would otherwise require a full-time coordinator.",
   },
   {
-    context: "Design partner · B2B SaaS sales team",
+    context: "Design partner Â· B2B SaaS sales team",
     description:
       "A sales team at a B2B SaaS company deployed a Revenue Operator to work every lead in their CRM. Follow-ups run on schedule, deal intelligence surfaces automatically, and the team focuses on closing.",
   },
   {
-    context: "Design partner · distributed content team",
+    context: "Design partner Â· distributed content team",
     description:
       "A content team uses an Operator to draft and schedule across LinkedIn and email without a coordinator. Brand guidelines live in memory. Every post passes through an approval gate before it goes out.",
   },
@@ -56,7 +56,7 @@ export default function CustomersPage() {
           {/* Hero */}
           <PageHero
             eyebrow="Company"
-            heading="Early design partners running Inovense in production workflows."
+            heading="Early design partners running Auterim in production workflows."
             description="We work with early design partners who are building real operator workflows. No logo wall, no fictional case studies, only implementation patterns we can stand behind."
           >
             <Link

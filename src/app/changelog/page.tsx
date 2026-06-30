@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import {
@@ -9,20 +9,20 @@ import {
 
 export const metadata: Metadata = {
   title: "Changelog",
-  description: "Updates and improvements across the Inovense operating layer. Agent runtime, workflow execution, connector framework, and platform releases.",
+  description: "Updates and improvements across the Auterim operating layer. Agent runtime, workflow execution, connector framework, and platform releases.",
   alternates: {
     canonical: "https://inovense.com/changelog",
   },
   openGraph: {
     url: "https://inovense.com/changelog",
-    title: "Changelog | Inovense",
-    description: "Updates and improvements across the Inovense operating layer. Agent runtime, workflow execution, connector framework, and platform releases.",
+    title: "Changelog | Auterim",
+    description: "Updates and improvements across the Auterim operating layer. Agent runtime, workflow execution, connector framework, and platform releases.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Changelog | Inovense",
-    description: "Updates and improvements across the Inovense operating layer. Agent runtime, workflow execution, connector framework, and platform releases.",
+    title: "Changelog | Auterim",
+    description: "Updates and improvements across the Auterim operating layer. Agent runtime, workflow execution, connector framework, and platform releases.",
   },
 };
 
@@ -50,7 +50,7 @@ const entries = [
   {
     date: "March 2026",
     version: "Preview v0.2",
-    title: "Inovense OS foundation",
+    title: "Auterim OS foundation",
     changes: [
       "Core app experience launched across operators, workflows, approvals, memory, connectors, and logs.",
       "Initial agent runtime and mock tool execution flow established for local end-to-end behavior.",
@@ -69,7 +69,7 @@ export default function ChangelogPage() {
           <PageHero
             eyebrow="Resources"
             heading="What shipped."
-            description="Continuous releases across the Inovense operating layer. Updated with every version."
+            description="Continuous releases across the Auterim operating layer. Updated with every version."
           />
 
           {/* Timeline */}

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import Link from "next/link";
@@ -13,20 +13,20 @@ import {
 
 export const metadata: Metadata = {
   title: "Trust Center",
-  description: "Security practices, data handling, and compliance posture for the Inovense platform. Data boundaries, no training on your data, full audit trail.",
+  description: "Security practices, data handling, and compliance posture for the Auterim platform. Data boundaries, no training on your data, full audit trail.",
   alternates: {
     canonical: "https://inovense.com/trust",
   },
   openGraph: {
     url: "https://inovense.com/trust",
-    title: "Trust Center | Inovense",
-    description: "Security practices, data handling, and compliance posture for the Inovense platform. Data boundaries, no training on your data, full audit trail.",
+    title: "Trust Center | Auterim",
+    description: "Security practices, data handling, and compliance posture for the Auterim platform. Data boundaries, no training on your data, full audit trail.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Trust Center | Inovense",
-    description: "Security practices, data handling, and compliance posture for the Inovense platform. Data boundaries, no training on your data, full audit trail.",
+    title: "Trust Center | Auterim",
+    description: "Security practices, data handling, and compliance posture for the Auterim platform. Data boundaries, no training on your data, full audit trail.",
   },
 };
 
@@ -77,7 +77,7 @@ export default function TrustPage() {
           <PageHero
             eyebrow="Company"
             heading="You run the system. We run the infrastructure."
-            description="Security posture and data handling for the Inovense platform. Built for operators who need to know exactly what happens to their business data."
+            description="Security posture and data handling for the Auterim platform. Built for operators who need to know exactly what happens to their business data."
           >
             <Link
               href="/security"

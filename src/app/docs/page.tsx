@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import Link from "next/link";
@@ -14,20 +14,20 @@ import Reveal from "@/components/reveal";
 
 export const metadata: Metadata = {
   title: "Docs",
-  description: "Guides, API reference, and architecture documentation for the Inovense operating layer. Deploy, configure, and scale your operators.",
+  description: "Guides, API reference, and architecture documentation for the Auterim operating layer. Deploy, configure, and scale your operators.",
   alternates: {
     canonical: "https://inovense.com/docs",
   },
   openGraph: {
     url: "https://inovense.com/docs",
-    title: "Docs | Inovense",
-    description: "Guides, API reference, and architecture documentation for the Inovense operating layer. Deploy, configure, and scale your operators.",
+    title: "Docs | Auterim",
+    description: "Guides, API reference, and architecture documentation for the Auterim operating layer. Deploy, configure, and scale your operators.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Docs | Inovense",
-    description: "Guides, API reference, and architecture documentation for the Inovense operating layer. Deploy, configure, and scale your operators.",
+    title: "Docs | Auterim",
+    description: "Guides, API reference, and architecture documentation for the Auterim operating layer. Deploy, configure, and scale your operators.",
   },
 };
 
@@ -93,7 +93,7 @@ export default function DocsPage() {
             <PageHero
               eyebrow="Documentation"
               heading="Everything you need to operate."
-              description="Guides, API reference, and architecture docs for every layer of the Inovense platform."
+              description="Guides, API reference, and architecture docs for every layer of the Auterim platform."
             >
               <Link
                 href="/api-reference"

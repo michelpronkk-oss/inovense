@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import Link from "next/link";
@@ -21,13 +21,13 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://inovense.com/workflows",
-    title: "Workflows | Inovense",
+    title: "Workflows | Auterim",
     description: "Structured execution chains that move work across agents, connectors, and approval gates without manual handoff. Every step logged and auditable.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Workflows | Inovense",
+    title: "Workflows | Auterim",
     description: "Structured execution chains that move work across agents, connectors, and approval gates without manual handoff. Every step logged and auditable.",
   },
 };

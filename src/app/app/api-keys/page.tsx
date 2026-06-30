@@ -1,12 +1,12 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { KeyIcon, PlusIcon } from "@/components/dashboard/icons";
 
 const INITIAL_KEYS = [
-  { name: "Production API key", prefix: "ino_prod_••••••••••••3f8a", created: "14 days ago", last: "2m ago", scope: "Full access" },
-  { name: "Revenue Operator key", prefix: "ino_rv_••••••••••••7c2e", created: "8 days ago", last: "14m ago", scope: "Agent - read/write" },
-  { name: "Webhook signing secret", prefix: "ino_wh_••••••••••••9b1d", created: "30 days ago", last: "1h ago", scope: "Webhooks only" },
+  { name: "Production API key", prefix: "ino_prod_â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢3f8a", created: "14 days ago", last: "2m ago", scope: "Full access" },
+  { name: "Revenue Operator key", prefix: "ino_rv_â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢7c2e", created: "8 days ago", last: "14m ago", scope: "Agent - read/write" },
+  { name: "Webhook signing secret", prefix: "ino_wh_â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢9b1d", created: "30 days ago", last: "1h ago", scope: "Webhooks only" },
 ];
 
 export default function ApiKeysPage() {
@@ -14,7 +14,7 @@ export default function ApiKeysPage() {
 
   const createKey = () => {
     const suffix = Math.random().toString(16).slice(2, 6);
-    setKeys((prev) => [{ name: "New API key", prefix: `ino_new_••••••••••••${suffix}`, created: "just now", last: "never", scope: "Read only" }, ...prev]);
+    setKeys((prev) => [{ name: "New API key", prefix: `ino_new_â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢${suffix}`, created: "just now", last: "never", scope: "Read only" }, ...prev]);
   };
 
   return (
@@ -23,7 +23,7 @@ export default function ApiKeysPage() {
         <div>
           <span className="os-greet">API access - {keys.length} keys</span>
           <h1>API keys</h1>
-          <div className="os-page-sub">Manage authentication credentials for Inovense OS integrations and the agent SDK.</div>
+          <div className="os-page-sub">Manage authentication credentials for Auterim OS integrations and the agent SDK.</div>
         </div>
         <div className="os-page-actions">
           <button className="btn btn-primary btn-sm" onClick={createKey}><PlusIcon size={12} /> Create key</button>
@@ -53,7 +53,7 @@ export default function ApiKeysPage() {
         ))}
       </div>
       <div style={{ padding: "14px 18px", borderRadius: 12, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", fontSize: 12.5, color: "var(--text-mute)", lineHeight: 1.6 }}>
-        API keys grant access to the Inovense OS API. Treat them like passwords. Rotate every 90 days. Never commit to source control.
+        API keys grant access to the Auterim OS API. Treat them like passwords. Rotate every 90 days. Never commit to source control.
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { schedules } from "@trigger.dev/sdk/v3";
+﻿import { schedules } from "@trigger.dev/sdk/v3";
 import { sendSlackInternalNotification } from "@/lib/operators/executors/slack";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
@@ -98,7 +98,7 @@ async function runWorkspaceDailyBrief(workspaceId: string) {
   ].filter(Boolean).join(", ") || "none";
 
   const message = [
-    "Daily Inovense brief:",
+    "Daily Auterim brief:",
     `Revenue: ${revenueApprovalsCreated} ${revenueApprovalsCreated === 1 ? "opportunity" : "opportunities"} prepared.`,
     `Client Flow: ${clientFlowApprovalsCreated} client ${clientFlowApprovalsCreated === 1 ? "request" : "requests"} prepared.`,
     `Actions executed: ${actionsLine}.`,

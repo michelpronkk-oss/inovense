@@ -1,4 +1,4 @@
-import Reveal from "@/components/reveal";
+﻿import Reveal from "@/components/reveal";
 import { Eyebrow } from "@/components/marketing-ui";
 import { Icon } from "./icons";
 
@@ -13,30 +13,30 @@ const CYAN_LINE = "rgba(77,232,225,0.28)";
 
 const BUSINESS: { icon: Parameters<typeof Icon>[0]["name"]; name: string; sub: string }[] = [
   { icon: "briefcase", name: "CRM", sub: "Salesforce / HubSpot" },
-  { icon: "inbox", name: "Inbox & calendar", sub: "Gmail · Outlook" },
-  { icon: "doc", name: "Docs", sub: "Notion · Drive · Confluence" },
-  { icon: "database", name: "Data", sub: "Warehouse · Postgres · Stripe" },
-  { icon: "message", name: "Comms", sub: "Slack · Teams · Intercom" },
+  { icon: "inbox", name: "Inbox & calendar", sub: "Gmail Â· Outlook" },
+  { icon: "doc", name: "Docs", sub: "Notion Â· Drive Â· Confluence" },
+  { icon: "database", name: "Data", sub: "Warehouse Â· Postgres Â· Stripe" },
+  { icon: "message", name: "Comms", sub: "Slack Â· Teams Â· Intercom" },
 ];
 
 const AI_TOOLS: { icon: Parameters<typeof Icon>[0]["name"]; name: string; sub: string; cyan?: boolean }[] = [
-  { icon: "spark", name: "Frontier models", sub: "GPT · Claude · Gemini", cyan: true },
-  { icon: "layers", name: "Embeddings", sub: "Voyage · OpenAI · Cohere" },
-  { icon: "globe", name: "Browser & search", sub: "Web · Crawl · Retrieve" },
+  { icon: "spark", name: "Frontier models", sub: "GPT Â· Claude Â· Gemini", cyan: true },
+  { icon: "layers", name: "Embeddings", sub: "Voyage Â· OpenAI Â· Cohere" },
+  { icon: "globe", name: "Browser & search", sub: "Web Â· Crawl Â· Retrieve" },
   { icon: "cube", name: "Code execution", sub: "Sandboxed runtime" },
-  { icon: "cpu", name: "Custom tools", sub: "Internal APIs · webhooks" },
+  { icon: "cpu", name: "Custom tools", sub: "Internal APIs Â· webhooks" },
 ];
 
 const PILLARS = [
   { num: "01", name: "Connectors", sub: "Auth + sync layer" },
-  { num: "02", name: "Operator runtime", sub: "Plans · acts · escalates" },
+  { num: "02", name: "Operator runtime", sub: "Plans Â· acts Â· escalates" },
   { num: "03", name: "Memory & context", sub: "Indexed business graph" },
   { num: "04", name: "Policy & boundaries", sub: "Allow-lists, approvals" },
   { num: "05", name: "Execution & audit", sub: "Logs, retries, replay" },
 ];
 
 const ROW = [
-  { num: "01", title: "Operators that operate", body: "Specialized AI workers — Revenue, Marketing, Client Flow, Operations — each scoped to real outcomes, not chat." },
+  { num: "01", title: "Operators that operate", body: "Specialized AI workers â€” Revenue, Marketing, Client Flow, Operations â€” each scoped to real outcomes, not chat." },
   { num: "02", title: "Connected to systems", body: "Bi-directional connectors to CRM, inbox, calendar, billing, docs and data warehouses. Reads, writes, observes." },
   { num: "03", title: "Inside your boundaries", body: "Policies, approval gates, allow-lists and audit logs. Operators act only where you've explicitly said yes." },
 ];
@@ -123,7 +123,7 @@ function OperatingLayerDiagram() {
 
         <Connector />
 
-        {/* Center: Inovense OS */}
+        {/* Center: Auterim OS */}
         <div className="p-1 min-[901px]:p-2">
           <div
             className="relative flex h-full min-h-[280px] flex-col gap-1.5 overflow-hidden rounded-[14px] p-4"
@@ -145,7 +145,7 @@ function OperatingLayerDiagram() {
                 </g>
               </svg>
               <span className="font-medium" style={{ color: TEXT, letterSpacing: "0.12em", fontSize: 11 }}>
-                INOVENSE&nbsp;OS
+                AUTERIM&nbsp;OS
               </span>
             </div>
             <div className="flex flex-1 flex-col gap-1.5">
@@ -205,7 +205,7 @@ export default function OperatingLayerSection() {
             business systems and AI.
           </h2>
           <p className="mt-4 text-[15px] leading-[1.6]" style={{ color: TEXT_MUTE, maxWidth: "60ch" }}>
-            Inovense OS sits in the middle: it gives AI operators structured access to your tools, memory of
+            Auterim OS sits in the middle: it gives AI operators structured access to your tools, memory of
             your business, the right to act inside policy, and a queue when humans need to weigh in. Models
             don&apos;t run in chat windows. They run as operators.
           </p>

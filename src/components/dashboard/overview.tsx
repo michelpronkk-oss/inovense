@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -15,9 +15,9 @@ const scanRoutes: Record<ScanKey, string> = {
 };
 
 const operatorMeta: Record<ScanKey, { mark: string; color: string; tag: string }> = {
-  revenue: { mark: "RV", color: "#4DE8E1", tag: "Revenue · Pipeline" },
-  client_flow: { mark: "CF", color: "#5B8DEF", tag: "Client · Onboarding" },
-  operations: { mark: "OP", color: "#51D88A", tag: "Operations · Internal" },
+  revenue: { mark: "RV", color: "#4DE8E1", tag: "Revenue Â· Pipeline" },
+  client_flow: { mark: "CF", color: "#5B8DEF", tag: "Client Â· Onboarding" },
+  operations: { mark: "OP", color: "#51D88A", tag: "Operations Â· Internal" },
 };
 
 const connectorMeta: Record<string, { letter: string; color: string }> = {
@@ -172,7 +172,7 @@ export function OSOverview() {
       <div className="os-page">
         <div className="os-page-head">
           <div>
-            <span className="os-greet">Inovense OS</span>
+            <span className="os-greet">Auterim OS</span>
             <h1>Overview unavailable</h1>
             <div className="os-page-sub">{error || "Could not load real dashboard state."}</div>
           </div>
@@ -190,6 +190,26 @@ export function OSOverview() {
   const healthyConnectors = overview.connectors.filter((c) => c.connected).length;
   const mode = autonomyLabel(overview.policy.autonomyMode);
   const busy = busyScan !== null || busyApproval !== null;
+  const preferredDemoPath = state.settings.activation?.preferredDemoPath ?? state.onboarding.preferredDemoPath ?? "operations";
+  const activationLabels: Record<string, string> = {
+    operations: "Operations",
+    client_flow: "Client Flow",
+    revenue: "Revenue",
+  };
+  const activationOperator = overview.operators.find((operator) => operator.key === preferredDemoPath);
+  const activationComplete = Boolean(state.settings.activation?.completedAt || state.settings.activation?.firstApprovalCreatedAt);
+  const activationSetupIncomplete = !activationOperator || activationOperator.status === "needs_setup";
+  const showActivationCard = !activationComplete && (activationSetupIncomplete || !state.settings.activation?.firstRunAt);
+  const activationProgress = state.settings.activation?.firstRunAt
+    ? 5
+    : activationSetupIncomplete
+      ? Math.max(1, healthyConnectors)
+      : 4;
+  const activationNextStep = activationSetupIncomplete
+    ? "Connect the required tools for this path."
+    : state.settings.activation?.firstRunAt
+      ? "Review the first approval when a signal is found."
+      : "Run your first operator check.";
 
   const kpis = [
     { label: "Pending approvals", val: pending, sub: overview.approvals.highRiskCount > 0 ? `${overview.approvals.highRiskCount} high risk` : "Waiting for review", subCls: overview.approvals.highRiskCount > 0 ? "amber" : "neutral" },
@@ -203,9 +223,9 @@ export function OSOverview() {
       {/* Header */}
       <div className="os-page-head">
         <div>
-          <span className="os-greet">{overview.systemStatus.label} · updated {timeAgo(overview.lastUpdatedAt)}</span>
+          <span className="os-greet">{overview.systemStatus.label} Â· updated {timeAgo(overview.lastUpdatedAt)}</span>
           <h1>{greet}, {firstName}.</h1>
-          <div className="os-page-sub">{pending} approval{pending === 1 ? "" : "s"} waiting · {monitoringCount} operator{monitoringCount === 1 ? "" : "s"} monitoring · running under {mode}.</div>
+          <div className="os-page-sub">{pending} approval{pending === 1 ? "" : "s"} waiting Â· {monitoringCount} operator{monitoringCount === 1 ? "" : "s"} monitoring Â· running under {mode}.</div>
         </div>
         <div className="os-page-actions" style={{ alignItems: "center" }}>
           <span className="pill">{mode}</span>
@@ -232,12 +252,24 @@ export function OSOverview() {
         ))}
       </div>
 
+      {showActivationCard && (
+        <div className="p" style={{ padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+          <div style={{ minWidth: 220 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Finish your first workflow</div>
+            <div style={{ fontSize: 12.5, color: "var(--text-dim)", lineHeight: 1.5 }}>
+              {activationLabels[preferredDemoPath] ?? "Operations"} demo - {activationProgress}/6 steps ready. {activationNextStep}
+            </div>
+          </div>
+          <Link className="btn btn-primary btn-sm" href="/app/activate">Continue setup</Link>
+        </div>
+      )}
+
       {/* Operators + Approvals */}
       <div className="os-grid-2">
         <div className="p">
           <div className="p-head">
             <h3>Active operators</h3>
-            <span className="p-meta">{overview.operators.length} operators · manual checks only</span>
+            <span className="p-meta">{overview.operators.length} operators Â· manual checks only</span>
           </div>
           <div className="ops-grid">
             {overview.operators.map((operator) => {
@@ -263,7 +295,7 @@ export function OSOverview() {
                     </div>
                   </div>
                   <div className="ops-task">
-                    <span>{operator.pendingApprovals} pending · {operator.signalsToday} signals today · checked {timeAgo(operator.lastRunAt)}</span>
+                    <span>{operator.pendingApprovals} pending Â· {operator.signalsToday} signals today Â· checked {timeAgo(operator.lastRunAt)}</span>
                   </div>
                   <div className="ops-foot">
                     <span className="ops-metric"><strong>{operator.actionsToday}</strong> actions today</span>
@@ -304,8 +336,8 @@ export function OSOverview() {
                     <span className={`pill ${approval.riskLevel === "high" ? "pill-rose" : "pill-cyan"}`}>{operatorMark(approval.operatorKey).mark}</span>
                     <span className="appr-row-title">{approval.title}</span>
                   </div>
-                  <div className="appr-row-from">{titleCase(approval.operatorKey)} · {timeAgo(approval.createdAt)}</div>
-                  <div className="appr-row-body">Risk: {approval.riskLevel || "medium"} · {titleCase(approval.policyDecision) || "Approval required"} · rechecked before execution</div>
+                  <div className="appr-row-from">{titleCase(approval.operatorKey)} Â· {timeAgo(approval.createdAt)}</div>
+                  <div className="appr-row-body">Risk: {approval.riskLevel || "medium"} Â· {titleCase(approval.policyDecision) || "Approval required"} Â· rechecked before execution</div>
                   <div className="appr-row-actions">
                     <span className="appr-btn approve" role="button" aria-disabled={busy} onClick={() => { if (!busy) void actOnApproval(approval.id, "approve"); }} style={{ opacity: busy ? 0.5 : 1, cursor: busy ? "default" : "pointer" }}>
                       {isBusy ? "..." : "Approve"}

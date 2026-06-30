@@ -1,13 +1,13 @@
-export const INOVENSE_URL = "https://inovense.com";
-export const INOVENSE_NAME = "Inovense";
+﻿export const INOVENSE_URL = "https://inovense.com";
+export const INOVENSE_NAME = "Auterim";
 export const INOVENSE_ORGANIZATION_ID = `${INOVENSE_URL}/#organization`;
 export const INOVENSE_WEBSITE_ID = `${INOVENSE_URL}/#website`;
 
 export const INOVENSE_OS_DESCRIPTION =
-  "The AI operating layer for modern businesses. Structured agents, policy enforcement, persistent memory, and human approval gates. Built for serious operators.";
+  "The operating layer for autonomous AI agents. Structured agents, policy enforcement, persistent memory, and human approval gates. Built for serious operators.";
 
 export const INOVENSE_DESCRIPTION =
-  "Inovense builds high-performance websites, AI automation workflows, and growth systems for operators and ambitious brands.";
+  "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.";
 
 export const INOVENSE_LANES = [
   {
@@ -32,9 +32,9 @@ export const INOVENSE_LANES = [
 
 export const INOVENSE_HOME_FAQS = [
   {
-    question: "What does Inovense do?",
+    question: "What does Auterim do?",
     answer:
-      "Websites, AI automation, and growth programs. Three service lanes: Build, Systems, and Growth.",
+      "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.",
   },
   {
     question: "What is the difference between Build, Systems, and Growth?",
@@ -42,9 +42,9 @@ export const INOVENSE_HOME_FAQS = [
       "Build fixes websites that don't convert. Systems removes manual bottlenecks. Growth builds SEO, content, and paid media that compound.",
   },
   {
-    question: "Who is Inovense for?",
+    question: "Who is Auterim for?",
     answer:
-      "Companies with momentum that want stronger execution, not generic agency output.",
+      "Operators and teams that want AI agents to prepare and run real work under clear policy and approval controls.",
   },
   {
     question: "When should a company invest in systems or automation?",
@@ -63,9 +63,9 @@ export const INOVENSE_HOME_FAQS = [
       "When capture, routing, and follow-up are disconnected, more traffic just magnifies the leaks.",
   },
   {
-    question: "What kind of clients are the best fit for Inovense?",
+    question: "What kind of teams are the best fit for Auterim?",
     answer:
-      "Companies that value clear scope, high standards, and work they own after delivery.",
+      "Teams that value autonomous execution, serious controls, connected workstreams, and a clean audit trail.",
   },
 ] as const;
 

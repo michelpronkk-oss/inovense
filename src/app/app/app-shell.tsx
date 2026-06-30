@@ -74,7 +74,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       return;
     }
     if (isOnboarded && isOnboardingRoute) {
-      router.replace("/app");
+      router.replace("/app/activate?first=1");
     }
   }, [clientHydrated, isOnboarded, isOnboardingRoute, router]);
 

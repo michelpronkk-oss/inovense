@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import Image from "next/image";
 import { type ReactNode } from "react";
 
@@ -10,7 +10,7 @@ export default function OnboardingLayout({ children }: { children: ReactNode }) 
           <Link href="/" className="transition-opacity hover:opacity-80">
             <Image
               src="/logo.png"
-              alt="Inovense"
+              alt="Auterim"
               width={96}
               height={22}
               className="block h-[22px] w-auto"

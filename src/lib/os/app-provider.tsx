@@ -27,7 +27,8 @@ const DEV_USER_KEY = "inovense-os-dev-user-v1";
 
 type OSAction =
   | { type: "HYDRATE"; state: OSState }
-  | { type: "COMPLETE_ONBOARDING"; onboarding: OnboardingState; workspace: Workspace; currentUser: CurrentUser; connectors: string[]; preferredOperator: string; mainGoals: string[]; approvalOwner: string }
+  | { type: "COMPLETE_ONBOARDING"; onboarding: OnboardingState; workspace: Workspace; currentUser: CurrentUser; connectors: string[]; preferredOperator: string; mainGoals: string[]; approvalOwner: string; preferredDemoPath: NonNullable<OnboardingState["preferredDemoPath"]>; safetyMode: "safe" | "assisted" }
+  | { type: "SET_ACTIVATION"; value: NonNullable<OSSettings["activation"]>; log?: ExecutionLog }
   | { type: "DEPLOY_AGENT"; agent: Agent }
   | { type: "APPROVE"; approvalId: string; runId?: string; agentId: string }
   | { type: "SKIP"; approvalId: string; runId?: string; agentId: string }
@@ -122,6 +123,16 @@ function reducer(state: OSState, action: OSAction): OSState {
             region: action.workspace.region,
             plan: action.workspace.plan,
           },
+          approvalPolicy: {
+            ...state.settings.approvalPolicy,
+            outboundComms: "Always require approval",
+            crmWrites: "Always require approval",
+            customerEmailMode: "approval_required",
+            autonomyMode: action.safetyMode,
+          },
+          activation: {
+            preferredDemoPath: action.preferredDemoPath,
+          },
         },
         currentUser: action.currentUser,
         teamMembers: [{
@@ -161,6 +172,15 @@ function reducer(state: OSState, action: OSAction): OSState {
         logs: [onboardLog, ...(missingReqLog ? [missingReqLog] : [])],
       };
     }
+    case "SET_ACTIVATION":
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          activation: action.value,
+        },
+        logs: action.log ? [action.log, ...state.logs].slice(0, 300) : state.logs,
+      };
     case "DEPLOY_AGENT":
       return { ...state, agents: [...state.agents, action.agent] };
     case "APPROVE": {
@@ -339,6 +359,8 @@ interface OSContextValue {
     industry: string;
     mainGoals: string[];
     preferredOperator: string;
+    preferredDemoPath?: NonNullable<OnboardingState["preferredDemoPath"]>;
+    safetyMode?: "safe" | "assisted";
     approvalOwner: string;
     initialConnectors: string[];
   }) => void;
@@ -359,6 +381,7 @@ interface OSContextValue {
   inviteMember: (input: { email: string; role: string; permissions: string[] }) => void;
   updateMember: (memberId: string, patch: Partial<TeamMember>) => void;
   updateSettingsSection: <K extends keyof OSSettings>(section: K, value: OSSettings[K]) => void;
+  updateActivation: (patch: Partial<NonNullable<OSSettings["activation"]>>) => void;
   updateCurrentUser: (patch: Partial<CurrentUser>) => void;
   setDashboardPrefs: (value: Partial<DashboardState>) => void;
   updateWorkspace: (patch: Partial<Workspace>) => void;
@@ -637,6 +660,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     industry: string;
     mainGoals: string[];
     preferredOperator: string;
+    preferredDemoPath?: NonNullable<OnboardingState["preferredDemoPath"]>;
+    safetyMode?: "safe" | "assisted";
     approvalOwner: string;
     initialConnectors: string[];
   }) => {
@@ -663,6 +688,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         industry: input.industry,
         mainGoals: input.mainGoals,
         preferredOperator: input.preferredOperator,
+        preferredDemoPath: input.preferredDemoPath ?? "operations",
         approvalOwner: input.approvalOwner,
         initialConnectors: input.initialConnectors,
       },
@@ -674,6 +700,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       currentUser,
       connectors: input.initialConnectors,
       preferredOperator: input.preferredOperator,
+      preferredDemoPath: input.preferredDemoPath ?? "operations",
+      safetyMode: input.safetyMode ?? "safe",
       mainGoals: input.mainGoals,
       approvalOwner: input.approvalOwner,
     });
@@ -913,6 +941,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: "SET_SETTINGS_SECTION", section, value, log: logEntry(`Updated ${String(section)} settings`, "settings_updated") });
   }, []);
 
+  const updateActivation = useCallback((patch: Partial<NonNullable<OSSettings["activation"]>>) => {
+    const current = state.settings.activation ?? { preferredDemoPath: state.onboarding.preferredDemoPath ?? "operations" };
+    dispatch({
+      type: "SET_ACTIVATION",
+      value: { ...current, ...patch },
+      log: logEntry("Activation progress updated", "activation.updated"),
+    });
+  }, [state.onboarding.preferredDemoPath, state.settings.activation]);
+
   const updateCurrentUser = useCallback((patch: Partial<CurrentUser>) => {
     const value = { ...state.currentUser, ...patch };
     value.initials = toInitials(value.name);
@@ -967,6 +1004,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         inviteMember,
         updateMember,
         updateSettingsSection,
+        updateActivation,
         updateCurrentUser,
         setDashboardPrefs,
         updateWorkspace,

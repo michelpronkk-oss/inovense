@@ -1,8 +1,8 @@
-import { ImageResponse } from "next/og";
+﻿import { ImageResponse } from "next/og";
 import { makePageOg } from "@/lib/make-page-og";
 
 export const runtime = "nodejs";
-export const alt = "Inovense for Operations — AI operators for business process execution";
+export const alt = "Auterim for Operations â€” AI operators for business process execution";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 

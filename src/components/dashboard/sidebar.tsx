@@ -10,8 +10,8 @@ import {
   DocIcon, ChartIcon, UsersIcon, ShieldIcon, KeyIcon, SettingsIcon, SwapIcon,
 } from "@/components/dashboard/icons";
 
-const InovenseMark = ({ size = 22 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" role="img" aria-label="Inovense">
+const AuterimMark = ({ size = 22 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" role="img" aria-label="Auterim">
     <g fill="#ECEFF3">
       <rect x="10" y="10" width="44" height="9"/>
       <rect x="26" y="19" width="12" height="12"/>
@@ -72,8 +72,8 @@ export function OSSidebar() {
   return (
     <aside className="os-side">
       <Link href="/app" className="os-brand">
-        <InovenseMark size={18} />
-        <span>INOVENSE</span>
+        <AuterimMark size={18} />
+        <span>AUTERIM</span>
       </Link>
 
       <div className="os-side-ws">

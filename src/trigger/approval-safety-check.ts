@@ -1,4 +1,4 @@
-import { task } from "@trigger.dev/sdk/v3";
+﻿import { task } from "@trigger.dev/sdk/v3";
 import { sendSlackInternalNotification } from "@/lib/operators/executors/slack";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
@@ -53,7 +53,8 @@ export const approvalSafetyCheck = task({
       } else {
         const text = [
           `Approval safety check: ${staleCount} approval(s) pending longer than ${STALE_THRESHOLD_HOURS}h.`,
-          "These were not auto-approved or auto-rejected. Please review them in Inovense.",
+          "These were not auto-approved or auto-rejected. Please review them in Auterim.",
+          // TODO: update domain after Auterim domain is connected.
           `Review approvals: ${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://app.inovense.com"}/app/approvals`,
         ].join("\n");
         try {

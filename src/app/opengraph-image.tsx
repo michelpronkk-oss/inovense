@@ -1,11 +1,11 @@
-import { ImageResponse } from "next/og";
+﻿import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { makeHubOg } from "@/lib/make-hub-og";
 import { resolveOgVariantForRequest } from "@/lib/og-variant";
 
 export const runtime = "nodejs";
-export const alt = "Inovense | Web, Systems, and Growth Built to Perform";
+export const alt = "Auterim | AI agents that run your work.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -24,10 +24,10 @@ export default async function Image() {
 
   return new ImageResponse(
     makeHubOg({
-      eyebrow: "Inovense",
-      headline: "Web, systems, and growth built to perform.",
+      eyebrow: "Auterim",
+      headline: "AI agents that run your work.",
       subheadline:
-        "Websites, automation, and growth systems for companies that compete on execution.",
+        "The operating layer for autonomous AI agents.",
       panelLabel: "Services",
       lanes: [LANES[0], LANES[1], LANES[2]],
       domainLabel: "inovense.com",

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -22,7 +22,7 @@ const PAGE_LABELS: Record<string, string> = {
   "/app/settings": "Settings",
 };
 
-// ── Deploy modal ───────────────────────────────────────────────────────────
+// â”€â”€ Deploy modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function DeployModal({ onClose }: { onClose: () => void }) {
   const [step, setStep] = useState(0);
@@ -298,7 +298,7 @@ function DeployModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ── Command palette ────────────────────────────────────────────────────────
+// â”€â”€ Command palette â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function CommandPalette({ onClose }: { onClose: () => void }) {
   const [q, setQ] = useState("");
@@ -415,7 +415,7 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
           })}
         </div>
         <div style={{ padding: "8px 16px", borderTop: "1px solid var(--line)", display: "flex", gap: 16 }}>
-          {[["↑↓", "navigate"], ["↵", "open"], ["esc", "close"]].map(([k, v]) => (
+          {[["â†‘â†“", "navigate"], ["â†µ", "open"], ["esc", "close"]].map(([k, v]) => (
             <span key={v} style={{ display: "flex", gap: 6, alignItems: "center", fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-faint)" }}>
               <span style={{ background: "rgba(255,255,255,0.06)", padding: "2px 6px", borderRadius: 4 }}>{k}</span> {v}
             </span>
@@ -426,7 +426,7 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ── Shared popover shell ───────────────────────────────────────────────────
+// â”€â”€ Shared popover shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function useClickOutside(ref: React.RefObject<HTMLElement | null>, onClose: () => void) {
   useEffect(() => {
@@ -454,7 +454,7 @@ function Popover({ children, style }: { children: React.ReactNode; style?: React
   );
 }
 
-// ── What's New panel ───────────────────────────────────────────────────────
+// â”€â”€ What's New panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const CHANGELOG = [
   {
@@ -497,7 +497,7 @@ function WhatsNewPanel({ onClose }: { onClose: () => void }) {
         <div style={{ padding: "16px 18px 12px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <div style={{ fontSize: 13.5, fontWeight: 600 }}>What&apos;s new</div>
-            <div style={{ fontSize: 11, color: "var(--text-mute)", fontFamily: "var(--font-mono)", marginTop: 2 }}>Inovense OS release notes</div>
+            <div style={{ fontSize: 11, color: "var(--text-mute)", fontFamily: "var(--font-mono)", marginTop: 2 }}>Auterim OS release notes</div>
           </div>
           <button onClick={onClose} className="os-iconbtn" style={{ width: 24, height: 24 }}><XIcon size={12} /></button>
         </div>
@@ -528,7 +528,7 @@ function WhatsNewPanel({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ── Notifications panel ────────────────────────────────────────────────────
+// â”€â”€ Notifications panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function NotificationsPanel({ onClose }: { onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -635,13 +635,13 @@ function NotificationsPanel({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ── Help panel ─────────────────────────────────────────────────────────────
+// â”€â”€ Help panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const SHORTCUTS = [
-  { keys: ["⌘", "K"], label: "Command palette" },
-  { keys: ["⌘", "D"], label: "Deploy agent" },
-  { keys: ["↑", "↓"], label: "Navigate lists" },
-  { keys: ["↵"], label: "Select / open" },
+  { keys: ["âŒ˜", "K"], label: "Command palette" },
+  { keys: ["âŒ˜", "D"], label: "Deploy agent" },
+  { keys: ["â†‘", "â†“"], label: "Navigate lists" },
+  { keys: ["â†µ"], label: "Select / open" },
   { keys: ["Esc"], label: "Close panel" },
 ];
 
@@ -706,7 +706,7 @@ function HelpPanel({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ── Topbar ─────────────────────────────────────────────────────────────────
+// â”€â”€ Topbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function OSTopbar() {
   const pathname = usePathname();
@@ -719,7 +719,7 @@ export function OSTopbar() {
 
   const pageName = PAGE_LABELS[pathname] ?? "Overview";
 
-  // ⌘K opens palette; ⌘D opens deploy
+  // âŒ˜K opens palette; âŒ˜D opens deploy
   useEffect(() => {
     const handle = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setPaletteOpen(true); }
@@ -772,7 +772,7 @@ export function OSTopbar() {
             Search agents, workflows, memory...
           </span>
           <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-faint)", background: "rgba(255,255,255,0.04)", padding: "2px 7px", borderRadius: 5 }}>
-            ⌘K
+            âŒ˜K
           </span>
         </button>
 

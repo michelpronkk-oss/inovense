@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import Link from "next/link";
@@ -14,20 +14,20 @@ import Reveal from "@/components/reveal";
 
 export const metadata: Metadata = {
   title: "Integrations",
-  description: "Native connectors for CRMs, communication platforms, finance systems, and data sources. Connect your stack to the Inovense operating layer.",
+  description: "Native connectors for CRMs, communication platforms, finance systems, and data sources. Connect your stack to the Auterim operating layer.",
   alternates: {
     canonical: "https://inovense.com/integrations",
   },
   openGraph: {
     url: "https://inovense.com/integrations",
-    title: "Integrations | Inovense",
-    description: "Native connectors for CRMs, communication platforms, finance systems, and data sources. Connect your stack to the Inovense operating layer.",
+    title: "Integrations | Auterim",
+    description: "Native connectors for CRMs, communication platforms, finance systems, and data sources. Connect your stack to the Auterim operating layer.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Integrations | Inovense",
-    description: "Native connectors for CRMs, communication platforms, finance systems, and data sources. Connect your stack to the Inovense operating layer.",
+    title: "Integrations | Auterim",
+    description: "Native connectors for CRMs, communication platforms, finance systems, and data sources. Connect your stack to the Auterim operating layer.",
   },
 };
 

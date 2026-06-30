@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import React from "react";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { InsightsReportDocument } from "@/lib/insights-pdf";
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   }
 
   const data: InsightsReportData = {
-    workspace: String(body.workspace ?? "Inovense Workspace"),
+    workspace: String(body.workspace ?? "Auterim Workspace"),
     periodLabel: String(body.periodLabel ?? "Current period"),
     generatedAt: String(body.generatedAt ?? new Date().toISOString()),
     kpis: Array.isArray(body.kpis) ? body.kpis : [],
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pdfBuffer = await renderToBuffer(React.createElement(InsightsReportDocument, { data }) as any);
   const slug = data.workspace.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-  const filename = `inovense-insights-${slug || "workspace"}.pdf`;
+  const filename = `auterim-insights-${slug || "workspace"}.pdf`;
 
   return new NextResponse(pdfBuffer.buffer as ArrayBuffer, {
     headers: {
@@ -38,4 +38,3 @@ export async function POST(request: NextRequest) {
     },
   });
 }
-

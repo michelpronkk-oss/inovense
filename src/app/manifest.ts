@@ -1,11 +1,11 @@
-import type { MetadataRoute } from "next";
+﻿import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Inovense",
-    short_name: "Inovense",
+    name: "Auterim",
+    short_name: "Auterim",
     description:
-      "Websites, AI automation, and growth infrastructure for operators who compete on execution.",
+      "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.",
     start_url: "/",
     display: "browser",
     background_color: "#09090b",

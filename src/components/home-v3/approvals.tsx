@@ -1,4 +1,4 @@
-import Reveal from "@/components/reveal";
+﻿import Reveal from "@/components/reveal";
 import { Eyebrow } from "@/components/marketing-ui";
 import { Icon } from "./icons";
 
@@ -37,7 +37,7 @@ function ApprovalsVisual() {
         <div className="flex items-center gap-2">
           <Icon name="inbox" size={13} style={{ color: CYAN }} />
           <strong className="text-[13px] font-medium" style={{ color: TEXT }}>
-            Approval · preview
+            Approval Â· preview
           </strong>
           <span
             className="rounded-full px-2 py-[3px] font-mono text-[10px] uppercase tracking-[0.06em]"
@@ -47,7 +47,7 @@ function ApprovalsVisual() {
           </span>
         </div>
         <span className="font-mono text-[11px]" style={{ color: TEXT_MUTE }}>
-          Revenue Operator → jordan@atlas.co
+          Revenue Operator â†’ jordan@atlas.co
         </span>
       </div>
 
@@ -62,7 +62,7 @@ function ApprovalsVisual() {
           >
             <span className="h-1.5 w-1.5 flex-none rounded-full" style={{ background: CYAN, boxShadow: `0 0 6px ${CYAN}` }} />
             <span>
-              Send personalized reply to <strong style={{ color: TEXT }}>Aiko Tanaka · Northwind Co.</strong>
+              Send personalized reply to <strong style={{ color: TEXT }}>Aiko Tanaka Â· Northwind Co.</strong>
             </span>
           </div>
         </div>
@@ -75,7 +75,7 @@ function ApprovalsVisual() {
             className="flex flex-col gap-2 rounded-[9px] p-3.5 text-[13px] leading-[1.55]"
             style={{ background: "rgba(255,255,255,0.02)", boxShadow: `inset 0 0 0 1px ${LINE}`, color: TEXT_DIM }}
           >
-            <p className="m-0">Hi Aiko —</p>
+            <p className="m-0">Hi Aiko â€”</p>
             <p className="m-0">
               Thanks for the intro. Based on our previous work with{" "}
               <span className="rounded-[3px] px-1 font-medium" style={{ background: CYAN_SOFT, color: CYAN }}>
@@ -135,7 +135,7 @@ function ApprovalsVisual() {
             Skip
           </button>
           <span className="ml-auto hidden font-mono text-[10.5px] sm:inline" style={{ color: TEXT_MUTE }}>
-            ⌘+↵ to approve
+            âŒ˜+â†µ to approve
           </span>
         </div>
       </div>
@@ -159,7 +159,7 @@ export default function ApprovalsSection() {
               actually want to give.
             </h2>
             <p className="mt-4 text-[15px] leading-[1.6]" style={{ color: TEXT_MUTE, maxWidth: "48ch" }}>
-              Inovense OS makes &ldquo;what AI can do&rdquo; explicit. Define allow-lists, dollar limits,
+              Auterim OS makes &ldquo;what AI can do&rdquo; explicit. Define allow-lists, dollar limits,
               approval gates and tool scopes, then watch operators stay inside them. Anything risky lands in
               your inbox.
             </p>

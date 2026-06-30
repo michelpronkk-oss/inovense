@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import {
@@ -10,20 +10,20 @@ import {
 
 export const metadata: Metadata = {
   title: "Status",
-  description: "Live status for Inovense platform services. Agent runtime, workflow execution, connector APIs, approval queue, and memory layer.",
+  description: "Live status for Auterim platform services. Agent runtime, workflow execution, connector APIs, approval queue, and memory layer.",
   alternates: {
     canonical: "https://inovense.com/status",
   },
   openGraph: {
     url: "https://inovense.com/status",
-    title: "Status | Inovense",
-    description: "Live status for Inovense platform services. Agent runtime, workflow execution, connector APIs, approval queue, and memory layer.",
+    title: "Status | Auterim",
+    description: "Live status for Auterim platform services. Agent runtime, workflow execution, connector APIs, approval queue, and memory layer.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Status | Inovense",
-    description: "Live status for Inovense platform services. Agent runtime, workflow execution, connector APIs, approval queue, and memory layer.",
+    title: "Status | Auterim",
+    description: "Live status for Auterim platform services. Agent runtime, workflow execution, connector APIs, approval queue, and memory layer.",
   },
 };
 

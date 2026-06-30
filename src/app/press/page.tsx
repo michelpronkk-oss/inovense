@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import {
@@ -11,20 +11,20 @@ import {
 
 export const metadata: Metadata = {
   title: "Press",
-  description: "Press resources and media inquiries for Inovense. For interview requests, editorial coverage, or brand assets, contact hello@inovense.com.",
+  description: "Press resources and media inquiries for Auterim. For interview requests, editorial coverage, or brand assets, contact hello@inovense.com.",
   alternates: {
     canonical: "https://inovense.com/press",
   },
   openGraph: {
     url: "https://inovense.com/press",
-    title: "Press | Inovense",
-    description: "Press resources and media inquiries for Inovense. For interview requests, editorial coverage, or brand assets, contact hello@inovense.com.",
+    title: "Press | Auterim",
+    description: "Press resources and media inquiries for Auterim. For interview requests, editorial coverage, or brand assets, contact hello@inovense.com.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Press | Inovense",
-    description: "Press resources and media inquiries for Inovense. For interview requests, editorial coverage, or brand assets, contact hello@inovense.com.",
+    title: "Press | Auterim",
+    description: "Press resources and media inquiries for Auterim. For interview requests, editorial coverage, or brand assets, contact hello@inovense.com.",
   },
 };
 
@@ -48,9 +48,9 @@ const coveragePoints = [
 ];
 
 const pressKit = [
-  { label: "Company name", value: "Inovense" },
+  { label: "Company name", value: "Auterim" },
   { label: "Category", value: "AI operating layer for modern businesses" },
-  { label: "Boilerplate", value: "Inovense helps teams run operator workflows with connectors, policies, approvals, memory, and execution logs." },
+  { label: "Boilerplate", value: "Auterim helps teams run operator workflows with connectors, policies, approvals, memory, and execution logs." },
   { label: "Press contact", value: "hello@inovense.com" },
 ];
 

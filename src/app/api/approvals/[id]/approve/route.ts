@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { executePreparedActionAfterApproval } from "@/lib/actions/execute";
 import type { PreparedAction } from "@/lib/actions/types";
@@ -717,7 +717,7 @@ async function executeSharedActionApproval(input: {
       eventType: "execution_failed",
       operatorKey: input.payload.preparedAction.operatorKey,
       title: "Execution failed.",
-      summary: "Trello action execution failed. Review the approval logs in Inovense.",
+      summary: "Trello action execution failed. Review the approval logs in Auterim.",
       approvalUrl: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://app.inovense.com"}/app/approvals`,
       metadata: { actionType: input.payload.preparedAction.actionType, connectorKey: "trello" },
     }));
@@ -924,7 +924,7 @@ async function executeOperationsApproval(input: {
     eventType: anyFailed ? "execution_failed" : "approval_approved",
     operatorKey: "operations",
     title: anyFailed ? "Execution failed." : "Approval approved.",
-    summary: anyFailed ? "An Operations action failed after approval. Review the logs in Inovense." : "Operations action executed after approval.",
+    summary: anyFailed ? "An Operations action failed after approval. Review the logs in Auterim." : "Operations action executed after approval.",
     approvalUrl: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://app.inovense.com"}/app/approvals`,
     metadata: { actionType, slackStatus, trelloStatus },
   }));
@@ -1719,7 +1719,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     operatorKey: gmailPayload.operatorKey || "revenue",
     title: hubspotFailed ? "Execution failed." : "Approval approved.",
     summary: hubspotFailed
-      ? "Gmail was sent, but HubSpot execution failed. Review the approval logs in Inovense."
+      ? "Gmail was sent, but HubSpot execution failed. Review the approval logs in Auterim."
       : "Revenue Operator sent the email and updated the run.",
     approvalUrl: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://app.inovense.com"}/app/approvals`,
     metadata: { to: gmailPayload.to, hubspotStatus: hubspotResult?.status ?? null },

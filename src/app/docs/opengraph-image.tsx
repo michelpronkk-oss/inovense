@@ -1,8 +1,8 @@
-import { ImageResponse } from "next/og";
+﻿import { ImageResponse } from "next/og";
 import { makePageOg } from "@/lib/make-page-og";
 
 export const runtime = "nodejs";
-export const alt = "Inovense Docs — Complete documentation for the operating layer";
+export const alt = "Auterim Docs â€” Complete documentation for the operating layer";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 

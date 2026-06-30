@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { evaluatePolicy } from "@/lib/policies/evaluate";
 import { buildPolicyInputFromContinuation, loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
@@ -147,13 +147,13 @@ function expectedOutcome(continuation: GmailContinuationPayload): string | null 
 
 function afterApprovalText(continuation: GmailContinuationPayload): string | null {
   if (continuation.kind === "shared_action.execute_after_approval") {
-    return "Inovense executes this prepared action through the connected Trello account after approval.";
+    return "Auterim executes this prepared action through the connected Trello account after approval.";
   }
   if (continuation.kind === "slack.send_after_approval") {
     return "Slack posts this exact message to the selected channel using the connected workspace Slack account.";
   }
   if (continuation.kind === "operations.execute_after_approval") {
-    return "Inovense posts the internal Slack update and applies the prepared Trello change after approval. Nothing runs before approval.";
+    return "Auterim posts the internal Slack update and applies the prepared Trello change after approval. Nothing runs before approval.";
   }
   if (continuation.kind !== "gmail.send_after_approval") return null;
   const crmText = crmStatusText(continuation.crmPreparationStatus);

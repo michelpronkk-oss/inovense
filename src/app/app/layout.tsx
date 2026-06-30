@@ -1,10 +1,10 @@
-import "./dashboard.css";
+﻿import "./dashboard.css";
 import { AppProvider } from "@/lib/os/app-provider";
 import { AppShell } from "@/app/app/app-shell";
 
 export const metadata = {
-  title: "Inovense OS",
-  description: "AI operating layer",
+  title: "Auterim OS",
+  description: "AI agents that run your work.",
 };
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

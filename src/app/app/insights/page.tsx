@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import { ChartIcon, TrendIcon } from "@/components/dashboard/icons";
@@ -65,7 +65,7 @@ export default function InsightsPage() {
   const kpis = useMemo(() => ([
     { label: "Actions this week", val: totalActions > 0 ? totalActions.toLocaleString() : "0", delta: totalActions > 0 ? "From active operators" : "No activity yet", color: "#4DE8E1" },
     { label: "Outputs created", val: String(totalOutputs), delta: totalOutputs > 0 ? "This week" : "No outputs yet", color: "#A78BFA" },
-    { label: "Approval rate", val: approvalRate !== null ? `${approvalRate}%` : "—", delta: totalApprovals > 0 ? `${totalApprovals} total` : "No approvals yet", color: "#F5C26B" },
+    { label: "Approval rate", val: approvalRate !== null ? `${approvalRate}%` : "â€”", delta: totalApprovals > 0 ? `${totalApprovals} total` : "No approvals yet", color: "#F5C26B" },
     { label: "Pending review", val: String(pendingApprovals), delta: pendingApprovals > 0 ? "Awaiting action" : "All clear", color: "#51D88A" },
   ]), [totalActions, totalOutputs, approvalRate, totalApprovals, pendingApprovals]);
 
@@ -81,7 +81,7 @@ export default function InsightsPage() {
   const exportReport = (format: ExportFormat) => {
     const stamp = new Date();
     const date = stamp.toISOString().slice(0, 10);
-    const filenameBase = `inovense-insights-${state.workspace.name.toLowerCase().replace(/\s+/g, "-")}-${date}`;
+    const filenameBase = `auterim-insights-${state.workspace.name.toLowerCase().replace(/\s+/g, "-")}-${date}`;
 
     if (format === "csv") {
       const kpiRows = [
@@ -100,7 +100,7 @@ export default function InsightsPage() {
     }
 
     const payload = {
-      brand: "Inovense OS",
+      brand: "Auterim OS",
       workspace: state.workspace.name,
       generatedAt: stamp.toISOString(),
       kpis,
@@ -136,7 +136,7 @@ export default function InsightsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `inovense-insights-${state.workspace.name.toLowerCase().replace(/\s+/g, "-")}.pdf`;
+    a.download = `auterim-insights-${state.workspace.name.toLowerCase().replace(/\s+/g, "-")}.pdf`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

@@ -292,7 +292,7 @@ export default function RevenueOperatorPage() {
         <div>
           <span className="os-greet"><Link href="/app/agents" style={{ color: "inherit", textDecoration: "none" }}>Operators</Link> / Revenue</span>
           <h1>Revenue Operator</h1>
-          <div className="os-page-sub">Inovense watches revenue signals in the background and asks for approval only when action is needed.</div>
+          <div className="os-page-sub">Auterim watches revenue signals in the background and asks for approval only when action is needed.</div>
         </div>
         <div className="os-page-actions">
           <Link href="/app/approvals" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>View approvals</Link>
@@ -313,7 +313,7 @@ export default function RevenueOperatorPage() {
           {gmailReconnectRequired && <button className="btn btn-primary btn-sm" type="button" onClick={startGmailReconnect}>Reconnect Gmail</button>}
         </div>
         <div style={{ padding: "16px 18px", display: "grid", gap: 14 }}>
-          <div style={{ fontSize: 13, color: "var(--text-dim)", maxWidth: 820 }}>Inovense monitors in the background and only creates approvals for high-confidence revenue opportunities. Manual checks remain available for testing or one-off review.</div>
+          <div style={{ fontSize: 13, color: "var(--text-dim)", maxWidth: 820 }}>Auterim monitors in the background and only creates approvals for high-confidence revenue opportunities. Manual checks remain available for testing or one-off review.</div>
           <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
             <div>
               <div style={{ fontSize: 13, fontWeight: 600 }}>{revenueStatus?.v1Readiness?.status ?? modeLabel}</div>
