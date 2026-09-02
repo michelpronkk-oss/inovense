@@ -26,11 +26,8 @@ export const metadata: Metadata = {
   },
   description: AUTERIM_DESCRIPTION,
   icons: {
-    icon: [
-      { url: "/icon.svg", type: "image/svg+xml" },
-      { url: "/favicon.ico", sizes: "any" },
-    ],
-    apple: "/brand/inovense-app-icon-1024.svg",
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
   },
   openGraph: {
     type: "website",
