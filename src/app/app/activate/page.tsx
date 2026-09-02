@@ -7,6 +7,7 @@ import type { OnboardingState } from "@/lib/os/types";
 
 type DemoPath = NonNullable<OnboardingState["preferredDemoPath"]>;
 type StepState = "complete" | "needs_setup" | "optional" | "ready";
+type StepKey = "path" | "connect" | "configure" | "run" | "review";
 
 type StatusPayload = Record<string, unknown> & {
   setup?: Record<string, unknown>;
@@ -116,48 +117,6 @@ function statusText(state: StepState): string {
   return "Needs setup";
 }
 
-function StepCard({
-  index,
-  title,
-  description,
-  state,
-  cta,
-  primary,
-}: {
-  index: number;
-  title: string;
-  description: string;
-  state: StepState;
-  cta?: { label: string; href?: string; onClick?: () => void; disabled?: boolean };
-  primary?: boolean;
-}) {
-  return (
-    <div style={{ padding: 16, borderRadius: 12, background: "rgba(255,255,255,0.026)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)", display: "grid", gap: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-        <div style={{ display: "flex", gap: 10, minWidth: 0 }}>
-          <div style={{ width: 28, height: 28, borderRadius: 8, display: "grid", placeItems: "center", background: "rgba(77,232,225,0.08)", color: "#9DEFEA", fontFamily: "var(--font-mono)", fontSize: 11, flexShrink: 0 }}>{index}</div>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 650 }}>{title}</div>
-            <div style={{ color: "var(--text-dim)", fontSize: 12.5, lineHeight: 1.5, marginTop: 4 }}>{description}</div>
-          </div>
-        </div>
-        <span className={`pill ${state === "complete" ? "pill-cyan" : state === "needs_setup" ? "pill-rose" : ""}`} style={{ whiteSpace: "nowrap" }}>
-          {statusText(state)}
-        </span>
-      </div>
-      {cta && (
-        cta.href ? (
-          <Link className={`btn ${primary ? "btn-primary" : "btn-ghost"} btn-sm`} href={cta.href} style={{ justifySelf: "start" }}>{cta.label}</Link>
-        ) : (
-          <button className={`btn ${primary ? "btn-primary" : "btn-ghost"} btn-sm`} disabled={cta.disabled} onClick={cta.onClick} style={{ justifySelf: "start", opacity: cta.disabled ? 0.55 : 1 }}>
-            {cta.label}
-          </button>
-        )
-      )}
-    </div>
-  );
-}
-
 export default function ActivationPage() {
   const { state, updateActivation } = useOS();
   const [path, setPath] = useState<DemoPath>(state.settings.activation?.preferredDemoPath ?? state.onboarding.preferredDemoPath ?? "operations");
@@ -166,6 +125,7 @@ export default function ActivationPage() {
   const [error, setError] = useState("");
   const [scanBusy, setScanBusy] = useState(false);
   const [scanResult, setScanResult] = useState("");
+  const [selectedStep, setSelectedStep] = useState<StepKey>("path");
 
   const meta = PATHS[path];
   const identityParams = useMemo(() => new URLSearchParams({
@@ -197,8 +157,6 @@ export default function ActivationPage() {
     ? boolValue(status?.capabilityReadiness as Record<string, unknown> | undefined, "emailExecutionReady")
     : boolValue(setup, "gmailReady");
   const hubspotConnected = boolValue(status?.hubspot, "connected");
-  const slackConnected = boolValue(setup, "slackConnected");
-  const slackChannelSelected = boolValue(setup, "slackChannelSelected");
   const trelloConnected = boolValue(setup, "trelloConnected");
   const trelloDestinationSet = boolValue(setup, "trelloDestinationSet");
   const coreReady = path === "revenue" ? gmailReady : boolValue(setup, "coreReady");
@@ -208,94 +166,29 @@ export default function ActivationPage() {
   const firstApprovalCreated = Boolean(state.settings.activation?.firstApprovalCreatedAt || pendingApprovals > 0);
 
   const steps = useMemo(() => {
-    const result: Array<{
-      title: string;
-      description: string;
-      state: StepState;
-      cta?: { label: string; href?: string; onClick?: () => void; disabled?: boolean };
-    }> = [];
-    result.push({
-      title: "Choose demo path",
-      description: `${meta.label} is selected. You can switch paths without changing connector truth.`,
-      state: "complete",
-    });
-    if (path === "operations") {
-      result.push({
-        title: "Connect required tools",
-        description: "Operations needs Trello connected before it can inspect real project cards.",
-        state: trelloConnected ? "complete" : "needs_setup",
-        cta: trelloConnected ? undefined : { label: "Connect Trello", href: "/app/connectors?setup=trello" },
-      });
-      result.push({
-        title: "Finish tool setup",
-        description: "Select the Trello board and list where approved task updates should land.",
-        state: trelloDestinationSet ? "complete" : "needs_setup",
-        cta: trelloDestinationSet ? undefined : { label: "Select Trello board/list", href: "/app/connectors?setup=trello-project" },
-      });
-    }
-    if (path === "client_flow") {
-      result.push({
-        title: "Connect required tools",
-        description: "Client Flow needs Gmail for client context and Trello for approved task updates.",
-        state: gmailReady && trelloConnected ? "complete" : "needs_setup",
-        cta: !gmailReady ? { label: "Connect Gmail", href: "/app/connectors?setup=gmail" } : !trelloConnected ? { label: "Connect Trello", href: "/app/connectors?setup=trello" } : undefined,
-      });
-      result.push({
-        title: "Finish tool setup",
-        description: "Choose the Trello board and list for approved client task updates.",
-        state: trelloDestinationSet ? "complete" : "needs_setup",
-        cta: trelloDestinationSet ? undefined : { label: "Select Trello board/list", href: "/app/connectors?setup=trello-project" },
-      });
-    }
-    if (path === "revenue") {
-      result.push({
-        title: "Connect required tools",
-        description: "Revenue needs Gmail for inbox context and approved follow-up emails.",
-        state: gmailReady ? "complete" : "needs_setup",
-        cta: gmailReady ? undefined : { label: "Connect Gmail", href: "/app/connectors?setup=gmail" },
-      });
-      result.push({
-        title: "Full CRM demo",
-        description: hubspotConnected ? "HubSpot is connected for approved CRM updates." : "HubSpot is recommended for contact and deal updates. Gmail still shows email approval value.",
-        state: hubspotConnected ? "complete" : "optional",
-        cta: hubspotConnected ? undefined : { label: "Connect HubSpot", href: "/app/connectors?setup=hubspot" },
-      });
-    }
-    result.push({
-      title: "Optional team alerts",
-      description: slackConnected && slackChannelSelected ? "Slack alerts are ready for internal approval updates." : "Connect Slack and choose a channel for internal approval alerts.",
-      state: slackConnected && slackChannelSelected ? "complete" : "optional",
-      cta: slackConnected && !slackChannelSelected
-        ? { label: "Select Slack channel", href: "/app/connectors?setup=slack-channel" }
-        : !slackConnected
-          ? { label: "Connect Slack", href: "/app/connectors?setup=slack" }
-          : undefined,
-    });
-    result.push({
-      title: "Confirm safety mode",
-      description: "Safe mode keeps customer emails and tool changes approval-first.",
-      state: safeMode ? "complete" : "ready",
-      cta: safeMode ? undefined : { label: "Open policies", href: "/app/policies" },
-    });
-    result.push({
-      title: "Run first check",
-      description: coreReady ? `Run ${meta.operator} against connected tools.` : "Finish required setup before running a real operator check.",
-      state: hasFirstRun ? "complete" : coreReady ? "ready" : "needs_setup",
-      cta: { label: scanBusy ? "Checking..." : `Run ${meta.label} check`, onClick: () => void runScan(), disabled: !coreReady || scanBusy },
-    });
-    result.push({
-      title: "Review first approval",
-      description: firstApprovalCreated ? "An approval is ready for review. Nothing executes until you approve it." : "After a signal is found, review the prepared action before anything sends.",
-      state: firstApprovalCreated ? "ready" : "needs_setup",
-      cta: { label: "Open approvals", href: "/app/approvals" },
-    });
-    return result;
+    const connectReady = path === "operations" ? trelloConnected : path === "client_flow" ? gmailReady && trelloConnected : gmailReady;
+    const connectCta = path === "operations"
+      ? { label: "Connect Trello", href: "/app/connectors?setup=trello" }
+      : path === "client_flow"
+        ? (!gmailReady ? { label: "Connect Gmail", href: "/app/connectors?setup=gmail" } : { label: "Connect Trello", href: "/app/connectors?setup=trello" })
+        : { label: "Connect Gmail", href: "/app/connectors?setup=gmail" };
+    const configureReady = path === "operations" || path === "client_flow" ? trelloDestinationSet : safeMode;
+    return [
+      { key: "path" as StepKey, title: "Choose path", short: meta.label, description: "Choose the operating lane Auterim should prepare first.", state: "complete" as StepState },
+      { key: "connect" as StepKey, title: "Connect tools", short: connectReady ? "Ready" : "Required", description: path === "revenue" ? "Connect Gmail for inbox context and approval-gated follow-up." : path === "client_flow" ? "Connect Gmail and Trello for client context and approved task updates." : "Connect Trello before inspecting real project cards.", state: connectReady ? "complete" as StepState : "needs_setup" as StepState, cta: connectReady ? undefined : connectCta },
+      { key: "configure" as StepKey, title: "Configure tools", short: configureReady ? "Ready" : "Required", description: path === "revenue" ? "Confirm approval-first controls before running the first check." : "Choose where approved task updates should land.", state: configureReady ? "complete" as StepState : "needs_setup" as StepState, cta: configureReady ? undefined : path === "revenue" ? { label: "Open policies", href: "/app/policies" } : { label: "Select Trello board/list", href: "/app/connectors?setup=trello-project" } },
+      { key: "run" as StepKey, title: "Run first check", short: hasFirstRun ? "Complete" : coreReady ? "Ready" : "Blocked", description: coreReady ? `Run ${meta.operator} against connected tools.` : "Finish required setup before running a real operator check.", state: hasFirstRun ? "complete" as StepState : coreReady ? "ready" as StepState : "needs_setup" as StepState, cta: { label: scanBusy ? "Checking..." : `Run ${meta.label} check`, onClick: () => void runScan(), disabled: !coreReady || scanBusy } },
+      { key: "review" as StepKey, title: "Review first approval", short: firstApprovalCreated ? "Ready" : "Pending", description: firstApprovalCreated ? "Review the prepared action before anything executes." : "Your first approval will appear here after a signal is found.", state: firstApprovalCreated ? "ready" as StepState : "needs_setup" as StepState, cta: { label: "Open approvals", href: "/app/approvals" } },
+    ];
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coreReady, firstApprovalCreated, gmailReady, hasFirstRun, hubspotConnected, meta.label, meta.operator, path, safeMode, scanBusy, slackChannelSelected, slackConnected, trelloConnected, trelloDestinationSet]);
+  }, [coreReady, firstApprovalCreated, gmailReady, hasFirstRun, meta.label, meta.operator, path, safeMode, scanBusy, trelloConnected, trelloDestinationSet]);
 
   const completedCount = steps.filter((step) => step.state === "complete").length;
-  const primaryIndex = steps.findIndex((step) => step.state !== "complete" && step.cta);
   const progress = Math.round((completedCount / steps.length) * 100);
+  const firstIncompleteIndex = Math.max(0, steps.findIndex((step) => step.state !== "complete"));
+  const selectedIndex = Math.max(0, steps.findIndex((step) => step.key === selectedStep));
+  const activeIndex = selectedIndex <= firstIncompleteIndex ? selectedIndex : firstIncompleteIndex;
+  const activeStep = steps[activeIndex];
 
   async function runScan() {
     if (!coreReady || scanBusy) return;
@@ -342,70 +235,94 @@ export default function ActivationPage() {
     <div className="os-page">
       <div className="os-page-head">
         <div>
-          <span className="os-greet">Activation - {meta.label}</span>
-          <h1>Get your first workflow ready</h1>
-          <div className="os-page-sub">Connect the tools for your selected demo path, then run your first operator check.</div>
+          <span className="os-greet">Activation</span>
+          <h1>Set up your first operator workflow</h1>
+          <div className="os-page-sub">Set up your first operator workflow in a few clear steps.</div>
         </div>
         <div className="os-page-actions">
           <Link className="btn btn-ghost btn-sm" href="/app">Dashboard</Link>
-          <Link className="btn btn-primary btn-sm" href="/app/connectors">Connectors</Link>
+          <Link className="btn btn-ghost btn-sm" href="/app/connectors">Connectors</Link>
         </div>
       </div>
 
       {(error || scanResult) && (
-        <div style={{ padding: "10px 12px", borderRadius: 10, background: error ? "rgba(242,118,124,0.08)" : "rgba(81,216,138,0.08)", boxShadow: `inset 0 0 0 1px ${error ? "rgba(242,118,124,0.18)" : "rgba(81,216,138,0.2)"}`, color: error ? "#ffaaaa" : "#9df5cc", fontSize: 12.5 }}>
+        <div role={error ? "alert" : "status"} style={{ padding: "10px 12px", borderRadius: 10, background: error ? "rgba(242,118,124,0.08)" : "rgba(81,216,138,0.08)", boxShadow: `inset 0 0 0 1px ${error ? "rgba(242,118,124,0.18)" : "rgba(81,216,138,0.2)"}`, color: error ? "#ffaaaa" : "#9df5cc", fontSize: 12.5 }}>
           {error || scanResult}
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
-        <div className="p">
-          <div className="p-head">
-            <h3>Activation checklist</h3>
-            <span className="p-meta">{loading ? "Loading..." : `${completedCount}/${steps.length} complete`}</span>
-          </div>
-          <div style={{ padding: 16, display: "grid", gap: 10 }}>
-            <div className="bar" style={{ height: 7 }}><span style={{ width: `${progress}%` }} /></div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
-              {(Object.keys(PATHS) as DemoPath[]).map((key) => (
-                <button key={key} className={`appr-btn ${path === key ? "approve" : "edit"}`} onClick={() => choosePath(key)}>
-                  {PATHS[key].label}
-                </button>
-              ))}
-            </div>
-            {steps.map((step, index) => (
-              <StepCard key={step.title} index={index + 1} {...step} primary={index === primaryIndex} />
-            ))}
-          </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap", padding: "2px 2px 6px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <span className="pill pill-cyan">{loading ? "Checking progress" : `${completedCount} of ${steps.length} complete`}</span>
+          <span style={{ color: "var(--text-dim)", fontSize: 12.5 }}>Path: {meta.label}</span>
         </div>
+        <span className="pill">Approval-first</span>
+      </div>
 
-        <aside style={{ display: "grid", gap: 14, alignContent: "start" }}>
-          <div className="p">
-            <div className="p-head">
-              <h3>{TEST_COPY[path].title}</h3>
-              <span className="p-meta">Copy only</span>
-            </div>
-            <div style={{ padding: 16, display: "grid", gap: 10 }}>
-              <div style={{ color: "var(--text-dim)", fontSize: 12.5, lineHeight: 1.5 }}>
-                Use this to create a real signal in your own inbox or Trello board. Auterim will not create it automatically.
+      <div style={{ height: 5, borderRadius: 999, background: "rgba(255,255,255,0.06)", overflow: "hidden" }} aria-label={`${progress}% complete`}>
+        <span style={{ display: "block", height: "100%", width: `${progress}%`, borderRadius: 999, background: "linear-gradient(90deg, #4DE8E1, #6ce7bb)", transition: "width 240ms ease" }} />
+      </div>
+
+      <nav aria-label="Activation steps" style={{ overflowX: "auto", padding: "8px 2px 10px" }}>
+        <div className="activation-stepper" style={{ display: "flex", minWidth: 680, maxWidth: 900, margin: "0 auto", alignItems: "flex-start" }}>
+          {steps.map((step, index) => {
+            const isActive = index === activeIndex;
+            const canSelect = index <= firstIncompleteIndex;
+            return (
+              <div key={step.key} style={{ display: "flex", alignItems: "flex-start", flex: 1 }}>
+                <button
+                  type="button"
+                  onClick={() => canSelect && setSelectedStep(step.key)}
+                  disabled={!canSelect}
+                  aria-current={isActive ? "step" : undefined}
+                  style={{ border: 0, background: "transparent", color: isActive ? "#F4FFFF" : step.state === "complete" ? "#A8EDE4" : "var(--text-faint)", cursor: canSelect ? "pointer" : "default", display: "grid", justifyItems: "center", gap: 7, padding: "5px 6px", minWidth: 106, font: "inherit" }}
+                >
+                  <span style={{ width: 30, height: 30, borderRadius: "50%", display: "grid", placeItems: "center", border: `1px solid ${isActive ? "#4DE8E1" : step.state === "complete" ? "rgba(95,211,168,0.55)" : "rgba(255,255,255,0.12)"}`, background: isActive ? "rgba(77,232,225,0.13)" : step.state === "complete" ? "rgba(95,211,168,0.08)" : "rgba(255,255,255,0.025)", color: isActive ? "#4DE8E1" : "inherit", fontSize: 12, fontFamily: "var(--font-mono)" }}>{step.state === "complete" ? "✓" : index + 1}</span>
+                  <span style={{ fontSize: 11.5, whiteSpace: "nowrap", fontWeight: isActive ? 650 : 500 }}>{step.title}</span>
+                </button>
+                {index < steps.length - 1 && <span aria-hidden style={{ height: 1, flex: 1, margin: "20px 3px 0", background: index < firstIncompleteIndex ? "rgba(95,211,168,0.4)" : "rgba(255,255,255,0.1)" }} />}
               </div>
-              <textarea
-                className="os-input"
-                readOnly
-                value={TEST_COPY[path].body}
-                style={{ minHeight: path === "operations" ? 180 : 280, resize: "vertical", lineHeight: 1.45 }}
-              />
-            </div>
+            );
+          })}
+        </div>
+      </nav>
+
+      <div className="activation-content-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.55fr) minmax(240px, 0.75fr)", gap: 16, alignItems: "start" }}>
+        <section className="p" aria-labelledby="active-step-title" style={{ minHeight: 300 }}>
+          <div style={{ padding: "24px 24px 8px" }}>
+            <span className="p-meta">Step {activeIndex + 1} · {statusText(activeStep.state)}</span>
+            <h2 id="active-step-title" style={{ margin: "8px 0 7px", fontSize: 22, letterSpacing: "-0.02em" }}>{activeStep.title}</h2>
+            <p style={{ margin: 0, color: "var(--text-dim)", fontSize: 13.5, lineHeight: 1.55, maxWidth: 540 }}>{activeStep.description}</p>
           </div>
-          <div className="p">
-            <div className="p-head">
-              <h3>Safety</h3>
-              <span className="p-meta">Approval-first</span>
-            </div>
-            <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 12.5, lineHeight: 1.55 }}>
-              Running a check only scans connected tools for signals. Emails, Slack messages, CRM writes and Trello task changes require approval before execution.
-            </div>
+          <div style={{ padding: "18px 24px 25px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "grid", gap: 16 }}>
+            {activeStep.key === "path" && (
+              <div style={{ display: "grid", gap: 9 }}>
+                {(Object.keys(PATHS) as DemoPath[]).map((key) => (
+                  <button key={key} type="button" onClick={() => choosePath(key)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", textAlign: "left", gap: 12, padding: "13px 14px", borderRadius: 10, border: `1px solid ${path === key ? PATHS[key].accent : "rgba(255,255,255,0.09)"}`, background: path === key ? `${PATHS[key].accent}12` : "rgba(255,255,255,0.018)", color: "var(--text)", cursor: "pointer", font: "inherit" }}>
+                    <span><span style={{ display: "block", fontSize: 13.5, fontWeight: 650 }}>{PATHS[key].label}</span><span style={{ display: "block", marginTop: 3, color: "var(--text-dim)", fontSize: 12 }}>Start with the {PATHS[key].label.toLowerCase()} operating lane.</span></span>
+                    <span style={{ color: path === key ? PATHS[key].accent : "var(--text-faint)", fontSize: 16 }}>{path === key ? "✓" : "→"}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {activeStep.key !== "path" && activeStep.cta && ("href" in activeStep.cta ? <Link className="btn btn-primary" href={activeStep.cta.href}>{activeStep.cta.label}</Link> : <button className="btn btn-primary" onClick={activeStep.cta.onClick} disabled={activeStep.cta.disabled}>{activeStep.cta.label}</button>)}
+            {activeStep.key === "connect" && path === "revenue" && hubspotConnected && <span style={{ color: "var(--text-dim)", fontSize: 12 }}>HubSpot is connected for the full CRM workflow.</span>}
+            {activeStep.key === "configure" && path === "revenue" && !safeMode && <span style={{ color: "#ffb2ae", fontSize: 12 }}>Approval-first mode must be enabled before running a check.</span>}
+            {activeStep.key === "review" && firstApprovalCreated && <span style={{ color: "var(--text-dim)", fontSize: 12 }}>Nothing executes until you approve it.</span>}
           </div>
+        </section>
+
+        <aside className="p" style={{ padding: 20, display: "grid", gap: 16 }} aria-label="Activation context">
+          <div>
+            <span className="p-meta">What happens next</span>
+            <h3 style={{ margin: "7px 0 6px", fontSize: 15 }}>A controlled first run</h3>
+            <p style={{ margin: 0, color: "var(--text-dim)", fontSize: 12.5, lineHeight: 1.55 }}>{activeStep.key === "run" ? `Auterim will scan the connected tools for ${meta.label.toLowerCase()} signals and prepare work for review.` : activeStep.key === "review" ? "Review the prepared action in Approvals. External actions stay paused until you approve them." : "Complete this step and Auterim will guide you to the next part of the setup."}</p>
+          </div>
+          <div style={{ paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+            <span className="p-meta">Safety</span>
+            <p style={{ margin: "7px 0 0", color: "var(--text-dim)", fontSize: 12.5, lineHeight: 1.55 }}>Approval-first mode keeps customer emails, CRM writes, Slack messages, and Trello changes behind review.</p>
+          </div>
+          {activeStep.key === "run" && <div style={{ paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.07)" }}><span className="p-meta">Example input</span><p style={{ margin: "7px 0 0", color: "var(--text-dim)", fontSize: 12.5, lineHeight: 1.55 }}>Use the {TEST_COPY[path].title.toLowerCase()} example when you are ready to create a real test signal.</p></div>}
         </aside>
       </div>
     </div>
