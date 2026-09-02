@@ -85,6 +85,7 @@ export function OSSidebar() {
         <SwapIcon size={12} style={{ color: "var(--text-mute)" }} />
       </div>
 
+      <div className="os-side-nav">
       <div className="os-side-label">Operations</div>
       {OPS_NAV.map((it) => {
         const Icon = it.icon;
@@ -109,6 +110,7 @@ export function OSSidebar() {
           </Link>
         );
       })}
+      </div>
 
       <button className="os-side-bottom" style={{ border: "none", width: "100%", background: "transparent", cursor: "pointer", textAlign: "left" }} onClick={() => {
         setDraft({

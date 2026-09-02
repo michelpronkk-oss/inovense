@@ -17,6 +17,7 @@ export default function WorkflowsPage() {
   const [tab, setTab] = useState("All");
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [requirementsId, setRequirementsId] = useState<string | null>(null);
+  const [setupId, setSetupId] = useState<string | null>(null);
 
   const filtered = state.workflows.filter((w) => tab === "All" || w.status === tab.toLowerCase());
   const totalRuns = state.workflows.reduce((sum, w) => sum + w.totalRuns, 0);
@@ -38,12 +39,14 @@ export default function WorkflowsPage() {
   const isPreview = entitlements.billingStatus === "preview" || !entitlements.canRunRealActions;
   const previewSuggestion = suggestions.find((s) => s.id === previewId) ?? null;
   const requirementsSuggestion = suggestions.find((s) => s.id === requirementsId) ?? null;
+  const setupSuggestion = suggestions.find((s) => s.id === setupId) ?? null;
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setPreviewId(null);
         setRequirementsId(null);
+        setSetupId(null);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -170,10 +173,10 @@ export default function WorkflowsPage() {
                   <button className="appr-btn edit" onClick={() => setPreviewId(s.id)}>Preview</button>
                   <button
                     className={s.installStatus === "installed" ? "appr-btn edit" : "appr-btn approve"}
-                    onClick={() => onInstallSuggestion(s)}
+                    onClick={() => setSetupId(s.id)}
                     disabled={s.installStatus === "installed"}
                     style={{ opacity: s.installStatus === "installed" ? 0.5 : 1 }}
-                  >{s.installStatus === "installed" ? "Deployed" : s.installStatus === "missing_agent" ? "Set up operator" : s.installStatus === "missing_connectors" ? "Connect tools" : "Deploy workflow"}</button>
+                  >{s.installStatus === "installed" ? "Deployed" : "Set up workflow"}</button>
               </div>
             </div>
           ))}
@@ -217,30 +220,31 @@ export default function WorkflowsPage() {
 
       {previewSuggestion && (
         <div className="os-modal-backdrop" onClick={() => setPreviewId(null)}>
-          <div className="os-modal" style={{ width: "min(860px, 94vw)", maxHeight: "86vh", overflow: "auto" }} onClick={(e) => e.stopPropagation()}>
+          <div className="os-modal" role="dialog" aria-modal="true" aria-labelledby="workflow-preview-title" style={{ width: "min(820px, 94vw)", maxHeight: "82vh", overflow: "auto" }} onClick={(e) => e.stopPropagation()}>
             <div className="os-modal-head">
-              <h3>{previewSuggestion.title}</h3>
+              <div><h3 id="workflow-preview-title">{previewSuggestion.title}</h3><div style={{ color: "var(--text-dim)", fontSize: 12, marginTop: 4 }}>{previewSuggestion.description}</div></div>
               <button className="appr-btn deny" onClick={() => setPreviewId(null)}>Close</button>
             </div>
-            <div style={{ display: "grid", gap: 10 }}>
-              <div style={{ fontSize: 12.5, color: "var(--text-dim)" }}>{previewSuggestion.description}</div>
-              <div style={{ fontSize: 11.8, color: "var(--text-mute)" }}><strong style={{ color: "var(--text-dim)" }}>Why suggested:</strong> {previewSuggestion.whySuggested}</div>
-              <div style={{ fontSize: 11.8, color: "var(--text-mute)" }}><strong style={{ color: "var(--text-dim)" }}>Required tools:</strong> {previewSuggestion.requiredConnectors.join(", ") || "None"}</div>
-              <div style={{ fontSize: 11.8, color: "var(--text-mute)" }}><strong style={{ color: "var(--text-dim)" }}>Required operators:</strong> {previewSuggestion.requiredAgents.join(", ") || "None"}</div>
-              <div style={{ fontSize: 11.8, color: "var(--text-mute)" }}><strong style={{ color: "var(--text-dim)" }}>Policy checks:</strong> {previewSuggestion.requiredPolicies.join(", ") || "None"}</div>
-              <div style={{ display: "grid", gap: 6 }}>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.07em" }}>Plan preview</div>
-                {previewSuggestion.previewSteps.map((step, index) => (
-                  <div key={step} style={{ fontSize: 12, color: "var(--text-dim)" }}>{index + 1}. {step}</div>
-                ))}
-              </div>
-              <div style={{ fontSize: 11.8, color: "var(--text-mute)" }}><strong style={{ color: "var(--text-dim)" }}>Expected output:</strong> {previewSuggestion.expectedOutput}</div>
-              <div style={{ fontSize: 11.8, color: "var(--text-mute)" }}>
-                <strong style={{ color: "var(--text-dim)" }}>Approval required for:</strong> {previewSuggestion.requiresApprovalFor.join(", ") || "None"}
-              </div>
-              <div style={{ fontSize: 11.8, color: "var(--text-mute)" }}>
-                <strong style={{ color: "var(--text-dim)" }}>Logged events:</strong> workflow.run_started, workflow.step_completed, workflow.step_failed, workflow.run_completed
-              </div>
+            <div style={{ display: "grid", gap: 16 }}>
+              <div className="workflow-preview-flow">{[previewSuggestion.requiredConnectors[0] ?? "Signal", previewSuggestion.requiredAgents[0] ?? "Operator", "Approval", previewSuggestion.requiredConnectors[1] ?? "Workspace"].map((step, index) => <span key={`${step}-${index}`}><span className="workflow-preview-node">{workflowToken(step)}</span>{index < 3 && <span className="workflow-preview-arrow">→</span>}</span>)}</div>
+              <div><div className="workflow-preview-label">What happens</div><div className="workflow-preview-steps">{previewSuggestion.previewSteps.map((step, index) => <div key={step}><b>{index + 1}</b><span>{step}</span></div>)}</div></div>
+              <div className="workflow-preview-columns"><div><div className="workflow-preview-label">Requirements</div><div className="workflow-preview-copy">{previewSuggestion.requiredConnectors.map(workflowToken).join(" · ") || "No connected tools required"}<br />{previewSuggestion.requiredAgents.map(workflowToken).join(" · ") || "No operator dependency"}</div></div><div><div className="workflow-preview-label">Expected outcome</div><div className="workflow-preview-copy">{previewSuggestion.expectedOutput}</div></div></div>
+              <div className="workflow-preview-safety"><strong>Approval required before:</strong> {previewSuggestion.requiresApprovalFor.join(" and ") || "external actions"}.</div>
+              <details><summary>Advanced details</summary><div className="workflow-preview-copy" style={{ marginTop: 8 }}>Trigger: {previewSuggestion.suggestedTrigger}<br />Policy checks: {previewSuggestion.requiredPolicies.join(", ") || "none"}<br />Risk level: {previewSuggestion.riskLevel}</div></details>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {setupSuggestion && (
+        <div className="os-modal-backdrop" onClick={() => setSetupId(null)}>
+          <div className="os-modal" role="dialog" aria-modal="true" aria-labelledby="workflow-setup-title" style={{ width: "min(620px, 94vw)" }} onClick={(e) => e.stopPropagation()}>
+            <div className="os-modal-head"><div><h3 id="workflow-setup-title">Set up workflow</h3><div style={{ color: "var(--text-dim)", fontSize: 12, marginTop: 4 }}>{setupSuggestion.title}</div></div><button className="appr-btn deny" onClick={() => setSetupId(null)}>Close</button></div>
+            <div style={{ display: "grid", gap: 14 }}>
+              <div className="workflow-preview-flow">{[setupSuggestion.requiredConnectors[0] ?? "Signal", setupSuggestion.requiredAgents[0] ?? "Operator", "Approval", setupSuggestion.requiredConnectors[1] ?? "Workspace"].map((step, index) => <span key={`${step}-${index}`}><span className="workflow-preview-node">{workflowToken(step)}</span>{index < 3 && <span className="workflow-preview-arrow">→</span>}</span>)}</div>
+              <div className="workflow-preview-columns"><div><div className="workflow-preview-label">Requirements</div><div className="workflow-preview-copy">{setupSuggestion.requiredConnectors.map((item) => `${workflowToken(item)} · ${state.connectors.some((c) => c.id === item && c.isConnected) ? "Connected" : "Needs connection"}`).join("\n") || "No tools required"}<br />{setupSuggestion.requiredAgents.map(workflowToken).join(" · ") || "Operator included"}</div></div><div><div className="workflow-preview-label">Controls</div><div className="workflow-preview-copy">Approval before external actions<br />Internal summary when configured</div></div></div>
+              {setupSuggestion.missingRequirements.length > 0 && <div className="workflow-preview-safety">Complete the remaining setup items before activation.</div>}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}><button className="btn btn-ghost btn-sm" onClick={() => setSetupId(null)}>Cancel</button><button className="btn btn-primary btn-sm" onClick={() => { onInstallSuggestion(setupSuggestion); setSetupId(null); }}>{setupSuggestion.missingRequirements.length > 0 ? "Complete setup" : "Activate workflow"}</button></div>
             </div>
           </div>
         </div>
