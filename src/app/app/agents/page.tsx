@@ -90,15 +90,6 @@ function AgentCard({ model }: { model: CardModel }) {
 
       <div className="ag-mission">{op.mission}</div>
 
-      <div className="ag-loop">
-        {op.loop.map((step, i) => (
-          <Fragment key={step.k}>
-            {i > 0 && <span className="ag-step-sep">/</span>}
-            <span className={`ag-step ${step.k === "Approve" ? "gate" : ""}`}><span className="sd" />{step.k}</span>
-          </Fragment>
-        ))}
-      </div>
-
       <div className="ag-foot">
         {foot}
         {openEl}
@@ -112,6 +103,7 @@ export default function AgentsRegistryPage() {
   const [readiness, setReadiness] = useState<OperatorReadiness[]>([]);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "expanding">("all");
+  const [showAllExpanding, setShowAllExpanding] = useState(false);
 
   const identityParams = useMemo(() => new URLSearchParams({
     workspaceId: state.workspace.id,
@@ -208,8 +200,9 @@ export default function AgentsRegistryPage() {
             <span className="rule" />
           </div>
           <div className="ag-grid">
-            {expanding.map((model) => <AgentCard key={model.op.name} model={model} />)}
+            {(showAllExpanding ? expanding : expanding.slice(0, 6)).map((model) => <AgentCard key={model.op.name} model={model} />)}
           </div>
+          {expanding.length > 6 && <button className="appr-btn edit" onClick={() => setShowAllExpanding((value) => !value)} style={{ marginTop: 10 }}>{showAllExpanding ? "Show less" : `Show ${expanding.length - 6} more`}</button>}
         </section>
       )}
     </div>

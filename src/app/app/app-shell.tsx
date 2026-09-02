@@ -91,9 +91,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <OSSidebar />
       <div className="os-main">
         {entitlements.billingStatus === "preview" && (
-          <div style={{
-            margin: "14px 18px 0",
-            padding: "12px 14px",
+          <div className="os-billing-status" style={{
+            margin: "8px 18px 0",
+            padding: "8px 12px",
             borderRadius: 12,
             background: "rgba(77,232,225,0.06)",
             boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.18)",
@@ -104,9 +104,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             flexWrap: "wrap",
           }}>
             <div>
-              <div style={{ color: "#C9FFFB", fontSize: 13, fontWeight: 600 }}>Preview workspace</div>
+              <div style={{ color: "#C9FFFB", fontSize: 12.5, fontWeight: 600 }}>Preview workspace</div>
               <div style={{ color: "var(--text-dim)", fontSize: 12.5 }}>
-                Configure your operating layer for free. Activate Starter to connect real tools and run operators live.
+                Configure your operating layer for free. Activate Starter to connect tools and run operators live.
               </div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
@@ -116,9 +116,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         )}
         {showManageBilling && (
-          <div style={{
-            margin: "14px 18px 0",
-            padding: "12px 14px",
+          <div className="os-billing-status" style={{
+            margin: "8px 18px 0",
+            padding: "8px 12px",
             borderRadius: 12,
             background: "rgba(77,232,225,0.05)",
             boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.15)",
@@ -129,7 +129,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             flexWrap: "wrap",
           }}>
             <div>
-              <div style={{ color: "#C9FFFB", fontSize: 13, fontWeight: 600 }}>Billing active</div>
+              <div style={{ color: "#C9FFFB", fontSize: 12.5, fontWeight: 600 }}>Billing active</div>
               <div style={{ color: "var(--text-dim)", fontSize: 12.5 }}>
                 Manage subscription, payment method, invoices and cancellation in Dodo Customer Portal.
               </div>

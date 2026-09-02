@@ -78,7 +78,16 @@ export default function WorkflowsPage() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+      {state.workflows.length === 0 ? (
+        <div className="p" style={{ padding: "18px" }}>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>No workflows yet</div>
+          <div style={{ marginTop: 5, color: "var(--text-dim)", fontSize: 12.5 }}>Workflows connect operators, triggers and approved actions into repeatable processes.</div>
+          <div style={{ display: "flex", gap: 8, marginTop: 13 }}>
+            <button className="btn btn-primary btn-sm" onClick={() => window.dispatchEvent(new Event("os:open-deploy"))}><PlusIcon size={12} /> Create workflow</button>
+            <button className="btn btn-ghost btn-sm" disabled>Browse templates</button>
+          </div>
+        </div>
+      ) : <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
         {[
           { label: "Total workflows", val: String(state.workflows.length), sub: "live in workspace" },
           { label: "Total runs", val: totalRuns.toLocaleString(), sub: "all time" },
@@ -91,7 +100,7 @@ export default function WorkflowsPage() {
             <div className="kpi-meta"><span className="kpi-delta">{s.sub}</span></div>
           </div>
         ))}
-      </div>
+      </div>}
 
       <div className="p" style={{ overflowX: "auto" }}>
         <div className="p-head">
@@ -136,7 +145,7 @@ export default function WorkflowsPage() {
             <div style={{ padding: "18px", color: "var(--text-mute)", fontSize: 13 }}>
               No suggestions yet. Connect systems and deploy operators to generate recommendations.
             </div>
-          ) : suggestions.map((s) => (
+          ) : suggestions.slice(0, 3).map((s) => (
             <div key={s.id} style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "start" }}>
                 <div>

@@ -9,6 +9,10 @@ const INITIAL_KEYS = [
   { name: "Webhook signing secret", prefix: "ino_wh_â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢9b1d", created: "30 days ago", last: "1h ago", scope: "Webhooks only" },
 ];
 
+function displayKey(prefix: string): string {
+  return prefix.replace(/^ino_/, "auterim_");
+}
+
 export default function ApiKeysPage() {
   const [keys, setKeys] = useState(INITIAL_KEYS);
 
@@ -38,7 +42,7 @@ export default function ApiKeysPage() {
           <div key={`${k.name}-${k.prefix}`} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", borderBottom: "1px solid var(--line)" }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13.5, fontWeight: 500, marginBottom: 3 }}>{k.name}</div>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--cyan)" }}>{k.prefix}</div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--cyan)" }}>{displayKey(k.prefix)}</div>
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)", marginBottom: 2 }}>Created {k.created}</div>
@@ -46,7 +50,7 @@ export default function ApiKeysPage() {
             </div>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, padding: "3px 8px", borderRadius: 5, background: "rgba(77,232,225,0.08)", color: "var(--cyan)", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.2)" }}>{k.scope}</span>
             <div style={{ display: "flex", gap: 6 }}>
-              <button className="appr-btn edit" onClick={() => navigator.clipboard?.writeText(k.prefix)}>Copy</button>
+              <button className="appr-btn edit" onClick={() => navigator.clipboard?.writeText(displayKey(k.prefix))}>Copy prefix</button>
               <button className="appr-btn deny" onClick={() => setKeys((prev) => prev.filter((x) => x.prefix !== k.prefix))}>Revoke</button>
             </div>
           </div>

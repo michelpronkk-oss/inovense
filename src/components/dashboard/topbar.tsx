@@ -718,6 +718,9 @@ export function OSTopbar() {
   const [helpOpen, setHelpOpen] = useState(false);
 
   const pageName = PAGE_LABELS[pathname] ?? "Overview";
+  const contextualAction = pathname === "/app/agents"
+    ? { label: "Deploy agent", icon: true, onClick: () => setDeployOpen(true) }
+    : null;
 
   // âŒ˜K opens palette; âŒ˜D opens deploy
   useEffect(() => {
@@ -820,13 +823,15 @@ export function OSTopbar() {
             {helpOpen && <HelpPanel onClose={() => setHelpOpen(false)} />}
           </div>
 
-          <button
-            className="btn btn-primary btn-sm"
-            style={{ marginLeft: 4 }}
-            onClick={() => { closeAll(); setDeployOpen(true); }}
-          >
-            <PlusIcon size={12} /> Deploy agent
-          </button>
+          {contextualAction && (
+            <button
+              className="btn btn-primary btn-sm"
+              style={{ marginLeft: 4 }}
+              onClick={() => { closeAll(); contextualAction.onClick(); }}
+            >
+              {contextualAction.icon && <PlusIcon size={12} />} {contextualAction.label}
+            </button>
+          )}
         </div>
       </div>
 

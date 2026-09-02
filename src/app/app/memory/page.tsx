@@ -32,6 +32,7 @@ export default function MemoryPage() {
   const isPreview = entitlements.billingStatus === "preview";
   const [q, setQ] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(5);
   const [draftEntries, setDraftEntries] = useState<MemoryEntry[]>([]);
   const [archivedIds, setArchivedIds] = useState<string[]>([]);
   const [fieldIncrements, setFieldIncrements] = useState<Record<string, number>>({});
@@ -56,6 +57,7 @@ export default function MemoryPage() {
       e.content.toLowerCase().includes(q.toLowerCase()) ||
       e.tags.some((t) => t.includes(q.toLowerCase()))
   );
+  const visibleEntries = filtered.slice(0, visibleCount);
 
   return (
     <div className="os-page">
@@ -115,7 +117,7 @@ export default function MemoryPage() {
         <SearchIcon size={14} style={{ color: "var(--text-mute)", flexShrink: 0 }} />
         <input
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(e) => { setQ(e.target.value); setVisibleCount(5); }}
           placeholder="Search memory entries, tags, content..."
           style={{ flex: 1, background: "none", border: "none", outline: "none", color: "var(--text)", fontFamily: "var(--font-sans)", fontSize: 13.5 }}
         />
@@ -125,9 +127,9 @@ export default function MemoryPage() {
       <div className="p">
         <div className="p-head">
           <h3><DatabaseIcon size={13} /> Memory index</h3>
-          <div className="p-meta">{filtered.length} entries</div>
+          <div className="p-meta">{visibleEntries.length} of {filtered.length} entries</div>
         </div>
-        {filtered.map((e) => {
+        {visibleEntries.map((e) => {
           const color = TYPE_COLORS[e.type] ?? "#4DE8E1";
           const isOpen = expanded === e.id;
           return (
@@ -177,6 +179,11 @@ export default function MemoryPage() {
         })}
         {filtered.length === 0 && (
           <div style={{ padding: "32px 18px", textAlign: "center", color: "var(--text-mute)", fontSize: 13 }}>No entries match your search.</div>
+        )}
+        {visibleEntries.length < filtered.length && (
+          <div style={{ padding: "10px 18px", borderTop: "1px solid var(--line)" }}>
+            <button className="appr-btn edit" onClick={() => setVisibleCount((count) => count + 5)}>Show 5 more</button>
+          </div>
         )}
       </div>
     </div>

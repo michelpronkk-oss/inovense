@@ -14,6 +14,7 @@ export default function LogsPage() {
   const { state } = useOS();
   const [agentFilter, setAgentFilter] = useState("All agents");
   const [eventFilter, setEventFilter] = useState("All events");
+  const [visibleCount, setVisibleCount] = useState(10);
 
 
   const agentMarks = useMemo(() => {
@@ -30,6 +31,7 @@ export default function LogsPage() {
     (agentFilter === "All agents" || l.agentMark === agentFilter) &&
     (eventFilter === "All events" || l.event === eventFilter)
   );
+  const visibleLogs = filtered.slice(0, visibleCount);
 
   return (
     <div className="os-page">
@@ -48,13 +50,13 @@ export default function LogsPage() {
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Agent</span>
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
           {agentMarks.map((a) => (
-            <button key={a} onClick={() => setAgentFilter(a)} className={`appr-btn${agentFilter === a ? " approve" : " edit"}`} style={{ fontSize: 10.5, padding: "4px 10px" }}>{a}</button>
+            <button key={a} onClick={() => { setAgentFilter(a); setVisibleCount(10); }} className={`appr-btn${agentFilter === a ? " approve" : " edit"}`} style={{ fontSize: 10.5, padding: "4px 10px" }}>{a}</button>
           ))}
         </div>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)", letterSpacing: "0.08em", textTransform: "uppercase", marginLeft: 8 }}>Event</span>
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
           {eventTypes.map((e) => (
-            <button key={e} onClick={() => setEventFilter(e)} className={`appr-btn${eventFilter === e ? " approve" : " edit"}`} style={{ fontSize: 10.5, padding: "4px 10px" }}>{e === "All events" ? e : formatEventKey(e)}</button>
+            <button key={e} onClick={() => { setEventFilter(e); setVisibleCount(10); }} className={`appr-btn${eventFilter === e ? " approve" : " edit"}`} style={{ fontSize: 10.5, padding: "4px 10px" }}>{e === "All events" ? e : formatEventKey(e)}</button>
           ))}
         </div>
       </div>
@@ -63,11 +65,11 @@ export default function LogsPage() {
         <div className="p-head">
           <h3><DocIcon size={13} /> Log stream</h3>
           <div className="p-meta">
-            <span className="dot dot-cyan pulsing" /> {filtered.length} entries
+            <span className="dot dot-cyan pulsing" /> {visibleLogs.length} of {filtered.length} entries
           </div>
         </div>
         <div style={{ fontFamily: "var(--font-mono)", minWidth: 840 }}>
-          {filtered.map((l) => (
+          {visibleLogs.map((l) => (
             <div
               key={l.id}
               style={{
@@ -93,6 +95,11 @@ export default function LogsPage() {
             <div style={{ padding: "32px 18px", textAlign: "center", color: "var(--text-mute)", fontSize: 13, fontFamily: "var(--font-sans)" }}>No log entries match current filters.</div>
           )}
         </div>
+        {visibleLogs.length < filtered.length && (
+          <div style={{ padding: "10px 18px", borderTop: "1px solid var(--line)" }}>
+            <button className="appr-btn edit" onClick={() => setVisibleCount((count) => count + 10)}>Show 10 more</button>
+          </div>
+        )}
       </div>
     </div>
   );
