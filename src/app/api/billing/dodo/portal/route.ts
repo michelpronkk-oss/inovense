@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createDodoCustomerPortalSession } from "@/lib/billing/dodo";
+import { getAppUrl } from "@/lib/urls";
 
 function createSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -17,8 +18,8 @@ type PortalBody = {
   userEmail?: string;
 };
 
-function resolveReturnUrl(req: NextRequest): string {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || req.nextUrl.origin;
+function resolveReturnUrl(): string {
+  const siteUrl = getAppUrl();
   return `${siteUrl}/app/settings?billing=returned`;
 }
 
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: result.error }, { status });
     }
 
-    const { portalUrl } = await createDodoCustomerPortalSession(result.customerId as string, resolveReturnUrl(req));
+    const { portalUrl } = await createDodoCustomerPortalSession(result.customerId as string, resolveReturnUrl());
     return NextResponse.json({ portalUrl });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Portal initialization failed";
@@ -87,11 +88,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: result.error }, { status });
   }
   try {
-    const { portalUrl } = await createDodoCustomerPortalSession(result.customerId as string, resolveReturnUrl(req));
+    const { portalUrl } = await createDodoCustomerPortalSession(result.customerId as string, resolveReturnUrl());
     return NextResponse.redirect(portalUrl);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Portal initialization failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

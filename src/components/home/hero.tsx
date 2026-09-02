@@ -221,7 +221,7 @@ export default function Hero() {
             variants={itemVariants}
             className="mx-auto mt-6 max-w-[calc(100vw-3rem)] text-base leading-relaxed text-zinc-400 sm:max-w-3xl sm:text-lg"
           >
-            Inovense builds premium websites, intake flows, proposal systems, and onboarding automations for service businesses that need fewer leaks between interest and revenue.
+            Auterim understands how your business works, finds where time, money, and opportunities are being lost, and deploys the right AI workforce with controls and measurable impact.
           </motion.p>
 
           <motion.div

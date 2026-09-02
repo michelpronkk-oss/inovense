@@ -4,12 +4,12 @@ import React from "react";
 import "./globals.css";
 import TrafficAttributionTracker from "@/components/analytics/traffic-attribution-tracker";
 import {
-  INOVENSE_DESCRIPTION,
-  INOVENSE_LANES,
-  INOVENSE_NAME,
-  INOVENSE_ORGANIZATION_ID,
-  INOVENSE_URL,
-  INOVENSE_WEBSITE_ID,
+  AUTERIM_DESCRIPTION,
+  AUTERIM_LANES,
+  AUTERIM_NAME,
+  AUTERIM_ORGANIZATION_ID,
+  AUTERIM_URL,
+  AUTERIM_WEBSITE_ID,
   toJsonLd,
 } from "@/lib/geo";
 
@@ -19,12 +19,12 @@ const monoFallbackStack =
   'ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
 
 export const metadata: Metadata = {
-  metadataBase: new URL(INOVENSE_URL),
+  metadataBase: new URL(AUTERIM_URL),
   title: {
-    default: "Auterim OS â€” AI agents that run your work.",
+    default: "Auterim | AI workforce for businesses",
     template: "%s | Auterim",
   },
-  description: "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.",
+  description: AUTERIM_DESCRIPTION,
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" },
@@ -36,14 +36,14 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     siteName: "Auterim",
-    title: "Auterim OS â€” AI agents that run your work.",
-    description: "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.",
-    url: INOVENSE_URL,
+    title: "Auterim | AI workforce for businesses",
+    description: AUTERIM_DESCRIPTION,
+    url: AUTERIM_URL,
   },
   twitter: {
     card: "summary_large_image",
-    title: "Auterim OS â€” AI agents that run your work.",
-    description: "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.",
+    title: "Auterim | AI workforce for businesses",
+    description: AUTERIM_DESCRIPTION,
   },
   robots: {
     index: true,
@@ -60,31 +60,31 @@ export const metadata: Metadata = {
 const orgSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
-  "@id": INOVENSE_ORGANIZATION_ID,
-  name: "Auterim",
-  url: INOVENSE_URL,
-  logo: `${INOVENSE_URL}/logo.png`,
-  description: "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.",
-  email: "hello@inovense.com",
+  "@id": AUTERIM_ORGANIZATION_ID,
+  name: AUTERIM_NAME,
+  url: AUTERIM_URL,
+  logo: `${AUTERIM_URL}/logo.png`,
+  description: AUTERIM_DESCRIPTION,
+  email: "hello@auterim.com",
   foundingDate: "2024",
   contactPoint: [
     {
       "@type": "ContactPoint",
       contactType: "sales",
-      email: "hello@inovense.com",
-      url: `${INOVENSE_URL}/intake`,
+      email: "hello@auterim.com",
+      url: `${AUTERIM_URL}/intake`,
       availableLanguage: ["en", "nl"],
     },
   ],
   hasOfferCatalog: {
     "@type": "OfferCatalog",
     name: "Auterim service lanes",
-    itemListElement: INOVENSE_LANES.map((lane) => ({
+    itemListElement: AUTERIM_LANES.map((lane) => ({
       "@type": "Offer",
       itemOffered: {
         "@type": "Service",
         name: `${lane.name} by Auterim`,
-        url: `${INOVENSE_URL}${lane.path}`,
+        url: `${AUTERIM_URL}${lane.path}`,
         description: lane.description,
       },
     })),
@@ -104,13 +104,13 @@ const orgSchema = {
 const websiteSchema = {
   "@context": "https://schema.org",
   "@type": "WebSite",
-  "@id": INOVENSE_WEBSITE_ID,
+  "@id": AUTERIM_WEBSITE_ID,
   name: "Auterim",
-  url: INOVENSE_URL,
-  description: "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.",
+  url: AUTERIM_URL,
+  description: AUTERIM_DESCRIPTION,
   inLanguage: ["en", "nl"],
   publisher: {
-    "@id": INOVENSE_ORGANIZATION_ID,
+    "@id": AUTERIM_ORGANIZATION_ID,
   },
 };
 

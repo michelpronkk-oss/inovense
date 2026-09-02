@@ -15,10 +15,10 @@ export const metadata: Metadata = {
   title: "Client Services",
   description: "AI operators for client-facing teams. Onboarding automation, status reporting, account health monitoring, and escalation routing at scale.",
   alternates: {
-    canonical: "https://inovense.com/solutions/client-services",
+    canonical: "https://auterim.com/solutions/client-services",
   },
   openGraph: {
-    url: "https://inovense.com/solutions/client-services",
+    url: "https://auterim.com/solutions/client-services",
     title: "Client Services | Auterim",
     description: "AI operators for client-facing teams. Onboarding automation, status reporting, account health monitoring, and escalation routing at scale.",
     type: "website",

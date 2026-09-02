@@ -401,7 +401,7 @@ export function ContractDocument({ data }: { data: ContractData }) {
               <Text style={s.partyLabel}>SERVICE PROVIDER</Text>
               <Text style={s.partyName}>Inovense</Text>
               <Text style={s.partyDetail}>Digital Infrastructure</Text>
-              <Text style={s.partyDetail}>hello@inovense.com</Text>
+              <Text style={s.partyDetail}>hello@auterim.com</Text>
               <Text style={s.partyDetail}>inovense.com</Text>
             </View>
             <View style={s.partyBlock}>
@@ -471,7 +471,7 @@ export function ContractDocument({ data }: { data: ContractData }) {
               <View style={s.signatureLineEl} />
               <Text style={s.signatureFieldLabel}>SIGNATURE</Text>
               <Text style={s.signatureName}>Inovense</Text>
-              <Text style={s.signatureDetail}>hello@inovense.com</Text>
+              <Text style={s.signatureDetail}>hello@auterim.com</Text>
               <Text style={{ ...s.signatureDetail, marginTop: 10 }}>
                 Date: ___________________
               </Text>

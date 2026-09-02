@@ -214,7 +214,7 @@ export const ProofCarousel = forwardRef<HTMLDivElement, ProofCarouselProps>(
                 letterSpacing: '-0.01em',
               }}
             >
-              {data.cta ?? (data.isLast ? 'inovense.com' : 'Next')}
+              {data.cta ?? (data.isLast ? 'auterim.com' : 'Next')}
             </span>
           </div>
         </div>
@@ -224,4 +224,3 @@ export const ProofCarousel = forwardRef<HTMLDivElement, ProofCarouselProps>(
 );
 
 ProofCarousel.displayName = 'ProofCarousel';
-

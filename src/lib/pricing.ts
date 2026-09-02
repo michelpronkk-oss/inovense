@@ -38,7 +38,7 @@ export const pricingPlans: PricingPlan[] = [
   {
     plan: "starter",
     plan_tier: "starter",
-    plan_name: "Inovense OS Starter",
+    plan_name: "Auterim OS Starter",
     price: "$149",
     period: "/mo",
     tagline: "For teams starting with two controlled AI operators.",
@@ -69,7 +69,7 @@ export const pricingPlans: PricingPlan[] = [
   {
     plan: "growth",
     plan_tier: "growth",
-    plan_name: "Inovense OS Growth",
+    plan_name: "Auterim OS Growth",
     price: "$699",
     period: "/mo",
     tagline: "For teams running AI across revenue, client work and operations.",
@@ -102,7 +102,7 @@ export const pricingPlans: PricingPlan[] = [
   {
     plan: "operator",
     plan_tier: "operator",
-    plan_name: "Inovense OS Operator",
+    plan_name: "Auterim OS Operator",
     price: "$2,500",
     period: "/mo",
     tagline: "For companies that want their first AI operating layer implemented with us.",

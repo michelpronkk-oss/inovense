@@ -8,10 +8,10 @@ export const metadata: Metadata = {
   title: "Privacy Policy",
   description: "How Inovense collects, uses, and protects your data. We do not sell your data. Execution logs are retained per your plan and can be exported at any time.",
   alternates: {
-    canonical: "https://inovense.com/privacy",
+    canonical: "https://auterim.com/privacy",
   },
   openGraph: {
-    url: "https://inovense.com/privacy",
+    url: "https://auterim.com/privacy",
     title: "Privacy Policy | Inovense",
     description: "How Inovense collects, uses, and protects your data. We do not sell your data. Execution logs are retained per your plan and can be exported at any time.",
     type: "website",
@@ -59,11 +59,11 @@ export default function PrivacyPage() {
               <p>
                 For privacy inquiries, contact us at{" "}
                 <a
-                  href="mailto:hello@inovense.com"
+                  href="mailto:hello@auterim.com"
                   className="underline underline-offset-2"
                   style={{ color: "#ECEFF3" }}
                 >
-                  hello@inovense.com
+                  hello@auterim.com
                 </a>
                 .
               </p>

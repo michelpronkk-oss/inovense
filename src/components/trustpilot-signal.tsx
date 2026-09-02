@@ -14,7 +14,7 @@ export default function TrustpilotSignal({
       href={TRUSTPILOT_URL}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label="View Inovense on Trustpilot"
+      aria-label="View Auterim on Trustpilot"
       className={`group inline-flex items-center gap-2.5 rounded-full border border-zinc-800/80 bg-zinc-900/60 px-3.5 py-2 text-xs transition-colors hover:border-zinc-700 hover:bg-zinc-900 ${className}`.trim()}
     >
       <span

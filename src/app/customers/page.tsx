@@ -14,10 +14,10 @@ export const metadata: Metadata = {
   title: "Customers",
   description: "How operators use Auterim to run more of their business with fewer manual handoffs. Real use cases from revenue teams, founders, and content operators.",
   alternates: {
-    canonical: "https://inovense.com/customers",
+    canonical: "https://auterim.com/customers",
   },
   openGraph: {
-    url: "https://inovense.com/customers",
+    url: "https://auterim.com/customers",
     title: "Customers | Auterim",
     description: "How operators use Auterim to run more of their business with fewer manual handoffs. Real use cases from revenue teams, founders, and content operators.",
     type: "website",

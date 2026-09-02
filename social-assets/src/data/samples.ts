@@ -260,7 +260,7 @@ export const processCarouselSlidesSample: ProcessCarouselSlideData[] = [
       { icon: 'follow_up', title: 'Follow-up', detail: 'Automated but contextual outreach' },
       { icon: 'report', title: 'Report', detail: 'Operator-grade performance review' },
     ],
-    cta: 'inovense.com',
+    cta: 'auterim.com',
     isLast: true,
   },
 ];
@@ -294,7 +294,7 @@ export const processCarouselSlidesNlSample: ProcessCarouselSlideData[] = [
       { icon: 'notify', title: 'Notify', detail: 'Live zichtbaarheid' },
       { icon: 'review', title: 'Review', detail: 'Wekelijkse optimalisatie' },
     ],
-    cta: 'inovense.com',
+    cta: 'auterim.com',
     isLast: true,
   },
 ];
@@ -470,7 +470,7 @@ export const proofCarouselSlidesSample: ProofCarouselSlideData[] = [
       'Execution loop documented and enforced',
       'Decisions tied to weekly signals',
     ],
-    cta: 'inovense.com',
+    cta: 'auterim.com',
     isLast: true,
   },
 ];
@@ -505,7 +505,7 @@ export const proofCarouselSlidesNlSample: ProofCarouselSlideData[] = [
       'Heldere beslismomenten in CRM',
       'Beter ritme in opvolging',
     ],
-    cta: 'inovense.com',
+    cta: 'auterim.com',
     isLast: true,
   },
 ];

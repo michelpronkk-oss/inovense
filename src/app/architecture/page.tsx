@@ -14,10 +14,10 @@ export const metadata: Metadata = {
   title: "Architecture",
   description: "Technical overview of the Auterim operating layer. Agent runtime, policy engine, approval gates, persistent memory, and the connector framework.",
   alternates: {
-    canonical: "https://inovense.com/architecture",
+    canonical: "https://auterim.com/architecture",
   },
   openGraph: {
-    url: "https://inovense.com/architecture",
+    url: "https://auterim.com/architecture",
     title: "Architecture | Auterim",
     description: "Technical overview of the Auterim operating layer. Agent runtime, policy engine, approval gates, persistent memory, and the connector framework.",
     type: "website",

@@ -10,7 +10,7 @@ import { STATUS_CONFIG, LANE_COLORS } from "@/app/admin/config";
 import { MarketMarker } from "@/app/admin/market-marker";
 import { deriveWeeklyOperatingSummary } from "@/lib/weekly-operating-summary";
 
-export const metadata: Metadata = { title: "Overview | Inovense CRM" };
+export const metadata: Metadata = { title: "Overview | Auterim Admin" };
 
 export const dynamic = "force-dynamic";
 

@@ -190,7 +190,7 @@ export const ProofSnippetPost = forwardRef<HTMLDivElement, ProofSnippetPostProps
                 letterSpacing: '-0.01em',
               }}
             >
-              {data.cta ?? 'inovense.com'}
+              {data.cta ?? 'auterim.com'}
             </span>
           </div>
         </div>
@@ -200,4 +200,3 @@ export const ProofSnippetPost = forwardRef<HTMLDivElement, ProofSnippetPostProps
 );
 
 ProofSnippetPost.displayName = 'ProofSnippetPost';
-

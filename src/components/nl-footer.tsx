@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 const serviceLinks = [
-  { label: "Bouwen", href: "/nl/build" },
-  { label: "Systemen", href: "/nl/systems" },
-  { label: "Groei", href: "/nl/growth" },
+  { label: "AI-automatisering", href: "/nl/ai-automation" },
+  { label: "Proces", href: "/nl/process" },
+  { label: "Intake", href: "/nl/intake" },
 ];
 
 const companyLinks = [
@@ -38,7 +38,7 @@ export default function NlFooter() {
 
           {/* Brand column */}
           <div className="flex flex-col items-start">
-            <Link href="/nl" className="mb-5 inline-flex items-center gap-2.5 self-start transition-opacity hover:opacity-75" aria-label="Inovense">
+            <Link href="/nl" className="mb-5 inline-flex items-center gap-2.5 self-start transition-opacity hover:opacity-75" aria-label="Auterim">
               <svg width="18" height="18" viewBox="0 0 64 64" fill="none" aria-hidden="true">
                 <g fill="#ECEFF3">
                   <rect x="10" y="10" width="44" height="9"/>
@@ -47,16 +47,16 @@ export default function NlFooter() {
                   <rect x="10" y="45" width="44" height="9"/>
                 </g>
               </svg>
-              <span className="text-[13px] font-semibold tracking-[0.16em] text-zinc-200">INOVENSE</span>
+              <span className="text-[13px] font-semibold tracking-[0.16em] text-zinc-200">AUTERIM</span>
             </Link>
             <p className="max-w-[240px] text-sm leading-relaxed text-zinc-500">
-              Inovense. Gebouwd voor resultaat.
+              Auterim. Gebouwd voor resultaat.
             </p>
             <a
-              href="mailto:hello@inovense.com"
+              href="mailto:hello@auterim.com"
               className="mt-5 text-sm text-zinc-600 transition-colors hover:text-zinc-300"
             >
-              hello@inovense.com
+              hello@auterim.com
             </a>
           </div>
 
@@ -103,7 +103,7 @@ export default function NlFooter() {
         {/* Bottom bar */}
         <div className="mt-14 flex flex-col items-start justify-between gap-3 border-t border-white/[0.05] pt-7 sm:flex-row sm:items-center">
           <p className="text-xs text-zinc-700">
-            &copy; 2026 Inovense. Alle rechten voorbehouden.
+            &copy; 2026 Auterim. Alle rechten voorbehouden.
           </p>
         </div>
 

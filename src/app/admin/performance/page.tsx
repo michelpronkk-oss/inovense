@@ -6,7 +6,7 @@ import {
   type PerformanceSignal,
 } from "@/app/admin/performance/data";
 
-export const metadata: Metadata = { title: "Performance | Inovense CRM" };
+export const metadata: Metadata = { title: "Performance | Auterim Admin" };
 
 export const dynamic = "force-dynamic";
 

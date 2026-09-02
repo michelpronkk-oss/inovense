@@ -115,7 +115,7 @@ export function ContractForm({
         const a = document.createElement("a");
         const slug = companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
         a.href = url;
-        a.download = `inovense-contract-${slug}.pdf`;
+        a.download = `auterim-contract-${slug}.pdf`;
         a.click();
         URL.revokeObjectURL(url);
       } catch {

@@ -15,10 +15,10 @@ export const metadata: Metadata = {
   title: "Marketing",
   description: "AI operators for marketing teams. Content production, campaign tracking, SEO workflow automation, and social scheduling without a coordinator.",
   alternates: {
-    canonical: "https://inovense.com/solutions/marketing",
+    canonical: "https://auterim.com/solutions/marketing",
   },
   openGraph: {
-    url: "https://inovense.com/solutions/marketing",
+    url: "https://auterim.com/solutions/marketing",
     title: "Marketing | Auterim",
     description: "AI operators for marketing teams. Content production, campaign tracking, SEO workflow automation, and social scheduling without a coordinator.",
     type: "website",

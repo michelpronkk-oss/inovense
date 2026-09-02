@@ -156,7 +156,7 @@ function SuccessState({ email }: { email: string }) {
       {/* Trust items */}
       <ul className="mb-10 space-y-2.5 text-left">
         {[
-          "Check je inbox. Ons e-mailadres is hello@inovense.com.",
+          "Check je inbox. Ons e-mailadres is hello@auterim.com.",
           "We beoordelen elke brief persoonlijk voor we reageren.",
           "Geen geautomatiseerde follow-ups. Een echte reactie binnen 24 uur.",
         ].map((item) => (

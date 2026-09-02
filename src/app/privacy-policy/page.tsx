@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description:
     "How Inovense collects, uses, and protects your personal data.",
   alternates: {
-    canonical: "https://inovense.com/privacy-policy",
+    canonical: "https://auterim.com/privacy-policy",
   },
 };
 
@@ -27,10 +27,10 @@ const sections = [
           and how we handle it when you use this website or get in touch with us.
           For any privacy-related questions, contact us at{" "}
           <a
-            href="mailto:hello@inovense.com"
+            href="mailto:hello@auterim.com"
             className="text-zinc-300 underline underline-offset-4 hover:text-brand transition-colors"
           >
-            hello@inovense.com
+            hello@auterim.com
           </a>
           .
         </p>
@@ -223,10 +223,10 @@ const sections = [
         <p>
           To exercise any of these rights, contact us at{" "}
           <a
-            href="mailto:hello@inovense.com"
+            href="mailto:hello@auterim.com"
             className="text-zinc-300 underline underline-offset-4 hover:text-brand transition-colors"
           >
-            hello@inovense.com
+            hello@auterim.com
           </a>
           . We will respond within the timeframes required by applicable law.
         </p>
@@ -260,10 +260,10 @@ const sections = [
           <p>
             Email:{" "}
             <a
-              href="mailto:hello@inovense.com"
+              href="mailto:hello@auterim.com"
               className="text-zinc-300 underline underline-offset-4 hover:text-brand transition-colors"
             >
-              hello@inovense.com
+              hello@auterim.com
             </a>
           </p>
         </div>

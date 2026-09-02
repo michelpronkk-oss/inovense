@@ -9,15 +9,15 @@ export const metadata: Metadata = {
   description:
     "Request a build review for your website and client acquisition flow. Tell Inovense what you are building, where the current flow leaks, and what needs to become cleaner.",
   alternates: {
-    canonical: "https://inovense.com/intake",
+    canonical: "https://auterim.com/intake",
     languages: {
-      en: "https://inovense.com/intake",
-      nl: "https://inovense.com/nl/intake",
-      "x-default": "https://inovense.com/intake",
+      en: "https://auterim.com/intake",
+      nl: "https://auterim.com/nl/intake",
+      "x-default": "https://auterim.com/intake",
     },
   },
   openGraph: {
-    url: "https://inovense.com/intake",
+    url: "https://auterim.com/intake",
     title: "Request a Build Review | Inovense",
     description:
       "Tell Inovense what you are building, where the current flow leaks, and what needs to become cleaner before the next launch.",
@@ -46,10 +46,10 @@ export default function IntakePage() {
             <p className="mt-8 text-center text-xs leading-relaxed text-zinc-700">
               Prefer email?{" "}
               <a
-                href="mailto:hello@inovense.com"
+                href="mailto:hello@auterim.com"
                 className="text-zinc-500 transition-colors hover:text-zinc-300"
               >
-                hello@inovense.com
+                hello@auterim.com
               </a>
             </p>
           </div>

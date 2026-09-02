@@ -303,7 +303,7 @@ export function buildEmailHtml({
   heading,
   body,
   cta,
-  baseUrl = "https://inovense.com",
+  baseUrl = "https://auterim.com",
   lang = "en",
 }: {
   eyebrow: string;
@@ -379,7 +379,7 @@ export function buildEmailHtml({
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
                   <td>
-                    <p style="margin:0;font-size:11px;color:#3f3f46;">Michel<br />Auterim &nbsp;&middot;&nbsp; <a href="mailto:hello@inovense.com" style="color:#52525b;text-decoration:none;">hello@inovense.com</a></p>
+                    <p style="margin:0;font-size:11px;color:#3f3f46;">Michel<br />Auterim &nbsp;&middot;&nbsp; <a href="mailto:hello@auterim.com" style="color:#52525b;text-decoration:none;">hello@auterim.com</a></p>
                   </td>
                 </tr>
               </table>

@@ -230,10 +230,10 @@ export default async function ProposalPage({
           <p className="mt-2 text-xs text-zinc-700">
             {copy.invalidLinkHelp}{" "}
             <a
-              href="mailto:hello@inovense.com"
+              href="mailto:hello@auterim.com"
               className="text-zinc-600 underline underline-offset-2 hover:text-zinc-400"
             >
-              hello@inovense.com
+              hello@auterim.com
             </a>
             .
           </p>
@@ -255,10 +255,10 @@ export default async function ProposalPage({
           <p className="mt-4 text-sm text-zinc-500">{copy.draftMessage}</p>
           <p className="mt-3 text-xs text-zinc-700">
             <a
-              href="mailto:hello@inovense.com"
+              href="mailto:hello@auterim.com"
               className="text-zinc-600 underline underline-offset-2 hover:text-zinc-400"
             >
-              hello@inovense.com
+              hello@auterim.com
             </a>
           </p>
         </div>
@@ -429,10 +429,10 @@ export default async function ProposalPage({
           <p className="text-xs text-zinc-700">
             {copy.questionsLinePrefix}{" "}
             <a
-              href="mailto:hello@inovense.com"
+              href="mailto:hello@auterim.com"
               className="text-zinc-600 underline underline-offset-2 hover:text-zinc-400"
             >
-              hello@inovense.com
+              hello@auterim.com
             </a>
             .
           </p>

@@ -112,7 +112,7 @@ export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
     approvalRequiredActions: ["Contact write", "Deal write"],
     eventTypes: ["crm.contact.created", "crm.deal.created"],
     riskLevel: "medium",
-    setupNotes: "Managed OAuth through Nango. No tokens are stored in Inovense.",
+    setupNotes: "Managed OAuth through Nango. No tokens are stored in Auterim.",
   },
 
   // ── Coming soon (clear near-term path) ───────────────────────────────

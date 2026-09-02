@@ -14,10 +14,10 @@ export const metadata: Metadata = {
   title: "API Reference",
   description: "Complete REST API for Auterim. Agents, workflows, connectors, approvals, memory, and execution logs. Full programmatic control over every platform layer.",
   alternates: {
-    canonical: "https://inovense.com/api-reference",
+    canonical: "https://auterim.com/api-reference",
   },
   openGraph: {
-    url: "https://inovense.com/api-reference",
+    url: "https://auterim.com/api-reference",
     title: "API Reference | Auterim",
     description: "Complete REST API for Auterim. Agents, workflows, connectors, approvals, memory, and execution logs. Full programmatic control over every platform layer.",
     type: "website",

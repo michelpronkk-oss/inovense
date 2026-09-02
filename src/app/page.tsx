@@ -15,9 +15,9 @@ import PricingSection from "@/components/home-v3/pricing";
 import FinalCTA from "@/components/home-v3/final-cta";
 import {
   INOVENSE_HOME_FAQS,
-  INOVENSE_ORGANIZATION_ID,
-  INOVENSE_URL,
-  INOVENSE_WEBSITE_ID,
+  AUTERIM_ORGANIZATION_ID,
+  AUTERIM_URL,
+  AUTERIM_WEBSITE_ID,
   toJsonLd,
 } from "@/lib/geo";
 
@@ -28,15 +28,15 @@ export const metadata: Metadata = {
   description:
     "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.",
   alternates: {
-    canonical: "https://inovense.com",
+    canonical: "https://auterim.com",
     languages: {
-      en: "https://inovense.com",
-      nl: "https://inovense.com/nl",
-      "x-default": "https://inovense.com",
+      en: "https://auterim.com",
+      nl: "https://auterim.com/nl",
+      "x-default": "https://auterim.com",
     },
   },
   openGraph: {
-    url: "https://inovense.com",
+    url: "https://auterim.com",
     title: "Auterim | AI agents that run your work.",
     description:
       "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.",
@@ -64,16 +64,16 @@ export const metadata: Metadata = {
 const homePageSchema = {
   "@context": "https://schema.org",
   "@type": "WebPage",
-  "@id": `${INOVENSE_URL}/#home`,
-  url: INOVENSE_URL,
+  "@id": `${AUTERIM_URL}/#home`,
+  url: AUTERIM_URL,
   name: "Auterim | AI agents that run your work.",
   description:
     "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.",
   isPartOf: {
-    "@id": INOVENSE_WEBSITE_ID,
+    "@id": AUTERIM_WEBSITE_ID,
   },
   about: {
-    "@id": INOVENSE_ORGANIZATION_ID,
+    "@id": AUTERIM_ORGANIZATION_ID,
   },
   inLanguage: "en",
 };
@@ -81,7 +81,7 @@ const homePageSchema = {
 const homeFaqSchema = {
   "@context": "https://schema.org",
   "@type": "FAQPage",
-  "@id": `${INOVENSE_URL}/#home-faq`,
+  "@id": `${AUTERIM_URL}/#home-faq`,
   mainEntity: INOVENSE_HOME_FAQS.map((faq) => ({
     "@type": "Question",
     name: faq.question,

@@ -160,7 +160,7 @@ export const SystemsExplainer = forwardRef<HTMLDivElement, SystemsExplainerProps
                 letterSpacing: '-0.01em',
               }}
             >
-              {data.cta ?? 'inovense.com'}
+              {data.cta ?? 'auterim.com'}
             </span>
           </div>
         </div>
@@ -170,4 +170,3 @@ export const SystemsExplainer = forwardRef<HTMLDivElement, SystemsExplainerProps
 );
 
 SystemsExplainer.displayName = 'SystemsExplainer';
-

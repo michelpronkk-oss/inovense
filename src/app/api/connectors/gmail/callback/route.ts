@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { exchangeCodeForTokens, fetchGmailProfile, toStoredCredential } from "@/lib/connectors/gmail";
 import { parseOAuthState } from "@/lib/connectors/oauth-state";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
+import { getAppUrl } from "@/lib/urls";
 
-function appBase(req: NextRequest): string {
-  return process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || req.nextUrl.origin;
+function appBase(): string {
+  return getAppUrl();
 }
 
 export async function GET(req: NextRequest) {
@@ -13,13 +14,13 @@ export async function GET(req: NextRequest) {
   const error = req.nextUrl.searchParams.get("error");
 
   if (error) {
-    return NextResponse.redirect(`${appBase(req)}/app/connectors?gmail=oauth_denied`);
+    return NextResponse.redirect(`${appBase()}/app/connectors?gmail=oauth_denied`);
   }
   if (!code) {
-    return NextResponse.redirect(`${appBase(req)}/app/connectors?gmail=missing_code`);
+    return NextResponse.redirect(`${appBase()}/app/connectors?gmail=missing_code`);
   }
   if (!hasSupabaseAdminConfig()) {
-    return NextResponse.redirect(`${appBase(req)}/app/connectors?gmail=supabase_missing`);
+    return NextResponse.redirect(`${appBase()}/app/connectors?gmail=supabase_missing`);
   }
 
   try {
@@ -54,9 +55,9 @@ export async function GET(req: NextRequest) {
         status: "ok",
       });
 
-    return NextResponse.redirect(`${appBase(req)}/app/connectors?connected=gmail`);
+    return NextResponse.redirect(`${appBase()}/app/connectors?connected=gmail`);
   } catch (err) {
     const reason = err instanceof Error ? err.message : "oauth_failed";
-    return NextResponse.redirect(`${appBase(req)}/app/connectors?gmail=error&reason=${encodeURIComponent(reason)}`);
+    return NextResponse.redirect(`${appBase()}/app/connectors?gmail=error&reason=${encodeURIComponent(reason)}`);
   }
 }

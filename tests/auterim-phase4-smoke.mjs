@@ -1,0 +1,55 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+
+const root = process.cwd();
+const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
+
+const brand = read("src/lib/brand.ts");
+const routing = read("src/lib/host-routing.ts");
+const middleware = read("src/middleware.ts");
+const session = read("src/lib/session.ts");
+const storage = read("src/lib/os/app-provider.tsx");
+const urls = read("src/lib/urls.ts");
+const health = read("src/app/api/health/route.ts");
+const envExample = read(".env.example");
+const nextConfig = read("next.config.ts");
+const gmail = read("src/lib/connectors/gmail.ts");
+const dodoCheckout = read("src/app/api/billing/dodo/checkout/route.ts");
+const dodoBilling = read("src/lib/billing/dodo.ts");
+const callbackMatrix = read("docs/operations/AUTERIM_CALLBACK_MATRIX.md");
+
+assert.match(brand, /auterim\.com/);
+assert.match(brand, /AUTERIM_APP_HOST/);
+assert.match(brand, /AUTERIM_ADMIN_HOST/);
+assert.doesNotMatch(brand, /AUTERIM_PORTAL_HOST|AUTERIM_PORTAL_URL/);
+assert.match(routing, /app\.inovense\.com/);
+assert.match(routing, /admin\.inovense\.com/);
+assert.match(routing, /portal\.inovense\.com/);
+assert.match(routing, /portal\.auterim\.com/);
+assert.match(routing, /surface === "portal"\) return getAppHost/);
+assert.match(middleware, /legacy_host_redirect_used/);
+assert.match(middleware, /getPublicApexHost/);
+assert.match(session, /auterim_admin_session/);
+assert.match(session, /inovense_admin_session/);
+assert.match(storage, /auterim-os-state-v7/);
+assert.match(storage, /inovense-os-state-v7/);
+assert.match(urls, /AUTERIM_APP_URL/);
+assert.match(health, /service: "auterim"/);
+assert.match(envExample, /NEXT_PUBLIC_MARKETING_URL=https:\/\/auterim\.com/);
+assert.match(envExample, /NEXT_PUBLIC_APP_URL=https:\/\/app\.auterim\.com/);
+assert.match(envExample, /NEXT_PUBLIC_ADMIN_URL=https:\/\/admin\.auterim\.com/);
+assert.doesNotMatch(envExample, /NEXT_PUBLIC_PORTAL_URL|NEXT_PUBLIC_PORTAL_HOST|portal\.auterim\.com/);
+assert.match(nextConfig, /source: "\/systems", destination: "\/", permanent: true/);
+assert.match(nextConfig, /source: "\/build", destination: "\/", permanent: true/);
+assert.match(gmail, /AUTERIM_APP_URL/);
+assert.match(gmail, /\/api\/connectors\/gmail\/callback/);
+assert.match(dodoCheckout, /getAppUrl\(\)/);
+assert.match(dodoBilling, /DODO_WEBHOOK_SECRET/);
+assert.match(callbackMatrix, /Google\/Gmail OAuth/);
+assert.match(callbackMatrix, /Nango webhook/);
+assert.match(callbackMatrix, /Dodo webhook/);
+assert.doesNotMatch(gmail, /app\.inovense\.com/);
+assert.doesNotMatch(gmail, /localhost:3000/);
+
+console.log("Auterim Phase 4 smoke contracts passed.");

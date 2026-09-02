@@ -20,7 +20,7 @@ import {
 import { PLANNER_SEED_POSTS } from "./seed";
 import { setPlannerStatus, togglePlannerPlatformFlag } from "./actions";
 
-export const metadata: Metadata = { title: "Planner | Inovense CRM" };
+export const metadata: Metadata = { title: "Planner | Auterim Admin" };
 export const dynamic = "force-dynamic";
 
 function isPlannerStatus(value: string): value is PlannerStatus {

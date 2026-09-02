@@ -47,10 +47,10 @@ export default function NlIntakePage() {
             <p className="mt-8 text-center text-xs leading-relaxed text-zinc-700">
               Liever mailen?{" "}
               <a
-                href="mailto:hello@inovense.com"
+                href="mailto:hello@auterim.com"
                 className="text-zinc-500 transition-colors hover:text-zinc-300"
               >
-                hello@inovense.com
+                hello@auterim.com
               </a>
             </p>
           </div>

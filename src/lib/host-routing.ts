@@ -1,10 +1,18 @@
 export type HostSurface = "public" | "admin" | "portal" | "app" | "development";
 
-const DEFAULT_PUBLIC_HOST = "www.inovense.com";
-const DEFAULT_PUBLIC_APEX_HOST = "inovense.com";
-const DEFAULT_ADMIN_HOST = "admin.inovense.com";
-const DEFAULT_PORTAL_HOST = "portal.inovense.com";
-const DEFAULT_APP_HOST = "app.inovense.com";
+import { AUTERIM_ADMIN_HOST, AUTERIM_APP_HOST, AUTERIM_PUBLIC_HOST, AUTERIM_PUBLIC_WWW_HOST } from "@/lib/brand";
+
+const DEFAULT_PUBLIC_HOST = AUTERIM_PUBLIC_WWW_HOST;
+const DEFAULT_PUBLIC_APEX_HOST = AUTERIM_PUBLIC_HOST;
+const DEFAULT_ADMIN_HOST = AUTERIM_ADMIN_HOST;
+const DEFAULT_APP_HOST = AUTERIM_APP_HOST;
+const LEGACY_PUBLIC_HOSTS = new Set(["inovense.com", "www.inovense.com"]);
+const RETIRED_AUTERIM_HOSTS = new Set(["portal.auterim.com"]);
+const LEGACY_SURFACE_HOSTS: Record<Exclude<HostSurface, "development" | "public">, string> = {
+  app: "app.inovense.com",
+  admin: "admin.inovense.com",
+  portal: "portal.inovense.com",
+};
 
 export function normalizeHost(rawHost: string | null | undefined): string {
   const first = (rawHost ?? "").split(",")[0]?.trim().toLowerCase() ?? "";
@@ -33,18 +41,26 @@ export function getAdminHost(): string {
   return normalizeHost(process.env.NEXT_PUBLIC_ADMIN_HOST ?? DEFAULT_ADMIN_HOST);
 }
 
-export function getPortalHost(): string {
-  return normalizeHost(process.env.NEXT_PUBLIC_PORTAL_HOST ?? DEFAULT_PORTAL_HOST);
-}
-
 export function getAppHost(): string {
   return normalizeHost(process.env.NEXT_PUBLIC_APP_HOST ?? DEFAULT_APP_HOST);
+}
+
+export function isLegacyHost(host: string): boolean {
+  const normalized = normalizeHost(host);
+  return LEGACY_PUBLIC_HOSTS.has(normalized) || RETIRED_AUTERIM_HOSTS.has(normalized) || Object.values(LEGACY_SURFACE_HOSTS).includes(normalized);
+}
+
+export function getCanonicalHostForSurface(surface: HostSurface): string {
+  if (surface === "public") return getPublicApexHost();
+  if (surface === "admin") return getAdminHost();
+  if (surface === "portal") return getAppHost();
+  if (surface === "app") return getAppHost();
+  return getPublicApexHost();
 }
 
 export function resolveHostSurface(host: string): HostSurface {
   const normalized = normalizeHost(host);
   const adminHost = getAdminHost();
-  const portalHost = getPortalHost();
   const appHost = getAppHost();
   const publicHost = getPublicHost();
   const publicApexHost = getPublicApexHost();
@@ -54,9 +70,13 @@ export function resolveHostSurface(host: string): HostSurface {
   }
 
   if (normalized === adminHost) return "admin";
-  if (normalized === portalHost) return "portal";
   if (normalized === appHost) return "app";
   if (normalized === publicHost || normalized === publicApexHost) return "public";
+
+  if (LEGACY_PUBLIC_HOSTS.has(normalized)) return "public";
+  if (normalized === LEGACY_SURFACE_HOSTS.admin) return "admin";
+  if (normalized === LEGACY_SURFACE_HOSTS.portal || RETIRED_AUTERIM_HOSTS.has(normalized)) return "portal";
+  if (normalized === LEGACY_SURFACE_HOSTS.app) return "app";
 
   // Unknown hosts (preview URLs, custom staging domains) keep default app behavior.
   return "development";

@@ -15,7 +15,9 @@ export function PricingPlans({ plans }: { plans: PricingPlan[] }) {
   const startCheckout = async (plan: CheckoutPlanTier) => {
     let appState: AppStateShape = {};
     try {
-      const raw = window.localStorage.getItem("inovense-os-state-v1");
+      const raw = window.localStorage.getItem("auterim-os-state-v7")
+        ?? window.localStorage.getItem("auterim-os-state-v1")
+        ?? window.localStorage.getItem("inovense-os-state-v1");
       if (raw) appState = JSON.parse(raw) as AppStateShape;
     } catch {
       appState = {};
@@ -34,10 +36,10 @@ export function PricingPlans({ plans }: { plans: PricingPlan[] }) {
 
     const json = (await response.json().catch(() => ({}))) as { checkoutUrl?: string; error?: string };
     if (!response.ok || !json.checkoutUrl) {
-      window.location.href = "/pricing?billing=error";
+      window.location.assign("/pricing?billing=error");
       return;
     }
-    window.location.href = json.checkoutUrl;
+    window.location.assign(json.checkoutUrl);
   };
 
   return (

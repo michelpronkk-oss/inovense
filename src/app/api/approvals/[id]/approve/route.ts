@@ -15,6 +15,7 @@ import { logOperatorEvent, recordOperatorUsage } from "@/lib/operators/logging";
 import { createOperatorMemory } from "@/lib/operators/memory";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
+import { getAppUrl } from "@/lib/urls";
 
 type ApproveBody = {
   workspaceId?: string;
@@ -496,7 +497,7 @@ async function markDraftOnlyReviewed(input: {
     operatorKey: input.payload.operatorKey || "revenue",
     title: "Approval approved.",
     summary: "Draft-only customer email was reviewed. No Gmail message was sent.",
-    approvalUrl: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://app.inovense.com"}/app/approvals`,
+    approvalUrl: `${getAppUrl()}/app/approvals`,
     metadata: { customerEmailMode: "draft_only" },
   }));
 
@@ -691,7 +692,7 @@ async function executeSharedActionApproval(input: {
       operatorKey: input.payload.preparedAction.operatorKey,
       title: "Approval approved.",
       summary: `Trello action executed: ${input.payload.preparedAction.title}.`,
-      approvalUrl: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://app.inovense.com"}/app/approvals`,
+      approvalUrl: `${getAppUrl()}/app/approvals`,
       metadata: { actionType, connectorKey: "trello" },
     }));
 
@@ -718,7 +719,7 @@ async function executeSharedActionApproval(input: {
       operatorKey: input.payload.preparedAction.operatorKey,
       title: "Execution failed.",
       summary: "Trello action execution failed. Review the approval logs in Auterim.",
-      approvalUrl: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://app.inovense.com"}/app/approvals`,
+      approvalUrl: `${getAppUrl()}/app/approvals`,
       metadata: { actionType: input.payload.preparedAction.actionType, connectorKey: "trello" },
     }));
     return sharedActionErrorResponse(error);
@@ -925,7 +926,7 @@ async function executeOperationsApproval(input: {
     operatorKey: "operations",
     title: anyFailed ? "Execution failed." : "Approval approved.",
     summary: anyFailed ? "An Operations action failed after approval. Review the logs in Auterim." : "Operations action executed after approval.",
-    approvalUrl: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://app.inovense.com"}/app/approvals`,
+      approvalUrl: `${getAppUrl()}/app/approvals`,
     metadata: { actionType, slackStatus, trelloStatus },
   }));
 
@@ -1422,7 +1423,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       operatorKey: gmailPayload.operatorKey || "revenue",
       title: "Execution failed.",
       summary: "Gmail execution failed before the customer email could be sent.",
-      approvalUrl: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://app.inovense.com"}/app/approvals`,
+      approvalUrl: `${getAppUrl()}/app/approvals`,
       metadata: { to: gmailPayload.to, error: error instanceof Error ? error.message : "Unknown Gmail error" },
     }));
     return gmailErrorResponse(error);
@@ -1721,7 +1722,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     summary: hubspotFailed
       ? "Gmail was sent, but HubSpot execution failed. Review the approval logs in Auterim."
       : "Revenue Operator sent the email and updated the run.",
-    approvalUrl: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://app.inovense.com"}/app/approvals`,
+      approvalUrl: `${getAppUrl()}/app/approvals`,
     metadata: { to: gmailPayload.to, hubspotStatus: hubspotResult?.status ?? null },
   }));
 

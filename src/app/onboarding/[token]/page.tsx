@@ -19,7 +19,7 @@ const ONBOARDING_PAGE_COPY: Record<ClientLocale, OnboardingPageCopy> = {
   en: {
     pageTitle: "Onboarding",
     invalidLinkMessage: "This link is invalid or has expired.",
-    invalidLinkHelp: "If you believe this is a mistake, contact us at hello@inovense.com.",
+    invalidLinkHelp: "If you believe this is a mistake, contact us at hello@auterim.com.",
     completedTitle: "Already submitted.",
     completedMessage: "This onboarding brief has already been completed. We are on it.",
     portalButton: "Open Project Workspace",
@@ -27,7 +27,7 @@ const ONBOARDING_PAGE_COPY: Record<ClientLocale, OnboardingPageCopy> = {
   nl: {
     pageTitle: "Onboarding",
     invalidLinkMessage: "Deze link is ongeldig of verlopen.",
-    invalidLinkHelp: "Als je denkt dat dit een fout is, neem contact op via hello@inovense.com.",
+    invalidLinkHelp: "Als je denkt dat dit een fout is, neem contact op via hello@auterim.com.",
     completedTitle: "Al verstuurd.",
     completedMessage: "Deze onboarding is al afgerond. Wij pakken het direct op.",
     portalButton: "Open Project Workspace",

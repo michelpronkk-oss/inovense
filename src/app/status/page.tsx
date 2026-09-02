@@ -12,10 +12,10 @@ export const metadata: Metadata = {
   title: "Status",
   description: "Live status for Auterim platform services. Agent runtime, workflow execution, connector APIs, approval queue, and memory layer.",
   alternates: {
-    canonical: "https://inovense.com/status",
+    canonical: "https://auterim.com/status",
   },
   openGraph: {
-    url: "https://inovense.com/status",
+    url: "https://auterim.com/status",
     title: "Status | Auterim",
     description: "Live status for Auterim platform services. Agent runtime, workflow execution, connector APIs, approval queue, and memory layer.",
     type: "website",
@@ -172,7 +172,7 @@ export default function StatusPage() {
                 Subscribe to status updates for real-time incident alerts.
               </p>
               <a
-                href="mailto:hello@inovense.com?subject=Status updates subscription"
+                href="mailto:hello@auterim.com?subject=Status updates subscription"
                 className="inline-flex rounded-xl px-6 py-3 text-sm font-medium transition-colors"
                 style={{
                   background: "rgba(255,255,255,0.03)",

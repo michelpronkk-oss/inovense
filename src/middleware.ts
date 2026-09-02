@@ -1,8 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
+import { reportLegacyMigrationEvent } from "@/lib/migration-telemetry";
+import { verifySessionToken, SESSION_COOKIE, LEGACY_SESSION_COOKIE } from "@/lib/session";
 import {
   getAdminHost,
-  getPortalHost,
+  getAppHost,
+  getCanonicalHostForSurface,
+  getPublicHost,
+  getPublicApexHost,
+  isLegacyHost,
   isClientSurfacePath,
   isLikelyTokenPath,
   normalizeHost,
@@ -24,7 +29,7 @@ function redirectToHost(
   const url = request.nextUrl.clone();
   url.hostname = targetHost;
   url.pathname = targetPathname;
-  return NextResponse.redirect(url);
+  return NextResponse.redirect(url, { status: 308 });
 }
 
 export async function middleware(request: NextRequest) {
@@ -35,18 +40,26 @@ export async function middleware(request: NextRequest) {
   const surface = resolveHostSurface(requestHost);
   let internalPathname = originalPathname;
 
+  if (isLegacyHost(requestHost)) {
+    reportLegacyMigrationEvent("legacy_host_redirect_used");
+    return redirectToHost(request, getCanonicalHostForSurface(surface), originalPathname);
+  }
+
   if (surface === "public") {
+    if (requestHost === getPublicHost() && requestHost !== getPublicApexHost()) {
+      return redirectToHost(request, getPublicApexHost(), originalPathname);
+    }
     if (originalPathname.startsWith("/admin")) {
       return redirectToHost(request, getAdminHost(), stripAdminPrefix(originalPathname));
     }
     if (isClientSurfacePath(originalPathname)) {
-      return redirectToHost(request, getPortalHost(), originalPathname);
+      return redirectToHost(request, getAppHost(), originalPathname);
     }
   }
 
   if (surface === "admin") {
     if (isClientSurfacePath(originalPathname)) {
-      return redirectToHost(request, getPortalHost(), originalPathname);
+      return redirectToHost(request, getAppHost(), originalPathname);
     }
 
     if (!originalPathname.startsWith("/api") && !originalPathname.startsWith("/admin")) {
@@ -104,14 +117,36 @@ export async function middleware(request: NextRequest) {
   }
 
   if (internalPathname.startsWith("/admin")) {
-    const token = request.cookies.get(SESSION_COOKIE)?.value;
+    const canonicalToken = request.cookies.get(SESSION_COOKIE)?.value;
+    const legacyToken = request.cookies.get(LEGACY_SESSION_COOKIE)?.value;
+    const token = canonicalToken ?? legacyToken;
     const valid = token ? await verifySessionToken(token) : false;
 
     if (!valid) {
+      if (legacyToken) reportLegacyMigrationEvent("migration_fallback_failed");
       const loginPath = surface === "admin" ? "/login" : "/admin/login";
       const loginUrl = new URL(loginPath, request.url);
       loginUrl.searchParams.set("from", internalPathname);
       return NextResponse.redirect(loginUrl);
+    }
+
+    if (!canonicalToken && legacyToken) {
+      reportLegacyMigrationEvent("legacy_admin_cookie_used");
+      const response = internalPathname !== originalPathname
+        ? (() => {
+          const rewriteUrl = request.nextUrl.clone();
+          rewriteUrl.pathname = internalPathname;
+          return NextResponse.rewrite(rewriteUrl, { request: { headers: requestHeaders } });
+        })()
+        : NextResponse.next({ request: { headers: requestHeaders } });
+      response.cookies.set(SESSION_COOKIE, legacyToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7,
+        path: "/",
+      });
+      return response;
     }
   }
 

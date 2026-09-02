@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
-import { APP_SESSION_COOKIE, getSessionUsername, SESSION_COOKIE } from "@/lib/session";
+import { APP_SESSION_COOKIE, getSessionUsername, LEGACY_APP_SESSION_COOKIE, LEGACY_SESSION_COOKIE, SESSION_COOKIE } from "@/lib/session";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { reportLegacyMigrationEvent } from "@/lib/migration-telemetry";
 
 function isUuid(v: string | null | undefined): v is string {
   if (!v) return false;
@@ -114,6 +115,9 @@ async function getSignedCookieIdentity(cookieName: string, source: "app_session"
   const token = cookieStore.get(cookieName)?.value;
   if (!token) return null;
 
+  if (cookieName === LEGACY_APP_SESSION_COOKIE) reportLegacyMigrationEvent("legacy_app_cookie_used");
+  if (cookieName === LEGACY_SESSION_COOKIE) reportLegacyMigrationEvent("legacy_admin_cookie_used");
+
   const username = await getSessionUsername(token);
   if (!username) return null;
 
@@ -138,7 +142,9 @@ async function resolveRequestIdentity(input: {
 
   return await getSupabaseCookieIdentity()
     ?? await getSignedCookieIdentity(APP_SESSION_COOKIE, "app_session")
-    ?? await getSignedCookieIdentity(SESSION_COOKIE, "admin_session");
+    ?? await getSignedCookieIdentity(LEGACY_APP_SESSION_COOKIE, "app_session")
+    ?? await getSignedCookieIdentity(SESSION_COOKIE, "admin_session")
+    ?? await getSignedCookieIdentity(LEGACY_SESSION_COOKIE, "admin_session");
 }
 
 async function findMembership(input: {

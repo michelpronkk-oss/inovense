@@ -113,7 +113,7 @@ export default function PricingSection() {
 
               {t.cta === "Contact sales" ? (
                 <a
-                  href="mailto:hello@inovense.com?subject=Sales%20inquiry"
+                  href="mailto:hello@auterim.com?subject=Sales%20inquiry"
                   className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-[14px] font-medium transition-colors duration-150"
                   style={{ background: "rgba(255,255,255,0.025)", color: TEXT, boxShadow: `inset 0 0 0 1px ${LINE_2}` }}
                 >
@@ -153,7 +153,7 @@ export default function PricingSection() {
       <Reveal>
         <p className="mt-7 text-center font-mono text-[12px]" style={{ color: TEXT_MUTE }}>
           Need volume actions, custom operators, or a private deployment?{" "}
-          <a href="mailto:hello@inovense.com?subject=Sales%20inquiry" style={{ color: CYAN }}>
+          <a href="mailto:hello@auterim.com?subject=Sales%20inquiry" style={{ color: CYAN }}>
             Talk to us
           </a>
           .

@@ -30,7 +30,7 @@ export default async function Image() {
         "Voor bedrijven die beter willen bouwen, automatiseren en groeien.",
       panelLabel: "Lanes",
       lanes: [LANES[0], LANES[1], LANES[2]],
-      domainLabel: "inovense.com/nl",
+      domainLabel: "auterim.com/nl",
       logo,
       variant,
     }),

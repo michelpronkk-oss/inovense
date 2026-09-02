@@ -15,10 +15,10 @@ export const metadata: Metadata = {
   title: "Operations",
   description: "AI operators for business operations. Recurring task execution, cross-team coordination, process documentation, and vendor management.",
   alternates: {
-    canonical: "https://inovense.com/solutions/operations",
+    canonical: "https://auterim.com/solutions/operations",
   },
   openGraph: {
-    url: "https://inovense.com/solutions/operations",
+    url: "https://auterim.com/solutions/operations",
     title: "Operations | Auterim",
     description: "AI operators for business operations. Recurring task execution, cross-team coordination, process documentation, and vendor management.",
     type: "website",

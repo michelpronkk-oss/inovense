@@ -2,6 +2,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
+import { getAppUrl } from "@/lib/urls";
 
 type InviteInput = {
   workspaceId: string;
@@ -104,7 +105,7 @@ export async function inviteWorkspaceMember(input: InviteInput): Promise<InviteR
     invited_by: inviterUserId,
   }, { onConflict: "workspace_id,email" });
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = getAppUrl();
   const acceptUrl = `${appUrl}/app?invite=${inviteInsert.data.token}`;
   const subject = `You are invited to ${workspaceName} on Auterim OS`;
   const textBody = `${input.inviterName} invited you to ${workspaceName} as ${input.role}. Accept invite: ${acceptUrl}`;

@@ -17,7 +17,7 @@ import {
   type LifecycleReminderKind,
 } from "@/lib/lifecycle-reminders";
 
-export const metadata: Metadata = { title: "Leads | Inovense CRM" };
+export const metadata: Metadata = { title: "Leads | Auterim Admin" };
 
 export const dynamic = "force-dynamic";
 

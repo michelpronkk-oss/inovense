@@ -11,20 +11,20 @@ import {
 
 export const metadata: Metadata = {
   title: "Press",
-  description: "Press resources and media inquiries for Auterim. For interview requests, editorial coverage, or brand assets, contact hello@inovense.com.",
+  description: "Press resources and media inquiries for Auterim. For interview requests, editorial coverage, or brand assets, contact hello@auterim.com.",
   alternates: {
-    canonical: "https://inovense.com/press",
+    canonical: "https://auterim.com/press",
   },
   openGraph: {
-    url: "https://inovense.com/press",
+    url: "https://auterim.com/press",
     title: "Press | Auterim",
-    description: "Press resources and media inquiries for Auterim. For interview requests, editorial coverage, or brand assets, contact hello@inovense.com.",
+    description: "Press resources and media inquiries for Auterim. For interview requests, editorial coverage, or brand assets, contact hello@auterim.com.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "Press | Auterim",
-    description: "Press resources and media inquiries for Auterim. For interview requests, editorial coverage, or brand assets, contact hello@inovense.com.",
+    description: "Press resources and media inquiries for Auterim. For interview requests, editorial coverage, or brand assets, contact hello@auterim.com.",
   },
 };
 
@@ -51,7 +51,7 @@ const pressKit = [
   { label: "Company name", value: "Auterim" },
   { label: "Category", value: "AI operating layer for modern businesses" },
   { label: "Boilerplate", value: "Auterim helps teams run operator workflows with connectors, policies, approvals, memory, and execution logs." },
-  { label: "Press contact", value: "hello@inovense.com" },
+  { label: "Press contact", value: "hello@auterim.com" },
 ];
 
 export default function PressPage() {
@@ -67,7 +67,7 @@ export default function PressPage() {
             description="For interview requests, editorial coverage, or brand assets, reach out directly. We respond quickly."
           >
             <a
-              href="mailto:hello@inovense.com"
+              href="mailto:hello@auterim.com"
               className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-medium transition-all hover:-translate-y-px"
               style={{
                 background: "#4DE8E1",
@@ -76,7 +76,7 @@ export default function PressPage() {
                   "inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(77,232,225,0.45), 0 8px 28px -8px rgba(77,232,225,0.5)",
               }}
             >
-              hello@inovense.com
+              hello@auterim.com
             </a>
           </PageHero>
 
@@ -142,8 +142,8 @@ export default function PressPage() {
           <PageCTA
             heading="Get in touch."
             sub="We respond to every press inquiry directly."
-            primary="hello@inovense.com"
-            primaryHref="mailto:hello@inovense.com"
+            primary="hello@auterim.com"
+            primaryHref="mailto:hello@auterim.com"
           />
         </PageShell>
       </main>

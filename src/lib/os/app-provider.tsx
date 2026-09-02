@@ -21,9 +21,12 @@ import { AGENT_TEMPLATES } from "@/lib/os/templates";
 import { continueRunAfterApproval, runAgent as runAgentRuntime, type AgentRuntimeResult } from "@/lib/os/agents/agent-runtime";
 import { installWorkflowFromSuggestion, type SuggestedWorkflow } from "@/lib/os/workflow-recommendations";
 import { getEntitlements, type Entitlements } from "@/lib/os/entitlements";
+import { reportLegacyMigrationEvent } from "@/lib/migration-telemetry";
 
-const STORAGE_KEY = "inovense-os-state-v7";
-const DEV_USER_KEY = "inovense-os-dev-user-v1";
+const STORAGE_KEY = "auterim-os-state-v7";
+const LEGACY_STORAGE_KEYS = ["inovense-os-state-v7", "inovense-os-state-v1"];
+const DEV_USER_KEY = "auterim-os-dev-user-v1";
+const LEGACY_DEV_USER_KEY = "inovense-os-dev-user-v1";
 
 type OSAction =
   | { type: "HYDRATE"; state: OSState }
@@ -486,7 +489,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     if (typeof window !== "undefined") {
       try {
-        const raw = window.localStorage.getItem(DEV_USER_KEY);
+        const canonicalDevUser = window.localStorage.getItem(DEV_USER_KEY);
+        const legacyDevUser = window.localStorage.getItem(LEGACY_DEV_USER_KEY);
+        const raw = canonicalDevUser ?? legacyDevUser;
         if (raw) {
           const parsed = JSON.parse(raw) as Partial<typeof devIdentity>;
           devIdentity = {
@@ -494,6 +499,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             email: parsed.email || devIdentity.email,
             name: parsed.name || devIdentity.name,
           };
+          if (!canonicalDevUser && legacyDevUser) {
+            reportLegacyMigrationEvent("legacy_dev_user_migrated");
+            window.localStorage.setItem(DEV_USER_KEY, legacyDevUser);
+          }
         } else {
           window.localStorage.setItem(DEV_USER_KEY, JSON.stringify(devIdentity));
         }
@@ -512,8 +521,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const sourceKey = localStorage.getItem(STORAGE_KEY)
+        ? STORAGE_KEY
+        : LEGACY_STORAGE_KEYS.find((key) => localStorage.getItem(key)) ?? STORAGE_KEY;
+      const raw = localStorage.getItem(sourceKey);
       if (raw) {
+        if (sourceKey !== STORAGE_KEY) {
+          reportLegacyMigrationEvent("legacy_storage_migrated");
+          localStorage.setItem(STORAGE_KEY, raw);
+        }
         const parsed = JSON.parse(raw) as OSState;
         if (Array.isArray(parsed.agents) && parsed.workspace && parsed.currentUser) {
           if (!parsed.onboarding) {
@@ -534,6 +550,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } catch {
+      reportLegacyMigrationEvent("migration_fallback_failed");
       // Ignore invalid storage.
     } finally {
       setClientHydrated(true);

@@ -19,10 +19,10 @@ export default function ClientWorkspaceEntryPage() {
           Use the secure workspace link from your Inovense email to open your
           project view. If you need help accessing it, contact{" "}
           <a
-            href="mailto:hello@inovense.com"
+            href="mailto:hello@auterim.com"
             className="text-zinc-300 underline underline-offset-2 hover:text-zinc-100"
           >
-            hello@inovense.com
+            hello@auterim.com
           </a>
           .
         </p>

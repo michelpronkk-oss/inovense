@@ -16,13 +16,13 @@ const ONBOARDING_ACTION_COPY: Record<ClientLocale, OnboardingActionCopy> = {
     invalidLink: "Invalid link.",
     expiredLink: "This link is invalid or has expired.",
     alreadySubmitted: "This onboarding form has already been submitted.",
-    submissionFailed: "Submission failed. Please try again or contact us at hello@inovense.com.",
+    submissionFailed: "Submission failed. Please try again or contact us at hello@auterim.com.",
   },
   nl: {
     invalidLink: "Ongeldige link.",
     expiredLink: "Deze link is ongeldig of verlopen.",
     alreadySubmitted: "Deze onboarding is al verstuurd.",
-    submissionFailed: "Versturen mislukt. Probeer het opnieuw of neem contact op via hello@inovense.com.",
+    submissionFailed: "Versturen mislukt. Probeer het opnieuw of neem contact op via hello@auterim.com.",
   },
 };
 

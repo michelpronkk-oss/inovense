@@ -291,7 +291,7 @@ export function makePageOg(config: PageOgConfig) {
             marginTop: "40px",
           }}
         >
-          inovense.com
+          auterim.com
         </div>
       </div>
     </div>

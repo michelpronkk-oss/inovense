@@ -14,36 +14,6 @@ type WorkCase = {
 
 const workCases: WorkCase[] = [
   {
-    title: "SilentSpend",
-    lane: "Product intelligence",
-    summary:
-      "Global monetization layer built as a high-trust decision system for pricing and packaging movement.",
-    evidence: [
-      "Problem: monetization movement was hard to monitor reliably",
-      "System: structured signal + evidence decision layer",
-      "Proof: live case study with product screenshots",
-    ],
-    tags: ["Product", "Systems"],
-    status: "Live case",
-    href: "/work/silentspend",
-    imageSrc: "/work/silentspend/hero.png",
-  },
-  {
-    title: "CheckoutLeak",
-    lane: "Revenue intelligence",
-    summary:
-      "Revenue leak detection platform for Shopify and Stripe operators. Website, backend, and core detection engine. Designed and built in full.",
-    evidence: [
-      "Problem: checkout revenue losses don't surface in standard reports",
-      "System: ranked recovery intelligence with root cause and fix paths",
-      "Proof: live product, invite-only operator access",
-    ],
-    tags: ["Product", "Systems", "Build"],
-    status: "Live case",
-    href: "/work/checkoutleak",
-    imageSrc: "/work/checkoutleak/hero.png",
-  },
-  {
     title: "St. Regis Marriott",
     lane: "Luxury digital infrastructure",
     summary:
@@ -193,7 +163,7 @@ export default function Work() {
               Product and systems cases.
             </h2>
             <p className="mt-4 max-w-2xl text-sm leading-relaxed text-zinc-500 md:text-base">
-              SilentSpend and CheckoutLeak are live. Additional engagements are structured for upcoming case releases.
+              Product and systems cases are being structured for upcoming Auterim case releases.
             </p>
           </div>
         </div>

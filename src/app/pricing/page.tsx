@@ -10,10 +10,10 @@ export const metadata: Metadata = {
   title: "Pricing",
   description: "Pay for operating capacity, not seats. Start with Inovense OS Starter and scale operators, connected tools, approvals, and execution volume as your workflows expand.",
   alternates: {
-    canonical: "https://inovense.com/pricing",
+    canonical: "https://auterim.com/pricing",
   },
   openGraph: {
-    url: "https://inovense.com/pricing",
+    url: "https://auterim.com/pricing",
     title: "Pricing | Inovense",
     description: "Pay for operating capacity, not seats. Start with Inovense OS Starter and scale operators, connected tools, approvals, and execution volume as your workflows expand.",
     type: "website",

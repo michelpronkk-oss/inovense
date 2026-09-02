@@ -13,20 +13,20 @@ import {
 export const metadata: Metadata = {
   title: "AI Automation for Lead Flow and Business Operations",
   description:
-    "AI-powered automation for lead routing, qualification, follow-up, and internal operations. Real workflow leverage, not vague AI promises. Inovense builds systems that handle the work.",
+    "Auterim is an AI workforce platform that understands your business, diagnoses lost value, and deploys controlled AI workers across real workflows.",
   alternates: {
-    canonical: "https://inovense.com/ai-automation",
+    canonical: "https://auterim.com/ai-automation",
     languages: {
-      en: "https://inovense.com/ai-automation",
-      nl: "https://inovense.com/nl/ai-automation",
-      "x-default": "https://inovense.com/ai-automation",
+      en: "https://auterim.com/ai-automation",
+      nl: "https://auterim.com/nl/ai-automation",
+      "x-default": "https://auterim.com/ai-automation",
     },
   },
   openGraph: {
-    url: "https://inovense.com/ai-automation",
-    title: "AI Automation for Lead Flow and Business Operations | Inovense",
+    url: "https://auterim.com/ai-automation",
+    title: "AI Workforce for Business Operations | Auterim",
     description:
-      "AI-powered automation for lead routing, qualification, follow-up, and internal operations. Real workflow leverage, not vague AI promises. Inovense builds systems that handle the work.",
+      "Auterim understands your business, diagnoses lost value, and deploys controlled AI workers across real workflows.",
   },
 };
 
@@ -34,7 +34,7 @@ const aiAutomationServiceSchema = {
   "@context": "https://schema.org",
   "@type": "Service",
   "@id": `${INOVENSE_URL}/ai-automation#service`,
-  name: "Inovense AI Automation",
+  name: "Auterim AI Workforce",
   serviceType: "AI automation and workflow systems",
   provider: {
     "@id": INOVENSE_ORGANIZATION_ID,
@@ -177,7 +177,7 @@ function Hero() {
             Start an automation project
           </Link>
           <Link
-            href="/systems"
+            href="/integrations"
             className="inline-flex w-full items-center justify-center rounded-full border border-zinc-700 px-8 py-3 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50 sm:w-auto"
           >
             See the Systems lane
@@ -472,7 +472,7 @@ function ProofStrip() {
               <span className="text-brand">built to last.&rdquo;</span>
             </p>
             <p className="mt-6 text-sm leading-relaxed text-zinc-500">
-              Inovense built SilentSpend, a monetization intelligence platform,
+              Auterim built SilentSpend, a monetization intelligence platform,
               using the same systems architecture principles we apply to client
               automation engagements. Complex data pipelines, structured signal
               processing, and operator-grade interaction design.
@@ -484,7 +484,7 @@ function ProofStrip() {
 
           <div className="rounded-xl border border-zinc-800/70 bg-zinc-900/40 p-6">
             <p className="mb-5 text-[10px] font-medium uppercase tracking-[0.15em] text-zinc-600">
-              SilentSpend by Inovense
+              SilentSpend by Auterim
             </p>
             <div className="space-y-4">
               {[
@@ -501,7 +501,7 @@ function ProofStrip() {
             </div>
             <div className="mt-6 border-t border-zinc-800/60 pt-5">
               <Link
-                href="/work/silentspend"
+                href="/ai-automation"
                 className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-200"
               >
                 Read the case
@@ -699,10 +699,10 @@ function PageCTA() {
           <span className="text-sm text-zinc-600">
             or email{" "}
             <a
-              href="mailto:hello@inovense.com"
+              href="mailto:hello@auterim.com"
               className="text-zinc-400 transition-colors hover:text-zinc-50"
             >
-              hello@inovense.com
+              hello@auterim.com
             </a>
           </span>
         </div>

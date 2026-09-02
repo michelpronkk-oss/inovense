@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/admin/", "/onboarding/"],
       },
     ],
-    sitemap: "https://inovense.com/sitemap.xml",
+    sitemap: "https://auterim.com/sitemap.xml",
   };
 }

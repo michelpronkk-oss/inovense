@@ -18,6 +18,7 @@ import { draftClientFlowReplyWithAI } from "@/lib/operators/client-flow/ai-draft
 import { applyGreeting, buildContactPersonalization, type SharedPersonalization } from "@/lib/operators/shared/personalization";
 import { sendSlackApprovalNotification } from "@/lib/notifications/slack";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { getAppUrl } from "@/lib/urls";
 import { loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
 import type { PolicyWorkspaceSettings } from "@/lib/policies/types";
 import { loadWorkspacePolicySettings, type TrelloProjectSettings } from "@/lib/settings/workspace-policy";
@@ -840,7 +841,7 @@ export async function scanClientFlowSignals(input: {
           risk: "medium",
           source: "gmail",
           actionLabel: trelloPrepared ? "send client reply and create Trello task" : "send client reply",
-          approvalUrl: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://app.inovense.com"}/app/approvals`,
+          approvalUrl: `${getAppUrl()}/app/approvals`,
           metadata: { dedupeKey: dedupe.dedupeKey, fromEmail: signal.message.fromEmail, subject: signal.message.subject, preparedActions },
         });
       } catch (error) {

@@ -142,7 +142,7 @@ export async function inspectSite(
         signal: controller.signal,
         headers: {
           "User-Agent":
-            "Mozilla/5.0 (compatible; Inovense-Research/1.0; +https://inovense.com)",
+            "Mozilla/5.0 (compatible; Inovense-Research/1.0; +https://auterim.com)",
           Accept: "text/html,application/xhtml+xml",
           "Accept-Language": "en,nl;q=0.9",
         },

@@ -56,7 +56,7 @@ export function extractReferrerHost(referrer: string | null | undefined): string
   try {
     const url = new URL(referrer);
     const host = url.hostname.replace(/^www\./, "");
-    if (!host || host === "inovense.com") return null;
+    if (!host || host === "inovense.com" || host === "auterim.com") return null;
     return host;
   } catch {
     return null;

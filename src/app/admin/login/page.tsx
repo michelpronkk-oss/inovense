@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
+import { verifySessionToken, SESSION_COOKIE, LEGACY_SESSION_COOKIE } from "@/lib/session";
 import LoginForm from "./login-form";
 
 export const metadata: Metadata = {
-  title: "Sign in | Inovense CRM",
+  title: "Sign in | Auterim Admin",
   robots: { index: false, follow: false },
 };
 
@@ -17,7 +17,7 @@ export default async function LoginPage({
 }) {
   // Already authenticated - redirect to CRM
   const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
+  const token = cookieStore.get(SESSION_COOKIE)?.value ?? cookieStore.get(LEGACY_SESSION_COOKIE)?.value;
   if (token && (await verifySessionToken(token))) {
     redirect("/admin");
   }

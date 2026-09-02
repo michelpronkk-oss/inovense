@@ -370,8 +370,8 @@ export const SEED_CURRENT_USER = {
 
 export const SEED_TEAM_MEMBERS = [
   { id: "tm-001", name: "Workspace Admin", email: "admin@workspace.com", role: "Admin", initials: "WA", color: "#4DE8E1", access: ["All operators", "Approvals", "Settings"], status: "online" as const, active: true },
-  { id: "tm-002", name: "Revenue Reviewer", email: "reviewer@inovense.com", role: "Operator - Reviewer", initials: "RR", color: "#A78BFA", access: ["Approvals", "Outputs"], status: "online" as const, active: true },
-  { id: "tm-003", name: "Workflow Viewer", email: "viewer@inovense.com", role: "Operator - Viewer", initials: "WV", color: "#5B8DEF", access: ["Insights", "Outputs"], status: "offline" as const, active: true },
+  { id: "tm-002", name: "Revenue Reviewer", email: "reviewer@auterim.com", role: "Operator - Reviewer", initials: "RR", color: "#A78BFA", access: ["Approvals", "Outputs"], status: "online" as const, active: true },
+  { id: "tm-003", name: "Workflow Viewer", email: "viewer@auterim.com", role: "Operator - Viewer", initials: "WV", color: "#5B8DEF", access: ["Insights", "Outputs"], status: "offline" as const, active: true },
 ];
 
 export const SEED_SETTINGS = {

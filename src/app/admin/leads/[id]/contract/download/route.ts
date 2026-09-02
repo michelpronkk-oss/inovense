@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import React from "react";
-import { renderToBuffer } from "@react-pdf/renderer";
+import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { ContractDocument } from "@/lib/contract-pdf";
 import type { ContractType, ContractData } from "@/lib/contract-pdf";
 
@@ -46,13 +46,12 @@ export async function POST(
       }),
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pdfBuffer = await renderToBuffer(
-    React.createElement(ContractDocument, { data }) as any
+    React.createElement(ContractDocument, { data }) as unknown as React.ReactElement<DocumentProps>
   );
 
   const slug = data.companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-") || id;
-  const filename = `inovense-contract-${slug}.pdf`;
+  const filename = `auterim-contract-${slug}.pdf`;
 
   return new NextResponse(pdfBuffer.buffer as ArrayBuffer, {
     headers: {

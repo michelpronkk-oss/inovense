@@ -237,7 +237,7 @@ export const CREATIVE_TEMPLATE_PRESETS: Record<CreativeTemplateId, TemplatePrese
     subtitle:
       "Pricing shifts, paywall movement, packaging changes, and trial strategy tracked as one operator-grade decision layer.",
     eyebrow: "Case snippet",
-    ctaText: "Open /work/silentspend",
+    ctaText: "Open AI workforce case",
     serviceLane: "Systems",
     showLogo: true,
     accentIntensity: 44,

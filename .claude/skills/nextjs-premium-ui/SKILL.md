@@ -4,7 +4,7 @@ Use this skill when:
 - Building landing pages
 - Polishing UI sections
 - Improving layout hierarchy
-- Creating premium components for Inovense
+- Creating premium components for Auterim
 
 Objectives:
 - Use current Next.js App Router patterns

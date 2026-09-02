@@ -67,7 +67,7 @@ export const statementVideoSample: StatementVideoProps = {
   ],
   endHeadline: "Build. Systems. Growth.",
   endSubline: "Premium digital execution for serious operators.",
-  cta: "inovense.com/intake",
+  cta: "auterim.com/intake",
 };
 
 export const processExplainerVideoSample: ProcessExplainerVideoProps = {

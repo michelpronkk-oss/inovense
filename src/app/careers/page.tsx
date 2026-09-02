@@ -5,20 +5,20 @@ import { PageShell, PageHero, MktCard, SectionDivider, PageCTA } from "@/compone
 
 export const metadata: Metadata = {
   title: "Careers",
-  description: "Join Inovense. Build the OS for the next decade of business. Open roles: Senior Product Engineer, AI Systems Researcher, GTM Lead.",
+  description: "Join Auterim and help build the AI workforce platform for businesses.",
   alternates: {
-    canonical: "https://inovense.com/careers",
+    canonical: "https://auterim.com/careers",
   },
   openGraph: {
-    url: "https://inovense.com/careers",
-    title: "Careers | Inovense",
-    description: "Join Inovense. Build the OS for the next decade of business. Open roles: Senior Product Engineer, AI Systems Researcher, GTM Lead.",
+    url: "https://auterim.com/careers",
+    title: "Careers | Auterim",
+    description: "Join Auterim and help build the AI workforce platform for businesses.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Careers | Inovense",
-    description: "Join Inovense. Build the OS for the next decade of business. Open roles: Senior Product Engineer, AI Systems Researcher, GTM Lead.",
+    title: "Careers | Auterim",
+    description: "Join Auterim and help build the AI workforce platform for businesses.",
   },
 };
 
@@ -75,7 +75,7 @@ export default function CareersPage() {
               </h2>
               <div className="rounded-xl border border-white/[0.07] bg-zinc-900/40 p-6">
                 <p className="text-sm leading-relaxed" style={{ color: "#A4ABB4" }}>
-                  We are not publicly listing specific open roles at the moment. If you are strong in one of the focus areas below and want to build the Inovense operating layer, send us a direct note.
+                  We are not publicly listing specific open roles at the moment. If you are strong in one of the focus areas below and want to help build Auterim&apos;s AI workforce platform, send us a direct note.
                 </p>
               </div>
               <div className="mt-5 grid gap-5 sm:grid-cols-3">
@@ -131,8 +131,8 @@ export default function CareersPage() {
           <PageCTA
             heading="Do not see your role?"
             sub="Send us a note anyway. We read every message."
-            primary="hello@inovense.com"
-            primaryHref="mailto:hello@inovense.com"
+            primary="hello@auterim.com"
+            primaryHref="mailto:hello@auterim.com"
           />
         </PageShell>
       </main>

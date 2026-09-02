@@ -8,10 +8,10 @@ export const metadata: Metadata = {
   title: "Terms of Service",
   description: "Terms of service governing use of the Inovense platform, agent runtime, workflow execution environment, and connector framework.",
   alternates: {
-    canonical: "https://inovense.com/terms",
+    canonical: "https://auterim.com/terms",
   },
   openGraph: {
-    url: "https://inovense.com/terms",
+    url: "https://auterim.com/terms",
     title: "Terms of Service | Inovense",
     description: "Terms of service governing use of the Inovense platform, agent runtime, workflow execution environment, and connector framework.",
     type: "website",
@@ -56,11 +56,11 @@ export default function TermsPage() {
               <p>
                 For questions regarding these terms, contact us at{" "}
                 <a
-                  href="mailto:hello@inovense.com"
+                  href="mailto:hello@auterim.com"
                   className="underline underline-offset-2"
                   style={{ color: "#ECEFF3" }}
                 >
-                  hello@inovense.com
+                  hello@auterim.com
                 </a>
                 .
               </p>

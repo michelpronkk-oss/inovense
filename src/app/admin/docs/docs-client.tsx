@@ -146,7 +146,7 @@ const OPERATING_STATE_NOW = [
 const CORE_SYSTEM_LAYERS: SystemLayerRow[] = [
   {
     layer: "Public site",
-    routes: "/, /build, /systems, /growth, /nl/*",
+    routes: "/, /process, /intake, /ai-automation, /nl/*",
     role: "Acquisition surface, intake entry, and conversion-ready service pages.",
     operatorNotes: "Do not use for internal workflow execution.",
   },
@@ -963,7 +963,7 @@ const SECTIONS: HandbookSection[] = [
           "Client-facing status, current step, next action, payment state, and concise project summary.",
           "Direct links to proposal, payment, and onboarding when available.",
           "State-aware payment panel: pending, payment CTA when link exists, deposit received state, fully paid state.",
-          "Simple contact route back to hello@inovense.com.",
+          "Simple contact route back to hello@auterim.com.",
           "First strong client-facing introduction at deposit confirmation, then reinforced during onboarding/delivery.",
         ],
       },
@@ -1165,7 +1165,7 @@ const SECTIONS: HandbookSection[] = [
         tone: "do",
         items: [
           "Treat host-split behavior as part of normal deployment contract.",
-          "Keep NEXT_PUBLIC_PUBLIC_HOST, NEXT_PUBLIC_ADMIN_HOST, and NEXT_PUBLIC_PORTAL_HOST consistent with environment.",
+          "Keep the marketing, app, and admin host variables consistent with the approved Auterim architecture; there is no active portal host.",
           "Use portal token links as client-facing endpoints; do not share admin routes externally.",
         ],
       },

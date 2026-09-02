@@ -25,7 +25,7 @@ export default function Why() {
         <div className="mb-16 grid grid-cols-1 gap-8 md:grid-cols-2">
           <div>
             <p className="mb-4 text-xs font-medium uppercase tracking-widest text-brand">
-              Why Inovense
+              Why Auterim
             </p>
             <h2 className="text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
               Execution-heavy.

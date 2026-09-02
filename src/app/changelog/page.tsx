@@ -11,10 +11,10 @@ export const metadata: Metadata = {
   title: "Changelog",
   description: "Updates and improvements across the Auterim operating layer. Agent runtime, workflow execution, connector framework, and platform releases.",
   alternates: {
-    canonical: "https://inovense.com/changelog",
+    canonical: "https://auterim.com/changelog",
   },
   openGraph: {
-    url: "https://inovense.com/changelog",
+    url: "https://auterim.com/changelog",
     title: "Changelog | Auterim",
     description: "Updates and improvements across the Auterim operating layer. Agent runtime, workflow execution, connector framework, and platform releases.",
     type: "website",

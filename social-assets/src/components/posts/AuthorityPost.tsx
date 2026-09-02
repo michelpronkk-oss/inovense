@@ -193,7 +193,7 @@ export const AuthorityPost = forwardRef<HTMLDivElement, AuthorityPostProps>(
                 letterSpacing: '0.1em',
               }}
             >
-              inovense.com
+              auterim.com
             </span>
           </div>
         </div>

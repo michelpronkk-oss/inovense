@@ -15,10 +15,10 @@ export const metadata: Metadata = {
   title: "Approvals",
   description: "Human-in-the-loop approval gates between agent proposals and execution. Operators act at speed, humans stay in control. Every decision is logged.",
   alternates: {
-    canonical: "https://inovense.com/approvals",
+    canonical: "https://auterim.com/approvals",
   },
   openGraph: {
-    url: "https://inovense.com/approvals",
+    url: "https://auterim.com/approvals",
     title: "Approvals | Auterim",
     description: "Human-in-the-loop approval gates between agent proposals and execution. Operators act at speed, humans stay in control. Every decision is logged.",
     type: "website",

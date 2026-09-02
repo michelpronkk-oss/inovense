@@ -11,6 +11,7 @@ import { normalizeEmailToSignalEvent, routeSignalCandidate, classifySignalCandid
 import type { SignalCandidate } from "@/lib/signals/types";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
+import { getAppUrl } from "@/lib/urls";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 type RevenueScanSourceMode = "scheduled" | "manual" | "event_ready";
@@ -1041,7 +1042,7 @@ export async function scanRevenueOpportunities(input: {
           risk: "medium",
           source: "gmail",
           actionLabel: hubspotConnected ? "send follow-up email and update HubSpot" : "send follow-up email",
-          approvalUrl: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://app.inovense.com"}/app/approvals`,
+          approvalUrl: `${getAppUrl()}/app/approvals`,
           metadata: {
             dedupeKey: dedupe.dedupeKey,
             fromEmail: opportunity.message.fromEmail,

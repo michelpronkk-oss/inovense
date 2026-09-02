@@ -17,7 +17,7 @@ We've received your brief for ${data.company}. Someone on the team will review i
 If there's a fit, the next step is usually a short proposal or a scoping call. If anything changes before then, just reply here.
 
 Inovense
-hello@inovense.com
+hello@auterim.com
   `.trim();
 }
 
@@ -51,7 +51,7 @@ function formatConfirmationHtml(data: IntakeFormData): string {
 
               <!-- Logo -->
               <div style="margin:0 0 32px 0;">
-                <img src="https://inovense.com/logo.png" alt="Inovense" width="110" height="26" border="0" style="display:block;width:110px;height:26px;border:0;outline:none;text-decoration:none;" />
+                <img src="https://auterim.com/logo.png" alt="Inovense" width="110" height="26" border="0" style="display:block;width:110px;height:26px;border:0;outline:none;text-decoration:none;" />
               </div>
 
               <!-- Eyebrow -->
@@ -122,7 +122,7 @@ function formatConfirmationHtml(data: IntakeFormData): string {
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
                   <td>
-                    <p style="margin:0;font-size:11px;color:#3f3f46;">Inovense &nbsp;&middot;&nbsp; <a href="mailto:hello@inovense.com" style="color:#52525b;text-decoration:none;">hello@inovense.com</a></p>
+                    <p style="margin:0;font-size:11px;color:#3f3f46;">Inovense &nbsp;&middot;&nbsp; <a href="mailto:hello@auterim.com" style="color:#52525b;text-decoration:none;">hello@auterim.com</a></p>
                   </td>
                   <td align="right">
                     <p style="margin:0;font-size:11px;color:#3f3f46;">US &amp; UK</p>
@@ -165,7 +165,7 @@ PROJECT BRIEF
 ${data.details}
 
 ==============================
-Submitted via inovense.com/intake
+Submitted via auterim.com/intake
   `.trim();
 }
 
@@ -189,14 +189,14 @@ export async function submitIntake(
     console.error("[intake] RESEND_API_KEY is not set");
     return {
       success: false,
-      error: "Submission failed. Please email us at hello@inovense.com.",
+      error: "Submission failed. Please email us at hello@auterim.com.",
     };
   }
 
   const resend = new Resend(apiKey);
   const from =
     process.env.RESEND_FROM_EMAIL ?? "Inovense Intake <onboarding@resend.dev>";
-  const to = process.env.INTAKE_TO_EMAIL ?? "hello@inovense.com";
+  const to = process.env.INTAKE_TO_EMAIL ?? "hello@auterim.com";
 
   try {
     const { error } = await resend.emails.send({
@@ -264,7 +264,7 @@ export async function submitIntake(
     resend.emails.send({
       from,
       to: parsed.data.email,
-      replyTo: process.env.INTAKE_TO_EMAIL ?? "hello@inovense.com",
+      replyTo: process.env.INTAKE_TO_EMAIL ?? "hello@auterim.com",
       subject: `We've received your brief, ${parsed.data.fullName.split(" ")[0]}.`,
       text: formatConfirmationText(parsed.data),
       html: formatConfirmationHtml(parsed.data),
@@ -277,7 +277,7 @@ export async function submitIntake(
     console.error("[intake] Unexpected error:", err);
     return {
       success: false,
-      error: "Something went wrong. Please try again or email hello@inovense.com.",
+      error: "Something went wrong. Please try again or email hello@auterim.com.",
     };
   }
 }

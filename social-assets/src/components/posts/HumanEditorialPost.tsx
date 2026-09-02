@@ -209,7 +209,7 @@ export const HumanEditorialPost = forwardRef<HTMLDivElement, HumanEditorialPostP
                   letterSpacing: '-0.01em',
                 }}
               >
-                {data.cta ?? 'inovense.com'}
+                {data.cta ?? 'auterim.com'}
               </span>
             </div>
           </div>

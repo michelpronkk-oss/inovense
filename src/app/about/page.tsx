@@ -12,20 +12,20 @@ import {
 
 export const metadata: Metadata = {
   title: "About",
-  description: "Inovense is building the AI operating layer for modern businesses. Structured operators, enforced policies, and persistent memory that compounds over time.",
+  description: "Auterim is an AI workforce platform for businesses. It understands the business first, recommends controlled AI workforces, and measures business impact.",
   alternates: {
-    canonical: "https://inovense.com/about",
+    canonical: "https://auterim.com/about",
   },
   openGraph: {
-    url: "https://inovense.com/about",
-    title: "About | Inovense",
-    description: "Inovense is building the AI operating layer for modern businesses. Structured operators, enforced policies, and persistent memory that compounds over time.",
+    url: "https://auterim.com/about",
+    title: "About | Auterim",
+    description: "Auterim is an AI workforce platform for businesses. It understands the business first, recommends controlled AI workforces, and measures business impact.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "About | Inovense",
-    description: "Inovense is building the AI operating layer for modern businesses. Structured operators, enforced policies, and persistent memory that compounds over time.",
+    title: "About | Auterim",
+    description: "Auterim is an AI workforce platform for businesses. It understands the business first, recommends controlled AI workforces, and measures business impact.",
   },
 };
 
@@ -46,7 +46,7 @@ export default function AboutPage() {
           <PageHero
             eyebrow="Company"
             heading="We are building the OS for serious operators."
-            description="Inovense OS is a full operating layer for businesses that need structured execution, enforced policies, and persistent institutional knowledge."
+            description="Auterim understands how a business runs, identifies where value is lost, and deploys a controlled AI workforce to improve it."
           >
             <Link
               href="/app/onboarding"
@@ -94,7 +94,7 @@ export default function AboutPage() {
                   Most businesses today run on a mix of SaaS tools, manual coordination, and individual judgment. That works up to a point. But it does not scale. Every new hire is a new coordination layer. Every new process is another thing to maintain.
                 </p>
                 <p style={{ color: "#A4ABB4", fontSize: 17, lineHeight: 1.6 }}>
-                  Inovense is built on a different premise. That the right layer to automate is not a specific task, but the operating model beneath the tasks. Structured operators with policy boundaries, persistent memory, and human approval gates. A system that runs work, not just assists with it.
+                  Most AI tools automate what users tell them to automate. Auterim starts by understanding the business, diagnosing where value is lost, and recommending the right workforce with policy boundaries, approvals, and measurable outcomes.
                 </p>
                 <p style={{ color: "#A4ABB4", fontSize: 17, lineHeight: 1.6 }}>
                   Operators who adopt this model early will move faster, operate with fewer people in the coordination layer, and accumulate institutional knowledge that compounds over time. The businesses that do not adopt it will be competing against those that do.

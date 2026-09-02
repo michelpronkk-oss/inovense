@@ -1,5 +1,5 @@
 /**
- * Session utilities for the Inovense CRM admin auth layer.
+ * Session utilities for the Auterim admin/app auth layers.
  *
  * Uses HMAC-SHA256 (Web Crypto API) for stateless signed session tokens.
  * Fully compatible with the Next.js Edge Runtime used in middleware.
@@ -11,8 +11,13 @@
  *   or legacy: ADMIN_USER=alice, ADMIN_PASSWORD=pass1
  */
 
-export const SESSION_COOKIE = "inovense_admin_session";
-export const APP_SESSION_COOKIE = "inovense_app_session";
+/** Canonical cookies written for new sessions. */
+export const SESSION_COOKIE = "auterim_admin_session";
+export const APP_SESSION_COOKIE = "auterim_app_session";
+
+/** Legacy cookies retained for backwards-compatible reads during migration. */
+export const LEGACY_SESSION_COOKIE = "inovense_admin_session";
+export const LEGACY_APP_SESSION_COOKIE = "inovense_app_session";
 export const SESSION_MAX_AGE_SEC = 60 * 60 * 24 * 7; // 7 days
 const SESSION_MAX_AGE_MS = SESSION_MAX_AGE_SEC * 1000;
 

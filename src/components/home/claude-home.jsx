@@ -348,7 +348,7 @@ const DashChrome = () => (
     <div className="dash-lights"><span /><span /><span /></div>
     <div className="dash-urlbar">
       <I.lock size={11} />
-      <span>app.inovense.com</span>
+      <span>app.auterim.com</span>
       <span style={{ color: "var(--text-faint)" }}>/</span>
       <span className="accent">workspace/inovense</span>
       <span style={{ color: "var(--text-faint)" }}>/</span>
@@ -1809,7 +1809,7 @@ const ApprovalsVisual = () => {
           <strong style={{ fontSize: 13, fontWeight: 500 }}>Approval · #4,812</strong>
           <span className="pill pill-amber">Awaiting review</span>
         </div>
-        <span className="mono" style={{ fontSize: 11, color: "var(--text-mute)" }}>Revenue Operator → operator@inovense.com</span>
+        <span className="mono" style={{ fontSize: 11, color: "var(--text-mute)" }}>Revenue Operator → operator@auterim.com</span>
       </div>
 
       <div className="ap-card-body">

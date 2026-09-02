@@ -67,21 +67,21 @@ function Trust() {
 const services = [
   {
     label: "Build",
-    href: "/nl/build",
+    href: "/nl/ai-automation",
     headline: "Websites & webshops",
     body: "Conversiegerichte websites en Shopify-winkels die vertrouwen wekken, leads genereren en verkopen.",
     tags: ["Build lane", "Geen templates", "Volledige eigendom"],
   },
   {
     label: "Systems",
-    href: "/nl/systems",
+    href: "/nl/process",
     headline: "Slimme systemen",
     body: "AI-automatisering, CRM-workflows en operationele tooling die wrijving wegneemt en uren bespaart.",
     tags: ["Systems lane", "Op maat gebouwd", "Geen off-the-shelf"],
   },
   {
     label: "Growth",
-    href: "/nl/growth",
+    href: "/nl/intake",
     headline: "Groeicampagnes",
     body: "Betaalde media, contentstrategie en leadgeneratie gericht op gekwalificeerd verkeer en meer pipeline.",
     tags: ["Growth lane", "Commerciele focus", "Systeemdenken"],
@@ -299,16 +299,6 @@ type WorkCase = {
 
 const workCases: WorkCase[] = [
   {
-    title: "SilentSpend",
-    lane: "Product intelligence",
-    summary:
-      "Globale monetisatielaag gebouwd als een high-trust beslissysteem voor pricing en packaging.",
-    tags: ["Product", "Systems"],
-    status: "Live case",
-    href: "/work/silentspend",
-    imageSrc: "/work/silentspend/hero.png",
-  },
-  {
     title: "St. Regis Marriott",
     lane: "Luxe digitale infrastructuur",
     summary:
@@ -489,10 +479,10 @@ function PageCTA() {
           <span className="text-sm text-zinc-600">
             of mail naar{" "}
             <a
-              href="mailto:hello@inovense.com"
+              href="mailto:hello@auterim.com"
               className="text-zinc-400 transition-colors hover:text-zinc-50"
             >
-              hello@inovense.com
+              hello@auterim.com
             </a>
           </span>
         </div>

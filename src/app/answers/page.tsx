@@ -3,26 +3,26 @@ import Link from "next/link";
 import Footer from "@/components/footer";
 import Nav from "@/components/nav";
 import {
-  INOVENSE_ORGANIZATION_ID,
-  INOVENSE_URL,
-  INOVENSE_WEBSITE_ID,
+  AUTERIM_ORGANIZATION_ID,
+  AUTERIM_URL,
+  AUTERIM_WEBSITE_ID,
   toJsonLd,
 } from "@/lib/geo";
 
 export const metadata: Metadata = {
-  title: "Inovense Service Fit Answers",
+  title: "Auterim Business Intelligence Answers",
   description:
-    "Clear answers on when to choose Build, Systems, or Growth, plus proof snapshots and fit guidance for operators evaluating Inovense.",
+    "Clear answers about how Auterim understands businesses, diagnoses lost value, and recommends the right AI workforce.",
   alternates: {
-    canonical: "https://inovense.com/answers",
+    canonical: "https://auterim.com/answers",
     languages: {
-      en: "https://inovense.com/answers",
-      "x-default": "https://inovense.com/answers",
+      en: "https://auterim.com/answers",
+      "x-default": "https://auterim.com/answers",
     },
   },
   openGraph: {
-    url: "https://inovense.com/answers",
-    title: "Inovense Service Fit Answers",
+    url: "https://auterim.com/answers",
+    title: "Auterim Business Intelligence Answers",
     description:
       "A compact answer surface for service fit, lane differences, and proof snapshots across Build, Systems, and Growth.",
   },
@@ -30,9 +30,9 @@ export const metadata: Metadata = {
 
 const answerFaqs = [
   {
-    question: "What does Inovense do?",
+    question: "What does Auterim do?",
     answer:
-      "Inovense builds execution infrastructure across three lanes: Build for websites and digital products, Systems for automation and operations, and Growth for compounding demand systems.",
+      "Auterim connects to the business, understands how work gets done, diagnoses where value is lost, and recommends a controlled AI workforce to improve it.",
   },
   {
     question: "What is the difference between Build, Systems, and Growth?",
@@ -51,7 +51,7 @@ const answerFaqs = [
       "Growth fails when demand capture, qualification, routing, and follow-up are disconnected. In that state, more traffic amplifies waste instead of increasing qualified pipeline.",
   },
   {
-    question: "What kind of companies are the right fit for Inovense?",
+    question: "What kind of companies are the right fit for Auterim?",
     answer:
       "Best-fit companies already have momentum, value execution standards, and want durable systems they can own after handoff rather than long-term agency dependency.",
   },
@@ -75,8 +75,8 @@ const laneRows = [
     bestFor:
       "Companies with demand that lands on a site that underperforms commercially.",
     links: [
-      { label: "Build lane", href: "/build" },
-      { label: "Web design", href: "/web-design" },
+      { label: "AI workforce", href: "/ai-automation" },
+      { label: "AI automation", href: "/ai-automation" },
     ],
   },
   {
@@ -85,7 +85,7 @@ const laneRows = [
     bestFor:
       "Teams where growth is blocked by manual process, routing friction, or disconnected tools.",
     links: [
-      { label: "Systems lane", href: "/systems" },
+      { label: "Integrations", href: "/integrations" },
       { label: "AI automation", href: "/ai-automation" },
     ],
   },
@@ -95,8 +95,8 @@ const laneRows = [
     bestFor:
       "Companies with a working offer that need durable acquisition and signal quality improvements.",
     links: [
-      { label: "Growth lane", href: "/growth" },
-      { label: "Lead systems", href: "/lead-generation-systems" },
+      { label: "Auterim overview", href: "/" },
+      { label: "Intake", href: "/intake" },
     ],
   },
 ] as const;
@@ -131,7 +131,7 @@ const proofSnapshots = [
       "Generic or outdated site experiences were replaced with conversion-led, brand-trust web architecture.",
     result:
       "Clearer decision paths and stronger first-impression credibility on high-intent traffic.",
-    href: "/build#build-work",
+    href: "/ai-automation",
   },
   {
     lane: "Systems",
@@ -139,7 +139,7 @@ const proofSnapshots = [
       "Manual handoffs and fragile routing were replaced with mapped workflows and automation logic.",
     result:
       "Faster response, fewer dropped leads, and cleaner operational visibility for operators.",
-    href: "/systems#systems-work",
+    href: "/integrations",
   },
   {
     lane: "Growth",
@@ -147,7 +147,7 @@ const proofSnapshots = [
       "Ad hoc growth activity was replaced with structured SEO, content, and distribution systems.",
     result:
       "More durable inbound quality and compounding demand performance over time.",
-    href: "/growth#growth-work",
+    href: "/",
   },
   {
     lane: "Cross-lane proof",
@@ -155,31 +155,31 @@ const proofSnapshots = [
       "SilentSpend was built as a high-trust product and decision system for complex monetization signal.",
     result:
       "Public proof of product-grade execution in categories where evidence quality drives decisions.",
-    href: "/work/silentspend",
+    href: "/ai-automation",
   },
 ] as const;
 
 const answersPageSchema = {
   "@context": "https://schema.org",
   "@type": "WebPage",
-  "@id": `${INOVENSE_URL}/answers#webpage`,
-  url: `${INOVENSE_URL}/answers`,
-  name: "Inovense Service Fit Answers",
+  "@id": `${AUTERIM_URL}/answers#webpage`,
+  url: `${AUTERIM_URL}/answers`,
+  name: "Auterim Business Intelligence Answers",
   description:
-    "Answer page covering service fit, lane differences, and proof snapshots for Inovense.",
+    "Answers about Auterim's business-first AI workforce platform.",
   inLanguage: "en",
   isPartOf: {
-    "@id": INOVENSE_WEBSITE_ID,
+    "@id": AUTERIM_WEBSITE_ID,
   },
   about: {
-    "@id": INOVENSE_ORGANIZATION_ID,
+    "@id": AUTERIM_ORGANIZATION_ID,
   },
 };
 
 const answersFaqSchema = {
   "@context": "https://schema.org",
   "@type": "FAQPage",
-  "@id": `${INOVENSE_URL}/answers#faq`,
+  "@id": `${AUTERIM_URL}/answers#faq`,
   mainEntity: answerFaqs.map((item) => ({
     "@type": "Question",
     name: item.question,
@@ -213,7 +213,7 @@ export default function AnswersPage() {
               Clear answers for Build, Systems, and Growth fit.
             </h1>
             <p className="mt-6 max-w-3xl text-base leading-relaxed text-zinc-400 md:text-lg">
-              This page exists to make Inovense easier to evaluate, summarize,
+              This page exists to make Auterim easier to evaluate, summarize,
               and cite accurately. Compact answers, explicit fit logic, and
               proof snapshots tied to real lane outcomes.
             </p>

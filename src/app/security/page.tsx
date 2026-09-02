@@ -17,10 +17,10 @@ export const metadata: Metadata = {
   title: "Security",
   description: "Policy enforcement, approval gates, and immutable audit logs. Every agent action runs inside your defined boundaries. Operators propose, policies enforce, humans approve.",
   alternates: {
-    canonical: "https://inovense.com/security",
+    canonical: "https://auterim.com/security",
   },
   openGraph: {
-    url: "https://inovense.com/security",
+    url: "https://auterim.com/security",
     title: "Security | Auterim",
     description: "Policy enforcement, approval gates, and immutable audit logs. Every agent action runs inside your defined boundaries. Operators propose, policies enforce, humans approve.",
     type: "website",

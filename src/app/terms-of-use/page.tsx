@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description:
     "The terms that govern your use of the Inovense website and services.",
   alternates: {
-    canonical: "https://inovense.com/terms-of-use",
+    canonical: "https://auterim.com/terms-of-use",
   },
 };
 
@@ -171,10 +171,10 @@ const sections = [
           <p>
             Email:{" "}
             <a
-              href="mailto:hello@inovense.com"
+              href="mailto:hello@auterim.com"
               className="text-zinc-300 underline underline-offset-4 hover:text-brand transition-colors"
             >
-              hello@inovense.com
+              hello@auterim.com
             </a>
           </p>
         </div>

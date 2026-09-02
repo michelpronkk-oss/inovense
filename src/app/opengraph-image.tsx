@@ -30,7 +30,7 @@ export default async function Image() {
         "The operating layer for autonomous AI agents.",
       panelLabel: "Services",
       lanes: [LANES[0], LANES[1], LANES[2]],
-      domainLabel: "inovense.com",
+      domainLabel: "auterim.com",
       logo,
       variant,
     }),

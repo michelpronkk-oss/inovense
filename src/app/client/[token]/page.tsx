@@ -673,10 +673,10 @@ export default async function ClientPortalPage({
           <p className="mt-2 text-xs text-zinc-700">
             {copy.invalidHelpPrefix}{" "}
             <a
-              href="mailto:hello@inovense.com"
+              href="mailto:hello@auterim.com"
               className="text-zinc-500 underline underline-offset-2 hover:text-zinc-300"
             >
-              hello@inovense.com
+              hello@auterim.com
             </a>
             .
           </p>
@@ -1005,7 +1005,7 @@ export default async function ClientPortalPage({
               tag={copy.availableSoon}
               tone="upcoming"
               ctaLabel={copy.docs.requestContract}
-              href={`mailto:hello@inovense.com?subject=${encodeURIComponent(`Contract copy - ${lead.company_name}`)}`}
+              href={`mailto:hello@auterim.com?subject=${encodeURIComponent(`Contract copy - ${lead.company_name}`)}`}
               external
             />
           </div>
@@ -1052,10 +1052,10 @@ export default async function ClientPortalPage({
             <p className="mt-3 text-sm leading-relaxed text-zinc-400">
               {copy.replyLine}{" "}
               <a
-                href={`mailto:hello@inovense.com?subject=${encodeURIComponent(`Project update - ${lead.company_name}`)}`}
+                href={`mailto:hello@auterim.com?subject=${encodeURIComponent(`Project update - ${lead.company_name}`)}`}
                 className="text-zinc-300 underline underline-offset-2 hover:text-zinc-100"
               >
-                hello@inovense.com
+                hello@auterim.com
               </a>
               .
             </p>

@@ -107,7 +107,7 @@ function Hero() {
             Automatiseringsproject starten
           </Link>
           <Link
-            href="/nl/systems"
+            href="/nl/process"
             className="inline-flex items-center justify-center rounded-full border border-zinc-700 px-8 py-3 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800/60 hover:text-zinc-50"
           >
             Bekijk de Systems lane
@@ -429,7 +429,7 @@ function ProofStrip() {
             </div>
             <div className="mt-6 border-t border-zinc-800/60 pt-5">
               <Link
-                href="/work/silentspend"
+                href="/nl/ai-automation"
                 className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-200"
               >
                 Case bekijken
@@ -627,10 +627,10 @@ function PageCTA() {
           <span className="text-sm text-zinc-600">
             of mail naar{" "}
             <a
-              href="mailto:hello@inovense.com"
+              href="mailto:hello@auterim.com"
               className="text-zinc-400 transition-colors hover:text-zinc-50"
             >
-              hello@inovense.com
+              hello@auterim.com
             </a>
           </span>
         </div>

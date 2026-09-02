@@ -8,10 +8,10 @@ export const metadata: Metadata = {
   title: "Cookie Policy",
   description: "How Inovense uses cookies. Strictly necessary cookies for platform operation and analytics cookies to improve the product. No advertising cookies.",
   alternates: {
-    canonical: "https://inovense.com/cookies",
+    canonical: "https://auterim.com/cookies",
   },
   openGraph: {
-    url: "https://inovense.com/cookies",
+    url: "https://auterim.com/cookies",
     title: "Cookie Policy | Inovense",
     description: "How Inovense uses cookies. Strictly necessary cookies for platform operation and analytics cookies to improve the product. No advertising cookies.",
     type: "website",
@@ -59,11 +59,11 @@ export default function CookiesPage() {
               <p>
                 For questions, contact us at{" "}
                 <a
-                  href="mailto:hello@inovense.com"
+                  href="mailto:hello@auterim.com"
                   className="underline underline-offset-2"
                   style={{ color: "#ECEFF3" }}
                 >
-                  hello@inovense.com
+                  hello@auterim.com
                 </a>
                 .
               </p>

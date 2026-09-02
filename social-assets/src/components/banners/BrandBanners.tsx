@@ -235,7 +235,7 @@ export const FacebookPageCoverBanner = forwardRef<HTMLDivElement, BannerProps>(
                 letterSpacing: '0.1em',
               }}
             >
-              inovense.com
+              auterim.com
             </span>
           </div>
         </div>
@@ -330,7 +330,7 @@ export const LinkedInCompanyBanner = forwardRef<HTMLDivElement, BannerProps>(
                 letterSpacing: '0.1em',
               }}
             >
-              inovense.com
+              auterim.com
             </span>
           </div>
         </div>

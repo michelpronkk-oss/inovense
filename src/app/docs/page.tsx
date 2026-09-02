@@ -16,10 +16,10 @@ export const metadata: Metadata = {
   title: "Docs",
   description: "Guides, API reference, and architecture documentation for the Auterim operating layer. Deploy, configure, and scale your operators.",
   alternates: {
-    canonical: "https://inovense.com/docs",
+    canonical: "https://auterim.com/docs",
   },
   openGraph: {
-    url: "https://inovense.com/docs",
+    url: "https://auterim.com/docs",
     title: "Docs | Auterim",
     description: "Guides, API reference, and architecture documentation for the Auterim operating layer. Deploy, configure, and scale your operators.",
     type: "website",

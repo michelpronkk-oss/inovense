@@ -13,10 +13,10 @@ export const metadata: Metadata = {
   description:
     "Fifteen AI operators that run the same Detect, Prepare, Approve, Execute, Log loop across revenue, delivery, operations and growth.",
   alternates: {
-    canonical: "https://inovense.com/operators",
+    canonical: "https://auterim.com/operators",
   },
   openGraph: {
-    url: "https://inovense.com/operators",
+    url: "https://auterim.com/operators",
     title: "Operators | Auterim",
     description:
       "Fifteen AI operators that run the same Detect, Prepare, Approve, Execute, Log loop across revenue, delivery, operations and growth.",

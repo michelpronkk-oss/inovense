@@ -143,7 +143,7 @@ export default function OnboardingPage() {
                 </div>
                 <div className="field">
                   <label className="label">Website optional</label>
-                  <input className="input" value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} placeholder="inovense.com" />
+                  <input className="input" value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} placeholder="yourcompany.com" />
                 </div>
                 <div className="field">
                   <label className="label">Team / use case</label>

@@ -235,7 +235,7 @@ export const BuildFlowExplainer = forwardRef<HTMLDivElement, BuildFlowExplainerP
                 letterSpacing: '-0.01em',
               }}
             >
-              {data.cta ?? 'inovense.com'}
+              {data.cta ?? 'auterim.com'}
             </span>
           </div>
         </div>
@@ -245,4 +245,3 @@ export const BuildFlowExplainer = forwardRef<HTMLDivElement, BuildFlowExplainerP
 );
 
 BuildFlowExplainer.displayName = 'BuildFlowExplainer';
-

@@ -15,10 +15,10 @@ export const metadata: Metadata = {
   title: "Founders & Ops",
   description: "AI operators for founders running lean. Business intelligence, communications management, hiring workflow, and finance monitoring without an ops hire.",
   alternates: {
-    canonical: "https://inovense.com/solutions/founders-ops",
+    canonical: "https://auterim.com/solutions/founders-ops",
   },
   openGraph: {
-    url: "https://inovense.com/solutions/founders-ops",
+    url: "https://auterim.com/solutions/founders-ops",
     title: "Founders & Ops | Auterim",
     description: "AI operators for founders running lean. Business intelligence, communications management, hiring workflow, and finance monitoring without an ops hire.",
     type: "website",

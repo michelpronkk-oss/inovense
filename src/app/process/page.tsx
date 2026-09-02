@@ -9,15 +9,15 @@ export const metadata: Metadata = {
   description:
     "A controlled Inovense delivery process from first review to launch: clear scope, fast decisions, clean handoff, and fewer revision loops.",
   alternates: {
-    canonical: "https://inovense.com/process",
+    canonical: "https://auterim.com/process",
     languages: {
-      en: "https://inovense.com/process",
-      nl: "https://inovense.com/nl/process",
-      "x-default": "https://inovense.com/process",
+      en: "https://auterim.com/process",
+      nl: "https://auterim.com/nl/process",
+      "x-default": "https://auterim.com/process",
     },
   },
   openGraph: {
-    url: "https://inovense.com/process",
+    url: "https://auterim.com/process",
     title: "Controlled Process From Review to Launch | Inovense",
     description:
       "Clear scope, fast decisions, clean handoff, and a delivery rhythm designed to avoid revision chaos.",
@@ -259,7 +259,7 @@ function OperatingPrinciples() {
 const laneNotes = [
   {
     lane: "Build",
-    href: "/build",
+    href: "/process",
     color: "text-sky-400",
     border: "border-sky-400/20",
     bg: "bg-sky-400/5",
@@ -273,7 +273,7 @@ const laneNotes = [
   },
   {
     lane: "Systems",
-    href: "/systems",
+    href: "/process",
     color: "text-violet-400",
     border: "border-violet-400/20",
     bg: "bg-violet-400/5",
@@ -287,7 +287,7 @@ const laneNotes = [
   },
   {
     lane: "Growth",
-    href: "/growth",
+    href: "/process",
     color: "text-emerald-400",
     border: "border-emerald-400/20",
     bg: "bg-emerald-400/5",
@@ -415,10 +415,10 @@ function ProcessCTA() {
           <span className="text-sm text-zinc-600">
             or email{" "}
             <a
-              href="mailto:hello@inovense.com"
+              href="mailto:hello@auterim.com"
               className="text-zinc-400 transition-colors hover:text-zinc-50"
             >
-              hello@inovense.com
+              hello@auterim.com
             </a>
           </span>
         </div>

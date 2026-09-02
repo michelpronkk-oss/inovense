@@ -4,6 +4,7 @@ import { logOperatorEvent } from "@/lib/operators/logging";
 import { createOperatorMemory } from "@/lib/operators/memory";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
+import { getAppUrl } from "@/lib/urls";
 
 type RejectBody = {
   workspaceId?: string;
@@ -191,7 +192,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     operatorKey: continuation.operatorKey || "revenue",
     title: "Approval rejected.",
     summary: rejectionReason,
-    approvalUrl: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://app.inovense.com"}/app/approvals`,
+    approvalUrl: `${getAppUrl()}/app/approvals`,
     metadata: { reason: rejectionReason, to: continuation.to ?? null },
   }));
 

@@ -1,4 +1,4 @@
-// Inovense — operators roster + role glyphs (simple line icons, 24x24, stroke=currentColor)
+// Auterim — operators roster + role glyphs (simple line icons, 24x24, stroke=currentColor)
 // Single source of truth for the 15 operators, ported from design_handoff_inovense/operators-data.js
 
 export type LoopStep = {
@@ -113,7 +113,7 @@ export const OPERATORS: Operator[] = [
   },
   {
     name: "Knowledge & Memory Operator", tag: "Company · Memory", color: "#8B9DF7", glyph: "memory",
-    mission: "Makes Inovense smarter about each company over time.",
+    mission: "Makes Auterim smarter about each company over time.",
     loop: [
       { k: "Detect", t: "Approved and rejected outputs, policies, pricing, tone and rules." },
       { k: "Prepare", t: "Tone of voice, offers, client profiles, banned claims and templates." },

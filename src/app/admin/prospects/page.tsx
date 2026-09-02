@@ -27,7 +27,7 @@ import {
   updateProspectStatusFromList,
 } from "./actions";
 
-export const metadata: Metadata = { title: "Prospects | Inovense CRM" };
+export const metadata: Metadata = { title: "Prospects | Auterim Admin" };
 export const dynamic = "force-dynamic";
 
 type FollowUpFilter = "today" | "overdue" | "next_7d" | "none";

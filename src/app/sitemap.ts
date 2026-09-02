@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const BASE = "https://inovense.com";
+const BASE = "https://auterim.com";
 const NOW = new Date();
 
 function localizedEntry({
@@ -57,24 +57,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       },
     },
     ...localizedEntry({
-      enPath: "/build",
-      nlPath: "/nl/build",
-      priorityEn: 0.9,
-      priorityNl: 0.75,
-    }),
-    ...localizedEntry({
-      enPath: "/systems",
-      nlPath: "/nl/systems",
-      priorityEn: 0.9,
-      priorityNl: 0.75,
-    }),
-    ...localizedEntry({
-      enPath: "/growth",
-      nlPath: "/nl/growth",
-      priorityEn: 0.9,
-      priorityNl: 0.75,
-    }),
-    ...localizedEntry({
       enPath: "/process",
       nlPath: "/nl/process",
       priorityEn: 0.7,
@@ -87,20 +69,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priorityNl: 0.7,
     }),
     ...localizedEntry({
-      enPath: "/web-design",
-      nlPath: "/nl/web-design",
-      priorityEn: 0.85,
-      priorityNl: 0.75,
-    }),
-    ...localizedEntry({
       enPath: "/ai-automation",
       nlPath: "/nl/ai-automation",
-      priorityEn: 0.85,
-      priorityNl: 0.75,
-    }),
-    ...localizedEntry({
-      enPath: "/shopify-design",
-      nlPath: "/nl/shopify-design",
       priorityEn: 0.85,
       priorityNl: 0.75,
     }),
@@ -109,30 +79,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: NOW,
       changeFrequency: "monthly",
       priority: 0.75,
-    },
-    {
-      url: `${BASE}/saas-design`,
-      lastModified: NOW,
-      changeFrequency: "monthly",
-      priority: 0.85,
-    },
-    {
-      url: `${BASE}/internal-tools`,
-      lastModified: NOW,
-      changeFrequency: "monthly",
-      priority: 0.85,
-    },
-    {
-      url: `${BASE}/lead-generation-systems`,
-      lastModified: NOW,
-      changeFrequency: "monthly",
-      priority: 0.85,
-    },
-    {
-      url: `${BASE}/work/silentspend`,
-      lastModified: NOW,
-      changeFrequency: "monthly",
-      priority: 0.85,
     },
     {
       url: `${BASE}/privacy-policy`,

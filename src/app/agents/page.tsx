@@ -17,10 +17,10 @@ export const metadata: Metadata = {
   title: "AI Agents",
   description: "Deploy specialized AI operators that run workflows, handle decisions, and execute tasks inside your policy boundaries. Revenue, content, finance, and ops operators.",
   alternates: {
-    canonical: "https://inovense.com/agents",
+    canonical: "https://auterim.com/agents",
   },
   openGraph: {
-    url: "https://inovense.com/agents",
+    url: "https://auterim.com/agents",
     title: "AI Agents | Auterim",
     description: "Deploy specialized AI operators that run workflows, handle decisions, and execute tasks inside your policy boundaries. Revenue, content, finance, and ops operators.",
     type: "website",
@@ -138,7 +138,7 @@ export default function AgentsPage() {
               <Reveal delayMs={120}>
                 <MockupWindow
                   title="Operators - Live status"
-                  subtitle="workspace: inovense / production"
+                  subtitle="workspace: auterim / production"
                   rows={[
                     { label: "Revenue Operator", meta: "Drafting 14 follow-ups", status: "live" },
                     { label: "Marketing Operator", meta: "Building Q3 campaign brief", status: "live" },

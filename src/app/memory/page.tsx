@@ -14,10 +14,10 @@ export const metadata: Metadata = {
   title: "Memory & Context",
   description: "Persistent company memory that gives every AI operator full context, history, and institutional knowledge across every run and every agent.",
   alternates: {
-    canonical: "https://inovense.com/memory",
+    canonical: "https://auterim.com/memory",
   },
   openGraph: {
-    url: "https://inovense.com/memory",
+    url: "https://auterim.com/memory",
     title: "Memory & Context | Auterim",
     description: "Persistent company memory that gives every AI operator full context, history, and institutional knowledge across every run and every agent.",
     type: "website",

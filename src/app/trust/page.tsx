@@ -15,10 +15,10 @@ export const metadata: Metadata = {
   title: "Trust Center",
   description: "Security practices, data handling, and compliance posture for the Auterim platform. Data boundaries, no training on your data, full audit trail.",
   alternates: {
-    canonical: "https://inovense.com/trust",
+    canonical: "https://auterim.com/trust",
   },
   openGraph: {
-    url: "https://inovense.com/trust",
+    url: "https://auterim.com/trust",
     title: "Trust Center | Auterim",
     description: "Security practices, data handling, and compliance posture for the Auterim platform. Data boundaries, no training on your data, full audit trail.",
     type: "website",

@@ -72,7 +72,7 @@ export async function sendDepositPaidConfirmationEmail(
     const subject = template.subject(lead.company_name);
     const body = template.body(lead.company_name);
 
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://inovense.com";
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://auterim.com";
     let portalToken = lead.proposal_token;
     if (!portalToken) {
       portalToken = crypto.randomUUID();
@@ -118,7 +118,7 @@ export async function sendDepositPaidConfirmationEmail(
       cta.href,
       "",
       "Inovense",
-      "hello@inovense.com",
+      "hello@auterim.com",
     ]
       .join("\n")
       .trim();
@@ -126,7 +126,7 @@ export async function sendDepositPaidConfirmationEmail(
     const resend = new Resend(apiKey);
     const from =
       process.env.RESEND_FROM_EMAIL ?? "Inovense <onboarding@resend.dev>";
-    const replyTo = process.env.INTAKE_TO_EMAIL ?? "hello@inovense.com";
+    const replyTo = process.env.INTAKE_TO_EMAIL ?? "hello@auterim.com";
 
     const { error: sendError } = await resend.emails.send({
       from,
@@ -230,7 +230,7 @@ export async function sendFinalPaymentReceivedEmail(
     const subject = template.subject(lead.company_name);
     const body = template.body(lead.company_name);
 
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://inovense.com";
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://auterim.com";
     const html = buildEmailHtml({
       eyebrow: template.eyebrow,
       heading: template.heading(firstName),
@@ -247,7 +247,7 @@ export async function sendFinalPaymentReceivedEmail(
       body,
       "",
       "Inovense",
-      "hello@inovense.com",
+      "hello@auterim.com",
     ]
       .join("\n")
       .trim();
@@ -255,7 +255,7 @@ export async function sendFinalPaymentReceivedEmail(
     const resend = new Resend(apiKey);
     const from =
       process.env.RESEND_FROM_EMAIL ?? "Inovense <onboarding@resend.dev>";
-    const replyTo = process.env.INTAKE_TO_EMAIL ?? "hello@inovense.com";
+    const replyTo = process.env.INTAKE_TO_EMAIL ?? "hello@auterim.com";
 
     const { error: sendError } = await resend.emails.send({
       from,
@@ -419,7 +419,7 @@ export async function sendLeadEmail(
 
     // Always use the canonical public URL — never derive from request headers,
     // which would produce localhost or Vercel preview URLs in client emails.
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://inovense.com";
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://auterim.com";
 
     // Build CTA per template type
     let cta: { text: string; href: string } | undefined;
@@ -459,7 +459,7 @@ export async function sendLeadEmail(
       cta ? `\n${cta.text}:\n${cta.href}` : "",
       ``,
       `Inovense`,
-      `hello@inovense.com`,
+      `hello@auterim.com`,
     ]
       .join("\n")
       .trim();
@@ -469,7 +469,7 @@ export async function sendLeadEmail(
     const from =
       process.env.RESEND_FROM_EMAIL ?? "Inovense <onboarding@resend.dev>";
     const replyTo =
-      process.env.INTAKE_TO_EMAIL ?? "hello@inovense.com";
+      process.env.INTAKE_TO_EMAIL ?? "hello@auterim.com";
 
     const { error: sendError } = await resend.emails.send({
       from,

@@ -122,6 +122,8 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!state.workspace.id) return;
+    // This effect starts the client-only connector account synchronization.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAccountsLoading(true);
     const qs = new URLSearchParams({
       workspaceId: state.workspace.id,
@@ -230,10 +232,10 @@ export default function SettingsPage() {
         userEmail: state.currentUser.email,
         userId: state.currentUser.id,
       });
-      window.location.href = `/api/connectors/gmail/auth?${qs.toString()}`;
+      window.location.assign(`/api/connectors/gmail/auth?${qs.toString()}`);
       return;
     }
-    window.location.href = "/app/connectors";
+    window.location.assign("/app/connectors");
   };
 
   const openBillingPortal = async () => {

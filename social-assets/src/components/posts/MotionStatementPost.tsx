@@ -186,7 +186,7 @@ export const MotionStatementPost = forwardRef<HTMLDivElement, MotionStatementPos
                 letterSpacing: '-0.01em',
               }}
             >
-              {data.cta ?? 'inovense.com'}
+              {data.cta ?? 'auterim.com'}
             </span>
           </div>
         </div>

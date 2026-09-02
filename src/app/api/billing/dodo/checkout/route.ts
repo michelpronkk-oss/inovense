@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createDodoCheckoutSession } from "@/lib/billing/dodo";
 import type { CheckoutPlanTier } from "@/lib/pricing";
+import { getAppUrl } from "@/lib/urls";
 
 function parsePlan(value: string | null): CheckoutPlanTier | null {
   if (value === "starter" || value === "growth" || value === "operator") return value;
@@ -13,8 +14,8 @@ function isPlanConfigured(plan: CheckoutPlanTier): boolean {
   return Boolean(process.env.DODO_PRODUCT_OPERATOR);
 }
 
-function resolveSiteUrl(req: NextRequest): string {
-  return process.env.NEXT_PUBLIC_SITE_URL || req.nextUrl.origin;
+function resolveSiteUrl(): string {
+  return getAppUrl();
 }
 
 export async function GET(req: NextRequest) {
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest) {
   try {
     const { checkoutUrl } = await createDodoCheckoutSession({
       plan,
-      siteUrl: resolveSiteUrl(req),
+      siteUrl: resolveSiteUrl(),
     });
     return NextResponse.redirect(checkoutUrl);
   } catch (error) {
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
 
     const { checkoutUrl } = await createDodoCheckoutSession({
       plan,
-      siteUrl: resolveSiteUrl(req),
+      siteUrl: resolveSiteUrl(),
       workspaceId: body.workspaceId,
       userId: body.userId,
       customerEmail: body.customerEmail,

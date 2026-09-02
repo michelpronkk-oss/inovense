@@ -146,7 +146,7 @@ export function executeToolAction(payload: ExecuteToolActionInput): ToolActionEx
           kind: "gmail.send_after_approval",
           workspaceId: state.workspace.id,
           to: String(input.email ?? ""),
-          subject: String(input.subject ?? "Follow-up from Inovense"),
+          subject: String(input.subject ?? "Follow-up from Auterim"),
           body: String(input.body ?? "Following up as discussed."),
         }
         : undefined,

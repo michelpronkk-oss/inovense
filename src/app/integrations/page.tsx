@@ -16,10 +16,10 @@ export const metadata: Metadata = {
   title: "Integrations",
   description: "Native connectors for CRMs, communication platforms, finance systems, and data sources. Connect your stack to the Auterim operating layer.",
   alternates: {
-    canonical: "https://inovense.com/integrations",
+    canonical: "https://auterim.com/integrations",
   },
   openGraph: {
-    url: "https://inovense.com/integrations",
+    url: "https://auterim.com/integrations",
     title: "Integrations | Auterim",
     description: "Native connectors for CRMs, communication platforms, finance systems, and data sources. Connect your stack to the Auterim operating layer.",
     type: "website",

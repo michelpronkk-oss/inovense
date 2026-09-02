@@ -197,7 +197,7 @@ export const ProcessCarousel = forwardRef<HTMLDivElement, ProcessCarouselProps>(
                 letterSpacing: '-0.01em',
               }}
             >
-              {data.cta ?? (data.isLast ? 'inovense.com' : 'Next')}
+              {data.cta ?? (data.isLast ? 'auterim.com' : 'Next')}
             </span>
           </div>
         </div>

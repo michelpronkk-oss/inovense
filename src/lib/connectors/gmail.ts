@@ -1,4 +1,5 @@
 import { decryptToken, encryptToken } from "@/lib/connectors/crypto";
+import { AUTERIM_APP_URL } from "@/lib/brand";
 
 export const GMAIL_COMPOSE_SCOPE = "https://www.googleapis.com/auth/gmail.compose";
 export const GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
@@ -72,7 +73,22 @@ function required(name: string): string {
 }
 
 export function getGoogleRedirectUri(): string {
-  return process.env.GOOGLE_OAUTH_REDIRECT_URI || `${required("NEXT_PUBLIC_APP_URL").replace(/\/$/, "")}/api/connectors/gmail/callback`;
+  const configured = process.env.GOOGLE_OAUTH_REDIRECT_URI?.trim();
+  const canonical = `${AUTERIM_APP_URL}/api/connectors/gmail/callback`;
+  if (!configured) {
+    return process.env.NODE_ENV === "production"
+      ? canonical
+      : `${required("NEXT_PUBLIC_APP_URL").replace(/\/$/, "")}/api/connectors/gmail/callback`;
+  }
+  if (process.env.NODE_ENV !== "production") return configured;
+  try {
+    const url = new URL(configured);
+    return url.protocol === "https:" && url.hostname === "app.auterim.com" && url.pathname === "/api/connectors/gmail/callback"
+      ? configured
+      : canonical;
+  } catch {
+    return canonical;
+  }
 }
 
 export function buildGoogleAuthUrl(state: string): string {

@@ -80,7 +80,7 @@ export const inovenseTrailerSample: InovenseTrailerProps = {
   outro: {
     headline: "Ready for your next launch film.",
     subline: "Inovense designs and ships premium digital systems.",
-    action: "inovense.com/intake",
+    action: "auterim.com/intake",
   },
 };
 
@@ -155,7 +155,6 @@ export const inovenseLaunchFilmSample: InovenseLaunchFilmProps = {
   outro: {
     headline: "Ship your next flagship campaign with Inovense.",
     subline: "From concept to launch film. One premium execution layer.",
-    action: "Start at inovense.com/intake",
+    action: "Start at auterim.com/intake",
   },
 };
-

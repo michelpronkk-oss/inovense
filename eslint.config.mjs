@@ -12,6 +12,13 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    ".trigger/**",
+    "videos-ino/build/**",
+    "videos-ino/out/**",
+    "social-assets/dist/**",
+    "social-assets/build/**",
+    "design_handoff_inovense/**",
+    "public/design/**",
   ]),
 ]);
 

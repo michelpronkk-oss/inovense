@@ -1,6 +1,6 @@
 /**
  * Shared JSX factory for lane-specific Open Graph images.
- * Used by /build, /systems, and /growth opengraph-image.tsx files.
+ * Shared Open Graph renderer for current public product/process surfaces.
  * Not a Next.js route — just a utility.
  */
 
@@ -238,7 +238,7 @@ export function makeLaneOg(config: LaneOgConfig) {
               marginTop: "30px",
             }}
           >
-            inovense.com
+            auterim.com
           </div>
         </div>
       </div>
@@ -474,7 +474,7 @@ export function makeLaneOg(config: LaneOgConfig) {
             marginTop: "42px",
           }}
         >
-          inovense.com
+          auterim.com
         </div>
       </div>
     </div>

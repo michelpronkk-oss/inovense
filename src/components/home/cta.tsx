@@ -53,10 +53,10 @@ export default function CTA() {
           <span className="text-sm text-zinc-600">
             or email{" "}
             <a
-              href="mailto:hello@inovense.com"
+              href="mailto:hello@auterim.com"
               className="text-zinc-400 transition-colors hover:text-zinc-50"
             >
-              hello@inovense.com
+              hello@auterim.com
             </a>
           </span>
         </div>

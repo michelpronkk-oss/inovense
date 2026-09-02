@@ -17,10 +17,10 @@ export const metadata: Metadata = {
   title: "Workflows",
   description: "Structured execution chains that move work across agents, connectors, and approval gates without manual handoff. Every step logged and auditable.",
   alternates: {
-    canonical: "https://inovense.com/workflows",
+    canonical: "https://auterim.com/workflows",
   },
   openGraph: {
-    url: "https://inovense.com/workflows",
+    url: "https://auterim.com/workflows",
     title: "Workflows | Auterim",
     description: "Structured execution chains that move work across agents, connectors, and approval gates without manual handoff. Every step logged and auditable.",
     type: "website",

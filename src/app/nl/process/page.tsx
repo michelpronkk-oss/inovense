@@ -253,7 +253,7 @@ function OperatingPrinciples() {
 const laneNotes = [
   {
     lane: "Build",
-    href: "/nl/build",
+    href: "/nl/process",
     color: "text-sky-400",
     border: "border-sky-400/20",
     bg: "bg-sky-400/5",
@@ -267,7 +267,7 @@ const laneNotes = [
   },
   {
     lane: "Systems",
-    href: "/nl/systems",
+    href: "/nl/process",
     color: "text-violet-400",
     border: "border-violet-400/20",
     bg: "bg-violet-400/5",
@@ -281,7 +281,7 @@ const laneNotes = [
   },
   {
     lane: "Growth",
-    href: "/nl/growth",
+    href: "/nl/process",
     color: "text-emerald-400",
     border: "border-emerald-400/20",
     bg: "bg-emerald-400/5",
@@ -400,10 +400,10 @@ function PageCTA() {
           <span className="text-sm text-zinc-600">
             of mail naar{" "}
             <a
-              href="mailto:hello@inovense.com"
+              href="mailto:hello@auterim.com"
               className="text-zinc-400 transition-colors hover:text-zinc-50"
             >
-              hello@inovense.com
+              hello@auterim.com
             </a>
           </span>
         </div>

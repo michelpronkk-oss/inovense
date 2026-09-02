@@ -191,7 +191,7 @@ export const OfferPost = forwardRef<HTMLDivElement, OfferPostProps>(
           <div style={{ height: 1, background: brand.border, marginBottom: 22 }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontFamily: brand.mono, fontSize: 11, color: brand.muted, letterSpacing: '0.1em' }}>
-              inovense.com
+              auterim.com
             </span>
           </div>
         </div>

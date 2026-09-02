@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { INOVENSE_URL } from "@/lib/geo";
+import { AUTERIM_URL } from "@/lib/brand";
 
 type LocaleCode = "en" | "nl";
 
@@ -10,8 +10,8 @@ function normalizePath(path: string): string {
 
 export function absoluteSiteUrl(path: string): string {
   const normalizedPath = normalizePath(path);
-  if (normalizedPath === "/") return INOVENSE_URL;
-  return `${INOVENSE_URL}${normalizedPath}`;
+  if (normalizedPath === "/") return AUTERIM_URL;
+  return `${AUTERIM_URL}${normalizedPath}`;
 }
 
 export function buildLocalizedAlternates({

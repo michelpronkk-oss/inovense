@@ -84,7 +84,7 @@ export default function FinalCTA() {
                 <Icon name="arrow" size={14} />
               </Link>
               <a
-                href="mailto:hello@inovense.com?subject=Book%20a%2020-min%20demo"
+                href="mailto:hello@auterim.com?subject=Book%20a%2020-min%20demo"
                 className="inline-flex items-center rounded-xl px-[22px] py-3.5 text-[15px] font-medium transition-colors duration-150"
                 style={{ background: "rgba(255,255,255,0.025)", color: TEXT, boxShadow: `inset 0 0 0 1px ${LINE}` }}
               >

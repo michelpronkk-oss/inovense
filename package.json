@@ -1,5 +1,5 @@
 {
-  "name": "inovense",
+  "name": "auterim",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:rebrand": "node tests/auterim-phase4-smoke.mjs",
     "trigger:dev": "npx trigger.dev@latest dev",
     "trigger:deploy": "npx trigger.dev@latest deploy"
   },

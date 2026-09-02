@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import NewProspectForm from "./new-prospect-form";
 
 export const metadata: Metadata = {
-  title: "New prospect | Inovense CRM",
+  title: "New prospect | Auterim Admin",
 };
 
 type SearchParams = Record<string, string | string[] | undefined>;

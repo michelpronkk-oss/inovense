@@ -1,3 +1,5 @@
+import { AUTERIM_APP_URL, AUTERIM_MARKETING_URL } from "@/lib/brand";
+
 const trimSlash = (value: string): string => value.replace(/\/+$/, "");
 const ensureLeadingSlash = (value: string): string => (value.startsWith("/") ? value : `/${value}`);
 
@@ -18,16 +20,28 @@ function toHostname(urlValue: string): string {
   }
 }
 
+function productionUrl(value: string | undefined, fallback: string, allowedHosts: string[]): string {
+  const candidate = value?.trim();
+  if (process.env.NODE_ENV !== "production") return candidate || fallback;
+  if (!candidate) return fallback;
+  const hostname = toHostname(candidate);
+  return /^https:\/\//i.test(candidate) && allowedHosts.includes(hostname) ? candidate : fallback;
+}
+
 export function getMarketingUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_MARKETING_URL?.trim()
-    || process.env.NEXT_PUBLIC_SITE_URL?.trim()
-    || "http://localhost:3000"
+  return productionUrl(
+    process.env.NEXT_PUBLIC_MARKETING_URL || process.env.NEXT_PUBLIC_SITE_URL,
+    process.env.NODE_ENV === "production" ? AUTERIM_MARKETING_URL : "http://localhost:3000",
+    ["auterim.com", "www.auterim.com"],
   );
 }
 
 export function getAppUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL?.trim() || "http://localhost:3000";
+  return productionUrl(
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.NODE_ENV === "production" ? AUTERIM_APP_URL : "http://localhost:3000",
+    ["app.auterim.com"],
+  );
 }
 
 export function isAppHost(hostname: string): boolean {

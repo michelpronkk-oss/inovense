@@ -15,10 +15,10 @@ export const metadata: Metadata = {
   title: "Revenue Teams",
   description: "AI operators for revenue teams. Pipeline management, lead follow-up sequencing, deal intelligence, and CRM hygiene automation.",
   alternates: {
-    canonical: "https://inovense.com/solutions/revenue-teams",
+    canonical: "https://auterim.com/solutions/revenue-teams",
   },
   openGraph: {
-    url: "https://inovense.com/solutions/revenue-teams",
+    url: "https://auterim.com/solutions/revenue-teams",
     title: "Revenue Teams | Auterim",
     description: "AI operators for revenue teams. Pipeline management, lead follow-up sequencing, deal intelligence, and CRM hygiene automation.",
     type: "website",

@@ -9,10 +9,10 @@ export const metadata: Metadata = {
   title: "Contact",
   description: "Get in touch with the Inovense team. Book a demo, ask about pricing, discuss operator setup, or explore partnerships.",
   alternates: {
-    canonical: "https://inovense.com/contact",
+    canonical: "https://auterim.com/contact",
   },
   openGraph: {
-    url: "https://inovense.com/contact",
+    url: "https://auterim.com/contact",
     title: "Contact | Inovense",
     description: "Get in touch with the Inovense team. Book a demo, ask about pricing, discuss operator setup, or explore partnerships.",
     type: "website",
@@ -47,22 +47,22 @@ export default function ContactPage() {
                       {
                         title: "Book product demo",
                         sub: "Walk through your workflow map",
-                        href: "mailto:hello@inovense.com?subject=Book product demo",
+                        href: "mailto:hello@auterim.com?subject=Book product demo",
                       },
                       {
                         title: "Operator setup",
                         sub: "Deployment planning and policies",
-                        href: "mailto:hello@inovense.com?subject=Operator setup request",
+                        href: "mailto:hello@auterim.com?subject=Operator setup request",
                       },
                       {
                         title: "Sales and pricing",
                         sub: "Capacity planning and rollout",
-                        href: "mailto:hello@inovense.com?subject=Sales inquiry",
+                        href: "mailto:hello@auterim.com?subject=Sales inquiry",
                       },
                       {
                         title: "Partnerships",
                         sub: "Design partner and integrations",
-                        href: "mailto:hello@inovense.com?subject=Partnership inquiry",
+                        href: "mailto:hello@auterim.com?subject=Partnership inquiry",
                       },
                     ].map((card) => (
                       <a key={card.title} href={card.href} className="block">
@@ -90,7 +90,7 @@ export default function ContactPage() {
             primary="Get Starter"
             primaryHref="/app/onboarding"
             secondary="Book a 20-min demo"
-            secondaryHref="mailto:hello@inovense.com?subject=Book%20a%2020-min%20demo"
+            secondaryHref="mailto:hello@auterim.com?subject=Book%20a%2020-min%20demo"
           />
         </PageShell>
 
