@@ -68,7 +68,8 @@ export default function LogsPage() {
             <span className="dot dot-cyan pulsing" /> {visibleLogs.length} of {filtered.length} entries
           </div>
         </div>
-        <div style={{ fontFamily: "var(--font-mono)", minWidth: 840 }}>
+        <div className="logs-viewport">
+          <div style={{ fontFamily: "var(--font-mono)", minWidth: 840 }}>
           {visibleLogs.map((l) => (
             <div
               key={l.id}
@@ -94,6 +95,7 @@ export default function LogsPage() {
           {filtered.length === 0 && (
             <div style={{ padding: "32px 18px", textAlign: "center", color: "var(--text-mute)", fontSize: 13, fontFamily: "var(--font-sans)" }}>No log entries match current filters.</div>
           )}
+          </div>
         </div>
         {visibleLogs.length < filtered.length && (
           <div style={{ padding: "10px 18px", borderTop: "1px solid var(--line)" }}>

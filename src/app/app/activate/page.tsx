@@ -305,10 +305,21 @@ export default function ActivationPage() {
                 ))}
               </div>
             )}
-            {activeStep.key !== "path" && activeStep.cta && ("href" in activeStep.cta ? <Link className="btn btn-primary" href={activeStep.cta.href}>{activeStep.cta.label}</Link> : <button className="btn btn-primary" onClick={activeStep.cta.onClick} disabled={activeStep.cta.disabled}>{activeStep.cta.label}</button>)}
             {activeStep.key === "connect" && path === "revenue" && hubspotConnected && <span style={{ color: "var(--text-dim)", fontSize: 12 }}>HubSpot is connected for the full CRM workflow.</span>}
             {activeStep.key === "configure" && path === "revenue" && !safeMode && <span style={{ color: "#ffb2ae", fontSize: 12 }}>Approval-first mode must be enabled before running a check.</span>}
             {activeStep.key === "review" && firstApprovalCreated && <span style={{ color: "var(--text-dim)", fontSize: 12 }}>Nothing executes until you approve it.</span>}
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "12px 24px 16px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => activeIndex > 0 && setSelectedStep(steps[activeIndex - 1].key)} disabled={activeIndex === 0} style={{ opacity: activeIndex === 0 ? 0.4 : 1 }}>Back</button>
+            {activeStep.key === "review" ? (
+              <Link className="btn btn-primary btn-sm" href="/app/approvals">Review approval →</Link>
+            ) : activeStep.cta && activeStep.state !== "complete" ? (
+              "href" in activeStep.cta
+                ? <Link className="btn btn-primary btn-sm" href={activeStep.cta.href}>{activeStep.cta.label} →</Link>
+                : <button className="btn btn-primary btn-sm" onClick={activeStep.cta.onClick} disabled={activeStep.cta.disabled}>{activeStep.cta.label} →</button>
+            ) : activeIndex < steps.length - 1 ? (
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => setSelectedStep(steps[activeIndex + 1].key)}>Continue →</button>
+            ) : null}
           </div>
         </section>
 

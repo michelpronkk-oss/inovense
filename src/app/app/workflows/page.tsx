@@ -7,6 +7,10 @@ import { PlusIcon, FlowIcon, ZapIcon } from "@/components/dashboard/icons";
 import { getSuggestedWorkflows, type SuggestedWorkflow } from "@/lib/os/workflow-recommendations";
 import { getEntitlements } from "@/lib/os/entitlements";
 
+function workflowToken(value: string): string {
+  return value.replace(/[-_]/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 export default function WorkflowsPage() {
   const router = useRouter();
   const { state, runWorkflow, appendExecutionLog, installSuggestedWorkflow } = useOS();
@@ -140,40 +144,36 @@ export default function WorkflowsPage() {
             <button className="appr-btn edit" onClick={onRefreshSuggestions}>Refresh suggestions</button>
           </div>
         </div>
-        <div style={{ display: "grid", gap: 8, paddingBottom: 10 }}>
+        <div className="workflow-suggestion-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, padding: "0 10px 10px" }}>
           {suggestions.length === 0 ? (
             <div style={{ padding: "18px", color: "var(--text-mute)", fontSize: 13 }}>
               No suggestions yet. Connect systems and deploy operators to generate recommendations.
             </div>
           ) : suggestions.slice(0, 3).map((s) => (
-            <div key={s.id} style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "start" }}>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontSize: 13.5, fontWeight: 600 }}>{s.title}</span>
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-mute)" }}>{s.category}</span>
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-mute)" }}>confidence {s.confidence}%</span>
-                  </div>
-                  <div style={{ fontSize: 12.3, color: "var(--text-dim)", marginBottom: 6 }}>{s.description}</div>
-                  <div style={{ fontSize: 11.5, color: "var(--text-mute)", marginBottom: 5 }}><strong style={{ color: "var(--text-dim)" }}>Why:</strong> {s.whySuggested}</div>
-                  <div style={{ fontSize: 11.5, color: "var(--text-mute)", marginBottom: 5 }}><strong style={{ color: "var(--text-dim)" }}>Impact:</strong> {s.estimatedImpact}</div>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", fontFamily: "var(--font-mono)", fontSize: 10.5 }}>
-                    <span style={{ color: "var(--text-faint)" }}>risk: {s.riskLevel}</span>
-                    <span style={{ color: "var(--text-faint)" }}>trigger: {s.suggestedTrigger}</span>
-                    <span style={{ color: "var(--text-faint)" }}>connectors: {s.requiredConnectors.length ? s.requiredConnectors.join(", ") : "none"}</span>
-                  </div>
+            <div key={s.id} style={{ padding: "13px 14px", borderRadius: 10, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
+                <div style={{ width: 26, height: 26, borderRadius: 8, display: "grid", placeItems: "center", color: "var(--cyan)", background: "var(--cyan-soft)", boxShadow: "inset 0 0 0 1px var(--cyan-line)", fontSize: 13, flexShrink: 0 }}>✦</div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 600 }}>{s.title}</div>
+                  <div style={{ marginTop: 2, fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-mute)" }}>{s.category} · {s.confidence}% confidence</div>
                 </div>
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              </div>
+              <div style={{ fontSize: 12.2, color: "var(--text-dim)", lineHeight: 1.45 }}>{s.description}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap", fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-mute)" }}>
+                {[s.requiredConnectors[0] ?? "Signal", s.requiredAgents[0] ?? "Operator", "Approval", s.requiredConnectors[1] ?? "Workspace"].map((step, index) => <span key={`${step}-${index}`} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ padding: "3px 6px", borderRadius: 5, background: "rgba(255,255,255,0.04)", color: "var(--text-dim)" }}>{workflowToken(step)}</span>{index < 3 && <span style={{ color: "var(--text-faint)" }}>→</span>}</span>)}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, paddingTop: 8, borderTop: "1px solid var(--line)" }}>
+                <div><div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-faint)", textTransform: "uppercase" }}>Why now</div><div style={{ marginTop: 3, fontSize: 11.2, color: "var(--text-mute)" }}>{s.whySuggested}</div></div>
+                <div><div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-faint)", textTransform: "uppercase" }}>Impact</div><div style={{ marginTop: 3, fontSize: 11.2, color: "var(--text-mute)" }}>{s.estimatedImpact}</div></div>
+              </div>
+              <div style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "flex-end" }}>
                   <button className="appr-btn edit" onClick={() => setPreviewId(s.id)}>Preview</button>
                   <button
                     className={s.installStatus === "installed" ? "appr-btn edit" : "appr-btn approve"}
                     onClick={() => onInstallSuggestion(s)}
                     disabled={s.installStatus === "installed"}
                     style={{ opacity: s.installStatus === "installed" ? 0.5 : 1 }}
-                  >
-                    {s.installActionLabel}
-                  </button>
-                </div>
+                  >{s.installStatus === "installed" ? "Deployed" : s.installStatus === "missing_agent" ? "Set up operator" : s.installStatus === "missing_connectors" ? "Connect tools" : "Deploy workflow"}</button>
               </div>
             </div>
           ))}
