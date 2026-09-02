@@ -81,14 +81,6 @@ function connectorPurpose(connectorId: string): string {
   return "Operator actions";
 }
 
-function connectorValueSentence(connectorId: string, fallback: string): string {
-  if (connectorId === "gmail") return "Reads recent inbox context and sends follow-up emails after approval.";
-  if (connectorId === "hubspot") return "Creates and updates contacts, deals and CRM context after approval.";
-  if (connectorId === "slack") return "Sends internal team alerts and approval updates to a selected channel.";
-  if (connectorId === "trello") return "Reads project boards and creates task updates after approval.";
-  return fallback;
-}
-
 function connectorCapabilities(connectorId: string): string[] {
   if (connectorId === "gmail") return ["Read recent inbox metadata", "Draft customer replies", "Send emails after approval"];
   if (connectorId === "hubspot") return ["Create or update contacts", "Create or update deals", "Link contacts to deals"];
@@ -261,7 +253,7 @@ export default function ConnectorsPage() {
     const res = await fetch(`/api/connectors/nango/status?${qs.toString()}`, {
       cache: "no-store",
     });
-    if (!res.ok) return;
+    if (!res.ok) return null;
     const json = await res.json() as {
       status: "connected" | "error" | "pending" | "reconnect_required" | "not_connected";
       provider_email?: string | null;
@@ -274,6 +266,21 @@ export default function ConnectorsPage() {
       connectConnector(connectorKey, "real");
     } else {
       disconnectConnector(connectorKey);
+    }
+    return json;
+  };
+
+  const testNangoConnection = async (connectorKey: string) => {
+    setFeedback("Checking connection health...");
+    try {
+      const result = await fetchNangoStatus(connectorKey);
+      const status = result?.status;
+      if (status === "connected") setFeedback("Connection healthy. Checked just now.");
+      else if (status === "reconnect_required") setFeedback("Connection needs attention. Reconnect to restore access.");
+      else if (status === "error") setFeedback("Connection check failed. Reconnect and try again.");
+      else setFeedback("Connection is not active.");
+    } catch {
+      setFeedback("Connection check failed. Reconnect and try again.");
     }
   };
 
@@ -909,7 +916,7 @@ export default function ConnectorsPage() {
             )}
             {getConnectorDefinition(drawerConnector.id)?.authType === "nango" && nangoStatuses[drawerConnector.id]?.status === "connected" && (
               <div style={{ marginTop: 10, fontSize: 11.5, color: "#9DEFEA", padding: "9px 10px", borderRadius: 10, background: "rgba(77,232,225,0.055)", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.16)" }}>
-                Connected through Nango{nangoStatuses[drawerConnector.id].provider_email ? ` as ${nangoStatuses[drawerConnector.id].provider_email}` : ""}
+                Connection verified{nangoStatuses[drawerConnector.id].provider_email ? ` · ${nangoStatuses[drawerConnector.id].provider_email}` : ""}
               </div>
             )}
             {getConnectorDefinition(drawerConnector.id)?.authType === "nango" && nangoStatuses[drawerConnector.id]?.status === "reconnect_required" && (
@@ -1076,7 +1083,10 @@ export default function ConnectorsPage() {
               <div style={{ display: "flex", gap: 8 }}>
                 {isRealConnectedConnector(drawerConnector) && (
                   <>
-                    <button className="btn btn-ghost btn-sm" onClick={() => { testConnector(drawerConnector.id); setFeedback(`${drawerConnector.name} tested.`); }}>Test connection</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => {
+                      if (getConnectorDefinition(drawerConnector.id)?.authType === "nango") void testNangoConnection(drawerConnector.id);
+                      else { testConnector(drawerConnector.id); setFeedback(`${drawerConnector.name} tested.`); }
+                    }}>Test connection</button>
                     {drawerConnector.id !== "gmail" && (
                       <button className="btn btn-ghost btn-sm" onClick={() => { resyncConnector(drawerConnector.id); setFeedback(`${drawerConnector.name} resynced.`); }}>Resync</button>
                     )}
@@ -1137,7 +1147,7 @@ function ConnectorSetupView({
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
-      <div style={{ padding: 16, borderRadius: 16, background: "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.022))", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.085)", display: "grid", gap: 12 }}>
+      <div style={{ display: "grid", gap: 15, paddingBottom: 18, borderBottom: "1px solid rgba(255,255,255,0.09)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ width: 42, height: 42, borderRadius: 12, background: `${connector.color}18`, boxShadow: `inset 0 0 0 1px ${connector.color}45`, display: "grid", placeItems: "center", color: connector.color, fontSize: 12, fontFamily: "var(--font-mono)", fontWeight: 800 }}>{connector.letter}</div>
@@ -1147,32 +1157,34 @@ function ConnectorSetupView({
             </div>
           </div>
           <span style={{ color: status.color, background: status.background, boxShadow: `inset 0 0 0 1px ${status.border}`, borderRadius: 999, padding: "6px 10px", fontSize: 11.5, fontWeight: 650 }}>
-            {status.label}
+            {status.label === "Connected" ? "Connected · Healthy" : status.label}
           </span>
         </div>
-        <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.55 }}>
-          {connectorValueSentence(connector.id, connector.description)}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, color: "var(--text-mute)", fontSize: 12 }}>
+          <div><div className="lab">Account</div><div style={{ marginTop: 5, color: "var(--text-dim)" }}>{connector.records.startsWith("Real account connected:") ? connector.records.replace("Real account connected: ", "") : "Not verified"}</div></div>
+          <div><div className="lab">Last checked</div><div style={{ marginTop: 5, color: "var(--text-dim)" }}>{lastChecked}</div></div>
         </div>
         {!isRealConnected && <div style={{ fontSize: 12, color: "#9DEFEA" }}>{setupMessage}</div>}
       </div>
 
-      <SectionBlock title="What Auterim can do">
+      <SectionBlock title="Auterim can">
         <div style={{ display: "grid", gap: 8 }}>
           {connectorCapabilities(connector.id).map((item) => (
             <div key={item} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--text-dim)" }}>
-              <span style={{ width: 6, height: 6, borderRadius: 999, background: connector.color }} />
+              <span style={{ color: "var(--cyan)", fontSize: 13 }}>✓</span>
               <span>{item}</span>
             </div>
           ))}
         </div>
       </SectionBlock>
 
-      <div style={{ padding: 12, borderRadius: 12, background: "rgba(245,194,107,0.06)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.18)", display: "grid", gap: 7 }}>
-        <div style={{ fontSize: 12.5, color: "var(--text)", fontWeight: 650 }}>Safety</div>
-        {connectorSafetyNotes(connector.id).map((item) => (
-          <div key={item} style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.45 }}>{item}</div>
-        ))}
-      </div>
+      <SectionBlock title="Access & control">
+        {connector.id === "hubspot" ? (
+          <div style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.5 }}>Auterim can prepare CRM updates, but customer records are only modified through approved actions.</div>
+        ) : (
+          connectorSafetyNotes(connector.id).map((item) => <div key={item} style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.45 }}>{item}</div>)
+        )}
+      </SectionBlock>
 
       <SectionBlock title="Used by operators">
         <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
@@ -1184,17 +1196,17 @@ function ConnectorSetupView({
         </div>
       </SectionBlock>
 
-      <div style={{ borderRadius: 12, overflow: "hidden", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}>
+      <div style={{ borderTop: "1px solid rgba(255,255,255,0.09)" }}>
         <button
           type="button"
           onClick={onToggleAdvanced}
-          style={{ width: "100%", border: "none", background: "rgba(255,255,255,0.025)", color: "var(--text)", padding: "11px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: onToggleAdvanced ? "pointer" : "default" }}
+          style={{ width: "100%", border: "none", background: "transparent", color: "var(--text)", padding: "14px 0", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: onToggleAdvanced ? "pointer" : "default" }}
         >
           <span style={{ fontSize: 12.5, fontWeight: 650 }}>Advanced details</span>
           <span style={{ fontSize: 12, color: "var(--text-mute)" }}>{advancedOpen ? "Hide" : "Show"}</span>
         </button>
         {advancedOpen && (
-          <div style={{ padding: 12, display: "grid", gap: 10, background: "rgba(0,0,0,0.14)" }}>
+          <div style={{ padding: "0 0 6px", display: "grid", gap: 12 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <TagList title="Required access" items={connector.readScopes.length ? connector.readScopes : connector.permissions} />
               <TagList title="Write access" items={connector.writeScopes.length ? connector.writeScopes : ["None"]} />
@@ -1218,8 +1230,8 @@ function ConnectorSetupView({
 
 function SectionBlock({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div style={{ padding: 12, borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.075)", display: "grid", gap: 10 }}>
-      <div style={{ fontSize: 12.5, color: "var(--text)", fontWeight: 650 }}>{title}</div>
+    <div style={{ display: "grid", gap: 10 }}>
+      <div className="lab" style={{ color: "var(--text)" }}>{title}</div>
       {children}
     </div>
   );
@@ -1227,7 +1239,7 @@ function SectionBlock({ title, children }: { title: string; children: ReactNode 
 
 function TagList({ title, items }: { title: string; items: string[] }) {
   return (
-    <div style={{ padding: 10, borderRadius: 10, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+    <div>
       <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>{title}</div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         {items.map((it) => <span key={it} className="appr-btn edit" style={{ cursor: "default" }}>{it}</span>)}
@@ -1238,7 +1250,7 @@ function TagList({ title, items }: { title: string; items: string[] }) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ padding: 9, borderRadius: 8, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+    <div style={{ paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
       <div style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, color: "var(--text-faint)", textTransform: "uppercase", marginBottom: 3 }}>{label}</div>
       <div style={{ fontSize: 12.5, fontWeight: 500 }}>{value}</div>
     </div>
