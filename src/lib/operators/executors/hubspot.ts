@@ -1,5 +1,5 @@
 import { Nango, type HTTP_METHOD } from "@nangohq/node";
-import { HUBSPOT_PROVIDER_CONFIG_KEY } from "@/lib/integrations/nango";
+import { HUBSPOT_PROVIDER_CONFIG_KEY, verifyNangoConnection } from "@/lib/integrations/nango";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
@@ -418,6 +418,13 @@ export async function getHubSpotConnection(workspaceId: string, supabase = creat
 
   if (res.error) throw new Error(res.error.message);
   if (!res.data?.provider_config_key || !res.data?.nango_connection_id) return null;
+
+  const verification = await verifyNangoConnection({
+    connectorKey: "hubspot",
+    providerConfigKey: String(res.data.provider_config_key),
+    connectionId: String(res.data.nango_connection_id),
+  });
+  if (!verification.ok) return null;
 
   return {
     workspaceId,

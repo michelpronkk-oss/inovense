@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { Nango, type HTTP_METHOD } from "@nangohq/node";
 import { getProviderConfigKey, isSupportedNangoConnector } from "@/lib/connectors/registry";
 
 type NangoConnectSessionBody = {
@@ -72,6 +73,51 @@ export function getNangoProviderConfigKey(connectorKey: string): string | null {
 
 function getNangoHost(): string {
   return (process.env.NANGO_HOST || "https://api.nango.dev").replace(/\/+$/, "");
+}
+
+export type NangoVerificationResult = {
+  ok: boolean;
+  reason?: string;
+};
+
+/**
+ * A Nango connection id is only metadata until Nango can resolve its
+ * credentials. HubSpot additionally gets a read-only CRM request so an OAuth
+ * success event cannot make the UI green when the provider token is unusable.
+ */
+export async function verifyNangoConnection(input: {
+  connectorKey: string;
+  providerConfigKey: string;
+  connectionId: string;
+}): Promise<NangoVerificationResult> {
+  try {
+    const nango = new Nango({
+      secretKey: required("NANGO_SECRET_KEY"),
+      host: getNangoHost(),
+    });
+    await nango.getConnection(input.providerConfigKey, input.connectionId, false, true);
+
+    if (input.connectorKey === "hubspot") {
+      await nango.proxy({
+        method: "GET" as HTTP_METHOD,
+        endpoint: "/crm/v3/objects/contacts?limit=1&properties=email",
+        providerConfigKey: input.providerConfigKey,
+        connectionId: input.connectionId,
+      });
+    }
+
+    return { ok: true };
+  } catch (error) {
+    console.warn("[connector] connector_verification_failed", {
+      connectorKey: input.connectorKey,
+      providerConfigKey: input.providerConfigKey,
+      reason: error instanceof Error ? error.message : "Provider verification failed",
+    });
+    return {
+      ok: false,
+      reason: error instanceof Error ? error.message : "Provider verification failed",
+    };
+  }
 }
 
 function readValidationErrors(responseBody: unknown): unknown {

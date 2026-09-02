@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
-import { verifyNangoWebhook } from "@/lib/integrations/nango";
+import { verifyNangoConnection, verifyNangoWebhook } from "@/lib/integrations/nango";
 import { getConnectorDefinition, isSupportedNangoConnector } from "@/lib/connectors/registry";
 
 type NangoWebhookPayload = {
@@ -76,7 +76,11 @@ export async function POST(req: NextRequest) {
     || eventType.includes("auth.failed")
     || eventType.includes("connection.failed");
 
-  const status = isFailure ? "error" : isSuccess ? "connected" : "pending";
+  let status: "connected" | "error" | "pending" | "reconnect_required" = isFailure ? "error" : isSuccess ? "connected" : "pending";
+  if (status === "connected") {
+    const verification = await verifyNangoConnection({ connectorKey, providerConfigKey, connectionId });
+    if (!verification.ok) status = "reconnect_required";
+  }
   const nowIso = new Date().toISOString();
 
   const supabase = createSupabaseAdmin();
@@ -111,7 +115,9 @@ export async function POST(req: NextRequest) {
       last_sync: status === "connected" ? "just now" : "error",
       sync_freq: "Managed",
       permissions: ["read", "write"],
-      records: status === "connected" ? `Real account connected${providerEmail ? `: ${providerEmail}` : ""}` : "Connection failed",
+      records: status === "connected"
+        ? `Real account connected${providerEmail ? `: ${providerEmail}` : ""}`
+        : status === "reconnect_required" ? "Reconnect required" : "Connection failed",
       metadata: {
         source: "nango",
         provider,
@@ -130,7 +136,7 @@ export async function POST(req: NextRequest) {
   const logStatus = status === "connected" ? "ok" : "error";
   const logMessage = status === "connected"
     ? `${connectorDef?.displayName ?? connectorKey} account connected${providerEmail ? ` (${providerEmail})` : ""}`
-    : `${connectorDef?.displayName ?? connectorKey} connection failed${eventType ? ` (${eventType})` : ""}`;
+    : `${connectorDef?.displayName ?? connectorKey} ${status === "reconnect_required" ? "requires reconnection" : "connection failed"}${eventType ? ` (${eventType})` : ""}`;
 
   await supabase.from("os_execution_logs").insert({
     id: `log-${connectorKey}-${Date.now()}`,

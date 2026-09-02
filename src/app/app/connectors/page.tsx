@@ -11,7 +11,7 @@ import type { Connector } from "@/lib/os/types";
 import { UsageBanner } from "@/components/upgrade-prompt";
 import { getEntitlements } from "@/lib/os/entitlements";
 import { UpgradeModal } from "@/components/upgrade-modal";
-import { isRealConnector, isRealConnectedConnector } from "@/lib/os/truth";
+import { isRealConnectedConnector } from "@/lib/os/truth";
 import {
   isConnectorAvailableForAuth,
   CONNECTOR_CATEGORY_LABELS,
@@ -119,6 +119,7 @@ function connectorStatusLabel(input: {
   slackReady?: boolean;
   trelloReady?: boolean;
 }): { label: string; color: string; background: string; border: string } {
+  if (!input.isRealConnected && input.connector.records.includes("Reconnect required")) return { label: "Reconnect required", color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
   if (!input.isRealConnected) return { label: "Not connected", color: "#b8c5c8", background: "rgba(255,255,255,0.04)", border: "rgba(255,255,255,0.12)" };
   if (input.connector.id === "slack" && !input.slackReady) return { label: "Setup incomplete", color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
   if (input.connector.id === "trello" && !input.trelloReady) return { label: "Setup incomplete", color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
@@ -126,6 +127,7 @@ function connectorStatusLabel(input: {
 }
 
 function connectionCopy(connector: Connector): string {
+  if (!connector.isConnected && connector.records.includes("Reconnect required")) return "The provider credentials could not be verified. Reconnect to restore access.";
   if (!connector.isConnected) return "Connect this account to enable real operator actions.";
   if (connector.id === "gmail") return connector.records.includes("Reconnect") ? connector.records : "Ready for approved email follow-ups.";
   if (connector.id === "slack") return "Ready for internal alerts once a channel is selected.";
@@ -155,9 +157,8 @@ export default function ConnectorsPage() {
   const [feedback, setFeedback] = useState("");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [nangoConnectLoadingId, setNangoConnectLoadingId] = useState<string | null>(null);
-  const [catalogCategory, setCatalogCategory] = useState<ConnectorCategory | "all">("all");
   const [nangoStatuses, setNangoStatuses] = useState<Record<string, {
-    status: "connected" | "error" | "pending" | "not_connected";
+    status: "connected" | "error" | "pending" | "reconnect_required" | "not_connected";
     provider_email?: string | null;
     connected_at?: string | null;
     provider_config_key?: string | null;
@@ -197,18 +198,14 @@ export default function ConnectorsPage() {
     () => state.connectors.filter((c) => isRealConnectedConnector(c)),
     [state.connectors]
   );
-  // Preview connected = connected in preview/demo mode only
-  const previewConnections = useMemo(
-    () => state.connectors.filter((c) => c.isConnected && !isRealConnector(c) && c.source === "preview"),
-    [state.connectors]
-  );
   const availableCatalogConnectors = useMemo(() => {
     return getAvailableConnectors().flatMap((def) => {
       const connector = state.connectors.find((c) => normalizeConnectorKey(c.id) === def.connectorKey)
         ?? connectorDefinitionToSeedConnector(def);
-      return isRealConnectedConnector(connector) ? [] : [connector];
+      return [connector];
     });
   }, [state.connectors]);
+
 
   const healthyCount = useMemo(
     () => realConnectedConnectors.filter((c) => c.health === "healthy").length,
@@ -227,14 +224,9 @@ export default function ConnectorsPage() {
 
   // Catalog of connectors that are not functional yet (registry-driven, honest).
   const comingSoonConnectors = useMemo(() => getComingSoonConnectors(), []);
-  const comingSoonCategories = useMemo(() => {
-    const set = new Set<ConnectorCategory>();
-    comingSoonConnectors.forEach((c) => set.add(c.category));
-    return Array.from(set);
-  }, [comingSoonConnectors]);
   const filteredComingSoon = useMemo(
-    () => (catalogCategory === "all" ? comingSoonConnectors : comingSoonConnectors.filter((c) => c.category === catalogCategory)),
-    [comingSoonConnectors, catalogCategory]
+    () => (category === "all" ? comingSoonConnectors : comingSoonConnectors.filter((c) => c.category === category)),
+    [comingSoonConnectors, category]
   );
 
   const setupConnector = availableCatalogConnectors.find((c) => c.id === setupConnectorId) ?? null;
@@ -271,7 +263,7 @@ export default function ConnectorsPage() {
     });
     if (!res.ok) return;
     const json = await res.json() as {
-      status: "connected" | "error" | "pending" | "not_connected";
+      status: "connected" | "error" | "pending" | "reconnect_required" | "not_connected";
       provider_email?: string | null;
       connected_at?: string | null;
       provider_config_key?: string | null;
@@ -343,6 +335,19 @@ export default function ConnectorsPage() {
   useEffect(() => {
     setAdvancedOpen(false);
   }, [drawerConnectorId]);
+
+  useEffect(() => {
+    if (!addOpen && !drawerConnectorId) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        if (setupConnectorId) setSetupConnectorId(null);
+        else if (addOpen) setAddOpen(false);
+        else setDrawerConnectorId(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [addOpen, drawerConnectorId, setupConnectorId]);
 
   const startNangoConnect = async (connectorKey: string) => {
     const connectorDef = getConnectorDefinition(connectorKey);
@@ -457,6 +462,7 @@ export default function ConnectorsPage() {
           } else if (event.type === "error") {
             setFeedback(event.payload.errorMessage || `${connectorDef.displayName} OAuth failed.`);
           } else if (event.type === "close") {
+            setFeedback(`${connectorDef.displayName} authorization was not completed. Checking connection status...`);
             pollStatus();
           }
         },
@@ -657,15 +663,10 @@ export default function ConnectorsPage() {
     <div className="os-page">
       <div className="os-page-head">
         <div>
-          <span className="os-greet">Connector layer - {realConnectedCount} connected</span>
+          <span className="os-greet">Auterim workspace</span>
           <h1>Connectors</h1>
           <div className="os-page-sub">
-            Safe system access for operators.{" "}
-            {realConnectedCount === 0
-              ? "No real accounts connected yet."
-              : healthyCount === realConnectedCount
-                ? "All active connectors healthy."
-                : `${healthyCount} of ${realConnectedCount} healthy.`}
+            Connect the tools Auterim needs to understand and operate your business.
           </div>
           {isPreview && (
             <div style={{ marginTop: 8, color: "#9DEFEA", fontSize: 12.5 }}>
@@ -696,36 +697,23 @@ export default function ConnectorsPage() {
 
       {feedback && <div style={{ color: "#64ffd7", fontSize: 12 }}>{feedback}</div>}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-        {[
-          { label: "Connected", val: String(realConnectedCount), sub: realConnectedCount > 0 ? `${healthyCount} healthy` : "No real accounts yet" },
-          { label: "Available", val: String(availableCatalogConnectors.length), sub: "Ready to connect" },
-          { label: "Events synced", val: String(realConnectedConnectors.reduce((sum, c) => sum + c.eventsSynced, 0)), sub: "From connected accounts" },
-          { label: "Auth errors", val: String(realConnectedConnectors.reduce((sum, c) => sum + c.authErrors, 0)), sub: "Needs review if non-zero" },
-        ].map((s) => (
-          <div className="kpi" key={s.label}>
-            <div className="kpi-top"><span className="lab">{s.label}</span></div>
-            <div className="kpi-val">{s.val}</div>
-            <div className="kpi-meta"><span className="kpi-delta">{s.sub}</span></div>
-          </div>
-        ))}
-      </div>
-
-      {/* Real connected accounts */}
-      <div className="p" style={{ overflowX: "auto" }}>
+      {/* Connected tools */}
+      <div className="p" style={{ overflowX: "auto", borderRadius: 16 }}>
         <div className="p-head">
-          <h3><LinkIcon size={13} /> Connected accounts</h3>
+          <h3><LinkIcon size={13} /> Connected tools</h3>
           <div className="p-meta">
             {realConnectedCount > 0 ? <><span className="dot dot-green" /> {healthyCount}/{realConnectedCount} healthy</> : "None yet"}
           </div>
         </div>
         {realConnectedConnectors.length === 0 ? (
-          <div style={{ padding: "24px 18px", fontSize: 12.5, color: "var(--text-faint)" }}>
-            No real accounts connected. Click <strong>Add connector</strong> to connect Gmail, HubSpot, Slack, or Trello.
+          <div style={{ padding: "44px 18px", textAlign: "center", fontSize: 13, color: "var(--text-faint)" }}>
+            <div style={{ color: "var(--text)", fontSize: 17, fontWeight: 600, marginBottom: 7 }}>Connect your first business tool</div>
+            <div style={{ marginBottom: 18 }}>Add the systems Auterim should understand and work with.</div>
+            <button className="btn btn-primary btn-sm" onClick={() => { setAddOpen(true); setSetupConnectorId(null); setSearch(""); setCategory("all"); }}><PlusIcon size={12} /> Add connector</button>
           </div>
         ) : (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "40px 1.4fr 1fr 1fr 120px 90px", gap: 14, padding: "10px 18px", borderBottom: "1px solid var(--line)", color: "var(--text-mute)", fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            <div style={{ display: "none" }}>
               <div />
               <div>Connector</div>
               <div>Purpose</div>
@@ -737,7 +725,7 @@ export default function ConnectorsPage() {
               <button
                 key={c.id}
                 onClick={() => setDrawerConnectorId(c.id)}
-                style={{ width: "100%", textAlign: "left", border: "none", background: "none", borderBottom: "1px solid var(--line)", padding: "14px 18px", display: "grid", gridTemplateColumns: "40px 1.4fr 1fr 1fr 120px 90px", alignItems: "center", gap: 14, cursor: "pointer" }}
+                style={{ width: "100%", textAlign: "left", border: "none", background: "none", borderBottom: "1px solid var(--line)", padding: "17px 18px", display: "grid", gridTemplateColumns: "40px 1fr auto", alignItems: "center", gap: 14, cursor: "pointer" }}
               >
                 <div style={{ width: 34, height: 34, borderRadius: 10, background: `${c.color}18`, boxShadow: `inset 0 0 0 1px ${c.color}45`, display: "grid", placeItems: "center", color: c.color, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 700 }}>
                   {c.letter}
@@ -746,9 +734,7 @@ export default function ConnectorsPage() {
                   <div style={{ fontSize: 13.5, fontWeight: 500 }}>{c.name}</div>
                   <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>{c.category}</div>
                 </div>
-                <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{connectorPurpose(c.id)}</div>
-                <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{connectionCopy(c)}</div>
-                <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>{c.lastSynced ? new Date(c.lastSynced).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "Just now"}</div>
+                <div style={{ display: "none" }}>{connectorPurpose(c.id)} {connectionCopy(c)} {c.lastSynced}</div>
                 <div style={{ justifySelf: "start", fontSize: 11.5, color: "#8df5cf", padding: "5px 8px", borderRadius: 999, background: "rgba(81,216,138,0.08)", boxShadow: "inset 0 0 0 1px rgba(81,216,138,0.2)" }}>Manage</div>
               </button>
             ))}
@@ -756,43 +742,16 @@ export default function ConnectorsPage() {
         )}
       </div>
 
-      {/* Preview connections (connected in demo mode only) */}
-      {previewConnections.length > 0 && (
-        <div className="p" style={{ overflowX: "auto" }}>
-          <div className="p-head">
-            <h3>Preview connections</h3>
-            <div className="p-meta" style={{ color: "var(--cyan)", fontSize: 10.5 }}>Demo only - no real data</div>
-          </div>
-          {previewConnections.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setDrawerConnectorId(c.id)}
-              style={{ width: "100%", textAlign: "left", border: "none", background: "none", borderBottom: "1px solid var(--line)", padding: "14px 18px", display: "grid", gridTemplateColumns: "40px 1fr 1fr 120px", alignItems: "center", gap: 14, cursor: "pointer" }}
-            >
-              <div style={{ width: 34, height: 34, borderRadius: 10, background: `${c.color}18`, boxShadow: `inset 0 0 0 1px ${c.color}45`, display: "grid", placeItems: "center", color: c.color, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 700 }}>
-                {c.letter}
-              </div>
-              <div>
-                <div style={{ fontSize: 13.5, fontWeight: 500 }}>{c.name}</div>
-                <div style={{ fontSize: 10.5, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>{c.category}</div>
-              </div>
-              <div style={{ fontSize: 10.5, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>Preview only - not syncing</div>
-              <div style={{ fontSize: 10.5, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>Preview</div>
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* Coming soon catalog (registry-driven, visibly disabled) */}
-      <div className="p">
+      <div className="p" style={{ display: "none" }}>
         <div className="p-head">
           <h3>Coming soon</h3>
           <div className="p-meta">{comingSoonConnectors.length} on the roadmap - not connectable yet</div>
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", padding: "12px 18px 0" }}>
-          <button className={`appr-btn ${catalogCategory === "all" ? "approve" : "edit"}`} onClick={() => setCatalogCategory("all")}>All</button>
-          {comingSoonCategories.map((cat) => (
-            <button key={cat} className={`appr-btn ${catalogCategory === cat ? "approve" : "edit"}`} onClick={() => setCatalogCategory(cat)}>
+          <button className={`appr-btn ${category === "all" ? "approve" : "edit"}`} onClick={() => setCategory("all")}>All</button>
+          {CATEGORY_ORDER.filter((cat): cat is ConnectorCategory => cat !== "all").map((cat) => (
+            <button key={cat} className={`appr-btn ${category === cat ? "approve" : "edit"}`} onClick={() => setCategory(cat)}>
               {CONNECTOR_CATEGORY_LABELS[cat]}
             </button>
           ))}
@@ -835,6 +794,7 @@ export default function ConnectorsPage() {
                   <h3>Add connector</h3>
                   <button className="appr-btn deny" onClick={() => setAddOpen(false)}>Close</button>
                 </div>
+                <div style={{ color: "var(--text-mute)", fontSize: 12.5, marginBottom: 4 }}>Choose a system to connect to Auterim.</div>
                 <div style={{ display: "grid", gap: 10 }}>
                   <input className="os-input" placeholder="Search connectors..." value={search} onChange={(e) => setSearch(e.target.value)} />
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -844,9 +804,10 @@ export default function ConnectorsPage() {
                       </button>
                     ))}
                   </div>
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.08em", color: "var(--text-mute)", textTransform: "uppercase", marginTop: 8 }}>Available now</div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
                     {filteredAvailable.map((c) => (
-                      <button key={c.id} onClick={() => setSetupConnectorId(c.id)} style={{ textAlign: "left", border: "none", cursor: "pointer", padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+                      <button key={c.id} onClick={() => { if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); }} style={{ textAlign: "left", border: "none", cursor: "pointer", padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                           <div style={{ width: 28, height: 28, borderRadius: 8, background: `${c.color}18`, boxShadow: `inset 0 0 0 1px ${c.color}45`, display: "grid", placeItems: "center", color: c.color, fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{c.letter}</div>
                           <div style={{ fontSize: 13, fontWeight: 500 }}>{c.name}</div>
@@ -858,7 +819,18 @@ export default function ConnectorsPage() {
                           </div>
                         )}
                         <div style={{ fontSize: 11.5, color: "var(--text-dim)", marginTop: 6 }}>{c.description}</div>
+                        <div style={{ marginTop: 10, color: isRealConnectedConnector(c) ? "#8df5cf" : c.records.includes("Reconnect required") ? "var(--amber)" : "var(--cyan)", fontSize: 11.5, fontWeight: 600 }}>{isRealConnectedConnector(c) ? "Connected" : c.records.includes("Reconnect required") ? "Reconnect" : "Connect"}</div>
                       </button>
+                    ))}
+                  </div>
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.08em", color: "var(--text-mute)", textTransform: "uppercase", marginTop: 10 }}>Coming soon</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
+                    {filteredComingSoon.map((c) => (
+                      <div key={c.connectorKey} style={{ padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.015)", boxShadow: "inset 0 0 0 1px var(--line)", opacity: 0.62 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}><div style={{ width: 28, height: 28, borderRadius: 8, background: `${c.color}18`, display: "grid", placeItems: "center", color: c.color, fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{c.letter}</div><div style={{ fontSize: 13, fontWeight: 600 }}>{c.displayName}</div></div>
+                        <div style={{ marginTop: 9, color: "var(--text-mute)", fontSize: 11.5 }}>{c.description}</div>
+                        <div style={{ marginTop: 10, color: "var(--text-faint)", fontSize: 10.5, fontFamily: "var(--font-mono)" }}>Coming soon</div>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -938,6 +910,11 @@ export default function ConnectorsPage() {
             {getConnectorDefinition(drawerConnector.id)?.authType === "nango" && nangoStatuses[drawerConnector.id]?.status === "connected" && (
               <div style={{ marginTop: 10, fontSize: 11.5, color: "#9DEFEA", padding: "9px 10px", borderRadius: 10, background: "rgba(77,232,225,0.055)", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.16)" }}>
                 Connected through Nango{nangoStatuses[drawerConnector.id].provider_email ? ` as ${nangoStatuses[drawerConnector.id].provider_email}` : ""}
+              </div>
+            )}
+            {getConnectorDefinition(drawerConnector.id)?.authType === "nango" && nangoStatuses[drawerConnector.id]?.status === "reconnect_required" && (
+              <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--amber)", padding: "9px 10px", borderRadius: 10, background: "rgba(245,194,107,0.055)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.16)" }}>
+                Connection issue: provider authorization could not be verified. Reconnect required.
               </div>
             )}
             {drawerConnector.id === "slack" && isRealConnectedConnector(drawerConnector) && (

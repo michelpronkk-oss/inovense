@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getNangoProviderConfigKey } from "@/lib/integrations/nango";
+import { getNangoProviderConfigKey, verifyNangoConnection } from "@/lib/integrations/nango";
 import { getConnectorDefinition, isSupportedNangoConnector } from "@/lib/connectors/registry";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
@@ -78,6 +78,15 @@ export async function POST(req: NextRequest) {
       error: "provider_config_mismatch",
       message: "The Nango provider config does not match the registry entry for this connector.",
     }, { status: 400 });
+  }
+
+  const verification = await verifyNangoConnection({ connectorKey, providerConfigKey, connectionId: nangoConnectionId });
+  if (!verification.ok) {
+    return NextResponse.json({
+      error: "connection_verification_failed",
+      status: "reconnect_required",
+      message: `${connectorDef?.displayName ?? connectorKey} authorization was not completed or could not be verified. Try reconnecting.`,
+    }, { status: 409 });
   }
 
   const supabase = createSupabaseAdmin();

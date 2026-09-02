@@ -1,6 +1,7 @@
 import type { Connector, OSState } from "@/lib/os/types";
 import { GMAIL_COMPOSE_SCOPE, GMAIL_READONLY_SCOPE, GMAIL_SCAN_REQUIRED_SCOPES, GMAIL_SEND_SCOPE, getMissingGmailScopes } from "@/lib/connectors/gmail";
 import { getConnectorDefinition, listSupportedNangoConnectors } from "@/lib/connectors/registry";
+import { verifyNangoConnection } from "@/lib/integrations/nango";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
@@ -57,24 +58,45 @@ export async function getConnectorTruth(input: {
   const gmailSendReconnectRequired = Boolean(gmailRow && gmailMissingSendScopes.length > 0);
   const gmailScanReconnectRequired = Boolean(gmailRow && gmailMissingScanScopes.length > 0);
   const nangoRows = Array.isArray(nangoRes.data) ? nangoRes.data : [];
-  const nangoTruth: SafeConnectorTruth[] = supportedNangoKeys.map((connectorKey) => {
+  const nangoTruth: SafeConnectorTruth[] = await Promise.all(supportedNangoKeys.map(async (connectorKey) => {
     const def = getConnectorDefinition(connectorKey);
     const row = nangoRows.find((item) => item.connector_key === connectorKey);
-    const connected = Boolean(row && row.status === "connected" && row.provider_config_key && row.nango_connection_id);
+    const hasStoredConnection = Boolean(row && row.status === "connected" && row.provider_config_key && row.nango_connection_id);
+    const verification = hasStoredConnection && row?.provider_config_key && row.nango_connection_id
+      ? await verifyNangoConnection({
+        connectorKey,
+        providerConfigKey: row.provider_config_key,
+        connectionId: row.nango_connection_id,
+      })
+      : null;
+    const connected = hasStoredConnection && verification?.ok === true;
+    const reconnectRequired = hasStoredConnection && verification?.ok === false;
+    const status = nangoRes.error
+      ? "error"
+      : connected
+        ? "connected"
+        : reconnectRequired
+          ? "reconnect_required"
+          : row?.status === "error" ? "error" : "not_connected";
     return {
       connectorKey,
       displayName: def?.displayName ?? connectorKey,
       authType: "managed",
-      status: nangoRes.error ? "error" : connected ? "connected" : row?.status === "error" ? "error" : "not_connected",
+      status,
       accountEmail: row?.provider_email ?? null,
       connectedAt: row?.connected_at ?? null,
       scopes: [],
       providerConfigKey: row?.provider_config_key ?? null,
       nangoConnectionId: row?.nango_connection_id ?? null,
+      reconnectRequired: reconnectRequired || undefined,
       source: connected ? "nango" : undefined,
-      statusMessage: connected ? "Connected through Nango" : "Not connected",
+      statusMessage: connected
+        ? "Connected through Nango"
+        : reconnectRequired
+          ? "Reconnect required: provider credentials could not be verified"
+          : status === "error" ? "Connection error" : "Not connected",
     };
-  });
+  }));
 
   return [
     {
@@ -153,7 +175,9 @@ function applyTruth(connector: Connector, truth: SafeConnectorTruth): Connector 
       lastSync: "-",
       lastSynced: "",
       eventsSynced: 0,
-      records: truth.status === "error" ? "Connection error" : "Not connected",
+      records: truth.status === "error"
+        ? "Connection error"
+        : truth.status === "reconnect_required" ? "Reconnect required" : "Not connected",
       source: undefined,
     };
   }
