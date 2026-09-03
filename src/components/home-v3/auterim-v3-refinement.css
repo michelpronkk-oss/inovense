@@ -38,15 +38,6 @@
 .auterim-v3-page .mobile-menu-close { display: none; font-size: 25px; font-weight: 300; line-height: 1; }
 .auterim-v3-page .mobile-menu[open] .mobile-menu-icon { display: none; }
 .auterim-v3-page .mobile-menu[open] .mobile-menu-close { display: inline-block; }
-.auterim-v3-page .mobile-menu nav { position: absolute; right: var(--pad); top: 58px; display: flex; min-width: 180px; flex-direction: column; gap: 15px; padding: 16px; background: rgba(8,11,16,.97); border: 1px solid var(--rule); }
-.auterim-v3-page .mobile-menu nav a { color: var(--dim); font-size: 14px; }
-.auterim-v3-page .mobile-menu nav a:hover { color: var(--acc-hi); }
-@media (max-width: 820px) {
-  .auterim-v3-page .top .wrap { grid-template-columns: minmax(0, 1fr) auto auto; gap: 14px; }
-  .auterim-v3-page .top .cta { display: flex; margin-left: 0; }
-  .auterim-v3-page .top .cta .btn { padding: 8px 12px; font-size: 12px; }
-  .auterim-v3-page .mobile-menu { display: block; position: relative; }
-}
 
 /* Layered hero scene: connected-system plane, operator surface, approval gate. */
 .auterim-v3-page .hero-scene {
@@ -582,11 +573,6 @@
 
 @media (max-width: 820px) {
   .top .wrap { height: 56px; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 14px; }
-  .top .mobile-menu { display: block; position: relative; }
-  .top .mobile-menu summary { list-style: none; cursor: pointer; color: var(--dim); font-size: 12px; }
-  .top .mobile-menu summary::-webkit-details-marker { display: none; }
-  .top .mobile-menu nav { position: absolute; right: 0; top: 38px; display: flex; min-width: 180px; flex-direction: column; gap: 15px; padding: 16px; background: rgba(8,11,16,.97); border: 1px solid var(--rule); }
-  .top .mobile-menu nav a { color: var(--dim); font-size: 14px; }
 }
 
 /* Homepage finishing system: compact rhythm, evidence, and clear hierarchy. */
@@ -3254,6 +3240,7 @@
 
 /* Mobile navigation: one quiet closed bar, one full-width navigation layer. */
 @media (max-width: 820px) {
+  .auterim-v3-page .top { padding-top: env(safe-area-inset-top); }
   .auterim-v3-page .top .wrap { grid-template-columns: minmax(0, 1fr) auto; min-height: 64px; gap: 16px; }
   .auterim-v3-page .top .cta { display: none; }
   .auterim-v3-page .mobile-menu { display: block; position: static; }
@@ -3261,11 +3248,14 @@
   .auterim-v3-page .mobile-menu nav {
     position: fixed;
     z-index: 70;
-    inset: 64px 0 0;
+    top: calc(64px + env(safe-area-inset-top));
+    right: 0;
+    bottom: 0;
+    left: 0;
     display: flex;
     width: 100%;
     min-width: 0;
-    height: calc(100dvh - 64px);
+    height: calc(100dvh - 64px - env(safe-area-inset-top));
     flex-direction: column;
     justify-content: space-between;
     gap: 32px;
