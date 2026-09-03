@@ -9,6 +9,7 @@ import { appHref } from "@/lib/urls";
 import OperatorsEditorial from "./operators-editorial";
 import "./auterim-v3.css";
 import "./auterim-v3-refinement.css";
+import "./auterim-v3-typography.css";
 
 const DATA = {
   profile: [["Company", "Atlas Studio, professional services, 12 people", "Confirmed", "ok"], ["Systems of record", "Gmail and HubSpot carry client communication and pipeline", "Confirmed", "ok"], ["Customer journey", "Enquiry, proposal, onboarding, recurring delivery", "Inferred from website", "inf"], ["Repeated work", "Onboarding information is collected by hand for every client", "Inferred from tools", "inf"], ["Where work waits", "Lead replies queue behind one person's inbox", "Needs review", "rev"], ["Billing", "No billing system named. Left out of scope until you add one.", "Not provided", ""]],

@@ -12,5 +12,34 @@ export default function V3Header() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-  return <header className={`top ${scrolled ? "on" : ""}`}><div className="wrap"><Link href="#top" className="mark"><img src="/brand/auterim-mark-live.svg" width="20" height="20" alt="" />Auterim</Link><nav className="nav" aria-label="Main"><a href="#platform">Platform</a><a href="#operators">Operators</a><a href="#how">How it works</a><a href="#pricing">Pricing</a></nav><div className="cta"><Link className="in" href={appHref("/app")}>Sign in</Link><Link className="btn btn-a" href={appHref("/app/onboarding")}>Start preview</Link></div></div></header>;
+  return (
+    <header className={`top ${scrolled ? "on" : ""}`}>
+      <div className="wrap">
+        <Link href="#top" className="mark" aria-label="Auterim home">
+          <img src="/brand/auterim-mark-live.svg" width="20" height="20" alt="" />
+          Auterim
+        </Link>
+        <nav className="nav" aria-label="Main">
+          <a href="#platform">Platform</a>
+          <a href="#operators">Operators</a>
+          <a href="#how">How it works</a>
+          <a href="#pricing">Pricing</a>
+        </nav>
+        <div className="cta">
+          <Link className="in" href={appHref("/app")}>Sign in</Link>
+          <Link className="btn btn-a" href={appHref("/app/onboarding")}>Start preview</Link>
+        </div>
+        <details className="mobile-menu">
+          <summary aria-label="Open navigation">Menu</summary>
+          <nav aria-label="Mobile navigation">
+            <a href="#platform">Platform</a>
+            <a href="#operators">Operators</a>
+            <a href="#how">How it works</a>
+            <a href="#pricing">Pricing</a>
+            <Link href={appHref("/app")}>Sign in</Link>
+          </nav>
+        </details>
+      </div>
+    </header>
+  );
 }

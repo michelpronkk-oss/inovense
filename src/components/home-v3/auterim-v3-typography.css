@@ -1,0 +1,92 @@
+/* V3 typography hierarchy: scale and readability only. */
+.auterim-v3-page h1 {
+  font-size: clamp(3.5rem, 6vw, 6.5rem);
+  line-height: 1.01;
+  letter-spacing: -.05em;
+  text-wrap: balance;
+}
+.auterim-v3-page .head h2 {
+  font-size: clamp(2rem, 3vw, 3.25rem);
+  line-height: 1.1;
+  letter-spacing: -.038em;
+  text-wrap: balance;
+}
+.auterim-v3-page .run .head h2,
+.auterim-v3-page #policy .head h2,
+.auterim-v3-page #arch .head h2,
+.auterim-v3-page .close h2 {
+  font-size: clamp(2.25rem, 3.8vw, 4rem);
+  letter-spacing: -.042em;
+}
+.auterim-v3-page .head .say {
+  font-size: clamp(1rem, 1.15vw, 1.125rem);
+  line-height: 1.6;
+  color: #B0B9C5;
+}
+.auterim-v3-page .hero .say,
+.auterim-v3-page .close p {
+  font-size: clamp(1rem, 1.25vw, 1.1875rem);
+}
+.auterim-v3-page .lbl,
+.auterim-v3-page .note,
+.auterim-v3-page .pf-op,
+.auterim-v3-page .pf-meta,
+.auterim-v3-page .gate-tag,
+.auterim-v3-page .pr .k,
+.auterim-v3-page .pr .v s,
+.auterim-v3-page .op-name .t,
+.auterim-v3-page .op-say .gate,
+.auterim-v3-page .op-end .st,
+.auterim-v3-page .tr-k,
+.auterim-v3-page .sn,
+.auterim-v3-page .gw,
+.auterim-v3-page .dia-k,
+.auterim-v3-page .dia-f,
+.auterim-v3-page .mono .ms,
+.auterim-v3-page .ucr .k,
+.auterim-v3-page .pl .amt,
+.auterim-v3-page .foot h4,
+.auterim-v3-page .foot-base {
+  font-size: clamp(.72rem, .76vw, .8rem);
+}
+.auterim-v3-page .op-say,
+.auterim-v3-page .ucr .b,
+.auterim-v3-page .ucr .a,
+.auterim-v3-page .pr .v,
+.auterim-v3-page .tr.gate p,
+.auterim-v3-page .pl li {
+  color: #AEB8C4;
+}
+.auterim-v3-page .op-say { line-height: 1.58; }
+.auterim-v3-page .pr .v { line-height: 1.55; }
+.auterim-v3-page .ucr .a { color: #E7ECF1; }
+.auterim-v3-page .faq summary { font-size: clamp(1rem, 1.25vw, 1.125rem); }
+.auterim-v3-page .faq p { font-size: 1rem; line-height: 1.65; }
+
+@media (max-width: 820px) {
+  .auterim-v3-page h1 { font-size: clamp(3rem, 11vw, 4.25rem); }
+  .auterim-v3-page .run .head h2,
+  .auterim-v3-page #policy .head h2,
+  .auterim-v3-page #arch .head h2,
+  .auterim-v3-page .close h2 { font-size: clamp(2.25rem, 9vw, 3.25rem); }
+  .auterim-v3-page .lbl,
+  .auterim-v3-page .note,
+  .auterim-v3-page .pf-op,
+  .auterim-v3-page .pf-meta,
+  .auterim-v3-page .gate-tag,
+  .auterim-v3-page .pr .k,
+  .auterim-v3-page .pr .v s,
+  .auterim-v3-page .op-name .t,
+  .auterim-v3-page .op-say .gate,
+  .auterim-v3-page .op-end .st,
+  .auterim-v3-page .tr-k,
+  .auterim-v3-page .sn,
+  .auterim-v3-page .gw,
+  .auterim-v3-page .dia-k,
+  .auterim-v3-page .dia-f,
+  .auterim-v3-page .mono .ms,
+  .auterim-v3-page .ucr .k,
+  .auterim-v3-page .pl .amt,
+  .auterim-v3-page .foot h4,
+  .auterim-v3-page .foot-base { font-size: .72rem; }
+}

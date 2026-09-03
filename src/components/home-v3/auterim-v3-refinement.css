@@ -27,6 +27,23 @@
 .auterim-v3-page .faq details[open] { background: rgba(255,255,255,.018); }
 .auterim-v3-page .faq details { border-bottom-color: var(--v3-rule-medium); }
 .auterim-v3-page .foot { border-top-color: var(--v3-rule-subtle); }
+
+/* Homepage topbar: balanced desktop frame with a quiet mobile disclosure. */
+.auterim-v3-page .top .wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 34px; }
+.auterim-v3-page .top .nav { margin-left: 0; }
+.auterim-v3-page .top .cta { margin-left: 0; justify-content: flex-end; }
+.auterim-v3-page .mobile-menu { display: none; }
+.auterim-v3-page .mobile-menu summary { list-style: none; cursor: pointer; color: var(--dim); font-size: 13px; }
+.auterim-v3-page .mobile-menu summary::-webkit-details-marker { display: none; }
+.auterim-v3-page .mobile-menu nav { position: absolute; right: var(--pad); top: 58px; display: flex; min-width: 180px; flex-direction: column; gap: 15px; padding: 16px; background: rgba(8,11,16,.97); border: 1px solid var(--rule); }
+.auterim-v3-page .mobile-menu nav a { color: var(--dim); font-size: 14px; }
+.auterim-v3-page .mobile-menu nav a:hover { color: var(--acc-hi); }
+@media (max-width: 820px) {
+  .auterim-v3-page .top .wrap { grid-template-columns: minmax(0, 1fr) auto auto; gap: 14px; }
+  .auterim-v3-page .top .cta { display: flex; margin-left: 0; }
+  .auterim-v3-page .top .cta .btn { padding: 8px 12px; font-size: 12px; }
+  .auterim-v3-page .mobile-menu { display: block; position: relative; }
+}
 .auterim-v3-page .op-say,
 .auterim-v3-page .ucr .b,
 .auterim-v3-page .ucr .a,
@@ -98,6 +115,37 @@
 .auterim-v3-page .faq details summary:hover { color: var(--acc); }
 .auterim-v3-page .faq details p { animation: v3-faq-open 220ms ease-out; }
 @keyframes v3-faq-open { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* Reusable Auterim signal language. Small, sparse, and only attached to real work paths. */
+.auterim-v3-page .auterim-signal { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--acc); box-shadow: 0 0 10px rgba(55,230,212,.7); }
+.auterim-v3-page .proof { overflow: hidden; }
+.auterim-v3-page .proof::after { content: ""; position: absolute; left: 30px; bottom: 12px; width: 5px; height: 5px; border-radius: 50%; background: var(--gate); box-shadow: 0 0 10px rgba(255,204,102,.55); opacity: 0; }
+.auterim-v3-page .proof.sequence-in::after { animation: v3-hero-signal 1800ms 220ms cubic-bezier(.22,.7,.24,1) forwards; }
+@keyframes v3-hero-signal { 0% { left: 30px; opacity: 0; background: var(--acc); } 12% { opacity: 1; } 82% { left: 78%; opacity: 1; background: var(--acc); } 88%,100% { left: 78%; opacity: 1; background: var(--gate); } }
+
+.auterim-v3-page .trace.sequence-in .tr.work .wn { animation: v3-work-node 1300ms 260ms ease-out both; }
+.auterim-v3-page .trace.sequence-in .tr.work .wk:nth-child(2) .wn { animation-delay: 560ms; }
+.auterim-v3-page .trace.sequence-in .tr.work .wk:nth-child(3) .wn { animation-delay: 860ms; }
+.auterim-v3-page .trace.sequence-in .tr.work .wk:nth-child(4) .wn { animation-delay: 1160ms; }
+@keyframes v3-work-node { 0%,65% { background: var(--edge); box-shadow: none; } 72%,100% { background: var(--ok); box-shadow: 0 0 9px rgba(81,216,138,.75); } }
+.auterim-v3-page .trace.sequence-in .tr.gate .tr-s::before { animation: v3-gate-pulse 700ms 1650ms ease-out both; }
+@keyframes v3-gate-pulse { 0%,100% { box-shadow: 0 0 0 5px rgba(255,204,102,.16),0 0 18px 2px rgba(255,204,102,.4); } 50% { box-shadow: 0 0 0 8px rgba(255,204,102,.09),0 0 22px 3px rgba(255,204,102,.48); } }
+
+.auterim-v3-page .pol.sequence-in .pcol.b .h { animation: v3-boundary-focus 900ms 450ms ease-out both; }
+.auterim-v3-page .pol.sequence-in .pcol.b::after { content: "Send message to new customer  →  Needs approval"; display: block; margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,204,102,.24); font-family: var(--mono); font-size: 9px; line-height: 1.5; letter-spacing: .08em; text-transform: uppercase; color: var(--gate); opacity: 0; animation: v3-item-in 420ms 850ms ease-out forwards; }
+
+.auterim-v3-page .dia .lead i { animation-duration: 7s; }
+.auterim-v3-page .mono { background: linear-gradient(180deg,rgba(55,230,212,.08),rgba(8,22,26,.94) 42%,rgba(6,14,18,.98)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .auterim-v3-page .proof.sequence-in::after,
+  .auterim-v3-page .trace.sequence-in .tr.work .wn,
+  .auterim-v3-page .trace.sequence-in .tr.gate .tr-s::before,
+  .auterim-v3-page .pol.sequence-in .pcol.b::after { animation: none !important; opacity: 1; }
+  .auterim-v3-page .proof::after { left: 78%; background: var(--gate); }
+  .auterim-v3-page .pol.sequence-in .pcol.b::after { opacity: 1; }
+  .auterim-v3-page .dia .lead i { animation: none; opacity: 1; left: 50%; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .auterim-v3-page .v3-proof-sequence .pf-top,
