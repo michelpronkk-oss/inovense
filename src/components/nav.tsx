@@ -27,7 +27,7 @@ function isActive(href: string, pathname: string) {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-export default function Nav() {
+export default function Nav({ homepage = false }: { homepage?: boolean }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const userState = usePublicUserState();
@@ -38,6 +38,14 @@ export default function Nav() {
         ? { label: "Sign in", href: appHref("/app") }
         : { label: "Get Started", href: appHref("/app/onboarding") };
   const showSecondarySignIn = userState === "guest" || userState === "loading";
+  const navLinks = homepage
+    ? [
+        { label: "Platform", href: "#platform" },
+        { label: "Operators", href: "#operators" },
+        { label: "How it works", href: "#how" },
+        { label: "Pricing", href: "#pricing" },
+      ]
+    : links;
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 bg-transparent">
@@ -65,7 +73,7 @@ export default function Nav() {
             backdropFilter: "blur(10px)",
           }}
         >
-          {links.map((link) => {
+          {navLinks.map((link) => {
             const active = isActive(link.href, pathname);
             return (
               <Link
@@ -140,7 +148,7 @@ export default function Nav() {
               </Link>
 
               <nav className="mt-10 flex flex-col">
-                {links.map((link) => {
+                {navLinks.map((link) => {
                   const active = isActive(link.href, pathname);
                   return (
                     <Link

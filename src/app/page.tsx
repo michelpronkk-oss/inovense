@@ -2,17 +2,7 @@
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import { PageShell } from "@/components/marketing-ui";
-import Hero from "@/components/home-v3/hero";
-import { IntegrationsBand, StatsStrip } from "@/components/home-v3/bands";
-import OperatingLayerSection from "@/components/home-v3/operating-layer";
-import AgentsSection from "@/components/home-v3/agents";
-import WorkflowsSection from "@/components/home-v3/workflows";
-import MemorySection from "@/components/home-v3/memory";
-import ApprovalsSection from "@/components/home-v3/approvals";
-import IntegrationsSection from "@/components/home-v3/integrations-grid";
-import SecuritySection from "@/components/home-v3/security";
-import PricingSection from "@/components/home-v3/pricing";
-import FinalCTA from "@/components/home-v3/final-cta";
+import AuterimHomeHandoff from "@/components/home-v3/auterim-home-handoff";
 import {
   INOVENSE_HOME_FAQS,
   AUTERIM_ORGANIZATION_ID,
@@ -23,10 +13,10 @@ import {
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Auterim | AI agents that run your work.",
+    absolute: "Auterim | The AI workforce built around how your company works.",
   },
   description:
-    "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.",
+    "Auterim understands your business, recommends the right AI workforce, and lets it prepare and execute real work with controls.",
   alternates: {
     canonical: "https://auterim.com",
     languages: {
@@ -37,25 +27,25 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://auterim.com",
-    title: "Auterim | AI agents that run your work.",
+    title: "Auterim | The AI workforce built around how your company works.",
     description:
-      "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.",
+      "Auterim understands your business, recommends the right AI workforce, and lets it prepare and execute real work with controls.",
     images: [
       {
         url: "/opengraph-image",
-        alt: "Auterim | AI agents that run your work.",
+        alt: "Auterim | The AI workforce built around how your company works.",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Auterim | AI agents that run your work.",
+    title: "Auterim | The AI workforce built around how your company works.",
     description:
-      "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.",
+      "Auterim understands your business, recommends the right AI workforce, and lets it prepare and execute real work with controls.",
     images: [
       {
         url: "/opengraph-image",
-        alt: "Auterim | AI agents that run your work.",
+        alt: "Auterim | The AI workforce built around how your company works.",
       },
     ],
   },
@@ -66,9 +56,9 @@ const homePageSchema = {
   "@type": "WebPage",
   "@id": `${AUTERIM_URL}/#home`,
   url: AUTERIM_URL,
-  name: "Auterim | AI agents that run your work.",
+  name: "Auterim | The AI workforce built around how your company works.",
   description:
-    "Auterim connects to your tools, monitors what matters, and lets agents execute safely across your business.",
+    "Auterim understands your business, recommends the right AI workforce, and lets it prepare and execute real work with controls.",
   isPartOf: {
     "@id": AUTERIM_WEBSITE_ID,
   },
@@ -103,21 +93,10 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: toJsonLd(homeFaqSchema) }}
       />
-      <Nav />
+      <Nav homepage />
       <main>
         <PageShell>
-          <Hero />
-          <IntegrationsBand />
-          <OperatingLayerSection />
-          <StatsStrip />
-          <AgentsSection />
-          <WorkflowsSection />
-          <MemorySection />
-          <ApprovalsSection />
-          <IntegrationsSection />
-          <SecuritySection />
-          <PricingSection />
-          <FinalCTA />
+          <AuterimHomeHandoff />
         </PageShell>
       </main>
       <Footer />
