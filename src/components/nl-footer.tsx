@@ -9,8 +9,8 @@ const serviceLinks = [
 const companyLinks = [
   { label: "Project starten", href: "/nl/intake" },
   { label: "Proces", href: "/nl/process" },
-  { label: "Privacybeleid", href: "/privacy-policy" },
-  { label: "Gebruiksvoorwaarden", href: "/terms-of-use" },
+  { label: "Privacybeleid", href: "/privacy" },
+  { label: "Gebruiksvoorwaarden", href: "/terms" },
 ];
 
 export default function NlFooter() {

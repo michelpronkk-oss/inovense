@@ -9,7 +9,14 @@ const TEXT_DIM = "#9AA1AA";
 const TEXT_MUTE = "#646A72";
 const GREEN = "#51D88A";
 
-const LOGOS: Record<string, React.ReactNode> = {
+export const LOGOS: Record<string, React.ReactNode> = {
+  Trello: (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
+      <rect width="24" height="24" rx="5" fill="#0079BF" />
+      <rect x="4" y="4" width="6.5" height="12" rx="1.3" fill="#fff" />
+      <rect x="13.5" y="4" width="6.5" height="8" rx="1.3" fill="#fff" />
+    </svg>
+  ),
   Salesforce: (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden>
       <path d="M7 16c-2 0-3.5-1.6-3.5-3.5 0-1.4.8-2.6 2-3.1 0-2.7 2.2-4.9 4.9-4.9 1.5 0 2.9.7 3.8 1.8.7-.6 1.7-1 2.7-1 2.3 0 4.1 1.8 4.1 4.1 0 .4-.1.8-.2 1.2.7.6 1.2 1.5 1.2 2.6 0 1.9-1.5 3.4-3.4 3.4H7z" fill="#00A1E0" />

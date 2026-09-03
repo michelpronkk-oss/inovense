@@ -20,10 +20,10 @@ export default function V3Header() {
           Auterim
         </Link>
         <nav className="nav" aria-label="Main">
-          <a href="#platform">Platform</a>
-          <a href="#operators">Operators</a>
-          <a href="#how">How it works</a>
-          <a href="#pricing">Pricing</a>
+          <Link href="/#platform">Platform</Link>
+          <Link href="/#operators">Operators</Link>
+          <Link href="/#how">How it works</Link>
+          <Link href="/#pricing">Pricing</Link>
         </nav>
         <div className="cta">
           <Link className="in" href={appHref("/app")}>Sign in</Link>
@@ -32,10 +32,10 @@ export default function V3Header() {
         <details className="mobile-menu">
           <summary aria-label="Open navigation">Menu</summary>
           <nav aria-label="Mobile navigation">
-            <a href="#platform">Platform</a>
-            <a href="#operators">Operators</a>
-            <a href="#how">How it works</a>
-            <a href="#pricing">Pricing</a>
+            <Link href="/#platform">Platform</Link>
+            <Link href="/#operators">Operators</Link>
+            <Link href="/#how">How it works</Link>
+            <Link href="/#pricing">Pricing</Link>
             <Link href={appHref("/app")}>Sign in</Link>
           </nav>
         </details>

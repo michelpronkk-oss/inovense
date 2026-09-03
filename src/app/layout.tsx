@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import React from "react";
 import "./globals.css";
 import TrafficAttributionTracker from "@/components/analytics/traffic-attribution-tracker";
+import CookieConsentBanner from "@/components/cookie-consent-banner";
 import {
   AUTERIM_DESCRIPTION,
   AUTERIM_LANES,
@@ -153,6 +154,7 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {!isPrivateRoute && <TrafficAttributionTracker />}
         {children}
+        {!isPrivateRoute && <CookieConsentBanner />}
       </body>
     </html>
   );

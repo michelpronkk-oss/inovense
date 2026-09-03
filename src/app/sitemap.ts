@@ -81,13 +81,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.75,
     },
     {
-      url: `${BASE}/privacy-policy`,
+      url: `${BASE}/privacy`,
       lastModified: NOW,
       changeFrequency: "yearly",
       priority: 0.3,
     },
     {
-      url: `${BASE}/terms-of-use`,
+      url: `${BASE}/terms`,
+      lastModified: NOW,
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
+    {
+      url: `${BASE}/cookies`,
       lastModified: NOW,
       changeFrequency: "yearly",
       priority: 0.3,

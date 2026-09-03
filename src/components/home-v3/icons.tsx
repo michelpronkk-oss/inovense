@@ -28,6 +28,10 @@ const PATHS: Record<string, string> = {
   lock: '<rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 1 1 8 0v4" />',
   key: '<circle cx="8" cy="15" r="4" /><path d="m11 12 9-9 3 3-3 3-2-2-2 2-2-2-3 3" />',
   trend: '<path d="m3 17 6-6 4 4 8-9" /><path d="M14 6h7v7" />',
+  // Hero artifact source glyphs — hardcoded per-icon stroke colors, matching the source design.
+  artifactWeb: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="#37E6D4" stroke-width="1.5" /><path d="M3.5 12h17M12 3.5c2.6 2.4 2.6 14.2 0 17M12 3.5c-2.6 2.4-2.6 14.2 0 17" fill="none" stroke="#37E6D4" stroke-width="1.3" />',
+  artifactPipeline: '<circle cx="12" cy="10" r="3" fill="none" stroke="#FF7A59" stroke-width="1.8" /><circle cx="12" cy="18" r="2.5" fill="none" stroke="#FF7A59" stroke-width="1.8" /><path d="M12 13v2.5M18 4l-3 3.5M21 6h-3M21 6v3" fill="none" stroke="#FF7A59" stroke-width="1.6" stroke-linecap="round" />',
+  artifactMemory: '<rect x="4" y="4" width="16" height="16" rx="3" fill="none" stroke="#A7B1BE" stroke-width="1.5" /><path d="M8.5 4v16M4 9.5h4.5M4 14.5h4.5M12 9h5M12 13h3.5" fill="none" stroke="#A7B1BE" stroke-width="1.4" stroke-linecap="round" />',
 };
 
 export function Icon({

@@ -1,93 +1,80 @@
 import type { Metadata } from "next";
-import Nav from "@/components/nav";
-import Footer from "@/components/footer";
-import Link from "next/link";
-import { PageShell, Eyebrow } from "@/components/marketing-ui";
+import { PageShell } from "@/components/marketing-ui";
+import V3Header from "@/components/home-v3/v3-header";
+import LegalEditorial from "@/components/home-v3/legal-editorial";
+import CookiePreferencesButton from "@/components/home-v3/cookie-preferences-button";
 
 export const metadata: Metadata = {
   title: "Cookie Policy",
-  description: "How Inovense uses cookies. Strictly necessary cookies for platform operation and analytics cookies to improve the product. No advertising cookies.",
+  description: "How Auterim uses cookies. Strictly necessary cookies for platform operation and analytics cookies to improve the product. No advertising cookies.",
   alternates: {
     canonical: "https://auterim.com/cookies",
   },
   openGraph: {
     url: "https://auterim.com/cookies",
-    title: "Cookie Policy | Inovense",
-    description: "How Inovense uses cookies. Strictly necessary cookies for platform operation and analytics cookies to improve the product. No advertising cookies.",
+    title: "Cookie Policy | Auterim",
+    description: "How Auterim uses cookies. Strictly necessary cookies for platform operation and analytics cookies to improve the product. No advertising cookies.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Cookie Policy | Inovense",
-    description: "How Inovense uses cookies. Strictly necessary cookies for platform operation and analytics cookies to improve the product. No advertising cookies.",
+    title: "Cookie Policy | Auterim",
+    description: "How Auterim uses cookies. Strictly necessary cookies for platform operation and analytics cookies to improve the product. No advertising cookies.",
   },
 };
 
 export default function CookiesPage() {
   return (
-    <>
-      <Nav />
+    <div className="font-[family-name:var(--font-geist-sans)]">
+      <V3Header />
       <main>
         <PageShell>
-          <section className="mx-auto max-w-2xl px-6 pb-24 pt-36">
-            <Eyebrow>Legal</Eyebrow>
-            <h1
-              className="mb-6 text-3xl font-semibold"
-              style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
-            >
-              Cookie Policy
-            </h1>
-            <p
-              className="mb-8 font-mono text-xs uppercase tracking-[0.14em]"
-              style={{ color: "#4A4F57" }}
-            >
-              Last updated: May 2026
+          <LegalEditorial title="Cookie Policy" lastUpdated="May 2026">
+            <div className="legal-notice">
+              <i aria-hidden="true" />
+              <span>This policy describes Auterim as it operates today, in product preview. It will be reviewed with counsel before commercial launch, and this page will be updated when that happens.</span>
+            </div>
+
+            <h2>Overview</h2>
+            <p>
+              Auterim uses cookies and similar technologies to keep you signed in, remember settings, and understand how the platform and marketing site are used. This policy explains what we use and why.
             </p>
-            <div className="space-y-6 text-sm leading-relaxed" style={{ color: "#A4ABB4" }}>
-              <p>
-                This page is provided for product preview purposes and should be reviewed before commercial launch.
-              </p>
-              <p>
-                The Inovense platform uses cookies and similar technologies to maintain sessions, remember preferences, and understand how the platform is used.
-              </p>
-              <p>
-                We use strictly necessary cookies to operate the platform, and analytics cookies to improve the product. We do not use advertising cookies.
-              </p>
-              <p>
-                You can manage cookie preferences through your browser settings. Disabling strictly necessary cookies will affect platform functionality.
-              </p>
-              <p>
-                For questions, contact us at{" "}
-                <a
-                  href="mailto:hello@auterim.com"
-                  className="underline underline-offset-2"
-                  style={{ color: "#ECEFF3" }}
-                >
-                  hello@auterim.com
-                </a>
-                .
-              </p>
-            </div>
-            <div className="mt-10 flex gap-4">
-              <Link
-                href="/terms"
-                className="text-sm underline underline-offset-2"
-                style={{ color: "#4A4F57" }}
-              >
-                Terms of Service
-              </Link>
-              <Link
-                href="/privacy"
-                className="text-sm underline underline-offset-2"
-                style={{ color: "#4A4F57" }}
-              >
-                Privacy Policy
-              </Link>
-            </div>
-          </section>
+
+            <h2>Strictly necessary cookies</h2>
+            <p>
+              Required for the platform to function: keeping you signed in to your workspace, remembering your session across the admin, app, and portal, and protecting against cross-site request forgery. These cannot be turned off without breaking core functionality.
+            </p>
+
+            <h2>Analytics cookies</h2>
+            <p>
+              Used to understand which pages and features are used, so we can improve the product and this site. These are set only with your consent where required by law, and never combine with advertising networks.
+            </p>
+
+            <h2>Cookies we do not use</h2>
+            <ul>
+              <li>No advertising or ad-retargeting cookies</li>
+              <li>No cross-site tracking sold or shared with third parties</li>
+              <li>No cookies from social media widgets we haven't embedded</li>
+            </ul>
+
+            <h2>Managing cookies</h2>
+            <p>
+              You can accept or decline analytics cookies at any time from the preference banner, or block and delete cookies through your browser settings directly. Disabling strictly necessary cookies will prevent you from staying signed in and will affect core platform functionality.
+            </p>
+            <CookiePreferencesButton />
+
+            <h2>Changes to this policy</h2>
+            <p>
+              We will update this page if the cookies we use change, and update the date below when we do.
+            </p>
+
+            <h2>Contact</h2>
+            <p>
+              For questions about this policy, contact us at <a href="mailto:hello@auterim.com">hello@auterim.com</a>. See also our <a href="/privacy">Privacy Policy</a> and <a href="/terms">Terms of Service</a>.
+            </p>
+          </LegalEditorial>
         </PageShell>
       </main>
-      <Footer />
-    </>
+    </div>
   );
 }

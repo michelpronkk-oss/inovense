@@ -16,7 +16,7 @@
 .auterim-v3-page .run,
 .auterim-v3-page #arch { background: var(--v3-signature); }
 .auterim-v3-page .run { border-top-color: var(--v3-rule-medium); border-bottom: 1px solid var(--v3-rule-subtle); }
-.auterim-v3-page #arch { border-top-color: var(--v3-rule-medium); border-bottom: 1px solid var(--v3-rule-subtle); }
+.auterim-v3-page #arch { border-top-color: var(--v3-rule-medium); border-bottom: 1px solid var(--v3-rule-subtle); padding-bottom: 80px; }
 .auterim-v3-page .run::before { opacity: .72; }
 .auterim-v3-page .tr.gate .tr-c { background: rgba(16,24,32,.28); }
 .auterim-v3-page .tr.gate .tr-c::before { background: linear-gradient(100deg, rgba(255,204,102,.11), rgba(255,204,102,.018) 62%, transparent); }
@@ -24,8 +24,6 @@
 .auterim-v3-page #pricing .pl + .pl { border-left-color: var(--v3-rule-medium); }
 .auterim-v3-page #pricing .pl.now { background: rgba(55,230,212,.035); }
 .auterim-v3-page #pricing .pl li { color: var(--v3-dim); }
-.auterim-v3-page .faq details[open] { background: rgba(255,255,255,.018); }
-.auterim-v3-page .faq details { border-bottom-color: var(--v3-rule-medium); }
 .auterim-v3-page .foot { border-top-color: var(--v3-rule-subtle); }
 
 /* Homepage topbar: balanced desktop frame with a quiet mobile disclosure. */
@@ -43,6 +41,277 @@
   .auterim-v3-page .top .cta { display: flex; margin-left: 0; }
   .auterim-v3-page .top .cta .btn { padding: 8px 12px; font-size: 12px; }
   .auterim-v3-page .mobile-menu { display: block; position: relative; }
+}
+
+/* Layered hero scene: connected-system plane, operator surface, approval gate. */
+.auterim-v3-page .hero-scene {
+  position: relative;
+  min-height: 548px;
+  isolation: isolate;
+}
+.auterim-v3-page .hero-scene-lines { position: absolute; inset: 0; z-index: -1; overflow: hidden; }
+.auterim-v3-page .hero-scene-lines span { position: absolute; display: block; height: 1px; background: linear-gradient(90deg, transparent, rgba(55,230,212,.2), transparent); transform-origin: left center; }
+.auterim-v3-page .hero-scene-lines span:nth-child(1) { top: 132px; left: 13%; width: 70%; transform: rotate(12deg); }
+.auterim-v3-page .hero-scene-lines span:nth-child(2) { top: 234px; left: 8%; width: 82%; transform: rotate(-8deg); }
+.auterim-v3-page .hero-scene-lines span:nth-child(3) { top: 385px; left: 23%; width: 60%; transform: rotate(13deg); }
+.auterim-v3-page .hero-scene-lines::after { content: ""; position: absolute; top: 82px; left: 20%; width: 6px; height: 6px; border-radius: 50%; background: var(--acc); box-shadow: 0 0 12px rgba(55,230,212,.8); opacity: 0; }
+.auterim-v3-page .hero-scene.sequence-in .hero-scene-lines::after { animation: auterim-scene-signal 2200ms 150ms cubic-bezier(.22,.7,.24,1) forwards; }
+@keyframes auterim-scene-signal { 0% { left: 20%; top: 82px; opacity: 0; background: var(--acc); } 8% { opacity: 1; } 32% { left: 48%; top: 160px; opacity: 1; } 63% { left: 72%; top: 284px; opacity: 1; } 86%,100% { left: 76%; top: 420px; opacity: 1; background: var(--gate); box-shadow: 0 0 13px rgba(255,204,102,.7); } }
+.auterim-v3-page .hero-scene-context,
+.auterim-v3-page .hero-scene-tool,
+.auterim-v3-page .hero-scene-approval,
+.auterim-v3-page .hero-scene-queue { position: absolute; border: 1px solid var(--rule-2); background: rgba(10,16,23,.94); box-shadow: 0 20px 50px -38px #000, inset 0 1px rgba(255,255,255,.04); }
+.auterim-v3-page .hero-scene-context { top: 0; right: 8%; display: grid; gap: 9px; width: 220px; padding: 17px 18px; border-radius: 7px; }
+.auterim-v3-page .hero-scene-context > span:not(.hero-kicker) { display: flex; align-items: center; gap: 8px; color: var(--dim); font-size: 11px; }.auterim-v3-page .hero-scene-context i { width: 5px; height: 5px; border-radius: 50%; background: var(--ok); }
+.auterim-v3-page .hero-scene-tool { display: grid; grid-template-columns: 7px 1fr; align-items: center; column-gap: 8px; width: 106px; padding: 10px 11px; border-radius: 5px; color: var(--dim); font-size: 11px; }
+.auterim-v3-page .hero-scene-tool i { grid-row: 1 / span 2; width: 6px; height: 6px; border-radius: 50%; background: var(--acc); box-shadow: 0 0 8px rgba(55,230,212,.6); }.auterim-v3-page .hero-scene-tool span { grid-column: 2; color: var(--faint); font: 8px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.auterim-v3-page .hero-scene-gmail { top: 214px; left: 0; }.auterim-v3-page .hero-scene-hubspot { top: 252px; right: 0; }
+.auterim-v3-page .hero-scene-operator { position: absolute; top: 104px; left: 8%; width: 84%; overflow: hidden; border: 1px solid rgba(255,255,255,.16); border-radius: 9px; background: linear-gradient(145deg, #17222d, #0a1118 72%); box-shadow: 0 34px 72px -38px #000, inset 0 1px rgba(255,255,255,.06); }
+.auterim-v3-page .hero-scene-bar { display: flex; align-items: center; gap: 10px; min-height: 35px; padding: 0 15px; border-bottom: 1px solid var(--rule); color: var(--faint); font: 8px var(--mono); letter-spacing: .1em; text-transform: uppercase; }.auterim-v3-page .hero-scene-bar .hero-product-window { display: flex; gap: 4px; margin-right: 5px; }.auterim-v3-page .hero-scene-bar .hero-product-window i { width: 5px; height: 5px; border-radius: 50%; background: #3a4653; }.auterim-v3-page .hero-scene-bar .hero-status { margin-left: auto; }
+.auterim-v3-page .hero-scene-operator-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 22px 24px 18px; }.auterim-v3-page .hero-scene-operator-head h2 { margin-top: 8px; font-size: 24px; line-height: 1.1; }.auterim-v3-page .hero-scene-ready { color: var(--ok); font: 9px var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+.auterim-v3-page .hero-scene-task { margin: 0 24px; padding: 15px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }.auterim-v3-page .hero-scene-task strong { display: block; margin-top: 8px; color: var(--ink); font-size: 13px; font-weight: 500; }
+.auterim-v3-page .hero-scene-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 25px 24px 23px; }.auterim-v3-page .hero-scene-steps span { display: flex; align-items: center; gap: 8px; color: var(--dim); font: 9px var(--mono); letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }.auterim-v3-page .hero-scene-steps i { width: 7px; height: 7px; border: 1px solid var(--ok); border-radius: 50%; background: var(--ok); box-shadow: 0 0 7px rgba(81,216,138,.35); }
+.auterim-v3-page .hero-scene-footer { display: flex; gap: 20px; padding: 13px 24px; border-top: 1px solid var(--rule); color: var(--faint); font: 9px var(--mono); letter-spacing: .06em; text-transform: uppercase; }.auterim-v3-page .hero-scene-footer span { display: inline-flex; align-items: center; gap: 7px; }.auterim-v3-page .hero-scene-footer i { width: 5px; height: 5px; border-radius: 50%; background: var(--acc); }
+.auterim-v3-page .hero-scene-approval { left: 16%; bottom: 8px; z-index: 3; width: 68%; padding: 18px 21px 20px; border-color: rgba(255,204,102,.32); border-radius: 8px; background: linear-gradient(145deg, #1b2026, #0d1218); box-shadow: 0 28px 60px -30px #000, 0 0 0 1px rgba(255,204,102,.04), inset 0 1px rgba(255,204,102,.1); }.auterim-v3-page .hero-scene-approval h3 { margin-top: 13px; font-size: 19px; line-height: 1.15; }.auterim-v3-page .hero-scene-approval p { margin-top: 7px; color: var(--dim); font-size: 12px; }.auterim-v3-page .hero-scene-approval .hero-gate-heading { justify-content: space-between; }.auterim-v3-page .hero-scene-approval .hero-gate-heading > span:last-child { color: var(--faint); font: 9px var(--mono); letter-spacing: .1em; text-transform: uppercase; }.auterim-v3-page .hero-scene-approval .hero-gate-actions { margin-top: 15px; }
+.auterim-v3-page .hero-scene-queue { right: 2%; bottom: 35px; z-index: 4; display: grid; gap: 9px; width: 124px; padding: 13px; border-radius: 6px; transform: translateX(35%); }.auterim-v3-page .hero-scene-queue .hero-kicker { color: var(--faint); }.auterim-v3-page .hero-scene-queue > span:not(.hero-kicker) { display: flex; align-items: center; gap: 7px; color: var(--dim); font-size: 10px; }.auterim-v3-page .hero-scene-queue i { width: 5px; height: 5px; border-radius: 50%; background: var(--edge); }
+
+@media (max-width: 1080px) and (min-width: 821px) { .auterim-v3-page .hero-scene { min-height: 520px; }.auterim-v3-page .hero-scene-operator { width: 88%; left: 5%; }.auterim-v3-page .hero-scene-context { right: 2%; }.auterim-v3-page .hero-scene-approval { left: 9%; width: 76%; }.auterim-v3-page .hero-scene-queue { display: none; } }
+@media (max-width: 820px) { .auterim-v3-page .hero-scene { min-height: 566px; margin: 0 -2px; }.auterim-v3-page .hero-scene-context { top: 0; right: 8%; width: 205px; }.auterim-v3-page .hero-scene-operator { top: 112px; left: 3%; width: 94%; }.auterim-v3-page .hero-scene-approval { left: 8%; bottom: 0; width: 84%; }.auterim-v3-page .hero-scene-queue { display: none; }.auterim-v3-page .hero-scene-gmail { top: 256px; left: -4px; }.auterim-v3-page .hero-scene-hubspot { top: 288px; right: -4px; } }
+@media (max-width: 520px) { .auterim-v3-page .hero-scene { min-height: 548px; }.auterim-v3-page .hero-scene-context { right: 0; width: 190px; padding: 14px; }.auterim-v3-page .hero-scene-context > span:not(.hero-kicker):nth-of-type(3) { display: none; }.auterim-v3-page .hero-scene-tool { width: 92px; padding: 8px; font-size: 10px; }.auterim-v3-page .hero-scene-gmail { top: 255px; }.auterim-v3-page .hero-scene-hubspot { top: 286px; }.auterim-v3-page .hero-scene-bar { padding: 0 11px; }.auterim-v3-page .hero-scene-operator-head { padding: 18px 17px 15px; }.auterim-v3-page .hero-scene-operator-head h2 { font-size: 20px; }.auterim-v3-page .hero-scene-task { margin: 0 17px; }.auterim-v3-page .hero-scene-steps { padding: 21px 17px; grid-template-columns: repeat(3, 1fr); }.auterim-v3-page .hero-scene-steps span:nth-child(2) { display: none; }.auterim-v3-page .hero-scene-steps span { font-size: 8px; }.auterim-v3-page .hero-scene-footer { padding: 11px 17px; flex-direction: column; gap: 8px; }.auterim-v3-page .hero-scene-approval { left: 0; width: 94%; padding: 16px; }.auterim-v3-page .hero-scene-approval h3 { font-size: 17px; }.auterim-v3-page .hero-scene-approval .hero-gate-heading > span:last-child { display: none; } }
+@media (prefers-reduced-motion: reduce) { .auterim-v3-page .hero-scene.sequence-in .hero-scene-lines::after { animation: none; left: 76%; top: 420px; opacity: 1; background: var(--gate); } }
+
+/* Final headline scale for the layered, product-led composition. */
+.auterim-v3-page .hero-editorial h1 { font-size: clamp(40px, 3.45vw, 54px); }
+@media (max-width: 1080px) and (min-width: 821px) { .auterim-v3-page .hero-editorial h1 { font-size: clamp(39px, 3.45vw, 51px); } }
+@media (max-width: 820px) { .auterim-v3-page .hero-editorial h1 { font-size: clamp(38px, 10vw, 52px); } }
+
+/* Editorial product-led hero. The copy and product surface share the V3 frame,
+   with the product surface carrying the visual weight on desktop. */
+.auterim-v3-page .hero-editorial {
+  padding: 142px 0 92px;
+  text-align: left;
+}
+
+.auterim-v3-page .hero-editorial-glow {
+  position: absolute;
+  top: 70px;
+  right: -160px;
+  width: 760px;
+  height: 620px;
+  pointer-events: none;
+  background: radial-gradient(ellipse, rgba(55, 230, 212, .10), transparent 68%);
+  filter: blur(28px);
+}
+
+.auterim-v3-page .hero-editorial-in {
+  display: grid;
+  grid-template-columns: minmax(0, .86fr) minmax(540px, 1.14fr);
+  gap: clamp(48px, 6vw, 94px);
+  align-items: center;
+}
+
+.auterim-v3-page .hero-editorial-copy { position: relative; z-index: 1; }
+.auterim-v3-page .hero-editorial-pill { margin-bottom: 30px; }
+.auterim-v3-page .hero-editorial h1 {
+  max-width: 10ch;
+  margin: 0;
+  font-size: clamp(48px, 5vw, 76px);
+  line-height: .99;
+}
+.auterim-v3-page .hero-editorial .say {
+  max-width: 46ch;
+  margin: 28px 0 0;
+  font-size: 17px;
+  line-height: 1.62;
+}
+.auterim-v3-page .hero-editorial .hero-cta {
+  justify-content: flex-start;
+  margin-top: 34px;
+}
+.auterim-v3-page .hero-editorial .note { margin-top: 18px; }
+
+.auterim-v3-page .hero-product {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 8px;
+  background: linear-gradient(145deg, rgba(25,34,45,.92), rgba(9,15,22,.98) 62%);
+  box-shadow: 0 34px 90px -48px #000, 0 0 0 1px rgba(55,230,212,.035), inset 0 1px rgba(255,255,255,.045);
+}
+.auterim-v3-page .hero-product-topline,
+.auterim-v3-page .hero-product-heading,
+.auterim-v3-page .hero-product-gate {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--rule);
+}
+.auterim-v3-page .hero-product-topline {
+  min-height: 42px;
+  gap: 12px;
+  padding: 0 18px;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.auterim-v3-page .hero-product-window { display: flex; gap: 5px; margin-right: 3px; }
+.auterim-v3-page .hero-product-window i { width: 6px; height: 6px; border-radius: 50%; background: #36404d; }
+.auterim-v3-page .hero-product-topline .hero-status { margin-left: auto; }
+.auterim-v3-page .hero-product-heading { justify-content: space-between; gap: 24px; padding: 26px 28px 24px; }
+.auterim-v3-page .hero-kicker {
+  display: block;
+  color: var(--acc);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+.auterim-v3-page .hero-product-heading h2 { max-width: 18ch; margin-top: 10px; font-size: clamp(23px, 2.2vw, 31px); line-height: 1.08; }
+.auterim-v3-page .hero-run-id { align-self: flex-start; color: var(--faint); font-family: var(--mono); font-size: 9px; letter-spacing: .12em; white-space: nowrap; }
+.auterim-v3-page .hero-product-grid { display: grid; grid-template-columns: minmax(0, 1fr) 168px; }
+.auterim-v3-page .hero-product-main { padding: 22px 28px 26px; }
+.auterim-v3-page .hero-task { display: grid; gap: 8px; }
+.auterim-v3-page .hero-task span { color: var(--faint); font-family: var(--mono); font-size: 9px; letter-spacing: .15em; text-transform: uppercase; }
+.auterim-v3-page .hero-task strong { color: var(--ink); font-size: 15px; font-weight: 500; }
+.auterim-v3-page .hero-progress { display: flex; align-items: center; gap: 0; margin: 26px 0 30px; }
+.auterim-v3-page .hero-progress span { display: flex; align-items: center; gap: 7px; color: var(--faint); font-family: var(--mono); font-size: 8px; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.auterim-v3-page .hero-progress span + span::before { content: ""; width: 22px; height: 1px; margin: 0 8px 0 4px; background: var(--rule-2); }
+.auterim-v3-page .hero-progress em { width: 5px; height: 5px; border-radius: 50%; background: var(--edge); }
+.auterim-v3-page .hero-progress .active { color: var(--acc); }.auterim-v3-page .hero-progress .active em { background: var(--acc); box-shadow: 0 0 9px rgba(55,230,212,.7); }
+.auterim-v3-page .hero-prepared { border-top: 1px solid var(--rule); padding-top: 18px; }
+.auterim-v3-page .hero-prepared p { max-width: 39ch; margin: 9px 0 15px; color: var(--dim); font-size: 14px; line-height: 1.5; }
+.auterim-v3-page .hero-prepared > div { display: flex; gap: 16px; flex-wrap: wrap; }
+.auterim-v3-page .hero-product-side { display: grid; align-content: start; gap: 16px; padding: 22px 18px; border-left: 1px solid var(--rule); background: rgba(255,255,255,.018); }
+.auterim-v3-page .hero-tool { display: flex; align-items: center; gap: 8px; color: var(--dim); font-size: 11px; }
+.auterim-v3-page .hero-tool i { width: 5px; height: 5px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px rgba(81,216,138,.65); }
+.auterim-v3-page .hero-tool b { margin-left: auto; color: var(--faint); font-family: var(--mono); font-size: 8px; font-weight: 400; text-transform: uppercase; }
+.auterim-v3-page .hero-product-gate { gap: 16px; min-height: 62px; padding: 12px 18px; border-top: 1px solid rgba(255,204,102,.18); border-bottom: 0; background: rgba(255,204,102,.035); }
+.auterim-v3-page .hero-status { display: inline-flex; align-items: center; gap: 7px; color: var(--dim); font-family: var(--mono); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+.auterim-v3-page .hero-status i { width: 5px; height: 5px; border-radius: 50%; background: var(--acc); box-shadow: 0 0 8px rgba(55,230,212,.65); }
+.auterim-v3-page .hero-status-gate { color: var(--gate); }.auterim-v3-page .hero-status-gate i { background: var(--gate); box-shadow: 0 0 8px rgba(255,204,102,.6); }
+.auterim-v3-page .hero-product-gate > span:not(.hero-status) { color: var(--dim); font-size: 12px; }
+.auterim-v3-page .hero-product-gate button { margin-left: auto; padding: 8px 11px; border: 0; border-radius: 3px; background: var(--acc); color: #04211e; font: 500 11px var(--sans); white-space: nowrap; }
+
+@media (max-width: 1080px) and (min-width: 821px) {
+  .auterim-v3-page .hero-editorial-in { grid-template-columns: minmax(0, .9fr) minmax(450px, 1.1fr); gap: 42px; }
+  .auterim-v3-page .hero-product-heading { padding-left: 22px; padding-right: 22px; }
+  .auterim-v3-page .hero-product-main { padding-left: 22px; padding-right: 22px; }
+  .auterim-v3-page .hero-progress span + span::before { width: 10px; margin-right: 5px; }
+}
+
+@media (max-width: 820px) {
+  .auterim-v3-page .hero-editorial { padding: 118px 0 72px; }
+  .auterim-v3-page .hero-editorial-in { grid-template-columns: 1fr; gap: 54px; }
+  .auterim-v3-page .hero-editorial h1 { max-width: 13ch; font-size: clamp(44px, 12vw, 62px); }
+  .auterim-v3-page .hero-editorial .say { font-size: 16px; }
+  .auterim-v3-page .hero-product-grid { grid-template-columns: 1fr; }
+  .auterim-v3-page .hero-product-side { grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--rule); border-left: 0; }
+  .auterim-v3-page .hero-product-side .hero-kicker { grid-column: 1 / -1; }
+  .auterim-v3-page .hero-product-gate { align-items: flex-start; flex-wrap: wrap; }
+  .auterim-v3-page .hero-product-gate > span:not(.hero-status) { flex: 1 1 180px; }
+  .auterim-v3-page .hero-product-gate button { margin-left: 0; }
+}
+
+@media (max-width: 520px) {
+  .auterim-v3-page .hero-product-heading { align-items: flex-start; flex-direction: column; gap: 12px; padding: 22px 18px; }
+  .auterim-v3-page .hero-product-main { padding: 20px 18px 22px; }
+  .auterim-v3-page .hero-progress { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .auterim-v3-page .hero-progress span + span::before { display: none; }
+  .auterim-v3-page .hero-product-side { padding: 18px; }
+  .auterim-v3-page .hero-tool { font-size: 10px; }
+  .auterim-v3-page .hero-product-gate { padding: 12px 14px; }
+}
+
+/* Signature run surface: a single readable hierarchy from context to gate. */
+.auterim-v3-page .hero-product { transition: border-color .35s, box-shadow .35s; }
+.auterim-v3-page .hero-product.sequence-in { border-color: rgba(55,230,212,.2); }
+.auterim-v3-page .hero-product .hero-product-topline { min-height: 40px; }
+.auterim-v3-page .hero-product .hero-run-id { margin-left: auto; align-self: center; }
+.auterim-v3-page .hero-product .hero-product-topline .hero-status { margin-left: 0; }
+.auterim-v3-page .hero-product-heading { padding: 24px 28px 22px; }
+.auterim-v3-page .hero-product-live { display: inline-flex; align-items: center; gap: 7px; color: var(--ok); font: 9px var(--mono); letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; }
+.auterim-v3-page .hero-product-live i { width: 5px; height: 5px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px rgba(81,216,138,.65); }
+.auterim-v3-page .hero-product-context { padding: 18px 28px; border-bottom: 1px solid var(--rule); }
+.auterim-v3-page .hero-product-context > div { display: flex; gap: 22px; margin-top: 12px; flex-wrap: wrap; }
+.auterim-v3-page .hero-product-context > div span { display: inline-flex; align-items: center; gap: 7px; color: var(--dim); font-size: 12px; }
+.auterim-v3-page .hero-product-context i { width: 5px; height: 5px; border-radius: 50%; background: var(--ok); }
+.auterim-v3-page .hero-product-flow { position: relative; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin: 0 28px; padding: 26px 0 25px; border-bottom: 1px solid var(--rule); }
+.auterim-v3-page .hero-product-flow::before { content: ""; position: absolute; left: 4px; right: 4px; top: 30px; height: 1px; background: var(--rule-2); }
+.auterim-v3-page .hero-product-flow::after { content: ""; position: absolute; z-index: 1; top: 27px; left: 2%; width: 7px; height: 7px; border-radius: 50%; background: var(--acc); box-shadow: 0 0 12px 2px rgba(55,230,212,.65); opacity: 0; }
+.auterim-v3-page .hero-product-flow.sequence-in::after { animation: auterim-hero-signal 2100ms 180ms cubic-bezier(.22,.7,.24,1) forwards; }
+.auterim-v3-page .hero-product-flow span { position: relative; z-index: 2; display: grid; justify-items: center; gap: 10px; color: var(--faint); font: 9px var(--mono); letter-spacing: .08em; text-align: center; text-transform: uppercase; white-space: nowrap; }
+.auterim-v3-page .hero-product-flow span i { width: 9px; height: 9px; border: 1px solid var(--edge); border-radius: 50%; background: var(--bg-2); }
+.auterim-v3-page .hero-product-flow span.complete { color: var(--dim); }.auterim-v3-page .hero-product-flow span.complete i { border-color: var(--ok); background: var(--ok); box-shadow: 0 0 8px rgba(81,216,138,.4); }
+.auterim-v3-page .hero-product-flow span.gate { color: var(--gate); }.auterim-v3-page .hero-product-flow span.gate i { border-color: var(--gate); }
+@keyframes auterim-hero-signal { 0% { left: 2%; opacity: 0; background: var(--acc); } 8% { opacity: 1; } 72% { left: 76%; opacity: 1; background: var(--acc); } 88%,100% { left: 94%; opacity: 1; background: var(--gate); box-shadow: 0 0 12px 2px rgba(255,204,102,.55); } }
+.auterim-v3-page .hero-product-gate { display: block; min-height: 0; padding: 22px 28px 24px; border-top: 0; border-bottom: 1px solid rgba(255,204,102,.2); background: linear-gradient(90deg, rgba(255,204,102,.075), rgba(255,204,102,.025)); }
+.auterim-v3-page .hero-gate-heading { display: flex; align-items: center; gap: 14px; }.auterim-v3-page .hero-gate-heading > span:not(.hero-status) { color: var(--faint); font-size: 11px; }
+.auterim-v3-page .hero-product-gate h3 { margin-top: 16px; color: var(--ink); font-size: clamp(19px, 2vw, 26px); line-height: 1.15; }
+.auterim-v3-page .hero-product-gate p { margin-top: 8px; color: var(--dim); font-size: 13px; }
+.auterim-v3-page .hero-gate-actions { display: flex; gap: 9px; margin-top: 19px; }.auterim-v3-page .hero-gate-actions button { margin: 0; padding: 9px 13px; border: 0; border-radius: 3px; font: 500 11px var(--sans); cursor: pointer; }
+.auterim-v3-page .hero-gate-actions button:first-child { background: var(--acc); color: #04211e; }.auterim-v3-page .hero-gate-actions button:last-child { background: transparent; color: var(--dim); box-shadow: inset 0 0 0 1px var(--rule-2); }
+.auterim-v3-page .hero-product-after { display: flex; align-items: center; gap: 18px; padding: 16px 28px; color: var(--faint); font-size: 11px; flex-wrap: wrap; }.auterim-v3-page .hero-product-after .hero-kicker { margin-right: auto; color: var(--faint); }.auterim-v3-page .hero-product-after > span:not(.hero-kicker) { display: inline-flex; align-items: center; gap: 7px; }.auterim-v3-page .hero-product-after i { width: 5px; height: 5px; border-radius: 50%; background: var(--edge); }
+
+@media (max-width: 820px) {
+  .auterim-v3-page .hero-product-heading,
+  .auterim-v3-page .hero-product-context,
+  .auterim-v3-page .hero-product-gate { padding-left: 20px; padding-right: 20px; }
+  .auterim-v3-page .hero-product-flow { margin-left: 20px; margin-right: 20px; }
+  .auterim-v3-page .hero-product-after { padding-left: 20px; padding-right: 20px; gap: 12px; }
+  .auterim-v3-page .hero-product-after .hero-kicker { flex-basis: 100%; }
+  .auterim-v3-page .hero-product-flow span { font-size: 8px; letter-spacing: .04em; }
+}
+@media (max-width: 520px) {
+  .auterim-v3-page .hero-product .hero-product-topline > span:not(.hero-product-window):not(.hero-status) { display: none; }
+  .auterim-v3-page .hero-product .hero-product-topline .hero-status { margin-left: auto; }
+  .auterim-v3-page .hero-product-heading { align-items: flex-start; flex-direction: row; }
+  .auterim-v3-page .hero-product-live { display: none; }
+  .auterim-v3-page .hero-product-context > div { display: grid; gap: 8px; }
+  .auterim-v3-page .hero-product-flow { gap: 3px; padding-top: 22px; padding-bottom: 20px; }
+  .auterim-v3-page .hero-product-flow::before { top: 26px; }
+  .auterim-v3-page .hero-product-flow::after { top: 23px; }
+  .auterim-v3-page .hero-product-flow span { gap: 8px; font-size: 7px; }
+  .auterim-v3-page .hero-product-flow span:nth-child(2) { display: none; }
+  .auterim-v3-page .hero-product-gate { padding-top: 18px; padding-bottom: 20px; }
+  .auterim-v3-page .hero-gate-heading { align-items: flex-start; flex-direction: column; gap: 6px; }
+  .auterim-v3-page .hero-product-gate h3 { font-size: 19px; }
+  .auterim-v3-page .hero-product-after > span:not(.hero-kicker) { font-size: 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auterim-v3-page .hero-product-flow.sequence-in::after { animation: none; left: 94%; opacity: 1; background: var(--gate); box-shadow: 0 0 12px 2px rgba(255,204,102,.55); }
+}
+
+/* Final hero polish: restrained positioning scale and a more legible control surface. */
+.auterim-v3-page .hero-editorial { padding-top: 136px; padding-bottom: 86px; }
+.auterim-v3-page .hero-editorial-in { grid-template-columns: minmax(0, .82fr) minmax(560px, 1.18fr); gap: clamp(44px, 5vw, 76px); }
+.auterim-v3-page .hero-editorial-pill { margin-bottom: 24px; }
+.auterim-v3-page .hero-editorial h1 { max-width: 11ch; font-size: clamp(42px, 3.8vw, 60px); line-height: 1.01; }
+.auterim-v3-page .hero-editorial .say { max-width: 43ch; margin-top: 22px; font-size: 16px; line-height: 1.58; }
+.auterim-v3-page .hero-editorial .hero-cta { margin-top: 28px; }
+.auterim-v3-page .hero-editorial .note { margin-top: 14px; }
+.auterim-v3-page .hero-product { border-color: rgba(255,255,255,.15); background: linear-gradient(150deg, #17212c 0%, #0b121a 58%, #080d13 100%); box-shadow: 0 38px 90px -44px #000, inset 0 1px rgba(255,255,255,.065); }
+.auterim-v3-page .hero-product-heading { background: rgba(255,255,255,.018); }
+.auterim-v3-page .hero-product-context { background: rgba(5,10,15,.22); }
+.auterim-v3-page .hero-product-flow { background: rgba(5,10,15,.12); }
+.auterim-v3-page .hero-product-gate { box-shadow: inset 0 1px rgba(255,204,102,.1), 0 8px 24px -22px rgba(255,204,102,.6); }
+.auterim-v3-page .hero-product-gate h3 { letter-spacing: -.025em; }
+.auterim-v3-page .hero-gate-actions button:first-child { box-shadow: 0 8px 18px -13px rgba(55,230,212,.9); }
+
+@media (max-width: 1080px) and (min-width: 821px) {
+  .auterim-v3-page .hero-editorial-in { grid-template-columns: minmax(0, .84fr) minmax(500px, 1.16fr); gap: 36px; }
+  .auterim-v3-page .hero-editorial h1 { font-size: clamp(40px, 3.7vw, 54px); }
+}
+
+@media (max-width: 820px) {
+  .auterim-v3-page .hero-editorial { padding-top: 112px; padding-bottom: 68px; }
+  .auterim-v3-page .hero-editorial-in { gap: 46px; }
+  .auterim-v3-page .hero-editorial h1 { max-width: 12ch; font-size: clamp(40px, 10.5vw, 56px); line-height: 1.01; }
+  .auterim-v3-page .hero-editorial .say { margin-top: 20px; }
+  .auterim-v3-page .hero-editorial .hero-cta { margin-top: 26px; }
 }
 
 /* Strict compact topbar correction. Dimensions stay fixed across scroll states. */
@@ -210,8 +479,8 @@
 .auterim-v3-page .pol.sequence-in .pcol.b .h { animation: v3-boundary-focus 1000ms 500ms ease-out both; }
 @keyframes v3-boundary-focus { 0%,100% { text-shadow: none; } 45% { text-shadow: 0 0 14px rgba(255,204,102,.38); } }
 
-.auterim-v3-page .faq details summary { transition: color 180ms ease; }
-.auterim-v3-page .faq details summary:hover { color: var(--acc); }
+/* Full FAQ card system (numbering, surfaces, toggle) lives further down this
+   file, in the block that replaces the old `.faq { max-width: 840px; }` rule. */
 .auterim-v3-page .faq details p { animation: v3-faq-open 220ms ease-out; }
 @keyframes v3-faq-open { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 
@@ -253,4 +522,2614 @@
   .auterim-v3-page .prof .pr,
   .auterim-v3-page .trace .tr { opacity: 1; transform: none; animation: none !important; }
   .auterim-v3-page .v3-proof-sequence .pf-bar i { width: 78%; animation: none !important; }
+}
+/* Editorial hero copy column: spacing, headline scale and grid across breakpoints. */
+.auterim-v3-page .hero-editorial { padding-top: 104px; padding-bottom: 68px; }
+.auterim-v3-page .hero-editorial-in { align-items: start; grid-template-columns: minmax(0, .76fr) minmax(0, 1.24fr); gap: clamp(46px, 5.5vw, 84px); }
+.auterim-v3-page .hero-editorial-copy { padding-top: 24px; }
+.auterim-v3-page .hero-editorial h1 { max-width: 10ch; font-size: clamp(38px, 3vw, 46px); line-height: .98; }
+.auterim-v3-page .hero-editorial .say { max-width: 28rem; margin-top: 21px; }
+.auterim-v3-page .hero-editorial .hero-cta { margin-top: 26px; gap: 10px; }
+.auterim-v3-page .hero-editorial .note { margin-top: 13px; }
+
+@media (max-width: 1080px) and (min-width: 821px) {
+  .auterim-v3-page .hero-editorial-in { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 38px; }
+  .auterim-v3-page .hero-editorial h1 { font-size: clamp(37px, 3.4vw, 44px); }
+}
+@media (max-width: 820px) {
+  .auterim-v3-page .hero-editorial { padding-top: 102px; padding-bottom: 64px; }
+  .auterim-v3-page .hero-editorial-copy { padding-top: 0; }
+  .auterim-v3-page .hero-editorial h1 { max-width: 11ch; font-size: clamp(37px, 9.5vw, 48px); }
+  .auterim-v3-page .hero-editorial-in { gap: 44px; }
+}
+
+/* Wider editorial copy column without reducing the established type scale. */
+@media (min-width: 821px) {
+  .auterim-v3-page .hero-editorial-in {
+    grid-template-columns: minmax(0, .94fr) minmax(0, 1.06fr);
+    gap: clamp(38px, 4vw, 58px);
+  }
+
+  .auterim-v3-page .hero-editorial h1 { width: 100%; max-width: none; }
+  .auterim-v3-page .hero-editorial .say { max-width: 32rem; }
+  .auterim-v3-page .hero-editorial-pill { width: min(100%, 440px); }
+}
+
+/* The homepage header is a sibling of the V3 page, so these rules must not
+   depend on the page wrapper. */
+@media (min-width: 821px) {
+  .top .wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    height: 56px;
+    gap: 18px;
+  }
+
+  .top .mark { gap: 6px; font-size: 12px; letter-spacing: .13em; }
+  .top .mark img { width: 16px; height: 16px; }
+  .top .nav { margin-left: 0; gap: 20px; }
+  .top .nav a, .top .cta .in { font-size: 12px; line-height: 1.2; }
+  .top .cta { margin-left: 0; gap: 14px; justify-content: flex-end; }
+  .top .cta .btn { min-height: 30px; padding: 6px 14px; border-radius: 4px; font-size: 12px; box-shadow: none; }
+  .top .mobile-menu { display: none !important; }
+  .auterim-v3-page .hero-editorial { padding-top: 136px; }
+}
+
+@media (max-width: 820px) {
+  .top .wrap { height: 56px; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 14px; }
+  .top .mobile-menu { display: block; position: relative; }
+  .top .mobile-menu summary { list-style: none; cursor: pointer; color: var(--dim); font-size: 12px; }
+  .top .mobile-menu summary::-webkit-details-marker { display: none; }
+  .top .mobile-menu nav { position: absolute; right: 0; top: 38px; display: flex; min-width: 180px; flex-direction: column; gap: 15px; padding: 16px; background: rgba(8,11,16,.97); border: 1px solid var(--rule); }
+  .top .mobile-menu nav a { color: var(--dim); font-size: 14px; }
+}
+
+/* Homepage finishing system: compact rhythm, evidence, and clear hierarchy. */
+.auterim-v3-page .sec { padding: 124px 0; }
+.auterim-v3-page .body { margin-top: 68px; }
+.auterim-v3-page .run { padding: 136px 0; }
+.auterim-v3-page .close { padding: 138px 0 128px; }
+.auterim-v3-page .head h2 { max-width: 23ch; }
+.auterim-v3-page .head .say { margin-top: 18px; max-width: 52ch; }
+.auterim-v3-page .conns { padding: 28px 0; }
+.auterim-v3-page .conns-in { gap: 28px; }
+.auterim-v3-page .conns-set { gap: 12px 26px; }
+.auterim-v3-page .conns-set span { font-size: 13px; }
+.auterim-v3-page .proof-rail { border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.auterim-v3-page .proof-rail .wrap { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; }
+.auterim-v3-page .proof-rail span { display: flex; align-items: center; gap: 9px; min-height: 62px; padding: 0 22px; border-left: 1px solid var(--rule); color: var(--dim); font-size: 12px; line-height: 1.35; }
+.auterim-v3-page .proof-rail span:first-child { padding-left: 0; border-left: 0; }
+.auterim-v3-page .proof-rail span:last-child { padding-right: 0; }
+.auterim-v3-page .proof-rail i { flex: none; width: 5px; height: 5px; border-radius: 50%; background: var(--acc); box-shadow: 0 0 8px rgba(55,230,212,.5); }
+.auterim-v3-page .steps .step h3, .auterim-v3-page .op-name h3, .auterim-v3-page .ucr h3 { letter-spacing: -.03em; }
+.auterim-v3-page .step .cue, .auterim-v3-page .op-name .t, .auterim-v3-page .op-say .gate { font-size: 10.5px; }
+.auterim-v3-page .plans .pl { padding-top: 36px; padding-bottom: 36px; }
+
+/* Questions: real cards inside the full content width, not a single hairline
+   column with a large dead area beside it. Two columns of cards read better
+   than one wide column at this width — with 7 questions the last card spans
+   both columns as a deliberate closing row rather than an odd leftover.
+   Numbering follows the bare mono/accent-teal language used elsewhere on this
+   page (connect-editorial-number, close-preview-step b); the open/close
+   affordance gets the circular icon-badge treatment used for the architecture
+   control mark, since the CSS-chevron this replaced had no real presence. */
+.auterim-v3-page .faq {
+  display: block;
+  max-width: none;
+  border-top: 1px solid var(--rule);
+}
+.auterim-v3-page .faq details {
+  position: relative;
+  margin: 0;
+  border-bottom: 1px solid var(--rule);
+  transition: background 220ms ease;
+}
+.auterim-v3-page .faq details:hover,
+.auterim-v3-page .faq details[open] {
+  background: rgba(255,255,255,.016);
+}
+.auterim-v3-page .faq summary {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: 16px;
+  padding: 26px 0;
+  font-size: 16.5px;
+  letter-spacing: -.016em;
+}
+.auterim-v3-page .faq summary::after { content: none; }
+.auterim-v3-page .faq-index {
+  color: var(--acc);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .13em;
+}
+.auterim-v3-page .faq-q { min-width: 0; color: #edf1f5; }
+.auterim-v3-page .faq-toggle {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: var(--mute);
+  box-shadow: inset 0 0 0 1px var(--rule-2);
+  transition: color 220ms ease, box-shadow 220ms ease;
+}
+.auterim-v3-page .faq-toggle::before,
+.auterim-v3-page .faq-toggle::after {
+  content: "";
+  position: absolute;
+  background: currentColor;
+  transition: transform 220ms ease, opacity 220ms ease;
+}
+.auterim-v3-page .faq-toggle::before { width: 10px; height: 1px; }
+.auterim-v3-page .faq-toggle::after { width: 1px; height: 10px; }
+.auterim-v3-page .faq details:hover .faq-toggle,
+.auterim-v3-page .faq details[open] .faq-toggle {
+  color: var(--acc);
+  box-shadow: inset 0 0 0 1px rgba(111,242,229,.4);
+}
+.auterim-v3-page .faq details[open] .faq-toggle::after { transform: rotate(90deg); opacity: 0; }
+.auterim-v3-page .faq p {
+  max-width: 62ch;
+  margin: 0;
+  padding: 0 0 28px 46px;
+  font-size: 15px;
+  line-height: 1.62;
+  color: var(--dim);
+}
+@media (max-width: 820px) {
+  .auterim-v3-page .faq summary { grid-template-columns: 26px minmax(0, 1fr) 26px; gap: 14px; padding: 22px 0; font-size: 16px; }
+  .auterim-v3-page .faq-toggle { width: 24px; height: 24px; }
+  .auterim-v3-page .faq p { padding-left: 40px; }
+}
+@media (max-width: 520px) {
+  .auterim-v3-page .faq summary { grid-template-columns: 22px minmax(0, 1fr) 24px; gap: 10px; padding: 18px 0; font-size: 15px; }
+  .auterim-v3-page .faq-index { font-size: 9px; }
+  .auterim-v3-page .faq-toggle { width: 22px; height: 22px; }
+  .auterim-v3-page .faq-toggle::before { width: 8px; }
+  .auterim-v3-page .faq-toggle::after { height: 8px; }
+  .auterim-v3-page .faq p { padding-left: 32px; padding-bottom: 22px; max-width: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auterim-v3-page .faq details,
+  .auterim-v3-page .faq-toggle,
+  .auterim-v3-page .faq-toggle::before,
+  .auterim-v3-page .faq-toggle::after { transition: none !important; }
+}
+
+.auterim-v3-page .close h2 { max-width: 16ch; font-size: clamp(38px, 4.5vw, 62px); }
+.auterim-v3-page .close p { margin-top: 22px; font-size: 18px; }
+@media (max-width: 820px) {
+  .auterim-v3-page .sec { padding: 88px 0; }
+  .auterim-v3-page .body { margin-top: 48px; }
+  .auterim-v3-page .run { padding: 96px 0; }
+  .auterim-v3-page .close { padding: 104px 0 96px; }
+  .auterim-v3-page .proof-rail .wrap { grid-template-columns: 1fr 1fr; }
+  .auterim-v3-page .proof-rail span { min-height: 52px; padding: 0 14px; font-size: 11px; }
+  .auterim-v3-page .proof-rail span:nth-child(3) { border-left: 0; padding-left: 0; }
+}
+@media (max-width: 520px) {
+  .auterim-v3-page .proof-rail .wrap { grid-template-columns: 1fr; }
+  .auterim-v3-page .proof-rail span, .auterim-v3-page .proof-rail span:nth-child(3) { min-height: 42px; padding: 0; border: 0; }
+  .auterim-v3-page .proof-rail span + span { border-top: 1px solid var(--rule); }
+}
+
+/* The first step after the hero is a product bridge, not a faint logo strip. */
+.auterim-v3-page .connect-bridge {
+  position: relative;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  background: linear-gradient(90deg, rgba(55,230,212,.028), transparent 46%);
+}
+.auterim-v3-page .connect-bridge-in {
+  display: grid;
+  grid-template-columns: minmax(0, .78fr) minmax(0, 1.22fr);
+  gap: clamp(54px, 8vw, 128px);
+  padding-top: 66px;
+  padding-bottom: 66px;
+}
+.auterim-v3-page .connect-bridge-intro { max-width: 410px; }
+.auterim-v3-page .connect-bridge h2 {
+  max-width: 12ch;
+  margin-top: 16px;
+  font-size: clamp(31px, 3vw, 43px);
+  line-height: 1.06;
+  letter-spacing: -.04em;
+}
+.auterim-v3-page .connect-bridge-intro p {
+  max-width: 39ch;
+  margin-top: 18px;
+  color: var(--dim);
+  font-size: 15px;
+  line-height: 1.65;
+}
+.auterim-v3-page .connect-bridge-detail { display: grid; align-content: center; gap: 32px; min-width: 0; }
+.auterim-v3-page .connect-bridge-systems > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin-top: 15px;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+.auterim-v3-page .connect-bridge-systems > div span {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 48px;
+  gap: 8px;
+  padding: 0 14px;
+  border-left: 1px solid var(--rule);
+  color: var(--dim);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.auterim-v3-page .connect-bridge-systems > div span:nth-child(3n + 1) { padding-left: 0; border-left: 0; }
+.auterim-v3-page .connect-bridge-systems > div span:nth-child(n + 4) { border-top: 1px solid var(--rule); }
+.auterim-v3-page .connect-bridge-systems i, .auterim-v3-page .connect-bridge-rules i {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--acc);
+  box-shadow: 0 0 8px rgba(55,230,212,.5);
+}
+.auterim-v3-page .connect-bridge-systems em {
+  overflow: hidden;
+  margin-left: auto;
+  color: var(--faint);
+  font: 8px var(--mono);
+  letter-spacing: .09em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+.auterim-v3-page .connect-bridge-rules {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.auterim-v3-page .connect-bridge-rules li { display: flex; align-items: flex-start; gap: 8px; color: var(--mute); font-size: 12px; line-height: 1.45; }
+.auterim-v3-page .connect-bridge-rules i { margin-top: 6px; background: var(--ok); box-shadow: 0 0 8px rgba(81,216,138,.35); }
+@media (max-width: 820px) {
+  .auterim-v3-page .connect-bridge-in { grid-template-columns: 1fr; gap: 38px; padding-top: 54px; padding-bottom: 54px; }
+  .auterim-v3-page .connect-bridge-intro { max-width: 500px; }
+}
+@media (max-width: 560px) {
+  .auterim-v3-page .connect-bridge-in { gap: 32px; padding-top: 42px; padding-bottom: 42px; }
+  .auterim-v3-page .connect-bridge h2 { font-size: 31px; }
+  .auterim-v3-page .connect-bridge-systems > div { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .auterim-v3-page .connect-bridge-systems > div span { padding: 0 10px; font-size: 12px; }
+  .auterim-v3-page .connect-bridge-systems > div span:nth-child(3n + 1) { padding-left: 10px; border-left: 1px solid var(--rule); }
+  .auterim-v3-page .connect-bridge-systems > div span:nth-child(2n + 1) { padding-left: 0; border-left: 0; }
+  .auterim-v3-page .connect-bridge-systems > div span:nth-child(n + 3) { border-top: 1px solid var(--rule); }
+  .auterim-v3-page .connect-bridge-systems em { display: none; }
+  .auterim-v3-page .connect-bridge-rules { grid-template-columns: 1fr; gap: 9px; }
+}
+
+/* Remove atmospheric cyan blobs. Accent remains reserved for meaningful states. */
+.auterim-v3-page .run::before,
+.auterim-v3-page .close::before { display: none; }
+
+/* Connect becomes a living intake, with one restrained signal instead of a logo wall. */
+.auterim-v3-page .connect-bridge { background: var(--bg); }
+.auterim-v3-page .connect-bridge-in { grid-template-columns: minmax(0, .72fr) minmax(0, 1.28fr); align-items: center; min-height: 318px; }
+.auterim-v3-page .connect-bridge-intro { max-width: 390px; }
+.auterim-v3-page .connect-bridge h2 { max-width: 11ch; }
+.auterim-v3-page .connect-assembly { min-width: 0; }
+.auterim-v3-page .connect-assembly-head { display: flex; align-items: center; justify-content: space-between; min-height: 31px; border-bottom: 1px solid var(--rule); }
+.auterim-v3-page .connect-assembly-state { display: inline-flex; align-items: center; gap: 7px; color: var(--faint); font: 9px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.auterim-v3-page .connect-assembly-state i, .auterim-v3-page .connect-source i, .auterim-v3-page .connect-profile-ready i { width: 5px; height: 5px; flex: none; border-radius: 50%; background: var(--acc); }
+.auterim-v3-page .connect-assembly-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(210px, .86fr); gap: 64px; padding: 21px 0 20px; }
+.auterim-v3-page .connect-sources { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.auterim-v3-page .connect-source { position: relative; display: grid; align-content: center; gap: 5px; min-height: 59px; padding: 0 15px; border-left: 1px solid var(--rule); }
+.auterim-v3-page .connect-source:nth-child(odd) { padding-left: 0; border-left: 0; }
+.auterim-v3-page .connect-source:nth-child(n + 3) { border-top: 1px solid var(--rule); }
+.auterim-v3-page .connect-source span { display: inline-flex; align-items: center; gap: 8px; color: var(--dim); font-size: 13px; }
+.auterim-v3-page .connect-source small { color: var(--faint); font: 8px var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+.auterim-v3-page .connect-profile { position: relative; display: flex; min-height: 140px; flex-direction: column; justify-content: center; padding: 0 0 0 27px; border-left: 1px solid rgba(55,230,212,.42); }
+.auterim-v3-page .connect-profile::before { content: ""; position: absolute; top: 50%; left: -65px; width: 65px; height: 1px; background: var(--rule-2); }
+.auterim-v3-page .connect-profile::after { content: ""; position: absolute; top: 15px; left: -3px; width: 5px; height: 5px; border-radius: 50%; background: var(--acc); opacity: 0; }
+.auterim-v3-page .connect-profile strong { margin-top: 11px; color: var(--ink); font-size: 25px; font-weight: 500; letter-spacing: -.035em; }
+.auterim-v3-page .connect-profile p { max-width: 22ch; margin-top: 7px; color: var(--dim); font-size: 12px; line-height: 1.5; }
+.auterim-v3-page .connect-profile-ready { display: inline-flex; align-items: center; gap: 7px; margin-top: 15px; color: var(--ok); font: 9px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.auterim-v3-page .connect-profile-ready i { background: var(--ok); }
+.auterim-v3-page .connect-bridge-rules { padding-top: 15px; border-top: 1px solid var(--rule); }
+
+/* Every animation has an informational job: sources arrive, profile resolves, signal confirms. */
+.auterim-v3-page .connect-assembly-head,
+.auterim-v3-page .connect-source,
+.auterim-v3-page .connect-profile,
+.auterim-v3-page .connect-bridge-rules { opacity: 0; transform: translateY(7px); }
+.auterim-v3-page .connect-bridge.sequence-in .connect-assembly-head,
+.auterim-v3-page .connect-bridge.sequence-in .connect-source,
+.auterim-v3-page .connect-bridge.sequence-in .connect-profile,
+.auterim-v3-page .connect-bridge.sequence-in .connect-bridge-rules { animation: auterim-context-in 440ms cubic-bezier(.22,.7,.24,1) forwards; }
+.auterim-v3-page .connect-bridge.sequence-in .connect-source:nth-child(1) { animation-delay: 90ms; }
+.auterim-v3-page .connect-bridge.sequence-in .connect-source:nth-child(2) { animation-delay: 145ms; }
+.auterim-v3-page .connect-bridge.sequence-in .connect-source:nth-child(3) { animation-delay: 200ms; }
+.auterim-v3-page .connect-bridge.sequence-in .connect-source:nth-child(4) { animation-delay: 255ms; }
+.auterim-v3-page .connect-bridge.sequence-in .connect-profile { animation-delay: 330ms; }
+.auterim-v3-page .connect-bridge.sequence-in .connect-bridge-rules { animation-delay: 430ms; }
+.auterim-v3-page .connect-bridge.sequence-in .connect-profile::after { animation: auterim-context-signal 1800ms 640ms cubic-bezier(.22,.7,.24,1) both; }
+@keyframes auterim-context-in { to { opacity: 1; transform: none; } }
+@keyframes auterim-context-signal { 0% { top: 15px; opacity: 0; } 12% { opacity: 1; } 72% { top: 116px; opacity: 1; } 100% { top: 116px; opacity: 0; } }
+.auterim-v3-page .connect-bridge:not(.sequence-in) .connect-bridge-intro { opacity: .72; }
+
+@media (max-width: 820px) {
+  .auterim-v3-page .connect-bridge-in { grid-template-columns: 1fr; min-height: 0; }
+  .auterim-v3-page .connect-assembly-body { max-width: 620px; }
+}
+@media (max-width: 560px) {
+  .auterim-v3-page .connect-assembly-body { grid-template-columns: 1fr; gap: 24px; }
+  .auterim-v3-page .connect-profile { min-height: 112px; padding-left: 20px; }
+  .auterim-v3-page .connect-profile::before { top: -25px; left: 0; width: 1px; height: 25px; }
+  .auterim-v3-page .connect-profile::after { left: -2px; }
+  .auterim-v3-page .connect-profile strong { font-size: 23px; }
+  .auterim-v3-page .connect-source { min-height: 54px; }
+  .auterim-v3-page .connect-source small { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auterim-v3-page .connect-assembly-head,
+  .auterim-v3-page .connect-source,
+  .auterim-v3-page .connect-profile,
+  .auterim-v3-page .connect-bridge-rules { opacity: 1; transform: none; animation: none !important; }
+  .auterim-v3-page .connect-profile::after { display: none; animation: none !important; }
+}
+
+/* Typography pass: display type leads, supporting copy stays calm, microcopy remains legible. */
+.auterim-v3-page { font-synthesis: none; text-rendering: optimizeLegibility; }
+.auterim-v3-page .hero-editorial h1 { font-weight: 500; letter-spacing: -.045em; line-height: .97; text-wrap: balance; }
+.auterim-v3-page .hero-editorial .say { color: #b8c1cc; font-size: 17px; line-height: 1.62; letter-spacing: -.012em; }
+.auterim-v3-page .hero-editorial-pill { color: #c1c9d3; font-size: 10px; letter-spacing: .155em; }
+.auterim-v3-page .hero-editorial .note { color: #909cab; font-size: 10px; letter-spacing: .07em; }
+.auterim-v3-page .head h2, .auterim-v3-page .connect-bridge h2 { font-weight: 500; line-height: 1.04; text-wrap: balance; }
+.auterim-v3-page .head .say, .auterim-v3-page .connect-bridge-intro p { color: #b0bac6; letter-spacing: -.008em; }
+.auterim-v3-page .connect-bridge h2 { letter-spacing: -.045em; }
+.auterim-v3-page .connect-assembly .lbl { color: #8995a4; font-size: 9px; letter-spacing: .18em; }
+.auterim-v3-page .connect-source span { color: #c0c8d2; font-size: 13px; }
+.auterim-v3-page .connect-source small { color: #84909e; font-size: 8.5px; letter-spacing: .075em; }
+.auterim-v3-page .connect-profile strong { font-weight: 500; letter-spacing: -.04em; }
+.auterim-v3-page .connect-profile p { color: #b0bac6; }
+.auterim-v3-page .connect-bridge-rules li { color: #aab4c0; font-size: 12px; }
+
+/* Persistent, solid navigation: more presence without taking over the page. */
+.top, .top.on {
+  background: #080b10;
+  border-bottom: 1px solid var(--rule);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+@media (min-width: 821px) {
+  .top .wrap { height: 66px; }
+  .top .mark { gap: 7px; font-size: 13px; letter-spacing: .14em; }
+  .top .mark img { width: 17px; height: 17px; }
+  .top .nav { gap: 24px; }
+  .top .nav a, .top .cta .in { font-size: 13px; }
+  .top .cta { gap: 17px; }
+  .top .cta .btn { min-height: 36px; padding: 8px 16px; font-size: 12px; }
+}
+@media (max-width: 820px) {
+  .top .wrap { height: 62px; }
+}
+
+/* Pricing matches the site's flat editorial language (.op / .ucr): hairline
+   dividers and text hierarchy carry the weight, not card surfaces or glow.
+   The one fix that still matters is the price itself — it now reads as a
+   real number before anything else — plus a checklist mark with enough
+   presence to scan, not a near-invisible dot. */
+.auterim-v3-page .plans .pl { position: relative; gap: 16px; transition: background .22s ease; }
+.auterim-v3-page .plans .pl:hover { background: rgba(255,255,255,.016); }
+.auterim-v3-page .plans .pl.now { background: linear-gradient(180deg, rgba(55,230,212,.045), transparent 62%); }
+/* Absolutely positioned so it never adds flow height: the badge only exists on
+   one card, and letting it push that card's content down is what desynced the
+   "Includes" dividers from the other three columns. */
+.auterim-v3-page .pl-badge {
+  position: absolute;
+  top: -25px;
+  left: 0;
+  color: var(--acc);
+  font: 600 9.5px var(--mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+/* Quieter than the free-preview badge: guides toward the mid-tier without
+   competing with the one card that's meant to draw the eye first. */
+.auterim-v3-page .pl-badge-alt { color: #b19ae6; }
+/* The price is the single most scannable number on the card: sans display
+   type, sized close to the plan name rather than mono-tiny beside it, with
+   the "/ month" cadence kept as a quiet suffix rather than equal weight. */
+.auterim-v3-page .plans .amt { display: flex; align-items: baseline; gap: 6px; font-family: var(--sans); }
+.auterim-v3-page .plans .amt b { font-weight: 500; font-size: clamp(26px, 2.3vw, 32px); letter-spacing: -.02em; color: #e9edf2; }
+.auterim-v3-page .plans .amt i { font-style: normal; font-size: 13px; color: var(--faint); }
+.auterim-v3-page .plans .pl.now .amt b { color: var(--acc); }
+.auterim-v3-page .plans .pl-fit { min-height: 22px; margin: 0; color: var(--dim); font-size: 14px; line-height: 1.45; }
+.auterim-v3-page .plans .pl-includes { padding-top: 17px; border-top: 1px solid var(--rule); color: var(--faint); font: 9px var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+.auterim-v3-page .plans .pl ul { gap: 13px; }
+.auterim-v3-page .plans .pl li { position: relative; display: flex; align-items: flex-start; gap: 9px; font-size: 14px; line-height: 1.48; }
+.auterim-v3-page .plans .pl li svg { flex: none; margin-top: 2px; color: var(--edge); }
+.auterim-v3-page .plans .pl.now li svg { color: var(--acc); }
+.auterim-v3-page .plans .pl .go { margin-top: 8px; }
+@media (max-width: 820px) {
+  .auterim-v3-page .plans .pl-fit { min-height: 0; }
+}
+
+/* Why Auterim: make the controlled outcome unmistakable, not merely comparative. */
+.auterim-v3-page .ucr { align-items: start; }
+.auterim-v3-page .ucr .a { display: flex; flex-direction: column; }
+.auterim-v3-page .ucr .a strong { color: var(--ink); font-size: 16px; font-weight: 500; line-height: 1.55; }
+.auterim-v3-page .ucr-proof { display: inline-flex; align-items: flex-start; gap: 8px; margin-top: 15px; color: var(--acc); font: 9px var(--mono); line-height: 1.5; letter-spacing: .08em; text-transform: uppercase; }
+.auterim-v3-page .ucr-proof i { width: 5px; height: 5px; flex: none; margin-top: .45em; border-radius: 50%; background: var(--acc); box-shadow: 0 0 7px rgba(55,230,212,.42); }
+
+/* Fixed plan rows keep every feature, divider and CTA on the same vertical rhythm. */
+@media (min-width: 821px) {
+  .auterim-v3-page .plans .pl-fit { min-height: 42px; }
+  .auterim-v3-page .plans .pl ul { display: grid; grid-template-rows: repeat(4, 50px); gap: 0; }
+  .auterim-v3-page .plans .pl li { align-content: start; }
+}
+
+/* Value comparison: deliberate contrast between the operational drag and the controlled outcome. */
+.auterim-v3-page .uc { border-top-color: rgba(255,255,255,.09); }
+.auterim-v3-page .ucr { grid-template-columns: minmax(190px,.72fr) minmax(0,1fr) minmax(0,1.15fr); gap: clamp(32px,4.5vw,68px); padding-top: 42px; padding-bottom: 42px; border-bottom-color: rgba(255,255,255,.09); }
+.auterim-v3-page .ucr h3 { color: #eef2f6; font-size: 20px; font-weight: 500; line-height: 1.25; }
+.auterim-v3-page .ucr .b, .auterim-v3-page .ucr .a { font-size: 15px; line-height: 1.62; }
+.auterim-v3-page .ucr .b { color: #a5afbb; }
+.auterim-v3-page .ucr .a { padding-left: 23px; border-left: 1px solid rgba(55,230,212,.28); }
+.auterim-v3-page .ucr .k { margin-bottom: 13px; color: #8793a1; }
+.auterim-v3-page .ucr .a .k { color: var(--acc); }
+.auterim-v3-page .ucr .a strong { color: #f1f4f7; font-size: 16px; font-weight: 500; line-height: 1.55; }
+.auterim-v3-page .ucr-proof { max-width: 38ch; margin-top: 16px; color: #78ecdf; font-size: 9px; letter-spacing: .085em; }
+/* Generalizes the three examples above into a scope claim: not three point
+   fixes, the same pattern applied wherever work in the business stalls. */
+.auterim-v3-page .uc-result { display: flex; align-items: center; gap: 9px; margin-top: 34px; color: #d4dce4; font-size: 14px; }
+.auterim-v3-page .uc-result i { width: 5px; height: 5px; flex: none; border-radius: 50%; background: var(--acc); box-shadow: 0 0 7px rgba(55,230,212,.42); }
+@media (max-width: 820px) {
+  .auterim-v3-page .ucr { grid-template-columns: 1fr; gap: 16px; padding-top: 32px; padding-bottom: 32px; }
+  .auterim-v3-page .ucr .a { margin-top: 5px; padding-left: 17px; }
+}
+
+/* Architecture: one explicit boundary between trusted systems, controlled work and AI capability. */
+.auterim-v3-page .arch-flow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(310px, 1.12fr) minmax(0, 1fr);
+  border-top: 1px solid rgba(255,255,255,.1);
+  border-bottom: 1px solid rgba(255,255,255,.1);
+}
+.auterim-v3-page .arch-column { min-width: 0; padding: 32px 30px; }
+.auterim-v3-page .arch-column-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; min-height: 34px; }
+.auterim-v3-page .arch-column-head > span:last-child { color: var(--faint); font: 8px var(--mono); letter-spacing: .1em; text-align: right; text-transform: uppercase; }
+.auterim-v3-page .arch-stack { margin-top: 19px; border-top: 1px solid var(--rule); }
+.auterim-v3-page .arch-stack > span { display: flex; align-items: center; gap: 10px; min-height: 38px; border-bottom: 1px solid var(--rule); color: #b8c2cd; font-size: 14px; }
+.auterim-v3-page .arch-stack i { width: 5px; height: 5px; flex: none; border-radius: 50%; background: var(--edge); }
+.auterim-v3-page .arch-systems .arch-stack > span { justify-content: flex-end; text-align: right; }
+.auterim-v3-page .arch-systems .arch-stack i { order: 2; }
+.auterim-v3-page .arch-intelligence .arch-stack > span { justify-content: flex-start; }
+.auterim-v3-page .arch-intelligence .arch-stack i { background: var(--acc); box-shadow: 0 0 7px rgba(55,230,212,.42); }
+.auterim-v3-page .arch-core { position: relative; min-width: 0; padding: 30px 30px 27px; border-left: 1px solid rgba(55,230,212,.26); border-right: 1px solid rgba(55,230,212,.26); background: rgba(55,230,212,.018); }
+.auterim-v3-page .arch-core-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.auterim-v3-page .arch-core-head > span:last-child { color: var(--acc); font: 9px var(--mono); letter-spacing: .15em; text-transform: uppercase; }
+.auterim-v3-page .arch-core p { max-width: 34ch; margin-top: 18px; color: #b4bec9; font-size: 14px; line-height: 1.55; }
+.auterim-v3-page .arch-core-steps { margin-top: 24px; border-top: 1px solid rgba(55,230,212,.17); }
+.auterim-v3-page .arch-core-steps > div { display: grid; grid-template-columns: 30px 1fr; gap: 13px; padding: 13px 0; border-bottom: 1px solid var(--rule); }
+.auterim-v3-page .arch-core-steps b { padding-top: 2px; color: var(--acc); font: 9px var(--mono); letter-spacing: .08em; }
+.auterim-v3-page .arch-core-steps span { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
+.auterim-v3-page .arch-core-steps strong { color: #edf1f5; font-size: 14px; font-weight: 500; }
+.auterim-v3-page .arch-core-steps small { color: var(--faint); font-size: 11px; text-align: right; }
+.auterim-v3-page .arch-gate { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(170px,.62fr) minmax(0,1.38fr) minmax(240px,1fr); align-items: center; gap: 28px; min-height: 75px; padding: 16px 30px; border-top: 1px solid rgba(255,204,102,.28); background: rgba(255,204,102,.018); }
+.auterim-v3-page .arch-gate strong { color: #f0f3f6; font-size: 15px; font-weight: 500; line-height: 1.45; }
+.auterim-v3-page .arch-gate > span:last-child { color: #aeb8c3; font-size: 12px; line-height: 1.45; text-align: right; }
+@media (max-width: 820px) {
+  .auterim-v3-page .arch-flow { grid-template-columns: 1fr; }
+  .auterim-v3-page .arch-column, .auterim-v3-page .arch-core { padding: 27px 0; border-left: 0; border-right: 0; }
+  .auterim-v3-page .arch-systems .arch-stack > span { justify-content: flex-start; text-align: left; }
+  .auterim-v3-page .arch-systems .arch-stack i { order: 0; }
+  .auterim-v3-page .arch-core { order: -1; border-top: 1px solid rgba(55,230,212,.26); border-bottom: 1px solid rgba(55,230,212,.26); }
+  .auterim-v3-page .arch-gate { grid-column: auto; grid-template-columns: 1fr; gap: 9px; padding: 20px 0; }
+  .auterim-v3-page .arch-gate > span:last-child { text-align: left; }
+}
+@media (max-width: 520px) {
+  .auterim-v3-page .arch-column-head { min-height: 0; }
+  .auterim-v3-page .arch-core-steps span { display: block; }
+  .auterim-v3-page .arch-core-steps small { display: block; margin-top: 4px; text-align: left; }
+}
+
+/* The architecture is one controlled path, not a generic systems diagram. */
+.auterim-v3-page .arch-path { border-top: 1px solid rgba(255,255,255,.1); border-bottom: 1px solid rgba(255,255,255,.1); }
+.auterim-v3-page .arch-path-labels { display: grid; grid-template-columns: 1fr 3fr 1fr; min-height: 47px; border-bottom: 1px solid var(--rule); }
+.auterim-v3-page .arch-path-labels span { display: flex; align-items: center; color: var(--faint); font: 9px var(--mono); letter-spacing: .17em; text-transform: uppercase; }
+.auterim-v3-page .arch-path-labels span:nth-child(2) { justify-content: center; border-left: 1px solid var(--rule); border-right: 1px solid var(--rule); color: var(--acc); }
+.auterim-v3-page .arch-path-labels span:last-child { justify-content: flex-end; }
+.auterim-v3-page .arch-path-stages { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); }
+.auterim-v3-page .arch-stage { position: relative; display: flex; min-height: 244px; flex-direction: column; padding: 28px 21px 24px; border-left: 1px solid var(--rule); }
+.auterim-v3-page .arch-stage:first-child { border-left: 0; }
+.auterim-v3-page .arch-stage::before { content: ""; position: absolute; top: -4px; left: -3px; width: 7px; height: 7px; border: 1px solid var(--edge); border-radius: 50%; background: var(--bg); }
+.auterim-v3-page .arch-stage:first-child::before { left: 0; background: var(--acc); border-color: var(--acc); box-shadow: 0 0 8px rgba(55,230,212,.4); }
+.auterim-v3-page .arch-stage-number { color: var(--faint); font: 9px var(--mono); letter-spacing: .12em; }
+.auterim-v3-page .arch-stage h3 { margin-top: 18px; color: #edf1f5; font-size: 17px; font-weight: 500; letter-spacing: -.025em; line-height: 1.2; }
+.auterim-v3-page .arch-stage p { margin-top: 12px; color: #aeb8c3; font-size: 13px; line-height: 1.62; }
+.auterim-v3-page .arch-stage-note { display: inline-flex; align-items: flex-start; gap: 7px; margin-top: auto; padding-top: 20px; color: var(--faint); font: 8px var(--mono); letter-spacing: .08em; line-height: 1.45; text-transform: uppercase; }
+.auterim-v3-page .arch-stage-note i, .auterim-v3-page .arch-path-guardrails i { width: 5px; height: 5px; flex: none; margin-top: .35em; border-radius: 50%; background: var(--edge); }
+.auterim-v3-page .arch-stage.context::before, .auterim-v3-page .arch-stage.work::before { border-color: var(--acc); background: var(--acc); }
+.auterim-v3-page .arch-stage.context .arch-stage-note, .auterim-v3-page .arch-stage.work .arch-stage-note { color: var(--acc); }
+.auterim-v3-page .arch-stage.context .arch-stage-note i, .auterim-v3-page .arch-stage.work .arch-stage-note i { background: var(--acc); }
+.auterim-v3-page .arch-stage.gate { background: rgba(255,204,102,.025); }
+.auterim-v3-page .arch-stage.gate::before { border-color: var(--gate); background: var(--gate); box-shadow: 0 0 8px rgba(255,204,102,.36); }
+.auterim-v3-page .arch-stage.gate h3, .auterim-v3-page .arch-stage.gate .arch-stage-note { color: var(--gate); }
+.auterim-v3-page .arch-stage.gate .arch-stage-note i { background: var(--gate); }
+.auterim-v3-page .arch-stage.outcome::before { border-color: var(--ok); background: var(--ok); box-shadow: 0 0 8px rgba(81,216,138,.32); }
+.auterim-v3-page .arch-stage.outcome .arch-stage-note { color: var(--ok); }
+.auterim-v3-page .arch-stage.outcome .arch-stage-note i { background: var(--ok); }
+.auterim-v3-page .arch-path-guardrails { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); border-top: 1px solid rgba(255,204,102,.23); }
+.auterim-v3-page .arch-path-guardrails span { display: flex; align-items: center; gap: 8px; min-height: 58px; padding: 0 20px; border-left: 1px solid var(--rule); color: #aeb8c3; font-size: 12px; line-height: 1.4; }
+.auterim-v3-page .arch-path-guardrails span:first-child { padding-left: 0; border-left: 0; }
+.auterim-v3-page .arch-path-guardrails span:last-child { padding-right: 0; }
+.auterim-v3-page .arch-path-guardrails i { background: var(--ok); box-shadow: 0 0 7px rgba(81,216,138,.28); }
+
+/* One restrained entrance: the control path resolves from source to approved outcome. */
+.auterim-v3-page .arch-path .arch-stage, .auterim-v3-page .arch-path .arch-path-guardrails { opacity: 0; transform: translateY(7px); }
+.auterim-v3-page .arch-path.rv.in .arch-stage, .auterim-v3-page .arch-path.rv.in .arch-path-guardrails { animation: auterim-arch-in 460ms cubic-bezier(.22,.7,.24,1) forwards; }
+.auterim-v3-page .arch-path.rv.in .arch-stage:nth-child(2) { animation-delay: 80ms; }
+.auterim-v3-page .arch-path.rv.in .arch-stage:nth-child(3) { animation-delay: 160ms; }
+.auterim-v3-page .arch-path.rv.in .arch-stage:nth-child(4) { animation-delay: 240ms; }
+.auterim-v3-page .arch-path.rv.in .arch-stage:nth-child(5) { animation-delay: 320ms; }
+.auterim-v3-page .arch-path.rv.in .arch-path-guardrails { animation-delay: 400ms; }
+@keyframes auterim-arch-in { to { opacity: 1; transform: none; } }
+@media (max-width: 820px) {
+  .auterim-v3-page .arch-path-labels { display: none; }
+  .auterim-v3-page .arch-path-stages { grid-template-columns: 1fr; }
+  .auterim-v3-page .arch-stage { min-height: 0; padding: 24px 0; border-left: 0; border-top: 1px solid var(--rule); }
+  .auterim-v3-page .arch-stage:first-child { border-top: 0; }
+  .auterim-v3-page .arch-stage::before { top: -4px; left: 0; }
+  .auterim-v3-page .arch-stage p { max-width: 50ch; }
+  .auterim-v3-page .arch-stage-note { margin-top: 16px; padding-top: 0; }
+  .auterim-v3-page .arch-path-guardrails { grid-template-columns: 1fr; }
+  .auterim-v3-page .arch-path-guardrails span, .auterim-v3-page .arch-path-guardrails span:first-child { min-height: 46px; padding: 0; border-left: 0; }
+  .auterim-v3-page .arch-path-guardrails span + span { border-top: 1px solid var(--rule); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auterim-v3-page .arch-path .arch-stage, .auterim-v3-page .arch-path .arch-path-guardrails { opacity: 1; transform: none; animation: none !important; }
+}
+
+/* Pricing-only finish: readable feature text and restrained action states,
+   layered on the flat hairline-divided structure above (no card surfaces). */
+.auterim-v3-page .plans .pl-fit { margin-top: 2px; color: #b3bdc8; }
+.auterim-v3-page .plans .pl-includes { margin-top: 6px; }
+.auterim-v3-page .plans .pl li { color: #b7c1cc; }
+.auterim-v3-page .plans .pl .go { padding-bottom: 2px; border-bottom: 1px solid transparent; transition: color .18s ease, border-color .18s ease; }
+.auterim-v3-page .plans .pl .go:hover { border-bottom-color: currentColor; }
+.auterim-v3-page .plans .pl .go:focus-visible { border-bottom-color: currentColor; outline-offset: 5px; }
+
+/* Closing CTA: a final decision point with a useful preview, not a decorative sales card. */
+.auterim-v3-page .close {
+  padding: 152px 0 144px;
+  border-top-color: rgba(255,255,255,.09);
+}
+.auterim-v3-page .close-in {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(320px, .74fr);
+  align-items: center;
+  gap: clamp(52px, 8vw, 130px);
+  max-width: none;
+}
+.auterim-v3-page .close-main { min-width: 0; }
+.auterim-v3-page .close-main h2 {
+  max-width: 18ch;
+  margin-top: 20px;
+  color: #f2f5f7;
+  font-size: clamp(2.3rem, 3.6vw, 3.6rem);
+  font-weight: 500;
+  letter-spacing: -.048em;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+.auterim-v3-page .close-main > p {
+  max-width: 49ch;
+  margin-top: 22px;
+  color: #b1bcc8;
+  font-size: 17.5px;
+  line-height: 1.62;
+}
+.auterim-v3-page .close-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 26px;
+  margin-top: 36px;
+}
+.auterim-v3-page .close-actions .btn { min-height: 54px; padding: 15px 28px; font-size: 16px; }
+.auterim-v3-page .close-actions .arrow { display: inline-block; margin-left: 13px; transition: transform .2s ease; }
+.auterim-v3-page .close-actions .btn:hover .arrow { transform: translateX(3px); }
+.auterim-v3-page .close-run {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  color: #d0d7df;
+  font-size: 15px;
+  transition: color .18s ease;
+}
+.auterim-v3-page .close-run span { color: var(--acc); transition: transform .18s ease; }
+.auterim-v3-page .close-run:hover { color: #fff; }
+.auterim-v3-page .close-run:hover span { transform: translateX(3px); }
+@media (max-width: 820px) {
+  .auterim-v3-page .close { padding: 94px 0 88px; }
+  .auterim-v3-page .close-in { grid-template-columns: 1fr; gap: 54px; }
+  .auterim-v3-page .close-main h2 { max-width: 17ch; font-size: clamp(2rem, 8.2vw, 2.65rem); }
+  .auterim-v3-page .close-preview { max-width: 560px; }
+}
+@media (max-width: 480px) {
+  .auterim-v3-page .close-actions { align-items: flex-start; flex-direction: column; gap: 18px; }
+}
+
+/* Connect: signals converge into a working profile. It is an intake trace, not an integrations grid. */
+.auterim-v3-page .connect-bridge {
+  background: linear-gradient(90deg, rgba(55,230,212,.018), transparent 42%);
+}
+.auterim-v3-page .connect-bridge-in {
+  grid-template-columns: minmax(0, .77fr) minmax(0, 1.23fr);
+  gap: clamp(58px, 8.2vw, 142px);
+  min-height: 365px;
+  padding-top: 74px;
+  padding-bottom: 74px;
+}
+.auterim-v3-page .connect-bridge-intro { max-width: 400px; }
+.auterim-v3-page .connect-bridge h2 { max-width: 12ch; }
+.auterim-v3-page .connect-intro-cue {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 25px;
+  color: #9ba8b5;
+  font: 9px var(--mono);
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+.auterim-v3-page .connect-intro-cue i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--acc);
+  box-shadow: 0 0 8px rgba(55,230,212,.45);
+}
+.auterim-v3-page .connect-assembly-head { min-height: 40px; }
+.auterim-v3-page .connect-assembly-state { color: #aeb8c3; }
+.auterim-v3-page .connect-assembly-body {
+  grid-template-columns: minmax(150px,.86fr) 68px minmax(215px,1.04fr);
+  gap: 0;
+  min-height: 222px;
+  padding: 22px 0 20px;
+}
+.auterim-v3-page .connect-sources {
+  display: grid;
+  grid-template-columns: 1fr;
+  border: 0;
+}
+.auterim-v3-page .connect-source {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  align-content: center;
+  gap: 3px 8px;
+  min-height: 55px;
+  padding: 0 18px 0 0;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+}
+.auterim-v3-page .connect-source:first-child { border-top: 1px solid var(--rule); }
+.auterim-v3-page .connect-source:nth-child(odd) { padding-left: 0; }
+.auterim-v3-page .connect-source:nth-child(n + 3) { border-top: 0; }
+.auterim-v3-page .connect-source b {
+  grid-row: 1 / span 2;
+  align-self: center;
+  color: #637080;
+  font: 8px var(--mono);
+  letter-spacing: .08em;
+}
+.auterim-v3-page .connect-source span { color: #d2d9e1; font-size: 13px; }
+.auterim-v3-page .connect-source small { grid-column: 2; color: #8190a0; font-size: 8px; }
+.auterim-v3-page .connect-transfer {
+  display: grid;
+  grid-template-rows: repeat(4, 1fr);
+  align-items: stretch;
+}
+.auterim-v3-page .connect-transfer span {
+  position: relative;
+  align-self: center;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(55,230,212,.08), rgba(55,230,212,.42), rgba(55,230,212,.1));
+}
+.auterim-v3-page .connect-transfer span::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--acc);
+  box-shadow: 0 0 9px rgba(55,230,212,.65);
+  opacity: 0;
+}
+.auterim-v3-page .connect-profile {
+  min-height: 0;
+  justify-content: flex-start;
+  padding: 0 0 0 25px;
+  border-left-color: rgba(55,230,212,.55);
+}
+.auterim-v3-page .connect-profile::before, .auterim-v3-page .connect-profile::after { display: none; }
+.auterim-v3-page .connect-profile-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.auterim-v3-page .connect-profile-live { display: inline-flex; align-items: center; gap: 6px; color: #8d9aa8; font: 8px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.auterim-v3-page .connect-profile-live i { width: 5px; height: 5px; border-radius: 50%; background: var(--acc); }
+.auterim-v3-page .connect-profile strong { margin-top: 16px; color: #f0f4f7; font-size: 28px; letter-spacing: -.045em; }
+.auterim-v3-page .connect-profile p { max-width: 30ch; margin-top: 8px; color: #b1bcc7; font-size: 13px; }
+.auterim-v3-page .connect-profile-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-top: 18px; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.auterim-v3-page .connect-profile-fields span { display: grid; gap: 5px; min-height: 52px; align-content: center; }
+.auterim-v3-page .connect-profile-fields span + span { padding-left: 14px; border-left: 1px solid var(--rule); }
+.auterim-v3-page .connect-profile-fields b { color: #718091; font: 8px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.auterim-v3-page .connect-profile-fields em { color: #c4cdd6; font-size: 11px; font-style: normal; }
+.auterim-v3-page .connect-profile-ready { margin-top: 15px; }
+.auterim-v3-page .connect-bridge-rules { gap: 0; padding-top: 18px; }
+.auterim-v3-page .connect-bridge-rules li { min-height: 31px; padding: 0 18px; align-items: center; font-size: 11px; }
+.auterim-v3-page .connect-bridge-rules li:first-child { padding-left: 0; }
+.auterim-v3-page .connect-bridge-rules li + li { border-left: 1px solid var(--rule); }
+
+/* Motion follows the signals: four calm pulses resolve into the profile, then rest. */
+.auterim-v3-page .connect-bridge.sequence-in .connect-transfer span::after { animation: auterim-connect-transfer 3300ms cubic-bezier(.2,.7,.2,1) infinite; }
+.auterim-v3-page .connect-bridge.sequence-in .connect-transfer span:nth-child(2)::after { animation-delay: 430ms; }
+.auterim-v3-page .connect-bridge.sequence-in .connect-transfer span:nth-child(3)::after { animation-delay: 860ms; }
+.auterim-v3-page .connect-bridge.sequence-in .connect-transfer span:nth-child(4)::after { animation-delay: 1290ms; }
+@keyframes auterim-connect-transfer {
+  0%, 12% { left: 0; opacity: 0; }
+  18% { opacity: 1; }
+  46% { left: calc(100% - 6px); opacity: 1; }
+  54%, 100% { left: calc(100% - 6px); opacity: 0; }
+}
+@media (max-width: 820px) {
+  .auterim-v3-page .connect-bridge-in { grid-template-columns: 1fr; gap: 43px; min-height: 0; padding-top: 62px; padding-bottom: 62px; }
+  .auterim-v3-page .connect-assembly { max-width: 690px; }
+}
+@media (max-width: 560px) {
+  .auterim-v3-page .connect-assembly-body { grid-template-columns: 1fr; gap: 20px; }
+  .auterim-v3-page .connect-transfer { display: none; }
+  .auterim-v3-page .connect-profile { min-height: 0; padding: 20px 0 0 20px; border-top: 1px solid var(--rule); }
+  .auterim-v3-page .connect-profile strong { font-size: 25px; }
+  .auterim-v3-page .connect-profile-fields { grid-template-columns: 1fr; }
+  .auterim-v3-page .connect-profile-fields span + span { padding: 11px 0 0; border-top: 1px solid var(--rule); border-left: 0; }
+  .auterim-v3-page .connect-bridge-rules { grid-template-columns: 1fr; gap: 0; }
+  .auterim-v3-page .connect-bridge-rules li, .auterim-v3-page .connect-bridge-rules li:first-child { min-height: 39px; padding: 0; }
+  .auterim-v3-page .connect-bridge-rules li + li { border-top: 1px solid var(--rule); border-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auterim-v3-page .connect-transfer span::after { display: none; animation: none !important; }
+}
+
+/* A single context instrument gives Connect a recognisable product moment. */
+.auterim-v3-page .connect-bridge {
+  background: #080c11;
+}
+.auterim-v3-page .connect-bridge-in {
+  grid-template-columns: minmax(0, .72fr) minmax(0, 1.28fr);
+  gap: clamp(60px, 9vw, 154px);
+  min-height: 404px;
+  padding-top: 82px;
+  padding-bottom: 82px;
+}
+.auterim-v3-page .connect-bridge-intro { max-width: 375px; }
+.auterim-v3-page .connect-bridge h2 { max-width: 11ch; font-size: clamp(2rem, 2.65vw, 2.7rem); line-height: 1.02; }
+.auterim-v3-page .connect-assembly {
+  overflow: hidden;
+  border: 1px solid rgba(151,169,186,.19);
+  background: linear-gradient(135deg, rgba(20,29,39,.76), rgba(8,13,19,.98) 52%);
+  box-shadow: inset 0 1px rgba(255,255,255,.035), 0 24px 58px -48px #000;
+}
+.auterim-v3-page .connect-assembly-head { min-height: 47px; padding: 0 20px; background: rgba(255,255,255,.012); }
+.auterim-v3-page .connect-assembly-head .lbl { color: #b5c0cb; }
+.auterim-v3-page .connect-assembly-state { color: #c1cbd5; }
+.auterim-v3-page .connect-assembly-body {
+  grid-template-columns: minmax(166px,.83fr) 70px minmax(232px,1.17fr);
+  min-height: 252px;
+  padding: 0 20px;
+}
+.auterim-v3-page .connect-sources { position: relative; padding: 40px 0 16px; }
+.auterim-v3-page .connect-sources-label {
+  position: absolute;
+  top: 15px;
+  left: 0;
+  color: #778596;
+  font: 8px var(--mono);
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+.auterim-v3-page .connect-source {
+  min-height: 47px;
+  padding-right: 15px;
+  transition: background-color .25s ease;
+}
+.auterim-v3-page .connect-source span { color: #e0e6ec; font-size: 14px; }
+.auterim-v3-page .connect-source b { color: #8291a1; }
+.auterim-v3-page .connect-source small { color: #8b99a8; }
+.auterim-v3-page .connect-transfer { padding: 40px 0 16px; }
+.auterim-v3-page .connect-transfer span {
+  margin-left: 8px;
+  background: linear-gradient(90deg, rgba(55,230,212,.12), rgba(55,230,212,.65), rgba(55,230,212,.12));
+}
+.auterim-v3-page .connect-profile {
+  align-self: center;
+  min-height: 184px;
+  margin: 0 0 0 7px;
+  padding: 20px 20px 19px;
+  border: 1px solid rgba(55,230,212,.37);
+  border-left: 2px solid var(--acc);
+  background: linear-gradient(145deg, rgba(12,27,34,.86), rgba(7,13,18,.76));
+}
+.auterim-v3-page .connect-profile::before { display: block; top: 50%; left: -78px; width: 78px; background: rgba(55,230,212,.38); }
+.auterim-v3-page .connect-profile strong { margin-top: 18px; font-size: 31px; }
+.auterim-v3-page .connect-profile p { max-width: 28ch; color: #c0cad4; font-size: 13px; line-height: 1.5; }
+.auterim-v3-page .connect-profile-fields { margin-top: 18px; border-top-color: rgba(255,255,255,.1); border-bottom-color: rgba(255,255,255,.1); }
+.auterim-v3-page .connect-profile-fields b { color: #8d9baa; }
+.auterim-v3-page .connect-profile-fields em { color: #d3dbe3; }
+.auterim-v3-page .connect-profile-ready { margin-top: 15px; color: #83f0c0; }
+.auterim-v3-page .connect-bridge-rules {
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 0;
+  margin: 0 20px;
+  padding: 14px 0;
+  border-top-color: rgba(255,255,255,.1);
+}
+.auterim-v3-page .connect-bridge-rules li {
+  min-height: 33px;
+  padding: 0 14px;
+  color: #a9b5c1;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.auterim-v3-page .connect-bridge-rules li:first-child { padding-left: 0; }
+
+/* The line is the motion: source signals travel into the profile, then hold. */
+.auterim-v3-page .connect-bridge.sequence-in .connect-transfer span::after { animation-duration: 4200ms; }
+.auterim-v3-page .connect-bridge.sequence-in .connect-source:nth-of-type(2) { animation-delay: 110ms; }
+.auterim-v3-page .connect-bridge.sequence-in .connect-source:nth-of-type(3) { animation-delay: 210ms; }
+.auterim-v3-page .connect-bridge.sequence-in .connect-source:nth-of-type(4) { animation-delay: 310ms; }
+.auterim-v3-page .connect-bridge.sequence-in .connect-source:nth-of-type(5) { animation-delay: 410ms; }
+.auterim-v3-page .connect-bridge.sequence-in .connect-profile { animation-delay: 510ms; }
+@media (max-width: 820px) {
+  .auterim-v3-page .connect-bridge-in { grid-template-columns: 1fr; gap: 46px; min-height: 0; padding-top: 65px; padding-bottom: 65px; }
+  .auterim-v3-page .connect-assembly { max-width: 700px; }
+}
+@media (max-width: 560px) {
+  .auterim-v3-page .connect-assembly-head { padding: 0 14px; }
+  .auterim-v3-page .connect-assembly-body { padding: 0 14px; }
+  .auterim-v3-page .connect-profile { margin: 0; padding: 18px; }
+  .auterim-v3-page .connect-profile::before { display: none; }
+  .auterim-v3-page .connect-bridge-rules { margin: 0 14px; }
+}
+
+/* Connect is an editorial context rail, deliberately distinct from the hero product surface. */
+.auterim-v3-page .connect-bridge {
+  padding: 0;
+  border-top-color: rgba(255,255,255,.08);
+  border-bottom-color: rgba(255,255,255,.08);
+  background: #080c11;
+}
+.auterim-v3-page .connect-wide-head {
+  display: grid;
+  grid-template-columns: minmax(145px,.34fr) minmax(0,1.18fr) auto;
+  align-items: start;
+  gap: 34px;
+  padding: 91px 0 56px;
+}
+.auterim-v3-page .connect-wide-head > .lbl { padding-top: 8px; }
+.auterim-v3-page .connect-wide-head h2 {
+  max-width: 18ch;
+  color: #f1f4f7;
+  font-size: clamp(2rem, 3vw, 3rem);
+  font-weight: 500;
+  letter-spacing: -.048em;
+  line-height: 1.01;
+  text-wrap: pretty;
+}
+.auterim-v3-page .connect-wide-head p {
+  max-width: 53ch;
+  margin-top: 16px;
+  color: #aeb9c5;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.auterim-v3-page .connect-wide-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 11px;
+  color: #a5b0bc;
+  font: 9px var(--mono);
+  letter-spacing: .11em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.auterim-v3-page .connect-wide-status i,
+.auterim-v3-page .context-rail-source i,
+.auterim-v3-page .context-profile-lead > span i,
+.auterim-v3-page .context-rail-rules i {
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--acc);
+  box-shadow: 0 0 8px rgba(55,230,212,.42);
+}
+.auterim-v3-page .context-rail {
+  border-top: 1px solid rgba(255,255,255,.11);
+  border-bottom: 1px solid rgba(255,255,255,.11);
+}
+.auterim-v3-page .context-rail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 45px;
+  color: #8c99a8;
+  font: 9px var(--mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.auterim-v3-page .context-rail-head span:last-child { color: var(--acc); }
+.auterim-v3-page .context-rail-sources { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); border-top: 1px solid var(--rule); }
+.auterim-v3-page .context-rail-source { min-width: 0; min-height: 82px; padding: 17px 19px 14px; border-left: 1px solid var(--rule); }
+.auterim-v3-page .context-rail-source:first-child { padding-left: 0; border-left: 0; }
+.auterim-v3-page .context-rail-source b { display: block; color: #647283; font: 8px var(--mono); letter-spacing: .09em; }
+.auterim-v3-page .context-rail-source > span { display: flex; align-items: center; gap: 8px; margin-top: 9px; color: #dce3e9; font-size: 14px; }
+.auterim-v3-page .context-rail-source small { display: block; overflow: hidden; margin-top: 5px; color: #8290a0; font: 8px var(--mono); letter-spacing: .065em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.auterim-v3-page .context-rail-flow { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); min-height: 42px; }
+.auterim-v3-page .context-rail-flow span { position: relative; justify-self: center; width: 1px; height: 100%; background: rgba(55,230,212,.34); }
+.auterim-v3-page .context-rail-flow span::before { content: ""; position: absolute; bottom: 0; left: -3px; width: 7px; height: 7px; border: 1px solid var(--acc); border-radius: 50%; background: #0a1117; }
+.auterim-v3-page .context-rail-flow span::after { content: ""; position: absolute; top: 1px; left: -3px; width: 7px; height: 7px; border-radius: 50%; background: var(--acc); box-shadow: 0 0 10px rgba(55,230,212,.7); opacity: 0; }
+.auterim-v3-page .context-rail-profile { display: grid; grid-template-columns: minmax(290px,.82fr) minmax(0,1.18fr); border-top: 1px solid rgba(55,230,212,.42); background: linear-gradient(90deg, rgba(55,230,212,.055), rgba(55,230,212,.012) 55%, transparent); }
+.auterim-v3-page .context-profile-lead { padding: 30px 28px 28px 0; border-right: 1px solid rgba(55,230,212,.25); }
+.auterim-v3-page .context-profile-lead h3 { margin-top: 15px; color: #f3f6f8; font-size: clamp(28px,2.6vw,39px); font-weight: 500; letter-spacing: -.05em; line-height: 1; }
+.auterim-v3-page .context-profile-lead p { max-width: 29ch; margin-top: 12px; color: #b6c1cb; font-size: 13px; line-height: 1.55; }
+.auterim-v3-page .context-profile-lead > span:last-child { display: inline-flex; align-items: center; gap: 8px; margin-top: 20px; color: #82ecc1; font: 9px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.auterim-v3-page .context-profile-lead > span:last-child i { background: var(--ok); box-shadow: 0 0 8px rgba(81,216,138,.45); }
+.auterim-v3-page .context-profile-facts { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); align-items: stretch; }
+.auterim-v3-page .context-profile-facts > div { display: flex; min-width: 0; flex-direction: column; justify-content: center; gap: 10px; padding: 25px 20px; border-left: 1px solid var(--rule); }
+.auterim-v3-page .context-profile-facts > div:first-child { border-left: 0; }
+.auterim-v3-page .context-profile-facts b { color: #8290a0; font: 8px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.auterim-v3-page .context-profile-facts strong { color: #d9e1e8; font-size: 14px; font-weight: 500; line-height: 1.35; }
+.auterim-v3-page .context-rail-rules { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); border-top: 1px solid var(--rule); }
+.auterim-v3-page .context-rail-rules span { display: flex; align-items: center; gap: 8px; min-height: 53px; padding: 0 19px; border-left: 1px solid var(--rule); color: #99a7b6; font-size: 11px; line-height: 1.4; }
+.auterim-v3-page .context-rail-rules span:first-child { padding-left: 0; border-left: 0; }
+.auterim-v3-page .context-rail-rules i { background: var(--ok); box-shadow: 0 0 8px rgba(81,216,138,.38); }
+
+/* Signals move only as context is formed, then settle into a quiet completed state. */
+.auterim-v3-page .context-rail-source,
+.auterim-v3-page .context-rail-profile,
+.auterim-v3-page .context-rail-rules { opacity: 0; transform: translateY(8px); }
+.auterim-v3-page .connect-bridge.sequence-in .context-rail-source,
+.auterim-v3-page .connect-bridge.sequence-in .context-rail-profile,
+.auterim-v3-page .connect-bridge.sequence-in .context-rail-rules { animation: auterim-context-rail-in 480ms cubic-bezier(.22,.7,.24,1) forwards; }
+.auterim-v3-page .connect-bridge.sequence-in .context-rail-source:nth-child(1) { animation-delay: 70ms; }
+.auterim-v3-page .connect-bridge.sequence-in .context-rail-source:nth-child(2) { animation-delay: 135ms; }
+.auterim-v3-page .connect-bridge.sequence-in .context-rail-source:nth-child(3) { animation-delay: 200ms; }
+.auterim-v3-page .connect-bridge.sequence-in .context-rail-source:nth-child(4) { animation-delay: 265ms; }
+.auterim-v3-page .connect-bridge.sequence-in .context-rail-profile { animation-delay: 400ms; }
+.auterim-v3-page .connect-bridge.sequence-in .context-rail-rules { animation-delay: 500ms; }
+.auterim-v3-page .connect-bridge.sequence-in .context-rail-flow span::after { animation: auterim-context-rail-flow 3500ms cubic-bezier(.25,.7,.25,1) infinite; }
+.auterim-v3-page .connect-bridge.sequence-in .context-rail-flow span:nth-child(2)::after { animation-delay: 420ms; }
+.auterim-v3-page .connect-bridge.sequence-in .context-rail-flow span:nth-child(3)::after { animation-delay: 840ms; }
+.auterim-v3-page .connect-bridge.sequence-in .context-rail-flow span:nth-child(4)::after { animation-delay: 1260ms; }
+@keyframes auterim-context-rail-in { to { opacity: 1; transform: none; } }
+@keyframes auterim-context-rail-flow { 0%,12% { top: 1px; opacity: 0; } 18% { opacity: 1; } 52% { top: calc(100% - 7px); opacity: 1; } 58%,100% { top: calc(100% - 7px); opacity: 0; } }
+@media (max-width: 820px) {
+  .auterim-v3-page .connect-wide-head { grid-template-columns: 1fr auto; gap: 21px; padding: 68px 0 42px; }
+  .auterim-v3-page .connect-wide-head > .lbl { grid-column: 1 / -1; padding: 0; }
+  .auterim-v3-page .connect-wide-head h2 { max-width: 17ch; font-size: clamp(2rem,6.4vw,2.7rem); }
+  .auterim-v3-page .context-rail-profile { grid-template-columns: minmax(230px,.82fr) minmax(0,1.18fr); }
+}
+@media (max-width: 600px) {
+  .auterim-v3-page .connect-wide-head { display: block; }
+  .auterim-v3-page .connect-wide-status { margin-top: 19px; }
+  .auterim-v3-page .context-rail-head { min-height: 42px; font-size: 8px; }
+  .auterim-v3-page .context-rail-sources { grid-template-columns: 1fr 1fr; }
+  .auterim-v3-page .context-rail-source { min-height: 74px; padding: 14px; border-top: 1px solid var(--rule); }
+  .auterim-v3-page .context-rail-source:first-child { padding-left: 0; }
+  .auterim-v3-page .context-rail-source:nth-child(3) { padding-left: 0; border-left: 0; }
+  .auterim-v3-page .context-rail-flow { grid-template-columns: 1fr 1fr; min-height: 30px; }
+  .auterim-v3-page .context-rail-flow span:nth-child(n + 3) { display: none; }
+  .auterim-v3-page .context-rail-profile { grid-template-columns: 1fr; }
+  .auterim-v3-page .context-profile-lead { padding: 24px 0 23px; border-right: 0; }
+  .auterim-v3-page .context-profile-facts > div { padding: 18px 12px; }
+  .auterim-v3-page .context-profile-facts > div:first-child { padding-left: 0; }
+  .auterim-v3-page .context-profile-facts strong { font-size: 12px; }
+  .auterim-v3-page .context-rail-rules { grid-template-columns: 1fr; }
+  .auterim-v3-page .context-rail-rules span, .auterim-v3-page .context-rail-rules span:first-child { min-height: 42px; padding: 0; border-left: 0; }
+  .auterim-v3-page .context-rail-rules span + span { border-top: 1px solid var(--rule); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auterim-v3-page .context-rail-source,
+  .auterim-v3-page .context-rail-profile,
+  .auterim-v3-page .context-rail-rules { opacity: 1; transform: none; animation: none !important; }
+  .auterim-v3-page .context-rail-flow span::after { display: none; animation: none !important; }
+}
+
+/* Final CTA is a contained decision moment, never a full-width utility layout. */
+.auterim-v3-page .close {
+  padding: 118px 0 112px;
+  background: #080c11;
+}
+.auterim-v3-page .close-in {
+  width: min(100%, 1140px);
+  max-width: 1140px;
+  margin: 0 auto;
+  grid-template-columns: minmax(0, 1fr) 440px;
+  gap: clamp(52px, 7vw, 96px);
+}
+.auterim-v3-page .close-main h2 {
+  max-width: 19.5ch;
+  font-size: clamp(2.25rem, 3.1vw, 3.1rem);
+  line-height: 1;
+}
+.auterim-v3-page .close-main > p { max-width: 44ch; font-size: 16px; }
+.auterim-v3-page .close-preview { max-width: 440px; justify-self: end; }
+.auterim-v3-page .close-preview-step { grid-template-columns: 36px minmax(0,1fr); gap: 16px; padding: 20px 0; }
+@media (max-width: 820px) {
+  .auterim-v3-page .close { padding: 88px 0 82px; }
+  .auterim-v3-page .close-in { width: 100%; max-width: none; }
+  .auterim-v3-page .close-preview { justify-self: start; }
+}
+
+/* One real run: the preparation is legible, the human decision is unmistakable. */
+.auterim-v3-page .run { padding: 128px 0 132px; background: #090d12; }
+.auterim-v3-page .run .head { max-width: 1000px; }
+.auterim-v3-page .trace { position: relative; max-width: 1030px; margin: 74px auto 0; }
+.auterim-v3-page .tr { grid-template-columns: 138px 1px minmax(0,1fr); gap: 0 36px; }
+.auterim-v3-page .tr-k { gap: 12px; padding-top: 27px; color: #8290a0; }
+.auterim-v3-page .tr-c { padding: 25px 0 36px; }
+/* The old per-row dot markers (hollow/green/amber-pulsing, defined per .tr state in
+   auterim-v3.css) are superseded by the single continuous run-rail-dot below and
+   would otherwise double up with it, so they're hidden here rather than left active. */
+.auterim-v3-page .tr-s::before { display: none; }
+
+/* One real run: a continuous scroll-tracked progress dot layered over the static
+   per-row rail above. --run-progress (0-1) is written from run-trace.tsx on scroll;
+   its horizontal offset (174.5px) matches the rail column here: 138px key column +
+   36px gap = 174px left edge, centered on the 1px .tr-s track. Keep these two numbers
+   in sync if the .tr grid-template-columns above ever changes. */
+.auterim-v3-page .run-rail { display: none; position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.auterim-v3-page .trace.run-track .run-rail { display: block; }
+.auterim-v3-page .run-rail-fill {
+  position: absolute;
+  top: 0;
+  left: 174.5px;
+  width: 2px;
+  height: calc(var(--run-progress, 0) * 100%);
+  transform: translateX(-1px);
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgba(55,230,212,.05), var(--acc) 85%);
+  box-shadow: 0 0 12px rgba(55,230,212,.26);
+  transition: height 260ms cubic-bezier(.22,.7,.24,1);
+}
+.auterim-v3-page .run-rail-dot {
+  position: absolute;
+  top: calc(var(--run-progress, 0) * 100%);
+  left: 174.5px;
+  width: 10px;
+  height: 10px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--acc);
+  box-shadow: 0 0 0 4px rgba(55,230,212,.16), 0 0 20px 3px rgba(55,230,212,.5);
+  transition: top 260ms cubic-bezier(.22,.7,.24,1);
+}
+.auterim-v3-page .run-rail-dot::after {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(55,230,212,.22);
+  animation: run-dot-breathe 3.2s ease-in-out infinite;
+}
+@keyframes run-dot-breathe { 0%, 100% { opacity: .5; transform: scale(.92); } 50% { opacity: 1; transform: scale(1.08); } }
+
+/* Active-step highlighting: driven by real scroll position (is-active / is-passed),
+   not by the one-shot entrance sequence above. Only engages once run-track is present,
+   so the reduced-motion fallback keeps today's static per-row styling untouched. */
+.auterim-v3-page .trace.run-track .tr .sn,
+.auterim-v3-page .trace.run-track .tr .tr-k { transition: color 320ms ease, opacity 320ms ease; }
+.auterim-v3-page .trace.run-track .tr .sn { color: var(--mute); }
+.auterim-v3-page .trace.run-track .tr .tr-k { opacity: .68; }
+.auterim-v3-page .trace.run-track .tr.is-passed .sn { color: var(--acc); opacity: .78; }
+.auterim-v3-page .trace.run-track .tr.is-passed .tr-k { opacity: .82; }
+.auterim-v3-page .trace.run-track .tr.is-active .sn { color: var(--acc); text-shadow: 0 0 14px rgba(55,230,212,.5); }
+.auterim-v3-page .trace.run-track .tr.is-active .tr-k { color: var(--ink); opacity: 1; }
+.auterim-v3-page .tr.work .tr-s::after {
+  content: "";
+  position: absolute;
+  top: 38px;
+  left: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--acc);
+  box-shadow: 0 0 10px rgba(55,230,212,.65);
+  opacity: 0;
+}
+.auterim-v3-page .trace.sequence-in .tr.work .tr-s::after { animation: auterim-run-flow 2200ms 610ms cubic-bezier(.22,.7,.24,1) both; }
+.auterim-v3-page .src { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.auterim-v3-page .src span { min-width: 0; min-height: 68px; padding: 14px 16px; border-radius: 0; border-left: 1px solid var(--rule); background: transparent; box-shadow: none; }
+.auterim-v3-page .src span:first-child { padding-left: 0; border-left: 0; }
+.auterim-v3-page .src span:last-child { padding-right: 0; }
+.auterim-v3-page .src em { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.auterim-v3-page .tr.work .tr-c { padding-top: 22px; }
+.auterim-v3-page .wk { padding: 14px 0; }
+.auterim-v3-page .wk:first-child { border-top: 1px solid var(--rule); }
+.auterim-v3-page .wk .wn { width: 5px; height: 5px; box-shadow: 0 0 7px rgba(81,216,138,.35); }
+.auterim-v3-page .wk .wt { font-size: 15.5px; }
+.auterim-v3-page .tr.gate .tr-c {
+  margin: 8px 0 30px;
+  padding: 0;
+  border: 1px solid rgba(255,204,102,.38);
+  border-left: 2px solid var(--gate);
+  background: linear-gradient(110deg, rgba(255,204,102,.09), rgba(17,22,29,.88) 48%, rgba(12,17,23,.9));
+  box-shadow: inset 0 1px rgba(255,204,102,.07), 0 24px 58px -46px #000;
+}
+.auterim-v3-page .tr.gate .tr-c::before { display: none; }
+.auterim-v3-page .tr.gate h3 { max-width: 25ch; margin: 0; padding: 28px 30px 0; color: #f4f6f8; font-size: clamp(25px,2.7vw,36px); }
+.auterim-v3-page .tr.gate p { max-width: 51ch; margin: 14px 30px 0; color: #bdc7d1; font-size: 15px; }
+.auterim-v3-page .tr.gate .gate-acts { margin: 24px 30px 0; }
+.auterim-v3-page .tr.gate .mini { min-height: 42px; padding: 11px 17px; font-size: 13px; }
+.auterim-v3-page .gw { margin: 24px 30px 0; padding: 15px 0 18px; border-top: 1px solid rgba(255,204,102,.17); color: #9ba8b6; font-size: 9px; }
+.auterim-v3-page .tr.after { opacity: .86; }
+.auterim-v3-page .tr.after .tr-c { padding-top: 20px; }
+.auterim-v3-page .tr.after .wk { padding: 12px 0; }
+.auterim-v3-page .tr.after .wk:first-child { border-top: 1px solid var(--rule); }
+@keyframes auterim-run-flow {
+  0% { top: 38px; opacity: 0; }
+  10% { opacity: 1; }
+  76% { top: calc(100% - 14px); opacity: 1; }
+  100% { top: calc(100% - 14px); opacity: 0; }
+}
+@media (max-width: 820px) {
+  .auterim-v3-page .run { padding: 92px 0; }
+  .auterim-v3-page .trace { margin-top: 52px; }
+  .auterim-v3-page .tr { grid-template-columns: 1px minmax(0,1fr); gap: 0 23px; }
+  .auterim-v3-page .tr-k { grid-column: 2; padding: 24px 0 5px; }
+  .auterim-v3-page .src { grid-template-columns: 1fr; }
+  .auterim-v3-page .src span, .auterim-v3-page .src span:first-child { min-height: 53px; padding: 11px 0; border-top: 1px solid var(--rule); border-left: 0; }
+  .auterim-v3-page .src span:first-child { border-top: 0; }
+  .auterim-v3-page .tr.gate .tr-c { margin-right: 0; }
+  .auterim-v3-page .tr.gate h3 { padding: 24px 20px 0; font-size: clamp(23px,7vw,31px); }
+  .auterim-v3-page .tr.gate p, .auterim-v3-page .tr.gate .gate-acts, .auterim-v3-page .gw { margin-left: 20px; margin-right: 20px; }
+  /* Below 820px the rail collapses to the leading 1px column (gap: 0 23px, no key
+     column ahead of it), so the progress dot/fill re-center on that leftmost edge. */
+  .auterim-v3-page .run-rail-fill,
+  .auterim-v3-page .run-rail-dot { left: .5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auterim-v3-page .tr.work .tr-s::after { display: none; animation: none !important; }
+  .auterim-v3-page .run-rail { display: none !important; }
+  .auterim-v3-page .run-rail-dot::after { animation: none; }
+}
+
+/* Connect: one readable company artifact, rather than a low-contrast systems diagram. */
+.auterim-v3-page .connect-bridge {
+  padding: 0;
+  background: #080c11;
+}
+.auterim-v3-page .connect-brief-head {
+  display: grid;
+  grid-template-columns: 160px minmax(0,1fr);
+  gap: 54px;
+  max-width: 1050px;
+  margin: 0 auto;
+  padding: 104px 0 55px;
+}
+.auterim-v3-page .connect-brief-head > .lbl { padding-top: 8px; }
+.auterim-v3-page .connect-brief-head h2 {
+  max-width: 14ch;
+  color: #f2f5f7;
+  font-size: clamp(2.2rem,3.25vw,3.25rem);
+  font-weight: 500;
+  letter-spacing: -.052em;
+  line-height: .99;
+}
+.auterim-v3-page .connect-brief-head p { max-width: 50ch; margin-top: 17px; color: #aeb9c5; font-size: 16px; line-height: 1.6; }
+.auterim-v3-page .company-brief {
+  position: relative;
+  max-width: 1050px;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.11);
+  background: linear-gradient(135deg, rgba(22,30,40,.58), rgba(8,13,19,.94) 56%);
+  box-shadow: inset 0 1px rgba(255,255,255,.035), 0 26px 70px -58px #000;
+}
+.auterim-v3-page .company-brief::before { content: ""; position: absolute; top: 0; left: 0; width: 0; height: 1px; background: var(--acc); box-shadow: 0 0 10px rgba(55,230,212,.5); }
+.auterim-v3-page .company-brief-top { display: flex; align-items: center; justify-content: space-between; min-height: 49px; padding: 0 24px; border-bottom: 1px solid var(--rule); }
+.auterim-v3-page .company-brief-state { display: inline-flex; align-items: center; gap: 8px; color: #aab6c2; font: 9px var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+.auterim-v3-page .company-brief-state i,
+.auterim-v3-page .company-brief-sources i,
+.auterim-v3-page .company-brief-ready i,
+.auterim-v3-page .company-brief-rules i { width: 5px; height: 5px; flex: none; border-radius: 50%; background: var(--acc); box-shadow: 0 0 8px rgba(55,230,212,.42); }
+.auterim-v3-page .company-brief-core { display: grid; grid-template-columns: minmax(270px,.78fr) minmax(0,1.22fr); }
+.auterim-v3-page .company-brief-identity { padding: 34px 28px 31px; border-right: 1px solid rgba(55,230,212,.31); background: rgba(55,230,212,.025); }
+.auterim-v3-page .company-brief-identity > span { color: #8997a7; font: 9px var(--mono); letter-spacing: .13em; text-transform: uppercase; }
+.auterim-v3-page .company-brief-identity strong { display: block; margin-top: 17px; color: #f2f5f7; font-size: clamp(31px,3vw,43px); font-weight: 500; letter-spacing: -.055em; line-height: .96; }
+.auterim-v3-page .company-brief-identity p { margin-top: 17px; color: #b6c1cc; font-size: 14px; line-height: 1.55; }
+.auterim-v3-page .company-brief-reading { display: flex; flex-direction: column; justify-content: center; padding: 32px 37px; }
+.auterim-v3-page .company-brief-reading p { max-width: 43ch; margin-top: 16px; color: #d1d9e1; font-size: 18px; letter-spacing: -.014em; line-height: 1.52; }
+.auterim-v3-page .company-brief-ready { display: inline-flex; align-items: center; gap: 8px; margin-top: 22px; color: #81ebc0; font: 9px var(--mono); letter-spacing: .11em; text-transform: uppercase; }
+.auterim-v3-page .company-brief-ready i { background: var(--ok); box-shadow: 0 0 8px rgba(81,216,138,.42); }
+.auterim-v3-page .company-brief-sources { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); border-top: 1px solid var(--rule); }
+.auterim-v3-page .company-brief-sources > div { min-width: 0; min-height: 82px; padding: 17px 20px; border-left: 1px solid var(--rule); }
+.auterim-v3-page .company-brief-sources > div:first-child { border-left: 0; }
+.auterim-v3-page .company-brief-sources span { display: flex; align-items: center; gap: 8px; color: #dce4eb; font-size: 14px; }
+.auterim-v3-page .company-brief-sources small { display: block; margin-top: 7px; color: #8593a3; font: 8px var(--mono); letter-spacing: .07em; text-transform: uppercase; }
+.auterim-v3-page .company-brief-rules { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); border-top: 1px solid var(--rule); }
+.auterim-v3-page .company-brief-rules span { display: flex; align-items: center; gap: 8px; min-height: 53px; padding: 0 20px; border-left: 1px solid var(--rule); color: #9caab8; font-size: 11px; line-height: 1.4; }
+.auterim-v3-page .company-brief-rules span:first-child { border-left: 0; }
+.auterim-v3-page .company-brief-rules i { background: var(--ok); box-shadow: 0 0 7px rgba(81,216,138,.32); }
+
+/* The artifact assembles once. Motion confirms completion instead of constantly competing for attention. */
+.auterim-v3-page .company-brief-top,
+.auterim-v3-page .company-brief-identity,
+.auterim-v3-page .company-brief-reading,
+.auterim-v3-page .company-brief-sources > div,
+.auterim-v3-page .company-brief-rules { opacity: 0; transform: translateY(8px); }
+.auterim-v3-page .connect-bridge.sequence-in .company-brief::before { animation: auterim-brief-line 720ms ease-out forwards; }
+.auterim-v3-page .connect-bridge.sequence-in .company-brief-top,
+.auterim-v3-page .connect-bridge.sequence-in .company-brief-identity,
+.auterim-v3-page .connect-bridge.sequence-in .company-brief-reading,
+.auterim-v3-page .connect-bridge.sequence-in .company-brief-sources > div,
+.auterim-v3-page .connect-bridge.sequence-in .company-brief-rules { animation: auterim-brief-in 500ms cubic-bezier(.22,.7,.24,1) forwards; }
+.auterim-v3-page .connect-bridge.sequence-in .company-brief-identity { animation-delay: 120ms; }
+.auterim-v3-page .connect-bridge.sequence-in .company-brief-reading { animation-delay: 190ms; }
+.auterim-v3-page .connect-bridge.sequence-in .company-brief-sources > div:nth-child(1) { animation-delay: 280ms; }
+.auterim-v3-page .connect-bridge.sequence-in .company-brief-sources > div:nth-child(2) { animation-delay: 340ms; }
+.auterim-v3-page .connect-bridge.sequence-in .company-brief-sources > div:nth-child(3) { animation-delay: 400ms; }
+.auterim-v3-page .connect-bridge.sequence-in .company-brief-sources > div:nth-child(4) { animation-delay: 460ms; }
+.auterim-v3-page .connect-bridge.sequence-in .company-brief-rules { animation-delay: 530ms; }
+@keyframes auterim-brief-line { to { width: 72%; } }
+@keyframes auterim-brief-in { to { opacity: 1; transform: none; } }
+@media (max-width: 820px) {
+  .auterim-v3-page .connect-brief-head { grid-template-columns: 1fr; gap: 18px; padding: 72px 0 40px; }
+  .auterim-v3-page .connect-brief-head > .lbl { padding-top: 0; }
+  .auterim-v3-page .connect-brief-head h2 { font-size: clamp(2rem,7.6vw,2.65rem); }
+  .auterim-v3-page .company-brief-core { grid-template-columns: 1fr; }
+  .auterim-v3-page .company-brief-identity { border-right: 0; border-bottom: 1px solid rgba(55,230,212,.31); }
+  .auterim-v3-page .company-brief-reading { padding: 27px 28px; }
+}
+@media (max-width: 560px) {
+  .auterim-v3-page .company-brief-top { padding: 0 16px; }
+  .auterim-v3-page .company-brief-identity { padding: 27px 20px; }
+  .auterim-v3-page .company-brief-reading { padding: 24px 20px; }
+  .auterim-v3-page .company-brief-reading p { font-size: 16px; }
+  .auterim-v3-page .company-brief-sources { grid-template-columns: 1fr 1fr; }
+  .auterim-v3-page .company-brief-sources > div { min-height: 70px; padding: 14px; border-top: 1px solid var(--rule); }
+  .auterim-v3-page .company-brief-sources > div:nth-child(odd) { border-left: 0; }
+  .auterim-v3-page .company-brief-rules { grid-template-columns: 1fr; }
+  .auterim-v3-page .company-brief-rules span { min-height: 43px; padding: 0 16px; border-left: 0; }
+  .auterim-v3-page .company-brief-rules span + span { border-top: 1px solid var(--rule); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auterim-v3-page .company-brief-top,
+  .auterim-v3-page .company-brief-identity,
+  .auterim-v3-page .company-brief-reading,
+  .auterim-v3-page .company-brief-sources > div,
+  .auterim-v3-page .company-brief-rules { opacity: 1; transform: none; animation: none !important; }
+  .auterim-v3-page .company-brief::before { width: 72%; animation: none !important; }
+}
+
+/* Connect uses the same editorial grammar as the rest of the homepage: open, specific, and calm. */
+.auterim-v3-page .connect-editorial { background: #080c11; }
+.auterim-v3-page .connect-editorial .head { max-width: 1040px; }
+.auterim-v3-page .connect-editorial .head h2 { max-width: 17ch; }
+.auterim-v3-page .connect-editorial .head .say { max-width: 55ch; }
+.auterim-v3-page .connect-editorial-grid {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  margin-top: 64px;
+  border-top: 1px solid rgba(255,255,255,.1);
+  border-bottom: 1px solid rgba(255,255,255,.1);
+}
+.auterim-v3-page .connect-editorial-grid article { min-width: 0; padding: 31px 36px 31px 0; }
+.auterim-v3-page .connect-editorial-grid article + article { padding-left: 36px; border-left: 1px solid var(--rule); }
+.auterim-v3-page .connect-editorial-number { color: var(--acc); font: 9px var(--mono); letter-spacing: .13em; }
+.auterim-v3-page .connect-editorial-grid h3 { margin-top: 22px; color: #eff3f6; font-size: 21px; font-weight: 500; letter-spacing: -.032em; }
+.auterim-v3-page .connect-editorial-grid p { max-width: 32ch; margin-top: 12px; color: #afb9c5; font-size: 14px; line-height: 1.58; }
+.auterim-v3-page .connect-editorial-cue { display: inline-flex; align-items: flex-start; gap: 8px; margin-top: 22px; color: #83ebdf; font: 9px var(--mono); letter-spacing: .085em; line-height: 1.45; text-transform: uppercase; }
+.auterim-v3-page .connect-editorial-cue i, .auterim-v3-page .connect-editorial-result i { width: 5px; height: 5px; flex: none; margin-top: .35em; border-radius: 50%; background: var(--acc); box-shadow: 0 0 7px rgba(55,230,212,.42); }
+.auterim-v3-page .connect-editorial-result { display: flex; align-items: center; gap: 9px; margin-top: 21px; color: #d4dce4; font-size: 14px; }
+.auterim-v3-page .connect-editorial-grid.rv.in article { animation: auterim-connect-editorial-in 460ms cubic-bezier(.22,.7,.24,1) both; }
+.auterim-v3-page .connect-editorial-grid.rv.in article:nth-child(2) { animation-delay: 85ms; }
+.auterim-v3-page .connect-editorial-grid.rv.in article:nth-child(3) { animation-delay: 170ms; }
+@keyframes auterim-connect-editorial-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (max-width: 820px) {
+  .auterim-v3-page .connect-editorial-grid { grid-template-columns: 1fr; margin-top: 46px; }
+  .auterim-v3-page .connect-editorial-grid article, .auterim-v3-page .connect-editorial-grid article + article { padding: 27px 0; border-left: 0; }
+  .auterim-v3-page .connect-editorial-grid article + article { border-top: 1px solid var(--rule); }
+  .auterim-v3-page .connect-editorial-grid h3 { margin-top: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auterim-v3-page .connect-editorial-grid.rv.in article { animation: none; }
+}
+/* Architecture: a live flow diagram, not a spreadsheet. Systems feed the control
+   layer through a converging rail, the control layer is an elevated core module (not
+   a third equal column), and its output fans back out to the outcomes chips through a
+   single gate mark — the approval boundary rendered as the point the line crosses. */
+/* Pixel-perfect row alignment across the three columns uses CSS subgrid instead of
+   manually matched padding/margin numbers — the latter is exactly what kept drifting
+   out of sync whenever copy length or the control header's icon changed. Four shared
+   row tracks (label/header, heading, paragraph, list) are defined here; each column
+   below opts into them via `grid-template-rows: subgrid`, so the browser sizes every
+   row band to the tallest column's content in that band and aligns all three columns'
+   starting points exactly, automatically. */
+.auterim-v3-page .architecture-ledger {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, .82fr) minmax(64px, 104px) minmax(380px, 1.2fr) minmax(64px, 104px) minmax(0, .82fr);
+  grid-template-rows: auto auto auto auto;
+  align-items: start;
+  row-gap: 0;
+}
+
+.auterim-v3-page .architecture-column {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: 1 / span 4;
+  min-width: 0;
+  padding: 4px 4px 0;
+}
+
+/* Row 1: the label span (systems/outcomes) or the icon+label header (control) —
+   different elements, same row band, so they start at the same y regardless of the
+   control header's extra icon height. */
+.auterim-v3-page .architecture-column > .lbl,
+.auterim-v3-page .architecture-control-head {
+  grid-row: 1;
+}
+
+.auterim-v3-page .architecture-column h3 {
+  grid-row: 2;
+  max-width: 280px;
+  margin: 15px 0 0;
+  color: #f2f5f8;
+  font-size: clamp(17px, 1.35vw, 20px);
+  line-height: 1.2;
+  letter-spacing: -.03em;
+}
+
+/* Wider column, wider allowance — lets "Context becomes prepared work." sit on
+   one line instead of wrapping like the narrower flanking columns. No forced
+   nowrap: if the column track ever narrows below what the text needs, it should
+   still wrap gracefully rather than overflow. */
+.auterim-v3-page .architecture-control h3 {
+  max-width: none;
+  font-weight: 550;
+}
+
+.auterim-v3-page .architecture-column > p {
+  grid-row: 3;
+  max-width: 300px;
+  margin: 13px 0 0;
+  color: #aeb9c7;
+  font-size: 14px;
+  line-height: 1.57;
+}
+
+.auterim-v3-page .architecture-chips,
+.auterim-v3-page .architecture-control-steps {
+  grid-row: 4;
+}
+
+/* Flat hairline-divided rows — matching the site's editorial language (.op /
+   .ucr / pricing) rather than individually bordered chip surfaces. */
+.auterim-v3-page .architecture-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 26px 0 0;
+  border-top: 1px solid var(--rule);
+}
+
+.auterim-v3-page .architecture-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--rule);
+  color: #d6dee7;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.auterim-v3-page .architecture-chip i,
+.auterim-v3-page .architecture-control-head i {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #37e6d4;
+  box-shadow: 0 0 12px rgba(55, 230, 212, .3);
+}
+
+/* The control layer is the actual product sitting in the middle of the diagram —
+   matching the site's flat editorial language (.op / .ucr / pricing): an accent
+   top border and generous space carry the emphasis, not a raised gradient card.
+   Note: this element is left entirely un-transformed and un-repositioned — its
+   natural box IS what determines the row's height (it is the tallest item in the
+   row, see `.architecture-flow` below), so any translateY/margin trick to make it
+   "float" higher would silently break the flow-line centering math. */
+/* A single restrained accent rule is enough to mark this as the column your eye
+   should land on first, without reintroducing a box/glow. */
+.auterim-v3-page .architecture-control {
+  position: relative;
+  z-index: 2;
+  padding-left: 18px;
+  border-left: 2px solid var(--acc);
+}
+
+.auterim-v3-page .architecture-control-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.auterim-v3-page .architecture-control-head .lbl {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.auterim-v3-page .architecture-control-pill {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+  color: #55ecde;
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: .17em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.auterim-v3-page .architecture-control-steps {
+  display: grid;
+  margin-top: 26px;
+  border-top: 1px solid var(--rule);
+}
+
+.auterim-v3-page .architecture-control-steps > div {
+  display: grid;
+  grid-template-columns: 34px minmax(92px, .7fr) minmax(0, 1.3fr);
+  align-items: center;
+  min-height: 56px;
+  gap: 12px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.auterim-v3-page .architecture-control-steps b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 23px;
+  height: 23px;
+  border-radius: 7px;
+  background: rgba(111, 242, 229, .08);
+  box-shadow: inset 0 0 0 1px rgba(111, 242, 229, .28);
+  color: #52e7d8;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .03em;
+}
+
+.auterim-v3-page .architecture-control-steps > div:last-child b {
+  background: rgba(255, 204, 102, .1);
+  box-shadow: inset 0 0 0 1px rgba(255, 204, 102, .42);
+  color: #ffc656;
+}
+
+.auterim-v3-page .architecture-control-steps strong {
+  color: #f2f5f8;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
+
+.auterim-v3-page .architecture-control-steps span {
+  color: #98a6b5;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+/* Flow connectors — one straight line per side (not a fan to individual chips, which
+   was the previous version's bug: it assumed chip positions the layout can't
+   guarantee). Geometry, reasoned exactly rather than guessed:
+   `.architecture-ledger` sets `align-items:start`, so every row-1 item is sized to
+   its own natural content height and top-aligned — nothing stretches by default.
+   `.architecture-control` is by far the tallest item in row 1 (header + copy + three
+   step rows + generous padding, easily 420-480px vs. the shorter chip stacks), so it
+   alone determines the row's auto height, and — being top-aligned in a track sized to
+   exactly its own height — it fills that track edge-to-edge. That means the row's
+   vertical center *is* the control card's vertical center, with no extra offset.
+   `.architecture-flow` below overrides the inherited `align-items:start` with its own
+   `align-self:stretch`, so its box is resized to exactly that row height (whatever it
+   turns out to be, with zero hardcoded numbers on our side). A path drawn at y=50 in
+   a 0-100 viewBox is therefore always at 50% of the connector's real rendered height —
+   i.e. always exactly level with the control card's center, regardless of how tall
+   the control card's content ends up being. */
+.auterim-v3-page .architecture-flow {
+  position: relative;
+  grid-row: 1 / span 4;
+  align-self: stretch;
+  width: 100%;
+  padding: 0 16px;
+}
+
+/* A static arrow per side, pointing toward the control card, pulsing in place
+   like a loading indicator rather than traveling or drawing a line. */
+.auterim-v3-page .architecture-flow-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  color: var(--acc-hi);
+  opacity: .3;
+}
+
+.auterim-v3-page .architecture-flow-a .architecture-flow-dot { transform: translate(-50%, -50%); }
+.auterim-v3-page .architecture-flow-b .architecture-flow-dot { transform: translate(-50%, -50%) scaleX(-1); }
+
+.auterim-v3-page .architecture-ledger.rv.in .architecture-flow-a .architecture-flow-dot {
+  animation: architecture-arrow-pulse-a 1.8s ease-in-out infinite;
+}
+.auterim-v3-page .architecture-ledger.rv.in .architecture-flow-b .architecture-flow-dot {
+  animation: architecture-arrow-pulse-b 1.8s ease-in-out .5s infinite;
+}
+
+@keyframes architecture-arrow-pulse-a {
+  0%, 100% { opacity: .3; transform: translate(-50%, -50%) scale(.9); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+}
+@keyframes architecture-arrow-pulse-b {
+  0%, 100% { opacity: .3; transform: translate(-50%, -50%) scaleX(-1) scale(.9); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scaleX(-1) scale(1.08); }
+}
+
+/* The closing statement: a full-width horizontal bar beneath all three columns,
+   not a note tucked under one of them — it applies to the whole diagram, so it
+   reads as one. Same three-part rhythm (tag / statement / caption) as .pol-line
+   elsewhere on this page, flat accent-bordered rather than boxed. */
+.auterim-v3-page .architecture-gate {
+  position: relative;
+  grid-column: 1 / -1;
+  grid-row: 5;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  column-gap: 28px;
+  row-gap: 8px;
+  margin-top: 68px;
+  padding: 26px 0;
+  border-top: 1px solid rgba(255, 193, 76, .35);
+}
+
+.auterim-v3-page .architecture-gate .gate-tag {
+  flex: none;
+  color: #ffc656;
+  white-space: nowrap;
+}
+
+.auterim-v3-page .architecture-gate strong {
+  display: block;
+  flex: none;
+  margin: 0;
+  color: #f3f5f7;
+  font-size: 16px;
+  font-weight: 550;
+  line-height: 1.4;
+  letter-spacing: -.018em;
+}
+
+/* The whole line centers as one group — tag, statement and caption sit together,
+   the caption just trailing at the end, rather than being stretched apart across
+   three evenly spaced columns or pinned to the far edges. */
+.auterim-v3-page .architecture-gate > span:last-child {
+  display: block;
+  color: #aeb9c7;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+@media (max-width: 820px) {
+  /* Subgrid only makes sense across the three side-by-side columns — once they
+     stack, each column reverts to plain block flow with its rows following in
+     natural document order. */
+  .auterim-v3-page .architecture-ledger {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+    row-gap: 0;
+  }
+
+  .auterim-v3-page .architecture-column {
+    display: block;
+    grid-row: auto;
+    padding: 27px 0;
+  }
+
+  .auterim-v3-page .architecture-column > .lbl,
+  .auterim-v3-page .architecture-control-head,
+  .auterim-v3-page .architecture-column h3,
+  .auterim-v3-page .architecture-column > p,
+  .auterim-v3-page .architecture-chips,
+  .auterim-v3-page .architecture-control-steps {
+    grid-row: auto;
+  }
+
+  .auterim-v3-page .architecture-column h3,
+  .auterim-v3-page .architecture-column > p {
+    max-width: 500px;
+  }
+
+  .auterim-v3-page .architecture-control {
+    margin: 4px 0;
+  }
+
+  /* A horizontal flow diagram does not translate to a stacked layout: the
+     connectors collapse to a short vertical tick between sections. */
+  .auterim-v3-page .architecture-flow {
+    grid-row: auto;
+    width: 100%;
+    height: 44px;
+    padding: 0;
+  }
+
+  .auterim-v3-page .architecture-flow-dot {
+    display: none;
+  }
+
+  .auterim-v3-page .architecture-flow::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    transform: translateX(-.5px);
+    background: linear-gradient(180deg, rgba(189, 207, 224, .04), rgba(55, 230, 212, .4), rgba(189, 207, 224, .04));
+  }
+
+  .auterim-v3-page .architecture-gate {
+    grid-column: auto;
+    grid-row: auto;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    row-gap: 10px;
+    margin: 30px 0 4px;
+    padding: 22px 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .auterim-v3-page .architecture-control-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .auterim-v3-page .architecture-control-steps > div {
+    grid-template-columns: 26px 1fr;
+    gap: 6px 10px;
+    padding: 11px 0;
+  }
+
+  .auterim-v3-page .architecture-control-steps span {
+    grid-column: 2;
+  }
+}
+
+/* Motion follows the product model: source, control, then decision. */
+.auterim-v3-page .architecture-ledger .architecture-column,
+.auterim-v3-page .architecture-ledger .architecture-flow,
+.auterim-v3-page .architecture-ledger .architecture-gate {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.auterim-v3-page .architecture-ledger.rv.in .architecture-systems,
+.auterim-v3-page .architecture-ledger.rv.in .architecture-flow-a,
+.auterim-v3-page .architecture-ledger.rv.in .architecture-control,
+.auterim-v3-page .architecture-ledger.rv.in .architecture-flow-b,
+.auterim-v3-page .architecture-ledger.rv.in .architecture-outcomes,
+.auterim-v3-page .architecture-ledger.rv.in .architecture-gate {
+  animation: auterim-architecture-reveal 560ms cubic-bezier(.22,.7,.24,1) both;
+}
+
+.auterim-v3-page .architecture-ledger.rv.in .architecture-flow-a { animation-delay: 70ms; }
+.auterim-v3-page .architecture-ledger.rv.in .architecture-control { animation-delay: 140ms; }
+.auterim-v3-page .architecture-ledger.rv.in .architecture-flow-b { animation-delay: 210ms; }
+.auterim-v3-page .architecture-ledger.rv.in .architecture-outcomes { animation-delay: 260ms; }
+.auterim-v3-page .architecture-ledger.rv.in .architecture-gate { animation-delay: 380ms; }
+
+@keyframes auterim-architecture-reveal {
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auterim-v3-page .architecture-ledger .architecture-column,
+  .auterim-v3-page .architecture-ledger .architecture-flow,
+  .auterim-v3-page .architecture-ledger .architecture-gate {
+    opacity: 1;
+    transform: none;
+    animation: none !important;
+  }
+
+  .auterim-v3-page .architecture-flow-dot {
+    animation: none !important;
+    opacity: .6;
+  }
+}
+
+/* Hero motion is deliberately visible once, then settles into a quiet live state. */
+@media (prefers-reduced-motion: no-preference) {
+  .auterim-v3-page .hero-editorial-eyebrow,
+  .auterim-v3-page .hero-editorial h1,
+  .auterim-v3-page .hero-editorial .say,
+  .auterim-v3-page .hero-editorial .hero-cta,
+  .auterim-v3-page .hero-editorial .note {
+    opacity: 0;
+    transform: translateY(10px);
+    animation: auterim-hero-copy-in 620ms cubic-bezier(.22,.7,.24,1) forwards;
+  }
+
+  .auterim-v3-page .hero-editorial h1 { animation-delay: 90ms; }
+  .auterim-v3-page .hero-editorial .say { animation-delay: 180ms; }
+  .auterim-v3-page .hero-editorial .hero-cta { animation-delay: 270ms; }
+  .auterim-v3-page .hero-editorial .note { animation-delay: 350ms; }
+
+  .auterim-v3-page .hero-editorial-copy::after {
+    transform-origin: top;
+    animation: auterim-hero-rail-in 760ms cubic-bezier(.22,.7,.24,1) 40ms both;
+  }
+
+  .auterim-v3-page .hero-artifact {
+    will-change: transform;
+    animation: auterim-hero-artifact-idle 7s ease-in-out 3.5s infinite;
+  }
+
+  /* Idle ambient life, independent of the cursor — plays automatically on load
+     and never stops. These only ever touch opacity/filter, never `transform`,
+     so they layer cleanly underneath the cursor-parallax transform on the same
+     elements (see the `(hover: hover) and (pointer: fine)` block below) instead
+     of fighting it for the same property. */
+  .auterim-v3-page .hero-editorial-aura {
+    animation: hero-editorial-aura-breathe 11s ease-in-out infinite;
+  }
+  .auterim-v3-page .hero-editorial-beam {
+    animation: hero-editorial-beam-breathe 9s ease-in-out .6s infinite;
+  }
+  .auterim-v3-page .hero-artifact-panel::before {
+    animation: hero-artifact-panel-glow-breathe 12s ease-in-out 1.4s infinite;
+  }
+
+  /* The word that matters solidifies from regular into bold a beat after the
+     headline settles, instead of arriving already bold. */
+  .auterim-v3-page .hero-editorial-forward-reg {
+    opacity: 1;
+    animation: hero-editorial-forward-solidify 520ms ease 640ms forwards;
+  }
+}
+
+@keyframes auterim-hero-copy-in {
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes auterim-hero-rail-in {
+  from { transform: scaleY(.14); opacity: 0; }
+  to { transform: scaleY(1); opacity: 1; }
+}
+
+@keyframes auterim-hero-artifact-idle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes hero-editorial-aura-breathe {
+  0%, 100% { opacity: .85; filter: blur(30px); }
+  50% { opacity: 1; filter: blur(35px); }
+}
+
+@keyframes hero-editorial-beam-breathe {
+  0%, 100% { opacity: .8; }
+  50% { opacity: 1; }
+}
+
+@keyframes hero-artifact-panel-glow-breathe {
+  0%, 100% { opacity: .55; }
+  50% { opacity: 1; }
+}
+
+@keyframes hero-editorial-forward-solidify {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Hero artifact: faithful port of the Auterim Hero design's right-column visual.
+   Reveal animation is wired into the page's existing IntersectionObserver
+   (.sequence-in) instead of the source design's standalone setInterval loop. */
+.auterim-v3-page .hero-editorial-eyebrow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.auterim-v3-page .hero-editorial-eyebrow::before {
+  display: none;
+}
+.auterim-v3-page .hero-editorial-copy { position: relative; padding-left: 38px; }
+.auterim-v3-page .hero-editorial-copy::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 6px;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, var(--rule) 12%, var(--rule) 78%, transparent);
+}
+.auterim-v3-page .hero-editorial-copy::after {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 4px;
+  width: 3px;
+  height: 44px;
+  background: var(--acc);
+  box-shadow: 0 0 16px rgba(55,230,212,.5);
+}
+.auterim-v3-page .hero-editorial h1 { margin-top: 26px; }
+.auterim-v3-page .hero-editorial h1 > span { display: block; color: #c8d1dc; text-wrap: balance; }
+.auterim-v3-page .hero-editorial h1 em { color: var(--acc); font-style: italic; font-weight: 700; }
+
+/* "forward." solidifies from regular into bold on load. Two identically-sized
+   copies are stacked: the bold one stays in normal flow and defines the box's
+   width (so nothing reflows), the regular one sits absolutely on top and fades
+   out to reveal it. No real "Geist" variable font is loaded on this site (see
+   layout.tsx / globals.css — --font-geist-sans falls back to a system-ui stack),
+   so font-variation-settings weight interpolation isn't reliable here; a plain
+   opacity crossfade between two weights is the robust equivalent. */
+.auterim-v3-page .hero-editorial-forward {
+  position: relative;
+  display: inline-block;
+  line-height: inherit;
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+.auterim-v3-page .hero-editorial-forward-bold { font-weight: 700; }
+.auterim-v3-page .hero-editorial-forward-reg {
+  position: absolute;
+  inset: 0;
+  font-weight: 500;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Primary CTA: a restrained light sweep on hover and a small press-down on click.
+   `.btn-a` is a global class reused across the page, so both rules are scoped to
+   this hero to avoid touching every other primary button on the site. */
+.auterim-v3-page .hero-editorial .btn-a {
+  position: relative;
+  overflow: hidden;
+  transition: background .2s, color .2s, box-shadow .2s, opacity .2s, transform .15s cubic-bezier(.3,.7,.4,1);
+}
+.auterim-v3-page .hero-editorial .btn-a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  left: -60%;
+  width: 40%;
+  background: linear-gradient(115deg, transparent, rgba(255,255,255,.32), transparent);
+  transform: skewX(-16deg) translateX(0%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform .7s cubic-bezier(.2,.7,.2,1), opacity .3s ease;
+}
+.auterim-v3-page .hero-editorial .btn-a:hover::after { transform: skewX(-16deg) translateX(330%); opacity: 1; }
+.auterim-v3-page .hero-editorial .btn-a:active { transform: scale(.97); }
+@media (prefers-reduced-motion: reduce) {
+  .auterim-v3-page .hero-editorial .btn-a::after { transition: none; }
+}
+
+/* Full-bleed hero backdrop (mirrors the source design's grid-tex/beam/aura,
+   which sit behind the whole hero, not just the artifact column). The wrap
+   gets an explicit stacking order so its content always paints above them. */
+.auterim-v3-page .hero-editorial-in { position: relative; z-index: 1; }
+.auterim-v3-page .hero-editorial-tex {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(rgba(255,255,255,.032) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.032) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(130% 105% at 58% 42%, #000 12%, rgba(0,0,0,.5) 50%, transparent 80%);
+  -webkit-mask-image: radial-gradient(130% 105% at 58% 42%, #000 12%, rgba(0,0,0,.5) 50%, transparent 80%);
+}
+/* Slow enough that it never reads as "an animation" — just keeps the backdrop from
+   looking frozen. Gated the same way as the rest of the hero's entrance motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .auterim-v3-page .hero-editorial-tex { animation: hero-editorial-tex-drift 130s linear infinite; }
+}
+@keyframes hero-editorial-tex-drift {
+  from { background-position: 0 0; }
+  to { background-position: 720px 720px; }
+}
+.auterim-v3-page .hero-editorial-beam {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  top: 0;
+  height: 62%;
+  pointer-events: none;
+  background: linear-gradient(196deg, rgba(55,230,212,.055), transparent 58%);
+}
+.auterim-v3-page .hero-editorial-aura {
+  position: absolute;
+  right: -6%;
+  top: -14%;
+  width: 760px;
+  max-width: 70%;
+  height: 620px;
+  pointer-events: none;
+  background: radial-gradient(closest-side, rgba(55,230,212,.11), transparent 70%);
+  filter: blur(30px);
+}
+
+/* Cursor-reactive ambient parallax + panel tilt. JS only ever writes CSS custom
+   properties (--hero-px/--hero-py from pointer-vs-section, --hero-artifact-rx/-ry
+   from pointer-vs-panel); the actual motion — and its damping — is CSS-owned via
+   the transition below, so there is never a JS/CSS animation fight. Inert on
+   touch (no hover/fine pointer) and never written to when reduced motion is on. */
+@media (hover: hover) and (pointer: fine) {
+  .auterim-v3-page .hero-editorial-aura {
+    transition: transform .5s cubic-bezier(.2,.8,.2,1);
+    transform: translate3d(calc(var(--hero-px, 0) * 16px), calc(var(--hero-py, 0) * 16px), 0);
+  }
+  .auterim-v3-page .hero-artifact-panel {
+    transition: transform .5s cubic-bezier(.2,.8,.2,1);
+    transform:
+      perspective(900px)
+      translate3d(calc(var(--hero-px, 0) * 5px), calc(var(--hero-py, 0) * 5px), 0)
+      rotateX(calc(var(--hero-artifact-rx, 0) * -2.6deg))
+      rotateY(calc(var(--hero-artifact-ry, 0) * 2.6deg));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auterim-v3-page .hero-editorial-aura,
+  .auterim-v3-page .hero-artifact-panel { transition: none !important; transform: none !important; }
+}
+
+.auterim-v3-page .hero-artifact { position: relative; }
+.auterim-v3-page .hero-artifact-panel {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  border-radius: 12px;
+  padding: 20px 24px 24px;
+  background: linear-gradient(180deg, #121820, #0A0E14);
+  box-shadow: inset 0 0 0 1px var(--rule), 0 40px 90px -40px rgba(0,0,0,.9);
+}
+.auterim-v3-page .hero-artifact-panel::before {
+  content: "";
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(55,230,212,.7), transparent);
+}
+.auterim-v3-page .hero-artifact-scan {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 120px;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(55,230,212,.055), transparent);
+  animation: hero-artifact-scan 7s cubic-bezier(.4,0,.2,1) infinite;
+}
+@keyframes hero-artifact-scan {
+  0% { transform: translateY(-120px); opacity: 0; }
+  12% { opacity: 1; }
+  70% { transform: translateY(430px); opacity: 0; }
+  100% { transform: translateY(430px); opacity: 0; }
+}
+
+.auterim-v3-page .hero-artifact-top { display: flex; align-items: center; gap: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--rule); }
+.auterim-v3-page .hero-artifact-top-k { font-family: var(--mono); font-size: 9.5px; letter-spacing: .22em; text-transform: uppercase; color: var(--ink); }
+.auterim-v3-page .hero-artifact-run {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--acc);
+  white-space: nowrap;
+}
+.auterim-v3-page .hero-artifact-run i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--acc);
+  box-shadow: 0 0 9px rgba(55,230,212,.8);
+  animation: beat 2.4s ease-in-out infinite;
+}
+
+.auterim-v3-page .hero-artifact-ctx { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 14px; background: var(--rule); border-radius: 6px; overflow: hidden; }
+.auterim-v3-page .hero-artifact-ctx > div { display: flex; flex-direction: column; gap: 7px; padding: 11px 12px; background: #0D131B; opacity: 0; transform: translateY(6px); }
+.auterim-v3-page .hero-artifact-ctx svg { display: block; opacity: .9; }
+.auterim-v3-page .hero-artifact-ctx b { font-family: var(--mono); font-size: 9.5px; font-weight: 400; letter-spacing: .11em; text-transform: uppercase; color: var(--dim); white-space: nowrap; }
+.auterim-v3-page .hero-artifact-ctx-f { margin-top: 8px; font-family: var(--mono); font-size: 9.5px; letter-spacing: .13em; text-transform: uppercase; color: var(--faint); }
+
+.auterim-v3-page .hero-artifact-rail { display: block; width: 100%; height: 30px; margin-top: 2px; }
+.auterim-v3-page .hero-artifact-rail path { fill: none; stroke: var(--rule-2); stroke-width: 1; }
+.auterim-v3-page .hero-artifact-rail-fl {
+  stroke: var(--acc-hi);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-dasharray: 14 260;
+  opacity: 0;
+}
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-rail-fl { animation: hero-artifact-flow 3.4s cubic-bezier(.4,0,.5,1) infinite; }
+.auterim-v3-page .hero-artifact-rail-fl:nth-of-type(5) { animation-delay: .5s; }
+.auterim-v3-page .hero-artifact-rail-fl:nth-of-type(6) { animation-delay: 1s; }
+@keyframes hero-artifact-flow {
+  0% { stroke-dashoffset: 274; opacity: 0; }
+  12% { opacity: .95; }
+  72% { stroke-dashoffset: 0; opacity: 0; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+.auterim-v3-page .hero-artifact-op { display: flex; align-items: center; gap: 14px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--rule); }
+.auterim-v3-page .hero-artifact-op-ic {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--acc);
+  background: linear-gradient(135deg, rgba(55,230,212,.16), rgba(55,230,212,.03));
+  box-shadow: inset 0 0 0 1px rgba(55,230,212,.34);
+}
+.auterim-v3-page .hero-artifact-op h2 { margin: 0; white-space: nowrap; font-size: 16px; font-weight: 500; letter-spacing: -.02em; }
+.auterim-v3-page .hero-artifact-op-co { margin-top: 5px; white-space: nowrap; font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--mute); }
+.auterim-v3-page .hero-artifact-task { margin: 12px 0 0; font-size: 14.5px; line-height: 1.45; color: var(--dim); opacity: 0; transform: translateY(6px); }
+
+.auterim-v3-page .hero-artifact-seq { margin: 16px 0 0; padding: 0; list-style: none; position: relative; }
+.auterim-v3-page .hero-artifact-seq::before { content: ""; position: absolute; left: 3px; top: 10px; bottom: 10px; width: 1px; background: var(--rule); }
+.auterim-v3-page .hero-artifact-seq li { position: relative; display: flex; align-items: center; white-space: nowrap; gap: 16px; padding: 6px 0 6px 22px; font-size: 13.5px; color: var(--ink); opacity: 0; transform: translateY(6px); }
+.auterim-v3-page .hero-artifact-seq li::before { content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+.auterim-v3-page .hero-artifact-seq li em { margin-left: auto; font-style: normal; font-family: var(--mono); font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
+.auterim-v3-page .hero-artifact-seq li.hero-artifact-seq-now { color: var(--gate); }
+.auterim-v3-page .hero-artifact-seq li.hero-artifact-seq-now::before { background: var(--gate); box-shadow: 0 0 0 4px rgba(255,204,102,.12); animation: beat 2.4s ease-in-out infinite; }
+.auterim-v3-page .hero-artifact-seq li.hero-artifact-seq-next { color: var(--mute); }
+.auterim-v3-page .hero-artifact-seq li.hero-artifact-seq-next::before { background: #0B1017; box-shadow: inset 0 0 0 1.5px var(--edge); }
+
+.auterim-v3-page .hero-artifact-gate {
+  position: relative;
+  margin-top: 20px;
+  width: 100%;
+  padding: 16px 18px 18px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #101620, #0A0E14);
+  box-shadow: inset 0 0 0 1px rgba(255,204,102,.2), 0 34px 70px -26px rgba(0,0,0,.95);
+  opacity: 0;
+  transform: translateY(18px) scale(.985);
+}
+.auterim-v3-page .hero-artifact-gate-k { display: inline-flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 9.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--gate); }
+.auterim-v3-page .hero-artifact-gate-k::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: beat 2.4s ease-in-out infinite; }
+.auterim-v3-page .hero-artifact-gate p { margin: 12px 0 0; font-size: 14.5px; line-height: 1.4; color: var(--ink); }
+.auterim-v3-page .hero-artifact-gate-rdy { margin-top: 6px; font-family: var(--mono); font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
+.auterim-v3-page .hero-artifact-gate-acts { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+.auterim-v3-page .hero-artifact-mini {
+  position: relative;
+  font-family: var(--sans);
+  font-size: 13.5px;
+  font-weight: 500;
+  padding: 10px 18px;
+  border-radius: 2px;
+  border: 0;
+  cursor: pointer;
+  transition: background .2s, box-shadow .2s, color .2s;
+}
+.auterim-v3-page .hero-artifact-mini-go { background: var(--acc); color: #04211E; }
+.auterim-v3-page .hero-artifact-mini-go:hover { background: var(--acc-hi); }
+.auterim-v3-page .hero-artifact-mini-ed { background: transparent; color: var(--dim); box-shadow: inset 0 0 0 1px var(--rule-2); }
+.auterim-v3-page .hero-artifact-mini-ed:hover { color: var(--ink); box-shadow: inset 0 0 0 1px var(--edge); }
+
+/* Staggered reveal, triggered once by the shared scroll observer. */
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-ctx > div { animation: hero-artifact-rise .55s ease both; }
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-ctx > div:nth-child(2) { animation-delay: .12s; }
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-ctx > div:nth-child(3) { animation-delay: .24s; }
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-task { animation: hero-artifact-rise .5s ease .5s both; }
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-seq li { animation: hero-artifact-rise .5s ease both; }
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-seq li:nth-child(1) { animation-delay: .8s; }
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-seq li:nth-child(2) { animation-delay: 1.15s; }
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-seq li:nth-child(3) { animation-delay: 1.5s; }
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-seq li:nth-child(4) { animation-delay: 1.9s; }
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-seq li:nth-child(5) { animation-delay: 2.2s; }
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-gate {
+  animation:
+    hero-artifact-gate-in .8s cubic-bezier(.2,.8,.2,1) 2.6s both,
+    hero-artifact-gate-flash 1.1s ease-out 2.6s;
+}
+@keyframes hero-artifact-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes hero-artifact-gate-in { from { opacity: 0; transform: translateY(18px) scale(.985); } to { opacity: 1; transform: none; } }
+/* One-shot arrival cue — a single soft amber pulse marking the moment the approval
+   gate lands, not an ambient loop like `beat`. Runs once alongside the entrance. */
+@keyframes hero-artifact-gate-flash {
+  0% { box-shadow: inset 0 0 0 1px rgba(255,204,102,.2), 0 34px 70px -26px rgba(0,0,0,.95), 0 0 0 0 rgba(255,204,102,0); }
+  38% { box-shadow: inset 0 0 0 1px rgba(255,204,102,.55), 0 34px 70px -26px rgba(0,0,0,.95), 0 0 32px 5px rgba(255,204,102,.3); }
+  100% { box-shadow: inset 0 0 0 1px rgba(255,204,102,.2), 0 34px 70px -26px rgba(0,0,0,.95), 0 0 0 0 rgba(255,204,102,0); }
+}
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-mini-go::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgba(55,230,212,.5);
+  animation: hero-artifact-ring 2.6s ease-out 3.4s infinite;
+}
+@keyframes hero-artifact-ring {
+  0% { opacity: .9; transform: scale(1); }
+  60%, 100% { opacity: 0; transform: scale(1.05); }
+}
+
+/* Cap the hero near one viewport on desktop, matching the source design's
+   min-height + centered layout intent, without letting the next section peek in. */
+@media (min-width: 1081px) {
+  .auterim-v3-page .hero-editorial {
+    display: flex;
+    align-items: center;
+    min-height: calc(100vh - 66px);
+    padding-top: 88px;
+    padding-bottom: 40px;
+  }
+  .auterim-v3-page .hero-editorial-in { width: 100%; }
+  .auterim-v3-page .hero-artifact { padding-bottom: 156px; }
+  .auterim-v3-page .hero-artifact-panel { padding-bottom: 54px; }
+  .auterim-v3-page .hero-artifact-gate { position: absolute; z-index: 2; left: -48px; bottom: -52px; width: 336px; margin-top: 0; }
+}
+@media (max-width: 820px) {
+  .auterim-v3-page .hero-editorial-copy { padding-left: 30px; }
+  .auterim-v3-page .hero-editorial-copy::after { height: 38px; }
+  .auterim-v3-page .hero-artifact-panel { padding: 18px 20px 24px; }
+  .auterim-v3-page .hero-artifact-op h2 { font-size: 16px; }
+  .auterim-v3-page .hero-artifact-gate { padding: 18px 20px 20px; }
+}
+@media (max-width: 520px) {
+  .auterim-v3-page .hero-editorial-copy { padding-left: 22px; }
+  .auterim-v3-page .hero-editorial-copy::after { height: 32px; }
+  .auterim-v3-page .hero-editorial-aura { width: 440px; height: 380px; }
+  .auterim-v3-page .hero-artifact-panel { padding: 16px 16px 20px; border-radius: 10px; }
+  .auterim-v3-page .hero-artifact-top { gap: 10px; padding-bottom: 14px; }
+  .auterim-v3-page .hero-artifact-top-k { font-size: 8.5px; }
+  .auterim-v3-page .hero-artifact-run { font-size: 8.5px; gap: 7px; }
+  .auterim-v3-page .hero-artifact-ctx { margin-top: 14px; }
+  .auterim-v3-page .hero-artifact-ctx > div { padding: 11px 10px; gap: 7px; }
+  .auterim-v3-page .hero-artifact-ctx b { font-size: 8.5px; white-space: normal; }
+  .auterim-v3-page .hero-artifact-op { margin-top: 20px; padding-top: 18px; gap: 12px; }
+  .auterim-v3-page .hero-artifact-op-ic { width: 34px; height: 34px; }
+  .auterim-v3-page .hero-artifact-op h2 { font-size: 15.5px; }
+  .auterim-v3-page .hero-artifact-op-co { white-space: normal; }
+  .auterim-v3-page .hero-artifact-task { font-size: 14px; }
+  .auterim-v3-page .hero-artifact-seq li { font-size: 13px; gap: 10px; }
+  .auterim-v3-page .hero-artifact-gate { padding: 16px 16px 18px; }
+  .auterim-v3-page .hero-artifact-gate p { font-size: 14px; }
+  .auterim-v3-page .hero-artifact-gate-acts { flex-wrap: wrap; }
+  .auterim-v3-page .hero-artifact-mini { padding: 9px 14px; font-size: 12.5px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auterim-v3-page .hero-artifact-scan,
+  .auterim-v3-page .hero-artifact-rail-fl,
+  .auterim-v3-page .hero-artifact-run i,
+  .auterim-v3-page .hero-artifact-gate-k::before,
+  .auterim-v3-page .hero-artifact-seq li.hero-artifact-seq-now::before,
+  .auterim-v3-page .hero-artifact-ctx > div,
+  .auterim-v3-page .hero-artifact-task,
+  .auterim-v3-page .hero-artifact-seq li,
+  .auterim-v3-page .hero-artifact-gate,
+  .auterim-v3-page .hero-artifact-mini-go::after { animation: none !important; }
+  .auterim-v3-page .hero-artifact-ctx > div,
+  .auterim-v3-page .hero-artifact-task,
+  .auterim-v3-page .hero-artifact-seq li,
+  .auterim-v3-page .hero-artifact-gate { opacity: 1; transform: none; }
+}
+
+/* The proof note stays secondary, but remains legible at desktop distance. */
+.auterim-v3-page .hero-editorial .note {
+  color: #aab5c2;
+  font-size: 10.5px;
+  letter-spacing: .065em;
+}
+
+/* ---------- Closing CTA redesign ----------
+   This was the one section on the page that never got the pass every other
+   section received this session (hero, operators, run trace, architecture,
+   FAQ): no card surfaces, no icon badges, no reveal-on-scroll. It also had
+   zero `.rv` anywhere, so it simply appeared instead of settling in. This
+   block brings it to parity: the wrap gets `.rv` (wired via JS/rv.in like
+   `.architecture-ledger`), the main column stays a big open confident
+   headline (a closing CTA should not be boxed in), and the preview aside
+   becomes an actual raised card in the same family as `.architecture-control`
+   and `.hero-artifact-panel` — icon-badge rows, hover state, and a restrained
+   traveling highlight along its connector line reusing the same signal-flow
+   language as the hero rail and the architecture flow-lines. */
+
+/* Small decorative dot ahead of the kicker. */
+.auterim-v3-page .close-main .lbl {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+.auterim-v3-page .close-main .lbl i {
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--acc);
+  box-shadow: 0 0 8px rgba(55, 230, 212, .5);
+}
+
+/* Reveal: the whole block fades/rises via the shared `.rv` base rule, and the
+   two columns settle in with a short independent stagger on top of that —
+   same technique as `.architecture-ledger.rv.in .architecture-column`. */
+.auterim-v3-page .close-in.rv .close-main,
+.auterim-v3-page .close-in.rv .close-preview {
+  opacity: 0;
+  transform: translateY(14px);
+}
+.auterim-v3-page .close-in.rv.in .close-main {
+  animation: auterim-close-reveal 620ms cubic-bezier(.22, .7, .24, 1) both;
+}
+.auterim-v3-page .close-in.rv.in .close-preview {
+  animation: auterim-close-reveal 620ms cubic-bezier(.22, .7, .24, 1) 140ms both;
+}
+@keyframes auterim-close-reveal {
+  to { opacity: 1; transform: none; }
+}
+
+/* Preview aside matches the site's flat editorial language (.op / .ucr /
+   pricing) — a plain bordered block, not a raised gradient card with glow. */
+.auterim-v3-page .close-preview {
+  padding: 4px 0 0;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, .12);
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.auterim-v3-page .close-preview-head {
+  display: flex;
+  align-items: center;
+  padding: 0 0 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, .1);
+}
+.auterim-v3-page .close-preview > .close-preview-head > .lbl { padding: 0; color: #93a0af; }
+
+.auterim-v3-page .close-preview-steps { position: relative; margin-top: 2px; }
+
+/* Connector line + traveling spark: the same "signal flowing through the
+   product" idea as the architecture flow-lines and the hero rail, scaled down
+   and slowed to a calm, closing-moment pace. Insets keep it clear of the
+   first/last icon badges. `top` is animated as a percentage of this wrapper's
+   own height (same approach as `.run-rail-dot`), so it self-adjusts to
+   however tall the three rows end up being — no hardcoded pixel span. */
+.auterim-v3-page .close-preview-line {
+  position: absolute;
+  left: 18px;
+  top: 32px;
+  bottom: 32px;
+  width: 1px;
+  background: linear-gradient(to bottom, rgba(111, 242, 229, .5), rgba(111, 242, 229, .08));
+  pointer-events: none;
+}
+.auterim-v3-page .close-preview-spark {
+  position: absolute;
+  left: 50%;
+  top: 0%;
+  width: 5px;
+  height: 5px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--acc-hi);
+  box-shadow: 0 0 10px rgba(111, 242, 229, .85);
+  opacity: 0;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .auterim-v3-page .close-in.rv.in .close-preview-spark {
+    animation: close-preview-spark-travel 4.8s cubic-bezier(.4, 0, .5, 1) infinite;
+  }
+}
+@keyframes close-preview-spark-travel {
+  0% { top: 0%; opacity: 0; }
+  8% { opacity: 1; }
+  92% { top: 100%; opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.auterim-v3-page .close-preview-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  margin: 0 -8px;
+  padding: 15px 8px;
+  border-radius: 12px;
+  transition: background 200ms ease;
+}
+.auterim-v3-page .close-preview-step:hover { background: rgba(255, 255, 255, .035); }
+
+/* Icon badge — same circular-mark lockup used for `.architecture-control-mark`
+   and `.hero-artifact-op-ic`, so this reads as a considered "what you get"
+   list instead of a footnote with bare mono numerals. An opaque base color is
+   required here (not just the translucent accent gradient) so the badge fully
+   occludes the connector line running behind it, instead of the line visibly
+   cutting across the icon glyph. */
+.auterim-v3-page .close-preview-step-ic {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: var(--acc-hi);
+  background-color: #0b1116;
+  background-image: radial-gradient(circle at 34% 30%, rgba(111, 242, 229, .28), rgba(111, 242, 229, .05) 72%);
+  box-shadow: inset 0 0 0 1px rgba(111, 242, 229, .38);
+}
+.auterim-v3-page .close-preview-step strong { color: #e8edf2; font-size: 18px; font-weight: 500; letter-spacing: -.018em; }
+
+/* Primary CTA gets the same tactile sheen-sweep + press-down as the hero's
+   primary CTA — this is the last, most important CTA on the page, so it
+   deserves the same quality. `.btn-a` is reused sitewide, so this stays
+   scoped to `.close-actions` only, matching how the hero scopes its own copy
+   of this treatment to `.hero-editorial .btn-a`. */
+.auterim-v3-page .close-actions .btn-a {
+  position: relative;
+  overflow: hidden;
+  transition: background .2s, color .2s, box-shadow .2s, opacity .2s, transform .15s cubic-bezier(.3, .7, .4, 1);
+}
+.auterim-v3-page .close-actions .btn-a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  left: -60%;
+  width: 40%;
+  background: linear-gradient(115deg, transparent, rgba(255, 255, 255, .32), transparent);
+  transform: skewX(-16deg) translateX(0%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform .7s cubic-bezier(.2, .7, .2, 1), opacity .3s ease;
+}
+.auterim-v3-page .close-actions .btn-a:hover::after { transform: skewX(-16deg) translateX(330%); opacity: 1; }
+.auterim-v3-page .close-actions .btn-a:active { transform: scale(.97); }
+
+/* The last, most important CTA on the page gets a slow idle glow so it draws
+   the eye even before the visitor reads the copy around it — same restrained
+   "breathing" pattern as the hero's ambient aura, just applied as a shadow
+   instead of a blurred background shape. Paused on hover so it doesn't fight
+   the sheen-sweep above. */
+@media (prefers-reduced-motion: no-preference) {
+  .auterim-v3-page .close-actions .btn-a {
+    animation: close-cta-glow 3.4s ease-in-out infinite;
+  }
+  .auterim-v3-page .close-actions .btn-a:hover {
+    animation-play-state: paused;
+  }
+}
+@keyframes close-cta-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(55, 230, 212, 0); }
+  50% { box-shadow: 0 0 26px 3px rgba(55, 230, 212, .38); }
+}
+
+@media (max-width: 480px) {
+  .auterim-v3-page .close-preview-step { margin: 0 -4px; padding: 13px 4px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auterim-v3-page .close-in.rv .close-main,
+  .auterim-v3-page .close-in.rv .close-preview {
+    opacity: 1;
+    transform: none;
+    animation: none !important;
+  }
+  .auterim-v3-page .close-preview-spark {
+    animation: none !important;
+  }
+  .auterim-v3-page .close-actions .btn-a::after { transition: none; }
+  .auterim-v3-page .close-actions .btn-a { animation: none !important; box-shadow: none; }
+}
+
+/* Standalone pages (Contact, Privacy, Terms, Security): a page-level hero built
+   from the same primitives as the homepage close section (.lbl dot, h1 in place
+   of h2, .close-actions), plus a few page-only additions kept in one place. */
+.auterim-v3-page .page-hero {
+  padding: 158px 0 86px;
+  border-bottom: 1px solid var(--rule);
+}
+.auterim-v3-page .page-hero .close-main h1 {
+  max-width: 16ch;
+  margin-top: 18px;
+  color: #f2f5f7;
+  font-size: clamp(2.4rem, 4.6vw, 3.6rem);
+  font-weight: 500;
+  letter-spacing: -.045em;
+  line-height: 1.04;
+  text-wrap: pretty;
+}
+@media (max-width: 820px) {
+  .auterim-v3-page .page-hero { padding: 118px 0 64px; }
+}
+
+/* A quiet tonal shift (same value used by .close and .connect-editorial) marks
+   the form as its own zone without breaking the page's full-width rhythm. */
+.auterim-v3-page .contact-form-section { background: #080c11; }
+
+/* Contact reasons: same three-column hairline grid as "01 / Connect", but the
+   whole cell is a mailto link instead of a static article. */
+.auterim-v3-page .contact-reasons a {
+  display: block;
+  min-width: 0;
+  padding: 31px 36px 31px 0;
+  color: inherit;
+  transition: background .18s ease;
+}
+.auterim-v3-page .contact-reasons a:hover { background: rgba(255,255,255,.016); }
+.auterim-v3-page .contact-reasons a:hover .connect-editorial-cue { color: #fff; }
+.auterim-v3-page .contact-reasons a:hover .connect-editorial-cue span { transform: translateX(3px); }
+.auterim-v3-page .contact-reasons a + a { padding-left: 36px; border-left: 1px solid var(--rule); }
+.auterim-v3-page .contact-reasons .connect-editorial-cue span { display: inline-block; transition: transform .18s ease; }
+@media (max-width: 820px) {
+  .auterim-v3-page .contact-reasons a { padding: 27px 0 !important; border-left: 0 !important; }
+  .auterim-v3-page .contact-reasons a + a { border-top: 1px solid var(--rule); }
+}
+
+/* Contact form: underline fields instead of boxed inputs, matching the site's
+   hairline-divider language rather than introducing a bordered-card look. */
+.auterim-v3-page .cf { margin-top: 48px; }
+.auterim-v3-page .cf-row { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; align-items: start; }
+.auterim-v3-page .cf-row + .cf-row,
+.auterim-v3-page .cf-row + .cf-field { margin-top: 30px; }
+.auterim-v3-page .cf-field { display: flex; flex-direction: column; gap: 10px; }
+.auterim-v3-page .cf-field label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--faint);
+  font: 9px var(--mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.auterim-v3-page .cf-field label em { color: var(--edge); font-style: normal; }
+.auterim-v3-page .cf-field input,
+.auterim-v3-page .cf-field select,
+.auterim-v3-page .cf-field textarea {
+  width: 100%;
+  padding: 10px 0 12px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  outline: none;
+  transition: border-color .2s ease;
+}
+.auterim-v3-page .cf-field select { appearance: none; border-radius: 0; color-scheme: dark; }
+.auterim-v3-page .cf-field option { color: var(--ink); background: #0b0f15; }
+.auterim-v3-page .cf-field textarea { resize: vertical; min-height: 118px; }
+.auterim-v3-page .cf-field input::placeholder,
+.auterim-v3-page .cf-field textarea::placeholder { color: var(--mute); }
+.auterim-v3-page .cf-field input:focus,
+.auterim-v3-page .cf-field select:focus,
+.auterim-v3-page .cf-field textarea:focus { border-bottom-color: var(--acc); }
+.auterim-v3-page .cf-error {
+  margin-top: 30px;
+  padding: 13px 16px;
+  border: 1px solid rgba(255,107,122,.3);
+  color: var(--stop);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.auterim-v3-page .cf-submit { margin-top: 34px; min-height: 46px; padding: 12px 22px; }
+.auterim-v3-page .cf-submit:disabled { opacity: .5; cursor: not-allowed; }
+.auterim-v3-page .cf-success { padding-top: 6px; }
+.auterim-v3-page .cf-success h3 { color: var(--ink); font-size: 20px; font-weight: 500; letter-spacing: -.02em; }
+.auterim-v3-page .cf-success p { margin-top: 8px; max-width: 44ch; color: var(--dim); font-size: 14px; line-height: 1.55; }
+@media (max-width: 620px) {
+  .auterim-v3-page .cf-row { grid-template-columns: 1fr; gap: 0; }
+  .auterim-v3-page .cf-row .cf-field + .cf-field { margin-top: 30px; }
+}
+
+/* Legal pages (Privacy, Terms): a narrow reading column for prose instead of
+   the full 1180px rhythm used by comparison grids elsewhere on the site. */
+.auterim-v3-page .page-hero .legal-updated {
+  display: block;
+  margin-top: 18px;
+  color: var(--faint);
+  font: 10px var(--mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.auterim-v3-page .legal-copy {
+  max-width: 680px;
+  margin-top: 56px;
+  color: var(--dim);
+  font-size: 15px;
+  line-height: 1.72;
+}
+.auterim-v3-page .legal-copy > * { margin-top: 22px; }
+.auterim-v3-page .legal-copy > *:first-child { margin-top: 0; }
+.auterim-v3-page .legal-copy h2 {
+  margin-top: 46px;
+  color: var(--ink);
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: -.02em;
+}
+.auterim-v3-page .legal-copy h2:first-child { margin-top: 0; }
+.auterim-v3-page .legal-copy ul { margin: 14px 0 0; padding: 0 0 0 18px; }
+.auterim-v3-page .legal-copy li { margin-top: 8px; }
+.auterim-v3-page .legal-copy strong { color: var(--ink); font-weight: 500; }
+
+.auterim-v3-page .foot-cookie-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--faint);
+  cursor: pointer;
+  transition: color .18s ease;
+}
+.auterim-v3-page .foot-cookie-btn:hover { color: var(--ink); }
+.auterim-v3-page .legal-copy a {
+  color: var(--ink);
+  border-bottom: 1px solid var(--edge);
+  transition: color .18s ease, border-color .18s ease;
+}
+.auterim-v3-page .legal-copy a:hover { color: var(--acc-hi); border-bottom-color: var(--acc-hi); }
+.auterim-v3-page .legal-notice {
+  display: flex;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid rgba(255,204,102,.28);
+  background: rgba(255,204,102,.05);
+  color: #d9c48f;
+  font-size: 13px;
+  line-height: 1.62;
+}
+.auterim-v3-page .legal-notice i {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  margin-top: .5em;
+  border-radius: 50%;
+  background: var(--gate);
+  box-shadow: 0 0 7px rgba(255,204,102,.4);
 }

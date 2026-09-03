@@ -1,93 +1,103 @@
 import type { Metadata } from "next";
-import Nav from "@/components/nav";
-import Footer from "@/components/footer";
-import Link from "next/link";
-import { PageShell, Eyebrow } from "@/components/marketing-ui";
+import { PageShell } from "@/components/marketing-ui";
+import V3Header from "@/components/home-v3/v3-header";
+import LegalEditorial from "@/components/home-v3/legal-editorial";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "How Inovense collects, uses, and protects your data. We do not sell your data. Execution logs are retained per your plan and can be exported at any time.",
+  description: "How Auterim collects, uses, and protects your data. We do not sell your data. Execution logs are retained per your plan and can be exported or deleted at any time.",
   alternates: {
     canonical: "https://auterim.com/privacy",
   },
   openGraph: {
     url: "https://auterim.com/privacy",
-    title: "Privacy Policy | Inovense",
-    description: "How Inovense collects, uses, and protects your data. We do not sell your data. Execution logs are retained per your plan and can be exported at any time.",
+    title: "Privacy Policy | Auterim",
+    description: "How Auterim collects, uses, and protects your data. We do not sell your data. Execution logs are retained per your plan and can be exported or deleted at any time.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Privacy Policy | Inovense",
-    description: "How Inovense collects, uses, and protects your data. We do not sell your data. Execution logs are retained per your plan and can be exported at any time.",
+    title: "Privacy Policy | Auterim",
+    description: "How Auterim collects, uses, and protects your data. We do not sell your data. Execution logs are retained per your plan and can be exported or deleted at any time.",
   },
 };
 
 export default function PrivacyPage() {
   return (
-    <>
-      <Nav />
+    <div className="font-[family-name:var(--font-geist-sans)]">
+      <V3Header />
       <main>
         <PageShell>
-          <section className="mx-auto max-w-2xl px-6 pb-24 pt-36">
-            <Eyebrow>Legal</Eyebrow>
-            <h1
-              className="mb-6 text-3xl font-semibold"
-              style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
-            >
-              Privacy Policy
-            </h1>
-            <p
-              className="mb-8 font-mono text-xs uppercase tracking-[0.14em]"
-              style={{ color: "#4A4F57" }}
-            >
-              Last updated: May 2026
+          <LegalEditorial title="Privacy Policy" lastUpdated="May 2026">
+            <div className="legal-notice">
+              <i aria-hidden="true" />
+              <span>This policy describes Auterim as it operates today, in product preview. It will be reviewed with counsel before commercial launch, and this page will be updated when that happens.</span>
+            </div>
+
+            <h2>Overview</h2>
+            <p>
+              This Privacy Policy describes how Auterim collects, uses, and protects information when you use the Auterim platform, from exploring a free preview through connecting systems and deploying operators.
             </p>
-            <div className="space-y-6 text-sm leading-relaxed" style={{ color: "#A4ABB4" }}>
-              <p>
-                This page is provided for product preview purposes and should be reviewed before commercial launch.
-              </p>
-              <p>
-                This Privacy Policy describes how Inovense collects, uses, and protects information about you when you use the Inovense platform.
-              </p>
-              <p>
-                We collect information necessary to operate the platform, including account information, usage data, and the content you provide to configure your operators and workflows. We do not sell your data to third parties.
-              </p>
-              <p>
-                Data processed by your agents runs inside your configured policy boundaries. Execution logs are retained per your plan settings and can be exported or deleted at any time.
-              </p>
-              <p>
-                For privacy inquiries, contact us at{" "}
-                <a
-                  href="mailto:hello@auterim.com"
-                  className="underline underline-offset-2"
-                  style={{ color: "#ECEFF3" }}
-                >
-                  hello@auterim.com
-                </a>
-                .
-              </p>
-            </div>
-            <div className="mt-10 flex gap-4">
-              <Link
-                href="/terms"
-                className="text-sm underline underline-offset-2"
-                style={{ color: "#4A4F57" }}
-              >
-                Terms of Service
-              </Link>
-              <Link
-                href="/cookies"
-                className="text-sm underline underline-offset-2"
-                style={{ color: "#4A4F57" }}
-              >
-                Cookie Policy
-              </Link>
-            </div>
-          </section>
+
+            <h2>Information we collect</h2>
+            <p>
+              <strong>Account information.</strong> Name, work email, company, and the credentials you use to sign in.
+            </p>
+            <p>
+              <strong>Company profile data.</strong> Information Auterim gathers from your public website and the details you provide, such as goals, tools, team structure, and approval owners, used to build your operating profile and recommend operators.
+            </p>
+            <p>
+              <strong>Connected system data.</strong> When you connect a tool such as Gmail, HubSpot, Google Calendar, or Slack, operators read and prepare work using the records needed for the specific job you have approved. Connected data stays inside the approval boundaries you set.
+            </p>
+            <p>
+              <strong>Execution logs.</strong> A record of what each operator detected, prepared, and was approved or blocked from doing, kept for audit and troubleshooting.
+            </p>
+            <p>
+              <strong>Usage data.</strong> Product analytics such as pages visited and features used, collected to improve the platform.
+            </p>
+
+            <h2>How we use information</h2>
+            <p>
+              We use the information above to operate the platform, build and update your company profile, recommend operators, execute the runs you approve, respond to support requests, and improve Auterim. We do not sell your data to third parties.
+            </p>
+
+            <h2>Connected systems</h2>
+            <p>
+              Connecting a third-party system is optional and always your decision. Auterim reads only what a given operator needs to prepare or execute approved work, and connections can be removed at any time from your workspace settings. Each connected provider (for example Google, HubSpot, or Slack) processes data under its own terms and privacy policy in addition to this one.
+            </p>
+
+            <h2>Sub-processors and infrastructure</h2>
+            <p>
+              Auterim runs on a small set of infrastructure providers who process data on our behalf under their own confidentiality and security commitments: Supabase (database and authentication), Vercel (hosting), Resend (transactional email), Nango (connector authentication), Trigger.dev (background job execution), and Dodo Payments (billing, for paid plans only).
+            </p>
+
+            <h2>Data retention</h2>
+            <p>
+              Execution logs and company profile data are retained for as long as your account is active, per the retention settings on your plan. You can export or delete this data at any time from your workspace, or by contacting us.
+            </p>
+
+            <h2>Your rights</h2>
+            <p>
+              You can access, export, correct, or delete the data associated with your account. Where applicable law grants you additional rights, such as data portability or objection to processing, contact us and we will respond.
+            </p>
+
+            <h2>Cookies</h2>
+            <p>
+              Auterim uses a limited set of cookies to keep you signed in and understand product usage. See our <a href="/cookies">Cookie Policy</a> for details.
+            </p>
+
+            <h2>Changes to this policy</h2>
+            <p>
+              We will update this page as the product and its data practices evolve, and update the date below when we do.
+            </p>
+
+            <h2>Contact</h2>
+            <p>
+              For privacy inquiries, contact us at <a href="mailto:hello@auterim.com">hello@auterim.com</a>.
+            </p>
+          </LegalEditorial>
         </PageShell>
       </main>
-      <Footer />
-    </>
+    </div>
   );
 }

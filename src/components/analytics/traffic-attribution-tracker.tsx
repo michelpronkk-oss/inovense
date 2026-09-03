@@ -10,9 +10,9 @@ import {
   sanitizePath,
   type AttributionSnapshot,
 } from "@/lib/attribution";
+import { getStoredConsent, onConsentChange } from "@/lib/cookie-consent";
 
-export default function TrafficAttributionTracker() {
-  useEffect(() => {
+function track() {
     // Wrapped in try/catch — must never throw or affect the page.
     try {
       const existingSession = sessionStorage.getItem(SESSION_STORAGE_KEY);
@@ -103,6 +103,17 @@ export default function TrafficAttributionTracker() {
     } catch {
       // Never surface tracker errors to the user.
     }
+}
+
+export default function TrafficAttributionTracker() {
+  useEffect(() => {
+    // Only ever runs once consent is granted — never fires on page load by
+    // default, and starts immediately (no reload needed) if the visitor
+    // accepts mid-session via the cookie banner.
+    if (getStoredConsent() === "accepted") track();
+    return onConsentChange((value) => {
+      if (value === "accepted") track();
+    });
   }, []);
 
   return null;

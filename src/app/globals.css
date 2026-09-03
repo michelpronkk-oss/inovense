@@ -201,3 +201,6 @@
 .animate-ring-expand {
   animation: ring-expand 3.2s ease-out infinite;
 }
+
+.cc-btn-decline:hover { border-color: rgba(255,255,255,.35) !important; }
+.cc-btn-accept:hover { background: #6FF2E5 !important; }

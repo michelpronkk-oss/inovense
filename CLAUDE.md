@@ -8,7 +8,7 @@ Use Auterim and AI workforce in client-facing copy. Avoid generic AI hype and ou
 
 Approved hosts: https://auterim.com, https://app.auterim.com, https://admin.auterim.com, https://portal.auterim.com.
 
-Approved public emails: hello@auterim.com, support@auterim.com, noreply@auterim.com.
+Approved public emails: hello@auterim.com, support@auterim.com, sales@auterim.com, noreply@auterim.com.
 
 Preserve inovense_admin_session, inovense_app_session, inovense-os-state-* keys, inovense_* HubSpot properties, inovense_* Slack/Nango events, database plan values, Dodo product IDs, and historical records. Do not change secrets, OAuth callbacks, provider dashboards, Vercel linkage, or legal entity details without explicit approval.
 
