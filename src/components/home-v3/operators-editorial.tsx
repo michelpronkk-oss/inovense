@@ -15,9 +15,11 @@ function OperatorIcon({ color }: { color: string }) {
 
 export default function OperatorsEditorial() {
   return (
-    <section id="operators" className="auterim-v3-editorial px-5 py-20 sm:px-8 md:py-28">
+    <section id="operators" className="auterim-v3-editorial sec">
+      <div className="wrap">
       <div className="mb-10 grid gap-5 md:grid-cols-[190px_minmax(0,1fr)] md:gap-[60px]"><div className="font-mono text-[10px] uppercase tracking-[.2em]" style={{ color: "var(--auterim-v3-mute)" }}>The workforce</div><div><h2 className="max-w-[22ch] font-medium" style={{ color: "var(--auterim-v3-ink)", fontSize: "clamp(30px,3.5vw,46px)", lineHeight: 1.1 }}>Operators are roles, not chatbots.</h2><p className="mt-[22px] max-w-[56ch] text-lg leading-[1.6]" style={{ color: "var(--auterim-v3-dim)" }}>Each operator has a defined job, its own context, connected tools and clear execution boundaries. Four of fifteen are shown.</p></div></div>
       <Reveal><div className="ops">{operators.map(([name, type, body, gate, status, color]) => <article className="op" key={name}><span className="op-ic" style={{ color }}><OperatorIcon color={color} /></span><div className="op-name"><h3 style={{ color: "var(--auterim-v3-ink)" }}>{name}</h3><div className="t">{type}</div></div><p className="op-say">{body}<span className="gate">Gate: {gate}</span></p><div className="op-end"><span className={`st ${status === "Best first operator" ? "first" : ""}`}>{status}</span><span className="tools" aria-label="Connected tools"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="13" rx="2" stroke={color} /><path d="M4 8l8 6 8-6" stroke={color} /></svg><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke={color} /><path d="M8 12h8M12 8v8" stroke={color} /></svg></span></div></article>)}</div><Link href="/operators" className="ops-more">All fifteen operators <span aria-hidden="true">→</span></Link></Reveal>
+      </div>
     </section>
   );
 }
