@@ -3,11 +3,30 @@
   --v3-base: #080B10;
   --v3-signature: #0B1017;
   --v3-focus: #101820;
+  --v3-rule-subtle: rgba(255,255,255,.07);
+  --v3-rule-medium: rgba(255,255,255,.11);
+  --v3-dim: var(--dim);
+  --v3-mute: var(--mute);
+  --v3-edge: var(--edge);
 }
+.auterim-v3-page { background: var(--v3-base); }
+.auterim-v3-page #profile,
+.auterim-v3-page #pricing,
+.auterim-v3-page .close { background: #080D12; }
 .auterim-v3-page .run,
 .auterim-v3-page #arch { background: var(--v3-signature); }
+.auterim-v3-page .run { border-top-color: var(--v3-rule-medium); border-bottom: 1px solid var(--v3-rule-subtle); }
+.auterim-v3-page #arch { border-top-color: var(--v3-rule-medium); border-bottom: 1px solid var(--v3-rule-subtle); }
 .auterim-v3-page .run::before { opacity: .72; }
+.auterim-v3-page .tr.gate .tr-c { background: rgba(16,24,32,.28); }
 .auterim-v3-page .tr.gate .tr-c::before { background: linear-gradient(100deg, rgba(255,204,102,.11), rgba(255,204,102,.018) 62%, transparent); }
+.auterim-v3-page #profile .pr { border-top-color: var(--v3-rule-medium); }
+.auterim-v3-page #pricing .pl + .pl { border-left-color: var(--v3-rule-medium); }
+.auterim-v3-page #pricing .pl.now { background: rgba(55,230,212,.035); }
+.auterim-v3-page #pricing .pl li { color: var(--v3-dim); }
+.auterim-v3-page .faq details[open] { background: rgba(255,255,255,.018); }
+.auterim-v3-page .faq details { border-bottom-color: var(--v3-rule-medium); }
+.auterim-v3-page .foot { border-top-color: var(--v3-rule-subtle); }
 .auterim-v3-page .op-say,
 .auterim-v3-page .ucr .b,
 .auterim-v3-page .ucr .a,
