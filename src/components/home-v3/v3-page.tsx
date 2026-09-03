@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import { appHref } from "@/lib/urls";
 import OperatorsEditorial from "./operators-editorial";
 import "./auterim-v3.css";
+import "./auterim-v3-refinement.css";
 
 const DATA = {
   profile: [["Company", "Atlas Studio, professional services, 12 people", "Confirmed", "ok"], ["Systems of record", "Gmail and HubSpot carry client communication and pipeline", "Confirmed", "ok"], ["Customer journey", "Enquiry, proposal, onboarding, recurring delivery", "Inferred from website", "inf"], ["Repeated work", "Onboarding information is collected by hand for every client", "Inferred from tools", "inf"], ["Where work waits", "Lead replies queue behind one person's inbox", "Needs review", "rev"], ["Billing", "No billing system named. Left out of scope until you add one.", "Not provided", ""]],
@@ -19,23 +20,32 @@ function Mark() { return <span className="mk"><img src="/brand/auterim-mark-live
 
 export default function V3Page() {
   useEffect(() => {
-    const nodes = Array.from(document.querySelectorAll<HTMLElement>(".auterim-v3-page .rv"));
+    const root = document.querySelector<HTMLElement>(".auterim-v3-page");
+    if (!root) return;
+    const nodes = Array.from(root.querySelectorAll<HTMLElement>(".rv"));
+    const sequences = Array.from(root.querySelectorAll<HTMLElement>(".v3-proof-sequence, .conns-set, .prof, .trace, .pol, .steps"));
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduced || !("IntersectionObserver" in window)) {
       nodes.forEach((node) => node.classList.add("in"));
+      sequences.forEach((node) => node.classList.add("sequence-in"));
       return;
     }
     const observer = new IntersectionObserver((entries) => entries.forEach((entry) => {
       if (entry.isIntersecting) {
         entry.target.classList.add("in");
+        if (entry.target.classList.contains("steps")) {
+          window.setTimeout(() => entry.target.classList.add("loop-step-2"), 700);
+          window.setTimeout(() => entry.target.classList.add("loop-step-3"), 1400);
+        }
         observer.unobserve(entry.target);
       }
     }), { threshold: 0.16 });
     nodes.forEach((node) => observer.observe(node));
+    sequences.forEach((node) => observer.observe(node));
     return () => observer.disconnect();
   }, []);
   return <div className="auterim-v3-page">
-    <section className="hero" id="top"><div className="glow" aria-hidden="true" /><div className="wrap hero-in"><a href="#run" className="pill"><span className="d" />Approvals before anything leaves your company</a><h1>The AI workforce built around how your company works.</h1><p className="say">Auterim learns your business, recommends the right operators, and lets them prepare and execute real work across your existing tools.</p><div className="hero-cta"><Link href={appHref("/app/onboarding")} className="btn btn-a">Start preview <span className="arrow">→</span></Link><a href="#how" className="btn btn-b">See how it works</a></div><span className="note">Begins with your website. Connect real tools when ready.</span><div className="proof"><div className="pf-top"><span className="pf-op">Revenue Operator</span><span className="pf-meta">Run 0142 · 09:44</span><span className="gate-tag">Approval required</span></div><div className="pf-body"><p>First reply to Northstar is drafted, qualified and waiting to send.</p><div className="gate-acts"><button className="mini go" type="button">Approve and send</button><button className="mini alt" type="button">Edit draft</button></div></div><div className="pf-bar"><i /></div></div></div></section>
+    <section className="hero" id="top"><div className="glow" aria-hidden="true" /><div className="wrap hero-in"><a href="#run" className="pill"><span className="d" />Approvals before anything leaves your company</a><h1>The AI workforce built around how your company works.</h1><p className="say">Auterim learns your business, recommends the right operators, and lets them prepare and execute real work across your existing tools.</p><div className="hero-cta"><Link href={appHref("/app/onboarding")} className="btn btn-a">Start preview <span className="arrow">→</span></Link><a href="#how" className="btn btn-b">See how it works</a></div><span className="note">Begins with your website. Connect real tools when ready.</span><div className="proof v3-proof-sequence"><div className="pf-top"><span className="pf-op">Revenue Operator</span><span className="pf-meta">Run 0142 · 09:44</span><span className="gate-tag">Approval required</span></div><div className="pf-body"><p>First reply to Northstar is drafted, qualified and waiting to send.</p><div className="gate-acts"><button className="mini go" type="button">Approve and send</button><button className="mini alt" type="button">Edit draft</button></div></div><div className="pf-bar"><i /></div></div></div></section>
     <div className="conns"><div className="wrap conns-in"><span className="lbl">Runs on the systems you already operate</span><div className="conns-set">{[["Gmail", "Available"], ["HubSpot", "Available"], ["Google Calendar", "Available"], ["Slack", "Available"], ["Notion", "Preview"], ["Google Drive", "Preview"], ["Stripe", "Soon"]].map(([name, state]) => <span key={name}>{name}<em>{state}</em></span>)}</div></div></div>
     <section className="sec" id="how"><div className="wrap"><Head label="The loop" title="Understand the company first. Recommend second. Execute last." body="Most AI tools hand you an empty canvas and wait for instructions. Auterim starts with your business." /><div className="body steps rv">{[["01", "Understand", "Your website, goals, tools, team and approval owner become one structured operating profile.", "Company profile"], ["02", "Recommend", "Auterim names the operators with the clearest path to value, and says exactly why each one fits.", "Recommended workforce"], ["03", "Execute", "Operators prepare work in your real systems, stop at every gate you set, and log what happened.", "Runs and approvals"]].map(([n, h, b, cue], i) => <div className={`step ${i === 0 ? "live" : ""}`} key={n}><span className="n">{n}</span><h3>{h}</h3><p>{b}</p><div className="cue"><span className="d" />{cue}</div></div>)}</div></div></section>
     <section className="sec" id="profile"><div className="wrap"><Head label="Company context" title="Auterim learns your business before it recommends anything." body="Your website, systems, processes, goals and approval structure become a reusable company profile every operator can work from." /><div className="body prof rv">{[DATA.profile.slice(0, 3), DATA.profile.slice(3)].map((column, i) => <div key={i}>{column.map(([k, v, status, tone]) => <div className="pr" key={k}><span className="k">{k}</span><span className="v">{v}<s className={tone}>{status}</s></span></div>)}</div>)}</div></div></section>

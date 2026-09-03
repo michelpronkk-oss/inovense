@@ -1,0 +1,90 @@
+/* V3 refinement layer: motion and hierarchy only. The source V3 geometry remains authoritative. */
+.auterim-v3-page {
+  --v3-base: #080B10;
+  --v3-signature: #0B1017;
+  --v3-focus: #101820;
+}
+.auterim-v3-page .run,
+.auterim-v3-page #arch { background: var(--v3-signature); }
+.auterim-v3-page .run::before { opacity: .72; }
+.auterim-v3-page .tr.gate .tr-c::before { background: linear-gradient(100deg, rgba(255,204,102,.11), rgba(255,204,102,.018) 62%, transparent); }
+.auterim-v3-page .op-say,
+.auterim-v3-page .ucr .b,
+.auterim-v3-page .ucr .a,
+.auterim-v3-page .pr .v,
+.auterim-v3-page .tr.gate p { font-size: 16.5px; }
+.auterim-v3-page .op-name .t,
+.auterim-v3-page .op-end .st,
+.auterim-v3-page .op-say .gate,
+.auterim-v3-page .pr .k,
+.auterim-v3-page .pr .v s { opacity: .9; }
+
+/* Hero approval artifact: one calm entrance and one completed progress line. */
+.auterim-v3-page .v3-proof-sequence .pf-top,
+.auterim-v3-page .v3-proof-sequence .pf-body { opacity: 0; transform: translateY(5px); }
+.auterim-v3-page .v3-proof-sequence .pf-bar i { animation-play-state: paused; }
+.auterim-v3-page .v3-proof-sequence.sequence-in .pf-top { animation: v3-proof-in 420ms ease-out forwards; }
+.auterim-v3-page .v3-proof-sequence.sequence-in .pf-body { animation: v3-proof-in 420ms 260ms ease-out forwards; }
+.auterim-v3-page .v3-proof-sequence.sequence-in .pf-bar i { animation-play-state: running; animation-iteration-count: 1; animation-duration: 1500ms; }
+@keyframes v3-proof-in { to { opacity: 1; transform: none; } }
+
+/* Connector strip: quiet reveal, never a marquee. */
+.auterim-v3-page .conns-set > span { opacity: 0; transform: translateY(4px); }
+.auterim-v3-page .conns-set.sequence-in > span { animation: v3-item-in 360ms ease-out forwards; }
+.auterim-v3-page .conns-set.sequence-in > span:nth-child(2) { animation-delay: 40ms; }
+.auterim-v3-page .conns-set.sequence-in > span:nth-child(3) { animation-delay: 80ms; }
+.auterim-v3-page .conns-set.sequence-in > span:nth-child(4) { animation-delay: 120ms; }
+.auterim-v3-page .conns-set.sequence-in > span:nth-child(5) { animation-delay: 160ms; }
+.auterim-v3-page .conns-set.sequence-in > span:nth-child(6) { animation-delay: 200ms; }
+.auterim-v3-page .conns-set.sequence-in > span:nth-child(7) { animation-delay: 240ms; }
+@keyframes v3-item-in { to { opacity: 1; transform: none; } }
+
+/* The loop advances its active cue once after entering view. */
+.auterim-v3-page .steps .step .cue { transition: color 320ms ease, opacity 320ms ease; }
+.auterim-v3-page .steps .step:not(.live) .cue { opacity: .72; }
+.auterim-v3-page .steps.loop-step-2 .step.live .cue,
+.auterim-v3-page .steps.loop-step-3 .step.live .cue { color: var(--acc); }
+.auterim-v3-page .steps.loop-step-2 .step.live .cue .d,
+.auterim-v3-page .steps.loop-step-3 .step.live .cue .d { background: var(--acc); box-shadow: 0 0 10px rgba(55,230,212,.9); }
+.auterim-v3-page .steps.loop-step-2 .step:first-child .cue { color: var(--v3-mute); }
+.auterim-v3-page .steps.loop-step-2 .step:first-child .cue .d { background: var(--v3-edge, #4A5563); box-shadow: none; }
+.auterim-v3-page .steps.loop-step-2 .step:nth-child(2) .cue { color: var(--acc); }
+.auterim-v3-page .steps.loop-step-2 .step:nth-child(2) .cue .d { background: var(--acc); box-shadow: 0 0 10px rgba(55,230,212,.9); }
+.auterim-v3-page .steps.loop-step-3 .step:nth-child(2) .cue { color: var(--v3-mute); }
+.auterim-v3-page .steps.loop-step-3 .step:nth-child(2) .cue .d { background: var(--v3-edge, #4A5563); box-shadow: none; }
+.auterim-v3-page .steps.loop-step-3 .step:nth-child(3) .cue { color: var(--acc); }
+.auterim-v3-page .steps.loop-step-3 .step:nth-child(3) .cue .d { background: var(--acc); box-shadow: 0 0 10px rgba(55,230,212,.9); }
+
+/* Company profile and execution trace reveal once, in their existing order. */
+.auterim-v3-page .prof .pr,
+.auterim-v3-page .trace .tr { opacity: 0; transform: translateY(8px); }
+.auterim-v3-page .prof.sequence-in .pr,
+.auterim-v3-page .trace.sequence-in .tr { animation: v3-item-in 500ms ease-out forwards; }
+.auterim-v3-page .prof.sequence-in .pr:nth-child(2),
+.auterim-v3-page .trace.sequence-in .tr:nth-child(2) { animation-delay: 70ms; }
+.auterim-v3-page .prof.sequence-in .pr:nth-child(3),
+.auterim-v3-page .trace.sequence-in .tr:nth-child(3) { animation-delay: 140ms; }
+.auterim-v3-page .prof.sequence-in > div:nth-child(2) .pr:nth-child(1) { animation-delay: 210ms; }
+.auterim-v3-page .prof.sequence-in > div:nth-child(2) .pr:nth-child(2) { animation-delay: 280ms; }
+.auterim-v3-page .prof.sequence-in > div:nth-child(2) .pr:nth-child(3) { animation-delay: 350ms; }
+.auterim-v3-page .trace.sequence-in .tr:nth-child(4) { animation-delay: 210ms; }
+.auterim-v3-page .trace.sequence-in .tr.gate { animation-delay: 140ms; }
+
+/* Boundaries: make the middle policy state legible without adding a new panel. */
+.auterim-v3-page .pol .pcol.b .h { transition: text-shadow 420ms ease; }
+.auterim-v3-page .pol.sequence-in .pcol.b .h { animation: v3-boundary-focus 1000ms 500ms ease-out both; }
+@keyframes v3-boundary-focus { 0%,100% { text-shadow: none; } 45% { text-shadow: 0 0 14px rgba(255,204,102,.38); } }
+
+.auterim-v3-page .faq details summary { transition: color 180ms ease; }
+.auterim-v3-page .faq details summary:hover { color: var(--acc); }
+.auterim-v3-page .faq details p { animation: v3-faq-open 220ms ease-out; }
+@keyframes v3-faq-open { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .auterim-v3-page .v3-proof-sequence .pf-top,
+  .auterim-v3-page .v3-proof-sequence .pf-body,
+  .auterim-v3-page .conns-set > span,
+  .auterim-v3-page .prof .pr,
+  .auterim-v3-page .trace .tr { opacity: 1; transform: none; animation: none !important; }
+  .auterim-v3-page .v3-proof-sequence .pf-bar i { width: 78%; animation: none !important; }
+}
