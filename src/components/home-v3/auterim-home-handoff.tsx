@@ -2,6 +2,7 @@ import Link from "next/link";
 import Reveal from "@/components/reveal";
 import { Eyebrow } from "@/components/marketing-ui";
 import { appHref } from "@/lib/urls";
+import OperatorsEditorial from "./operators-editorial";
 
 const line = "rgba(255,255,255,0.07)";
 const text = "#ECEFF3";
@@ -62,12 +63,15 @@ const steps = [
   ["03", "Execute", "Operators prepare work in your real systems, stop at every gate you set, and log what happened."],
 ];
 
-const operators = [
+/* Operator rows are rendered by the exact V3 editorial implementation. */
+const unusedOperators = [
   ["Revenue Operator", "Sales · Pipeline", "Makes sure no lead, deal or follow-up slips through. Prepares follow-ups, CRM notes and deal updates from real pipeline signals.", "Best first operator"],
   ["Client Flow Operator", "Intake · Onboarding", "Keeps client communication, onboarding and delivery tight. Builds intake summaries, checklists and handoff notes as work arrives.", "Ready to deploy"],
   ["Operations Operator", "Reports · Internal", "Surfaces blockers, pending approvals and drift before they become delays, giving the company daily oversight.", "Suggested"],
   ["Marketing Operator", "Content · Campaigns", "Prepares angles, copy, briefs and schedules from your own positioning, with publishing and spend behind a gate.", "Suggested"],
 ];
+
+void unusedOperators;
 
 const faqs = [
   ["What is an operator?", "A role with a defined scope, its own instructions and memory, the connectors its work requires, and a fixed approval boundary. It detects work, prepares it, waits at the gate, executes what you approve and logs the result."],
@@ -117,7 +121,7 @@ export default function AuterimHomeHandoff() {
 
       <section id="profile" className="border-b px-5 py-20 sm:px-8 md:py-28" style={{ borderColor: line }}><SectionHeading label="Company context" title="Auterim learns your business before it recommends anything." body="Your website, systems, processes, goals and approval structure become a reusable company profile every operator can work from." /><Reveal><div className="grid gap-2 rounded-2xl p-3 md:grid-cols-2" style={{ background: "rgba(255,255,255,.018)", boxShadow: `inset 0 0 0 1px ${line}` }}>{[["Company", "Atlas Studio · professional services · 12 people", "Confirmed"], ["Systems of record", "Gmail and HubSpot carry client communication and pipeline", "Confirmed"], ["Customer journey", "Enquiry · proposal · onboarding · recurring delivery", "Inferred from website"], ["Repeated work", "Onboarding information is collected by hand for every client", "Inferred from tools"], ["Where work waits", "Lead replies queue behind one person’s inbox", "Needs review"], ["Billing", "No billing system named. Left out of scope until you add one.", "Not provided"]].map(([key, value, status]) => <div key={key} className="rounded-xl p-4" style={{ background: "rgba(255,255,255,.025)" }}><div className="font-mono text-[10px] uppercase tracking-[.1em]" style={{ color: mute }}>{key}</div><div className="mt-2 text-sm" style={{ color: dim }}>{value}</div><div className="mt-3 text-[11px]" style={{ color: status === "Needs review" ? "#F5C26B" : cyan }}>{status}</div></div>)}</div></Reveal></section>
 
-      <section id="operators" className="border-b px-5 py-20 sm:px-8 md:py-28" style={{ borderColor: line }}><SectionHeading label="The workforce" title="Operators are roles, not chatbots." body="Each operator has a defined job, its own context, connected tools and clear execution boundaries." /><div className="grid gap-3 sm:grid-cols-2">{operators.map(([title, type, body, status]) => <Reveal key={title}><article className="flex h-full flex-col rounded-2xl p-5" style={{ background: "linear-gradient(180deg,#0D1015,#080A0D)", boxShadow: `inset 0 0 0 1px ${line}` }}><div className="flex items-start justify-between gap-3"><div><h3 className="text-base font-medium" style={{ color: text }}>{title}</h3><p className="mt-1 font-mono text-[10px] uppercase tracking-[.08em]" style={{ color: cyan }}>{type}</p></div><Mark size={20} /></div><p className="mt-5 flex-1 text-sm leading-[1.6]" style={{ color: mute }}>{body}</p><div className="mt-5 border-t pt-3 font-mono text-[11px]" style={{ color: dim, borderColor: line }}>{status}</div></article></Reveal>)}</div><div className="mt-7 text-center"><Link href="/operators" className="text-sm" style={{ color: cyan }}>Explore all operators <Arrow /></Link></div></section>
+      <OperatorsEditorial />
 
       <section id="run" className="border-b px-5 py-20 sm:px-8 md:py-28" style={{ borderColor: line, background: "rgba(255,255,255,.012)" }}><SectionHeading label="One real run" title="One lead. One operator. One controlled run." body="Watch Auterim turn a real inbound signal into prepared work, and stop exactly where human approval is required." /><Reveal><div className="mx-auto max-w-3xl rounded-2xl p-4 sm:p-6" style={{ background: "#090C10", boxShadow: `inset 0 0 0 1px ${line}` }}>{[["01", "Input", "Website enquiry · Northstar · 09:41"], ["02", "Operator work", "Detected signal → qualified it → prepared first reply → updated CRM"], ["03", "Approval gate", "Send the first reply to Sarah at Northstar?"], ["04", "After approval", "Send via Gmail · create follow-up · log outcome"]].map(([number, label, value], index) => <div key={number} className="grid gap-2 border-b py-4 last:border-b-0 sm:grid-cols-[140px_1fr]" style={{ borderColor: line }}><div className="font-mono text-xs" style={{ color: index === 2 ? "#F5C26B" : cyan }}>{number} · {label}</div><div className="text-sm" style={{ color: index === 2 ? text : dim }}>{value}{index === 2 && <span className="ml-3 rounded-full px-2 py-1 font-mono text-[10px]" style={{ color: "#F5C26B", background: "rgba(245,194,107,.1)" }}>Needs approval</span>}</div></div>)}</div></Reveal></section>
 

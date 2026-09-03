@@ -1,8 +1,7 @@
 ﻿import type { Metadata } from "next";
-import Nav from "@/components/nav";
-import Footer from "@/components/footer";
 import { PageShell } from "@/components/marketing-ui";
-import AuterimHomeHandoff from "@/components/home-v3/auterim-home-handoff";
+import V3Header from "@/components/home-v3/v3-header";
+import V3Page from "@/components/home-v3/v3-page";
 import {
   INOVENSE_HOME_FAQS,
   AUTERIM_ORGANIZATION_ID,
@@ -93,13 +92,12 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: toJsonLd(homeFaqSchema) }}
       />
-      <Nav homepage />
+      <V3Header />
       <main>
         <PageShell>
-          <AuterimHomeHandoff />
+          <V3Page />
         </PageShell>
       </main>
-      <Footer />
     </div>
   );
 }
