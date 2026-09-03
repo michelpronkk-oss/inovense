@@ -3190,6 +3190,62 @@
   box-shadow: 0 0 7px rgba(255,204,102,.4);
 }
 
+/* Targeted mobile composition repair. These resets intentionally supersede
+   desktop geometry below 768px; mobile is a different editorial composition. */
+@media (max-width: 767px) {
+  .auterim-v3-page .close-in {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    max-width: none;
+    gap: 44px;
+  }
+  .auterim-v3-page .close-main,
+  .auterim-v3-page .close-preview { width: 100%; min-width: 0; max-width: none; }
+  .auterim-v3-page .close-main h2 { width: 100%; max-width: 19ch; font-size: clamp(2.25rem, 10vw, 3rem); line-height: 1.02; }
+  .auterim-v3-page .close-main > p { width: 100%; max-width: 43ch; font-size: 16px; line-height: 1.55; }
+  .auterim-v3-page .close-preview-step { grid-template-columns: 36px minmax(0, 1fr); gap: 14px; padding: 17px 0; }
+  .auterim-v3-page .close-preview-step strong { font-size: 17px; }
+
+  .auterim-v3-page .architecture-control { padding-left: 0; border-left: 0; }
+  .auterim-v3-page .architecture-control::before { content: ""; display: block; width: 42px; height: 2px; margin: 0 0 24px; background: var(--acc); box-shadow: 0 0 12px rgba(55,230,212,.35); }
+  .auterim-v3-page .architecture-control-head { gap: 10px; }
+  .auterim-v3-page .architecture-control-steps { margin-top: 22px; }
+  .auterim-v3-page .architecture-control-steps > div { min-height: 0; padding: 15px 0; }
+  .auterim-v3-page .architecture-flow { display: none; }
+  .auterim-v3-page .architecture-gate { margin-top: 24px; }
+
+  .auterim-v3-page .plans { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .auterim-v3-page .plans .pl,
+  .auterim-v3-page .plans .pl.now,
+  .auterim-v3-page .plans .pl + .pl { min-width: 0; margin: 0; padding: 38px 0 42px; border: 0; border-top: 1px solid var(--rule); background: transparent; }
+  .auterim-v3-page .plans .pl:first-child { padding-top: 30px; border-top-color: var(--acc); }
+  .auterim-v3-page .plans .pl:nth-child(3) { margin-top: 30px; padding-top: 56px; border-top-color: rgba(177,154,230,.5); }
+  .auterim-v3-page .plans .pl-badge { top: 25px; left: 0; }
+  .auterim-v3-page .plans .pl-fit { min-height: 0; }
+  .auterim-v3-page .plans .pl ul { gap: 11px; }
+
+  .auterim-v3-page .hero-artifact-panel { padding: 15px 16px 18px; }
+  .auterim-v3-page .hero-artifact-top { gap: 8px; padding-bottom: 11px; }
+  .auterim-v3-page .hero-artifact-ctx { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 11px; }
+  .auterim-v3-page .hero-artifact-ctx > div { min-height: 44px; padding: 8px 8px; gap: 5px; }
+  .auterim-v3-page .hero-artifact-ctx b { font-size: 8px; line-height: 1.2; white-space: normal; }
+  .auterim-v3-page .hero-artifact-rail { height: 22px; }
+  .auterim-v3-page .hero-artifact-op { margin-top: 13px; padding-top: 13px; }
+  .auterim-v3-page .hero-artifact-task { margin-top: 9px; font-size: 13.5px; }
+  .auterim-v3-page .hero-artifact-seq { margin-top: 11px; }
+  .auterim-v3-page .hero-artifact-seq li { padding-top: 4px; padding-bottom: 4px; font-size: 12.5px; }
+  .auterim-v3-page .hero-artifact-gate { margin-top: -17px; padding: 14px 16px 16px; }
+}
+
+@media (max-width: 360px) {
+  .auterim-v3-page .top .mark { font-size: 0; gap: 0; }
+  .auterim-v3-page .top .mark img { width: 22px; height: 22px; }
+  .auterim-v3-page .top .cta .btn { padding: 10px 13px; font-size: 12px; }
+  .auterim-v3-page .hero-artifact-top-k { font-size: 8px; letter-spacing: .16em; }
+  .auterim-v3-page .hero-artifact-run { font-size: 8px; }
+}
+
 /* Responsive contract — final cascade layer. */
 @media (max-width: 1080px) {
   .auterim-v3-page .hero-editorial-in { grid-template-columns: minmax(0, .86fr) minmax(0, 1.14fr); gap: clamp(28px, 4vw, 54px); }
