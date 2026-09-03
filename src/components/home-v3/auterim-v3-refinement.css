@@ -44,6 +44,105 @@
   .auterim-v3-page .top .cta .btn { padding: 8px 12px; font-size: 12px; }
   .auterim-v3-page .mobile-menu { display: block; position: relative; }
 }
+
+/* Strict compact topbar correction. Dimensions stay fixed across scroll states. */
+@media (min-width: 821px) {
+  .auterim-v3-page .top .wrap {
+    height: 58px;
+    gap: 22px;
+  }
+  .auterim-v3-page .top .mark {
+    gap: 7px;
+    font-size: 12px;
+    letter-spacing: .14em;
+  }
+  .auterim-v3-page .top .mark img { width: 17px; height: 17px; }
+  .auterim-v3-page .top .nav {
+    gap: 22px;
+  }
+  .auterim-v3-page .top .nav a,
+  .auterim-v3-page .top .cta .in {
+    font-size: 12.5px;
+    line-height: 1.2;
+  }
+  .auterim-v3-page .top .cta {
+    gap: 16px;
+  }
+  .auterim-v3-page .top .cta .btn {
+    min-height: 32px;
+    padding: 7px 15px;
+    border-radius: 5px;
+    font-size: 12.5px;
+    box-shadow: none;
+  }
+  .auterim-v3-page .mobile-menu { display: none !important; }
+}
+
+/* Final compact header calibration: preserve the V3 structure while reducing
+   the chrome to the requested architectural 56px desktop bar. */
+@media (min-width: 821px) {
+  .auterim-v3-page .top .wrap {
+    height: 56px;
+    gap: 18px;
+  }
+
+  .auterim-v3-page .top .mark {
+    gap: 6px;
+    font-size: 12px;
+    letter-spacing: 0.13em;
+  }
+
+  .auterim-v3-page .top .mark img {
+    width: 16px;
+    height: 16px;
+  }
+
+  .auterim-v3-page .top .nav {
+    gap: 20px;
+  }
+
+  .auterim-v3-page .top .nav a,
+  .auterim-v3-page .top .cta .in {
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  .auterim-v3-page .top .cta {
+    gap: 14px;
+  }
+
+  .auterim-v3-page .top .cta .btn {
+    min-height: 30px;
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-size: 12px;
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 820px) {
+  .auterim-v3-page .top .wrap {
+    height: 56px;
+  }
+
+  .auterim-v3-page .top .mark {
+    gap: 6px;
+    font-size: 12px;
+  }
+
+  .auterim-v3-page .top .mark img {
+    width: 16px;
+    height: 16px;
+  }
+
+  .auterim-v3-page .top .cta .btn {
+    min-height: 30px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    box-shadow: none;
+  }
+}
 .auterim-v3-page .op-say,
 .auterim-v3-page .ucr .b,
 .auterim-v3-page .ucr .a,
