@@ -85,6 +85,7 @@ export default function OperationsPage() {
             eyebrow="Solutions"
             heading="The operational layer that runs under your business."
             description="Recurring tasks, cross-team coordination, and process execution handled by operators. Your team focuses on decisions that move the business forward."
+            mobileDescription="Operators handle recurring work and coordination. Your team focuses on the decisions that matter."
           >
             <Link
               href="/app/onboarding"

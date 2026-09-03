@@ -85,6 +85,8 @@ export default function ClientServicesPage() {
             eyebrow="Solutions"
             heading="Client services that scale without adding headcount."
             description="Onboarding automation, status updates, and account health monitoring that runs without a dedicated ops hire. Every client gets a consistent, high-quality experience."
+            mobileHeading="Scale client services without more headcount"
+            mobileDescription="Automate onboarding, updates and account health while keeping every client experience consistent."
           >
             <Link
               href="/app/onboarding"

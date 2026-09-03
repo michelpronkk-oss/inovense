@@ -85,6 +85,7 @@ export default function ApprovalsPage() {
             eyebrow="Platform"
             heading="Act at speed. Stay in control."
             description="Approval rules shape how operators work. Routine work can continue within the scopes you set; sensitive actions pause for a decision when you want them to."
+            mobileDescription="Routine work runs within your rules. Sensitive actions pause when a decision is needed."
           >
             <Link
               href="/app/onboarding"

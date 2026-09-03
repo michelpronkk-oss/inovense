@@ -61,6 +61,7 @@ export default function MemoryPage() {
             eyebrow="Platform"
             heading="Your business, remembered"
             description="Persistent company memory that gives every agent context, history, and institutional knowledge. Agents know who your clients are, what was decided, and what your standards are before they take a single action."
+            mobileDescription="Persistent company context that gives every operator the history, standards and decisions it needs."
           >
             <Link
               href="/app/onboarding"

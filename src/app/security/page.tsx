@@ -70,8 +70,9 @@ export default function SecurityPage() {
           <Reveal>
             <PageHero
               eyebrow="Platform"
-              heading="Operators act. Policies decide. Humans approve."
-              description="Every agent runs inside your defined policy boundaries. No action executes without passing the policy engine. No sensitive action executes without your approval. Full audit trail for everything that runs."
+            heading="Operators act. Policies decide. Humans approve."
+            description="Every agent runs inside your defined policy boundaries. No action executes without passing the policy engine. No sensitive action executes without your approval. Full audit trail for everything that runs."
+            mobileDescription="Policies set the boundary. Sensitive actions wait for approval. Every run is logged."
             >
               <Link
                 href="/architecture"

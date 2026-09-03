@@ -85,6 +85,7 @@ export default function MarketingPage() {
             eyebrow="Solutions"
             heading="Marketing that executes without a coordinator."
             description="Operators that run content workflows, track campaign performance, and surface optimization opportunities. Marketing at the pace of the business, not the calendar."
+            mobileDescription="Operators run content workflows, track campaigns and surface the next opportunity."
           >
             <Link
               href="/app/onboarding"

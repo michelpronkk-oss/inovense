@@ -65,8 +65,10 @@ export default function IntegrationsPage() {
           <Reveal>
             <PageHero
               eyebrow="Platform"
-              heading="Connect the systems your operators work in."
-              description="Auterim reads the context in your approved systems, then prepares or runs work only within the scopes and approval rules you set."
+            heading="Connect the systems your operators work in."
+            description="Auterim reads the context in your approved systems, then prepares or runs work only within the scopes and approval rules you set."
+            mobileHeading="Connect the systems your work already uses"
+            mobileDescription="Auterim reads approved context and prepares work within the scopes you set."
             >
               <Link
                 href="/app/onboarding"

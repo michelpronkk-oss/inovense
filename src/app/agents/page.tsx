@@ -93,8 +93,10 @@ export default function AgentsPage() {
           <Reveal>
             <PageHero
               eyebrow="Platform"
-              heading="Specialized operators for every function"
-              description="Operators are not chatbots. They run structured workflows through connectors, policies, approvals, memory, and execution logs. They propose actions first, then execute only when allowed."
+            heading="Specialized operators for every function"
+            description="Operators are not chatbots. They run structured workflows through connectors, policies, approvals, memory, and execution logs. They propose actions first, then execute only when allowed."
+            mobileHeading="Operators built for real work"
+            mobileDescription="Defined roles that prepare work, follow your policies and execute only within the boundaries you set."
             >
               <Link
                 href="/app/onboarding"

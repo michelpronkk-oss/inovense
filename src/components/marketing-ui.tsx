@@ -7,6 +7,8 @@ export function PageHero({
   eyebrow,
   heading,
   description,
+  mobileHeading,
+  mobileDescription,
   maxWidth = "20ch",
   descMaxWidth = "52ch",
   children,
@@ -14,6 +16,8 @@ export function PageHero({
   eyebrow: string;
   heading: string;
   description: string;
+  mobileHeading?: string;
+  mobileDescription?: string;
   maxWidth?: string;
   descMaxWidth?: string;
   children?: React.ReactNode;
@@ -25,13 +29,15 @@ export function PageHero({
         className="mb-4 text-[2.25rem] font-semibold leading-[1.06] sm:mb-5 sm:text-5xl md:text-6xl"
         style={{ color: "#ECEFF3", letterSpacing: "-0.034em", maxWidth }}
       >
-        {heading}
+        <span className={mobileHeading ? "marketing-copy-desktop" : undefined}>{heading}</span>
+        {mobileHeading && <span className="marketing-copy-mobile" aria-hidden="true">{mobileHeading}</span>}
       </h1>
       <p
         className="mb-7 text-base leading-relaxed sm:mb-10 sm:text-lg"
         style={{ color: "#A4ABB4", maxWidth: descMaxWidth }}
       >
-        {description}
+        <span className={mobileDescription ? "marketing-copy-desktop" : undefined}>{description}</span>
+        {mobileDescription && <span className="marketing-copy-mobile" aria-hidden="true">{mobileDescription}</span>}
       </p>
       {children && (
         <div className="flex w-full flex-col items-center gap-3 xs:flex-row xs:flex-wrap xs:justify-center sm:w-auto">

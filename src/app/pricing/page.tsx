@@ -41,8 +41,9 @@ export default function PricingPage() {
           <Reveal>
             <PageHero
               eyebrow="Pricing"
-              heading="Pay for operating capacity, not seats."
-              description="Every plan includes the core operating layer: operators, workflows, memory, approvals, connectors, policies and execution logs. Scale by volume, complexity and support."
+            heading="Pay for operating capacity, not seats."
+            description="Every plan includes the core operating layer: operators, workflows, memory, approvals, connectors, policies and execution logs. Scale by volume, complexity and support."
+            mobileDescription="Every plan includes operators, workflows, memory, approvals and execution logs. Scale with the work."
               descMaxWidth="56ch"
             />
           </Reveal>

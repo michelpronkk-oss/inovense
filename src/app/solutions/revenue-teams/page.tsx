@@ -85,6 +85,8 @@ export default function RevenuePage() {
             eyebrow="Solutions"
             heading="Revenue teams that run without manual coordination."
             description="Pipeline management, follow-up sequencing, and deal intelligence that runs autonomously. Your operators work every lead, surface every signal, and never miss a follow-up."
+            mobileHeading="Revenue work without manual coordination"
+            mobileDescription="Operators manage follow-ups, pipeline signals and deal intelligence so no lead goes quiet."
           >
             <Link
               href="/app/onboarding"

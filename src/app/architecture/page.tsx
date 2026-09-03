@@ -101,6 +101,8 @@ export default function ArchitecturePage() {
             eyebrow="Resources"
             heading="The control layer between your business and AI."
             description="Auterim turns company context into prepared work, with connector permissions, policies and approvals shaping every action."
+            mobileHeading="The control layer for AI work"
+            mobileDescription="Auterim turns company context into prepared work, shaped by permissions, policies and approvals."
           >
             <Link
               href="/docs"

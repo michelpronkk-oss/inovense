@@ -66,8 +66,10 @@ export default function WorkflowsPage() {
           <Reveal>
             <PageHero
               eyebrow="Platform"
-              heading="Execution chains with no manual handoff"
-              description="Structured workflows that move work across agents, connectors, and approval gates. Build once. Run continuously. Every step logged and auditable."
+            heading="Execution chains with no manual handoff"
+            description="Structured workflows that move work across agents, connectors, and approval gates. Build once. Run continuously. Every step logged and auditable."
+            mobileHeading="Workflows that keep moving"
+            mobileDescription="Structured work moves across operators, connectors and approval gates. Every step is logged."
             >
               <Link
                 href="/app/onboarding"

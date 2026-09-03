@@ -85,6 +85,7 @@ export default function FoundersOpsPage() {
             eyebrow="Solutions"
             heading="Move faster than a team twice your size."
             description="For founders running lean. Deploy operators that handle the work you would otherwise delegate or do yourself. Institutional knowledge stays in memory. Coordination happens automatically."
+            mobileDescription="Deploy operators for the work you would otherwise delegate or do yourself."
           >
             <Link
               href="/app/onboarding"
