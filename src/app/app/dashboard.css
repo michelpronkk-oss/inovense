@@ -57,9 +57,6 @@
 
 /* ---- Sidebar ---- */
 .os-side {
-  position: sticky;
-  top: 0;
-  height: 100vh;
   display: flex;
   flex-direction: column;
   padding: 14px 10px;
@@ -67,7 +64,6 @@
   border-right: 1px solid var(--line);
   gap: 2px;
   z-index: 10;
-  overflow-y: auto;
 }
 .os-brand {
   display: inline-flex;
@@ -107,7 +103,7 @@
 }
 .os-side-ws-name { font-size: 13px; font-weight: 500; }
 .os-side-ws-sub { font-size: 10.5px; color: var(--text-mute); font-family: var(--font-mono); }
-.os-side-nav { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 4px; }
+.os-side-nav { padding-bottom: 4px; }
 .os-side-label {
   padding: 14px 12px 6px;
   font-family: var(--font-mono);
@@ -145,7 +141,7 @@
 }
 .os-nav.active .badge { background: rgba(77, 232, 225, 0.18); color: var(--cyan); }
 .os-side-bottom {
-  margin-top: auto;
+  margin-top: 12px;
   padding: 10px;
   border-top: 1px solid var(--line);
   display: flex;
