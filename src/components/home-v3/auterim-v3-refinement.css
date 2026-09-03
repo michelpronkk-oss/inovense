@@ -27,17 +27,17 @@
 .auterim-v3-page .foot { border-top-color: var(--v3-rule-subtle); }
 
 /* Homepage topbar: balanced desktop frame with a quiet mobile disclosure. */
-.auterim-v3-page .top .wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 34px; }
-.auterim-v3-page .top .nav { margin-left: 0; }
-.auterim-v3-page .top .cta { margin-left: 0; justify-content: flex-end; }
-.auterim-v3-page .mobile-menu { display: none; }
-.auterim-v3-page .mobile-menu summary { list-style: none; cursor: pointer; color: var(--dim); font-size: 13px; }
-.auterim-v3-page .mobile-menu summary::-webkit-details-marker { display: none; }
-.auterim-v3-page .mobile-menu-icon { display: inline-flex; width: 24px; height: 24px; align-items: center; justify-content: center; }
-.auterim-v3-page .mobile-menu-icon svg { display: block; width: 24px; height: 18px; }
-.auterim-v3-page .mobile-menu-close { display: none; font-size: 25px; font-weight: 300; line-height: 1; }
-.auterim-v3-page .mobile-menu[open] .mobile-menu-icon { display: none; }
-.auterim-v3-page .mobile-menu[open] .mobile-menu-close { display: inline-block; }
+.top .wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 34px; }
+.top .nav { margin-left: 0; }
+.top .cta { margin-left: 0; justify-content: flex-end; }
+.mobile-menu { display: none; }
+.mobile-menu summary { list-style: none; cursor: pointer; color: var(--dim); font-size: 13px; }
+.mobile-menu summary::-webkit-details-marker { display: none; }
+.mobile-menu-icon { display: inline-flex; width: 24px; height: 24px; align-items: center; justify-content: center; }
+.mobile-menu-icon svg { display: block; width: 24px; height: 18px; }
+.mobile-menu-close { display: none; font-size: 25px; font-weight: 300; line-height: 1; }
+.mobile-menu[open] .mobile-menu-icon { display: none; }
+.mobile-menu[open] .mobile-menu-close { display: inline-block; }
 
 /* Layered hero scene: connected-system plane, operator surface, approval gate. */
 .auterim-v3-page .hero-scene {
@@ -312,71 +312,71 @@
 
 /* Strict compact topbar correction. Dimensions stay fixed across scroll states. */
 @media (min-width: 821px) {
-  .auterim-v3-page .top .wrap {
+  .top .wrap {
     height: 58px;
     gap: 22px;
   }
-  .auterim-v3-page .top .mark {
+  .top .mark {
     gap: 7px;
     font-size: 12px;
     letter-spacing: .14em;
   }
-  .auterim-v3-page .top .mark img { width: 17px; height: 17px; }
-  .auterim-v3-page .top .nav {
+  .top .mark img { width: 17px; height: 17px; }
+  .top .nav {
     gap: 22px;
   }
-  .auterim-v3-page .top .nav a,
-  .auterim-v3-page .top .cta .in {
+  .top .nav a,
+  .top .cta .in {
     font-size: 12.5px;
     line-height: 1.2;
   }
-  .auterim-v3-page .top .cta {
+  .top .cta {
     gap: 16px;
   }
-  .auterim-v3-page .top .cta .btn {
+  .top .cta .btn {
     min-height: 32px;
     padding: 7px 15px;
     border-radius: 5px;
     font-size: 12.5px;
     box-shadow: none;
   }
-  .auterim-v3-page .mobile-menu { display: none !important; }
+  .mobile-menu { display: none !important; }
 }
 
 /* Final compact header calibration: preserve the V3 structure while reducing
    the chrome to the requested architectural 56px desktop bar. */
 @media (min-width: 821px) {
-  .auterim-v3-page .top .wrap {
+  .top .wrap {
     height: 56px;
     gap: 18px;
   }
 
-  .auterim-v3-page .top .mark {
+  .top .mark {
     gap: 6px;
     font-size: 12px;
     letter-spacing: 0.13em;
   }
 
-  .auterim-v3-page .top .mark img {
+  .top .mark img {
     width: 16px;
     height: 16px;
   }
 
-  .auterim-v3-page .top .nav {
+  .top .nav {
     gap: 20px;
   }
 
-  .auterim-v3-page .top .nav a,
-  .auterim-v3-page .top .cta .in {
+  .top .nav a,
+  .top .cta .in {
     font-size: 12px;
     line-height: 1.2;
   }
 
-  .auterim-v3-page .top .cta {
+  .top .cta {
     gap: 14px;
   }
 
-  .auterim-v3-page .top .cta .btn {
+  .top .cta .btn {
     min-height: 30px;
     padding: 6px 14px;
     border-radius: 4px;
@@ -386,21 +386,21 @@
 }
 
 @media (max-width: 820px) {
-  .auterim-v3-page .top .wrap {
+  .top .wrap {
     height: 56px;
   }
 
-  .auterim-v3-page .top .mark {
+  .top .mark {
     gap: 6px;
     font-size: 12px;
   }
 
-  .auterim-v3-page .top .mark img {
+  .top .mark img {
     width: 16px;
     height: 16px;
   }
 
-  .auterim-v3-page .top .cta .btn {
+  .top .cta .btn {
     min-height: 30px;
     padding: 6px 12px;
     border-radius: 4px;
@@ -2761,7 +2761,7 @@
 
 @media (max-width: 820px) {
   .auterim-v3-page { --pad: clamp(18px, 5vw, 24px); }
-  .auterim-v3-page .top .wrap { min-height: 62px; }
+  .top .wrap { min-height: 62px; }
   .auterim-v3-page .head { grid-template-columns: 1fr; gap: 14px; }
   .auterim-v3-page .head h2 { max-width: 18ch; font-size: clamp(30px, 7.6vw, 42px); }
   .auterim-v3-page .head .say { max-width: 54ch; margin-top: 15px; font-size: 16px; }
@@ -3231,21 +3231,21 @@
 }
 
 @media (max-width: 360px) {
-  .auterim-v3-page .top .mark { font-size: 0; gap: 0; }
-  .auterim-v3-page .top .mark img { width: 22px; height: 22px; }
-  .auterim-v3-page .top .cta .btn { padding: 10px 13px; font-size: 12px; }
+  .top .mark { font-size: 0; gap: 0; }
+  .top .mark img { width: 22px; height: 22px; }
+  .top .cta .btn { padding: 10px 13px; font-size: 12px; }
   .auterim-v3-page .hero-artifact-top-k { font-size: 8px; letter-spacing: .16em; }
   .auterim-v3-page .hero-artifact-run { font-size: 8px; }
 }
 
 /* Mobile navigation: one quiet closed bar, one full-width navigation layer. */
 @media (max-width: 820px) {
-  .auterim-v3-page .top { padding-top: env(safe-area-inset-top); }
-  .auterim-v3-page .top .wrap { grid-template-columns: minmax(0, 1fr) auto; min-height: 64px; gap: 16px; }
-  .auterim-v3-page .top .cta { display: none; }
-  .auterim-v3-page .mobile-menu { display: block; position: static; }
-  .auterim-v3-page .mobile-menu summary { display: grid; min-width: 44px; min-height: 44px; place-items: center; color: #b8c2ce; }
-  .auterim-v3-page .mobile-menu nav {
+  .top { padding-top: env(safe-area-inset-top); }
+  .top .wrap { grid-template-columns: minmax(0, 1fr) auto; min-height: 64px; gap: 16px; }
+  .top .cta { display: none; }
+  .mobile-menu { display: block; position: static; }
+  .mobile-menu summary { display: grid; min-width: 44px; min-height: 44px; place-items: center; color: #b8c2ce; }
+  .mobile-menu nav {
     position: fixed;
     z-index: 70;
     top: calc(64px + env(safe-area-inset-top));
@@ -3269,15 +3269,15 @@
     pointer-events: none;
     transition: opacity .2s ease, transform .2s ease;
   }
-  .auterim-v3-page .mobile-menu[open] nav { opacity: 1; transform: none; pointer-events: auto; }
-  .auterim-v3-page .mobile-menu-links { display: flex; flex-direction: column; gap: 0; }
-  .auterim-v3-page .mobile-menu-links a { padding: 15px 0; border-bottom: 1px solid var(--rule); color: #e7edf2; font-size: clamp(18px, 5vw, 21px); line-height: 1.25; }
-  .auterim-v3-page .mobile-menu-links a:first-child { border-top: 1px solid var(--rule); }
-  .auterim-v3-page .mobile-menu-cta { display: flex; width: 100%; min-height: 48px; align-items: center; justify-content: center; }
+  .mobile-menu[open] nav { opacity: 1; transform: none; pointer-events: auto; }
+  .mobile-menu-links { display: flex; flex-direction: column; gap: 0; }
+  .mobile-menu-links a { padding: 15px 0; border-bottom: 1px solid var(--rule); color: #e7edf2; font-size: clamp(18px, 5vw, 21px); line-height: 1.25; }
+  .mobile-menu-links a:first-child { border-top: 1px solid var(--rule); }
+  .mobile-menu-cta { display: flex; width: 100%; min-height: 48px; align-items: center; justify-content: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .auterim-v3-page .mobile-menu nav { transition: none; transform: none; }
+  .mobile-menu nav { transition: none; transform: none; }
 }
 
 /* Responsive contract — final cascade layer. */
