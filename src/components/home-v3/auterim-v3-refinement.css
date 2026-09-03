@@ -980,8 +980,16 @@
 .auterim-v3-page .uc-result { display: flex; align-items: center; gap: 9px; margin-top: 34px; color: #d4dce4; font-size: 14px; }
 .auterim-v3-page .uc-result i { width: 5px; height: 5px; flex: none; border-radius: 50%; background: var(--acc); box-shadow: 0 0 7px rgba(55,230,212,.42); }
 @media (max-width: 820px) {
-  .auterim-v3-page .ucr { grid-template-columns: 1fr; gap: 16px; padding-top: 32px; padding-bottom: 32px; }
-  .auterim-v3-page .ucr .a { margin-top: 5px; padding-left: 17px; }
+  .auterim-v3-page .ucr { grid-template-columns: 1fr; gap: 14px; padding-top: 28px; padding-bottom: 28px; }
+  .auterim-v3-page .ucr h3 { font-size: 18px; }
+  .auterim-v3-page .ucr .b, .auterim-v3-page .ucr .a { font-size: 14.5px; line-height: 1.55; }
+  .auterim-v3-page .ucr .k { margin-bottom: 8px; }
+  /* Flat on mobile: the bordered/indented "With Auterim" block reads as a
+     boxed card once stacked full-width. Drop to the same plain-paragraph
+     treatment as "Without", carrying the contrast through color and weight
+     alone, consistent with the rest of the page's flat editorial language. */
+  .auterim-v3-page .ucr .a { margin-top: 16px; padding-left: 0; border-left: 0; }
+  .auterim-v3-page .ucr .a strong { font-size: 15px; }
 }
 
 /* Architecture: one explicit boundary between trusted systems, controlled work and AI capability. */
