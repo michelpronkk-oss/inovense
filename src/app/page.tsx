@@ -3,7 +3,7 @@ import { PageShell } from "@/components/marketing-ui";
 import V3Header from "@/components/home-v3/v3-header";
 import V3Page from "@/components/home-v3/v3-page";
 import {
-  INOVENSE_HOME_FAQS,
+  AUTERIM_HOME_FAQS,
   AUTERIM_ORGANIZATION_ID,
   AUTERIM_URL,
   AUTERIM_WEBSITE_ID,
@@ -12,23 +12,22 @@ import {
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Auterim | The AI workforce built around how your company works.",
+    absolute: "Auterim | AI Workforce Built Around Your Business",
   },
   description:
-    "Auterim understands your business, recommends the right AI workforce, and lets it prepare and execute real work with controls.",
+    "Auterim learns how your company works, recommends AI operators, and runs approved work across the systems your team already uses.",
   alternates: {
     canonical: "https://auterim.com",
     languages: {
       en: "https://auterim.com",
-      nl: "https://auterim.com/nl",
       "x-default": "https://auterim.com",
     },
   },
   openGraph: {
     url: "https://auterim.com",
-    title: "Auterim | The AI workforce built around how your company works.",
+    title: "Auterim | AI Workforce Built Around Your Business",
     description:
-      "Auterim understands your business, recommends the right AI workforce, and lets it prepare and execute real work with controls.",
+      "Auterim learns how your company works, recommends AI operators, and runs approved work across the systems your team already uses.",
     images: [
       {
         url: "/opengraph-image",
@@ -38,9 +37,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Auterim | The AI workforce built around how your company works.",
+    title: "Auterim | AI Workforce Built Around Your Business",
     description:
-      "Auterim understands your business, recommends the right AI workforce, and lets it prepare and execute real work with controls.",
+      "Auterim learns how your company works, recommends AI operators, and runs approved work across the systems your team already uses.",
     images: [
       {
         url: "/opengraph-image",
@@ -55,9 +54,9 @@ const homePageSchema = {
   "@type": "WebPage",
   "@id": `${AUTERIM_URL}/#home`,
   url: AUTERIM_URL,
-  name: "Auterim | The AI workforce built around how your company works.",
+  name: "Auterim | AI Workforce Built Around Your Business",
   description:
-    "Auterim understands your business, recommends the right AI workforce, and lets it prepare and execute real work with controls.",
+    "Auterim learns how your company works, recommends AI operators, and runs approved work across the systems your team already uses.",
   isPartOf: {
     "@id": AUTERIM_WEBSITE_ID,
   },
@@ -71,7 +70,7 @@ const homeFaqSchema = {
   "@context": "https://schema.org",
   "@type": "FAQPage",
   "@id": `${AUTERIM_URL}/#home-faq`,
-  mainEntity: INOVENSE_HOME_FAQS.map((faq) => ({
+  mainEntity: AUTERIM_HOME_FAQS.map((faq) => ({
     "@type": "Question",
     name: faq.question,
     acceptedAnswer: {

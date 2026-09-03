@@ -12,21 +12,21 @@ import {
 } from "@/components/marketing-ui";
 
 export const metadata: Metadata = {
-  title: "Operations",
-  description: "AI operators for business operations. Recurring task execution, cross-team coordination, process documentation, and vendor management.",
+  title: "AI Operations Automation",
+  description: "Surface blockers, prepare operating updates and coordinate recurring work with AI operators that follow your company policies.",
   alternates: {
     canonical: "https://auterim.com/solutions/operations",
   },
   openGraph: {
     url: "https://auterim.com/solutions/operations",
-    title: "Operations | Auterim",
-    description: "AI operators for business operations. Recurring task execution, cross-team coordination, process documentation, and vendor management.",
+    title: "AI Operations Automation | Auterim",
+    description: "Surface blockers, prepare operating updates and coordinate recurring work with AI operators that follow your company policies.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Operations | Auterim",
-    description: "AI operators for business operations. Recurring task execution, cross-team coordination, process documentation, and vendor management.",
+    title: "AI Operations Automation | Auterim",
+    description: "Surface blockers, prepare operating updates and coordinate recurring work with AI operators that follow your company policies.",
   },
 };
 

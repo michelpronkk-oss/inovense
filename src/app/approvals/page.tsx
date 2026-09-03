@@ -12,21 +12,21 @@ import {
 } from "@/components/marketing-ui";
 
 export const metadata: Metadata = {
-  title: "Approvals",
-  description: "Human-in-the-loop approval gates between agent proposals and execution. Operators act at speed, humans stay in control. Every decision is logged.",
+  title: "AI Approval Workflows & Controls",
+  description: "Set the approval boundaries that matter. Auterim operators can prepare work automatically and pause for a decision when a policy requires it.",
   alternates: {
     canonical: "https://auterim.com/approvals",
   },
   openGraph: {
     url: "https://auterim.com/approvals",
-    title: "Approvals | Auterim",
-    description: "Human-in-the-loop approval gates between agent proposals and execution. Operators act at speed, humans stay in control. Every decision is logged.",
+    title: "AI Approval Workflows & Controls | Auterim",
+    description: "Set the approval boundaries that matter. Auterim operators can prepare work automatically and pause for a decision when a policy requires it.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Approvals | Auterim",
-    description: "Human-in-the-loop approval gates between agent proposals and execution. Operators act at speed, humans stay in control. Every decision is logged.",
+    title: "AI Approval Workflows & Controls | Auterim",
+    description: "Set the approval boundaries that matter. Auterim operators can prepare work automatically and pause for a decision when a policy requires it.",
   },
 };
 
@@ -34,24 +34,24 @@ const steps = [
   {
     number: "01",
     title: "Operator proposes",
-    description: "The agent drafts an action and surfaces it to your inbox with full context on what it wants to do and why.",
+    description: "The operator prepares an action with the relevant context and policy information.",
   },
   {
     number: "02",
     title: "You review in inbox",
-    description: "See the proposed action, the reasoning behind it, and any relevant data in a single focused view.",
+    description: "Review the proposed action when the policy for that work requires a decision.",
   },
   {
     number: "03",
     title: "Approved action executes",
-    description: "One click to approve. One click to reject. The decision is logged with a timestamp and your identity.",
+    description: "Once approved, the action can continue within the scope you set. Activity is recorded in the product.",
   },
 ];
 
 const approvalProperties = [
   {
-    label: "Response time",
-    value: "4m median",
+    label: "Policy-driven review",
+    value: "Only where you require it",
   },
   {
     label: "Context shown",
@@ -62,8 +62,8 @@ const approvalProperties = [
     value: "In your inbox",
   },
   {
-    label: "Full log of every decision",
-    value: "Permanent, timestamped",
+    label: "Activity record",
+    value: "Approvals and execution context",
   },
 ];
 
@@ -84,7 +84,7 @@ export default function ApprovalsPage() {
           <PageHero
             eyebrow="Platform"
             heading="Act at speed. Stay in control."
-            description="Approval gates sit between agent proposals and execution. Operators move fast. You stay in the loop on every decision that matters. Every approval and rejection is logged."
+            description="Approval rules shape how operators work. Routine work can continue within the scopes you set; sensitive actions pause for a decision when you want them to."
           >
             <Link
               href="/app/onboarding"
@@ -96,7 +96,7 @@ export default function ApprovalsPage() {
                   "inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(77,232,225,0.45), 0 8px 28px -8px rgba(77,232,225,0.5)",
               }}
             >
-              Get Starter
+              Start preview
             </Link>
             <Link
               href="/docs"

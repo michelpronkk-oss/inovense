@@ -14,8 +14,14 @@ export default function CookieConsentBanner() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    setVisible(getStoredConsent() === null);
-    return onOpenPreferencesRequest(() => setVisible(true));
+    const timer = window.setTimeout(() => {
+      setVisible(getStoredConsent() === null);
+    }, 0);
+    const unsubscribe = onOpenPreferencesRequest(() => setVisible(true));
+    return () => {
+      window.clearTimeout(timer);
+      unsubscribe();
+    };
   }, []);
 
   function choose(value: ConsentValue) {

@@ -11,9 +11,9 @@ import {
 } from "@/lib/geo";
 
 export const metadata: Metadata = {
-  title: "AI Automation for Lead Flow and Business Operations",
+  title: "Business AI Automation",
   description:
-    "Auterim is an AI workforce platform that understands your business, diagnoses lost value, and deploys controlled AI workers across real workflows.",
+    "Auterim turns company context into controlled AI work, helping teams qualify enquiries, prepare follow-up and coordinate next steps across their systems.",
   alternates: {
     canonical: "https://auterim.com/ai-automation",
     languages: {
@@ -24,9 +24,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://auterim.com/ai-automation",
-    title: "AI Workforce for Business Operations | Auterim",
+    title: "Business AI Automation | Auterim",
     description:
-      "Auterim understands your business, diagnoses lost value, and deploys controlled AI workers across real workflows.",
+      "Auterim turns company context into controlled AI work, helping teams qualify enquiries, prepare follow-up and coordinate next steps across their systems.",
   },
 };
 
@@ -35,7 +35,7 @@ const aiAutomationServiceSchema = {
   "@type": "Service",
   "@id": `${INOVENSE_URL}/ai-automation#service`,
   name: "Auterim AI Workforce",
-  serviceType: "AI automation and workflow systems",
+  serviceType: "Business AI automation platform",
   provider: {
     "@id": INOVENSE_ORGANIZATION_ID,
   },
@@ -49,7 +49,7 @@ const aiAutomationServiceSchema = {
   },
   url: `${INOVENSE_URL}/ai-automation`,
   description:
-    "AI automation services for lead routing, process orchestration, internal tooling, and workflow reliability.",
+    "Business AI automation for controlled operator work across connected company systems.",
 };
 
 /* ─── Primitives ────────────────────────────────────────────────────────── */

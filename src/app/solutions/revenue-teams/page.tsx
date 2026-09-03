@@ -12,21 +12,21 @@ import {
 } from "@/components/marketing-ui";
 
 export const metadata: Metadata = {
-  title: "Revenue Teams",
-  description: "AI operators for revenue teams. Pipeline management, lead follow-up sequencing, deal intelligence, and CRM hygiene automation.",
+  title: "AI Operators for Revenue Teams",
+  description: "Prepare lead follow-up, keep CRM context current and surface stalled deals with AI operators that work within your revenue policies.",
   alternates: {
     canonical: "https://auterim.com/solutions/revenue-teams",
   },
   openGraph: {
     url: "https://auterim.com/solutions/revenue-teams",
-    title: "Revenue Teams | Auterim",
-    description: "AI operators for revenue teams. Pipeline management, lead follow-up sequencing, deal intelligence, and CRM hygiene automation.",
+    title: "AI Operators for Revenue Teams | Auterim",
+    description: "Prepare lead follow-up, keep CRM context current and surface stalled deals with AI operators that work within your revenue policies.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Revenue Teams | Auterim",
-    description: "AI operators for revenue teams. Pipeline management, lead follow-up sequencing, deal intelligence, and CRM hygiene automation.",
+    title: "AI Operators for Revenue Teams | Auterim",
+    description: "Prepare lead follow-up, keep CRM context current and surface stalled deals with AI operators that work within your revenue policies.",
   },
 };
 

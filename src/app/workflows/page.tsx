@@ -14,21 +14,21 @@ import {
 import Reveal from "@/components/reveal";
 
 export const metadata: Metadata = {
-  title: "Workflows",
-  description: "Structured execution chains that move work across agents, connectors, and approval gates without manual handoff. Every step logged and auditable.",
+  title: "AI Workflow Automation",
+  description: "Auterim workflows coordinate operators, connected systems and approval gates so repeatable business work moves without manual chasing.",
   alternates: {
     canonical: "https://auterim.com/workflows",
   },
   openGraph: {
     url: "https://auterim.com/workflows",
-    title: "Workflows | Auterim",
-    description: "Structured execution chains that move work across agents, connectors, and approval gates without manual handoff. Every step logged and auditable.",
+    title: "AI Workflow Automation | Auterim",
+    description: "Auterim workflows coordinate operators, connected systems and approval gates so repeatable business work moves without manual chasing.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Workflows | Auterim",
-    description: "Structured execution chains that move work across agents, connectors, and approval gates without manual handoff. Every step logged and auditable.",
+    title: "AI Workflow Automation | Auterim",
+    description: "Auterim workflows coordinate operators, connected systems and approval gates so repeatable business work moves without manual chasing.",
   },
 };
 

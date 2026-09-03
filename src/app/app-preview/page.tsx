@@ -1,8 +1,13 @@
+import type { Metadata } from "next";
 import "@/app/app/dashboard.css";
 import { AppProvider } from "@/lib/os/app-provider";
 import { OSSidebar } from "@/components/dashboard/sidebar";
 import { OSTopbar } from "@/components/dashboard/topbar";
 import { OSOverview } from "@/components/dashboard/overview";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default function AppPreviewPage() {
   return (
@@ -26,4 +31,3 @@ export default function AppPreviewPage() {
     </AppProvider>
   );
 }
-

@@ -5,7 +5,7 @@ const platformLinks = [
   { label: "AI Agents", href: "/agents" },
   { label: "Workflows", href: "/workflows" },
   { label: "Memory & context", href: "/memory" },
-  { label: "Approvals", href: "/approvals" },
+  { label: "Approvals & controls", href: "/security" },
   { label: "Integrations", href: "/integrations" },
   { label: "Security", href: "/security" },
 ];
@@ -20,7 +20,7 @@ const solutionLinks = [
 
 const resourceLinks = [
   { label: "Documentation", href: "/docs" },
-  { label: "API reference", href: "/api-reference" },
+  { label: "Platform guides", href: "/docs" },
   { label: "Changelog", href: "/changelog" },
   { label: "Status", href: "/status" },
   { label: "System architecture", href: "/architecture" },
@@ -30,7 +30,6 @@ const resourceLinks = [
 const companyLinks = [
   { label: "About", href: "/about" },
   { label: "Careers", href: "/careers" },
-  { label: "Customers", href: "/customers" },
   { label: "Press", href: "/press" },
   { label: "Contact", href: "/contact" },
 ];
@@ -102,7 +101,7 @@ export default function Footer() {
             </Link>
 
             <p className="max-w-[220px] text-sm leading-relaxed text-zinc-500">
-              AI agents that run your work. Built for serious operators.
+              The AI workforce built around how your company works.
             </p>
 
             {/* Status indicator */}
@@ -111,8 +110,7 @@ export default function Footer() {
               className="mt-5 inline-flex items-center gap-2 rounded-full border border-zinc-800 px-3 py-1.5 transition-colors hover:border-zinc-600"
             >
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-              <span className="font-mono text-[11px] text-zinc-500">All systems operational</span>
-              <span className="font-mono text-[11px] text-zinc-700">v1.18.2</span>
+              <span className="font-mono text-[11px] text-zinc-500">Product preview</span>
             </Link>
           </div>
 
@@ -128,7 +126,7 @@ export default function Footer() {
           <p className="text-xs text-zinc-700">
             &copy; 2026 Auterim, Inc. All rights reserved.
           </p>
-          <div className="flex items-center gap-5">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
             {legalLinks.map(({ label, href }) => (
               <Link
                 key={label}

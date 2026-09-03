@@ -29,6 +29,7 @@ export const metadata: Metadata = {
     title: "Docs | Auterim",
     description: "Guides, API reference, and architecture documentation for the Auterim operating layer. Deploy, configure, and scale your operators.",
   },
+  robots: { index: false, follow: true },
 };
 
 const docSections = [

@@ -12,21 +12,21 @@ import {
 } from "@/components/marketing-ui";
 
 export const metadata: Metadata = {
-  title: "Marketing",
-  description: "AI operators for marketing teams. Content production, campaign tracking, SEO workflow automation, and social scheduling without a coordinator.",
+  title: "AI Marketing Operations",
+  description: "Prepare campaign briefs, content drafts and marketing coordination with AI operators that stay within your approved brand and publishing rules.",
   alternates: {
     canonical: "https://auterim.com/solutions/marketing",
   },
   openGraph: {
     url: "https://auterim.com/solutions/marketing",
-    title: "Marketing | Auterim",
-    description: "AI operators for marketing teams. Content production, campaign tracking, SEO workflow automation, and social scheduling without a coordinator.",
+    title: "AI Marketing Operations | Auterim",
+    description: "Prepare campaign briefs, content drafts and marketing coordination with AI operators that stay within your approved brand and publishing rules.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Marketing | Auterim",
-    description: "AI operators for marketing teams. Content production, campaign tracking, SEO workflow automation, and social scheduling without a coordinator.",
+    title: "AI Marketing Operations | Auterim",
+    description: "Prepare campaign briefs, content drafts and marketing coordination with AI operators that stay within your approved brand and publishing rules.",
   },
 };
 

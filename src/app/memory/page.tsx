@@ -11,21 +11,21 @@ import {
 } from "@/components/marketing-ui";
 
 export const metadata: Metadata = {
-  title: "Memory & Context",
-  description: "Persistent company memory that gives every AI operator full context, history, and institutional knowledge across every run and every agent.",
+  title: "Company Context & AI Memory",
+  description: "Give Auterim operators the company context they need to prepare the right work, with access shaped by your approved tools and policies.",
   alternates: {
     canonical: "https://auterim.com/memory",
   },
   openGraph: {
     url: "https://auterim.com/memory",
-    title: "Memory & Context | Auterim",
-    description: "Persistent company memory that gives every AI operator full context, history, and institutional knowledge across every run and every agent.",
+    title: "Company Context & AI Memory | Auterim",
+    description: "Give Auterim operators the company context they need to prepare the right work, with access shaped by your approved tools and policies.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Memory & Context | Auterim",
-    description: "Persistent company memory that gives every AI operator full context, history, and institutional knowledge across every run and every agent.",
+    title: "Company Context & AI Memory | Auterim",
+    description: "Give Auterim operators the company context they need to prepare the right work, with access shaped by your approved tools and policies.",
   },
 };
 

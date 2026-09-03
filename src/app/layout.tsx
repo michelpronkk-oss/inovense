@@ -6,7 +6,6 @@ import TrafficAttributionTracker from "@/components/analytics/traffic-attributio
 import CookieConsentBanner from "@/components/cookie-consent-banner";
 import {
   AUTERIM_DESCRIPTION,
-  AUTERIM_LANES,
   AUTERIM_NAME,
   AUTERIM_ORGANIZATION_ID,
   AUTERIM_URL,
@@ -70,33 +69,29 @@ const orgSchema = {
       "@type": "ContactPoint",
       contactType: "sales",
       email: "hello@auterim.com",
-      url: `${AUTERIM_URL}/intake`,
+      url: `${AUTERIM_URL}/contact`,
       availableLanguage: ["en", "nl"],
     },
   ],
-  hasOfferCatalog: {
-    "@type": "OfferCatalog",
-    name: "Auterim service lanes",
-    itemListElement: AUTERIM_LANES.map((lane) => ({
-      "@type": "Offer",
-      itemOffered: {
-        "@type": "Service",
-        name: `${lane.name} by Auterim`,
-        url: `${AUTERIM_URL}${lane.path}`,
-        description: lane.description,
-      },
-    })),
-  },
   knowsAbout: [
-    "AI Agents",
-    "Workflow Automation",
-    "Policy Enforcement",
-    "Business Operating Systems",
-    "AI Integration",
-    "Approval Gates",
-    "Company Memory",
-    "Operator Execution",
+    "AI workforce",
+    "AI operators for business",
+    "AI approval workflows",
+    "Business process automation",
+    "Company context and policy controls",
   ],
+};
+
+const softwareSchema = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "@id": `${AUTERIM_URL}/#software`,
+  name: AUTERIM_NAME,
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  url: AUTERIM_URL,
+  description: AUTERIM_DESCRIPTION,
+  provider: { "@id": AUTERIM_ORGANIZATION_ID },
 };
 
 const websiteSchema = {
@@ -106,7 +101,7 @@ const websiteSchema = {
   name: "Auterim",
   url: AUTERIM_URL,
   description: AUTERIM_DESCRIPTION,
-  inLanguage: ["en", "nl"],
+  inLanguage: "en",
   publisher: {
     "@id": AUTERIM_ORGANIZATION_ID,
   },
@@ -149,6 +144,10 @@ export default async function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: toJsonLd(websiteSchema) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: toJsonLd(softwareSchema) }}
         />
       </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">

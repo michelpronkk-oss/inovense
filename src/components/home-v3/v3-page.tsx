@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
+/* eslint-disable @typescript-eslint/ban-ts-comment, react/no-unescaped-entities */
 // The source-faithful tuple markup intentionally mirrors the static handoff data.
 // @ts-nocheck
 "use client";

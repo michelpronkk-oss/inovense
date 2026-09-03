@@ -13,21 +13,21 @@ import {
 import Reveal from "@/components/reveal";
 
 export const metadata: Metadata = {
-  title: "Integrations",
-  description: "Native connectors for CRMs, communication platforms, finance systems, and data sources. Connect your stack to the Auterim operating layer.",
+  title: "Business AI Integrations",
+  description: "Connect the business systems Auterim operators use for context and approved actions, with explicit scopes and approval boundaries.",
   alternates: {
     canonical: "https://auterim.com/integrations",
   },
   openGraph: {
     url: "https://auterim.com/integrations",
-    title: "Integrations | Auterim",
-    description: "Native connectors for CRMs, communication platforms, finance systems, and data sources. Connect your stack to the Auterim operating layer.",
+    title: "Business AI Integrations | Auterim",
+    description: "Connect the business systems Auterim operators use for context and approved actions, with explicit scopes and approval boundaries.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Integrations | Auterim",
-    description: "Native connectors for CRMs, communication platforms, finance systems, and data sources. Connect your stack to the Auterim operating layer.",
+    title: "Business AI Integrations | Auterim",
+    description: "Connect the business systems Auterim operators use for context and approved actions, with explicit scopes and approval boundaries.",
   },
 };
 
@@ -65,8 +65,8 @@ export default function IntegrationsPage() {
           <Reveal>
             <PageHero
               eyebrow="Platform"
-              heading="Your stack, connected"
-              description="Native connectors for the tools your business already runs on. CRMs, communication platforms, finance systems, and data sources wired into a single operating layer so your agents have full context."
+              heading="Connect the systems your operators work in."
+              description="Auterim reads the context in your approved systems, then prepares or runs work only within the scopes and approval rules you set."
             >
               <Link
                 href="/app/onboarding"

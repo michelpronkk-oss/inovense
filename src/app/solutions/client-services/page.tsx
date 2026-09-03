@@ -12,21 +12,21 @@ import {
 } from "@/components/marketing-ui";
 
 export const metadata: Metadata = {
-  title: "Client Services",
-  description: "AI operators for client-facing teams. Onboarding automation, status reporting, account health monitoring, and escalation routing at scale.",
+  title: "AI Client Onboarding & Service Operations",
+  description: "Prepare onboarding plans, client updates and handoffs with AI operators that coordinate work across your approved service systems.",
   alternates: {
     canonical: "https://auterim.com/solutions/client-services",
   },
   openGraph: {
     url: "https://auterim.com/solutions/client-services",
-    title: "Client Services | Auterim",
-    description: "AI operators for client-facing teams. Onboarding automation, status reporting, account health monitoring, and escalation routing at scale.",
+    title: "AI Client Onboarding & Service Operations | Auterim",
+    description: "Prepare onboarding plans, client updates and handoffs with AI operators that coordinate work across your approved service systems.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Client Services | Auterim",
-    description: "AI operators for client-facing teams. Onboarding automation, status reporting, account health monitoring, and escalation routing at scale.",
+    title: "AI Client Onboarding & Service Operations | Auterim",
+    description: "Prepare onboarding plans, client updates and handoffs with AI operators that coordinate work across your approved service systems.",
   },
 };
 

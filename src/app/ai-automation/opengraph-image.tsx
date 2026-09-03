@@ -5,7 +5,7 @@ import { makeLaneOg } from "@/lib/make-lane-og";
 import { resolveOgVariantForRequest } from "@/lib/og-variant";
 
 export const runtime = "nodejs";
-export const alt = "AI Automation | Inovense — Practical Systems for Operators";
+export const alt = "Business AI Automation | Auterim";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 

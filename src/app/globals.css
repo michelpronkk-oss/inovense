@@ -204,3 +204,17 @@
 
 .cc-btn-decline:hover { border-color: rgba(255,255,255,.35) !important; }
 .cc-btn-accept:hover { background: #6FF2E5 !important; }
+
+[data-marketing-hero] { text-wrap: pretty; }
+[data-marketing-hero] h1, [data-marketing-hero] p { overflow-wrap: anywhere; }
+
+@media (max-width: 640px) {
+  [data-marketing-hero] { min-height: auto; padding-top: 7.5rem; padding-bottom: 4rem; }
+  [data-marketing-hero] h1 { max-width: 16ch !important; font-size: clamp(2.15rem, 10vw, 3.2rem) !important; line-height: 1.04; }
+  [data-marketing-hero] p { max-width: 42ch; font-size: 1rem; }
+  [data-marketing-hero] > div:last-child > * { width: min(100%, 22rem); min-height: 2.75rem; }
+}
+
+@media (max-width: 420px) {
+  [data-marketing-hero] { padding-right: 1.125rem; padding-left: 1.125rem; }
+}

@@ -26,6 +26,7 @@ export const metadata: Metadata = {
     description:
       "A compact answer surface for service fit, lane differences, and proof snapshots across Build, Systems, and Growth.",
   },
+  robots: { index: false, follow: true },
 };
 
 const answerFaqs = [

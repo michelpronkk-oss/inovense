@@ -16,8 +16,8 @@ export const AUTERIM_EMAILS = {
   noreply: "noreply@auterim.com",
 } as const;
 
-export const AUTERIM_POSITIONING = "Auterim is an AI workforce platform for businesses.";
-export const AUTERIM_DESCRIPTION = "Auterim understands your business, finds where time, money, and opportunities are being lost, and deploys the right AI workforce with controls and measurable business impact.";
+export const AUTERIM_POSITIONING = "Auterim is the AI workforce built around your business.";
+export const AUTERIM_DESCRIPTION = "Auterim understands how your company works, recommends AI operators, and runs approved work across the systems your team already uses.";
 export const AUTERIM_CORE_LOOP = "Connect → Understand → Diagnose → Recommend → Deploy → Measure → Improve";
 export const AUTERIM_ORGANIZATION_ID = `${AUTERIM_URL}/#organization`;
 export const AUTERIM_WEBSITE_ID = `${AUTERIM_URL}/#website`;

@@ -22,6 +22,7 @@ export const metadata: Metadata = {
     description:
       "Tell Inovense what you are building, where the current flow leaks, and what needs to become cleaner before the next launch.",
   },
+  robots: { index: false, follow: true },
 };
 
 export default function IntakePage() {

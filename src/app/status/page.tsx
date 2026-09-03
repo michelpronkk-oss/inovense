@@ -25,6 +25,7 @@ export const metadata: Metadata = {
     title: "Status | Auterim",
     description: "Live status for Auterim platform services. Agent runtime, workflow execution, connector APIs, approval queue, and memory layer.",
   },
+  robots: { index: false, follow: true },
 };
 
 const systems = [
@@ -37,9 +38,9 @@ const systems = [
 ];
 
 const metrics = [
-  { label: "API uptime (30d)", value: "99.9%" },
-  { label: "Workflow success rate", value: "99.4%" },
-  { label: "Approval queue review", value: "4m median" },
+  { label: "Public monitoring", value: "Preview" },
+  { label: "Incident history", value: "Not published" },
+  { label: "Support updates", value: "Via hello@auterim.com" },
 ];
 
 export default function StatusPage() {
@@ -52,7 +53,7 @@ export default function StatusPage() {
           <PageHero
             eyebrow="Resources"
             heading="System Status"
-            description="All systems operational."
+            description="Public service monitoring is not published during product preview. Contact the team for current operational support."
           >
             <div className="flex items-center justify-center gap-2.5">
               <span
@@ -63,7 +64,7 @@ export default function StatusPage() {
                 className="font-mono text-xs uppercase tracking-[0.16em]"
                 style={{ color: "#34D399" }}
               >
-                All systems operational
+                Product preview
               </span>
             </div>
             <span

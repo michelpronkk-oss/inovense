@@ -7,21 +7,21 @@ import { PricingPlans } from "@/components/pricing/pricing-plans";
 import { pricingPlans } from "@/lib/pricing";
 
 export const metadata: Metadata = {
-  title: "Pricing",
-  description: "Pay for operating capacity, not seats. Start with Inovense OS Starter and scale operators, connected tools, approvals, and execution volume as your workflows expand.",
+  title: "AI Workforce Pricing",
+  description: "Start free, then pay for the AI operators, connected systems and controlled runs your company puts into production.",
   alternates: {
     canonical: "https://auterim.com/pricing",
   },
   openGraph: {
     url: "https://auterim.com/pricing",
-    title: "Pricing | Inovense",
-    description: "Pay for operating capacity, not seats. Start with Inovense OS Starter and scale operators, connected tools, approvals, and execution volume as your workflows expand.",
+    title: "AI Workforce Pricing | Auterim",
+    description: "Start free, then pay for the AI operators, connected systems and controlled runs your company puts into production.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Pricing | Inovense",
-    description: "Pay for operating capacity, not seats. Start with Inovense OS Starter and scale operators, connected tools, approvals, and execution volume as your workflows expand.",
+    title: "AI Workforce Pricing | Auterim",
+    description: "Start free, then pay for the AI operators, connected systems and controlled runs your company puts into production.",
   },
 };
 

@@ -11,21 +11,25 @@ import {
 } from "@/components/marketing-ui";
 
 export const metadata: Metadata = {
-  title: "API Reference",
-  description: "Complete REST API for Auterim. Agents, workflows, connectors, approvals, memory, and execution logs. Full programmatic control over every platform layer.",
+  title: "API Reference | Product Preview",
+  description: "An outline of the API surface being shaped for the Auterim product preview.",
+  robots: {
+    index: false,
+    follow: false,
+  },
   alternates: {
     canonical: "https://auterim.com/api-reference",
   },
   openGraph: {
     url: "https://auterim.com/api-reference",
-    title: "API Reference | Auterim",
-    description: "Complete REST API for Auterim. Agents, workflows, connectors, approvals, memory, and execution logs. Full programmatic control over every platform layer.",
+    title: "API Reference | Product Preview | Auterim",
+    description: "An outline of the API surface being shaped for the Auterim product preview.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "API Reference | Auterim",
-    description: "Complete REST API for Auterim. Agents, workflows, connectors, approvals, memory, and execution logs. Full programmatic control over every platform layer.",
+    title: "API Reference | Product Preview | Auterim",
+    description: "An outline of the API surface being shaped for the Auterim product preview.",
   },
 };
 

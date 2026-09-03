@@ -27,23 +27,24 @@ export const metadata: Metadata = {
     title: "Customers | Auterim",
     description: "How operators use Auterim to run more of their business with fewer manual handoffs. Real use cases from revenue teams, founders, and content operators.",
   },
+  robots: { index: false, follow: true },
 };
 
 const useCases = [
   {
-    context: "Design partner Â· consulting team",
+    context: "Illustrative use case · consulting team",
     description:
-      "A founder running a 4-person consultancy uses Auterim to manage client follow-ups and onboarding without a dedicated ops hire. One operator handles the work that would otherwise require a full-time coordinator.",
+      "A consulting team can use a Client Flow Operator to prepare client follow-ups and onboarding coordination from its existing systems.",
   },
   {
-    context: "Design partner Â· B2B SaaS sales team",
+    context: "Illustrative use case · B2B sales team",
     description:
-      "A sales team at a B2B SaaS company deployed a Revenue Operator to work every lead in their CRM. Follow-ups run on schedule, deal intelligence surfaces automatically, and the team focuses on closing.",
+      "A Revenue Operator can qualify inbound signals, prepare follow-ups and keep CRM next steps current for a B2B sales team.",
   },
   {
-    context: "Design partner Â· distributed content team",
+    context: "Illustrative use case · content team",
     description:
-      "A content team uses an Operator to draft and schedule across LinkedIn and email without a coordinator. Brand guidelines live in memory. Every post passes through an approval gate before it goes out.",
+      "A Marketing Operator can prepare content drafts and publishing plans from approved brand context, with external publishing held for review.",
   },
 ];
 
@@ -56,8 +57,8 @@ export default function CustomersPage() {
           {/* Hero */}
           <PageHero
             eyebrow="Company"
-            heading="Early design partners running Auterim in production workflows."
-            description="We work with early design partners who are building real operator workflows. No logo wall, no fictional case studies, only implementation patterns we can stand behind."
+            heading="Illustrative operating patterns for early teams."
+            description="These examples show how Auterim operators can prepare and coordinate work. They are not customer case studies or performance claims."
           >
             <Link
               href="/app/onboarding"
@@ -69,7 +70,7 @@ export default function CustomersPage() {
                   "inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(77,232,225,0.45), 0 8px 28px -8px rgba(77,232,225,0.5)",
               }}
             >
-              Get Starter
+              Start preview
             </Link>
           </PageHero>
 
@@ -81,7 +82,7 @@ export default function CustomersPage() {
                 className="font-mono text-[11px] uppercase tracking-[0.14em]"
                 style={{ color: "#4A4F57" }}
               >
-                Design partner patterns
+                Operating patterns
               </span>
               <h2
                 className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
@@ -108,11 +109,11 @@ export default function CustomersPage() {
           </section>
 
           <PageCTA
-            heading="Become an early design partner."
-            sub="Work directly with our team to shape your first operator workflows."
+            heading="Start with your operating profile."
+            sub="See the operators and work patterns that fit your company before connecting a system."
             primary="Book a 20-min demo"
             primaryHref="/contact"
-            secondary="Get Starter"
+            secondary="Start preview"
             secondaryHref="/app/onboarding"
           />
         </PageShell>

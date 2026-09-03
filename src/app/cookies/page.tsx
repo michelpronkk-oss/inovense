@@ -54,7 +54,7 @@ export default function CookiesPage() {
             <ul>
               <li>No advertising or ad-retargeting cookies</li>
               <li>No cross-site tracking sold or shared with third parties</li>
-              <li>No cookies from social media widgets we haven't embedded</li>
+              <li>No cookies from social media widgets we haven&apos;t embedded</li>
             </ul>
 
             <h2>Managing cookies</h2>

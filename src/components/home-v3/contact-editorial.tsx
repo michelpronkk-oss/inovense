@@ -31,10 +31,10 @@ export default function ContactEditorial() {
         <div className="wrap">
           <div className="close-main rv">
             <span className="lbl"><i aria-hidden="true" />Contact</span>
-            <h1>Tell us what's taking up your team's time.</h1>
+            <h1>Tell us what&apos;s taking up your team&apos;s time.</h1>
             <p>Talk to us about deploying your first operator, or ask anything about approvals, connectors and control before you connect a system.</p>
             <div className="close-actions">
-              <Link href={appHref("/app/onboarding")} className="btn btn-a">Start free preview <span className="arrow">→</span></Link>
+              <Link href={appHref("/app/onboarding")} className="btn btn-a">Start preview <span className="arrow">→</span></Link>
               <a href="mailto:hello@auterim.com" className="close-run">hello@auterim.com <span>→</span></a>
             </div>
           </div>

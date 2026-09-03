@@ -35,14 +35,14 @@ export default function V3Footer() {
             <ul>
               <li><Link href="/#pricing">Piloting</Link></li>
               <li><Link href="/security">Security</Link></li>
-              <li><Link href="/#top">Documentation <i>Planned</i></Link></li>
-              <li><Link href="/#top">Changelog <i>Planned</i></Link></li>
+              <li><Link href="/docs">Documentation</Link></li>
+              <li><Link href="/changelog">Changelog</Link></li>
             </ul>
           </div>
           <div>
             <h4>Company</h4>
             <ul>
-              <li><Link href="/#top">About <i>Planned</i></Link></li>
+              <li><Link href="/about">About</Link></li>
               <li><Link href="/contact">Contact</Link></li>
               <li><Link href="/privacy">Privacy</Link></li>
               <li><Link href="/terms">Terms</Link></li>

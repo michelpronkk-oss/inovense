@@ -14,21 +14,21 @@ import {
 import Reveal from "@/components/reveal";
 
 export const metadata: Metadata = {
-  title: "Security",
-  description: "Policy enforcement, approval gates, and immutable audit logs. Every agent action runs inside your defined boundaries. Operators propose, policies enforce, humans approve.",
+  title: "Security, Approvals & AI Governance",
+  description: "Define what Auterim operators can do, what needs approval, and what is blocked. Review every run through clear policy boundaries.",
   alternates: {
     canonical: "https://auterim.com/security",
   },
   openGraph: {
     url: "https://auterim.com/security",
-    title: "Security | Auterim",
-    description: "Policy enforcement, approval gates, and immutable audit logs. Every agent action runs inside your defined boundaries. Operators propose, policies enforce, humans approve.",
+    title: "Security, Approvals & AI Governance | Auterim",
+    description: "Define what Auterim operators can do, what needs approval, and what is blocked. Review every run through clear policy boundaries.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Security | Auterim",
-    description: "Policy enforcement, approval gates, and immutable audit logs. Every agent action runs inside your defined boundaries. Operators propose, policies enforce, humans approve.",
+    title: "Security, Approvals & AI Governance | Auterim",
+    description: "Define what Auterim operators can do, what needs approval, and what is blocked. Review every run through clear policy boundaries.",
   },
 };
 
@@ -54,10 +54,10 @@ const properties = [
   "All actions proposed before execution",
   "Policy rules enforced at runtime",
   "Approval required for configurable action types",
-  "Immutable execution logs",
+  "Execution logs for operator activity and approval decisions",
   "Role-based access control",
   "Data stays within your connector boundaries",
-  "Designed for SOC 2 readiness",
+  "Controls documented in the product preview",
 ];
 
 export default function SecurityPage() {

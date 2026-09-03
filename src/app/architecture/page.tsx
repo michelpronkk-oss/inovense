@@ -11,21 +11,21 @@ import {
 } from "@/components/marketing-ui";
 
 export const metadata: Metadata = {
-  title: "Architecture",
-  description: "Technical overview of the Auterim operating layer. Agent runtime, policy engine, approval gates, persistent memory, and the connector framework.",
+  title: "AI Workforce Architecture",
+  description: "See how Auterim connects company context, operators, connector permissions and approval policies into controlled AI work.",
   alternates: {
     canonical: "https://auterim.com/architecture",
   },
   openGraph: {
     url: "https://auterim.com/architecture",
-    title: "Architecture | Auterim",
-    description: "Technical overview of the Auterim operating layer. Agent runtime, policy engine, approval gates, persistent memory, and the connector framework.",
+    title: "AI Workforce Architecture | Auterim",
+    description: "See how Auterim connects company context, operators, connector permissions and approval policies into controlled AI work.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Architecture | Auterim",
-    description: "Technical overview of the Auterim operating layer. Agent runtime, policy engine, approval gates, persistent memory, and the connector framework.",
+    title: "AI Workforce Architecture | Auterim",
+    description: "See how Auterim connects company context, operators, connector permissions and approval policies into controlled AI work.",
   },
 };
 
@@ -87,7 +87,7 @@ const properties = [
   "Persistent memory layer",
   "Async approval queues",
   "OAuth-ready and webhook connectors",
-  "Immutable audit logs",
+  "Execution activity and approval logs",
 ];
 
 export default function ArchitecturePage() {
@@ -99,8 +99,8 @@ export default function ArchitecturePage() {
           {/* Hero */}
           <PageHero
             eyebrow="Resources"
-            heading="Built to run your business, not just assist it."
-            description="A technical overview of how the Auterim operating layer works. Five distinct layers, each with a clear responsibility."
+            heading="The control layer between your business and AI."
+            description="Auterim turns company context into prepared work, with connector permissions, policies and approvals shaping every action."
           >
             <Link
               href="/docs"

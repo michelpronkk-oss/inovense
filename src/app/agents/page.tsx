@@ -14,21 +14,21 @@ import {
 import Reveal from "@/components/reveal";
 
 export const metadata: Metadata = {
-  title: "AI Agents",
-  description: "Deploy specialized AI operators that run workflows, handle decisions, and execute tasks inside your policy boundaries. Revenue, content, finance, and ops operators.",
+  title: "AI Operators for Business",
+  description: "See how Auterim AI operators use company context, approved tools, and clear boundaries to prepare and run business work.",
   alternates: {
     canonical: "https://auterim.com/agents",
   },
   openGraph: {
     url: "https://auterim.com/agents",
-    title: "AI Agents | Auterim",
-    description: "Deploy specialized AI operators that run workflows, handle decisions, and execute tasks inside your policy boundaries. Revenue, content, finance, and ops operators.",
+    title: "AI Operators for Business | Auterim",
+    description: "See how Auterim AI operators use company context, approved tools, and clear boundaries to prepare and run business work.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI Agents | Auterim",
-    description: "Deploy specialized AI operators that run workflows, handle decisions, and execute tasks inside your policy boundaries. Revenue, content, finance, and ops operators.",
+    title: "AI Operators for Business | Auterim",
+    description: "See how Auterim AI operators use company context, approved tools, and clear boundaries to prepare and run business work.",
   },
 };
 

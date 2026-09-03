@@ -12,7 +12,7 @@ export default async function Image() {
       category: "Resources",
       headline: "You run the system. We run the infrastructure.",
       description: "Security posture and data handling for serious operators.",
-      items: ["Data boundaries", "No training on your data", "Role-based access"],
+      items: ["Data boundaries", "Purpose-limited access", "Role-based access"],
     }),
     { ...size }
   );

@@ -22,6 +22,7 @@ export const metadata: Metadata = {
     description:
       "Clear scope, fast decisions, clean handoff, and a delivery rhythm designed to avoid revision chaos.",
   },
+  robots: { index: false, follow: true },
 };
 
 /* ─── Shared primitives ─────────────────────────────────────────────────── */

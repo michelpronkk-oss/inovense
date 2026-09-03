@@ -12,21 +12,21 @@ import {
 } from "@/components/marketing-ui";
 
 export const metadata: Metadata = {
-  title: "Trust Center",
-  description: "Security practices, data handling, and compliance posture for the Auterim platform. Data boundaries, no training on your data, full audit trail.",
+  title: "Trust Center: Data, Permissions & Controls",
+  description: "Learn how Auterim uses connector permissions, approval boundaries and activity logs to keep AI work visible and controlled.",
   alternates: {
     canonical: "https://auterim.com/trust",
   },
   openGraph: {
     url: "https://auterim.com/trust",
-    title: "Trust Center | Auterim",
-    description: "Security practices, data handling, and compliance posture for the Auterim platform. Data boundaries, no training on your data, full audit trail.",
+    title: "Trust Center: Data, Permissions & Controls | Auterim",
+    description: "Learn how Auterim uses connector permissions, approval boundaries and activity logs to keep AI work visible and controlled.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Trust Center | Auterim",
-    description: "Security practices, data handling, and compliance posture for the Auterim platform. Data boundaries, no training on your data, full audit trail.",
+    title: "Trust Center: Data, Permissions & Controls | Auterim",
+    description: "Learn how Auterim uses connector permissions, approval boundaries and activity logs to keep AI work visible and controlled.",
   },
 };
 
@@ -36,12 +36,12 @@ const trustProperties = [
     description: "Agent data only flows to connectors you explicitly authorize. No data moves outside your defined scope.",
   },
   {
-    title: "No training on your data",
-    description: "Execution logs and business data are not used for model training. Your operations stay yours.",
+    title: "Purpose-limited access",
+    description: "Operators use the records available through the connector scopes and tasks you authorize for a workspace.",
   },
   {
     title: "Audit trail",
-    description: "Every action, proposal, and decision is logged with a timestamp, actor, and outcome.",
+    description: "Operator activity and approval decisions are recorded so teams can review what happened in a run.",
   },
   {
     title: "Role-based access",

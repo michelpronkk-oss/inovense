@@ -19,7 +19,7 @@ export function PageHero({
   children?: React.ReactNode;
 }) {
   return (
-    <section className="mx-auto flex w-full max-w-4xl flex-col items-center px-5 pb-14 pt-24 text-center sm:px-6 sm:pb-20 sm:pt-32 md:pb-28 md:pt-40">
+    <section data-marketing-hero className="mx-auto flex w-full max-w-4xl flex-col items-center px-5 pb-14 pt-24 text-center sm:px-6 sm:pb-20 sm:pt-32 md:pb-28 md:pt-40">
       <Eyebrow>{eyebrow}</Eyebrow>
       <h1
         className="mb-4 text-[2.25rem] font-semibold leading-[1.06] sm:mb-5 sm:text-5xl md:text-6xl"
@@ -48,6 +48,7 @@ export function PageHero({
 export function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <div
+      data-marketing-shell
       className="relative min-h-screen overflow-hidden"
       style={{
         background: `
@@ -181,6 +182,8 @@ export function PageCTA({
   secondary?: string;
   secondaryHref?: string;
 }) {
+  const primaryLabel = primary === "Get Starter" ? "Start preview" : primary;
+
   return (
     <section className="relative py-12 md:py-20">
       <SectionDivider />
@@ -206,7 +209,7 @@ export function PageCTA({
               boxShadow: "inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(77,232,225,0.45), 0 8px 28px -8px rgba(77,232,225,0.5)",
             }}
           >
-            {primary}
+            {primaryLabel}
           </Link>
           {secondary && secondaryHref && (
             <Link

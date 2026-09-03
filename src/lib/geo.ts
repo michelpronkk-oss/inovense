@@ -24,11 +24,11 @@ export const AUTERIM_LANES = [
 ] as const;
 export const INOVENSE_LANES = AUTERIM_LANES;
 
-export const INOVENSE_HOME_FAQS = [
-  { question: "What does Auterim do?", answer: "Auterim understands your business, finds where value is being lost, and deploys the right AI workforce with controls and measurable impact." },
-  { question: "How does Auterim work?", answer: "Auterim connects to your tools, understands how the business runs, diagnoses opportunities, recommends a workforce, then measures and improves the result." },
-  { question: "Who is Auterim for?", answer: "Auterim is for businesses that want AI to improve real work across revenue, operations, client flow, and other functions." },
-  { question: "What makes Auterim different?", answer: "Most AI tools automate what users tell them to automate. Auterim starts by understanding the business and finding the work worth improving." },
+export const AUTERIM_HOME_FAQS = [
+  { question: "What is an AI operator?", answer: "An AI operator is a role with a defined job, company context, connected tools and approval boundaries. It prepares and runs work rather than simply answering prompts." },
+  { question: "How is Auterim different from an AI chatbot?", answer: "Chatbots wait for an instruction. Auterim starts with company context, recommends the right operators and lets them work across the systems your team already uses." },
+  { question: "Can Auterim act without approval?", answer: "Only within the policies you define. Operators can prepare work automatically, while sensitive actions wait for a named approver or remain blocked." },
+  { question: "Can I preview Auterim before connecting tools?", answer: "Yes. Start with your website to see an operating profile and recommended workforce before you connect systems or enable external actions." },
 ] as const;
 
 export function toJsonLd(data: unknown) {

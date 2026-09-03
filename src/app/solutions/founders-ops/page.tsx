@@ -12,21 +12,21 @@ import {
 } from "@/components/marketing-ui";
 
 export const metadata: Metadata = {
-  title: "Founders & Ops",
-  description: "AI operators for founders running lean. Business intelligence, communications management, hiring workflow, and finance monitoring without an ops hire.",
+  title: "AI Operators for Founders & Operations",
+  description: "Give a lean team an operating rhythm with AI operators that prepare weekly briefs, coordinate follow-up and surface decisions for review.",
   alternates: {
     canonical: "https://auterim.com/solutions/founders-ops",
   },
   openGraph: {
     url: "https://auterim.com/solutions/founders-ops",
-    title: "Founders & Ops | Auterim",
-    description: "AI operators for founders running lean. Business intelligence, communications management, hiring workflow, and finance monitoring without an ops hire.",
+    title: "AI Operators for Founders & Operations | Auterim",
+    description: "Give a lean team an operating rhythm with AI operators that prepare weekly briefs, coordinate follow-up and surface decisions for review.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Founders & Ops | Auterim",
-    description: "AI operators for founders running lean. Business intelligence, communications management, hiring workflow, and finance monitoring without an ops hire.",
+    title: "AI Operators for Founders & Operations | Auterim",
+    description: "Give a lean team an operating rhythm with AI operators that prepare weekly briefs, coordinate follow-up and surface decisions for review.",
   },
 };
 

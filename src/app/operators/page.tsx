@@ -9,24 +9,24 @@ import { OPERATORS } from "@/data/operators";
 import { appHref } from "@/lib/urls";
 
 export const metadata: Metadata = {
-  title: "Operators",
+  title: "AI Operator Registry",
   description:
-    "Fifteen AI operators that run the same Detect, Prepare, Approve, Execute, Log loop across revenue, delivery, operations and growth.",
+    "Explore Auterim's AI operator registry for revenue, client flow, operations and marketing work, including tools and approval boundaries.",
   alternates: {
     canonical: "https://auterim.com/operators",
   },
   openGraph: {
     url: "https://auterim.com/operators",
-    title: "Operators | Auterim",
+    title: "AI Operator Registry | Auterim",
     description:
-      "Fifteen AI operators that run the same Detect, Prepare, Approve, Execute, Log loop across revenue, delivery, operations and growth.",
+      "Explore Auterim's AI operator registry for revenue, client flow, operations and marketing work, including tools and approval boundaries.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Operators | Auterim",
+    title: "AI Operator Registry | Auterim",
     description:
-      "Fifteen AI operators that run the same Detect, Prepare, Approve, Execute, Log loop across revenue, delivery, operations and growth.",
+      "Explore Auterim's AI operator registry for revenue, client flow, operations and marketing work, including tools and approval boundaries.",
   },
 };
 
@@ -263,7 +263,7 @@ export default function OperatorsPage() {
                     <span style={{ color: "#454A51" }}>&middot;</span>
                     <span>Every action logged</span>
                     <span style={{ color: "#454A51" }}>&middot;</span>
-                    <span>SOC 2 Type II</span>
+                    <span>Policies you define</span>
                   </div>
                 </div>
               </div>

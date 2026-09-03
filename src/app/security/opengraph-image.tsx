@@ -12,7 +12,7 @@ export default async function Image() {
       category: "Platform",
       headline: "Operators act. Policies decide. Humans approve.",
       description: "Every agent runs inside your defined policy boundaries.",
-      items: ["Policy engine", "Approval gates", "Immutable audit logs"],
+      items: ["Policy engine", "Approval gates", "Execution activity logs"],
     }),
     { ...size }
   );

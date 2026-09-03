@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/admin/", "/onboarding/"],
+        disallow: ["/admin/", "/app/", "/app-preview", "/api/", "/client/", "/proposal/", "/onboarding/"],
       },
     ],
     sitemap: "https://auterim.com/sitemap.xml",

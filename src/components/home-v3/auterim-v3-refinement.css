@@ -2756,6 +2756,62 @@
   .auterim-v3-page .hero-artifact-gate { opacity: 1; transform: none; }
 }
 
+/* Final responsive foundation. Keep this block last: the V3 stylesheet has
+   several historical art-direction passes above it, so these rules are the
+   single source of truth for the narrow layouts. */
+@media (max-width: 1080px) {
+  .auterim-v3-page { --pad: clamp(20px, 4vw, 32px); }
+  .auterim-v3-page .wrap { width: 100%; }
+  .auterim-v3-page .head { grid-template-columns: minmax(0, 150px) minmax(0, 1fr); gap: 28px; }
+  .auterim-v3-page .hero-editorial-in { grid-template-columns: minmax(0, .86fr) minmax(0, 1.14fr); gap: clamp(28px, 4vw, 54px); }
+  .auterim-v3-page .hero-editorial h1 { font-size: clamp(38px, 4.4vw, 54px); }
+  .auterim-v3-page .hero-artifact-panel { width: 100%; }
+}
+
+@media (max-width: 820px) {
+  .auterim-v3-page { --pad: clamp(18px, 5vw, 24px); }
+  .auterim-v3-page .top .wrap { min-height: 62px; }
+  .auterim-v3-page .head { grid-template-columns: 1fr; gap: 14px; }
+  .auterim-v3-page .head h2 { max-width: 18ch; font-size: clamp(30px, 7.6vw, 42px); }
+  .auterim-v3-page .head .say { max-width: 54ch; margin-top: 15px; font-size: 16px; }
+  .auterim-v3-page .body { margin-top: 52px; }
+  .auterim-v3-page .hero-editorial { min-height: auto; padding: 106px 0 64px; }
+  .auterim-v3-page .hero-editorial-in { grid-template-columns: 1fr; gap: 42px; }
+  .auterim-v3-page .hero-editorial-copy { padding-left: 24px; }
+  .auterim-v3-page .hero-editorial h1 { max-width: 12ch; font-size: clamp(38px, 10.8vw, 54px); }
+  .auterim-v3-page .hero-editorial .say { max-width: 42ch; font-size: 16px; }
+  .auterim-v3-page .hero-cta { flex-wrap: wrap; }
+  .auterim-v3-page .hero-cta .btn-a,
+  .auterim-v3-page .hero-cta .btn-b { min-height: 44px; }
+  .auterim-v3-page .hero-artifact { max-width: 640px; margin: 0 auto; }
+  .auterim-v3-page .hero-artifact-gate { position: relative; left: auto; bottom: auto; width: min(92%, 390px); margin: -26px auto 0; }
+  .auterim-v3-page .architecture-ledger { grid-template-columns: 1fr; }
+  .auterim-v3-page .architecture-flow { display: none; }
+  .auterim-v3-page .architecture-gate { position: relative; grid-column: auto; }
+  .auterim-v3-page .contact-reasons { grid-template-columns: 1fr; }
+  .auterim-v3-page .cf-row { grid-template-columns: 1fr; gap: 26px; }
+  .auterim-v3-page .cf-row + .cf-row { margin-top: 26px; }
+  .auterim-v3-page .foot-base { align-items: flex-start; }
+  .auterim-v3-page .foot-base .r { max-width: 34ch; line-height: 1.5; }
+}
+
+@media (max-width: 520px) {
+  .auterim-v3-page .sec { padding: 78px 0; }
+  .auterim-v3-page .close { padding: 88px 0 78px; }
+  .auterim-v3-page .head h2 { font-size: clamp(29px, 8.2vw, 36px); }
+  .auterim-v3-page .hero-editorial { padding-top: 94px; }
+  .auterim-v3-page .hero-editorial-copy { padding-left: 19px; }
+  .auterim-v3-page .hero-editorial h1 { font-size: clamp(36px, 11vw, 48px); }
+  .auterim-v3-page .hero-editorial .hero-cta { align-items: stretch; flex-direction: column; }
+  .auterim-v3-page .hero-editorial .hero-cta > * { width: 100%; justify-content: center; }
+  .auterim-v3-page .hero-artifact-ctx { grid-template-columns: 1fr; }
+  .auterim-v3-page .hero-artifact-ctx > div { min-height: 42px; }
+  .auterim-v3-page .hero-artifact-seq li { white-space: normal; align-items: flex-start; }
+  .auterim-v3-page .hero-artifact-seq li em { margin-left: auto; text-align: right; }
+  .auterim-v3-page .close-actions { align-items: stretch; flex-direction: column; }
+  .auterim-v3-page .close-actions > * { width: 100%; justify-content: center; }
+}
+
 /* The proof note stays secondary, but remains legible at desktop distance. */
 .auterim-v3-page .hero-editorial .note {
   color: #aab5c2;
@@ -3132,4 +3188,40 @@
   border-radius: 50%;
   background: var(--gate);
   box-shadow: 0 0 7px rgba(255,204,102,.4);
+}
+
+/* Responsive contract — final cascade layer. */
+@media (max-width: 1080px) {
+  .auterim-v3-page .hero-editorial-in { grid-template-columns: minmax(0, .86fr) minmax(0, 1.14fr); gap: clamp(28px, 4vw, 54px); }
+  .auterim-v3-page .hero-editorial h1 { font-size: clamp(38px, 4.4vw, 54px); }
+}
+@media (max-width: 820px) {
+  .auterim-v3-page { --pad: clamp(18px, 5vw, 24px); }
+  .auterim-v3-page .head { grid-template-columns: 1fr; gap: 14px; }
+  .auterim-v3-page .head h2 { max-width: 18ch; font-size: clamp(30px, 7.6vw, 42px); }
+  .auterim-v3-page .head .say { margin-top: 15px; font-size: 16px; }
+  .auterim-v3-page .body { margin-top: 52px; }
+  .auterim-v3-page .hero-editorial { min-height: auto; padding: 106px 0 64px; }
+  .auterim-v3-page .hero-editorial-in { grid-template-columns: 1fr; gap: 42px; }
+  .auterim-v3-page .hero-editorial h1 { max-width: 12ch; font-size: clamp(38px, 10.8vw, 54px); }
+  .auterim-v3-page .hero-editorial .say { font-size: 16px; }
+  .auterim-v3-page .hero-artifact { max-width: 640px; margin: 0 auto; }
+  .auterim-v3-page .hero-artifact-gate { position: relative; left: auto; bottom: auto; width: min(92%, 390px); margin: -26px auto 0; }
+  .auterim-v3-page .architecture-ledger { grid-template-columns: 1fr; }
+  .auterim-v3-page .architecture-flow { display: none; }
+  .auterim-v3-page .architecture-gate { position: relative; grid-column: auto; }
+  .auterim-v3-page .contact-reasons { grid-template-columns: 1fr; }
+  .auterim-v3-page .cf-row { grid-template-columns: 1fr; gap: 26px; }
+  .auterim-v3-page .foot-base .r { max-width: 34ch; line-height: 1.5; }
+}
+@media (max-width: 520px) {
+  .auterim-v3-page .sec { padding: 78px 0; }
+  .auterim-v3-page .close { padding: 88px 0 78px; }
+  .auterim-v3-page .hero-editorial { padding-top: 94px; }
+  .auterim-v3-page .hero-editorial h1 { font-size: clamp(36px, 11vw, 48px); }
+  .auterim-v3-page .hero-editorial .hero-cta { align-items: stretch; flex-direction: column; }
+  .auterim-v3-page .hero-editorial .hero-cta > *, .auterim-v3-page .close-actions > * { width: 100%; justify-content: center; }
+  .auterim-v3-page .hero-artifact-ctx { grid-template-columns: 1fr; }
+  .auterim-v3-page .hero-artifact-seq li { white-space: normal; align-items: flex-start; }
+  .auterim-v3-page .close-actions { align-items: stretch; flex-direction: column; }
 }

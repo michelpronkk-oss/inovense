@@ -36,7 +36,7 @@ export default function Nav({ homepage = false }: { homepage?: boolean }) {
       ? { label: "Open dashboard", href: appHref("/app") }
       : userState === "registered"
         ? { label: "Sign in", href: appHref("/app") }
-        : { label: "Get Started", href: appHref("/app/onboarding") };
+        : { label: "Start preview", href: appHref("/app/onboarding") };
   const showSecondarySignIn = userState === "guest" || userState === "loading";
   const navLinks = homepage
     ? [

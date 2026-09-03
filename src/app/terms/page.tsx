@@ -56,7 +56,7 @@ export default function TermsPage() {
 
             <h2>Connected systems</h2>
             <p>
-              Connecting a third-party system such as Gmail, HubSpot, Google Calendar, or Slack is your choice, and you can disconnect at any time. Your use of those systems through Auterim is still subject to that provider's own terms. Auterim is not responsible for the availability or behavior of third-party systems you connect.
+              Connecting a third-party system such as Gmail, HubSpot, Google Calendar, or Slack is your choice, and you can disconnect at any time. Your use of those systems through Auterim is still subject to that provider&apos;s own terms. Auterim is not responsible for the availability or behavior of third-party systems you connect.
             </p>
 
             <h2>Subscriptions and payment</h2>
@@ -66,12 +66,12 @@ export default function TermsPage() {
 
             <h2>Acceptable use</h2>
             <p>
-              You agree not to use Auterim to break the law, to configure operators to bypass an approval boundary, to attempt to access another workspace's data, or to interfere with the platform's normal operation.
+              You agree not to use Auterim to break the law, to configure operators to bypass an approval boundary, to attempt to access another workspace&apos;s data, or to interfere with the platform&apos;s normal operation.
             </p>
 
             <h2>Disclaimers</h2>
             <p>
-              Auterim is provided during product preview on an "as is" basis, without warranties of any kind, express or implied. We do not guarantee that operator recommendations or prepared work are free of error, and approved actions remain your responsibility.
+              Auterim is provided during product preview on an &quot;as is&quot; basis, without warranties of any kind, express or implied. We do not guarantee that operator recommendations or prepared work are free of error, and approved actions remain your responsibility.
             </p>
 
             <h2>Limitation of liability</h2>

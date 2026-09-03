@@ -1,102 +1,35 @@
 import type { MetadataRoute } from "next";
 
 const BASE = "https://auterim.com";
-const NOW = new Date();
-
-function localizedEntry({
-  enPath,
-  nlPath,
-  priorityEn,
-  priorityNl,
-}: {
-  enPath: string;
-  nlPath: string;
-  priorityEn: number;
-  priorityNl: number;
-}): MetadataRoute.Sitemap {
-  return [
-    {
-      url: `${BASE}${enPath}`,
-      lastModified: NOW,
-      changeFrequency: "monthly",
-      priority: priorityEn,
-      alternates: {
-        languages: {
-          en: `${BASE}${enPath}`,
-          nl: `${BASE}${nlPath}`,
-        },
-      },
-    },
-    {
-      url: `${BASE}${nlPath}`,
-      lastModified: NOW,
-      changeFrequency: "monthly",
-      priority: priorityNl,
-      alternates: {
-        languages: {
-          en: `${BASE}${enPath}`,
-          nl: `${BASE}${nlPath}`,
-        },
-      },
-    },
-  ];
-}
-
 export default function sitemap(): MetadataRoute.Sitemap {
-  return [
-    {
-      url: BASE,
-      lastModified: NOW,
-      changeFrequency: "monthly",
-      priority: 1,
-      alternates: {
-        languages: {
-          en: BASE,
-          nl: `${BASE}/nl`,
-        },
-      },
-    },
-    ...localizedEntry({
-      enPath: "/process",
-      nlPath: "/nl/process",
-      priorityEn: 0.7,
-      priorityNl: 0.75,
-    }),
-    ...localizedEntry({
-      enPath: "/intake",
-      nlPath: "/nl/intake",
-      priorityEn: 0.8,
-      priorityNl: 0.7,
-    }),
-    ...localizedEntry({
-      enPath: "/ai-automation",
-      nlPath: "/nl/ai-automation",
-      priorityEn: 0.85,
-      priorityNl: 0.75,
-    }),
-    {
-      url: `${BASE}/answers`,
-      lastModified: NOW,
-      changeFrequency: "monthly",
-      priority: 0.75,
-    },
-    {
-      url: `${BASE}/privacy`,
-      lastModified: NOW,
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
-    {
-      url: `${BASE}/terms`,
-      lastModified: NOW,
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
-    {
-      url: `${BASE}/cookies`,
-      lastModified: NOW,
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
+  const pages: Array<[string, MetadataRoute.Sitemap[number]["changeFrequency"], number]> = [
+    ["", "weekly", 1],
+    ["/agents", "monthly", 0.9],
+    ["/operators", "monthly", 0.85],
+    ["/integrations", "monthly", 0.85],
+    ["/pricing", "monthly", 0.85],
+    ["/security", "monthly", 0.8],
+    ["/approvals", "monthly", 0.8],
+    ["/trust", "monthly", 0.75],
+    ["/architecture", "monthly", 0.7],
+    ["/workflows", "monthly", 0.75],
+    ["/memory", "monthly", 0.7],
+    ["/about", "yearly", 0.55],
+    ["/contact", "yearly", 0.55],
+    ["/changelog", "monthly", 0.7],
+    ["/solutions/revenue-teams", "monthly", 0.75],
+    ["/solutions/client-services", "monthly", 0.75],
+    ["/solutions/operations", "monthly", 0.75],
+    ["/solutions/marketing", "monthly", 0.7],
+    ["/solutions/founders-ops", "monthly", 0.7],
+    ["/privacy", "yearly", 0.25],
+    ["/terms", "yearly", 0.25],
+    ["/cookies", "yearly", 0.2],
   ];
+
+  return pages.map(([path, changeFrequency, priority]) => ({
+    url: `${BASE}${path}`,
+    changeFrequency,
+    priority,
+  }));
 }
