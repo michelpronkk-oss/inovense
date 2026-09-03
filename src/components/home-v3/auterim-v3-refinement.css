@@ -33,8 +33,8 @@
 .auterim-v3-page .mobile-menu { display: none; }
 .auterim-v3-page .mobile-menu summary { list-style: none; cursor: pointer; color: var(--dim); font-size: 13px; }
 .auterim-v3-page .mobile-menu summary::-webkit-details-marker { display: none; }
-.auterim-v3-page .mobile-menu-icon { display: inline-flex; width: 22px; flex-direction: column; gap: 4px; padding: 5px 0; }
-.auterim-v3-page .mobile-menu-icon i { display: block; width: 22px; height: 1px; background: currentColor; transition: transform .2s ease, opacity .2s ease; }
+.auterim-v3-page .mobile-menu-icon { display: inline-flex; width: 24px; height: 24px; align-items: center; justify-content: center; }
+.auterim-v3-page .mobile-menu-icon svg { display: block; width: 24px; height: 18px; }
 .auterim-v3-page .mobile-menu-close { display: none; font-size: 25px; font-weight: 300; line-height: 1; }
 .auterim-v3-page .mobile-menu[open] .mobile-menu-icon { display: none; }
 .auterim-v3-page .mobile-menu[open] .mobile-menu-close { display: inline-block; }

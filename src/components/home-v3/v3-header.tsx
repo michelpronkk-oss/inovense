@@ -43,8 +43,10 @@ export default function V3Header() {
         </div>
         <details className="mobile-menu" ref={menuRef} onToggle={(event) => setMenuOpen(event.currentTarget.open)}>
           <summary aria-label={menuOpen ? "Close navigation" : "Open navigation"} aria-expanded={menuOpen} aria-controls="mobile-navigation">
-            <span className="mobile-menu-icon" aria-hidden="true"><i /><i /><i /></span>
-            <span className="mobile-menu-close" aria-hidden="true">×</span>
+            <span className="mobile-menu-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 18" width="24" height="18" fill="none"><path d="M1 1h22M1 9h22M1 17h22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+            </span>
+            <span className="mobile-menu-close" aria-hidden="true">&times;</span>
             <span className="sr-only">Toggle navigation</span>
           </summary>
           <nav id="mobile-navigation" aria-label="Mobile navigation">
