@@ -30,7 +30,11 @@ export default function V3Header() {
           <Link className="btn btn-a" href={appHref("/app/onboarding")}>Start preview</Link>
         </div>
         <details className="mobile-menu">
-          <summary aria-label="Open navigation">Menu</summary>
+          <summary aria-label="Toggle navigation">
+            <span className="mobile-menu-icon" aria-hidden="true"><i /><i /><i /></span>
+            <span className="mobile-menu-close" aria-hidden="true">×</span>
+            <span className="sr-only">Toggle navigation</span>
+          </summary>
           <nav aria-label="Mobile navigation">
             <Link href="/#platform">Platform</Link>
             <Link href="/#operators">Operators</Link>

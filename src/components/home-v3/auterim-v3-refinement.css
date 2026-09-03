@@ -33,6 +33,11 @@
 .auterim-v3-page .mobile-menu { display: none; }
 .auterim-v3-page .mobile-menu summary { list-style: none; cursor: pointer; color: var(--dim); font-size: 13px; }
 .auterim-v3-page .mobile-menu summary::-webkit-details-marker { display: none; }
+.auterim-v3-page .mobile-menu-icon { display: inline-flex; width: 22px; flex-direction: column; gap: 4px; padding: 5px 0; }
+.auterim-v3-page .mobile-menu-icon i { display: block; width: 22px; height: 1px; background: currentColor; transition: transform .2s ease, opacity .2s ease; }
+.auterim-v3-page .mobile-menu-close { display: none; font-size: 25px; font-weight: 300; line-height: 1; }
+.auterim-v3-page .mobile-menu[open] .mobile-menu-icon { display: none; }
+.auterim-v3-page .mobile-menu[open] .mobile-menu-close { display: inline-block; }
 .auterim-v3-page .mobile-menu nav { position: absolute; right: var(--pad); top: 58px; display: flex; min-width: 180px; flex-direction: column; gap: 15px; padding: 16px; background: rgba(8,11,16,.97); border: 1px solid var(--rule); }
 .auterim-v3-page .mobile-menu nav a { color: var(--dim); font-size: 14px; }
 .auterim-v3-page .mobile-menu nav a:hover { color: var(--acc-hi); }
@@ -3193,6 +3198,7 @@
 /* Targeted mobile composition repair. These resets intentionally supersede
    desktop geometry below 768px; mobile is a different editorial composition. */
 @media (max-width: 767px) {
+  .auterim-v3-page .hero-artifact-gate { display: none; }
   .auterim-v3-page .close-in {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
