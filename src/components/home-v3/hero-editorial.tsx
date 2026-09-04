@@ -104,7 +104,7 @@ export default function HeroEditorial() {
       <div className="wrap hero-editorial-in">
         <div className="hero-editorial-copy">
           <p className="hero-editorial-eyebrow">Auterim / operating layer</p>
-          <h1>Work moves <em className="hero-editorial-forward"><span className="hero-editorial-forward-bold">forward.</span><span className="hero-editorial-forward-reg" aria-hidden="true">forward.</span></em><span>You stay in control.</span></h1>
+          <h1>Work moves <em className="hero-editorial-forward">forward.</em><span>You stay in control.</span></h1>
           <p className="say">Auterim gives operators the context and policies to run the right work across your tools.</p>
           <div className="hero-cta">
             <Link href={appHref("/app/onboarding")} className="btn btn-a">Start preview <span className="arrow">→</span></Link>
@@ -115,7 +115,6 @@ export default function HeroEditorial() {
 
         <div className="hero-artifact" aria-label="Auterim guarded Revenue Operator run">
           <div className="hero-artifact-panel" ref={panelRef}>
-            <div className="hero-artifact-scan" aria-hidden="true" />
             <div className="hero-artifact-top">
               <span className="hero-artifact-top-k">Auterim operating layer</span>
               <span className="hero-artifact-run"><i />Run #0142 &middot; Live</span>

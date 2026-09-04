@@ -2317,11 +2317,16 @@
     animation: hero-artifact-panel-glow-breathe 12s ease-in-out 1.4s infinite;
   }
 
-  /* The word that matters solidifies from regular into bold a beat after the
-     headline settles, instead of arriving already bold. */
-  .auterim-v3-page .hero-editorial-forward-reg {
-    opacity: 1;
-    animation: hero-editorial-forward-solidify 520ms ease 640ms forwards;
+  /* The word that matters gets typed out a beat after the headline settles,
+     instead of arriving all at once: width reveals the letters, then a
+     caret blinks a few times and settles once typing is done. */
+  .auterim-v3-page .hero-editorial-forward {
+    overflow: hidden;
+    width: 0;
+    animation: hero-editorial-forward-type 640ms steps(8, end) 620ms forwards;
+  }
+  .auterim-v3-page .hero-editorial-forward::after {
+    animation: hero-editorial-forward-caret 460ms linear 620ms 5 forwards;
   }
 }
 
@@ -2354,9 +2359,14 @@
   50% { opacity: 1; }
 }
 
-@keyframes hero-editorial-forward-solidify {
-  from { opacity: 1; }
-  to { opacity: 0; }
+@keyframes hero-editorial-forward-type {
+  from { width: 0; }
+  to { width: 8.6ch; }
+}
+
+@keyframes hero-editorial-forward-caret {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
 }
 
 /* Hero artifact: faithful port of the Auterim Hero design's right-column visual.
@@ -2401,13 +2411,11 @@
 .auterim-v3-page .hero-editorial h1 > span { display: block; color: #c8d1dc; text-wrap: balance; }
 .auterim-v3-page .hero-editorial h1 em { color: var(--acc); font-style: italic; font-weight: 700; }
 
-/* "forward." solidifies from regular into bold on load. Two identically-sized
-   copies are stacked: the bold one stays in normal flow and defines the box's
-   width (so nothing reflows), the regular one sits absolutely on top and fades
-   out to reveal it. No real "Geist" variable font is loaded on this site (see
-   layout.tsx / globals.css — --font-geist-sans falls back to a system-ui stack),
-   so font-variation-settings weight interpolation isn't reliable here; a plain
-   opacity crossfade between two weights is the robust equivalent. */
+/* "forward." types itself out on load: the no-preference block above clips
+   the box to 0 width and animates it open in 8 steps, one per letter, then
+   blinks the caret below a few times before it settles. This base rule is
+   the reduced-motion-safe fallback — no width/overflow clipping, so the word
+   is simply there, unclipped, when motion is off. */
 .auterim-v3-page .hero-editorial-forward {
   position: relative;
   display: inline-block;
@@ -2415,13 +2423,15 @@
   white-space: nowrap;
   vertical-align: baseline;
 }
-.auterim-v3-page .hero-editorial-forward-bold { font-weight: 700; }
-.auterim-v3-page .hero-editorial-forward-reg {
-  position: absolute;
-  inset: 0;
-  font-weight: 500;
+.auterim-v3-page .hero-editorial-forward::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 0.78em;
+  margin-left: 2px;
+  background: var(--acc);
+  vertical-align: -0.1em;
   opacity: 0;
-  pointer-events: none;
 }
 
 /* Primary CTA: a restrained light sweep on hover and a small press-down on click.
@@ -2536,23 +2546,6 @@
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(55,230,212,.7), transparent);
 }
-.auterim-v3-page .hero-artifact-scan {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 120px;
-  pointer-events: none;
-  background: linear-gradient(180deg, rgba(55,230,212,.055), transparent);
-  animation: hero-artifact-scan 7s cubic-bezier(.4,0,.2,1) infinite;
-}
-@keyframes hero-artifact-scan {
-  0% { transform: translateY(-120px); opacity: 0; }
-  12% { opacity: 1; }
-  70% { transform: translateY(430px); opacity: 0; }
-  100% { transform: translateY(430px); opacity: 0; }
-}
-
 .auterim-v3-page .hero-artifact-top { display: flex; align-items: center; gap: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--rule); }
 .auterim-v3-page .hero-artifact-top-k { font-family: var(--mono); font-size: 9.5px; letter-spacing: .22em; text-transform: uppercase; color: var(--ink); }
 .auterim-v3-page .hero-artifact-run {
@@ -2743,7 +2736,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .auterim-v3-page .hero-artifact-scan,
   .auterim-v3-page .hero-artifact-rail-fl,
   .auterim-v3-page .hero-artifact-run i,
   .auterim-v3-page .hero-artifact-gate-k::before,
