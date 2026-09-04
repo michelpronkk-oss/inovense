@@ -10,6 +10,7 @@ import {
   PageCTA,
   StepRow,
 } from "@/components/marketing-ui";
+import { staticOgImage } from "@/lib/static-og";
 
 export const metadata: Metadata = {
   title: "AI Operations Automation",
@@ -22,11 +23,14 @@ export const metadata: Metadata = {
     title: "AI Operations Automation | Auterim",
     description: "Surface blockers, prepare operating updates and coordinate recurring work with AI operators that follow your company policies.",
     type: "website",
+    siteName: "Auterim",
+    images: [staticOgImage("/solutions/operations")],
   },
   twitter: {
     card: "summary_large_image",
     title: "AI Operations Automation | Auterim",
     description: "Surface blockers, prepare operating updates and coordinate recurring work with AI operators that follow your company policies.",
+    images: [staticOgImage("/solutions/operations")],
   },
 };
 

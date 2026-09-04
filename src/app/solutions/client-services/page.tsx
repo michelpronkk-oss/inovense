@@ -10,6 +10,7 @@ import {
   PageCTA,
   StepRow,
 } from "@/components/marketing-ui";
+import { staticOgImage } from "@/lib/static-og";
 
 export const metadata: Metadata = {
   title: "AI Client Onboarding & Service Operations",
@@ -22,11 +23,14 @@ export const metadata: Metadata = {
     title: "AI Client Onboarding & Service Operations | Auterim",
     description: "Prepare onboarding plans, client updates and handoffs with AI operators that coordinate work across your approved service systems.",
     type: "website",
+    siteName: "Auterim",
+    images: [staticOgImage("/solutions/client-services")],
   },
   twitter: {
     card: "summary_large_image",
     title: "AI Client Onboarding & Service Operations | Auterim",
     description: "Prepare onboarding plans, client updates and handoffs with AI operators that coordinate work across your approved service systems.",
+    images: [staticOgImage("/solutions/client-services")],
   },
 };
 

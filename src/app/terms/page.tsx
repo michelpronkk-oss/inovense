@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { PageShell } from "@/components/marketing-ui";
 import V3Header from "@/components/home-v3/v3-header";
 import LegalEditorial from "@/components/home-v3/legal-editorial";
+import { staticOgImage } from "@/lib/static-og";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
@@ -14,11 +15,14 @@ export const metadata: Metadata = {
     title: "Terms of Service | Auterim",
     description: "Terms of service governing use of the Auterim platform: the operator runtime, approval and policy system, connected systems, and subscription plans.",
     type: "website",
+    siteName: "Auterim",
+    images: [staticOgImage("/")],
   },
   twitter: {
     card: "summary_large_image",
     title: "Terms of Service | Auterim",
     description: "Terms of service governing use of the Auterim platform: the operator runtime, approval and policy system, connected systems, and subscription plans.",
+    images: [staticOgImage("/")],
   },
 };
 

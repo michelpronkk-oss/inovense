@@ -9,6 +9,7 @@ import {
   SectionDivider,
   PageCTA,
 } from "@/components/marketing-ui";
+import { staticOgImage } from "@/lib/static-og";
 
 export const metadata: Metadata = {
   title: "Company Context & AI Memory",
@@ -21,11 +22,14 @@ export const metadata: Metadata = {
     title: "Company Context & AI Memory | Auterim",
     description: "Give Auterim operators the company context they need to prepare the right work, with access shaped by your approved tools and policies.",
     type: "website",
+    siteName: "Auterim",
+    images: [staticOgImage("/memory")],
   },
   twitter: {
     card: "summary_large_image",
     title: "Company Context & AI Memory | Auterim",
     description: "Give Auterim operators the company context they need to prepare the right work, with access shaped by your approved tools and policies.",
+    images: [staticOgImage("/memory")],
   },
 };
 

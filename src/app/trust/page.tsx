@@ -10,6 +10,7 @@ import {
   SectionDivider,
   PageCTA,
 } from "@/components/marketing-ui";
+import { staticOgImage } from "@/lib/static-og";
 
 export const metadata: Metadata = {
   title: "Trust Center: Data, Permissions & Controls",
@@ -22,11 +23,14 @@ export const metadata: Metadata = {
     title: "Trust Center: Data, Permissions & Controls | Auterim",
     description: "Learn how Auterim uses connector permissions, approval boundaries and activity logs to keep AI work visible and controlled.",
     type: "website",
+    siteName: "Auterim",
+    images: [staticOgImage("/trust")],
   },
   twitter: {
     card: "summary_large_image",
     title: "Trust Center: Data, Permissions & Controls | Auterim",
     description: "Learn how Auterim uses connector permissions, approval boundaries and activity logs to keep AI work visible and controlled.",
+    images: [staticOgImage("/trust")],
   },
 };
 

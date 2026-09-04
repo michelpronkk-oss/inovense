@@ -6,8 +6,8 @@ export const metadata: Metadata = {
   title: "AI Workforce Use Cases | Auterim",
   description: "See how Auterim operators prepare and coordinate revenue, client, operations, marketing and recurring business work.",
   alternates: { canonical: "https://auterim.com/use-cases" },
-  openGraph: { url: "https://auterim.com/use-cases", title: "AI Workforce Use Cases | Auterim", description: "See how Auterim operators prepare and coordinate real business work.", type: "website", images: [{ url: "/use-cases/opengraph-image", alt: "Auterim AI workforce use cases" }] },
-  twitter: { card: "summary_large_image", title: "AI Workforce Use Cases | Auterim", description: "See how Auterim operators prepare and coordinate real business work.", images: [{ url: "/use-cases/opengraph-image", alt: "Auterim AI workforce use cases" }] },
+  openGraph: { url: "https://auterim.com/use-cases", siteName: "Auterim", title: "AI Workforce Use Cases | Auterim", description: "See how Auterim operators prepare and coordinate real business work.", type: "website", images: [{ url: "/og/og-use-cases.png", width: 1200, height: 630, alt: "Auterim AI workforce use cases" }] },
+  twitter: { card: "summary_large_image", title: "AI Workforce Use Cases | Auterim", description: "See how Auterim operators prepare and coordinate real business work.", images: [{ url: "/og/og-use-cases.png", width: 1200, height: 630, alt: "Auterim AI workforce use cases" }] },
 };
 
 export default function UseCasesPage() { return <StrategicPage eyebrow="Where work moves" title="Put the right operator around the work that keeps getting delayed." intro="Auterim finds repeatable work across your business, recommends the right role and gives it the context, tools and boundaries to prepare the next step." cta={{ label: "Start preview", href: appHref("/app/onboarding"), secondaryLabel: "Meet the operators", secondaryHref: "/operators" }} sections={[

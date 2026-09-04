@@ -11,6 +11,7 @@ import {
   PageCTA,
 } from "@/components/marketing-ui";
 import Reveal from "@/components/reveal";
+import { staticOgImage } from "@/lib/static-og";
 
 export const metadata: Metadata = {
   title: "Business AI Integrations",
@@ -23,11 +24,14 @@ export const metadata: Metadata = {
     title: "Business AI Integrations | Auterim",
     description: "Connect the business systems Auterim operators use for context and approved actions, with explicit scopes and approval boundaries.",
     type: "website",
+    siteName: "Auterim",
+    images: [staticOgImage("/integrations")],
   },
   twitter: {
     card: "summary_large_image",
     title: "Business AI Integrations | Auterim",
     description: "Connect the business systems Auterim operators use for context and approved actions, with explicit scopes and approval boundaries.",
+    images: [staticOgImage("/integrations")],
   },
 };
 

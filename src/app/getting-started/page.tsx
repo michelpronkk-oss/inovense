@@ -6,8 +6,8 @@ export const metadata: Metadata = {
   title: "Getting Started with Auterim | AI Workforce Preview",
   description: "Start with your company context, preview the right Auterim operators and connect systems when you are ready.",
   alternates: { canonical: "https://auterim.com/getting-started" },
-  openGraph: { url: "https://auterim.com/getting-started", title: "Getting Started with Auterim", description: "Start with company context. Connect systems when you are ready.", type: "website", images: [{ url: "/getting-started/opengraph-image", alt: "Getting started with Auterim" }] },
-  twitter: { card: "summary_large_image", title: "Getting Started with Auterim", description: "Start with company context. Connect systems when you are ready.", images: [{ url: "/getting-started/opengraph-image", alt: "Getting started with Auterim" }] },
+  openGraph: { url: "https://auterim.com/getting-started", siteName: "Auterim", title: "Getting Started with Auterim", description: "Start with company context. Connect systems when you are ready.", type: "website", images: [{ url: "/og/og-getting-started.png", width: 1200, height: 630, alt: "Getting started with Auterim" }] },
+  twitter: { card: "summary_large_image", title: "Getting Started with Auterim", description: "Start with company context. Connect systems when you are ready.", images: [{ url: "/og/og-getting-started.png", width: 1200, height: 630, alt: "Getting started with Auterim" }] },
 };
 
 export default function GettingStartedPage() { return <StrategicPage eyebrow="Start with your company" title="Start with context. Connect systems when you are ready." intro="Preview builds a practical company profile and recommends a first workforce before any external action is enabled. When the fit is clear, connect the systems your team already uses." cta={{ label: "Start preview", href: appHref("/app/onboarding"), secondaryLabel: "See the platform", secondaryHref: "/#platform" }} sections={[

@@ -3,6 +3,7 @@ import { PageShell } from "@/components/marketing-ui";
 import V3Header from "@/components/home-v3/v3-header";
 import LegalEditorial from "@/components/home-v3/legal-editorial";
 import CookiePreferencesButton from "@/components/home-v3/cookie-preferences-button";
+import { staticOgImage } from "@/lib/static-og";
 
 export const metadata: Metadata = {
   title: "Cookie Policy",
@@ -15,11 +16,14 @@ export const metadata: Metadata = {
     title: "Cookie Policy | Auterim",
     description: "How Auterim uses cookies. Strictly necessary cookies for platform operation and analytics cookies to improve the product. No advertising cookies.",
     type: "website",
+    siteName: "Auterim",
+    images: [staticOgImage("/")],
   },
   twitter: {
     card: "summary_large_image",
     title: "Cookie Policy | Auterim",
     description: "How Auterim uses cookies. Strictly necessary cookies for platform operation and analytics cookies to improve the product. No advertising cookies.",
+    images: [staticOgImage("/")],
   },
 };
 

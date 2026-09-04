@@ -10,6 +10,7 @@ import {
   PageCTA,
   StepRow,
 } from "@/components/marketing-ui";
+import { staticOgImage } from "@/lib/static-og";
 
 export const metadata: Metadata = {
   title: "AI Approval Workflows & Controls",
@@ -22,11 +23,14 @@ export const metadata: Metadata = {
     title: "AI Approval Workflows & Controls | Auterim",
     description: "Set the approval boundaries that matter. Auterim operators can prepare work automatically and pause for a decision when a policy requires it.",
     type: "website",
+    siteName: "Auterim",
+    images: [staticOgImage("/approvals")],
   },
   twitter: {
     card: "summary_large_image",
     title: "AI Approval Workflows & Controls | Auterim",
     description: "Set the approval boundaries that matter. Auterim operators can prepare work automatically and pause for a decision when a policy requires it.",
+    images: [staticOgImage("/approvals")],
   },
 };
 

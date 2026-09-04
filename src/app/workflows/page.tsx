@@ -12,6 +12,7 @@ import {
   PropList,
 } from "@/components/marketing-ui";
 import Reveal from "@/components/reveal";
+import { staticOgImage } from "@/lib/static-og";
 
 export const metadata: Metadata = {
   title: "AI Workflow Automation",
@@ -24,11 +25,14 @@ export const metadata: Metadata = {
     title: "AI Workflow Automation | Auterim",
     description: "Auterim workflows coordinate operators, connected systems and approval gates so repeatable business work moves without manual chasing.",
     type: "website",
+    siteName: "Auterim",
+    images: [staticOgImage("/workflows")],
   },
   twitter: {
     card: "summary_large_image",
     title: "AI Workflow Automation | Auterim",
     description: "Auterim workflows coordinate operators, connected systems and approval gates so repeatable business work moves without manual chasing.",
+    images: [staticOgImage("/workflows")],
   },
 };
 

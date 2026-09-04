@@ -30,7 +30,9 @@ export const metadata: Metadata = {
       "Auterim learns how your company works, recommends AI operators, and runs approved work across the systems your team already uses.",
     images: [
       {
-        url: "/opengraph-image",
+        url: "/og/og-home.png",
+        width: 1200,
+        height: 630,
         alt: "Auterim | The AI workforce built around how your company works.",
       },
     ],
@@ -42,7 +44,9 @@ export const metadata: Metadata = {
       "Auterim learns how your company works, recommends AI operators, and runs approved work across the systems your team already uses.",
     images: [
       {
-        url: "/opengraph-image",
+        url: "/og/og-home.png",
+        width: 1200,
+        height: 630,
         alt: "Auterim | The AI workforce built around how your company works.",
       },
     ],

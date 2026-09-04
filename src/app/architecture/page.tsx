@@ -9,6 +9,7 @@ import {
   PageCTA,
   PropList,
 } from "@/components/marketing-ui";
+import { staticOgImage } from "@/lib/static-og";
 
 export const metadata: Metadata = {
   title: "AI Workforce Architecture",
@@ -21,11 +22,14 @@ export const metadata: Metadata = {
     title: "AI Workforce Architecture | Auterim",
     description: "See how Auterim connects company context, operators, connector permissions and approval policies into controlled AI work.",
     type: "website",
+    siteName: "Auterim",
+    images: [staticOgImage("/architecture")],
   },
   twitter: {
     card: "summary_large_image",
     title: "AI Workforce Architecture | Auterim",
     description: "See how Auterim connects company context, operators, connector permissions and approval policies into controlled AI work.",
+    images: [staticOgImage("/architecture")],
   },
 };
 

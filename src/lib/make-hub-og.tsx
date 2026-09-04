@@ -16,6 +16,18 @@ export interface HubOgConfig {
   variant?: OgVariant;
 }
 
+function AuterimLockup({ logo }: { logo: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={logo} width={34} height={34} alt="" style={{ objectFit: "contain" }} />
+      <div style={{ display: "flex", color: "#F2F7FB", fontSize: 22, fontWeight: 680, letterSpacing: "0.18em" }}>
+        AUTERIM
+      </div>
+    </div>
+  );
+}
+
 const PANEL_H = 272;
 const PANEL_TOP = Math.round((630 - PANEL_H) / 2);
 
@@ -209,18 +221,7 @@ export function makeHubOg(config: HubOgConfig) {
             paddingTop: "108px",
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={logo}
-            width={132}
-            height={30}
-            alt=""
-            style={{
-              objectFit: "contain",
-              objectPosition: "left center",
-              marginBottom: "32px",
-            }}
-          />
+          <div style={{ display: "flex", marginBottom: "32px" }}><AuterimLockup logo={logo} /></div>
 
           <div
             style={{
@@ -470,18 +471,7 @@ export function makeHubOg(config: HubOgConfig) {
           paddingLeft: "82px",
         }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={logo}
-          width={132}
-          height={30}
-          alt=""
-          style={{
-            objectFit: "contain",
-            objectPosition: "left center",
-            marginBottom: "50px",
-          }}
-        />
+        <div style={{ display: "flex", marginBottom: "50px" }}><AuterimLockup logo={logo} /></div>
 
         <div
           style={{

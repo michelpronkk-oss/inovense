@@ -12,6 +12,7 @@ import {
   PropList,
 } from "@/components/marketing-ui";
 import Reveal from "@/components/reveal";
+import { staticOgImage } from "@/lib/static-og";
 
 export const metadata: Metadata = {
   title: "Security, Approvals & AI Governance",
@@ -24,11 +25,14 @@ export const metadata: Metadata = {
     title: "Security, Approvals & AI Governance | Auterim",
     description: "Define what Auterim operators can do, what needs approval, and what is blocked. Review every run through clear policy boundaries.",
     type: "website",
+    siteName: "Auterim",
+    images: [staticOgImage("/security")],
   },
   twitter: {
     card: "summary_large_image",
     title: "Security, Approvals & AI Governance | Auterim",
     description: "Define what Auterim operators can do, what needs approval, and what is blocked. Review every run through clear policy boundaries.",
+    images: [staticOgImage("/security")],
   },
 };
 

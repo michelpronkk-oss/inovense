@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { PageShell } from "@/components/marketing-ui";
 import V3Header from "@/components/home-v3/v3-header";
 import LegalEditorial from "@/components/home-v3/legal-editorial";
+import { staticOgImage } from "@/lib/static-og";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -14,11 +15,14 @@ export const metadata: Metadata = {
     title: "Privacy Policy | Auterim",
     description: "How Auterim collects, uses, and protects your data. We do not sell your data. Execution logs are retained per your plan and can be exported or deleted at any time.",
     type: "website",
+    siteName: "Auterim",
+    images: [staticOgImage("/")],
   },
   twitter: {
     card: "summary_large_image",
     title: "Privacy Policy | Auterim",
     description: "How Auterim collects, uses, and protects your data. We do not sell your data. Execution logs are retained per your plan and can be exported or deleted at any time.",
+    images: [staticOgImage("/")],
   },
 };
 

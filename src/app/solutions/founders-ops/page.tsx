@@ -10,6 +10,7 @@ import {
   PageCTA,
   StepRow,
 } from "@/components/marketing-ui";
+import { staticOgImage } from "@/lib/static-og";
 
 export const metadata: Metadata = {
   title: "AI Operators for Founders & Operations",
@@ -22,11 +23,14 @@ export const metadata: Metadata = {
     title: "AI Operators for Founders & Operations | Auterim",
     description: "Give a lean team an operating rhythm with AI operators that prepare weekly briefs, coordinate follow-up and surface decisions for review.",
     type: "website",
+    siteName: "Auterim",
+    images: [staticOgImage("/solutions/founders-ops")],
   },
   twitter: {
     card: "summary_large_image",
     title: "AI Operators for Founders & Operations | Auterim",
     description: "Give a lean team an operating rhythm with AI operators that prepare weekly briefs, coordinate follow-up and surface decisions for review.",
+    images: [staticOgImage("/solutions/founders-ops")],
   },
 };
 

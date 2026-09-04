@@ -20,13 +20,13 @@ export const metadata: Metadata = {
     title: "AI Operator Registry | Auterim",
     description: "Explore defined AI roles with real company context, connected tools and clear execution boundaries.",
     type: "website",
-    images: [{ url: "/operators/opengraph-image", alt: "Auterim operator registry" }],
+    images: [{ url: "/og/og-operators.png", width: 1200, height: 630, alt: "Auterim AI Operator Registry" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "AI Operator Registry | Auterim",
     description: "Explore defined AI roles with real company context, connected tools and clear execution boundaries.",
-    images: [{ url: "/operators/opengraph-image", alt: "Auterim operator registry" }],
+    images: [{ url: "/og/og-operators.png", width: 1200, height: 630, alt: "Auterim AI Operator Registry" }],
   },
 };
 

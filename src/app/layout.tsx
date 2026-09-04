@@ -12,45 +12,39 @@ import {
   AUTERIM_WEBSITE_ID,
   toJsonLd,
 } from "@/lib/geo";
+import { staticOgImage } from "@/lib/static-og";
 
 const sansFallbackStack =
   'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"';
 const monoFallbackStack =
   'ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
 
-export const metadata: Metadata = {
-  metadataBase: new URL(AUTERIM_URL),
-  title: {
-    default: "Auterim | AI workforce for businesses",
-    template: "%s | Auterim",
-  },
-  description: AUTERIM_DESCRIPTION,
-  icons: {
-    icon: "/favicon.ico",
-    shortcut: "/favicon.ico",
-  },
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    siteName: "Auterim",
-    title: "Auterim | AI workforce for businesses",
+export async function generateMetadata(): Promise<Metadata> {
+  const pathname = (await headers()).get("x-pathname") ?? "/";
+  const image = staticOgImage(pathname);
+  return {
+    metadataBase: new URL(AUTERIM_URL),
+    title: { default: "Auterim | AI workforce for businesses", template: "%s | Auterim" },
     description: AUTERIM_DESCRIPTION,
-    url: AUTERIM_URL,
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Auterim | AI workforce for businesses",
-    description: AUTERIM_DESCRIPTION,
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
+    icons: { icon: "/favicon.ico", shortcut: "/favicon.ico" },
+    openGraph: {
+      type: "website",
+      locale: "en_US",
+      siteName: "Auterim",
+      title: "Auterim | AI workforce for businesses",
+      description: AUTERIM_DESCRIPTION,
+      url: AUTERIM_URL,
+      images: [image],
     },
-  },
-};
+    twitter: {
+      card: "summary_large_image",
+      title: "Auterim | AI workforce for businesses",
+      description: AUTERIM_DESCRIPTION,
+      images: [image],
+    },
+    robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
+  };
+}
 
 /* â”€â”€â”€ JSON-LD: Organization + WebSite â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 

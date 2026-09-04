@@ -12,6 +12,7 @@ import {
   StepRow,
 } from "@/components/marketing-ui";
 import Reveal from "@/components/reveal";
+import { staticOgImage } from "@/lib/static-og";
 
 export const metadata: Metadata = {
   title: "AI Operators for Business",
@@ -24,11 +25,14 @@ export const metadata: Metadata = {
     title: "AI Operators for Business | Auterim",
     description: "See how Auterim AI operators use company context, approved tools, and clear boundaries to prepare and run business work.",
     type: "website",
+    siteName: "Auterim",
+    images: [staticOgImage("/agents")],
   },
   twitter: {
     card: "summary_large_image",
     title: "AI Operators for Business | Auterim",
     description: "See how Auterim AI operators use company context, approved tools, and clear boundaries to prepare and run business work.",
+    images: [staticOgImage("/agents")],
   },
 };
 

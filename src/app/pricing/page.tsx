@@ -5,6 +5,7 @@ import { PageShell, PageHero, SectionDivider, PageCTA, MktCard, MockupWindow } f
 import Reveal from "@/components/reveal";
 import { PricingPlans } from "@/components/pricing/pricing-plans";
 import { pricingPlans } from "@/lib/pricing";
+import { staticOgImage } from "@/lib/static-og";
 
 export const metadata: Metadata = {
   title: "AI Workforce Pricing",
@@ -17,11 +18,14 @@ export const metadata: Metadata = {
     title: "AI Workforce Pricing | Auterim",
     description: "Start free, then pay for the AI operators, connected systems and controlled runs your company puts into production.",
     type: "website",
+    siteName: "Auterim",
+    images: [staticOgImage("/pricing")],
   },
   twitter: {
     card: "summary_large_image",
     title: "AI Workforce Pricing | Auterim",
     description: "Start free, then pay for the AI operators, connected systems and controlled runs your company puts into production.",
+    images: [staticOgImage("/pricing")],
   },
 };
 
