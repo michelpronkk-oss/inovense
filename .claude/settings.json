@@ -8,7 +8,16 @@
       "Bash(powershell -Command \"\\(Get-Content 'c:\\\\Users\\\\miche\\\\Desktop\\\\inovense\\\\src\\\\components\\\\home-v3\\\\auterim-v3-refinement.css'\\).Count\")",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
       "Bash(powershell -Command \"\\(Get-Content 'c:\\\\Users\\\\miche\\\\Desktop\\\\inovense\\\\src\\\\app\\\\globals.css'\\).Count\")",
-      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\(p.scripts,null,2\\)\\)\")"
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\(p.scripts,null,2\\)\\)\")",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/)",
+      "Bash(curl -s http://localhost:3000/ -o /tmp/page.html)",
+      "Read(//tmp/**)",
+      "Bash(xargs -I{} sh -c 'echo {}; grep -l \"\\\\.ucr \" \"{}\" 2>/dev/null')",
+      "Bash(grep -B1 \"css$\")",
+      "Bash(cd \"c:\\\\Users\\\\miche\\\\Desktop\\\\inovense\" && cat /tmp/start.log 2>&1 | tail -20; echo \"---procs on 3000---\"; netstat -ano 2>/dev/null | grep \":3000\" | head -5)",
+      "Bash(claude mcp *)",
+      "Bash(npx -y playwright install chromium)"
     ]
   }
 }

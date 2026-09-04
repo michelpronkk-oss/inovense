@@ -7,7 +7,10 @@ import { usePublicUserState } from "@/lib/public-user-state";
 import { appHref } from "@/lib/urls";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
+  SheetDescription,
+  SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
 
@@ -118,7 +121,7 @@ export default function Nav({ homepage = false }: { homepage?: boolean }) {
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
             <button
-              className="flex h-9 w-9 items-center justify-center text-zinc-500 transition-colors hover:text-zinc-200 lg:hidden"
+              className="flex h-11 w-11 items-center justify-center text-zinc-500 transition-colors hover:text-zinc-200 lg:hidden"
               aria-label="Open menu"
             >
               <svg width="18" height="13" viewBox="0 0 18 13" fill="none" aria-hidden="true">
@@ -132,22 +135,41 @@ export default function Nav({ homepage = false }: { homepage?: boolean }) {
             </button>
           </SheetTrigger>
 
-          <SheetContent side="right" className="w-72 border-zinc-800 bg-zinc-950 px-6">
+          <SheetContent
+            side="top"
+            showCloseButton={false}
+            className="!h-dvh w-full max-w-none border-zinc-800 bg-zinc-950 px-6 pt-[env(safe-area-inset-top)]"
+          >
             <div className="flex h-full flex-col">
+              <SheetTitle className="sr-only">Navigation menu</SheetTitle>
+              <SheetDescription className="sr-only">Site navigation links and primary call to action.</SheetDescription>
 
-              <Link href="/" onClick={() => setOpen(false)} className="mt-1 inline-flex items-center gap-2.5" aria-label="Auterim">
-                <svg width="20" height="20" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-                  <g fill="#ECEFF3">
-                    <rect x="10" y="10" width="44" height="9"/>
-                    <rect x="26" y="19" width="12" height="12"/>
-                    <rect x="26" y="33" width="12" height="12"/>
-                    <rect x="10" y="45" width="44" height="9"/>
-                  </g>
-                </svg>
-                <span className="text-sm font-semibold tracking-[0.16em] text-zinc-100">AUTERIM</span>
-              </Link>
+              <div className="flex h-18 shrink-0 items-center justify-between pt-3">
+                <Link href="/" onClick={() => setOpen(false)} className="inline-flex items-center gap-2.5" aria-label="Auterim">
+                  <svg width="20" height="20" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+                    <g fill="#ECEFF3">
+                      <rect x="10" y="10" width="44" height="9"/>
+                      <rect x="26" y="19" width="12" height="12"/>
+                      <rect x="26" y="33" width="12" height="12"/>
+                      <rect x="10" y="45" width="44" height="9"/>
+                    </g>
+                  </svg>
+                  <span className="text-sm font-semibold tracking-[0.16em] text-zinc-100">AUTERIM</span>
+                </Link>
+                <SheetClose asChild>
+                  <button
+                    type="button"
+                    aria-label="Close menu"
+                    className="flex h-11 w-11 items-center justify-center text-zinc-400 transition-colors hover:text-zinc-200"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                      <path d="M1 1l14 14M15 1L1 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                </SheetClose>
+              </div>
 
-              <nav className="mt-10 flex flex-col">
+              <nav className="mt-6 flex flex-col overflow-y-auto">
                 {navLinks.map((link) => {
                   const active = isActive(link.href, pathname);
                   return (
@@ -174,7 +196,7 @@ export default function Nav({ homepage = false }: { homepage?: boolean }) {
                 )}
               </nav>
 
-              <div className="mt-auto pb-10">
+              <div className="mt-auto shrink-0 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
                 <Link
                   href={primaryCta.href}
                   onClick={() => setOpen(false)}
