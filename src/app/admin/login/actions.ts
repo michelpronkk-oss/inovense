@@ -22,7 +22,7 @@ export async function login(
 
   const username = ((formData.get("username") as string) ?? "").trim();
   const password = (formData.get("password") as string) ?? "";
-  const from = (formData.get("from") as string) ?? "/admin";
+  const from = (formData.get("from") as string) ?? "/";
 
   const credentials = getValidCredentials();
   if (credentials.length === 0) {
@@ -54,7 +54,9 @@ export async function login(
   });
 
   const safeDest =
-    from.startsWith("/admin") && from !== "/admin/login" ? from : "/admin";
+    from.startsWith("/admin") && from !== "/admin/login"
+      ? from.slice("/admin".length) || "/"
+      : "/";
 
   redirect(safeDest);
 }
@@ -63,5 +65,5 @@ export async function logout(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE);
   cookieStore.delete("inovense_admin_session");
-  redirect("/admin/login");
+  redirect("/login");
 }

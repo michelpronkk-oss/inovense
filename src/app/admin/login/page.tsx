@@ -15,16 +15,18 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  // Already authenticated - redirect to CRM
+  // Already authenticated - redirect to the admin host root.
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value ?? cookieStore.get(LEGACY_SESSION_COOKIE)?.value;
   if (token && (await verifySessionToken(token))) {
-    redirect("/admin");
+    redirect("/");
   }
 
   const { from } = await searchParams;
   const safeDest =
-    from?.startsWith("/admin") && from !== "/admin/login" ? from : "/admin";
+    from?.startsWith("/admin") && from !== "/admin/login"
+      ? from.slice("/admin".length) || "/"
+      : "/";
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-950 px-4">

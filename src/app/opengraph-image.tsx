@@ -5,15 +5,9 @@ import { makeHubOg } from "@/lib/make-hub-og";
 import { resolveOgVariantForRequest } from "@/lib/og-variant";
 
 export const runtime = "nodejs";
-export const alt = "Auterim | AI agents that run your work.";
+export const alt = "Auterim | The AI workforce built around your business.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-
-const LANES = [
-  { name: "Build", desc: "Websites and digital products" },
-  { name: "Systems", desc: "Automation and operations" },
-  { name: "Growth", desc: "SEO and demand systems" },
-] as const;
 
 export default async function Image() {
   const [logoBuffer, variant] = await Promise.all([
@@ -25,11 +19,15 @@ export default async function Image() {
   return new ImageResponse(
     makeHubOg({
       eyebrow: "Auterim",
-      headline: "AI agents that run your work.",
+      headline: "The AI workforce built around your business.",
       subheadline:
-        "The operating layer for autonomous AI agents.",
-      panelLabel: "Services",
-      lanes: [LANES[0], LANES[1], LANES[2]],
+        "Company context, clear policies, and controlled execution across the systems you already use.",
+      panelLabel: "Operating layer",
+      lanes: [
+        { name: "Operators", desc: "Defined roles for real business work" },
+        { name: "Approvals", desc: "Human control where judgment matters" },
+        { name: "Company memory", desc: "Context that improves every run" },
+      ],
       domainLabel: "auterim.com",
       logo,
       variant,

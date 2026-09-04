@@ -1,0 +1,16 @@
+/* Connect assembles inputs; the loop turns that context into progression. */
+.auterim-v3-page .connect-editorial-grid { position:relative; overflow:hidden; border-top:1px solid rgba(55,230,212,.25); background:linear-gradient(105deg,rgba(55,230,212,.035),transparent 54%); }
+.auterim-v3-page .connect-editorial-grid::before { display:none; }
+.auterim-v3-page .connect-editorial-grid article { position:relative; background:linear-gradient(180deg,rgba(255,255,255,.012),transparent 72%); transition:background .25s ease,transform .25s ease; }
+.auterim-v3-page .connect-editorial-grid article::before { display:none; }
+.auterim-v3-page .connect-editorial-grid article:hover { background:linear-gradient(180deg,rgba(55,230,212,.06),transparent 75%); }
+.auterim-v3-page .connect-editorial-grid article:hover::before { background:var(--acc); box-shadow:0 0 14px rgba(55,230,212,.55); }
+.auterim-v3-page .steps { position:relative; }
+.auterim-v3-page .steps::before { content:""; position:absolute; left:0; right:0; top:7px; border-top:1px solid rgba(55,230,212,.16); }
+.auterim-v3-page .steps .step { position:relative; background:linear-gradient(180deg,rgba(255,255,255,.012),transparent 65%); transition:background .25s ease; }
+.auterim-v3-page .steps .step::before { content:""; position:absolute; top:7px; left:5px; width:9px; height:9px; border:1px solid var(--edge); border-radius:50%; background:var(--bg); transform:translate(-50%,-50%); transition:border-color .3s,background .3s,box-shadow .3s; }
+.auterim-v3-page .steps .step:nth-child(2)::before, .auterim-v3-page .steps .step:nth-child(3)::before { left:53px; }
+.auterim-v3-page .connect-editorial-number { display:block; min-height:1em; line-height:1.2; }
+.auterim-v3-page .steps .step.live::before { border-color:var(--acc); background:var(--acc); box-shadow:0 0 0 5px rgba(55,230,212,.08),0 0 14px rgba(55,230,212,.45); }
+.auterim-v3-page .steps .step:hover { background:linear-gradient(180deg,rgba(55,230,212,.045),transparent 70%); }
+@media (max-width:820px) { .auterim-v3-page .connect-editorial-grid::before,.auterim-v3-page .steps::before { display:none; } .auterim-v3-page .connect-editorial-grid article::before { display:none; } .auterim-v3-page .steps .step::before { display:none; } }

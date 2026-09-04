@@ -6,11 +6,19 @@ import { cn } from "@/lib/utils";
 import { logout } from "./login/actions";
 
 const ADMIN_NAV_LINKS = [
-  { href: "/admin", label: "Overview", exact: true },
-  { href: "/admin/leads", label: "Leads" },
-  { href: "/admin/prospects", label: "Prospects" },
-  { href: "/admin/performance", label: "Performance" },
-  { href: "/admin/docs", label: "Docs" },
+  { href: "/", label: "Overview", exact: true },
+  { href: "/growth", label: "Growth" },
+  { href: "/revenue", label: "Revenue" },
+  { href: "/customers", label: "Customers" },
+  { href: "/sales", label: "Sales" },
+  { href: "/usage", label: "Usage" },
+  { href: "/operators", label: "Operators" },
+  { href: "/connectors", label: "Connectors" },
+  { href: "/health", label: "Health" },
+  { href: "/leads", label: "Leads" },
+  { href: "/prospects", label: "Prospects" },
+  { href: "/performance", label: "Performance" },
+  { href: "/docs", label: "Docs" },
 ] as const;
 
 function NavLinks({ mobile }: { mobile: boolean }) {
@@ -30,7 +38,7 @@ function NavLinks({ mobile }: { mobile: boolean }) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-1 items-center justify-center py-2.5 text-[11px] font-medium tracking-wide transition-colors",
+                "flex min-w-max flex-1 items-center justify-center px-3 py-2.5 text-[11px] font-medium tracking-wide transition-colors",
                 isActive
                   ? "text-zinc-100 border-b border-[#49A0A4]"
                   : "text-zinc-500 active:text-zinc-300",
@@ -68,7 +76,7 @@ export function AdminNav() {
         {/* Row 1: brand + sign out */}
         <div className="flex h-12 items-center justify-between px-4">
           <div className="flex items-center gap-2.5">
-            <Link href="/admin" className="flex items-center transition-opacity active:opacity-60">
+            <Link href="/" className="flex items-center transition-opacity active:opacity-60">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/logo.png"
@@ -95,7 +103,7 @@ export function AdminNav() {
         </div>
 
         {/* Row 2: nav links */}
-        <div className="flex border-t border-zinc-800/50">
+        <div className="flex overflow-x-auto border-t border-zinc-800/50">
           <NavLinks mobile={true} />
         </div>
       </div>
@@ -104,7 +112,7 @@ export function AdminNav() {
       <div className="hidden h-14 items-center justify-between px-6 md:flex">
         {/* Brand */}
         <div className="flex items-center gap-3">
-          <Link href="/admin" className="flex items-center transition-opacity hover:opacity-80">
+          <Link href="/" className="flex items-center transition-opacity hover:opacity-80">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logo.png"

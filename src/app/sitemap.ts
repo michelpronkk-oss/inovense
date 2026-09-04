@@ -6,6 +6,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ["", "weekly", 1],
     ["/agents", "monthly", 0.9],
     ["/operators", "monthly", 0.85],
+    ["/use-cases", "monthly", 0.82],
+    ["/getting-started", "monthly", 0.8],
     ["/integrations", "monthly", 0.85],
     ["/pricing", "monthly", 0.85],
     ["/security", "monthly", 0.8],

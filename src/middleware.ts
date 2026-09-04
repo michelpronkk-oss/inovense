@@ -62,7 +62,13 @@ export async function middleware(request: NextRequest) {
       return redirectToHost(request, getAppHost(), originalPathname);
     }
 
-    if (!originalPathname.startsWith("/api") && !originalPathname.startsWith("/admin")) {
+    // The admin surface owns the host root. Keep /admin URLs as an internal
+    // implementation detail and never expose them in the browser address bar.
+    if (originalPathname.startsWith("/admin")) {
+      return redirectToHost(request, getAdminHost(), stripAdminPrefix(originalPathname));
+    }
+
+    if (!originalPathname.startsWith("/api")) {
       internalPathname =
         originalPathname === "/" ? "/admin" : `/admin${originalPathname}`;
     }

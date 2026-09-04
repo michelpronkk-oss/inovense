@@ -2,7 +2,6 @@ import Link from "next/link";
 import Reveal from "@/components/reveal";
 import { OperatorAvatar } from "@/components/operators/avatar";
 import { GLYPHS, OPERATORS } from "@/data/operators";
-import { appHref } from "@/lib/urls";
 import { LOGOS } from "./integrations-grid";
 import "./auterim-v3-editorial.module.css";
 
@@ -81,7 +80,7 @@ export default function OperatorsEditorial() {
               </article>
             ))}
           </div>
-          <Link href={appHref("/app/agents")} className="ops-more">View the full operator registry <span aria-hidden="true">→</span></Link>
+          <Link href="/operators" className="ops-more">View the full operator registry <span aria-hidden="true">→</span></Link>
         </Reveal>
       </div>
     </section>

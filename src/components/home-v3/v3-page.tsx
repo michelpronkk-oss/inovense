@@ -14,6 +14,8 @@ import { Icon } from "./icons";
 import "./auterim-v3.css";
 import "./auterim-v3-refinement.css";
 import "./auterim-v3-typography.css";
+import "./premium-home-sections.css";
+import "./premium-profile.css";
 
 
 const DATA = {
