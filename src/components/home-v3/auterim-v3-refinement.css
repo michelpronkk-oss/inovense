@@ -1837,7 +1837,7 @@
 .auterim-v3-page .connect-editorial-grid p { max-width: 32ch; margin-top: 12px; color: #afb9c5; font-size: 14px; line-height: 1.58; }
 .auterim-v3-page .connect-editorial-cue { display: inline-flex; align-items: flex-start; gap: 8px; margin-top: 22px; color: #83ebdf; font: 9px var(--mono); letter-spacing: .085em; line-height: 1.45; text-transform: uppercase; }
 .auterim-v3-page .connect-editorial-cue i, .auterim-v3-page .connect-editorial-result i { width: 5px; height: 5px; flex: none; margin-top: .35em; border-radius: 50%; background: var(--acc); box-shadow: 0 0 7px rgba(55,230,212,.42); }
-.auterim-v3-page .connect-editorial-result { display: flex; align-items: center; gap: 9px; margin-top: 21px; color: #d4dce4; font-size: 14px; }
+.auterim-v3-page .connect-editorial-result { display: flex; align-items: flex-start; gap: 9px; margin-top: 21px; color: #d4dce4; font-size: 14px; line-height: 1.55; }
 .auterim-v3-page .connect-editorial-grid.rv.in article { animation: auterim-connect-editorial-in 460ms cubic-bezier(.22,.7,.24,1) both; }
 .auterim-v3-page .connect-editorial-grid.rv.in article:nth-child(2) { animation-delay: 85ms; }
 .auterim-v3-page .connect-editorial-grid.rv.in article:nth-child(3) { animation-delay: 170ms; }
