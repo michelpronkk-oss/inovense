@@ -986,14 +986,35 @@
      grid (minmax(190px,.72fr) + two more columns) never has room to breathe below
      1080px — it was only ever tuned for full desktop width — so this collapses at
      the same tablet breakpoint the rest of the page already uses (.op, .head),
-     not the narrower 820px phone breakpoint alone. */
-  .auterim-v3-page .ucr { grid-template-columns: 1fr; gap: 8px; padding-top: 26px; padding-bottom: 26px; }
-  .auterim-v3-page .ucr h3 { font-size: 17px; letter-spacing: -.02em; }
-  .auterim-v3-page .ucr .k { font-size: 8.5px; letter-spacing: .13em; margin-bottom: 5px; }
-  .auterim-v3-page .ucr .b { font-size: 13px; line-height: 1.48; opacity: .82; }
-  .auterim-v3-page .ucr .a { margin-top: 12px; padding-left: 0; border-left: 0; }
-  .auterim-v3-page .ucr .a strong { font-size: 15px; line-height: 1.48; }
-  .auterim-v3-page .ucr-proof { margin-top: 11px; }
+     not the narrower 820px phone breakpoint alone.
+
+     Stacked, the two blocks used to be plain text one after another — same
+     size logic, no surface to anchor the eye — which read as one dense
+     paragraph instead of a before/after. "Without" now sits as a quiet
+     indented note (a quote, not a claim); "With" gets the one surface in
+     this row: a soft cyan-tinted box, so scanning the page for "why Auterim"
+     means scanning for the boxes, not reading every line. */
+  .auterim-v3-page .ucr { grid-template-columns: 1fr; gap: 0; padding-top: 28px; padding-bottom: 28px; }
+  .auterim-v3-page .ucr h3 { font-size: 16.5px; letter-spacing: -.02em; margin-bottom: 2px; }
+  .auterim-v3-page .ucr .k { font-size: 8.5px; letter-spacing: .12em; margin-bottom: 5px; }
+  .auterim-v3-page .ucr .b {
+    margin-top: 10px;
+    padding-left: 12px;
+    border-left: 2px solid rgba(255,255,255,.12);
+    font-size: 12.5px;
+    line-height: 1.5;
+    opacity: .7;
+  }
+  .auterim-v3-page .ucr .a {
+    margin-top: 10px;
+    padding: 14px 16px;
+    border-left: 0;
+    border-radius: 12px;
+    background: rgba(55,230,212,.055);
+    box-shadow: inset 0 0 0 1px rgba(55,230,212,.22);
+  }
+  .auterim-v3-page .ucr .a strong { font-size: 14.5px; line-height: 1.5; }
+  .auterim-v3-page .ucr-proof { margin-top: 10px; }
 }
 
 /* Architecture: one explicit boundary between trusted systems, controlled work and AI capability. */
