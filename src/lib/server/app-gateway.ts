@@ -1,6 +1,6 @@
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { createSupabaseServerActionClient, getVerifiedSupabaseUser } from "@/lib/supabase/server";
-import { resolveActiveWorkspaceId } from "@/lib/server/workspace-access";
+import { requireWorkspaceOwner, resolveActiveWorkspaceId } from "@/lib/server/workspace-access";
 import { provisionInitialWorkspace } from "@/lib/server/provisioning";
 
 export type AppGatewayResult =
@@ -49,6 +49,10 @@ export async function resolveAppGateway(): Promise<AppGatewayResult> {
       const companyName = (user.user_metadata?.company_name as string | undefined) ?? null;
       const provisioned = await provisionInitialWorkspace(userScoped, { fullName, companyName });
       workspaceId = provisioned.workspaceId;
+      // A successful RPC result is not enough: require the persisted owner
+      // membership before sending a new account into onboarding. This keeps a
+      // partial/legacy database write from becoming a client-side dead end.
+      await requireWorkspaceOwner(user.id, workspaceId, admin);
     } catch (error) {
       return {
         status: "error",

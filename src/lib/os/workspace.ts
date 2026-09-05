@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
-import { createClient } from "@supabase/supabase-js";
 import { APP_SESSION_COOKIE, getSessionUsername, LEGACY_APP_SESSION_COOKIE, LEGACY_SESSION_COOKIE, SESSION_COOKIE } from "@/lib/session";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { reportLegacyMigrationEvent } from "@/lib/migration-telemetry";
+import { getVerifiedSupabaseUser } from "@/lib/supabase/server";
 
 function isUuid(v: string | null | undefined): v is string {
   if (!v) return false;
@@ -51,62 +51,22 @@ function normalizeEmail(value: string | undefined): string | undefined {
   return trimmed || undefined;
 }
 
-function readJsonCookie(value: string): unknown {
-  const decoded = decodeURIComponent(value);
-  return JSON.parse(decoded);
-}
-
 function getString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
-function getAccessTokenFromAuthCookie(value: string): string | undefined {
-  try {
-    const parsed = readJsonCookie(value);
-    if (Array.isArray(parsed)) return getString(parsed[0]);
-    if (parsed && typeof parsed === "object") {
-      const rec = parsed as Record<string, unknown>;
-      return getString(rec.access_token) ?? getString(rec.accessToken);
-    }
-  } catch {
-    return undefined;
-  }
-}
-
-function getSupabaseAuthCookieValue(cookieStore: Awaited<ReturnType<typeof cookies>>): string | undefined {
-  const all = cookieStore.getAll();
-  const whole = all.find((cookie) => cookie.name.startsWith("sb-") && cookie.name.endsWith("-auth-token"));
-  if (whole) return whole.value;
-
-  const chunked = all
-    .filter((cookie) => /^sb-.+-auth-token\.\d+$/.test(cookie.name))
-    .sort((a, b) => {
-      const aIndex = Number(a.name.split(".").pop() ?? "0");
-      const bIndex = Number(b.name.split(".").pop() ?? "0");
-      return aIndex - bIndex;
-    });
-
-  return chunked.length ? chunked.map((cookie) => cookie.value).join("") : undefined;
-}
-
 async function getSupabaseCookieIdentity(): Promise<ResolvedIdentity | null> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) return null;
-
-  const cookieStore = await cookies();
-  const authCookieValue = getSupabaseAuthCookieValue(cookieStore);
-  const token = authCookieValue ? getAccessTokenFromAuthCookie(authCookieValue) : undefined;
-  if (!token) return null;
-
-  const supabase = createClient(url, anonKey, { auth: { persistSession: false } });
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data.user) return null;
+  // `@supabase/ssr` owns the auth-cookie format (including chunking and the
+  // current base64 encoding). Reusing its verified server client keeps this
+  // workspace resolver aligned with all server actions and avoids treating a
+  // valid signed-in user as anonymous after a cookie-format update.
+  const user = await getVerifiedSupabaseUser();
+  if (!user) return null;
 
   return {
-    userId: data.user.id,
-    userEmail: normalizeEmail(data.user.email ?? undefined),
-    userName: getString(data.user.user_metadata?.full_name) ?? getString(data.user.user_metadata?.name),
+    userId: user.id,
+    userEmail: normalizeEmail(user.email ?? undefined),
+    userName: getString(user.user_metadata?.full_name) ?? getString(user.user_metadata?.name),
     source: "supabase_cookie",
   };
 }

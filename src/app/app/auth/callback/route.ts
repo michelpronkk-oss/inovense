@@ -30,9 +30,10 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // A verified signup should enter the first-operator experience directly.
-  // The app layout still validates completion: returning users who revisit
-  // this callback cannot bypass activation or land in an incomplete state.
-  const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/onboarding";
+  // Always enter through the app gateway after verification. The gateway
+  // provisions exactly one owner workspace when needed and then decides
+  // whether this account belongs in onboarding or the product. Sending every
+  // callback straight to onboarding could otherwise revive an old draft.
+  const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
   return NextResponse.redirect(new URL(appHref(safeNext)));
 }
