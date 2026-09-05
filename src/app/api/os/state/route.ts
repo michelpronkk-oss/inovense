@@ -73,6 +73,17 @@ function stripSnapshotTruth(state: OSState): OSState {
   };
 }
 
+function initialsFor(name: string) {
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("");
+  return initials || "A";
+}
+
+function roleLabelFor(roleKey: string | null | undefined, legacyRole: string | null | undefined) {
+  if (roleKey === "owner") return "Owner";
+  if (roleKey === "admin") return "Admin";
+  return legacyRole || "Member";
+}
+
 async function buildStateFromDatabase(workspaceId: string, supabase: ReturnType<typeof createSupabaseAdmin>): Promise<OSState> {
   const seeded = buildSeedState();
   const agents = await supabase.from("os_agents").select("*").eq("workspace_id", workspaceId);
@@ -150,6 +161,43 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
     dodoSubscriptionId: db.dodo_subscription_id ?? undefined,
     dodoProductId: db.dodo_product_id ?? undefined,
   };
+
+  // A snapshot is workspace data, never an identity source. Always project
+  // the current authenticated member onto it so a new customer cannot see a
+  // seed "Workspace Admin" (or another browser user's cached profile).
+  let memberQuery = supabase
+    .from("os_workspace_members")
+    .select("user_id,email,full_name,role,role_key")
+    .eq("workspace_id", workspaceId)
+    .eq("active", true)
+    .neq("status", "pending");
+  memberQuery = context.userId
+    ? memberQuery.eq("user_id", context.userId)
+    : memberQuery.eq("email", context.memberEmail ?? context.userEmail ?? "");
+  const memberResult = await memberQuery.maybeSingle();
+  const member = memberResult.data;
+  const memberEmail = member?.email ?? context.userEmail ?? state.currentUser.email;
+  const memberName = member?.full_name?.trim() || context.userName?.trim() || memberEmail.split("@")[0] || "Workspace member";
+  const roleLabel = roleLabelFor(member?.role_key, member?.role);
+  state.currentUser = {
+    ...state.currentUser,
+    id: member?.user_id ?? context.userId ?? state.currentUser.id,
+    name: memberName,
+    email: memberEmail,
+    roleLabel,
+    initials: initialsFor(memberName),
+  };
+  state.teamMembers = [{
+    id: state.currentUser.id,
+    name: memberName,
+    email: memberEmail,
+    role: roleLabel,
+    initials: state.currentUser.initials,
+    color: "#4DE8E1",
+    access: ["All operators", "Approvals", "Settings"],
+    status: "online",
+    active: true,
+  }];
 
   state = { ...state, connectors: reconcileConnectorsWithRegistry(state.connectors) };
   const connectorTruth = await getConnectorTruth({ workspaceId, supabase });

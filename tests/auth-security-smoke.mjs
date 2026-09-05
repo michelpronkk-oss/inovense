@@ -19,6 +19,7 @@ const appGateway = read("src/lib/server/app-gateway.ts");
 const workspaceAccess = read("src/lib/server/workspace-access.ts");
 const provisioning = read("src/lib/server/provisioning.ts");
 const provisionSql = read("supabase/migrations/20260905_auth_identity_foundation.sql");
+const provisionFixSql = read("supabase/migrations/20260905_fix_provision_initial_workspace_conflict.sql");
 const rlsSql = read("supabase/migrations/20260905_auth_rls_policies.sql");
 const unrestrictedSql = read("supabase/migrations/20260905_unrestricted_tables_rls.sql");
 const teamActions = read("src/app/app/team/actions.ts");
@@ -73,6 +74,9 @@ assert.match(provisionSql, /auth\.uid\(\)/);
 assert.match(provisionSql, /pg_advisory_xact_lock/);
 assert.match(provisionSql, /set search_path = public, pg_temp/);
 assert.match(provisioning, /must be a client carrying the signed-in user's own/);
+assert.doesNotMatch(provisionSql, /on conflict \(workspace_id, email\) do nothing/i, "provisioning must not use an ambiguous ON CONFLICT target");
+assert.doesNotMatch(provisionFixSql, /on conflict \(workspace_id(?:, email)?\) do nothing/i, "production fix must not reintroduce ambiguous workspace_id targets");
+assert.match(provisionFixSql, /on conflict do nothing;/i, "production fix must keep provisioning idempotent");
 
 // ── 7. Invite acceptance rejects expired/revoked/accepted/mismatched ─────
 assert.match(provisionSql, /invite_already_accepted/);

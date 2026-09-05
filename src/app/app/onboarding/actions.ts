@@ -14,7 +14,7 @@ export type OnboardingPayload = {
 };
 
 export type CompleteOnboardingResult =
-  | { ok: true; workspaceId: string }
+  | { ok: true; workspaceId: string; ownerName: string; ownerEmail: string }
   | { ok: false; error: string };
 
 const ONBOARDING_VERSION = 1;
@@ -54,6 +54,16 @@ export async function completeOnboardingAction(payload: OnboardingPayload): Prom
   const companyName = payload.companyName.trim();
   if (!companyName) return { ok: false, error: "Add a company name to create the workspace." };
 
+  // The first approval owner is always the verified person who created this
+  // workspace. It is a safe default, not an onboarding decision that can be
+  // spoofed with a client-supplied email address.
+  const ownerEmail = user.email ?? "";
+  const ownerName =
+    (user.user_metadata?.full_name as string | undefined)?.trim()
+    || (user.user_metadata?.name as string | undefined)?.trim()
+    || ownerEmail.split("@")[0]
+    || "Workspace owner";
+
   const { error } = await admin
     .from("os_workspaces")
     .update({
@@ -66,12 +76,12 @@ export async function completeOnboardingAction(payload: OnboardingPayload): Prom
         useCase: payload.useCase ?? "",
         preferredDemoPath: payload.preferredDemoPath ?? "",
         safetyMode: payload.safetyMode ?? "",
-        approvalOwner: payload.approvalOwner ?? "",
+        approvalOwner: ownerEmail,
       },
     })
     .eq("id", workspaceId);
 
   if (error) return { ok: false, error: error.message };
 
-  return { ok: true, workspaceId };
+  return { ok: true, workspaceId, ownerName, ownerEmail };
 }

@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 
-import { useMemo, useState } from "react";
+import Image from "next/image";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useOS } from "@/lib/os/app-provider";
 import type { OnboardingState } from "@/lib/os/types";
@@ -8,254 +9,117 @@ import { completeOnboardingAction } from "./actions";
 import "./styles-onboarding.css";
 
 type DemoPath = NonNullable<OnboardingState["preferredDemoPath"]>;
-type SafetyMode = "safe" | "assisted";
 
-const USE_CASES = ["Agency", "SaaS", "Service business", "Internal operations", "Other"] as const;
-
-const DEMO_PATHS: Record<DemoPath, {
-  label: string;
-  operator: string;
-  description: string;
-  next: string;
-}> = {
-  operations: {
-    label: "Operations",
-    operator: "Operations Operator",
-    description: "Start with Trello tasks and internal operating checks.",
-    next: "Connect Trello, choose a board/list, then run an Operations check.",
-  },
-  client_flow: {
-    label: "Client Flow",
-    operator: "Client Flow Operator",
-    description: "Start with client email context and approved task updates.",
-    next: "Connect Gmail and Trello, then run a Client Flow check.",
-  },
-  revenue: {
-    label: "Revenue",
-    operator: "Revenue Operator",
-    description: "Start with inbound lead follow-up and CRM context.",
-    next: "Connect Gmail first. HubSpot unlocks the full CRM demo.",
-  },
+const PATHS: Record<DemoPath, { number: string; label: string; operator: string; avatar: string; description: string; boundary: string }> = {
+  revenue: { number: "01", label: "New leads", operator: "Revenue Operator", avatar: "/operators/revenue-operator.png", description: "Qualify new demand and prepare the next reply before a lead waits.", boundary: "External replies wait for your approval." },
+  client_flow: { number: "02", label: "Client handoffs", operator: "Client Flow Operator", avatar: "/operators/client-flow-operator.png", description: "Prepare onboarding updates, handoffs and follow-ups with the right context.", boundary: "Client-facing changes wait for your approval." },
+  operations: { number: "03", label: "Operations", operator: "Operations Operator", avatar: "/operators/operations-operator.png", description: "Surface stalled work and prepare the internal next step before it becomes a delay.", boundary: "Changes to your systems wait for your approval." },
 };
 
-const SAFETY_MODES: Record<SafetyMode, { label: string; copy: string }> = {
-  safe: {
-    label: "Safe mode",
-    copy: "Customer emails and tool changes wait for approval before anything sends or updates.",
-  },
-  assisted: {
-    label: "Assisted autopilot",
-    copy: "Operators can prepare more work automatically, while risky actions still require approval.",
-  },
-};
+function isGenericWorkspaceName(value: string) {
+  return ["", "workspace", "test", "atlas & co."].includes(value.trim().toLowerCase());
+}
 
 function normalizeWebsite(value: string): string {
   const trimmed = value.trim();
-  if (!trimmed) return "";
-  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  return !trimmed ? "" : /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
 export default function OnboardingPage() {
   const router = useRouter();
   const { state, completeOnboarding } = useOS();
-  const [companyName, setCompanyName] = useState("");
+  const [selectedPath, setSelectedPath] = useState<DemoPath>("revenue");
+  const [workspaceName, setWorkspaceName] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
-  const [useCase, setUseCase] = useState<(typeof USE_CASES)[number]>("Agency");
-  const [demoPath, setDemoPath] = useState<DemoPath>("operations");
-  const [approvalOwner, setApprovalOwner] = useState(state.currentUser.email || "");
-  const [safetyMode, setSafetyMode] = useState<SafetyMode>("safe");
+  const [showContext, setShowContext] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const selectedPath = DEMO_PATHS[demoPath];
-  const readiness = useMemo(() => {
-    let score = 30;
-    if (companyName.trim()) score += 25;
-    if (approvalOwner.trim()) score += 20;
-    if (demoPath) score += 15;
-    if (safetyMode) score += 10;
-    return Math.min(100, score);
-  }, [approvalOwner, companyName, demoPath, safetyMode]);
+  useEffect(() => {
+    if (!isGenericWorkspaceName(state.workspace.name)) setWorkspaceName((value) => value || state.workspace.name);
+  }, [state.workspace.name]);
 
-  const submit = async () => {
-    const company = companyName.trim();
-    const owner = approvalOwner.trim() || state.currentUser.email;
-    if (!company) {
-      setError("Add a company name to create the workspace.");
-      return;
-    }
-    if (!owner) {
-      setError("Add an approval owner so prepared actions have a reviewer.");
+  const choice = PATHS[selectedPath];
+  const displayName = workspaceName.trim() || state.workspace.name || "Your workspace";
+
+  async function submit() {
+    const companyName = displayName.trim();
+    if (!companyName || isGenericWorkspaceName(companyName)) {
+      setError("Name your workspace to continue.");
       return;
     }
     setError("");
     setSubmitting(true);
-
-    // Authoritative persistence: server-side completion record, checked by
-    // the server route guard on every subsequent request.
     const result = await completeOnboardingAction({
-      companyName: company,
+      companyName,
       websiteUrl: normalizeWebsite(websiteUrl),
-      useCase,
-      preferredDemoPath: demoPath,
-      safetyMode,
-      approvalOwner: owner,
+      useCase: choice.label,
+      preferredDemoPath: selectedPath,
+      safetyMode: "safe",
+      approvalOwner: state.currentUser.email,
     });
-
     if (!result.ok) {
-      setSubmitting(false);
       setError(result.error);
+      setSubmitting(false);
       return;
     }
-
-    // Client-side cache only, for instant UI state - never authoritative.
     completeOnboarding({
-      companyName: company,
-      websiteUrl: normalizeWebsite(websiteUrl),
-      companySize: "",
-      industry: useCase,
-      mainGoals: [selectedPath.label],
-      preferredOperator: selectedPath.operator,
-      preferredDemoPath: demoPath,
-      safetyMode,
-      approvalOwner: owner,
-      initialConnectors: [],
+      companyName, websiteUrl: normalizeWebsite(websiteUrl), companySize: "", industry: choice.label,
+      mainGoals: [choice.label], preferredOperator: choice.operator, preferredDemoPath: selectedPath,
+      safetyMode: "safe", approvalOwner: result.ownerEmail, initialConnectors: [],
     });
     router.replace("/activate?first=1");
-  };
+  }
 
   return (
-    <div className="ob" style={{ minHeight: "100vh" }}>
-      <div className="ob-head">
-        <div className="ob-brand">
-          <svg width="16" height="16" viewBox="0 0 64 64" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
-            <g fill="#ECEFF3">
-              <rect x="10" y="10" width="44" height="9" />
-              <rect x="26" y="19" width="12" height="12" />
-              <rect x="26" y="33" width="12" height="12" />
-              <rect x="10" y="45" width="44" height="9" />
-            </g>
-          </svg>
-          AUTERIM <span className="sub">/ first run</span>
+    <div className="onboarding-shell">
+      <header className="onboarding-header">
+        <div className="onboarding-brand" aria-label="Auterim">
+          <Image src="/brand/auterim-mark-live.svg" alt="" width={24} height={24} priority />
+          <span>AUTERIM</span><span className="onboarding-brand-detail">/ operating profile</span>
         </div>
-        <div className="ob-head-mid">
-          <span>Setup</span>
-          <div className="bar"><span style={{ width: `${readiness}%` }} /></div>
-          <span>{readiness}%</span>
-        </div>
-        <button className="btn btn-ghost btn-sm" onClick={() => router.push("/")}>Exit</button>
-      </div>
+        <div className="onboarding-progress" aria-label="Step 1 of 1"><span>First operator</span><span className="onboarding-progress-line"><i /></span><b>01 / 01</b></div>
+        <button className="onboarding-exit" type="button" onClick={() => router.push("/")}>Exit</button>
+      </header>
 
-      <div className="ob-layout" style={{ gridTemplateColumns: "minmax(0, 1fr) 360px", maxWidth: 1180, margin: "0 auto", paddingTop: 34 }}>
-        <main className="ob-main">
-          <div className="ob-canvas">
-            <section className="ob-step">
-              <div className="ob-step-head">
-                <span className="ob-step-tag">Auterim OS setup</span>
-                <h2>Get your first workflow ready.</h2>
-                <p className="lead">
-                  Add the basics, choose a demo path, then connect the tools needed for your first real approval.
-                </p>
-              </div>
-
-              <div className="form-grid">
-                <div className="field">
-                  <label className="label">Company name</label>
-                  <input className="input" value={companyName} onChange={(event) => setCompanyName(event.target.value)} placeholder="Auterim" />
-                </div>
-                <div className="field">
-                  <label className="label">Website optional</label>
-                  <input className="input" value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} placeholder="yourcompany.com" />
-                </div>
-                <div className="field">
-                  <label className="label">Team / use case</label>
-                  <select className="select" value={useCase} onChange={(event) => setUseCase(event.target.value as typeof useCase)}>
-                    {USE_CASES.map((item) => <option key={item} value={item}>{item}</option>)}
-                  </select>
-                </div>
-                <div className="field">
-                  <label className="label">Approval owner</label>
-                  <input className="input" value={approvalOwner} onChange={(event) => setApprovalOwner(event.target.value)} placeholder="michel@company.com" />
-                </div>
-              </div>
-
-              <div style={{ marginTop: 24 }}>
-                <div className="label" style={{ marginBottom: 10 }}>Preferred demo path</div>
-                <div className="card-grid cols-3">
-                  {(Object.keys(DEMO_PATHS) as DemoPath[]).map((key) => {
-                    const option = DEMO_PATHS[key];
-                    const selected = demoPath === key;
-                    return (
-                      <button key={key} className={`op-card ${selected ? "selected" : ""}`} onClick={() => setDemoPath(key)}>
-                        <div className="op-head">
-                          <span className="op-name">{option.label}</span>
-                          {key === "operations" && <span className="rec-badge">Fastest</span>}
-                        </div>
-                        <div className="op-desc">{option.description}</div>
-                        <div className="op-tools">{option.next}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div style={{ marginTop: 24 }}>
-                <div className="label" style={{ marginBottom: 10 }}>Safety mode</div>
-                <div className="card-grid cols-2">
-                  {(Object.keys(SAFETY_MODES) as SafetyMode[]).map((key) => {
-                    const option = SAFETY_MODES[key];
-                    const selected = safetyMode === key;
-                    return (
-                      <button key={key} className={`op-card ${selected ? "selected" : ""}`} onClick={() => setSafetyMode(key)}>
-                        <div className="op-head">
-                          <span className="op-name">{option.label}</span>
-                          {key === "safe" && <span className="rec-badge">Default</span>}
-                        </div>
-                        <div className="op-desc">{option.copy}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="activation-note" style={{ marginTop: 22 }}>
-                No tools are connected until you authorize them. Next, connect the tools needed for your first demo.
-              </div>
-
-              {error && <div style={{ marginTop: 14, color: "#ffaaaa", fontSize: 12.5 }}>{error}</div>}
-            </section>
+      <main className="onboarding-main">
+        <section className="onboarding-intro">
+          <p className="onboarding-kicker"><i /> YOUR OPERATING PROFILE</p>
+          <h1>What should Auterim<br />take off your team&apos;s plate first?</h1>
+          <p className="onboarding-lead">Pick one place to begin. Auterim will recommend a controlled operator—then you decide when to connect live systems.</p>
+          <div className="onboarding-choice-list" role="radiogroup" aria-label="Choose your first operating lane">
+            {(Object.keys(PATHS) as DemoPath[]).map((path) => {
+              const option = PATHS[path];
+              const active = path === selectedPath;
+              return <button className={`onboarding-choice ${active ? "is-active" : ""}`} key={path} type="button" role="radio" aria-checked={active} onClick={() => setSelectedPath(path)}>
+                <span className="onboarding-choice-number">{option.number}</span>
+                <span className="onboarding-choice-copy"><strong>{option.label}</strong><small>{option.description}</small></span>
+                <span className="onboarding-choice-select" aria-hidden="true" />
+              </button>;
+            })}
           </div>
-        </main>
+          <div className="onboarding-context">
+            <div className="onboarding-context-top"><label htmlFor="workspace-name">Workspace</label><input id="workspace-name" value={workspaceName} onChange={(event) => setWorkspaceName(event.target.value)} placeholder="Name your workspace" autoComplete="organization" /></div>
+            <button type="button" className="onboarding-context-toggle" onClick={() => setShowContext((visible) => !visible)}>{showContext ? "Hide optional context" : "Add a website to make this more specific (optional)"}</button>
+            {showContext && <input className="onboarding-website" value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} placeholder="yourcompany.com" inputMode="url" autoComplete="url" />}
+          </div>
+          {error && <p className="onboarding-error" role="alert">{error}</p>}
+        </section>
 
-        <aside className="preview">
-          <div className="pv-card pv-ready">
-            <div className="pv-head"><span className="dot" /> First workflow</div>
-            <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>{selectedPath.label}</div>
-            <div style={{ color: "var(--text-dim)", fontSize: 13, lineHeight: 1.55 }}>{selectedPath.next}</div>
-            <div className="checklist" style={{ marginTop: 16 }}>
-              <div className={`ci ${companyName.trim() ? "on" : ""}`}><span className="ck">OK</span>Workspace named</div>
-              <div className="ci on"><span className="ck">OK</span>Demo path selected</div>
-              <div className={`ci ${approvalOwner.trim() ? "on" : ""}`}><span className="ck">OK</span>Approval owner set</div>
-              <div className="ci on"><span className="ck">OK</span>{SAFETY_MODES[safetyMode].label}</div>
-            </div>
+        <aside className="operator-recommendation" aria-live="polite">
+          <div className="operator-recommendation-top"><span>RECOMMENDED OPERATOR</span><b><i /> READY</b></div>
+          <div className="operator-recommendation-body">
+            <div className="operator-orbit"><Image src={choice.avatar} alt="" width={112} height={112} /></div>
+            <div className="operator-recommendation-copy"><span>{choice.label.toUpperCase()} / FIRST LANE</span><h2>{choice.operator}</h2><p>{choice.description}</p></div>
           </div>
-          <div className="pv-card">
-            <div className="pv-head"><span className="dot" /> Safety</div>
-            <div style={{ color: "var(--text-dim)", fontSize: 12.5, lineHeight: 1.55 }}>
-              Review the prepared action before anything sends. Customer emails, CRM changes, Slack messages and Trello task changes stay approval-first.
-            </div>
-          </div>
+          <div className="operator-recommendation-boundary"><i /> {choice.boundary}</div>
         </aside>
-      </div>
+      </main>
 
-      <div className="actionbar">
-        <div className="hint">Connectors come next</div>
-        <div className="actionbar-mid">
-          <button className="btn btn-primary btn-sm" onClick={submit} disabled={submitting}>
-            {submitting ? "Saving..." : "Continue to activation"}
-          </button>
-        </div>
-      </div>
+      <footer className="onboarding-footer">
+        <span><i /> APPROVALS ARE ON BY DEFAULT</span><p>No systems are connected yet. You&apos;ll choose what to connect when it creates value.</p>
+        <button type="button" className="onboarding-continue" onClick={submit} disabled={submitting}>{submitting ? "Creating your profile…" : "Show my first operator →"}</button>
+      </footer>
     </div>
   );
 }

@@ -684,15 +684,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }) => {
     const nowIso = new Date().toISOString();
     const approvalEmail = input.approvalOwner.includes("@") ? input.approvalOwner : `${input.approvalOwner.toLowerCase().replace(/\s+/g, ".")}@${input.websiteUrl.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0] || "company.com"}`;
-    const ownerName = input.approvalOwner.includes("@")
-      ? input.approvalOwner.split("@")[0].split(/[._-]/g).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ")
-      : input.approvalOwner;
     const currentUser: CurrentUser = {
       ...state.currentUser,
-      name: ownerName || state.currentUser.name,
       email: approvalEmail,
-      roleLabel: "Operator - Admin",
-      initials: toInitials(ownerName || state.currentUser.name),
+      roleLabel: "Owner",
+      initials: toInitials(state.currentUser.name),
     };
     dispatch({
       type: "COMPLETE_ONBOARDING",

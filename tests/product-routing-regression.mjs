@@ -25,7 +25,7 @@ assert.match(layout, /redirect\("\/activate\?first=1"\)/, "completed onboarding 
 
 assert.doesNotMatch(shell, /router\.replace\(/, "client shell must not compete with the server routing authority");
 assert.match(urls, /if \(normalized === "\/app"\) return "\/"/, "production helpers must remove legacy prefix");
-assert.match(callback, /\? next : "\/"/, "auth callback must land on canonical root by default");
+assert.match(callback, /\? next : "\/onboarding"/, "verified signup must land on onboarding by default");
 assert.match(team, /\$\{appUrl\}\/auth\/callback/, "invite email callback cannot retain /app prefix");
 assert.match(onboarding, /router\.replace\("\/activate\?first=1"\)/, "onboarding completion must use canonical activation route");
 

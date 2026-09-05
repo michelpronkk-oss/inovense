@@ -26,6 +26,7 @@ export type WorkspaceContext =
       workspaceId: string;
       userId?: string;
       userEmail: string | null;
+      userName?: string;
       memberEmail: string | null;
       devFallback: boolean;
     }
@@ -256,9 +257,10 @@ async function ensureDevWorkspace(input: {
   return {
     ok: true,
     workspaceId,
-    userId: input.userId,
-    userEmail: input.userEmail ?? null,
-    memberEmail: input.userEmail ?? null,
+      userId: input.userId,
+      userEmail: input.userEmail ?? null,
+      userName: input.userName,
+      memberEmail: input.userEmail ?? null,
     devFallback: true,
   };
 }
@@ -294,6 +296,7 @@ export async function resolveWorkspaceContext(input: {
       workspaceId: membership.workspace_id,
       userId,
       userEmail: userEmail ?? null,
+      userName,
       memberEmail: membership.email,
       devFallback: false,
     };

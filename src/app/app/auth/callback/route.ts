@@ -30,6 +30,9 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+  // A verified signup should enter the first-operator experience directly.
+  // The app layout still validates completion: returning users who revisit
+  // this callback cannot bypass activation or land in an incomplete state.
+  const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/onboarding";
   return NextResponse.redirect(new URL(appHref(safeNext)));
 }

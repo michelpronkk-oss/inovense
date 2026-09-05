@@ -196,7 +196,9 @@ begin
 
   insert into os_workspace_members (workspace_id, user_id, email, full_name, role, role_key, access, status, active, joined_at)
   values (v_workspace_id, v_uid, v_email, v_full_name, 'Operator - Admin', 'owner', '["All operators","Approvals","Settings"]'::jsonb, 'online', true, now())
-  on conflict (workspace_id, email) do nothing;
+  -- `workspace_id` is also a RETURNS TABLE output variable. Leaving the
+  -- target implicit avoids PL/pgSQL's variable/column ambiguity here.
+  on conflict do nothing;
 
   insert into os_workspace_settings (workspace_id, approval_policy, notifications)
   values (
@@ -204,7 +206,7 @@ begin
     '{"outboundComms":"Always require approval","proposals":"Always require approval","internalReports":"Auto-approve within policy","crmWrites":"Always require approval"}'::jsonb,
     '{"approvalInbox":true,"weeklyDigest":true,"errorAlerts":true,"newAgentDeployed":true}'::jsonb
   )
-  on conflict (workspace_id) do nothing;
+  on conflict do nothing;
 
   return query select v_workspace_id, v_workspace_name, 'owner'::text, null::timestamptz, true;
 end;
