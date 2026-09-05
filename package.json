@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test:rebrand": "node tests/auterim-phase4-smoke.mjs",
     "test:auth-security": "node tests/auth-security-smoke.mjs",
+    "test:signup-auth": "node tests/signup-auth-regression.mjs",
     "trigger:dev": "npx trigger.dev@latest dev",
     "trigger:deploy": "npx trigger.dev@latest deploy"
   },

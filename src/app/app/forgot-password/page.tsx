@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { authErrorDiagnostics, authErrorMessage } from "@/lib/supabase/auth-errors";
 import { appHref } from "@/lib/urls";
 import { AuthBackdrop, AuthBrand, AuthCardBadge } from "@/app/app/_auth/auth-chrome";
 import "@/app/app/_auth/auth.css";
@@ -24,14 +25,20 @@ export default function ForgotPasswordPage() {
     setBusy(true);
     try {
       const supabase = createSupabaseBrowserClient();
-      await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
         redirectTo: appHref("/auth/callback?next=/reset-password"),
       });
+      if (resetError) {
+        console.warn("[auth.password-reset] failed", authErrorDiagnostics(resetError));
+        setError(authErrorMessage(resetError, "reset"));
+        return;
+      }
       // Always show the same confirmation, whether or not the email exists,
       // so this cannot be used to enumerate registered accounts.
       setSent(true);
-    } catch {
-      setSent(true);
+    } catch (resetError) {
+      console.warn("[auth.password-reset] failed", authErrorDiagnostics(resetError));
+      setError(authErrorMessage(resetError, "reset"));
     } finally {
       setBusy(false);
     }

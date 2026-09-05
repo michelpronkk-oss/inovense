@@ -167,7 +167,12 @@
   background: rgba(255, 255, 255, 0.03);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
   color: var(--ink);
-  font-size: 14px;
+  /* 16px is the floor iOS Safari uses to decide whether to zoom the page on
+     focus - anything smaller triggers an auto-zoom on tap that never zooms
+     back out cleanly. Keeping it at 16px everywhere (not just under some
+     breakpoint) means it's correct on every phone width, including ones
+     wider than a typical "mobile" cutoff (e.g. 430px Pro Max). */
+  font-size: 16px;
   font-family: inherit;
   transition: box-shadow 0.15s ease;
 }
@@ -204,6 +209,28 @@
 .auth-submit:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.auth-secondary {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 9px;
+  border: 1px solid var(--rule-2);
+  background: transparent;
+  color: var(--acc);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.auth-secondary:hover:not(:disabled) {
+  border-color: var(--acc);
+  color: var(--acc-hi);
+}
+
+.auth-secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .auth-alert {

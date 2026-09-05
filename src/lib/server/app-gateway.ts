@@ -46,7 +46,8 @@ export async function resolveAppGateway(): Promise<AppGatewayResult> {
         (user.user_metadata?.full_name as string | undefined) ??
         (user.user_metadata?.name as string | undefined) ??
         null;
-      const provisioned = await provisionInitialWorkspace(userScoped, { fullName });
+      const companyName = (user.user_metadata?.company_name as string | undefined) ?? null;
+      const provisioned = await provisionInitialWorkspace(userScoped, { fullName, companyName });
       workspaceId = provisioned.workspaceId;
     } catch (error) {
       return {

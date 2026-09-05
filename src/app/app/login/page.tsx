@@ -4,14 +4,14 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { authErrorDiagnostics, authErrorMessage } from "@/lib/supabase/auth-errors";
 import { AuthBackdrop, AuthBrand, AuthCardBadge } from "@/app/app/_auth/auth-chrome";
 import "@/app/app/_auth/auth.css";
 
 function errorMessageFor(code: string | undefined, message: string): string {
   if (code === "provisioning_failed") return "We couldn't finish setting up your workspace. Please sign in again.";
-  if (/invalid login credentials/i.test(message)) return "That email or password is incorrect.";
-  if (/email not confirmed/i.test(message)) return "Confirm your email address before signing in - check your inbox for the verification link.";
-  return message || "Something went wrong. Please try again.";
+  if (code === "invalid_or_expired_link") return "This link is invalid or has expired. Request a new email and try again.";
+  return authErrorMessage({ message, code }, "signin");
 }
 
 export default function LoginPage() {
@@ -39,14 +39,16 @@ export default function LoginPage() {
       const supabase = createSupabaseBrowserClient();
       const { error: signInError } = await supabase.auth.signInWithPassword({ email: trimmedEmail, password });
       if (signInError) {
-        setError(errorMessageFor(undefined, signInError.message));
+        console.warn("[auth.signin] failed", authErrorDiagnostics(signInError));
+        setError(authErrorMessage(signInError, "signin"));
         setBusy(false);
         return;
       }
       router.replace(from && from.startsWith("/app") ? from : "/app");
       router.refresh();
-    } catch {
-      setError("Could not sign in. Please try again.");
+    } catch (signInError) {
+      console.warn("[auth.signin] failed", authErrorDiagnostics(signInError));
+      setError(authErrorMessage(signInError, "signin"));
       setBusy(false);
     }
   }

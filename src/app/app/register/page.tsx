@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { authErrorDiagnostics, authErrorMessage } from "@/lib/supabase/auth-errors";
 import { appHref } from "@/lib/urls";
 import { AuthBackdrop, AuthBrand, AuthCardBadge } from "@/app/app/_auth/auth-chrome";
 import "@/app/app/_auth/auth.css";
@@ -22,9 +23,22 @@ export default function RegisterPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [awaitingVerification, setAwaitingVerification] = useState(false);
+  const [resendBusy, setResendBusy] = useState(false);
+  const [resendNotice, setResendNotice] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const submittingRef = useRef(false);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = window.setTimeout(() => setResendCooldown((seconds) => Math.max(0, seconds - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [resendCooldown]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // State updates are asynchronous: this synchronous ref also closes the
+    // tiny window where two rapid submits can occur before `busy` re-renders.
+    if (submittingRef.current) return;
     setError("");
     const trimmedEmail = email.trim().toLowerCase();
     const trimmedName = fullName.trim();
@@ -43,6 +57,7 @@ export default function RegisterPage() {
       return;
     }
 
+    submittingRef.current = true;
     setBusy(true);
     try {
       const supabase = createSupabaseBrowserClient();
@@ -56,12 +71,10 @@ export default function RegisterPage() {
       });
 
       if (signUpError) {
-        if (/already registered|already exists|user already/i.test(signUpError.message)) {
-          setError("An account with this email already exists. Sign in instead.");
-        } else {
-          setError(signUpError.message || "Could not create your account.");
-        }
+        console.warn("[auth.signup] failed", authErrorDiagnostics(signUpError));
+        setError(authErrorMessage(signUpError, "signup"));
         setBusy(false);
+        submittingRef.current = false;
         return;
       }
 
@@ -76,9 +89,39 @@ export default function RegisterPage() {
 
       setAwaitingVerification(true);
       setBusy(false);
-    } catch {
-      setError("Could not create your account. Please try again.");
+    } catch (submitError) {
+      console.warn("[auth.signup] failed", authErrorDiagnostics(submitError));
+      setError(authErrorMessage(submitError, "signup"));
       setBusy(false);
+    } finally {
+      submittingRef.current = false;
+    }
+  }
+
+  async function resendVerification() {
+    if (resendBusy || resendCooldown > 0) return;
+    setResendBusy(true);
+    setResendNotice("");
+    try {
+      const { error: resendError } = await createSupabaseBrowserClient().auth.resend({
+        type: "signup",
+        email: email.trim().toLowerCase(),
+        options: { emailRedirectTo: appHref("/auth/callback") },
+      });
+      if (resendError) {
+        console.warn("[auth.signup.resend] failed", authErrorDiagnostics(resendError));
+        setResendNotice(authErrorMessage(resendError, "resend"));
+        setResendCooldown(60);
+        return;
+      }
+      setResendNotice("Verification email sent. Please check your inbox.");
+      setResendCooldown(60);
+    } catch (resendError) {
+      console.warn("[auth.signup.resend] failed", authErrorDiagnostics(resendError));
+      setResendNotice(authErrorMessage(resendError, "resend"));
+      setResendCooldown(60);
+    } finally {
+      setResendBusy(false);
     }
   }
 
@@ -94,6 +137,14 @@ export default function RegisterPage() {
             We sent a verification link to <strong style={{ color: "var(--ink)" }}>{email.trim()}</strong>.
             Confirm your email to finish creating your account and set up your workspace.
           </p>
+          {resendNotice && <div className="auth-alert success" role="status">{resendNotice}</div>}
+          <button className="auth-secondary" type="button" onClick={resendVerification} disabled={resendBusy || resendCooldown > 0}>
+            {resendBusy
+              ? "Sending verification email..."
+              : resendCooldown > 0
+                ? `Resend available in ${resendCooldown}s`
+                : "Resend verification email"}
+          </button>
           <div className="auth-foot">
             Already verified? <Link href="/app/login">Sign in</Link>
           </div>

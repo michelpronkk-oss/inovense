@@ -14,14 +14,19 @@ export async function GET(req: NextRequest) {
   const errorDescription = req.nextUrl.searchParams.get("error_description");
 
   if (errorDescription) {
-    return NextResponse.redirect(new URL(`${appHref("/login")}?error=${encodeURIComponent(errorDescription)}`));
+    console.warn("[auth.callback] provider returned an error");
+    return NextResponse.redirect(new URL(`${appHref("/login")}?error=invalid_or_expired_link`));
   }
 
   if (code) {
     const supabase = await createSupabaseServerActionClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
-      return NextResponse.redirect(new URL(`${appHref("/login")}?error=${encodeURIComponent(error.message)}`));
+      console.warn("[auth.callback] session exchange failed", {
+        code: error.code ?? "unknown",
+        status: error.status ?? null,
+      });
+      return NextResponse.redirect(new URL(`${appHref("/login")}?error=invalid_or_expired_link`));
     }
   }
 

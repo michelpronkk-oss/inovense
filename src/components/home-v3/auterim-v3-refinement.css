@@ -4552,6 +4552,25 @@
   .auterim-v3-page .hero-artifact-ctx-f {
     margin-bottom: 2px;
   }
+
+  /* Stretch the hero to fill the fold instead of ending ~200px short of it
+     with a flat, atmosphere-free gap before the next section. `100svh`
+     (falls back to `100vh` where unsupported) tracks the real visible
+     viewport on mobile browsers, so this holds across 360-430px-wide
+     phones at their differing heights rather than a fixed px guess. */
+  .auterim-v3-page .hero-editorial {
+    min-height: 100vh;
+    min-height: 100svh;
+  }
+
+  /* The grid's radial mask is tuned for a wide, short desktop hero — on a
+     narrow, tall mobile box that same ellipse fades to transparent about
+     halfway down, so the grid visibly vanishes before the fold. A vertical
+     fade instead covers the section's full (now taller) height. */
+  .auterim-v3-page .hero-editorial-tex {
+    mask-image: linear-gradient(180deg, #000 0%, rgba(0,0,0,.6) 55%, rgba(0,0,0,.22) 85%, transparent 100%);
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, rgba(0,0,0,.6) 55%, rgba(0,0,0,.22) 85%, transparent 100%);
+  }
 }
 
 /* Pricing: this also covers the 768px tablet regression width, since it
