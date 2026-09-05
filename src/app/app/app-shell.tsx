@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useOS } from "@/lib/os/app-provider";
-import { OSSidebar } from "@/components/dashboard/sidebar";
+import { OSMobileNav, OSSidebar } from "@/components/dashboard/sidebar";
 import { OSTopbar } from "@/components/dashboard/topbar";
 import { trialDaysRemaining } from "@/lib/os/plans";
 import { getEntitlements } from "@/lib/os/entitlements";
@@ -103,9 +103,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="os">
-      <OSSidebar />
-      <div className="os-main">
+      <div className="os">
+        <OSSidebar />
+        <div className="os-main">
         {entitlements.billingStatus === "preview" && (
           <div className="os-billing-status" style={{
             margin: "8px 18px 0",
@@ -157,8 +157,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
         <TrialBanner trialEndsAt={state.workspace.trialEndsAt} />
         <OSTopbar />
-        {children}
+          {children}
+        </div>
+        <OSMobileNav />
       </div>
-    </div>
   );
 }

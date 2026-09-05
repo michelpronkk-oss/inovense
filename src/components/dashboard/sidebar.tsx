@@ -273,3 +273,65 @@ export function OSSidebar() {
     </aside>
   );
 }
+
+/**
+ * The desktop rail deliberately disappears before it becomes cramped. This
+ * compact bar preserves the high-frequency routes and puts the full command
+ * set one tap away, rather than leaving tablet and phone users without nav.
+ */
+export function OSMobileNav() {
+  const pathname = usePathname();
+  const { pendingApprovals } = useOS();
+  const [open, setOpen] = useState(false);
+  const primary = [
+    { icon: TargetIcon, label: "Home", href: "/" },
+    { icon: CpuIcon, label: "Agents", href: "/agents" },
+    { icon: InboxIcon, label: "Approvals", href: "/approvals", badge: pendingApprovals },
+    { icon: LinkIcon, label: "Connect", href: "/connectors" },
+  ];
+  const all = [
+    ...primary,
+    { icon: FlowIcon, label: "Workflows", href: "/workflows" },
+    { icon: DatabaseIcon, label: "Memory", href: "/memory" },
+    { icon: DocIcon, label: "Execution logs", href: "/logs" },
+    { icon: ChartIcon, label: "Insights", href: "/insights" },
+    { icon: UsersIcon, label: "Team", href: "/team" },
+    { icon: ShieldIcon, label: "Policies", href: "/policies" },
+    { icon: KeyIcon, label: "API keys", href: "/api-keys" },
+    { icon: SettingsIcon, label: "Plans & billing", href: "/plans" },
+    { icon: SettingsIcon, label: "Settings", href: "/settings" },
+  ];
+  const isActive = (href: string) => href === "/" ? pathname === "/" || pathname === "/app" : pathname.startsWith(href);
+
+  return (
+    <nav className="os-mobile-nav" aria-label="Primary navigation">
+      {primary.map((item) => {
+        const Icon = item.icon;
+        return (
+          <Link key={item.href} href={item.href} className={`os-mobile-nav-link${isActive(item.href) ? " active" : ""}`}>
+            <span className="os-mobile-nav-icon"><Icon size={17} />{item.badge ? <i>{item.badge}</i> : null}</span>
+            <span>{item.label}</span>
+          </Link>
+        );
+      })}
+      <button type="button" className={`os-mobile-nav-link${open ? " active" : ""}`} aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+        <span className="os-mobile-nav-icon"><SettingsIcon size={17} /></span>
+        <span>More</span>
+      </button>
+      {open && (
+        <>
+          <button type="button" className="os-mobile-nav-scrim" aria-label="Close navigation menu" onClick={() => setOpen(false)} />
+          <div className="os-mobile-menu" role="dialog" aria-label="All navigation">
+            <div className="os-mobile-menu-head"><span>Workspace</span><button type="button" onClick={() => setOpen(false)}>Close</button></div>
+            <div className="os-mobile-menu-grid">
+              {all.map((item) => {
+                const Icon = item.icon;
+                return <Link key={item.href} href={item.href} className={isActive(item.href) ? "active" : ""} onClick={() => setOpen(false)}><Icon size={16} />{item.label}</Link>;
+              })}
+            </div>
+          </div>
+        </>
+      )}
+    </nav>
+  );
+}

@@ -66,7 +66,7 @@ export default function PlansPage() {
       {searchParams.get("billing") === "error" && <div style={{ padding: "11px 14px", borderRadius: 10, marginBottom: 18, background: "rgba(242,118,124,.07)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,.18)", color: "#F2B3B7", fontSize: 12.5 }}>Checkout could not be opened. Confirm the Dodo API key, product IDs, and checkout mode are all from the same Dodo environment.</div>}
       {searchParams.get("billing") === "setup_required" && <div style={{ padding: "11px 14px", borderRadius: 10, marginBottom: 18, background: "rgba(242,118,124,.07)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,.18)", color: "#F2B3B7", fontSize: 12.5 }}>This plan is not configured yet. Add its Dodo product ID to the deployment environment and redeploy.</div>}
 
-      <section style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 20, alignItems: "center", padding: "18px 20px", borderRadius: 14, background: "linear-gradient(110deg, rgba(77,232,225,.085), rgba(77,232,225,.018) 48%, rgba(255,255,255,.012))", boxShadow: "inset 0 0 0 1px rgba(77,232,225,.18)", marginBottom: 18 }}>
+      <section className="plans-current-summary" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 20, alignItems: "center", padding: "18px 20px", borderRadius: 14, background: "linear-gradient(110deg, rgba(77,232,225,.085), rgba(77,232,225,.018) 48%, rgba(255,255,255,.012))", boxShadow: "inset 0 0 0 1px rgba(77,232,225,.18)", marginBottom: 18 }}>
         <div>
           <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: ".1em", textTransform: "uppercase", color: "#76EEE6", marginBottom: 7 }}>Current workspace</div>
           <div style={{ fontSize: 18, fontWeight: 560, letterSpacing: "-.02em", color: "var(--text)" }}>
@@ -82,11 +82,11 @@ export default function PlansPage() {
 
       {!canManageBilling && <div style={{ padding: "11px 14px", borderRadius: 10, marginBottom: 18, background: "rgba(245,194,107,.07)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,.18)", color: "#E8C67E", fontSize: 12.5 }}>Only the workspace owner or an admin can change billing. Ask an owner to choose a plan.</div>}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 14 }}>
+      <div className="plans-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 14 }}>
         {PLANS.map((plan) => {
           const current = entitlements.planTier === plan.tier && entitlements.billingStatus !== "preview";
           return (
-            <article key={plan.tier} style={{ position: "relative", padding: "22px", minHeight: 395, borderRadius: 14, background: plan.featured ? "linear-gradient(155deg, rgba(77,232,225,.08), rgba(11,16,23,.93) 48%)" : "linear-gradient(155deg, rgba(255,255,255,.035), rgba(11,16,23,.93) 48%)", boxShadow: `inset 0 0 0 1px ${plan.featured ? "rgba(77,232,225,.28)" : "var(--line)"}`, display: "flex", flexDirection: "column" }}>
+            <article className="plans-card" key={plan.tier} style={{ position: "relative", padding: "22px", minHeight: 395, borderRadius: 14, background: plan.featured ? "linear-gradient(155deg, rgba(77,232,225,.08), rgba(11,16,23,.93) 48%)" : "linear-gradient(155deg, rgba(255,255,255,.035), rgba(11,16,23,.93) 48%)", boxShadow: `inset 0 0 0 1px ${plan.featured ? "rgba(77,232,225,.28)" : "var(--line)"}`, display: "flex", flexDirection: "column" }}>
               {plan.featured && <span style={{ position: "absolute", top: 15, right: 16, fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: ".08em", textTransform: "uppercase", color: "#A9FFF8" }}>Recommended</span>}
               <div style={{ fontFamily: "var(--font-mono)", color: "var(--text-mute)", fontSize: 10, textTransform: "uppercase", letterSpacing: ".1em" }}>Auterim {plan.name}</div>
               <div style={{ fontSize: 28, color: "var(--text)", letterSpacing: "-.035em", fontWeight: 560, marginTop: 9 }}>{plan.price}</div>

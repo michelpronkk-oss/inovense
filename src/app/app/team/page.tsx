@@ -137,7 +137,7 @@ export default function TeamPage() {
           <div className="p-meta">{state.teamMembers.length} total</div>
         </div>
         {state.teamMembers.map((m) => (
-          <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", borderBottom: "1px solid var(--line)", opacity: m.active ? 1 : 0.65 }}>
+          <div className="team-member-row" key={m.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", borderBottom: "1px solid var(--line)", opacity: m.active ? 1 : 0.65 }}>
             <div style={{ width: 36, height: 36, borderRadius: "50%", background: `linear-gradient(135deg, ${m.color}40, ${m.color}15)`, boxShadow: `inset 0 0 0 1px ${m.color}55`, display: "grid", placeItems: "center", fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600, color: m.color, flexShrink: 0 }}>{m.initials}</div>
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
