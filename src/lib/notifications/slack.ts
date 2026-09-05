@@ -2,6 +2,9 @@
 import { logOperatorEvent } from "@/lib/operators/logging";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
+import { Resend } from "resend";
+import { renderAuterimEmailHtml, renderAuterimEmailText } from "@/lib/email/auterim-email-layout";
+import { getAppUrl } from "@/lib/urls";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
@@ -189,6 +192,10 @@ export async function sendSlackApprovalNotification(input: SendSlackApprovalNoti
   messageTs?: string | null;
 }> {
   const supabase = input.supabase ?? createSupabaseAdmin();
+  // Email is the reliable baseline channel. It is intentionally independent
+  // from Slack connection state, so companies never need Slack to receive a
+  // pending approval or a failure alert.
+  await sendEmailApprovalNotification({ ...input, supabase });
   const settings = await loadWorkspacePolicySettings({ supabase, workspaceId: input.workspaceId });
   const channelId = input.channelId ?? settings.slack.slackDefaultChannelId;
   const eventType = input.eventType;
@@ -279,5 +286,81 @@ export async function sendSlackApprovalNotification(input: SendSlackApprovalNoti
       status: "warn",
     });
     return { status: "failed", reason: error instanceof Error ? error.message : "slack_notification_failed", channelId };
+  }
+}
+
+async function sendEmailApprovalNotification(input: SendSlackApprovalNotificationInput): Promise<"sent" | "skipped" | "failed"> {
+  if (!process.env.RESEND_API_KEY) return "skipped";
+  const supabase = input.supabase ?? createSupabaseAdmin();
+  try {
+    const approvalResult = await supabase.from("os_approvals").select("continuation_payload").eq("workspace_id", input.workspaceId).eq("id", input.approvalId).maybeSingle();
+    const continuation = asRecord(approvalResult.data?.continuation_payload);
+    const priorEmail = asRecord(asRecord(continuation.emailNotifications)[input.eventType]);
+    if (priorEmail.status === "sent") return "skipped";
+    const membersResult = await supabase
+      .from("os_workspace_members")
+      .select("user_id,email,role_key,role")
+      .eq("workspace_id", input.workspaceId)
+      .eq("active", true)
+      .neq("status", "pending");
+    if (membersResult.error) throw new Error(membersResult.error.message);
+    const members = membersResult.data ?? [];
+    const userIds = members.map((member) => typeof member.user_id === "string" ? member.user_id : "").filter(Boolean);
+    const profilesResult = userIds.length
+      ? await supabase.from("os_user_profiles").select("user_id,notification_approvals,notification_alerts").in("user_id", userIds)
+      : { data: [], error: null };
+    if (profilesResult.error) throw new Error(profilesResult.error.message);
+    const profiles = new Map((profilesResult.data ?? []).map((profile) => [profile.user_id, profile]));
+    const preference = input.eventType === "execution_failed" ? "notification_alerts" : "notification_approvals";
+    const recipients = Array.from(new Set(members.flatMap((member) => {
+      const role = member.role_key ?? (member.role === "Operator - Admin" ? "admin" : member.role === "Operator - Reviewer" ? "reviewer" : "member");
+      const profile = typeof member.user_id === "string" ? profiles.get(member.user_id) : undefined;
+      const enabled = preference === "notification_alerts" ? profile?.notification_alerts !== false : profile?.notification_approvals !== false;
+      const email = typeof member.email === "string" ? member.email.trim().toLowerCase() : "";
+      return enabled && ["owner", "admin", "reviewer"].includes(role) && email ? [email] : [];
+    })));
+    if (!recipients.length) return "skipped";
+
+    const isReady = input.eventType === "revenue_approval_created";
+    const subject = input.eventType === "approval_approved"
+      ? "Auterim: approval completed"
+      : input.eventType === "approval_rejected"
+        ? "Auterim: approval skipped"
+        : input.eventType === "execution_failed"
+          ? "Auterim: execution needs attention"
+          : "Auterim: approval ready for review";
+    const href = input.approvalUrl || `${getAppUrl()}/app/approvals`;
+    const summary = input.summary?.trim() || buildMessage(input);
+    const content = {
+      preheader: summary,
+      eyebrow: "Workspace notification",
+      heading: subject.replace("Auterim: ", ""),
+      bodyParagraphs: [summary, "Open Auterim to review the live record and current policy decision."],
+      ctaText: isReady ? "Review approval" : "Open Auterim",
+      ctaHref: href,
+      logoUrl: `${getAppUrl()}/brand/auterim-icon-32.png`,
+    };
+    const sent = await new Resend(process.env.RESEND_API_KEY).emails.send({
+      from: process.env.RESEND_FROM_EMAIL ?? "Auterim <onboarding@resend.dev>",
+      to: recipients,
+      subject,
+      html: renderAuterimEmailHtml(content),
+      text: renderAuterimEmailText(content),
+    });
+    if (sent.error) throw new Error(sent.error.message || "Email notification failed.");
+    const emailNotifications = asRecord(continuation.emailNotifications);
+    await supabase.from("os_approvals").update({
+      continuation_payload: {
+        ...continuation,
+        emailNotifications: {
+          ...emailNotifications,
+          [input.eventType]: { status: "sent", at: new Date().toISOString(), recipientCount: recipients.length },
+        },
+      },
+    }).eq("workspace_id", input.workspaceId).eq("id", input.approvalId);
+    return "sent";
+  } catch (error) {
+    console.warn("[workspace-notification] email delivery failed", { workspaceId: input.workspaceId, approvalId: input.approvalId, error: error instanceof Error ? error.message : "Unknown error" });
+    return "failed";
   }
 }

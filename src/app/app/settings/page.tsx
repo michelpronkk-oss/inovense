@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { LinkIcon, SettingsIcon } from "@/components/dashboard/icons";
 import type { ConnectedAccount } from "@/app/api/connectors/accounts/route";
 import { useOS } from "@/lib/os/app-provider";
 import type { OSSettings } from "@/lib/os/types";
 import { saveWorkspaceSettings } from "./actions";
+import { saveProfileSettings } from "@/app/app/profile/actions";
 import { getEntitlements } from "@/lib/os/entitlements";
 import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-grid";
 
@@ -64,7 +66,7 @@ function serializeNotificationValue(row: NotificationDraftRow): string {
 }
 
 export default function SettingsPage() {
-  const { state, updateSettingsSection, updateWorkspace, disconnectConnector } = useOS();
+  const { state, updateSettingsSection, updateWorkspace, updateCurrentUser, disconnectConnector } = useOS();
   const searchParams = useSearchParams();
   const [editing, setEditing] = useState<SectionKey | null>(null);
   const [feedback, setFeedback] = useState("");
@@ -90,6 +92,7 @@ export default function SettingsPage() {
     errorAlerts: parseNotificationValue(state.settings.notifications.errorAlerts),
     newAgentDeployed: parseNotificationValue(state.settings.notifications.newAgentDeployed),
   });
+  const [emailPreferences, setEmailPreferences] = useState({ ...state.currentUser.notifications });
 
   useEffect(() => {
     if (!editing) return;
@@ -130,6 +133,7 @@ export default function SettingsPage() {
       errorAlerts: parseNotificationValue(state.settings.notifications.errorAlerts),
       newAgentDeployed: parseNotificationValue(state.settings.notifications.newAgentDeployed),
     });
+    setEmailPreferences({ ...state.currentUser.notifications });
   };
 
   const save = async () => {
@@ -141,6 +145,30 @@ export default function SettingsPage() {
     if (editing === "workspace" && !workspaceDraft.name.trim()) {
       setError("Workspace name is required.");
       setSaving(false);
+      return;
+    }
+
+    if (editing === "notifications") {
+      const result = await saveProfileSettings({
+        workspaceId: state.workspace.id,
+        userId: state.currentUser.id,
+        name: state.currentUser.name,
+        email: state.currentUser.email,
+        roleLabel: state.currentUser.roleLabel,
+        initials: state.currentUser.initials,
+        avatarUrl: state.currentUser.avatarUrl,
+        notifications: emailPreferences,
+        dashboard: state.dashboard,
+      });
+      if (!result.success) {
+        setError(result.message);
+        setSaving(false);
+        return;
+      }
+      updateCurrentUser({ notifications: emailPreferences });
+      setEditing(null);
+      setSaving(false);
+      setFeedback("Email notification preferences saved.");
       return;
     }
 
@@ -165,27 +193,10 @@ export default function SettingsPage() {
       updateSettingsSection("approvalPolicy", approvalDraft);
     }
 
-    if (editing === "notifications") {
-      const nextNotifications: OSSettings["notifications"] = {
-        approvalInbox: serializeNotificationValue(notificationDraft.approvalInbox),
-        weeklyDigest: serializeNotificationValue(notificationDraft.weeklyDigest),
-        errorAlerts: serializeNotificationValue(notificationDraft.errorAlerts),
-        newAgentDeployed: serializeNotificationValue(notificationDraft.newAgentDeployed),
-      };
-      updateSettingsSection("notifications", nextNotifications);
-    }
-
     const nextSettings: OSSettings = {
       workspace: editing === "workspace" ? workspaceToSave : state.settings.workspace,
       approvalPolicy: editing === "approvalPolicy" ? approvalDraft : state.settings.approvalPolicy,
-      notifications: editing === "notifications"
-        ? {
-            approvalInbox: serializeNotificationValue(notificationDraft.approvalInbox),
-            weeklyDigest: serializeNotificationValue(notificationDraft.weeklyDigest),
-            errorAlerts: serializeNotificationValue(notificationDraft.errorAlerts),
-            newAgentDeployed: serializeNotificationValue(notificationDraft.newAgentDeployed),
-          }
-        : state.settings.notifications,
+      notifications: state.settings.notifications,
       activation: state.settings.activation,
     };
 
@@ -432,25 +443,25 @@ export default function SettingsPage() {
         <section className="p settings-policy-surface">
           <div className="p-head">
             <h3><SettingsIcon size={13} /> Control boundary</h3>
-            <button className="appr-btn edit" onClick={() => startEdit("approvalPolicy")}>Edit policy</button>
+            <Link className="appr-btn edit" href="/policies">Open policy controls</Link>
           </div>
-          <div className="settings-boundary-lead"><span className="dot dot-cyan" /> External changes wait for review</div>
+          <div className="settings-boundary-lead"><span className="dot dot-cyan" /> Live enforcement, checked again at execution</div>
           <div className="settings-policy-list">
-            <div><span>Customer communications</span><strong>{state.settings.approvalPolicy.outboundComms}</strong></div>
-            <div><span>CRM writes</span><strong>{state.settings.approvalPolicy.crmWrites}</strong></div>
-            <div><span>Internal reports</span><strong>{state.settings.approvalPolicy.internalReports}</strong></div>
+            <div><span>Customer email</span><strong>{state.settings.approvalPolicy.customerEmailMode === "draft_only" ? "Draft only — Gmail will not send" : "Human approval required"}</strong></div>
+            <div><span>CRM and project changes</span><strong>Human approval required</strong></div>
+            <div><span>Automatic work</span><strong>{state.settings.approvalPolicy.autonomyMode === "assisted" ? "Low-risk internal comments only" : "System checks and summaries only"}</strong></div>
           </div>
         </section>
 
         <section className="p settings-notifications-surface">
           <div className="p-head">
             <h3><SettingsIcon size={13} /> Notification routing</h3>
-            <button className="appr-btn edit" onClick={() => startEdit("notifications")}>Edit routing</button>
+            <button className="appr-btn edit" onClick={() => startEdit("notifications")}>Email preferences</button>
           </div>
           <div className="settings-notification-list">
-            <div><span>Approval inbox</span><strong>{state.settings.notifications.approvalInbox}</strong></div>
-            <div><span>Control alerts</span><strong>{state.settings.notifications.errorAlerts}</strong></div>
-            <div><span>Operating digest</span><strong>{state.settings.notifications.weeklyDigest}</strong></div>
+            <div><span>Approval requests</span><strong>{state.currentUser.notifications.approvals ? `Email on — ${state.currentUser.email}` : "Email off"}</strong></div>
+            <div><span>Control alerts</span><strong>{state.currentUser.notifications.alerts ? `Email on — ${state.currentUser.email}` : "Email off"}</strong></div>
+            <div><span>Operating digest</span><strong>{state.currentUser.notifications.digest ? "Email preference saved" : "Email off"}</strong></div>
           </div>
         </section>
       </div>
@@ -506,31 +517,19 @@ export default function SettingsPage() {
             )}
 
             {editing === "notifications" && (
-              <div style={{ display: "grid", gap: 12 }}>
-                {(Object.keys(notificationDraft) as Array<keyof OSSettings["notifications"]>).map((key) => (
-                  <div key={key} style={{ display: "grid", gap: 6 }}>
-                    <label style={{ fontSize: 12, color: "var(--text-dim)" }}>{NOTIFICATION_LABELS[key]}</label>
-                    <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 8 }}>
-                      <select
-                        value={notificationDraft[key].channel}
-                        onChange={(e) => setNotificationDraft((prev) => ({ ...prev, [key]: { ...prev[key], channel: e.target.value as NotifyChannel } }))}
-                        className="os-input"
-                      >
-                        <option>Email</option>
-                        <option>Slack</option>
-                        <option>Slack + email</option>
-                        <option>Off</option>
-                      </select>
-                      <input
-                        value={notificationDraft[key].target}
-                        onChange={(e) => setNotificationDraft((prev) => ({ ...prev, [key]: { ...prev[key], target: e.target.value } }))}
-                        className="os-input"
-                        placeholder="Target (e.g. #ops-alerts or Monday 9AM)"
-                        disabled={notificationDraft[key].channel === "Off"}
-                        style={{ opacity: notificationDraft[key].channel === "Off" ? 0.6 : 1 }}
-                      />
-                    </div>
-                  </div>
+              <div style={{ display: "grid", gap: 10 }}>
+                <div style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(77,232,225,0.06)", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.2)", fontSize: 12.5, color: "var(--text-dim)", lineHeight: 1.55 }}>
+                  Email is the dependable default. Notifications are sent to <strong style={{ color: "var(--text)" }}>{state.currentUser.email}</strong>; Slack is optional and never required for an approval to reach you.
+                </div>
+                {([
+                  ["approvals", "Approval requests", "When work is ready for your decision."],
+                  ["alerts", "Control alerts", "When a policy blocks execution or a run needs attention."],
+                  ["digest", "Operating digest", "Your saved preference for scheduled workspace summaries."],
+                ] as const).map(([key, label, detail]) => (
+                  <button key={key} type="button" onClick={() => setEmailPreferences((current) => ({ ...current, [key]: !current[key] }))} style={{ textAlign: "left", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, padding: "14px", borderRadius: 12, color: "inherit", background: emailPreferences[key] ? "rgba(77,232,225,0.055)" : "rgba(255,255,255,0.02)", boxShadow: `inset 0 0 0 1px ${emailPreferences[key] ? "rgba(77,232,225,0.28)" : "var(--line)"}`, cursor: "pointer" }}>
+                    <span><strong style={{ display: "block", fontSize: 13 }}>{label}</strong><small style={{ display: "block", marginTop: 3, color: "var(--text-mute)", fontSize: 11.5 }}>{detail}</small></span>
+                    <span className={`pill ${emailPreferences[key] ? "pill-cyan" : ""}`}>{emailPreferences[key] ? "Email on" : "Off"}</span>
+                  </button>
                 ))}
               </div>
             )}
