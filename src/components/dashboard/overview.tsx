@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useOS } from "@/lib/os/app-provider";
 import type { DashboardOverview, DashboardOperator } from "@/lib/dashboard/overview";
+import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-grid";
 
 type ScanKey = DashboardOperator["key"];
 type OverviewResponse = DashboardOverview & { error?: string; message?: string };
@@ -372,7 +373,9 @@ export function OSOverview() {
             const meta = connectorMeta[connector.key] ?? { letter: connector.name.slice(0, 2), color: "#4DE8E1" };
             return (
               <Link key={connector.key} href={connector.href} className="conn-tile" style={{ textDecoration: "none", color: "inherit" }}>
-                <div className="conn-logo" style={{ color: meta.color, background: `${meta.color}15`, boxShadow: `inset 0 0 0 1px ${meta.color}40` }}>{meta.letter}</div>
+                <div className="conn-logo connector-brand-logo" style={{ color: meta.color }}>
+                  {IntegrationLogos[connector.name] ?? meta.letter}
+                </div>
                 <div className="conn-name">{connector.name}</div>
                 <div className="conn-meta">
                   <span className={`dot ${connector.connected ? "dot-green" : "dot-amber"}`} />

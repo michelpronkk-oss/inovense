@@ -119,6 +119,7 @@ export default function ConnectorsPage() {
   const [setupConnectorId, setSetupConnectorId] = useState<string | null>(null);
   const [drawerConnectorId, setDrawerConnectorId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("");
+  const [disconnectingConnectorId, setDisconnectingConnectorId] = useState<string | null>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [nangoConnectLoadingId, setNangoConnectLoadingId] = useState<string | null>(null);
   const [nangoStatuses, setNangoStatuses] = useState<Record<string, {
@@ -204,6 +205,31 @@ export default function ConnectorsPage() {
       userId: state.currentUser.id,
     });
     window.location.href = `/api/connectors/gmail/auth?${qs.toString()}`;
+  };
+
+  const disconnectRealConnector = async (connector: Connector) => {
+    setDisconnectingConnectorId(connector.id);
+    setFeedback("");
+    try {
+      const res = await fetch("/api/connectors/disconnect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId: state.workspace.id, connectorKey: normalizeConnectorKey(connector.id) }),
+      });
+      const json = await res.json().catch(() => ({} as { error?: string }));
+      if (!res.ok) {
+        setFeedback(json.error || `Could not disconnect ${connector.name}.`);
+        return;
+      }
+      disconnectConnector(connector.id);
+      setDrawerConnectorId(null);
+      setFeedback(`${connector.name} disconnected. Auterim no longer has access to this account.`);
+      router.refresh();
+    } catch {
+      setFeedback(`Could not disconnect ${connector.name}. Check your connection and try again.`);
+    } finally {
+      setDisconnectingConnectorId(null);
+    }
   };
 
   const fetchNangoStatus = async (connectorKey: string) => {
@@ -1006,7 +1032,9 @@ export default function ConnectorsPage() {
                   setFeedback(`${drawerConnector.name} permissions updated.`);
                 }}>Update operators</button>
               </div>
-              <button className="btn btn-ghost btn-sm" onClick={() => { disconnectConnector(drawerConnector.id); setDrawerConnectorId(null); setFeedback(`${drawerConnector.name} disconnected.`); }}>Disconnect</button>
+              <button className="btn btn-ghost btn-sm" disabled={disconnectingConnectorId === drawerConnector.id} onClick={() => void disconnectRealConnector(drawerConnector)}>
+                {disconnectingConnectorId === drawerConnector.id ? "Disconnecting..." : "Disconnect"}
+              </button>
             </div>
           </div>
         </div>

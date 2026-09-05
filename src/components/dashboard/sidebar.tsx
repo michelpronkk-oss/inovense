@@ -18,6 +18,15 @@ const ADMIN_NAV = [
   { icon: SettingsIcon, label: "Settings", href: "/settings" },
 ];
 
+function ToggleRow({ label, detail, checked, onChange }: { label: string; detail: string; checked: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <label className="os-profile-toggle">
+      <span><strong>{label}</strong><small>{detail}</small></span>
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+    </label>
+  );
+}
+
 export function OSSidebar() {
   const pathname = usePathname();
   const { state, pendingApprovals, updateCurrentUser, setDashboardPrefs } = useOS();
@@ -121,10 +130,21 @@ export function OSSidebar() {
 
       {profileOpen && (
         <div className="os-modal-backdrop" onClick={() => setProfileOpen(false)}>
-          <div className="os-modal" style={{ maxWidth: 620, width: "92%", paddingBottom: 68 }} onClick={(e) => e.stopPropagation()}>
+          <div className="os-modal os-profile-modal" style={{ maxWidth: 620, width: "92%", paddingBottom: 76 }} onClick={(e) => e.stopPropagation()}>
             <div className="os-modal-head">
-              <h3>Profile settings</h3>
+              <div>
+                <div className="os-profile-eyebrow">Workspace identity</div>
+                <h3>Profile settings</h3>
+              </div>
               <button className="appr-btn deny" onClick={() => setProfileOpen(false)}>Close</button>
+            </div>
+            <div className="os-profile-identity">
+              <div className="os-profile-avatar">{state.currentUser.initials}</div>
+              <div>
+                <div className="os-profile-name">{state.currentUser.name}</div>
+                <div className="os-profile-email">{state.currentUser.email}</div>
+              </div>
+              <span className="os-profile-role">{state.currentUser.roleLabel}</span>
             </div>
             <div className="os-prof-tabs">
               <button className={`os-prof-tab ${profileTab === "profile" ? "active" : ""}`} onClick={() => setProfileTab("profile")}>Profile</button>
@@ -132,38 +152,38 @@ export function OSSidebar() {
               <button className={`os-prof-tab ${profileTab === "experience" ? "active" : ""}`} onClick={() => setProfileTab("experience")}>Experience</button>
             </div>
 
-            <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+            <div className="os-profile-content">
               {profileTab === "profile" && (
-                <>
-                  <input className="os-input" value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
-                  <input className="os-input" value={draft.email} readOnly />
-                  <input className="os-input" value={draft.roleLabel} onChange={(e) => setDraft((d) => ({ ...d, roleLabel: e.target.value }))} />
-                </>
+                <div className="os-profile-section">
+                  <div className="os-profile-section-head"><strong>Your identity</strong><span>Used across approvals and activity.</span></div>
+                  <label className="os-profile-field">
+                    <span>Full name</span>
+                    <input className="os-input" value={draft.name} autoComplete="name" onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
+                  </label>
+                  <label className="os-profile-field">
+                    <span>Account email</span>
+                    <input className="os-input" value={draft.email} readOnly aria-readonly="true" />
+                    <small>Your sign-in email is managed by your account provider.</small>
+                  </label>
+                  <div className="os-profile-access"><span>Workspace access</span><strong>{state.currentUser.roleLabel}</strong><small>Access is assigned by the workspace owner.</small></div>
+                </div>
               )}
 
               {profileTab === "notifications" && (
-                <>
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}><input type="checkbox" checked={draft.notifications.approvals} onChange={(e) => setDraft((d) => ({ ...d, notifications: { ...d.notifications, approvals: e.target.checked } }))} /> Approval inbox</label>
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}><input type="checkbox" checked={draft.notifications.digest} onChange={(e) => setDraft((d) => ({ ...d, notifications: { ...d.notifications, digest: e.target.checked } }))} /> Weekly digest</label>
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}><input type="checkbox" checked={draft.notifications.alerts} onChange={(e) => setDraft((d) => ({ ...d, notifications: { ...d.notifications, alerts: e.target.checked } }))} /> Error alerts</label>
-                </>
+                <div className="os-profile-section">
+                  <div className="os-profile-section-head"><strong>Notification routing</strong><span>Only signal that needs your attention.</span></div>
+                  <ToggleRow label="Approval inbox" detail="When prepared work is ready for your decision." checked={draft.notifications.approvals} onChange={(checked) => setDraft((d) => ({ ...d, notifications: { ...d.notifications, approvals: checked } }))} />
+                  <ToggleRow label="Operating digest" detail="A concise weekly picture of activity and outcomes." checked={draft.notifications.digest} onChange={(checked) => setDraft((d) => ({ ...d, notifications: { ...d.notifications, digest: checked } }))} />
+                  <ToggleRow label="Control alerts" detail="Connection or policy issues that need intervention." checked={draft.notifications.alerts} onChange={(checked) => setDraft((d) => ({ ...d, notifications: { ...d.notifications, alerts: checked } }))} />
+                </div>
               )}
 
               {profileTab === "experience" && (
-                <>
-                  <label style={{ fontSize: 12, color: "var(--text-dim)" }}>Default time range</label>
-                  <select className="os-input" value={draft.dashboard.timeRange} onChange={(e) => setDraft((d) => ({ ...d, dashboard: { ...d.dashboard, timeRange: e.target.value as "24h" | "7d" | "30d" | "quarter" } }))}>
-                    <option value="24h">Last 24 hours</option>
-                    <option value="7d">Last 7 days</option>
-                    <option value="30d">Last 30 days</option>
-                    <option value="quarter">This quarter</option>
-                  </select>
-                  <label style={{ fontSize: 12, color: "var(--text-dim)" }}>Default view</label>
-                  <select className="os-input" value={draft.dashboard.viewMode} onChange={(e) => setDraft((d) => ({ ...d, dashboard: { ...d.dashboard, viewMode: e.target.value as "operator" | "workflow" } }))}>
-                    <option value="operator">Operator view</option>
-                    <option value="workflow">Workflow view</option>
-                  </select>
-                </>
+                <div className="os-profile-section">
+                  <div className="os-profile-section-head"><strong>Your operating view</strong><span>Set the default context when you return.</span></div>
+                  <label className="os-profile-field"><span>Default time range</span><select className="os-input" value={draft.dashboard.timeRange} onChange={(e) => setDraft((d) => ({ ...d, dashboard: { ...d.dashboard, timeRange: e.target.value as "24h" | "7d" | "30d" | "quarter" } }))}><option value="24h">Last 24 hours</option><option value="7d">Last 7 days</option><option value="30d">Last 30 days</option><option value="quarter">This quarter</option></select></label>
+                  <label className="os-profile-field"><span>Default focus</span><select className="os-input" value={draft.dashboard.viewMode} onChange={(e) => setDraft((d) => ({ ...d, dashboard: { ...d.dashboard, viewMode: e.target.value as "operator" | "workflow" } }))}><option value="operator">Operators</option><option value="workflow">Workflows</option></select></label>
+                </div>
               )}
             </div>
 

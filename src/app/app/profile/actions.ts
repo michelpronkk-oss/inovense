@@ -29,7 +29,7 @@ type SaveProfileInput = {
 export async function saveProfileSettings(input: SaveProfileInput): Promise<{ success: boolean; message: string }> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return { success: true, message: "Saved locally. Server sync is not configured." };
+  if (!url || !key) return { success: false, message: "Profile storage is not configured. Your changes were not saved." };
 
   // A profile can only ever be edited by its own (verified) owner. The
   // client-supplied userId is intentionally ignored to prevent one user
@@ -63,6 +63,16 @@ export async function saveProfileSettings(input: SaveProfileInput): Promise<{ su
   });
   if (profileUpsert.error) return { success: false, message: profileUpsert.error.message };
 
+  // `os_workspace_members.full_name` is the source used during workspace
+  // hydration. Keep it in sync with the personal profile, but never accept
+  // a client-supplied role or membership target.
+  const memberUpdate = await supabase
+    .from("os_workspace_members")
+    .update({ full_name: input.name })
+    .eq("workspace_id", input.workspaceId)
+    .eq("user_id", userId);
+  if (memberUpdate.error) return { success: false, message: memberUpdate.error.message };
+
   const prefUpsert = await supabase.from("os_dashboard_preferences").upsert({
     workspace_id: input.workspaceId,
     user_id: userId,
@@ -86,4 +96,3 @@ export async function saveProfileSettings(input: SaveProfileInput): Promise<{ su
 
   return { success: true, message: "Profile saved." };
 }
-

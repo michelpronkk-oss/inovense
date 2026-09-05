@@ -199,17 +199,46 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
   const memberEmail = member?.email ?? context.userEmail ?? state.currentUser.email;
   const memberName = member?.full_name?.trim() || context.userName?.trim() || memberEmail.split("@")[0] || "Workspace member";
   const roleLabel = roleLabelFor(member?.role_key, member?.role);
+  const profileUserId = member?.user_id ?? context.userId ?? state.currentUser.id;
+  const [profileResult, preferencesResult] = await Promise.all([
+    supabase
+      .from("os_user_profiles")
+      .select("full_name,notification_approvals,notification_digest,notification_alerts")
+      .eq("user_id", profileUserId)
+      .maybeSingle(),
+    supabase
+      .from("os_dashboard_preferences")
+      .select("time_range,view_mode")
+      .eq("workspace_id", workspaceId)
+      .eq("user_id", profileUserId)
+      .maybeSingle(),
+  ]);
+  const profile = profileResult.data;
+  const preferences = preferencesResult.data;
+  const profileName = profile?.full_name?.trim() || memberName;
   state.currentUser = {
     ...state.currentUser,
-    id: member?.user_id ?? context.userId ?? state.currentUser.id,
-    name: memberName,
+    id: profileUserId,
+    name: profileName,
     email: memberEmail,
     roleLabel,
-    initials: initialsFor(memberName),
+    initials: initialsFor(profileName),
+    notifications: {
+      approvals: profile?.notification_approvals ?? state.currentUser.notifications.approvals,
+      digest: profile?.notification_digest ?? state.currentUser.notifications.digest,
+      alerts: profile?.notification_alerts ?? state.currentUser.notifications.alerts,
+    },
   };
+  if (preferences?.time_range && preferences?.view_mode) {
+    state.dashboard = {
+      ...state.dashboard,
+      timeRange: preferences.time_range as OSState["dashboard"]["timeRange"],
+      viewMode: preferences.view_mode as OSState["dashboard"]["viewMode"],
+    };
+  }
   state.teamMembers = [{
     id: state.currentUser.id,
-    name: memberName,
+    name: profileName,
     email: memberEmail,
     role: roleLabel,
     initials: state.currentUser.initials,
