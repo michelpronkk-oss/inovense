@@ -320,9 +320,9 @@ export default function SettingsPage() {
     <div className="os-page">
       <div className="os-page-head">
         <div>
-          <span className="os-greet">Workspace - {state.workspace.name}</span>
+          <span className="os-greet">Workspace control</span>
           <h1>Settings</h1>
-          <div className="os-page-sub">Workspace configuration, approval policies, notification preferences and billing.</div>
+          <div className="os-page-sub">Shape your workspace identity, guardrails and notification routing.</div>
         </div>
       </div>
 
@@ -418,22 +418,24 @@ export default function SettingsPage() {
         )}
       </div>
 
+      <div className="settings-control-grid">
       {sections.map((section) => (
-        <div className="p" key={section.title}>
+        <div className="p settings-control-card" key={section.title}>
           <div className="p-head">
             <h3><SettingsIcon size={13} /> {section.title}</h3>
             <button className="appr-btn edit" onClick={() => startEdit(section.key)}>Edit</button>
           </div>
-          <div>
+          <div className="settings-summary-grid">
             {Object.entries(section.fields).map(([label, value]) => (
-              <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px", borderBottom: "1px solid var(--line)", fontSize: 13, gap: 12 }}>
-                <span style={{ color: "var(--text-mute)", fontFamily: "var(--font-mono)", fontSize: 11.5 }}>{formatRowLabel(label)}</span>
-                <span style={{ color: "var(--text)", fontWeight: 500 }}>{value}</span>
+              <div key={label} className="settings-summary-item">
+                <span>{formatRowLabel(label)}</span>
+                <strong>{value}</strong>
               </div>
             ))}
           </div>
         </div>
       ))}
+      </div>
 
       {feedback && <div style={{ color: "#64ffd7", fontSize: 12 }}>{feedback}</div>}
       {error && <div style={{ color: "#ff8f8f", fontSize: 12 }}>{error}</div>}
