@@ -12,14 +12,11 @@
  *
  * Fires from: `supabase.auth.signUp(...)` in
  * `src/app/app/register/page.tsx`, which passes
- * `emailRedirectTo: appHref("/auth/callback")`. Because the client uses the
- * default PKCE flow, `{{ .ConfirmationURL }}` already resolves to
- * `.../auth/v1/verify?...&redirect_to=<app>/app/auth/callback`, which lands
- * on `src/app/app/auth/callback/route.ts`. That route exchanges the code for
- * a session and redirects to `/app` (onboarding/provisioning takes over from
- * there). Do not rebuild this link from `{{ .TokenHash }}` -- the
- * `ConfirmationURL` Supabase generates already honors the app's
- * `emailRedirectTo` and PKCE flow correctly.
+ * `emailRedirectTo: appHref("/auth/callback")`. The email CTA must use a
+ * token hash rather than `{{ .ConfirmationURL }}`: a PKCE code can only be
+ * exchanged by the originating browser, while email confirmation commonly
+ * opens in a different browser or device. The callback verifies the token
+ * hash server-side and sets the session cookie.
  */
 import { renderAuterimEmailHtml, renderAuterimEmailText } from "../auterim-email-layout";
 
@@ -29,8 +26,8 @@ export const SUBJECT = "Confirm your Auterim account";
 
 export const PREHEADER = "Confirm your email to finish creating your Auterim workspace.";
 
-/** Only variable this template needs. Do not add `{{ .TokenHash }}`/manual verify links here. */
-export const REQUIRED_VARIABLES = ["{{ .ConfirmationURL }}"] as const;
+/** Keep the confirmation portable across browsers and email clients. */
+export const REQUIRED_VARIABLES = ["{{ .RedirectTo }}", "{{ .TokenHash }}"] as const;
 
 const content = {
   preheader: PREHEADER,
@@ -40,7 +37,7 @@ const content = {
     "You're one step away from setting up your Auterim workspace. Confirm your email address to continue.",
   ],
   ctaText: "Confirm email",
-  ctaHref: "{{ .ConfirmationURL }}",
+  ctaHref: "{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=email",
   securityNote: "If you didn't create an Auterim account, you can safely ignore this email.",
   logoUrl: "https://auterim.com/brand/auterim-icon-32.png",
 };

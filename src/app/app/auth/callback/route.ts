@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { EmailOtpType } from "@supabase/supabase-js";
 import { createSupabaseServerActionClient } from "@/lib/supabase/server";
 import { appHref } from "@/lib/urls";
 
@@ -10,6 +11,8 @@ import { appHref } from "@/lib/urls";
  */
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
+  const tokenHash = req.nextUrl.searchParams.get("token_hash");
+  const requestedType = req.nextUrl.searchParams.get("type");
   const next = req.nextUrl.searchParams.get("next");
   const errorDescription = req.nextUrl.searchParams.get("error_description");
 
@@ -18,7 +21,23 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL(`${appHref("/login")}?error=invalid_or_expired_link`));
   }
 
-  if (code) {
+  if (tokenHash) {
+    // Token-hash verification does not depend on a browser-local PKCE
+    // verifier. This makes a signup confirmation safe to open from an email
+    // client, another browser, or another device.
+    const type: EmailOtpType = requestedType === "recovery" || requestedType === "invite" || requestedType === "email_change"
+      ? requestedType
+      : "email";
+    const supabase = await createSupabaseServerActionClient();
+    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+    if (error) {
+      console.warn("[auth.callback] token verification failed", {
+        code: error.code ?? "unknown",
+        status: error.status ?? null,
+      });
+      return NextResponse.redirect(new URL(`${appHref("/login")}?error=invalid_or_expired_link`));
+    }
+  } else if (code) {
     const supabase = await createSupabaseServerActionClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
