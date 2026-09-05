@@ -1104,6 +1104,7 @@ select.os-input option {
   padding-right: 22px; border-right: 1px solid var(--line);
 }
 .ag-legend-label strong { color: var(--text-dim); font-weight: 500; letter-spacing: 0.06em; }
+.ag-loop-summary { display: none; }
 .ag-legend-flow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .ag-loop-pill {
   display: inline-flex; align-items: center; gap: 8px;
@@ -1210,6 +1211,81 @@ select.os-input option {
   .ag-grid { grid-template-columns: 1fr; }
   .ag-legend { gap: 14px; }
   .ag-legend-label { border-right: 0; padding-right: 0; }
+}
+
+/* Mobile is a focused operating surface, not a compressed desktop header. */
+@media (max-width: 760px) {
+  .os-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 14px; }
+  .os-crumb, .os-env { display: none; }
+  .os-top-search { order: initial; min-width: 0; min-height: 38px; padding: 6px 10px; }
+  .os-top-actions { order: initial; margin: 0; align-items: center; }
+  .os-top-actions .btn.btn-primary { min-width: 38px; min-height: 38px; margin-left: 0 !important; padding: 0 11px; font-size: 0; }
+  .os-top-actions .btn.btn-primary svg { width: 15px; height: 15px; }
+  .os-billing-status { margin: 7px 14px 0 !important; min-height: 0; padding: 10px 12px !important; border-radius: 13px !important; flex-wrap: nowrap !important; }
+  .os-billing-status > div:first-child { flex: 1 1 auto; min-width: 0; flex-basis: auto !important; }
+  .os-billing-active-copy > div:first-child { font-size: 12px !important; }
+  .os-billing-active-copy > div:last-child { margin-top: 2px; font-size: 11px !important; line-height: 1.35; }
+  .os-billing-status .btn { flex: 0 0 auto; min-height: 34px; padding: 0 10px; font-size: 11px; white-space: nowrap; }
+  .agents-page .os-page-actions { display: none; }
+  .ag-head-eyebrow { font-size: 9px; }
+  .ag-legend { display: block; padding: 13px 14px; border-radius: 14px; }
+  .ag-legend-label, .ag-legend-flow { display: none; }
+  .ag-loop-summary { display: block; color: var(--text-dim); font: 10px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
+  .ag-filter { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; margin: 12px 0 0 !important; padding: 3px; }
+  .ag-filter button { min-width: 0; padding: 7px 5px; font-size: 10px; }
+  .ag-sec-head { align-items: baseline; gap: 9px; margin: 20px 0 12px; }
+  .ag-sec-head h2 { font-size: 16px; }
+  .ag-sec-head .count { min-width: 0; font-size: 9.5px; line-height: 1.4; }
+  .ag-sec-head .rule { display: none; }
+  .ag-grid { gap: 10px; }
+  .ag-card { gap: 12px; padding: 16px; border-radius: 14px; }
+  .ag-card-top { gap: 11px; }
+  .ag-av { width: 42px; height: 42px; }
+  .ag-av .ag-person { width: 23px; height: 23px; }
+  .ag-name { font-size: 14px; }
+  .ag-status { padding: 4px 7px; font-size: 8px; }
+  .ag-mission { font-size: 12.5px; }
+  .ag-foot { padding-top: 12px; }
+}
+
+/* Mobile page contract: every product route uses compact summaries, while
+   dense operational tables remain intentionally scrollable instead of being
+   crushed into unreadable columns. */
+@media (max-width: 760px) {
+  .os-page { gap: 12px; }
+  .os-page-head { margin-bottom: 2px; }
+  .os-page-head h1 { font-size: 23px; line-height: 1.12; }
+  .os-page-sub { max-width: 44ch; font-size: 12px; line-height: 1.45; }
+  .os-page-actions { gap: 6px; }
+  .os-page-actions .btn { min-height: 36px; padding-inline: 10px; font-size: 11px; }
+  .p-head { min-height: 46px; padding: 11px 13px; }
+  .p-head h3 { font-size: 12.5px; }
+  .p-meta { font-size: 9px; }
+  .kpi { min-height: 104px; padding: 13px; }
+  .kpi-val { font-size: 24px; }
+  .activation-stepper { min-width: 560px !important; margin: 0 !important; }
+  .activation-content-grid { grid-template-columns: minmax(0, 1fr) !important; gap: 10px !important; }
+  .activation-content-grid > .p[style] { min-height: 0 !important; }
+  .workflow-suggestion-grid { grid-template-columns: minmax(0, 1fr) !important; padding: 0 8px 8px !important; }
+  .workflow-preview-steps, .workflow-preview-columns { grid-template-columns: minmax(0, 1fr); }
+  .workflow-preview-flow { justify-content: flex-start; overflow-x: auto; flex-wrap: nowrap; padding-inline: 12px; }
+  .workflow-preview-node { flex: 0 0 auto; }
+  .logs-viewport { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .logs-viewport > div { min-width: 660px !important; }
+  .os-page .p[style*="overflow-x"] > [style*="min-width"] { min-width: 620px !important; }
+  .os-page [style*="min-width: 280px"], .os-page [style*="min-width: 240px"] { min-width: 0 !important; max-width: 100%; }
+  .os-page [style*="grid-template-columns: 1fr auto"] { grid-template-columns: minmax(0, 1fr) auto !important; }
+  .os-page [style*="grid-template-columns: 1fr auto auto auto"] { grid-template-columns: minmax(0, 1fr) auto !important; }
+  .os-page [style*="grid-template-columns: 40px 1fr auto"], .os-page [style*="grid-template-columns: 40px 1fr 120px"] { min-width: 560px; }
+  .os-page [style*="grid-template-columns: 28px 1fr 120px"] { min-width: 720px !important; }
+  .os-page [style*="grid-template-columns: 72px 22px 130px"] { min-width: 660px !important; }
+}
+
+@media (max-width: 430px) {
+  .os-page [style*="grid-template-columns: repeat(4"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .os-page-actions .btn { min-width: 0; }
+  .os-mobile-nav { padding: 4px; border-radius: 15px; }
+  .os-mobile-nav-link { padding-top: 6px; padding-bottom: 5px; }
 }
 
 /* =========================================================

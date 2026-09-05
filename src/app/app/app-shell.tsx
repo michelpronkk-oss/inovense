@@ -144,11 +144,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             gap: 12,
             flexWrap: "wrap",
           }}>
-            <div>
+            <div className="os-billing-active-copy">
               <div style={{ color: "#C9FFFB", fontSize: 12.5, fontWeight: 600 }}>Billing active</div>
-              <div style={{ color: "var(--text-dim)", fontSize: 12.5 }}>
-                Manage subscription, payment method, invoices and cancellation in Dodo Customer Portal.
-              </div>
+              <div style={{ color: "var(--text-dim)", fontSize: 12.5 }}>Subscription and invoices are managed in the customer portal.</div>
             </div>
             <Link className="btn btn-ghost btn-sm" href="/settings?billing=manage">
               Manage billing

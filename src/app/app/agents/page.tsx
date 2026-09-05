@@ -152,7 +152,7 @@ export default function AgentsRegistryPage() {
   const showExpanding = filter !== "active";
 
   return (
-    <div className="os-page">
+    <div className="os-page agents-page">
       <div className="os-page-head">
         <div>
           <span className="ag-head-eyebrow">Operator registry</span>
@@ -169,6 +169,7 @@ export default function AgentsRegistryPage() {
 
       <div className="ag-legend">
         <span className="ag-legend-label">Every operator<strong>runs one loop</strong></span>
+        <span className="ag-loop-summary">One controlled loop · approval required</span>
         <div className="ag-legend-flow">
           {LOOP_STEPS.map((s, i) => (
             <Fragment key={s}>
@@ -184,7 +185,7 @@ export default function AgentsRegistryPage() {
         </div>
       </div>
 
-      {showConfigured && (
+      {showConfigured && configured.length > 0 && (
         <section>
           <div className="ag-sec-head">
             <h2>Configured</h2>
