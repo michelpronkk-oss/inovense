@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
 import { appHref } from "@/lib/urls";
 import { Icon } from "./icons";
 
@@ -30,10 +29,8 @@ const RAIL_PATHS = [
 ];
 
 export default function HeroEditorial() {
-  const sectionRef = useRef<HTMLElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
+  /* Mouse-driven parallax intentionally removed: it caused perceptible shaking and soft text. */
+  /* useEffect(() => {
     const section = sectionRef.current;
     if (!section) return;
 
@@ -94,10 +91,10 @@ export default function HeroEditorial() {
       section.removeEventListener("pointerleave", reset);
       if (frame) window.cancelAnimationFrame(frame);
     };
-  }, []);
+  }, []); */
 
   return (
-    <section className="hero hero-editorial" id="top" ref={sectionRef}>
+    <section className="hero hero-editorial" id="top">
       <div className="hero-editorial-tex" aria-hidden="true" />
       <div className="hero-editorial-beam" aria-hidden="true" />
       <div className="hero-editorial-aura" aria-hidden="true" />
@@ -114,7 +111,7 @@ export default function HeroEditorial() {
         </div>
 
         <div className="hero-artifact" aria-label="Auterim guarded Revenue Operator run">
-          <div className="hero-artifact-panel" ref={panelRef}>
+          <div className="hero-artifact-panel">
             <div className="hero-artifact-top">
               <span className="hero-artifact-top-k">Auterim operating layer</span>
               <span className="hero-artifact-run"><i />Run #0142 &middot; Live</span>

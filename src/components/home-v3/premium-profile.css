@@ -1,5 +1,5 @@
 /* Company context is a profile artifact, not a generic key/value table. */
-.auterim-v3-page #profile .prof { position:relative; column-gap:0; border-top:1px solid rgba(55,230,212,.22); border-bottom:1px solid var(--rule); background:linear-gradient(105deg,rgba(55,230,212,.028),transparent 46%); }
+.auterim-v3-page #profile .prof { position:relative; column-gap:0; border-top:1px solid rgba(55,230,212,.22); border-bottom:1px solid var(--rule); background:transparent; }
 .auterim-v3-page #profile .prof > div { padding-right:clamp(28px,5vw,80px); }
 .auterim-v3-page #profile .prof > div + div { padding-right:0; padding-left:clamp(28px,5vw,80px); border-left:1px solid var(--rule); }
 .auterim-v3-page #profile .pr { min-height:124px; padding:27px 0 25px; transition:background .25s ease; }

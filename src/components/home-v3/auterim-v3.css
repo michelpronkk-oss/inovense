@@ -4,7 +4,7 @@
 --acc:#37E6D4;--acc-hi:#6FF2E5;--acc-dp:#00BFAE;
 --ok:#51D88A;--gate:#FFCC66;--stop:#FF6B7A;
 --rule:rgba(255,255,255,.07);--rule-2:rgba(255,255,255,.12);
---sans:"Geist",system-ui,-apple-system,sans-serif;--mono:"Geist Mono",ui-monospace,monospace;
+--sans:var(--font-geist-sans),system-ui,-apple-system,sans-serif;--mono:var(--font-geist-mono),ui-monospace,monospace;
 --pad:40px;
 }
 *{box-sizing:border-box}
@@ -179,8 +179,11 @@ a:hover{color:var(--acc-hi)}
 .pcol li{font-size:17px;line-height:1.5;color:var(--dim);padding:19px 0}
 .pcol li+li{border-top:1px solid var(--rule)}
 .pcol.b li{color:var(--ink)}
-.pol-line{margin-top:58px;padding-top:26px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
-.pol-line span{color:var(--edge);padding:0 8px}
+.pol-line{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 24px;margin-top:58px;padding-top:26px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+.pol-tag{color:var(--mute)}
+.pol-tag em{font-style:normal;color:var(--edge);padding:0 8px}
+.pol-owner{display:inline-flex;align-items:center;gap:8px;color:var(--dim)}
+.pol-owner i{width:5px;height:5px;border-radius:50%;background:var(--gate);box-shadow:0 0 8px rgba(255,204,102,.55);flex:none}
 
 /* ---------- architecture: signals in, controlled work out ---------- */
 .dia{display:grid;grid-template-columns:minmax(0,1fr) 300px minmax(0,1fr);align-items:center;gap:0;position:relative;padding:14px 0}

@@ -1902,7 +1902,7 @@
 .auterim-v3-page .architecture-ledger {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, .82fr) minmax(64px, 104px) minmax(380px, 1.2fr) minmax(64px, 104px) minmax(0, .82fr);
+  grid-template-columns: minmax(0, .76fr) minmax(48px, 82px) minmax(390px, 1.28fr) minmax(48px, 82px) minmax(0, .76fr);
   grid-template-rows: auto auto auto auto;
   align-items: start;
   row-gap: 0;
@@ -1924,12 +1924,17 @@
   grid-row: 1;
 }
 
+/* The main labels share a grid row, but the display face's cap metrics make
+   the left label render optically higher. Correct only that optical offset;
+   headings and copy below keep their shared subgrid alignment. */
+.auterim-v3-page .architecture-systems > .lbl { transform: translateY(3px); }
+
 .auterim-v3-page .architecture-column h3 {
   grid-row: 2;
   max-width: 280px;
-  margin: 15px 0 0;
+  margin: 21px 0 0;
   color: #f2f5f8;
-  font-size: clamp(17px, 1.35vw, 20px);
+  font-size: clamp(16px, 1.2vw, 19px);
   line-height: 1.2;
   letter-spacing: -.03em;
 }
@@ -1947,9 +1952,9 @@
   grid-row: 3;
   max-width: 300px;
   margin: 13px 0 0;
-  color: #aeb9c7;
-  font-size: 14px;
-  line-height: 1.57;
+  color: #9ba8b7;
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .auterim-v3-page .architecture-chips,
@@ -1962,19 +1967,19 @@
 .auterim-v3-page .architecture-chips {
   display: flex;
   flex-direction: column;
-  gap: 0;
-  margin: 26px 0 0;
-  border-top: 1px solid var(--rule);
+  gap: 11px;
+  margin: 24px 0 0;
+  border-top: 0;
 }
 
 .auterim-v3-page .architecture-chip {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 13px 0;
-  border-bottom: 1px solid var(--rule);
-  color: #d6dee7;
-  font-size: 13px;
+  padding: 0;
+  border-bottom: 0;
+  color: #aeb9c7;
+  font-size: 12px;
   line-height: 1.3;
 }
 
@@ -2001,13 +2006,14 @@
 .auterim-v3-page .architecture-control {
   position: relative;
   z-index: 2;
-  padding-left: 18px;
-  border-left: 2px solid var(--acc);
+  padding: 4px 18px;
+  border-left: 1px solid rgba(55, 230, 212, .6);
+  background: linear-gradient(90deg, rgba(55, 230, 212, .035), transparent 70%);
 }
 
 .auterim-v3-page .architecture-control-head {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 12px;
 }
 
@@ -2021,7 +2027,7 @@
   flex: none;
   align-items: center;
   gap: 7px;
-  color: #55ecde;
+  color: rgba(85, 236, 222, .72);
   font-family: var(--mono);
   font-size: 8px;
   letter-spacing: .17em;
@@ -2031,18 +2037,18 @@
 
 .auterim-v3-page .architecture-control-steps {
   display: grid;
-  margin-top: 26px;
-  border-top: 1px solid var(--rule);
+  margin-top: 23px;
+  border-top: 1px solid rgba(157, 177, 196, .14);
 }
 
 .auterim-v3-page .architecture-control-steps > div {
   display: grid;
   grid-template-columns: 34px minmax(92px, .7fr) minmax(0, 1.3fr);
   align-items: center;
-  min-height: 56px;
+  min-height: 52px;
   gap: 12px;
   padding: 4px 0;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid rgba(157, 177, 196, .11);
 }
 
 .auterim-v3-page .architecture-control-steps b {
@@ -2141,44 +2147,42 @@
   position: relative;
   grid-column: 1 / -1;
   grid-row: 5;
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  flex-wrap: wrap;
-  column-gap: 28px;
-  row-gap: 8px;
-  margin-top: 68px;
-  padding: 26px 0;
-  border-top: 1px solid rgba(255, 193, 76, .35);
+  display: grid;
+  grid-template-columns: minmax(180px, .42fr) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 34px;
+  margin-top: 62px;
+  padding: 21px 0 0;
+  border-top: 1px solid rgba(255, 193, 76, .3);
+}
+
+/* Left-aligned to the same gutter as every label above it (ARCHITECTURE, YOUR
+   BUSINESS SYSTEMS, ...) — a centered line over a left-aligned, unevenly
+   weighted row (short bold tag, long statement, faint caption) never actually
+   reads as centered, it just looks adrift. A short line at the same edge the
+   rest of the section already anchors to reads as deliberate instead. */
+.auterim-v3-page .architecture-gate::before {
+  content: none;
 }
 
 .auterim-v3-page .architecture-gate .gate-tag {
-  flex: none;
-  color: #ffc656;
+  color: rgba(255, 198, 86, .92);
   white-space: nowrap;
 }
 
 .auterim-v3-page .architecture-gate strong {
   display: block;
-  flex: none;
   margin: 0;
-  color: #f3f5f7;
-  font-size: 16px;
-  font-weight: 550;
-  line-height: 1.4;
-  letter-spacing: -.018em;
+  color: #edf2f5;
+  font-size: clamp(17px, 1.45vw, 21px);
+  font-weight: 520;
+  line-height: 1.22;
+  letter-spacing: -.03em;
 }
 
 /* The whole line centers as one group — tag, statement and caption sit together,
    the caption just trailing at the end, rather than being stretched apart across
    three evenly spaced columns or pinned to the far edges. */
-.auterim-v3-page .architecture-gate > span:last-child {
-  display: block;
-  color: #aeb9c7;
-  font-size: 11px;
-  line-height: 1.4;
-}
-
 @media (max-width: 820px) {
   /* Subgrid only makes sense across the three side-by-side columns — once they
      stack, each column reverts to plain block flow with its rows following in
@@ -2192,7 +2196,7 @@
   .auterim-v3-page .architecture-column {
     display: block;
     grid-row: auto;
-    padding: 27px 0;
+    padding: 30px 0;
   }
 
   .auterim-v3-page .architecture-column > .lbl,
@@ -2210,7 +2214,8 @@
   }
 
   .auterim-v3-page .architecture-control {
-    margin: 4px 0;
+    margin: 10px 0;
+    padding: 22px 16px;
   }
 
   /* A horizontal flow diagram does not translate to a stacked layout: the
@@ -2240,13 +2245,14 @@
   .auterim-v3-page .architecture-gate {
     grid-column: auto;
     grid-row: auto;
-    flex-direction: column;
+    display: block;
     align-items: flex-start;
     justify-content: flex-start;
-    row-gap: 10px;
-    margin: 30px 0 4px;
-    padding: 22px 0;
+    margin: 34px 0 4px;
+    padding: 18px 0 0;
   }
+
+  .auterim-v3-page .architecture-gate .gate-tag { display: block; margin-bottom: 12px; }
 }
 
 @media (max-width: 520px) {
@@ -2288,6 +2294,13 @@
 .auterim-v3-page .architecture-ledger.rv.in .architecture-flow-b { animation-delay: 210ms; }
 .auterim-v3-page .architecture-ledger.rv.in .architecture-outcomes { animation-delay: 260ms; }
 .auterim-v3-page .architecture-ledger.rv.in .architecture-gate { animation-delay: 380ms; }
+
+/* This bar's text is small and medium-weight — animating it via `transform`
+   risks the sub-pixel text smear some engines render mid-transition (worse at
+   small sizes), so it only ever fades in, never moves. */
+.auterim-v3-page .architecture-ledger .architecture-gate {
+  transform: none;
+}
 
 @keyframes auterim-architecture-reveal {
   to { opacity: 1; transform: none; }
@@ -2351,15 +2364,20 @@
   }
 
   /* The word that matters gets typed out a beat after the headline settles,
-     instead of arriving all at once: width reveals the letters, then a
-     caret blinks a few times and settles once typing is done. */
+     instead of arriving all at once: a clip-path reveals the letters (rather
+     than animating `width`, which would change how much horizontal space the
+     word claims mid-animation and could flip the headline's line-wrap between
+     the typing and settled states), while the caret animates its own position
+     in lockstep so it still tracks the reveal edge, then blinks a few times
+     and settles once typing is done. */
   .auterim-v3-page .hero-editorial-forward {
-    overflow: hidden;
-    width: 0;
+    clip-path: inset(0 100% 0 0);
     animation: hero-editorial-forward-type 640ms steps(8, end) 620ms forwards;
   }
   .auterim-v3-page .hero-editorial-forward::after {
-    animation: hero-editorial-forward-caret 460ms linear 620ms 5 forwards;
+    animation:
+      hero-editorial-forward-caret-move 640ms steps(8, end) 620ms forwards,
+      hero-editorial-forward-caret-blink 460ms linear 620ms 5 forwards;
   }
 }
 
@@ -2393,11 +2411,16 @@
 }
 
 @keyframes hero-editorial-forward-type {
-  from { width: 0; }
-  to { width: 8.6ch; }
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
 }
 
-@keyframes hero-editorial-forward-caret {
+@keyframes hero-editorial-forward-caret-move {
+  from { left: 0; }
+  to { left: calc(100% + 2px); }
+}
+
+@keyframes hero-editorial-forward-caret-blink {
   0%, 49% { opacity: 1; }
   50%, 100% { opacity: 0; }
 }
@@ -2442,13 +2465,16 @@
 }
 .auterim-v3-page .hero-editorial h1 { margin-top: 26px; }
 .auterim-v3-page .hero-editorial h1 > span { display: block; color: #c8d1dc; text-wrap: balance; }
-.auterim-v3-page .hero-editorial h1 em { color: var(--acc); font-style: italic; font-weight: 700; }
+.auterim-v3-page .hero-editorial h1 em { color: var(--acc); font-style: italic; font-weight: 700; font-synthesis: style; }
 
-/* "forward." types itself out on load: the no-preference block above clips
-   the box to 0 width and animates it open in 8 steps, one per letter, then
-   blinks the caret below a few times before it settles. This base rule is
-   the reduced-motion-safe fallback — no width/overflow clipping, so the word
-   is simply there, unclipped, when motion is off. */
+/* "forward." types itself out on load: the no-preference block above reveals
+   it via a clip-path in 8 steps, one per letter, with the caret animating its
+   own position to track the reveal edge, then blinks a few times before it
+   settles. The word's own box always renders at its natural full size (never
+   width-animated), so the headline's line-wrap is decided once and can't
+   flip between the typing and settled states. This base rule is the
+   reduced-motion-safe fallback — no clip-path, so the word is simply there,
+   unclipped, when motion is off. */
 .auterim-v3-page .hero-editorial-forward {
   position: relative;
   display: inline-block;
@@ -2458,12 +2484,13 @@
 }
 .auterim-v3-page .hero-editorial-forward::after {
   content: "";
-  display: inline-block;
+  position: absolute;
+  left: calc(100% + 2px);
+  top: 50%;
   width: 2px;
   height: 0.78em;
-  margin-left: 2px;
   background: var(--acc);
-  vertical-align: -0.1em;
+  transform: translateY(-45%);
   opacity: 0;
 }
 
@@ -2558,6 +2585,14 @@
 @media (prefers-reduced-motion: reduce) {
   .auterim-v3-page .hero-editorial-aura,
   .auterim-v3-page .hero-artifact-panel { transition: none !important; transform: none !important; }
+}
+
+/* The hero panel must stay on the layout pixel grid. Even an identity 3D
+   transform moves text onto a composited layer and softens its fine details. */
+.auterim-v3-page .hero-editorial-aura,
+.auterim-v3-page .hero-artifact-panel {
+  transition: none;
+  transform: none;
 }
 
 .auterim-v3-page .hero-artifact { position: relative; }
@@ -3050,6 +3085,322 @@
   .auterim-v3-page .close-actions .btn-a { animation: none !important; box-shadow: none; }
 }
 
+/* Closing CTA: present the result, not a generic product checklist. The single
+   recommendation on the right gives the invitation a credible, tangible payoff. */
+.auterim-v3-page .close {
+  background:
+    radial-gradient(ellipse 52% 75% at 82% 56%, rgba(55, 230, 212, .065), transparent 72%),
+    #080c11;
+}
+.auterim-v3-page .close-in {
+  grid-template-columns: minmax(0, 1.05fr) minmax(350px, .72fr);
+  align-items: center;
+  gap: clamp(54px, 8vw, 126px);
+}
+.auterim-v3-page .close-main h2 { max-width: 16.5ch; }
+.auterim-v3-page .close-main > p { max-width: 48ch; }
+.auterim-v3-page .close-reassurance {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: 18px 0 0;
+  color: #8391a0;
+  font: 10px var(--mono);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.auterim-v3-page .close-reassurance i,
+.auterim-v3-page .close-brief-status i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--acc);
+  box-shadow: 0 0 10px rgba(55, 230, 212, .5);
+}
+.auterim-v3-page .close-actions .btn-a { animation: none; box-shadow: none; }
+
+.auterim-v3-page .close-brief {
+  width: 100%;
+  max-width: 430px;
+  justify-self: end;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid rgba(116, 143, 159, .27);
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(16, 27, 35, .92), rgba(8, 13, 18, .98) 66%);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .05), 0 24px 60px -42px rgba(55, 230, 212, .48);
+}
+.auterim-v3-page .close-brief::before {
+  content: "";
+  display: block;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(55, 230, 212, .9) 26%, rgba(55, 230, 212, .24) 72%, transparent);
+}
+.auterim-v3-page .close-brief-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 19px 21px 17px;
+  border-bottom: 1px solid rgba(126, 151, 165, .17);
+}
+.auterim-v3-page .close-brief-head .lbl { color: #aab6c2; }
+.auterim-v3-page .close-brief-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #6debdc;
+  font: 8px var(--mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.auterim-v3-page .close-brief-main { padding: 27px 21px 25px; }
+.auterim-v3-page .close-brief-main > span,
+.auterim-v3-page .close-brief-meta span {
+  color: #82909f;
+  font: 9px var(--mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.auterim-v3-page .close-brief-main h3 {
+  margin: 12px 0 0;
+  color: #f2f6f8;
+  font-size: clamp(24px, 2vw, 30px);
+  font-weight: 520;
+  letter-spacing: -.045em;
+  line-height: 1.02;
+}
+.auterim-v3-page .close-brief-main p {
+  max-width: 31ch;
+  margin: 14px 0 0;
+  color: #b4c0cb;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.auterim-v3-page .close-brief-meta {
+  display: grid;
+  grid-template-columns: 1fr 1.18fr;
+  border-top: 1px solid rgba(126, 151, 165, .15);
+  border-bottom: 1px solid rgba(126, 151, 165, .15);
+}
+.auterim-v3-page .close-brief-meta > div { min-width: 0; padding: 16px 21px 17px; }
+.auterim-v3-page .close-brief-meta > div + div { border-left: 1px solid rgba(126, 151, 165, .15); }
+.auterim-v3-page .close-brief-meta span { display: block; }
+.auterim-v3-page .close-brief-meta strong {
+  display: block;
+  margin-top: 7px;
+  color: #d7dfe6;
+  font-size: 11px;
+  font-weight: 450;
+  line-height: 1.42;
+}
+.auterim-v3-page .close-brief-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 17px 21px 18px;
+  color: #7feee1;
+  font-size: 12px;
+  transition: background .18s ease, color .18s ease;
+}
+.auterim-v3-page .close-brief-link span { transition: transform .18s ease; }
+.auterim-v3-page .close-brief-link:hover { background: rgba(55, 230, 212, .055); color: #c1fff7; }
+.auterim-v3-page .close-brief-link:hover span { transform: translateX(3px); }
+
+@media (max-width: 820px) {
+  .auterim-v3-page .close-in { grid-template-columns: minmax(0, 1fr); gap: 48px; }
+  .auterim-v3-page .close-brief { justify-self: start; max-width: 560px; }
+}
+@media (max-width: 520px) {
+  .auterim-v3-page .close-main h2 { max-width: 14ch; }
+  .auterim-v3-page .close-brief-head,
+  .auterim-v3-page .close-brief-main { padding-left: 17px; padding-right: 17px; }
+  .auterim-v3-page .close-brief-meta { grid-template-columns: 1fr; }
+  .auterim-v3-page .close-brief-meta > div { padding: 14px 17px; }
+  .auterim-v3-page .close-brief-meta > div + div { border-top: 1px solid rgba(126, 151, 165, .15); border-left: 0; }
+  .auterim-v3-page .close-brief-link { padding-left: 17px; padding-right: 17px; }
+}
+
+/* Final CTA operator profile: use the real registry portrait as the focal point.
+   It reads as an identity card, never a miniature dashboard. */
+.auterim-v3-page .close-brief-profile {
+  display: grid;
+  grid-template-columns: 154px minmax(0, 1fr);
+  align-items: center;
+  gap: 28px;
+  min-height: 212px;
+  padding: 24px 28px 22px;
+}
+.auterim-v3-page .close-brief-avatar {
+  position: relative;
+  width: 154px;
+  height: 154px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(55, 230, 212, .16), transparent 68%);
+}
+.auterim-v3-page .close-brief-avatar::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: 0;
+  border: 1px solid rgba(55, 230, 212, .28);
+  border-radius: 50%;
+}
+.auterim-v3-page .close-brief-avatar::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  z-index: 2;
+  width: 9px;
+  height: 9px;
+  border: 2px solid #0b1116;
+  border-radius: 50%;
+  background: var(--acc);
+  box-shadow: 0 0 12px rgba(55, 230, 212, .75);
+}
+.auterim-v3-page .close-brief-avatar img {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 20px rgba(0, 0, 0, .3));
+}
+.auterim-v3-page .close-brief-identity > span {
+  color: #8393a2;
+  font: 9px var(--mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.auterim-v3-page .close-brief-identity h3 {
+  margin: 12px 0 0;
+  color: #f2f6f8;
+  font-size: clamp(24px, 2.2vw, 31px);
+  font-weight: 520;
+  letter-spacing: -.045em;
+  line-height: 1;
+}
+.auterim-v3-page .close-brief-identity p {
+  margin: 13px 0 0;
+  color: #b1bdc9;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.auterim-v3-page .close-brief-foot {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 15px 28px 16px;
+  border-top: 1px solid rgba(126, 151, 165, .15);
+  color: #c3a35b;
+  font: 9px var(--mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.auterim-v3-page .close-brief-foot i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #d5a641;
+  box-shadow: 0 0 10px rgba(213, 166, 65, .5);
+}
+@media (max-width: 520px) {
+  .auterim-v3-page .close-brief-profile { grid-template-columns: 108px minmax(0, 1fr); min-height: 164px; gap: 19px; padding: 23px 18px; }
+  .auterim-v3-page .close-brief-avatar { width: 108px; height: 108px; }
+  .auterim-v3-page .close-brief-avatar::before { inset: -1px; }
+  .auterim-v3-page .close-brief-foot { padding: 14px 18px 15px; }
+}
+
+/* The close identity card is the same live-artifact language as the hero
+   panel and Run's evidence packet (real interface content: status, avatar,
+   a short run sequence) rather than a blown-up avatar illustration — that
+   read as generic stock-icon art once the same 44px avatar glyph used in
+   the operator rows got scaled up to a standalone 280px hero graphic. */
+.auterim-v3-page .close-identity {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  justify-self: end;
+  padding: 22px 24px 24px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #121820, #0A0E14);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07), 0 40px 90px -40px rgba(0, 0, 0, .9);
+  overflow: hidden;
+}
+.auterim-v3-page .close-identity::before {
+  content: "";
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(55, 230, 212, .7), transparent);
+}
+.auterim-v3-page .close-identity-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, .07);
+}
+.auterim-v3-page .close-identity-index {
+  color: #9aa9b8;
+  font: 9px var(--mono);
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+.auterim-v3-page .close-identity-ready {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #65e8d9;
+  font: 9px var(--mono);
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+.auterim-v3-page .close-identity-ready i,
+.auterim-v3-page .close-identity-gate i {
+  display: block;
+  width: 5px;
+  height: 5px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--acc);
+  box-shadow: 0 0 11px rgba(55, 230, 212, .65);
+}
+.auterim-v3-page .close-identity-op { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
+.auterim-v3-page .close-identity-op h3 { margin: 0; color: #f3f6f8; font-size: 19px; font-weight: 500; letter-spacing: -.02em; }
+.auterim-v3-page .close-identity-tag { display: block; margin-top: 5px; font: 9.5px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--mute); }
+.auterim-v3-page .close-identity-task { margin: 16px 0 0; font-size: 14px; line-height: 1.5; color: var(--dim); }
+.auterim-v3-page .close-identity-seq { position: relative; margin: 16px 0 0; padding: 13px 0 0; list-style: none; border-top: 1px solid rgba(255, 255, 255, .07); }
+.auterim-v3-page .close-identity-seq li { position: relative; display: flex; align-items: center; gap: 12px; padding: 6px 0 6px 20px; font-size: 13px; color: var(--ink); }
+.auterim-v3-page .close-identity-seq li::before { content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+.auterim-v3-page .close-identity-seq li em { margin-left: auto; font-style: normal; font: 9px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
+.auterim-v3-page .close-identity-seq li.now { color: var(--gate); }
+.auterim-v3-page .close-identity-seq li.now::before { background: var(--gate); box-shadow: 0 0 0 4px rgba(255, 204, 102, .14); animation: beat 2.4s ease-in-out infinite; }
+.auterim-v3-page .close-identity-gate {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, .07);
+  color: #c8a55b;
+  font: 9px var(--mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.auterim-v3-page .close-identity-gate i { background: #d2a444; box-shadow: 0 0 10px rgba(210, 164, 68, .52); }
+@media (max-width: 820px) {
+  .auterim-v3-page .close-identity { justify-self: start; max-width: 420px; }
+}
+@media (max-width: 520px) {
+  .auterim-v3-page .close-identity { max-width: 100%; padding: 20px 20px 22px; }
+}
+
 /* Standalone pages (Contact, Privacy, Terms, Security): a page-level hero built
    from the same primitives as the homepage close section (.lbl dot, h1 in place
    of h2, .close-actions), plus a few page-only additions kept in one place. */
@@ -3388,13 +3739,14 @@
 }
 .auterim-v3-page .tr {
   position: relative;
-  grid-template-columns: 146px 1px minmax(0, 1fr);
+  grid-template-columns: 168px 1px minmax(0, 1fr);
   column-gap: 38px;
 }
 .auterim-v3-page .tr-k {
   padding-top: 29px;
   letter-spacing: .24em;
   color: #7f8d9c;
+  white-space: nowrap;
 }
 .auterim-v3-page .tr-k .sn { font-size: 9px; letter-spacing: .28em; }
 .auterim-v3-page .tr-c { padding: 27px 0 39px; }
@@ -3567,8 +3919,8 @@
 .auterim-v3-page .tr.gate .gate-tag { gap: 9px; }
 .auterim-v3-page .tr.gate .gate-tag::before { box-shadow: 0 0 11px 2px rgba(255,204,102,.6); }
 .auterim-v3-page .tr.gate h3 { color: #f8fafc; font-size: clamp(27px, 2.9vw, 40px); letter-spacing: -.032em; }
-.auterim-v3-page .gw { display: flex; align-items: center; gap: 8px; }
-.auterim-v3-page .gw::before { content: ""; width: 4px; height: 4px; border-radius: 50%; background: var(--gate); opacity: .75; flex: none; }
+.auterim-v3-page .gw { display: flex; align-items: flex-start; gap: 8px; }
+.auterim-v3-page .gw::before { content: ""; width: 4px; height: 4px; margin-top: .5em; border-radius: 50%; background: var(--gate); opacity: .75; flex: none; }
 
 /* Gate actions: real button craft — weight, lift and a proper approve glow. */
 .auterim-v3-page .tr.gate .mini {
@@ -3599,4 +3951,182 @@
 
 @media (max-width: 420px) {
   .auterim-v3-page .tr.gate::before { inset: -10px -14px; filter: blur(24px); }
+}
+
+/* Approval should feel deliberate, not luminous: a contained decision surface
+   with no amber spill into the trace and no highlighted vertical rail. */
+.auterim-v3-page .tr.gate::before,
+.auterim-v3-page .trace.run-track .tr.gate.is-active::before {
+  content: none;
+}
+.auterim-v3-page .tr.gate .tr-s {
+  background: var(--rule);
+}
+.auterim-v3-page .tr.gate .tr-s::before,
+.auterim-v3-page .trace.run-track .tr.gate.is-active .tr-s::before {
+  background: var(--gate);
+  box-shadow: none;
+  animation: none;
+}
+/* Depth and elevation carry the emphasis here, not a saturated ring around the
+   box: a neutral hairline edge, a real drop shadow lifting it off the page,
+   a soft ambient warmth behind it, and a single glowing accent line across
+   the top — the same device the hero panel uses for its cyan line. */
+.auterim-v3-page .tr.gate .tr-c {
+  position: relative;
+  overflow: hidden;
+  padding-bottom: 28px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #17130e 0%, #12100d 42%, #0d0f11 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, .07),
+    inset 0 1px rgba(255, 255, 255, .05),
+    0 36px 80px -44px rgba(0, 0, 0, .9),
+    0 0 70px -38px rgba(255, 204, 102, .4);
+  transition: box-shadow .5s ease;
+}
+.auterim-v3-page .tr.gate .tr-c::before {
+  content: "";
+  display: block;
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 204, 102, .85), transparent);
+  pointer-events: none;
+  transition: background .5s ease;
+}
+.auterim-v3-page .trace.run-track .tr.gate.is-active .tr-c {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 204, 102, .22),
+    inset 0 1px rgba(255, 255, 255, .07),
+    0 40px 90px -42px rgba(0, 0, 0, .92),
+    0 0 90px -34px rgba(255, 204, 102, .55);
+}
+.auterim-v3-page .trace.run-track .tr.gate.is-active .tr-c::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 204, 102, 1), transparent);
+}
+.auterim-v3-page .tr.gate .tr-c::after {
+  content: "HUMAN DECISION REQUIRED";
+  display: block;
+  margin: 20px 28px 0;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 204, 102, .2);
+  color: #cda956;
+  font: 9px var(--mono);
+  letter-spacing: .19em;
+}
+.auterim-v3-page .tr.gate h3 {
+  padding: 28px 28px 0;
+  max-width: 23ch;
+}
+.auterim-v3-page .tr.gate p {
+  margin: 14px 28px 0;
+  max-width: 47ch;
+}
+.auterim-v3-page .tr.gate .gate-acts {
+  margin: 24px 28px 0;
+}
+.auterim-v3-page .tr.gate .gw {
+  margin: 22px 28px 0;
+  padding-top: 14px;
+  padding-bottom: 20px;
+  border-top: 1px solid rgba(148, 164, 180, .15);
+}
+.auterim-v3-page .tr.gate .gate-tag::before,
+.auterim-v3-page .tr.gate .gw::before {
+  box-shadow: none;
+}
+
+@media (max-width: 820px) {
+  .auterim-v3-page .tr.gate h3 { padding: 23px 20px 0; }
+  .auterim-v3-page .tr.gate p { margin: 13px 20px 0; }
+  .auterim-v3-page .tr.gate .gate-acts { margin: 20px 20px 0; }
+  .auterim-v3-page .tr.gate .gw { margin: 18px 20px 0; padding-top: 12px; padding-bottom: 17px; }
+}
+
+/* Pricing: three paid plans. Workforce carries the single turquoise emphasis. */
+.auterim-v3-page .plans { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.auterim-v3-page .plans .pl-badge-alt { color: var(--acc); }
+.auterim-v3-page .plans .pl.now { background: linear-gradient(180deg, rgba(55, 230, 212, .055), transparent 62%); }
+.auterim-v3-page .plans .pl-trial {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  min-height: 20px;
+  padding: 3px 8px;
+  border: 1px solid rgba(55, 230, 212, .3);
+  border-radius: 999px;
+  color: var(--acc);
+  background: rgba(55, 230, 212, .055);
+  font: 9px var(--mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+/* Enterprise has no trial badge, but still reserves its 20px badge row and
+   adjacent flex gap so every Includes divider lands on the same baseline. */
+.auterim-v3-page .plans .pl:nth-child(3) .pl-includes { margin-top: 42px; }
+@media (max-width: 820px) {
+  .auterim-v3-page .plans { grid-template-columns: minmax(0, 1fr); }
+  .auterim-v3-page .plans .pl:first-child { padding-top: 38px; border-top-color: var(--rule); }
+  .auterim-v3-page .plans .pl.now { margin: 0; padding-top: 38px; border-top: 1px solid var(--acc); background: linear-gradient(180deg, rgba(55, 230, 212, .045), transparent 62%); }
+  .auterim-v3-page .plans .pl:nth-child(3) { margin-top: 0; padding-top: 38px; border-top-color: var(--rule); }
+}
+
+/* Run trace: remove the passive grey spine. The only connector is now the
+   turquoise rail that advances with real scroll progress. */
+.auterim-v3-page .trace .tr-s,
+.auterim-v3-page .tr.gate .tr-s,
+.auterim-v3-page .tr.after .tr-s {
+  background: transparent;
+}
+.auterim-v3-page .trace .tr-s::after { display: none; }
+.auterim-v3-page .trace.run-track .run-rail-fill {
+  width: 1px;
+  background: linear-gradient(180deg, rgba(55, 230, 212, .18), var(--acc) 82%);
+  box-shadow: 0 0 14px rgba(55, 230, 212, .32);
+}
+.auterim-v3-page .trace.run-track .run-rail-dot {
+  width: 10px;
+  height: 10px;
+  box-shadow: 0 0 0 4px rgba(55, 230, 212, .13), 0 0 18px rgba(55, 230, 212, .5);
+}
+
+/* A quieter data packet gives the moving rail enough clear space to read. */
+.auterim-v3-page .run .src {
+  overflow: hidden;
+  border: 1px solid rgba(55, 230, 212, .25);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(55, 230, 212, .045), rgba(13, 20, 28, .82) 48%, rgba(10, 15, 21, .9));
+  box-shadow: inset 0 1px rgba(255, 255, 255, .035);
+}
+.auterim-v3-page .run .src span {
+  min-height: 78px;
+  padding: 17px 18px;
+  border-color: rgba(112, 140, 156, .2);
+}
+.auterim-v3-page .run .src span:first-child { padding-left: 18px; }
+.auterim-v3-page .run .src span:last-child { padding-right: 18px; }
+@media (max-width: 820px) {
+  .auterim-v3-page .run .src span,
+  .auterim-v3-page .run .src span:first-child,
+  .auterim-v3-page .run .src span:last-child { min-height: 54px; padding: 12px 14px; }
+}
+
+/* Keep the final recommendation intentional after the later mobile layout
+   resets in this stylesheet. */
+@media (max-width: 767px) {
+  .auterim-v3-page .close-in { gap: 48px; }
+  .auterim-v3-page .close-brief { justify-self: start; max-width: 560px; }
+}
+@media (max-width: 520px) {
+  .auterim-v3-page .close-main h2 { max-width: 14ch; }
+  .auterim-v3-page .close-brief-head,
+  .auterim-v3-page .close-brief-main { padding-left: 17px; padding-right: 17px; }
+  .auterim-v3-page .close-brief-meta { grid-template-columns: 1fr; }
+  .auterim-v3-page .close-brief-meta > div { padding: 14px 17px; }
+  .auterim-v3-page .close-brief-meta > div + div { border-top: 1px solid rgba(126, 151, 165, .15); border-left: 0; }
+  .auterim-v3-page .close-brief-link { padding-left: 17px; padding-right: 17px; }
 }

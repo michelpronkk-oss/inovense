@@ -55,7 +55,6 @@ export default function V3Footer() {
         <div className="foot-base">
           <span>© 2026 Auterim</span>
           <button type="button" onClick={openCookiePreferences} className="foot-cookie-btn">Cookie preferences</button>
-          <span className="r">Interface examples show demo data, not customer activity.</span>
         </div>
       </div>
     </footer>

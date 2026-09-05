@@ -1,5 +1,6 @@
 ﻿import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { Geist, Geist_Mono } from "next/font/google";
 import React from "react";
 import "./globals.css";
 import TrafficAttributionTracker from "@/components/analytics/traffic-attribution-tracker";
@@ -14,10 +15,18 @@ import {
 } from "@/lib/geo";
 import { staticOgImage } from "@/lib/static-og";
 
-const sansFallbackStack =
-  'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"';
-const monoFallbackStack =
-  'ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
+const geistSans = Geist({
+  subsets: ["latin"],
+  variable: "--font-geist-sans",
+  display: "swap",
+  fallback: ["ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "Helvetica", "Arial", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"],
+});
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+  display: "swap",
+  fallback: ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", "monospace"],
+});
 
 export async function generateMetadata(): Promise<Metadata> {
   const pathname = (await headers()).get("x-pathname") ?? "/";
@@ -121,14 +130,8 @@ export default async function RootLayout({
   return (
     <html
       lang={lang}
-      className="dark h-full antialiased font-sans"
-      style={
-        {
-          "--font-sans": sansFallbackStack,
-          "--font-geist-sans": sansFallbackStack,
-          "--font-geist-mono": monoFallbackStack,
-        } as React.CSSProperties
-      }
+      className={`dark h-full antialiased font-sans ${geistSans.variable} ${geistMono.variable}`}
+      style={{ "--font-sans": "var(--font-geist-sans)" } as React.CSSProperties}
     >
       <head>
         <script
