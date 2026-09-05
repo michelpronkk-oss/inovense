@@ -48,7 +48,7 @@ type CrmPreparation = {
   signatureCandidateAccepted?: string | null;
   rejectedNameCandidates?: { candidate: string; reason: string; source: string }[];
   attribution?: {
-    leadSource: "Inovense OS";
+    leadSource: "Auterim";
     operator: "revenue";
     signalSource: "gmail";
     signalType: "revenue_opportunity";
@@ -109,22 +109,28 @@ export type RevenueScanResult = {
   body: RevenueScanSummary;
 };
 
-const OPPORTUNITY_KEYWORDS = [
-  "pricing",
-  "quote",
-  "proposal",
-  "demo",
-  "interested",
-  "availability",
-  "can you help",
-  "website",
-  "automation",
-  "ai",
-  "follow up",
-  "follow-up",
-  "call",
-  "meeting",
-  "offer",
+const DIRECT_COMMERCIAL_SIGNALS = [
+  { label: "pricing", pattern: /\b(?:pricing|price|cost|budget)\b/i },
+  { label: "quote", pattern: /\b(?:quote|quotation|estimate)\b/i },
+  { label: "proposal", pattern: /\bproposal\b/i },
+  { label: "demo", pattern: /\b(?:demo|demonstration)\b/i },
+];
+
+const QUALIFIED_REQUEST_SIGNALS = [
+  { label: "interested", pattern: /\b(?:interested in|exploring|evaluating)\b/i },
+  { label: "help request", pattern: /\b(?:can you help|looking for|need help with|how can you help)\b/i },
+  { label: "meeting request", pattern: /\b(?:book|schedule|arrange)\b[^.!?]{0,40}\b(?:call|meeting|demo)\b|\b(?:can we|could we|would you)\b[^.!?]{0,40}\b(?:call|meet|talk)\b/i },
+  { label: "availability", pattern: /\bavailability\b/i },
+];
+
+// A request is only commercial when it names a relevant service area. These
+// are never scanned in sender addresses: `ai` must not match inside `mail`.
+const PRODUCT_CONTEXT_SIGNALS = [
+  { label: "automation", pattern: /\bautomation\b/i },
+  { label: "AI", pattern: /\bai\b/i },
+  { label: "website", pattern: /\bwebsite\b/i },
+  { label: "operator", pattern: /\b(?:operator|workflow|integration)\b/i },
+  { label: "service", pattern: /\b(?:service|solution|implementation)\b/i },
 ];
 
 type DedupeReason =
@@ -146,7 +152,6 @@ type RevenueDedupeMetadata = {
   operatorKey: "revenue";
 };
 
-const STRONG_KEYWORDS = new Set(["pricing", "quote", "proposal", "demo", "interested", "can you help", "automation", "website"]);
 const GENERIC_NAME_PARTS = new Set(["info", "sales", "support", "hello", "admin", "noreply", "no-reply", "contact", "team", "newsletter", "office", "service", "help", "marketing", "founder", "agency"]);
 const NAME_CONTAMINATION_PARTS = new Set(["hi", "hello", "hey", "dear", "hoi", "hallo", "michel"]);
 
@@ -162,6 +167,13 @@ function safeText(message: SafeGmailMessage): string {
   return [message.from, message.subject, message.snippet, message.bodyText].join(" ").toLowerCase();
 }
 
+function opportunityText(message: SafeGmailMessage): string {
+  // Sender display values and email addresses are metadata, never evidence of
+  // purchase intent. In particular, "ai" in an address such as mail@… must
+  // not turn an unrelated inbound email into a lead.
+  return [message.subject, message.snippet, message.bodyText].filter(Boolean).join(" ");
+}
+
 function normalizeEmail(value: string | null | undefined): string {
   return (value ?? "").trim().toLowerCase();
 }
@@ -174,18 +186,31 @@ function isSentMail(message: SafeGmailMessage): boolean {
   return message.labelIds.some((label) => label.toUpperCase() === "SENT");
 }
 
-function isInovenseGeneratedOutbound(message: SafeGmailMessage, providerEmail: string): boolean {
+function isPromotionalOrJunk(message: SafeGmailMessage): boolean {
+  return message.labelIds.some((label) => {
+    const normalized = label.toUpperCase();
+    return normalized === "SPAM" || normalized === "TRASH" || normalized === "CATEGORY_PROMOTIONS" || normalized === "CATEGORY_UPDATES";
+  });
+}
+
+function isAutomatedMailbox(email: string): boolean {
+  const local = email.split("@")[0] ?? "";
+  return /^(?:no-?reply|do-?not-?reply|newsletter|notifications?|updates?|marketing|mailer-daemon)(?:[._+-]|$)/i.test(local);
+}
+
+function isAuterimGeneratedOutbound(message: SafeGmailMessage, providerEmail: string): boolean {
   if (!isSelfSent(message, providerEmail)) return false;
   const text = safeText(message);
-  return text.includes("following up on") || text.includes("revenue operator prepared") || text.includes("inovense");
+  return text.includes("following up on") || text.includes("revenue operator prepared") || text.includes("auterim") || text.includes("inovense");
 }
 
 function skipReason(message: SafeGmailMessage, providerEmail: string): string | null {
-  if (isInovenseGeneratedOutbound(message, providerEmail)) return "inovense_generated_outbound";
+  if (isAuterimGeneratedOutbound(message, providerEmail)) return "auterim_generated_outbound";
   if (isSelfSent(message, providerEmail)) return "self_sent";
   if (isSentMail(message)) return "sent_mail";
+  if (isPromotionalOrJunk(message)) return "promotional_or_junk";
   const text = safeText(message);
-  if (!message.fromEmail) return "noise";
+  if (!message.fromEmail || isAutomatedMailbox(message.fromEmail)) return "automated_or_missing_sender";
   for (const item of SKIP_PATTERNS) {
     if (item.pattern.test(text)) return item.reason;
   }
@@ -196,10 +221,16 @@ function detectOpportunity(message: SafeGmailMessage, providerEmail: string): Op
   const skipped = skipReason(message, providerEmail);
   if (skipped) return { skipped };
 
-  const text = safeText(message);
-  const matchedKeywords = OPPORTUNITY_KEYWORDS.filter((keyword) => text.includes(keyword));
-  const hasStrongKeyword = matchedKeywords.some((keyword) => STRONG_KEYWORDS.has(keyword));
-  if (matchedKeywords.length >= 2 || hasStrongKeyword) {
+  const text = opportunityText(message);
+  const directSignals = DIRECT_COMMERCIAL_SIGNALS.filter((signal) => signal.pattern.test(text)).map((signal) => signal.label);
+  const requestSignals = QUALIFIED_REQUEST_SIGNALS.filter((signal) => signal.pattern.test(text)).map((signal) => signal.label);
+  const contextSignals = PRODUCT_CONTEXT_SIGNALS.filter((signal) => signal.pattern.test(text)).map((signal) => signal.label);
+  const matchedKeywords = [...new Set([...directSignals, ...requestSignals, ...contextSignals])];
+
+  // A price, quote, proposal or demo is explicit buying intent. Less specific
+  // requests require product context as well; vague messages stay out of the
+  // approval queue and are logged as low-confidence noise instead.
+  if (directSignals.length > 0 || (requestSignals.length > 0 && contextSignals.length > 0)) {
     return { message, matchedKeywords, classification: "revenue_opportunity", confidence: "high" };
   }
   return { skipped: matchedKeywords.length > 0 ? "low_confidence" : "noise" };
@@ -382,7 +413,7 @@ function buildDraftFromOpportunity(opportunity: Opportunity, personalization: Pe
       "Would you be open to a short call this week to see whether there is a fit?",
       "",
       "Best,",
-      "Inovense",
+      "Auterim",
     ].join("\n"),
   };
 }
@@ -424,7 +455,7 @@ function buildCrmPreparation(opportunity: Opportunity, personalization: Personal
     signatureCandidateAccepted: personalization.signatureCandidateAccepted ?? null,
     rejectedNameCandidates: personalization.rejectedNameCandidates ?? [],
     attribution: {
-      leadSource: "Inovense OS",
+      leadSource: "Auterim",
       operator: "revenue",
       signalSource: "gmail",
       signalType: "revenue_opportunity",
@@ -453,7 +484,7 @@ function buildPreparedHubSpotActions(input: {
     },
     note: {
       body: [
-        "Created by Inovense OS Revenue Operator.",
+        "Prepared by Auterim Revenue Operator.",
         "Source channel: Gmail/email.",
         `Source subject: ${input.crmPreparation.sourceSubject || "-"}.`,
         `Classification: ${input.crmPreparation.classification}.`,

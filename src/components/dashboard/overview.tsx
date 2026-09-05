@@ -324,11 +324,13 @@ export function OSOverview() {
                   <div className="appr-row-from">{titleCase(approval.operatorKey)} · {timeAgo(approval.createdAt)}</div>
                   <div className="appr-row-body">Risk: {approval.riskLevel || "medium"} · {titleCase(approval.policyDecision) || "Approval required"} · rechecked before execution</div>
                   <div className="appr-row-actions">
-                    <span className="appr-btn approve" role="button" aria-disabled={busy} onClick={() => { if (!busy) void actOnApproval(approval.id, "approve"); }} style={{ opacity: busy ? 0.5 : 1, cursor: busy ? "default" : "pointer" }}>
+                    <button type="button" className="appr-btn approve" disabled={busy} onClick={() => void actOnApproval(approval.id, "approve")}>
                       {isBusy ? "..." : "Approve"}
-                    </span>
+                    </button>
                     <Link className="appr-btn edit" href={approval.href}>Open</Link>
-                    <span className="appr-btn deny" role="button" aria-disabled={busy} onClick={() => { if (!busy) void actOnApproval(approval.id, "reject"); }} style={{ opacity: busy ? 0.5 : 1, cursor: busy ? "default" : "pointer" }}>Skip</span>
+                    <button type="button" className="appr-btn deny" disabled={busy} onClick={() => void actOnApproval(approval.id, "reject")} title="Dismiss this approval without sending or executing anything">
+                      {isBusy ? "..." : "Skip"}
+                    </button>
                   </div>
                 </div>
               );

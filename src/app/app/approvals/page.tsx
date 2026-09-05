@@ -184,7 +184,7 @@ function actionLabel(action: string): string {
 }
 
 const REJECTION_REASONS = [
-  "Not a real opportunity",
+  "False positive - not a commercial inquiry",
   "Wrong tone",
   "Too pushy",
   "Wrong recipient",
@@ -460,7 +460,7 @@ export default function ApprovalsPage() {
                   : item.payload_preview.crmPreparationStatus === "hubspot_execution_enabled"
                     ? "HubSpot contact and deal updates will execute after approval. Notes and tasks remain prepared only."
                   : null);
-            const rejectionReason = rejectReasons[item.id] ?? "Needs manual review";
+            const rejectionReason = rejectReasons[item.id] ?? (revenueApproval ? "False positive - not a commercial inquiry" : "Needs manual review");
             const hubspotPreview = item.payload_preview.preparedHubSpotActions;
             const showDetails = Boolean(detailsOpen[item.id]);
             const showFullEmail = Boolean(fullEmailOpen[item.id]);
@@ -616,7 +616,7 @@ export default function ApprovalsPage() {
                         <div style={{ margin: "0 18px 16px", padding: "13px", borderRadius: 14, background: "rgba(0,0,0,0.14)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)", display: "grid", gap: 10 }}>
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
                             {[
-                              { label: "Lead source", value: "Auterim OS" },
+                              { label: "Prepared by", value: "Auterim Revenue Operator" },
                               { label: "Signal source", value: "Gmail" },
                               { label: "Operator", value: "Revenue Operator" },
                               { label: "Source email", value: valueOrDash(item.payload_preview.sourceEmail) },

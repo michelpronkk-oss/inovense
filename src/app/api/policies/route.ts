@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
+import { AuthorizationError, requireWorkspaceRoleForIdentity } from "@/lib/server/workspace-access";
 import { loadPolicyWorkspaceSettings, savePolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
 import type { WorkspaceAutonomyMode } from "@/lib/policies/types";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
@@ -59,6 +60,14 @@ export async function PATCH(req: NextRequest) {
   const context = await resolveWorkspaceContext({ workspaceId, userId, userEmail, supabase, allowDevFallback: false });
   if (!context.ok) {
     return NextResponse.json({ error: context.error, code: context.code }, { status: context.status });
+  }
+
+  try {
+    await requireWorkspaceRoleForIdentity(context, context.workspaceId, ["owner", "admin"], supabase);
+  } catch (error) {
+    const message = error instanceof AuthorizationError ? error.message : "Could not verify workspace permissions.";
+    const status = error instanceof AuthorizationError ? error.status : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 
   const patch: Parameters<typeof savePolicyWorkspaceSettings>[0]["patch"] = {};

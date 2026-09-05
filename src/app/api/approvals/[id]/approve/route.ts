@@ -14,6 +14,7 @@ import type { PolicyDecision, PolicyEvaluationEntitlements } from "@/lib/policie
 import { logOperatorEvent, recordOperatorUsage } from "@/lib/operators/logging";
 import { createOperatorMemory } from "@/lib/operators/memory";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
+import { AuthorizationError, requireWorkspaceRoleForIdentity } from "@/lib/server/workspace-access";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { getAppUrl } from "@/lib/urls";
 
@@ -1079,6 +1080,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const context = await resolveWorkspaceContext({ workspaceId, userId, userEmail, supabase, allowDevFallback: false });
   if (!context.ok) {
     return NextResponse.json({ error: context.error, code: context.code }, { status: context.status });
+  }
+  try {
+    await requireWorkspaceRoleForIdentity(context, context.workspaceId, ["owner", "admin", "reviewer"], supabase);
+  } catch (error) {
+    const message = error instanceof AuthorizationError ? error.message : "Could not verify approval permissions.";
+    const status = error instanceof AuthorizationError ? error.status : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 
   const approvalRes = await supabase

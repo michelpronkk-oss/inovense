@@ -3,7 +3,7 @@ import type { PreparedGmailFollowUp } from "@/lib/operators/executors/gmail";
 import type { RevenueCompanyGraphContext } from "@/lib/operators/revenue/context";
 import type { Opportunity } from "@/lib/operators/revenue/scan";
 
-export const REVENUE_DRAFT_PROMPT_VERSION = "revenue-draft-v1.7";
+export const REVENUE_DRAFT_PROMPT_VERSION = "revenue-draft-v1.8";
 export const REVENUE_DRAFT_MODEL = process.env.REVENUE_DRAFT_MODEL || "claude-sonnet-4-6";
 
 export type RevenueAIDraftResult = {
@@ -83,7 +83,7 @@ function compactExamples(examples: RevenueCompanyGraphContext["approvedExamples"
 }
 
 function buildSystemPrompt(): string {
-  return `You draft approval-gated Revenue Operator follow-ups for Inovense.
+  return `You draft approval-gated Revenue Operator follow-ups for Auterim.
 
 Important boundaries:
 - You only draft. You never decide whether to send.

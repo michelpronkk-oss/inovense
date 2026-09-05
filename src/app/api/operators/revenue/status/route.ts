@@ -226,7 +226,7 @@ export async function GET(req: NextRequest) {
       hubspotSetupRecommendation: hubspotPropertyReadiness && hubspotPropertyReadiness.status !== "custom_properties_ready" ? {
         missingContactProperties: hubspotPropertyReadiness.missingContactProperties,
         missingDealProperties: hubspotPropertyReadiness.missingDealProperties,
-        suggestedAction: "Create Inovense attribution properties in HubSpot to preserve full source context.",
+        suggestedAction: "Create Auterim attribution properties in HubSpot to preserve full source context.",
         severity: "non_blocking",
       } : null,
       pipeline: hubspotPipelineMapping,

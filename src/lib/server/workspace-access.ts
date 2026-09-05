@@ -168,6 +168,45 @@ export async function requireWorkspaceRole(
   return membership;
 }
 
+/**
+ * Authorize a caller whose identity was already verified by a route handler.
+ * Supabase Auth users are matched by user id. The verified email fallback keeps
+ * pre-migration, signed-session members working until their user_id is filled.
+ */
+export async function requireWorkspaceRoleForIdentity(
+  identity: { userId?: string; userEmail?: string | null },
+  workspaceId: string | undefined,
+  allowed: RoleKey[],
+  supabase: SupabaseAdmin = createSupabaseAdmin()
+): Promise<WorkspaceMembershipRow> {
+  if (!workspaceId) throw new AuthorizationError("invalid_params", "A workspace is required.", 400);
+  const conditions: string[] = [];
+  if (identity.userId) conditions.push(`user_id.eq.${identity.userId}`);
+  if (identity.userEmail) conditions.push(`email.eq.${identity.userEmail.trim().toLowerCase()}`);
+  if (conditions.length === 0) throw new AuthorizationError("unauthenticated", "Sign in to continue.", 401);
+
+  const { data, error } = await supabase
+    .from("os_workspace_members")
+    .select("workspace_id, role_key, role, status, active, created_at")
+    .eq("workspace_id", workspaceId)
+    .eq("active", true)
+    .neq("status", "pending")
+    .or(conditions.join(","))
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new AuthorizationError("missing_membership", "No workspace membership was found for the signed-in user.", 403);
+
+  const membership = {
+    ...data,
+    role_key: normalizeRoleKey(data.role_key, data.role),
+  } as WorkspaceMembershipRow;
+  if (!allowed.includes(membership.role_key)) {
+    throw new AuthorizationError("forbidden_role", `This action requires one of the following roles: ${allowed.join(", ")}.`, 403);
+  }
+  return membership;
+}
+
 export async function requireWorkspaceOwner(
   userId: string | undefined,
   workspaceId: string | undefined,
