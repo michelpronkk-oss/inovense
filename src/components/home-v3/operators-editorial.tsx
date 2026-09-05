@@ -61,7 +61,7 @@ export default function OperatorsEditorial() {
         <Reveal>
           <div className="ops">
             {operators.map(({ op, type, body, gate, status, tools }) => (
-              <details className="op" key={op.name}>
+              <details className="op" name="operator" key={op.name}>
                 <summary>
                   <div className="op-row">
                     <span className="op-avatar"><OperatorAvatar color={op.color} glyph={GLYPHS[op.glyph]} size={42} /></span>

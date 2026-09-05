@@ -4537,6 +4537,21 @@
     background: transparent;
     color: var(--ink);
   }
+
+  /* Artifact: a compact "proof" preview, not the full run detail. On phone
+     the panel shows only the top identity strip, the 3 evidence sources and
+     the "assembled" line, then stops clean — the operator block, task line
+     and sequence list (and the already-hidden approval gate) are cut so the
+     whole hero, CTAs included, has a real shot at fitting above the fold. */
+  .auterim-v3-page .hero-artifact-rail,
+  .auterim-v3-page .hero-artifact-op,
+  .auterim-v3-page .hero-artifact-task,
+  .auterim-v3-page .hero-artifact-seq {
+    display: none;
+  }
+  .auterim-v3-page .hero-artifact-ctx-f {
+    margin-bottom: 2px;
+  }
 }
 
 /* Pricing: this also covers the 768px tablet regression width, since it
