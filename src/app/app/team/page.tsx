@@ -15,6 +15,12 @@ const rolePerms: Record<string, string[]> = {
   "Operator - Viewer": ["Insights", "Outputs"],
 };
 
+const roleDescriptions: Record<WorkspaceRole, string> = {
+  "Operator - Viewer": "Can view operator outputs, insights, and workspace context.",
+  "Operator - Reviewer": "Can review and decide on approval-gated work, without changing workspace controls.",
+  "Operator - Admin": "Can manage members, workspace settings, operators, and approval controls.",
+};
+
 const roleOptions = ["Operator - Viewer", "Operator - Reviewer", "Operator - Admin"] as const;
 type WorkspaceRole = (typeof roleOptions)[number];
 
@@ -28,6 +34,7 @@ export default function TeamPage() {
   const atMemberLimit = isAtMemberLimit(state.workspace.plan, state.teamMembers.length);
   const [showInvite, setShowInvite] = useState(false);
   const [editing, setEditing] = useState<TeamMember | null>(null);
+  const [inviteName, setInviteName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<WorkspaceRole>("Operator - Viewer");
   const [inviting, setInviting] = useState(false);
@@ -49,6 +56,7 @@ export default function TeamPage() {
       workspaceName: state.workspace.name,
       inviterName: state.currentUser.name,
       inviterUserId: state.currentUser.id,
+      name: inviteName.trim(),
       email: normalizedEmail,
       role,
       permissions,
@@ -58,8 +66,9 @@ export default function TeamPage() {
       setInviting(false);
       return;
     }
-    inviteMember({ email: normalizedEmail, role, permissions });
+    inviteMember({ name: inviteName.trim(), email: normalizedEmail, role, permissions });
     setInviteFeedback(result.message);
+    setInviteName("");
     setEmail("");
     setRole("Operator - Viewer");
     setInviting(false);
@@ -161,7 +170,7 @@ export default function TeamPage() {
 
       {(showInvite || editing) && (
         <div className="os-modal-backdrop" onClick={() => { setShowInvite(false); setEditing(null); }}>
-          <div className="os-modal" style={{ maxWidth: 560, width: "92%" }} onClick={(e) => e.stopPropagation()}>
+          <div className="os-modal team-access-modal" style={{ maxWidth: 620, width: "92%" }} onClick={(e) => e.stopPropagation()}>
             <div className="os-modal-head">
               <h3>{editing ? "Edit member" : "Invite member"}</h3>
               <button className="appr-btn deny" onClick={() => { setShowInvite(false); setEditing(null); }}>Close</button>
@@ -179,14 +188,39 @@ export default function TeamPage() {
                 {inviteFeedback && <div style={{ fontSize: 12, color: "#ff8f8f" }}>{inviteFeedback}</div>}
               </div>
             ) : (
-              <div style={{ display: "grid", gap: 10 }}>
-                <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="os-input" />
-                <select value={role} onChange={(e) => setRole(e.target.value as WorkspaceRole)} className="os-input">
-                  {roleOptions.filter((option) => isOwner || option !== "Operator - Admin").map((option) => <option key={option}>{option}</option>)}
-                </select>
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <div className="team-invite-form">
+                <div className="team-invite-intro">
+                  <span>WORKSPACE ACCESS</span>
+                  <p>They&apos;ll receive one secure invitation for <strong>{state.workspace.name}</strong>.</p>
+                </div>
+                <div className="team-invite-fields">
+                  <label>
+                    <span>Name <em>optional</em></span>
+                    <input value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="e.g. Maya Laurent" autoComplete="name" className="os-input" />
+                  </label>
+                  <label>
+                    <span>Work email</span>
+                    <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="maya@company.com" autoComplete="email" inputMode="email" className="os-input" autoFocus />
+                  </label>
+                </div>
+                <fieldset className="team-role-picker">
+                  <legend>Choose access level</legend>
+                  <div>
+                    {roleOptions.filter((option) => isOwner || option !== "Operator - Admin").map((option) => (
+                      <button key={option} type="button" className={`team-role-option${role === option ? " active" : ""}`} onClick={() => setRole(option)}>
+                        <span>{option.replace("Operator - ", "")}</span>
+                        <small>{roleDescriptions[option]}</small>
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+                <div className="team-invite-summary">
+                  <div><span>ACCESS INCLUDED</span><strong>{rolePerms[role].join(" · ")}</strong></div>
+                  <p>Access can be changed or revoked at any time.</p>
+                </div>
+                <div className="team-invite-actions">
                   <button className="btn btn-ghost btn-sm" onClick={() => setShowInvite(false)}>Cancel</button>
-                  <button className="btn btn-primary btn-sm" onClick={submitInvite} disabled={!email.includes("@") || inviting} style={{ opacity: email.includes("@") && !inviting ? 1 : 0.55 }}>{inviting ? "Inviting..." : "Invite"}</button>
+                  <button className="btn btn-primary btn-sm" onClick={submitInvite} disabled={!email.includes("@") || inviting}>{inviting ? "Sending invitation..." : "Send invitation"}</button>
                 </div>
                 {inviteFeedback && <div style={{ fontSize: 12, color: inviteFeedback.toLowerCase().includes("failed") || inviteFeedback.toLowerCase().includes("valid") ? "#ff8f8f" : "#64ffd7" }}>{inviteFeedback}</div>}
               </div>

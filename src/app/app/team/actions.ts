@@ -22,6 +22,7 @@ type InviteInput = {
    * always re-derived from the verified session server-side.
    */
   inviterUserId?: string;
+  name?: string;
   email: string;
   role: WorkspaceRole;
   permissions: string[];
@@ -33,6 +34,7 @@ type InviteResult =
 
 export async function inviteWorkspaceMember(input: InviteInput): Promise<InviteResult> {
   const email = input.email.trim().toLowerCase();
+  const name = input.name?.trim().replace(/\s+/g, " ") ?? "";
   if (!email || !email.includes("@")) return { success: false, error: "Enter a valid email address." };
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -93,7 +95,7 @@ export async function inviteWorkspaceMember(input: InviteInput): Promise<InviteR
   await supabase.from("os_workspace_members").upsert({
     workspace_id: workspaceId,
     email,
-    full_name: email.split("@")[0],
+    full_name: name || email.split("@")[0],
     role: input.role,
     role_key: roleKeyFor(input.role),
     access: input.permissions,

@@ -389,7 +389,7 @@ interface OSContextValue {
   updateConnectorPermissions: (connectorId: string, operatorsAllowed: string[]) => void;
   upsertPolicy: (policy: Policy) => void;
   setPolicyActive: (policyId: string, active: boolean) => void;
-  inviteMember: (input: { email: string; role: string; permissions: string[] }) => void;
+  inviteMember: (input: { name?: string; email: string; role: string; permissions: string[] }) => void;
   updateMember: (memberId: string, patch: Partial<TeamMember>) => void;
   updateSettingsSection: <K extends keyof OSSettings>(section: K, value: OSSettings[K]) => void;
   updateActivation: (patch: Partial<NonNullable<OSSettings["activation"]>>) => void;
@@ -950,9 +950,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, [state.policies]);
 
-  const inviteMember = useCallback((input: { email: string; role: string; permissions: string[] }) => {
+  const inviteMember = useCallback((input: { name?: string; email: string; role: string; permissions: string[] }) => {
     const base = input.email.split("@")[0].replace(/[._-]/g, " ").trim();
-    const name = base.split(" ").map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(" ");
+    const inferredName = base.split(" ").map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(" ");
+    const name = input.name?.trim() || inferredName;
     const member: TeamMember = {
       id: `tm-${Date.now()}`,
       email: input.email,
