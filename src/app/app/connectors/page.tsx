@@ -14,14 +14,11 @@ import { UpgradeModal } from "@/components/upgrade-modal";
 import { isRealConnectedConnector } from "@/lib/os/truth";
 import {
   isConnectorAvailableForAuth,
-  CONNECTOR_CATEGORY_LABELS,
   getConnectorDefinition,
-  listConnectors,
-  type ConnectorCategory,
 } from "@/lib/connectors/registry";
-import { getAvailableConnectors, getComingSoonConnectors } from "@/lib/connectors/capabilities";
-import { getOperatorDefinition } from "@/lib/operators/registry";
+import { getAvailableConnectors } from "@/lib/connectors/capabilities";
 import { connectorDefinitionToSeedConnector } from "@/lib/os/seed";
+import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-grid";
 
 type SlackChannel = {
   id: string;
@@ -67,20 +64,6 @@ function normalizeConnectorKey(id: string): string {
   return id.replace(/-/g, "_");
 }
 
-function operatorLabel(operatorKey: string): string {
-  return getOperatorDefinition(operatorKey)?.name ?? operatorKey;
-}
-
-const CATEGORY_ORDER: Array<ConnectorCategory | "all"> = ["all", ...Array.from(new Set(listConnectors().map((def) => def.category)))];
-
-function connectorPurpose(connectorId: string): string {
-  if (connectorId === "gmail") return "Email follow-ups";
-  if (connectorId === "hubspot") return "CRM execution";
-  if (connectorId === "slack") return "Team alerts";
-  if (connectorId === "trello") return "Project tasks";
-  return "Operator actions";
-}
-
 function connectorCapabilities(connectorId: string): string[] {
   if (connectorId === "gmail") return ["Read recent inbox metadata", "Draft customer replies", "Send emails after approval"];
   if (connectorId === "hubspot") return ["Create or update contacts", "Create or update deals", "Link contacts to deals"];
@@ -118,16 +101,6 @@ function connectorStatusLabel(input: {
   return { label: "Connected", color: "#8df5cf", background: "rgba(81,216,138,0.08)", border: "rgba(81,216,138,0.24)" };
 }
 
-function connectionCopy(connector: Connector): string {
-  if (!connector.isConnected && connector.records.includes("Reconnect required")) return "The provider credentials could not be verified. Reconnect to restore access.";
-  if (!connector.isConnected) return "Connect this account to enable real operator actions.";
-  if (connector.id === "gmail") return connector.records.includes("Reconnect") ? connector.records : "Ready for approved email follow-ups.";
-  if (connector.id === "slack") return "Ready for internal alerts once a channel is selected.";
-  if (connector.id === "trello") return "Ready for approved task updates once a board and list are selected.";
-  if (connector.id === "hubspot") return "Ready for approved CRM updates.";
-  return "Connected and ready for approved actions.";
-}
-
 export default function ConnectorsPage() {
   const {
     state,
@@ -143,7 +116,6 @@ export default function ConnectorsPage() {
 
   const [addOpen, setAddOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState<ConnectorCategory | "all">("all");
   const [setupConnectorId, setSetupConnectorId] = useState<string | null>(null);
   const [drawerConnectorId, setDrawerConnectorId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("");
@@ -206,20 +178,11 @@ export default function ConnectorsPage() {
 
   const filteredAvailable = useMemo(() => {
     return availableCatalogConnectors.filter((c) => {
-      const definitionCategory = listConnectors().find((def) => def.connectorKey === normalizeConnectorKey(c.id))?.category;
-      const byCategory = category === "all" || definitionCategory === category;
       const q = search.trim().toLowerCase();
       const bySearch = !q || c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q);
-      return byCategory && bySearch;
+      return bySearch;
     });
-  }, [availableCatalogConnectors, category, search]);
-
-  // Catalog of connectors that are not functional yet (registry-driven, honest).
-  const comingSoonConnectors = useMemo(() => getComingSoonConnectors(), []);
-  const filteredComingSoon = useMemo(
-    () => (category === "all" ? comingSoonConnectors : comingSoonConnectors.filter((c) => c.category === category)),
-    [comingSoonConnectors, category]
-  );
+  }, [availableCatalogConnectors, search]);
 
   const setupConnector = availableCatalogConnectors.find((c) => c.id === setupConnectorId) ?? null;
   const drawerConnector = state.connectors.find((c) => c.id === drawerConnectorId) ?? null;
@@ -333,7 +296,6 @@ export default function ConnectorsPage() {
       setAddOpen(true);
       setSetupConnectorId(available.id);
       setSearch("");
-      setCategory("all");
       if (setup === "slack-channel") setFeedback("Connect Slack first, then choose the alert channel.");
       if (setup === "trello-project") setFeedback("Connect Trello first, then choose the board and list.");
     }
@@ -691,7 +653,7 @@ export default function ConnectorsPage() {
               <PlusIcon size={12} /> Upgrade to add more
             </Link>
           ) : (
-            <button className="btn btn-primary btn-sm" onClick={() => { setAddOpen(true); setSetupConnectorId(null); setSearch(""); setCategory("all"); }}>
+            <button className="btn btn-primary btn-sm" onClick={() => { setAddOpen(true); setSetupConnectorId(null); setSearch(""); }}>
               <PlusIcon size={12} /> Add connector
             </button>
           )}
@@ -716,7 +678,7 @@ export default function ConnectorsPage() {
           <div style={{ padding: "44px 18px", textAlign: "center", fontSize: 13, color: "var(--text-faint)" }}>
             <div style={{ color: "var(--text)", fontSize: 17, fontWeight: 600, marginBottom: 7 }}>Connect your first business tool</div>
             <div style={{ marginBottom: 18 }}>Add the systems Auterim should understand and work with.</div>
-            <button className="btn btn-primary btn-sm" onClick={() => { setAddOpen(true); setSetupConnectorId(null); setSearch(""); setCategory("all"); }}><PlusIcon size={12} /> Add connector</button>
+            <button className="btn btn-primary btn-sm" onClick={() => { setAddOpen(true); setSetupConnectorId(null); setSearch(""); }}><PlusIcon size={12} /> Add connector</button>
           </div>
         ) : (
           <>
@@ -734,61 +696,18 @@ export default function ConnectorsPage() {
                 onClick={() => setDrawerConnectorId(c.id)}
                 style={{ width: "100%", textAlign: "left", border: "none", background: "none", borderBottom: "1px solid var(--line)", padding: "17px 18px", display: "grid", gridTemplateColumns: "40px 1fr auto", alignItems: "center", gap: 14, cursor: "pointer" }}
               >
-                <div style={{ width: 34, height: 34, borderRadius: 10, background: `${c.color}18`, boxShadow: `inset 0 0 0 1px ${c.color}45`, display: "grid", placeItems: "center", color: c.color, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 700 }}>
-                  {c.letter}
+                <div className="connector-brand-logo" style={{ width: 34, height: 34, borderRadius: 10 }}>
+                  {IntegrationLogos[c.name] ?? <span style={{ color: c.color, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{c.letter}</span>}
                 </div>
                 <div>
                   <div style={{ fontSize: 13.5, fontWeight: 500 }}>{c.name}</div>
                   <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>{c.category}</div>
                 </div>
-                <div style={{ display: "none" }}>{connectorPurpose(c.id)} {connectionCopy(c)} {c.lastSynced}</div>
                 <div style={{ justifySelf: "start", fontSize: 11.5, color: "#8df5cf", padding: "5px 8px", borderRadius: 999, background: "rgba(81,216,138,0.08)", boxShadow: "inset 0 0 0 1px rgba(81,216,138,0.2)" }}>Manage</div>
               </button>
             ))}
           </>
         )}
-      </div>
-
-      {/* Coming soon catalog (registry-driven, visibly disabled) */}
-      <div className="p" style={{ display: "none" }}>
-        <div className="p-head">
-          <h3>Coming soon</h3>
-          <div className="p-meta">{comingSoonConnectors.length} on the roadmap - not connectable yet</div>
-        </div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", padding: "12px 18px 0" }}>
-          <button className={`appr-btn ${category === "all" ? "approve" : "edit"}`} onClick={() => setCategory("all")}>All</button>
-          {CATEGORY_ORDER.filter((cat): cat is ConnectorCategory => cat !== "all").map((cat) => (
-            <button key={cat} className={`appr-btn ${category === cat ? "approve" : "edit"}`} onClick={() => setCategory(cat)}>
-              {CONNECTOR_CATEGORY_LABELS[cat]}
-            </button>
-          ))}
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10, padding: 18 }}>
-          {filteredComingSoon.map((c) => (
-            <div key={c.connectorKey} style={{ padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", opacity: 0.72 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <div style={{ width: 28, height: 28, borderRadius: 8, background: `${c.color}18`, boxShadow: `inset 0 0 0 1px ${c.color}45`, display: "grid", placeItems: "center", color: c.color, fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{c.letter}</div>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>{c.displayName}</div>
-              </div>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-mute)" }}>
-                {CONNECTOR_CATEGORY_LABELS[c.category]} - {c.riskLevel} risk
-              </div>
-              <div style={{ fontSize: 11.5, color: "var(--text-dim)", marginTop: 6 }}>{c.description}</div>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.06em", marginTop: 8 }}>
-                {c.capabilities.length} capabilities
-              </div>
-              {c.usedByOperators.length > 0 && (
-                <div style={{ fontSize: 10.5, color: "var(--text-mute)", marginTop: 4 }}>
-                  Used by {c.usedByOperators.slice(0, 3).map(operatorLabel).join(", ")}
-                </div>
-              )}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
-                <span className="appr-btn edit" style={{ cursor: "default" }}>{c.status === "coming_soon" ? "Coming soon" : "Planned"}</span>
-                <button className="btn btn-ghost btn-sm" disabled style={{ opacity: 0.6, cursor: "not-allowed" }}>Request connector</button>
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Add connector modal */}
@@ -801,22 +720,15 @@ export default function ConnectorsPage() {
                   <h3>Add connector</h3>
                   <button className="appr-btn deny" onClick={() => setAddOpen(false)}>Close</button>
                 </div>
-                <div style={{ color: "var(--text-mute)", fontSize: 12.5, marginBottom: 4 }}>Choose a system to connect to Auterim.</div>
+                <div style={{ color: "var(--text-mute)", fontSize: 12.5, marginBottom: 4 }}>Connect a system only when it gives your operator useful live context.</div>
                 <div style={{ display: "grid", gap: 10 }}>
-                  <input className="os-input" placeholder="Search connectors..." value={search} onChange={(e) => setSearch(e.target.value)} />
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {CATEGORY_ORDER.map((cat) => (
-                      <button key={cat} className={`appr-btn ${category === cat ? "approve" : "edit"}`} onClick={() => setCategory(cat)}>
-                        {cat === "all" ? "All" : CONNECTOR_CATEGORY_LABELS[cat]}
-                      </button>
-                    ))}
-                  </div>
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.08em", color: "var(--text-mute)", textTransform: "uppercase", marginTop: 8 }}>Available now</div>
+                  <input className="os-input" placeholder="Search available integrations..." value={search} onChange={(e) => setSearch(e.target.value)} />
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.08em", color: "var(--text-mute)", textTransform: "uppercase", marginTop: 8 }}>Available to connect</div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
                     {filteredAvailable.map((c) => (
                       <button key={c.id} onClick={() => { if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); }} style={{ textAlign: "left", border: "none", cursor: "pointer", padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                          <div style={{ width: 28, height: 28, borderRadius: 8, background: `${c.color}18`, boxShadow: `inset 0 0 0 1px ${c.color}45`, display: "grid", placeItems: "center", color: c.color, fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{c.letter}</div>
+                          <div className="connector-brand-logo" style={{ width: 28, height: 28, borderRadius: 8 }}>{IntegrationLogos[c.name] ?? <span style={{ color: c.color, fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{c.letter}</span>}</div>
                           <div style={{ fontSize: 13, fontWeight: 500 }}>{c.name}</div>
                         </div>
                         <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-mute)" }}>{c.category}</div>
@@ -830,16 +742,7 @@ export default function ConnectorsPage() {
                       </button>
                     ))}
                   </div>
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.08em", color: "var(--text-mute)", textTransform: "uppercase", marginTop: 10 }}>Coming soon</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
-                    {filteredComingSoon.map((c) => (
-                      <div key={c.connectorKey} style={{ padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.015)", boxShadow: "inset 0 0 0 1px var(--line)", opacity: 0.62 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}><div style={{ width: 28, height: 28, borderRadius: 8, background: `${c.color}18`, display: "grid", placeItems: "center", color: c.color, fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{c.letter}</div><div style={{ fontSize: 13, fontWeight: 600 }}>{c.displayName}</div></div>
-                        <div style={{ marginTop: 9, color: "var(--text-mute)", fontSize: 11.5 }}>{c.description}</div>
-                        <div style={{ marginTop: 10, color: "var(--text-faint)", fontSize: 10.5, fontFamily: "var(--font-mono)" }}>Coming soon</div>
-                      </div>
-                    ))}
-                  </div>
+                  <div style={{ paddingTop: 12, borderTop: "1px solid var(--line)", color: "var(--text-mute)", fontSize: 11.5 }}>More integrations are planned. Auterim adds systems when they support a controlled operating use case—not as a directory of logos.</div>
                 </div>
               </>
             ) : (
@@ -850,7 +753,7 @@ export default function ConnectorsPage() {
                 </div>
                 <ConnectorSetupView connector={setupConnector} isRealConnected={false} isPreview={isPreview} />
                 {setupConnector.id === "gmail" && (
-                  <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>Secure connection via Google OAuth Â· Native connector</div>
+                  <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>Secure connection via Google OAuth · Native connector</div>
                 )}
                 {getConnectorDefinition(setupConnector.id)?.authType === "nango" && (
                   <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>

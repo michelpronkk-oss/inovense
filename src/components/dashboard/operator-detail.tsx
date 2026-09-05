@@ -210,7 +210,7 @@ export function OperatorDetail({ operatorKey }: { operatorKey: OperatorDetailKey
             <h3>Monitoring</h3>
             <div className="p-meta">
               <span className={`p-chip ${monitoringActive ? "ok" : "amber"}`}>{monitoringActive ? "Active" : "Idle"}</span>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>{m.nextScanLabel ?? "Daily scan"} Â· {m.cadence ?? "daily"}</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>{m.nextScanLabel ?? "Daily scan"} · {m.cadence ?? "daily"}</span>
             </div>
           </div>
           <div className="p-body">
@@ -299,19 +299,19 @@ export function OperatorDetail({ operatorKey }: { operatorKey: OperatorDetailKey
           <div className="p-body">
             <div className="od-cap">
               <div className="od-cap-group ok">
-                <div className="gl">Available actions <span className="gc">Â· run automatically</span></div>
+                <div className="gl">Available actions <span className="gc">· run automatically</span></div>
                 <div className="od-chiprow">
                   {(readiness?.availableActions ?? []).map((a) => <span className="od-chip ok" key={a}><span className="cd" />{a}</span>)}
                 </div>
               </div>
               <div className="od-cap-group gate">
-                <div className="gl">Approval required <span className="gc">Â· human gate</span></div>
+                <div className="gl">Approval required <span className="gc">· human gate</span></div>
                 <div className="od-chiprow">
                   {(readiness?.approvalRequiredActions ?? []).map((a) => <span className="od-chip gate" key={a}><span className="cd" />{a}</span>)}
                 </div>
               </div>
               <div className="od-cap-group block">
-                <div className="gl">Blocked <span className="gc">Â· never permitted</span></div>
+                <div className="gl">Blocked <span className="gc">· never permitted</span></div>
                 <div className="od-chiprow">
                   {(readiness?.blockedActions ?? []).map((a) => <span className="od-chip block" key={a}><span className="cd" />{a}</span>)}
                 </div>
@@ -334,7 +334,7 @@ export function OperatorDetail({ operatorKey }: { operatorKey: OperatorDetailKey
                   <div className="od-run" key={r.id}>
                     <div style={{ minWidth: 0 }}>
                       <div className="od-run-nm">{r.output?.title || titleCase(r.output?.type) || "Operator run"}</div>
-                      <div className="od-run-meta">{timeAgo(r.created_at)} Â· approval: <span className={r.approval_id ? "ref" : ""}>{r.approval_id || "none"}</span></div>
+                      <div className="od-run-meta">{timeAgo(r.created_at)} · approval: <span className={r.approval_id ? "ref" : ""}>{r.approval_id || "none"}</span></div>
                     </div>
                     <span className={`od-run-status ${r.status === "failed" ? "failed" : r.status === "waiting_for_approval" ? "pending" : ""}`}>{titleCase(r.status)}</span>
                   </div>
@@ -354,7 +354,7 @@ export function OperatorDetail({ operatorKey }: { operatorKey: OperatorDetailKey
                   <div className="od-run" key={a.id}>
                     <div style={{ minWidth: 0 }}>
                       <div className="od-run-nm">{a.title || a.cardName || a.subject || "Approval"}</div>
-                      <div className="od-run-meta">{a.to || a.cardName || "Awaiting review"} Â· {timeAgo(a.created_at)}</div>
+                      <div className="od-run-meta">{a.to || a.cardName || "Awaiting review"} · {timeAgo(a.created_at)}</div>
                     </div>
                     <Link className="appr-btn approve" href="/approvals" style={{ textDecoration: "none" }}>Review</Link>
                   </div>

@@ -16,9 +16,9 @@ const scanRoutes: Record<ScanKey, string> = {
 };
 
 const operatorMeta: Record<ScanKey, { mark: string; color: string; tag: string; avatar: string }> = {
-  revenue: { mark: "RV", color: "#4DE8E1", tag: "Revenue Â· Pipeline", avatar: "/operators/revenue-operator.png" },
-  client_flow: { mark: "CF", color: "#5B8DEF", tag: "Client Â· Onboarding", avatar: "/operators/client-flow-operator.png" },
-  operations: { mark: "OP", color: "#51D88A", tag: "Operations Â· Internal", avatar: "/operators/operations-operator.png" },
+  revenue: { mark: "RV", color: "#4DE8E1", tag: "Revenue · Pipeline", avatar: "/operators/revenue-operator.png" },
+  client_flow: { mark: "CF", color: "#5B8DEF", tag: "Client · Onboarding", avatar: "/operators/client-flow-operator.png" },
+  operations: { mark: "OP", color: "#51D88A", tag: "Operations · Internal", avatar: "/operators/operations-operator.png" },
 };
 
 const connectorMeta: Record<string, { letter: string; color: string }> = {
@@ -204,9 +204,9 @@ export function OSOverview() {
       {/* Header */}
       <div className="os-page-head">
         <div>
-          <span className="os-greet">{overview.systemStatus.label} Â· updated {timeAgo(overview.lastUpdatedAt)}</span>
+          <span className="os-greet">{overview.systemStatus.label} · updated {timeAgo(overview.lastUpdatedAt)}</span>
           <h1>{greet}, {firstName}.</h1>
-          <div className="os-page-sub">{pending} approval{pending === 1 ? "" : "s"} waiting Â· {monitoringCount} operator{monitoringCount === 1 ? "" : "s"} monitoring Â· running under {mode}.</div>
+          <div className="os-page-sub">{pending} approval{pending === 1 ? "" : "s"} waiting · {monitoringCount} operator{monitoringCount === 1 ? "" : "s"} monitoring · running under {mode}.</div>
         </div>
         <div className="os-page-actions" style={{ alignItems: "center" }}>
           <span className="pill">{mode}</span>
@@ -238,7 +238,7 @@ export function OSOverview() {
         <div className="p">
           <div className="p-head">
             <h3>{overview.operators.length === 1 ? "Your first operator" : "Active operators"}</h3>
-            <span className="p-meta">{overview.operators.length} configured Â· no actions run without approval</span>
+            <span className="p-meta">{overview.operators.length} configured · no actions run without approval</span>
           </div>
           <div className="ops-grid">
             {overview.operators.map((operator) => {
@@ -248,7 +248,7 @@ export function OSOverview() {
               return (
                 <div className="ops-card" key={operator.key}>
                   <div className="ops-card-head">
-                    <div className="ops-card-avatar" style={{ color: meta.color, background: `linear-gradient(135deg, ${meta.color}22, ${meta.color}06)`, boxShadow: `inset 0 0 0 1px ${meta.color}55`, overflow: "hidden" }}><Image src={meta.avatar} alt="" width={30} height={30} style={{ width: 27, height: 27, objectFit: "contain" }} /></div>
+                    <Image className="ops-card-avatar" src={meta.avatar} alt="" width={34} height={34} style={{ width: 34, height: 34, objectFit: "contain" }} />
                     <div style={{ minWidth: 0 }}>
                       <div className="ops-card-name">{operator.name}</div>
                       <div className="ops-card-tag">{meta.tag}</div>
@@ -264,7 +264,7 @@ export function OSOverview() {
                     </div>
                   </div>
                   <div className="ops-task">
-                    <span>{operator.pendingApprovals} pending Â· {operator.signalsToday} signals today Â· checked {timeAgo(operator.lastRunAt)}</span>
+                    <span>{operator.pendingApprovals} pending · {operator.signalsToday} signals today · checked {timeAgo(operator.lastRunAt)}</span>
                   </div>
                   <div className="ops-foot">
                     <span className="ops-metric"><strong>{operator.actionsToday}</strong> actions today</span>
@@ -305,8 +305,8 @@ export function OSOverview() {
                     <span className={`pill ${approval.riskLevel === "high" ? "pill-rose" : "pill-cyan"}`}>{operatorMark(approval.operatorKey).mark}</span>
                     <span className="appr-row-title">{approval.title}</span>
                   </div>
-                  <div className="appr-row-from">{titleCase(approval.operatorKey)} Â· {timeAgo(approval.createdAt)}</div>
-                  <div className="appr-row-body">Risk: {approval.riskLevel || "medium"} Â· {titleCase(approval.policyDecision) || "Approval required"} Â· rechecked before execution</div>
+                  <div className="appr-row-from">{titleCase(approval.operatorKey)} · {timeAgo(approval.createdAt)}</div>
+                  <div className="appr-row-body">Risk: {approval.riskLevel || "medium"} · {titleCase(approval.policyDecision) || "Approval required"} · rechecked before execution</div>
                   <div className="appr-row-actions">
                     <span className="appr-btn approve" role="button" aria-disabled={busy} onClick={() => { if (!busy) void actOnApproval(approval.id, "approve"); }} style={{ opacity: busy ? 0.5 : 1, cursor: busy ? "default" : "pointer" }}>
                       {isBusy ? "..." : "Approve"}

@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useOS } from "@/lib/os/app-provider";
@@ -9,17 +10,6 @@ import {
   TargetIcon, CpuIcon, FlowIcon, InboxIcon, DatabaseIcon, LinkIcon,
   DocIcon, ChartIcon, UsersIcon, ShieldIcon, KeyIcon, SettingsIcon, SwapIcon,
 } from "@/components/dashboard/icons";
-
-const AuterimMark = ({ size = 22 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" role="img" aria-label="Auterim">
-    <g fill="#ECEFF3">
-      <rect x="10" y="10" width="44" height="9"/>
-      <rect x="26" y="19" width="12" height="12"/>
-      <rect x="26" y="33" width="12" height="12"/>
-      <rect x="10" y="45" width="44" height="9"/>
-    </g>
-  </svg>
-);
 
 const ADMIN_NAV = [
   { icon: UsersIcon, label: "Team", href: "/team" },
@@ -53,13 +43,10 @@ export function OSSidebar() {
     || draft.dashboard.viewMode !== state.dashboard.viewMode
   ), [draft, state]);
 
-  const agentCount = state.agents.length;
-  const workflowCount = state.workflows.length;
-
   const OPS_NAV = [
     { icon: TargetIcon, label: "Overview", href: "/" },
-    { icon: CpuIcon, label: "Agents", href: "/agents", badge: String(agentCount) },
-    { icon: FlowIcon, label: "Workflows", href: "/workflows", badge: String(workflowCount) },
+    { icon: CpuIcon, label: "Agents", href: "/agents" },
+    { icon: FlowIcon, label: "Workflows", href: "/workflows" },
     { icon: InboxIcon, label: "Approvals", href: "/approvals", badge: pendingApprovals > 0 ? String(pendingApprovals) : undefined },
     { icon: DatabaseIcon, label: "Memory", href: "/memory" },
     { icon: LinkIcon, label: "Connectors", href: "/connectors" },
@@ -72,7 +59,7 @@ export function OSSidebar() {
   return (
     <aside className="os-side">
       <Link href="/" className="os-brand">
-        <AuterimMark size={18} />
+        <Image src="/brand/auterim-mark-live.svg" alt="Auterim" width={18} height={18} priority />
         <span>AUTERIM</span>
       </Link>
 

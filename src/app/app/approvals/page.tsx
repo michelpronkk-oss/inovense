@@ -727,7 +727,7 @@ export default function ApprovalsPage() {
                         <div>
                           <div style={{ fontSize: 13.5, fontWeight: 650 }}>{operations.cardName || operations.listName || "Operational signal"}</div>
                           <div style={{ fontSize: 11.5, color: "var(--text-mute)", marginTop: 2 }}>
-                            {operations.boardName ? `${operations.boardName} / ` : ""}{operations.listName || "-"} Â· {(operations.signalType || "signal").replace(/_/g, " ")}
+                            {operations.boardName ? `${operations.boardName} / ` : ""}{operations.listName || "-"} · {(operations.signalType || "signal").replace(/_/g, " ")}
                           </div>
                         </div>
                         <span className="pill pill-cyan" style={{ fontSize: 10.5 }}>Severity: {operations.severity || "medium"}</span>
