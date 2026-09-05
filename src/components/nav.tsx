@@ -3,8 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { getPublicWorkspaceCta, usePublicUserState } from "@/lib/public-user-state";
-import { appHref } from "@/lib/urls";
+import { getPublicSignInHref, getPublicWorkspaceCta, usePublicUserState } from "@/lib/public-user-state";
 import {
   Sheet,
   SheetClose,
@@ -35,7 +34,8 @@ export default function Nav({ homepage = false }: { homepage?: boolean }) {
   const pathname = usePathname();
   const userState = usePublicUserState();
   const primaryCta = getPublicWorkspaceCta(userState);
-  const showSecondarySignIn = userState === "guest" || userState === "loading";
+  const signInHref = getPublicSignInHref();
+  const showSecondarySignIn = userState === "guest";
   const navLinks = homepage
     ? [
         { label: "Platform", href: "#platform" },
@@ -93,7 +93,7 @@ export default function Nav({ homepage = false }: { homepage?: boolean }) {
         <div className="hidden items-center gap-4 lg:flex">
           {showSecondarySignIn && (
             <Link
-              href={appHref("/")}
+              href={signInHref}
               className="text-[13px] text-zinc-400 transition-colors duration-150 hover:text-zinc-200"
             >
               Sign in
@@ -182,7 +182,7 @@ export default function Nav({ homepage = false }: { homepage?: boolean }) {
                 })}
                 {showSecondarySignIn && (
                   <Link
-                    href={appHref("/")}
+                    href={signInHref}
                     onClick={() => setOpen(false)}
                     className="border-b border-zinc-800/60 py-4 text-sm text-zinc-400 transition-colors hover:text-zinc-100"
                   >

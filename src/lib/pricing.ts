@@ -1,4 +1,4 @@
-import { getPublicWorkspaceCta, type PublicUserState } from "@/lib/public-user-state";
+import { getPublicSignInHref, getPublicWorkspaceCta, type PublicUserState } from "@/lib/public-user-state";
 import { appHref } from "@/lib/urls";
 
 export type PublicPlanTier = "starter" | "growth" | "operator" | "enterprise";
@@ -119,8 +119,11 @@ export function resolvePublicPlanCta(
     return { label: plan.cta, href: plan.ctaHref };
   }
   if (userState !== "signed_in") {
+    if (userState === "guest" || userState === "registered" || userState === "loading") {
+      return { label: "Sign in to choose", href: getPublicSignInHref() };
+    }
     const workspaceCta = getPublicWorkspaceCta(userState);
-    return { label: userState === "onboarding" ? "Complete setup" : "Sign in to choose", href: workspaceCta.href };
+    return { label: "Complete setup", href: workspaceCta.href };
   }
   return { label: plan.cta, href: appHref(`/api/billing/dodo/checkout?plan=${plan.plan_tier}`) };
 }

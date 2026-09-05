@@ -5,11 +5,14 @@ import { appHref } from "@/lib/urls";
 
 export type PublicUserState = "loading" | "guest" | "registered" | "onboarding" | "signed_in";
 
+export function getPublicSignInHref(): string {
+  return appHref("/login?from=%2F");
+}
+
 export function getPublicWorkspaceCta(state: PublicUserState): { label: string; href: string } {
   if (state === "signed_in") return { label: "Open workspace", href: appHref("/") };
   if (state === "onboarding") return { label: "Continue setup", href: appHref("/") };
-  if (state === "registered") return { label: "Sign in", href: appHref("/") };
-  if (state === "loading") return { label: "Continue", href: appHref("/") };
+  if (state === "registered" || state === "loading") return { label: "Sign in", href: getPublicSignInHref() };
   return { label: "Start preview", href: appHref("/onboarding") };
 }
 

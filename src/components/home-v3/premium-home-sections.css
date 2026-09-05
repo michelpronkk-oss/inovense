@@ -24,23 +24,8 @@
 @media (max-width:820px) { .auterim-v3-page .connect-editorial-grid::before,.auterim-v3-page .steps::before { display:none; } .auterim-v3-page .connect-editorial-grid article::before { display:none; } .auterim-v3-page .steps .step::before { display:none; } }
 @media (prefers-reduced-motion:reduce) { .auterim-v3-page .steps.sequence-in .step::before { animation:none; } .auterim-v3-page .steps.sequence-in .step:first-child::before { border-color:var(--acc); background:var(--acc); box-shadow:none; } }
 
-/* The public pricing cards use the same live plan data and stay self-contained on small screens. */
-.auterim-v3-page .v3-pricing-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; max-width:900px; margin:0 auto; }
-.auterim-v3-page .v3-price-card { position:relative; display:flex; flex-direction:column; min-width:0; padding:28px; border:1px solid rgba(141,160,180,.2); border-radius:18px; background:linear-gradient(160deg,rgba(20,28,38,.82),rgba(9,13,19,.96) 68%); box-shadow:inset 0 1px rgba(255,255,255,.025),0 16px 44px rgba(0,0,0,.16); }
-.auterim-v3-page .v3-price-card.featured { border-color:rgba(55,230,212,.55); background:linear-gradient(160deg,rgba(55,230,212,.1),rgba(13,23,29,.95) 52%,rgba(9,13,19,.98)); box-shadow:inset 0 1px rgba(161,255,247,.08),0 20px 52px rgba(0,0,0,.22); }
-.auterim-v3-page .v3-price-badge { position:absolute; top:18px; right:18px; padding:5px 8px; border:1px solid rgba(55,230,212,.32); border-radius:999px; color:var(--acc); background:rgba(55,230,212,.07); font:9px var(--mono); letter-spacing:.1em; text-transform:uppercase; white-space:nowrap; }
-.auterim-v3-page .v3-price-eyebrow { margin-bottom:16px; color:#8996a5; font:10px var(--mono); letter-spacing:.13em; text-transform:uppercase; }
-.auterim-v3-page .v3-price-value { display:flex; align-items:baseline; gap:8px; min-width:0; }
-.auterim-v3-page .v3-price-value strong { color:#f2f5f8; font-size:34px; font-weight:520; letter-spacing:-.045em; line-height:1; }
-.auterim-v3-page .v3-price-value span { color:#95a1af; font-size:13px; }
-.auterim-v3-page .v3-price-tagline { min-height:46px; margin:18px 0 0; color:#b8c1ca; font-size:14px; line-height:1.55; }
-.auterim-v3-page .v3-price-trial { display:block; margin:18px 0 17px; padding:10px 0; border-top:1px solid rgba(148,164,180,.15); border-bottom:1px solid rgba(148,164,180,.15); color:#91a0ad; font:10px var(--mono); letter-spacing:.02em; }
-.auterim-v3-page .v3-price-features { display:grid; gap:11px; margin:0; padding:0; list-style:none; }
-.auterim-v3-page .v3-price-features li { display:flex; align-items:flex-start; gap:9px; color:#d2d8de; font-size:13px; line-height:1.45; }
-.auterim-v3-page .v3-price-features svg { flex:none; margin-top:2px; color:var(--acc); }
-.auterim-v3-page .v3-price-cta { display:flex; align-items:center; justify-content:space-between; width:100%; min-height:46px; margin-top:26px; padding:0 15px; border:1px solid rgba(148,164,180,.25); border-radius:10px; color:#eaf0f4; background:rgba(255,255,255,.035); font-size:13px; font-weight:600; text-decoration:none; transition:transform .18s ease,border-color .18s ease,background .18s ease; }
-.auterim-v3-page .v3-price-card.featured .v3-price-cta { border-color:var(--acc); color:#061412; background:var(--acc); }
-.auterim-v3-page .v3-price-cta:hover { transform:translateY(-1px); border-color:rgba(55,230,212,.68); background:rgba(55,230,212,.08); }
-.auterim-v3-page .v3-price-card.featured .v3-price-cta:hover { background:#7af5e9; }
-.auterim-v3-page .v3-price-cta:focus-visible { outline:2px solid var(--acc); outline-offset:3px; }
-@media (max-width:700px) { .auterim-v3-page .v3-pricing-grid { grid-template-columns:minmax(0,1fr); gap:14px; } .auterim-v3-page .v3-price-card { padding:23px 20px 20px; border-radius:15px; } .auterim-v3-page .v3-price-badge { top:15px; right:15px; } .auterim-v3-page .v3-price-eyebrow { margin-bottom:14px; } .auterim-v3-page .v3-price-value strong { font-size:32px; } .auterim-v3-page .v3-price-tagline { min-height:0; margin-top:15px; } .auterim-v3-page .v3-price-trial { margin:16px 0; } .auterim-v3-page .v3-price-cta { margin-top:22px; } }
+/* Public pricing retains the homepage's editorial divider language. */
+.auterim-v3-page #pricing .plans { grid-template-columns:repeat(2,minmax(0,1fr)); max-width:900px; margin:0 auto; }
+.auterim-v3-page #pricing .plans .pl { min-width:0; }
+.auterim-v3-page #pricing .plans .pl.now { border-top-color:var(--acc); }
+@media (max-width:820px) { .auterim-v3-page #pricing .plans { grid-template-columns:minmax(0,1fr); max-width:none; } .auterim-v3-page #pricing .plans .pl, .auterim-v3-page #pricing .plans .pl.now { min-height:0; margin:0; padding:29px 0 31px; border:0; border-top:1px solid rgba(148,164,180,.18); background:transparent; } .auterim-v3-page #pricing .plans .pl:first-child { border-top-color:var(--acc); } .auterim-v3-page #pricing .plans .pl.now { background:linear-gradient(90deg,rgba(55,230,212,.055),transparent 76%); } .auterim-v3-page #pricing .plans .pl-badge { position:static; display:inline-flex; align-self:flex-start; margin:0 0 3px; color:var(--acc); } .auterim-v3-page #pricing .plans .pl-fit { min-height:0; } .auterim-v3-page #pricing .plans .pl ul { display:grid; gap:10px; margin:1px 0 2px; } .auterim-v3-page #pricing .plans .pl .go { min-height:44px; margin-top:6px; padding:0; } }

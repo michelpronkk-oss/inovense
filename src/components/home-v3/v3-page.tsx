@@ -98,19 +98,18 @@ export default function V3Page() {
     <section className="sec" id="pricing">
       <div className="wrap">
         <Head label="Getting started" title="Choose the plan that fits your operation." body="Start with a three-day trial on Foundation or Workforce. Connect systems and deploy approval-gated operators when you are ready." />
-        <div className="v3-pricing-grid body rv">
+        <div className="body plans rv">
           {pricingPlans.map((plan) => {
             const cta = resolvePublicPlanCta(plan, userState);
-            return <article className={`v3-price-card${plan.featured ? " featured" : ""}`} key={plan.plan_tier}>
-              {plan.featured && <span className="v3-price-badge">Most popular</span>}
-              <span className="v3-price-eyebrow">Auterim {plan.plan_name}</span>
-              <div className="v3-price-value"><strong>{plan.price}</strong><span>/ month</span></div>
-              <p className="v3-price-tagline">{plan.tagline}</p>
-              <span className="v3-price-trial">3 days free · payment begins only if you continue</span>
-              <ul className="v3-price-features">
-                {plan.features.slice(0, 5).map((feature) => <li key={feature}><Icon name="check" size={14} strokeWidth={2} />{feature}</li>)}
-              </ul>
-              <Link className="v3-price-cta" href={cta.href}>{cta.label}<span aria-hidden="true">→</span></Link>
+            return <article className={`pl${plan.featured ? " now" : ""}`} key={plan.plan_tier}>
+              {plan.featured && <span className="pl-badge pl-badge-alt">Most popular</span>}
+              <h3>{plan.plan_name}</h3>
+              <span className="amt"><b>{plan.price}</b><i>/ month</i></span>
+              <p className="pl-fit">{plan.tagline}</p>
+              <span className="pl-trial">3-day trial included</span>
+              <span className="pl-includes">Includes</span>
+              <ul>{plan.features.slice(0, 5).map((feature) => <li key={feature}><Icon name="check" size={13} strokeWidth={2} />{feature}</li>)}</ul>
+              <Link className="go" href={cta.href}>{cta.label} <span aria-hidden="true">→</span></Link>
             </article>;
           })}
         </div>
