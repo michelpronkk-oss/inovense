@@ -4115,6 +4115,122 @@
   .auterim-v3-page .run .src span:last-child { min-height: 54px; padding: 12px 14px; }
 }
 
+/* Final mobile polish. This is intentionally the last responsive layer: mobile
+   becomes its own calm editorial flow while desktop remains untouched. */
+@media (max-width: 820px) {
+  .auterim-v3-page { overflow-x: clip; --pad: clamp(20px, 5.15vw, 32px); }
+  .auterim-v3-page .wrap { width: 100%; }
+  .auterim-v3-page .sec { padding: 92px 0; }
+  .auterim-v3-page .sec + .sec { border-top-color: rgba(255,255,255,.055); }
+  .auterim-v3-page .head { gap: 18px; }
+  .auterim-v3-page .head .lbl { display: block; line-height: 1.2; }
+  .auterim-v3-page .head h2 { max-width: 16ch; font-size: clamp(31px, 7.1vw, 43px); line-height: 1.08; }
+  .auterim-v3-page .head .say { max-width: 35ch; margin-top: 17px; font-size: 16px; line-height: 1.58; }
+  .auterim-v3-page .body { margin-top: 44px; }
+
+  .auterim-v3-page .hero-editorial { padding: 100px 0 78px; }
+  .auterim-v3-page .hero-editorial-in { gap: 38px; }
+  .auterim-v3-page .hero-editorial-pill { margin-bottom: 22px; }
+  .auterim-v3-page .hero-editorial h1 { max-width: 11.5ch; font-size: clamp(40px, 10.4vw, 54px); line-height: .99; }
+  .auterim-v3-page .hero-editorial .say { max-width: 34ch; margin-top: 20px; font-size: 16px; line-height: 1.58; }
+  .auterim-v3-page .hero-editorial .hero-cta { gap: 12px; margin-top: 26px; }
+  .auterim-v3-page .hero-editorial .note { margin-top: 15px; }
+  .auterim-v3-page .hero-artifact { max-width: 540px; }
+
+  .auterim-v3-page .connect-editorial-grid article { padding-top: 25px; padding-bottom: 27px; }
+  .auterim-v3-page .connect-editorial-grid article + article { border-top: 1px solid var(--rule); }
+  .auterim-v3-page .connect-editorial-number { color: var(--acc); }
+  .auterim-v3-page .steps { gap: 0; }
+  .auterim-v3-page .steps .step { padding: 28px 0 30px; background: none; }
+  .auterim-v3-page .steps .step + .step { margin-top: 0; padding-top: 30px; }
+  .auterim-v3-page .steps .step .cue { margin-top: 20px; }
+
+  .auterim-v3-page #profile .prof { border-bottom: 0; }
+  .auterim-v3-page #profile .pr { padding: 23px 0; }
+  .auterim-v3-page #profile .pr .v { font-size: 15.5px; }
+
+  .auterim-v3-page .run { padding: 94px 0 96px; }
+  .auterim-v3-page .run .head h2 { max-width: 15ch; }
+  .auterim-v3-page .trace { margin-top: 48px; }
+  .auterim-v3-page .tr { grid-template-columns: 1px minmax(0, 1fr); gap: 0 20px; }
+  .auterim-v3-page .tr-k { grid-column: 2; padding: 0 0 12px; }
+  .auterim-v3-page .tr-c { padding: 12px 0 34px; }
+  .auterim-v3-page .src { display: grid; grid-template-columns: 1fr; gap: 8px; }
+  .auterim-v3-page .wk { gap: 11px; padding: 13px 0; }
+  .auterim-v3-page .wt { font-size: 14.5px; }
+  .auterim-v3-page .wk em { font-size: 8px; }
+  .auterim-v3-page .tr.gate .tr-c { padding: 22px 0 36px; }
+  .auterim-v3-page .tr.gate .tr-c::before { left: -20px; right: -10px; border-radius: 0 8px 8px 0; }
+  .auterim-v3-page .tr.gate h3 { font-size: clamp(27px, 7.5vw, 36px); }
+  .auterim-v3-page .tr.gate p { margin-top: 13px; font-size: 15px; line-height: 1.55; }
+  .auterim-v3-page .tr.gate .gate-acts { gap: 8px; margin-top: 22px; }
+  .auterim-v3-page .tr.gate .mini { min-height: 44px; padding: 10px 14px; font-size: 13px; }
+  .auterim-v3-page .gw { margin-top: 18px; font-size: 8px; line-height: 1.5; }
+
+  .auterim-v3-page #policy .pcol { padding: 28px 0; }
+  .auterim-v3-page #policy .pcol + .pcol { margin-top: 0; }
+  .auterim-v3-page #policy .pcol li { font-size: 15px; padding: 14px 0; }
+
+  .auterim-v3-page .architecture-column { padding: 30px 0; }
+  .auterim-v3-page .architecture-control { margin: 12px 0; padding: 28px 0; background: none; }
+  .auterim-v3-page .architecture-control::before { margin-bottom: 20px; }
+  .auterim-v3-page .architecture-chips { gap: 13px; margin-top: 21px; }
+  .auterim-v3-page .architecture-control-steps > div { min-height: 0; padding: 14px 0; }
+  .auterim-v3-page .architecture-gate { margin-top: 30px; padding-top: 18px; }
+  .auterim-v3-page .architecture-gate strong { font-size: clamp(18px, 5.5vw, 23px); line-height: 1.2; }
+
+  .auterim-v3-page .uc { margin-top: 0; }
+  .auterim-v3-page .ucr { gap: 16px; padding: 28px 0 32px; }
+  .auterim-v3-page .ucr h3 { font-size: 20px; }
+  .auterim-v3-page .ucr .k { margin-bottom: 8px; }
+  .auterim-v3-page .uc-result { margin-top: 26px; line-height: 1.55; }
+
+  .auterim-v3-page .plans { margin-top: 0; }
+  .auterim-v3-page .plans .pl,
+  .auterim-v3-page .plans .pl.now,
+  .auterim-v3-page .plans .pl + .pl { padding: 34px 0 38px; }
+  .auterim-v3-page .plans .pl h3 { font-size: 25px; }
+  .auterim-v3-page .plans .pl .amt b { font-size: 32px; }
+  .auterim-v3-page .plans .pl ul { margin-top: 2px; }
+  .auterim-v3-page .plans .pl li { font-size: 15px; }
+  .auterim-v3-page .plans .pl .go { min-height: 42px; margin-top: 8px; }
+
+  .auterim-v3-page .faq { max-width: none; }
+  .auterim-v3-page .faq summary { gap: 14px; padding: 21px 0; font-size: 17px; }
+  .auterim-v3-page .faq p { padding-bottom: 23px; font-size: 15px; }
+
+  .auterim-v3-page .close { padding: 92px 0 82px; }
+  .auterim-v3-page .close-in { gap: 42px; }
+  .auterim-v3-page .close-main h2 { max-width: 13.5ch; font-size: clamp(34px, 9vw, 46px); }
+  .auterim-v3-page .close-main > p { margin-top: 18px; }
+  .auterim-v3-page .close-identity { max-width: 470px; }
+
+  .auterim-v3-page .foot { padding: 58px 0 calc(30px + env(safe-area-inset-bottom)); }
+  .auterim-v3-page .foot-grid { gap: 34px; }
+  .auterim-v3-page .foot-brand { padding-bottom: 8px; border-bottom: 1px solid var(--rule); }
+  .auterim-v3-page .foot h4 { margin-bottom: 15px; }
+  .auterim-v3-page .foot ul { gap: 11px; }
+  .auterim-v3-page .foot-base { margin-top: 44px; padding-top: 20px; }
+}
+@media (max-width: 520px) {
+  .auterim-v3-page .sec { padding: 78px 0; }
+  .auterim-v3-page .hero-editorial { padding: 92px 0 68px; }
+  .auterim-v3-page .hero-editorial h1 { font-size: clamp(38px, 10.7vw, 46px); }
+  .auterim-v3-page .hero-editorial .hero-cta,
+  .auterim-v3-page .close-actions { align-items: stretch; flex-direction: column; }
+  .auterim-v3-page .hero-editorial .hero-cta > *,
+  .auterim-v3-page .close-actions > * { width: 100%; min-height: 50px; justify-content: center; }
+  .auterim-v3-page .hero-artifact { width: 100%; }
+  .auterim-v3-page .hero-artifact-ctx { grid-template-columns: 1fr; }
+  .auterim-v3-page .close { padding: 82px 0 72px; }
+}
+@media (max-width: 360px) {
+  .auterim-v3-page { --pad: 18px; }
+  .auterim-v3-page .hero-editorial h1 { font-size: 37px; }
+  .auterim-v3-page .head h2 { font-size: 30px; }
+  .auterim-v3-page .tr.gate .mini { width: 100%; justify-content: center; }
+}
+
 /* Keep the final recommendation intentional after the later mobile layout
    resets in this stylesheet. */
 @media (max-width: 767px) {
