@@ -92,7 +92,7 @@ export default function OnboardingPage() {
     setSubmitting(true);
 
     // Authoritative persistence: server-side completion record, checked by
-    // the /app route guard on every subsequent request.
+    // the server route guard on every subsequent request.
     const result = await completeOnboardingAction({
       companyName: company,
       websiteUrl: normalizeWebsite(websiteUrl),
@@ -121,7 +121,7 @@ export default function OnboardingPage() {
       approvalOwner: owner,
       initialConnectors: [],
     });
-    router.replace("/app/activate?first=1");
+    router.replace("/activate?first=1");
   };
 
   return (

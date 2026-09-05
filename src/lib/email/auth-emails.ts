@@ -12,7 +12,7 @@ function auterimLogoUrl(): string {
   // Self-contained rounded PNG badge (dark background baked into the asset
   // itself), safe across light/dark email clients. Do not swap for the SVG
   // mark -- SVG support in email clients is inconsistent.
-  return `${getMarketingUrl()}/brand/auterim-icon-64.png`;
+  return `${getMarketingUrl()}/brand/auterim-icon-32.png`;
 }
 
 export type TeamInviteEmailInput = {

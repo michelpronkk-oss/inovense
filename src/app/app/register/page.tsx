@@ -82,7 +82,7 @@ export default function RegisterPage() {
       // already returns an active session - go straight into the app,
       // where the layout gateway provisions the workspace automatically.
       if (data.session) {
-        router.replace("/app");
+        router.replace("/");
         router.refresh();
         return;
       }
@@ -146,7 +146,7 @@ export default function RegisterPage() {
                 : "Resend verification email"}
           </button>
           <div className="auth-foot">
-            Already verified? <Link href="/app/login">Sign in</Link>
+            Already verified? <Link href="/login">Sign in</Link>
           </div>
         </div>
       </div>
@@ -187,7 +187,7 @@ export default function RegisterPage() {
         </form>
 
         <div className="auth-foot">
-          Already have an account? <Link href="/app/login">Sign in</Link>
+          Already have an account? <Link href="/login">Sign in</Link>
         </div>
       </div>
     </div>

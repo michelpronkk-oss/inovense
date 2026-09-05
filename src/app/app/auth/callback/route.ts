@@ -30,6 +30,6 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/app";
+  const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
   return NextResponse.redirect(new URL(appHref(safeNext)));
 }

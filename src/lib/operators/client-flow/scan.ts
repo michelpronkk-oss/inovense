@@ -841,7 +841,7 @@ export async function scanClientFlowSignals(input: {
           risk: "medium",
           source: "gmail",
           actionLabel: trelloPrepared ? "send client reply and create Trello task" : "send client reply",
-          approvalUrl: `${getAppUrl()}/app/approvals`,
+          approvalUrl: `${getAppUrl()}/approvals`,
           metadata: { dedupeKey: dedupe.dedupeKey, fromEmail: signal.message.fromEmail, subject: signal.message.subject, preparedActions },
         });
       } catch (error) {

@@ -21,7 +21,7 @@ const ONBOARDING_VERSION = 1;
 
 /**
  * Persists onboarding completion server-side (os_workspaces.onboarding_completed_at
- * / onboarding_data). This is the authoritative record checked by the /app
+ * / onboarding_data). This is the authoritative record checked by the app
  * route guard (src/lib/server/app-gateway.ts) - the client-side OS state
  * (`completeOnboarding` in app-provider) may keep its own cached copy for
  * instant UI feedback, but it is never trusted on its own.

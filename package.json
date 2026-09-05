@@ -10,6 +10,7 @@
     "test:rebrand": "node tests/auterim-phase4-smoke.mjs",
     "test:auth-security": "node tests/auth-security-smoke.mjs",
     "test:signup-auth": "node tests/signup-auth-regression.mjs",
+    "test:product-routing": "node tests/product-routing-regression.mjs",
     "trigger:dev": "npx trigger.dev@latest dev",
     "trigger:deploy": "npx trigger.dev@latest deploy"
   },

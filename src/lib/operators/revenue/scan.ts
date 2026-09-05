@@ -1042,7 +1042,7 @@ export async function scanRevenueOpportunities(input: {
           risk: "medium",
           source: "gmail",
           actionLabel: hubspotConnected ? "send follow-up email and update HubSpot" : "send follow-up email",
-          approvalUrl: `${getAppUrl()}/app/approvals`,
+          approvalUrl: `${getAppUrl()}/approvals`,
           metadata: {
             dedupeKey: dedupe.dedupeKey,
             fromEmail: opportunity.message.fromEmail,

@@ -22,10 +22,10 @@ const AuterimMark = ({ size = 22 }: { size?: number }) => (
 );
 
 const ADMIN_NAV = [
-  { icon: UsersIcon, label: "Team", href: "/app/team" },
-  { icon: ShieldIcon, label: "Policies", href: "/app/policies" },
-  { icon: KeyIcon, label: "API keys", href: "/app/api-keys" },
-  { icon: SettingsIcon, label: "Settings", href: "/app/settings" },
+  { icon: UsersIcon, label: "Team", href: "/team" },
+  { icon: ShieldIcon, label: "Policies", href: "/policies" },
+  { icon: KeyIcon, label: "API keys", href: "/api-keys" },
+  { icon: SettingsIcon, label: "Settings", href: "/settings" },
 ];
 
 export function OSSidebar() {
@@ -57,21 +57,21 @@ export function OSSidebar() {
   const workflowCount = state.workflows.length;
 
   const OPS_NAV = [
-    { icon: TargetIcon, label: "Overview", href: "/app" },
-    { icon: CpuIcon, label: "Agents", href: "/app/agents", badge: String(agentCount) },
-    { icon: FlowIcon, label: "Workflows", href: "/app/workflows", badge: String(workflowCount) },
-    { icon: InboxIcon, label: "Approvals", href: "/app/approvals", badge: pendingApprovals > 0 ? String(pendingApprovals) : undefined },
-    { icon: DatabaseIcon, label: "Memory", href: "/app/memory" },
-    { icon: LinkIcon, label: "Connectors", href: "/app/connectors" },
-    { icon: DocIcon, label: "Execution logs", href: "/app/logs" },
-    { icon: ChartIcon, label: "Insights", href: "/app/insights" },
+    { icon: TargetIcon, label: "Overview", href: "/" },
+    { icon: CpuIcon, label: "Agents", href: "/agents", badge: String(agentCount) },
+    { icon: FlowIcon, label: "Workflows", href: "/workflows", badge: String(workflowCount) },
+    { icon: InboxIcon, label: "Approvals", href: "/approvals", badge: pendingApprovals > 0 ? String(pendingApprovals) : undefined },
+    { icon: DatabaseIcon, label: "Memory", href: "/memory" },
+    { icon: LinkIcon, label: "Connectors", href: "/connectors" },
+    { icon: DocIcon, label: "Execution logs", href: "/logs" },
+    { icon: ChartIcon, label: "Insights", href: "/insights" },
   ];
 
-  const isActive = (href: string) => (href === "/app" ? pathname === "/app" : pathname.startsWith(href));
+  const isActive = (href: string) => (href === "/" ? pathname === "/" || pathname === "/app" : pathname.startsWith(href));
 
   return (
     <aside className="os-side">
-      <Link href="/app" className="os-brand">
+      <Link href="/" className="os-brand">
         <AuterimMark size={18} />
         <span>AUTERIM</span>
       </Link>

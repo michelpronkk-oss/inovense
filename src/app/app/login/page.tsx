@@ -44,7 +44,7 @@ export default function LoginPage() {
         setBusy(false);
         return;
       }
-      router.replace(from && from.startsWith("/app") ? from : "/app");
+      router.replace(from && from.startsWith("/") && !from.startsWith("//") ? from : "/");
       router.refresh();
     } catch (signInError) {
       console.warn("[auth.signin] failed", authErrorDiagnostics(signInError));
@@ -96,10 +96,10 @@ export default function LoginPage() {
         </form>
 
         <div className="auth-foot">
-          <Link href="/app/forgot-password">Forgot password?</Link>
+          <Link href="/forgot-password">Forgot password?</Link>
         </div>
         <div className="auth-foot">
-          Don&apos;t have an account? <Link href="/app/register">Create one</Link>
+          Don&apos;t have an account? <Link href="/register">Create one</Link>
         </div>
       </div>
     </div>

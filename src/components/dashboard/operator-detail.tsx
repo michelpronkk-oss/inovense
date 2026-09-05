@@ -175,7 +175,7 @@ export function OperatorDetail({ operatorKey }: { operatorKey: OperatorDetailKey
 
   return (
     <div className="os-page od-page" style={{ "--c": op.color } as CSSProperties}>
-      <Link href="/app/agents" className="od-back">
+      <Link href="/agents" className="od-back">
         <span className="dot" /> Operators <span className="sep">/</span> {op.tag.split(" ")[0]}
       </Link>
 
@@ -199,7 +199,7 @@ export function OperatorDetail({ operatorKey }: { operatorKey: OperatorDetailKey
         </div>
         <div className="od-hero-actions">
           <button className="btn btn-ghost btn-sm" type="button" onClick={runManualCheck} disabled={!canRun || busy} style={{ opacity: !canRun || busy ? 0.45 : 1 }}>{busy ? "Checking..." : "Run manual check"}</button>
-          <Link className="btn btn-primary btn-sm" href="/app/approvals" style={{ textDecoration: "none" }}>View approvals</Link>
+          <Link className="btn btn-primary btn-sm" href="/approvals" style={{ textDecoration: "none" }}>View approvals</Link>
         </div>
       </div>
 
@@ -345,7 +345,7 @@ export function OperatorDetail({ operatorKey }: { operatorKey: OperatorDetailKey
           <div className="p">
             <div className="p-head">
               <h3>Pending approvals</h3>
-              <Link className="btn btn-ghost btn-sm" href="/app/approvals" style={{ textDecoration: "none" }}>Approval inbox</Link>
+              <Link className="btn btn-ghost btn-sm" href="/approvals" style={{ textDecoration: "none" }}>Approval inbox</Link>
             </div>
             <div className="p-body">
               {pending.length === 0
@@ -356,7 +356,7 @@ export function OperatorDetail({ operatorKey }: { operatorKey: OperatorDetailKey
                       <div className="od-run-nm">{a.title || a.cardName || a.subject || "Approval"}</div>
                       <div className="od-run-meta">{a.to || a.cardName || "Awaiting review"} Â· {timeAgo(a.created_at)}</div>
                     </div>
-                    <Link className="appr-btn approve" href="/app/approvals" style={{ textDecoration: "none" }}>Review</Link>
+                    <Link className="appr-btn approve" href="/approvals" style={{ textDecoration: "none" }}>Review</Link>
                   </div>
                 ))}
             </div>

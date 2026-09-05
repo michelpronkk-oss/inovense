@@ -49,7 +49,7 @@ export default function ResetPasswordPage() {
         return;
       }
       setDone(true);
-      setTimeout(() => router.replace("/app"), 1200);
+      setTimeout(() => router.replace("/"), 1200);
     } catch {
       setError("Could not update your password.");
       setBusy(false);

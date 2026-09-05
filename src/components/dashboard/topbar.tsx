@@ -8,6 +8,18 @@ import type { DeployConfig } from "@/lib/os/types";
 import { SearchIcon, SparkIcon, BellIcon, MessageIcon, PlusIcon, XIcon, ArrowIcon, CpuIcon, FlowIcon, DocIcon, DatabaseIcon } from "@/components/dashboard/icons";
 
 const PAGE_LABELS: Record<string, string> = {
+  "/": "Overview",
+  "/agents": "Agents",
+  "/workflows": "Workflows",
+  "/approvals": "Approvals",
+  "/memory": "Memory",
+  "/connectors": "Connectors",
+  "/logs": "Execution logs",
+  "/insights": "Insights",
+  "/team": "Team",
+  "/policies": "Policies",
+  "/api-keys": "API keys",
+  "/settings": "Settings",
   "/app": "Overview",
   "/app/agents": "Agents",
   "/app/workflows": "Workflows",
@@ -60,7 +72,7 @@ function DeployModal({ onClose }: { onClose: () => void }) {
     const agent = deployAgent(config);
     setTimeout(() => runAgent(agent.id), 200);
     onClose();
-    router.push("/app/agents");
+    router.push("/agents");
   };
 
   const deployedCount = deployedIds.has(selected ?? "") ? state.agents.filter((a) => a.templateId === selected).length : 0;
@@ -311,25 +323,25 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
       icon: CpuIcon,
       label: a.name,
       sub: `${a.status} - ${a.stats.metricValue} ${a.stats.metricLabel}`,
-      href: "/app/agents",
+      href: "/agents",
     })),
     ...state.workflows.map((w) => ({
       icon: FlowIcon,
       label: w.name,
       sub: `${w.trigger} - ${w.totalRuns.toLocaleString()} runs`,
-      href: "/app/workflows",
+      href: "/workflows",
     })),
     ...state.approvals.filter((a) => a.status === "pending").map((a) => ({
       icon: DocIcon,
       label: a.title,
       sub: `${a.type} - pending approval`,
-      href: "/app/approvals",
+      href: "/approvals",
     })),
     ...state.memory.map((m) => ({
       icon: DatabaseIcon,
       label: m.label,
       sub: `${m.type} - ${m.fieldCount} fields`,
-      href: "/app/memory",
+      href: "/memory",
     })),
   ];
 
@@ -718,7 +730,7 @@ export function OSTopbar() {
   const [helpOpen, setHelpOpen] = useState(false);
 
   const pageName = PAGE_LABELS[pathname] ?? "Overview";
-  const contextualAction = pathname === "/app/agents"
+  const contextualAction = pathname === "/agents" || pathname === "/app/agents"
     ? { label: "Deploy agent", icon: true, onClick: () => setDeployOpen(true) }
     : null;
 
@@ -840,7 +852,7 @@ export function OSTopbar() {
             onClick={() => {
               closeAll();
               fetch("/api/auth/logout", { method: "POST" }).finally(() => {
-                window.location.href = "/app/login";
+                window.location.href = "/login";
               });
             }}
           >

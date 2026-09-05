@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useOS } from "@/lib/os/app-provider";
 import { OSSidebar } from "@/components/dashboard/sidebar";
 import { OSTopbar } from "@/components/dashboard/topbar";
@@ -60,31 +59,21 @@ function TrialBanner({ trialEndsAt }: { trialEndsAt?: string }) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { state, clientHydrated } = useOS();
-  const isOnboardingRoute = pathname === "/app/onboarding";
+  const { state } = useOS();
+  // The browser keeps the canonical URL while middleware rewrites to the
+  // internal `/app/*` segment. Accept both during client navigation, but do
+  // not redirect here: the server layout + gateway are the sole authority.
+  const isOnboardingRoute = pathname === "/onboarding" || pathname === "/app/onboarding";
   const isBareRoute = isOnboardingRoute || Boolean(pathname && (
-    pathname === "/app/login" ||
-    pathname === "/app/register" ||
-    pathname === "/app/forgot-password" ||
-    pathname === "/app/reset-password" ||
-    pathname === "/app/auth/callback" ||
-    pathname === "/app/invite/accept"
+    pathname === "/login" || pathname === "/register" ||
+    pathname === "/forgot-password" || pathname === "/reset-password" ||
+    pathname === "/auth/callback" || pathname === "/invite/accept" ||
+    pathname === "/app/login" || pathname === "/app/register" ||
+    pathname === "/app/forgot-password" || pathname === "/app/reset-password" ||
+    pathname === "/app/auth/callback" || pathname === "/app/invite/accept"
   ));
-  const isOnboarded = state.onboarding.isComplete;
   const entitlements = getEntitlements(state.workspace);
   const showManageBilling = entitlements.billingStatus === "active" || entitlements.billingStatus === "trialing" || entitlements.billingStatus === "past_due";
-
-  useEffect(() => {
-    if (!clientHydrated || isBareRoute) return;
-    if (!isOnboarded && !isOnboardingRoute) {
-      router.replace("/app/onboarding");
-      return;
-    }
-    if (isOnboarded && isOnboardingRoute) {
-      router.replace("/app/activate?first=1");
-    }
-  }, [clientHydrated, isBareRoute, isOnboarded, isOnboardingRoute, router]);
 
   if (isBareRoute) {
     return (
@@ -142,7 +131,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 Manage subscription, payment method, invoices and cancellation in Dodo Customer Portal.
               </div>
             </div>
-            <Link className="btn btn-ghost btn-sm" href="/app/settings?billing=manage">
+            <Link className="btn btn-ghost btn-sm" href="/settings?billing=manage">
               Manage billing
             </Link>
           </div>

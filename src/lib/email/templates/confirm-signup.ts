@@ -42,7 +42,7 @@ const content = {
   ctaText: "Confirm email",
   ctaHref: "{{ .ConfirmationURL }}",
   securityNote: "If you didn't create an Auterim account, you can safely ignore this email.",
-  logoUrl: "https://auterim.com/brand/auterim-icon-64.png",
+  logoUrl: "https://auterim.com/brand/auterim-icon-32.png",
 };
 
 export const HTML = renderAuterimEmailHtml(content);

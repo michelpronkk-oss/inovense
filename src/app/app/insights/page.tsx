@@ -121,7 +121,7 @@ export default function InsightsPage() {
       operators: agentPerf.map((a) => ({ name: `${a.name} Operator`, actions: a.actions, outputs: a.outputs })),
     };
 
-    const res = await fetch("/app/insights/export", {
+    const res = await fetch("/insights/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

@@ -168,17 +168,17 @@ export default function ActivationPage() {
   const steps = useMemo(() => {
     const connectReady = path === "operations" ? trelloConnected : path === "client_flow" ? gmailReady && trelloConnected : gmailReady;
     const connectCta = path === "operations"
-      ? { label: "Connect Trello", href: "/app/connectors?setup=trello" }
+      ? { label: "Connect Trello", href: "/connectors?setup=trello" }
       : path === "client_flow"
-        ? (!gmailReady ? { label: "Connect Gmail", href: "/app/connectors?setup=gmail" } : { label: "Connect Trello", href: "/app/connectors?setup=trello" })
-        : { label: "Connect Gmail", href: "/app/connectors?setup=gmail" };
+        ? (!gmailReady ? { label: "Connect Gmail", href: "/connectors?setup=gmail" } : { label: "Connect Trello", href: "/connectors?setup=trello" })
+        : { label: "Connect Gmail", href: "/connectors?setup=gmail" };
     const configureReady = path === "operations" || path === "client_flow" ? trelloDestinationSet : safeMode;
     return [
       { key: "path" as StepKey, title: "Choose path", short: meta.label, description: "Choose the operating lane Auterim should prepare first.", state: "complete" as StepState },
       { key: "connect" as StepKey, title: "Connect tools", short: connectReady ? "Ready" : "Required", description: path === "revenue" ? "Connect Gmail for inbox context and approval-gated follow-up." : path === "client_flow" ? "Connect Gmail and Trello for client context and approved task updates." : "Connect Trello before inspecting real project cards.", state: connectReady ? "complete" as StepState : "needs_setup" as StepState, cta: connectReady ? undefined : connectCta },
-      { key: "configure" as StepKey, title: "Configure tools", short: configureReady ? "Ready" : "Required", description: path === "revenue" ? "Confirm approval-first controls before running the first check." : "Choose where approved task updates should land.", state: configureReady ? "complete" as StepState : "needs_setup" as StepState, cta: configureReady ? undefined : path === "revenue" ? { label: "Open policies", href: "/app/policies" } : { label: "Select Trello board/list", href: "/app/connectors?setup=trello-project" } },
+      { key: "configure" as StepKey, title: "Configure tools", short: configureReady ? "Ready" : "Required", description: path === "revenue" ? "Confirm approval-first controls before running the first check." : "Choose where approved task updates should land.", state: configureReady ? "complete" as StepState : "needs_setup" as StepState, cta: configureReady ? undefined : path === "revenue" ? { label: "Open policies", href: "/policies" } : { label: "Select Trello board/list", href: "/connectors?setup=trello-project" } },
       { key: "run" as StepKey, title: "Run first check", short: hasFirstRun ? "Complete" : coreReady ? "Ready" : "Blocked", description: coreReady ? `Run ${meta.operator} against connected tools.` : "Finish required setup before running a real operator check.", state: hasFirstRun ? "complete" as StepState : coreReady ? "ready" as StepState : "needs_setup" as StepState, cta: { label: scanBusy ? "Checking..." : `Run ${meta.label} check`, onClick: () => void runScan(), disabled: !coreReady || scanBusy } },
-      { key: "review" as StepKey, title: "Review first approval", short: firstApprovalCreated ? "Ready" : "Pending", description: firstApprovalCreated ? "Review the prepared action before anything executes." : "Your first approval will appear here after a signal is found.", state: firstApprovalCreated ? "ready" as StepState : "needs_setup" as StepState, cta: { label: "Open approvals", href: "/app/approvals" } },
+      { key: "review" as StepKey, title: "Review first approval", short: firstApprovalCreated ? "Ready" : "Pending", description: firstApprovalCreated ? "Review the prepared action before anything executes." : "Your first approval will appear here after a signal is found.", state: firstApprovalCreated ? "ready" as StepState : "needs_setup" as StepState, cta: { label: "Open approvals", href: "/approvals" } },
     ];
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [coreReady, firstApprovalCreated, gmailReady, hasFirstRun, meta.label, meta.operator, path, safeMode, scanBusy, trelloConnected, trelloDestinationSet]);
@@ -240,8 +240,8 @@ export default function ActivationPage() {
           <div className="os-page-sub">Set up your first operator workflow in a few clear steps.</div>
         </div>
         <div className="os-page-actions">
-          <Link className="btn btn-ghost btn-sm" href="/app">Dashboard</Link>
-          <Link className="btn btn-ghost btn-sm" href="/app/connectors">Connectors</Link>
+          <Link className="btn btn-ghost btn-sm" href="/">Dashboard</Link>
+          <Link className="btn btn-ghost btn-sm" href="/connectors">Connectors</Link>
         </div>
       </div>
 
@@ -312,7 +312,7 @@ export default function ActivationPage() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "12px 24px 16px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => activeIndex > 0 && setSelectedStep(steps[activeIndex - 1].key)} disabled={activeIndex === 0} style={{ opacity: activeIndex === 0 ? 0.4 : 1 }}>Back</button>
             {activeStep.key === "review" ? (
-              <Link className="btn btn-primary btn-sm" href="/app/approvals">Review approval →</Link>
+              <Link className="btn btn-primary btn-sm" href="/approvals">Review approval →</Link>
             ) : activeStep.cta && activeStep.state !== "complete" ? (
               "href" in activeStep.cta
                 ? <Link className="btn btn-primary btn-sm" href={activeStep.cta.href}>{activeStep.cta.label} →</Link>

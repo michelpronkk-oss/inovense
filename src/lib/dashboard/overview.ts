@@ -191,7 +191,7 @@ export function mapApprovalToActivity(row: Row): DashboardActivity {
     operatorKey,
     connectorKey,
     severity: status === "failed" ? "danger" : status === "pending" ? "warning" : "success",
-    href: "/app/approvals",
+    href: "/approvals",
   };
 }
 
@@ -215,7 +215,7 @@ export function mapRunLogToActivity(row: Row): DashboardActivity {
     operatorKey: stringValue(metadata.operatorKey) ?? stringValue(row.operator_key),
     connectorKey,
     severity,
-    href: "/app/logs",
+    href: "/logs",
   };
 }
 
@@ -335,7 +335,7 @@ function buildOperators(input: { approvals: Row[]; runs: Row[]; truth: SafeConne
       signalsToday: operatorSignalsToday(spec.key, input.runs),
       actionsToday: operatorActionsToday(spec.key, input.approvals),
       description: spec.description,
-      href: `/app/agents/${spec.key === "client_flow" ? "client-flow" : spec.key}`,
+      href: `/agents/${spec.key === "client_flow" ? "client-flow" : spec.key}`,
     };
   });
 }
@@ -360,7 +360,7 @@ function buildConnectors(input: { truth: SafeConnectorTruth[] }): DashboardConne
       lastCheckedAt: truth?.connectedAt ?? null,
       purpose: purpose[key],
       usedBy: (def?.usedByOperators ?? []).slice(0, 4).map(operatorDisplayName),
-      href: "/app/connectors",
+      href: "/connectors",
     };
   });
 }
@@ -417,15 +417,15 @@ export function deriveNextBestActions(input: {
 }): DashboardNextAction[] {
   const actions: DashboardNextAction[] = [];
   const missing = input.connectors.filter((connector) => connector.status === "needs_setup").map((connector) => connector.name);
-  if (input.pendingApprovals > 0) actions.push({ id: "review-approvals", title: "Review pending approvals", description: `${input.pendingApprovals} approval${input.pendingApprovals === 1 ? "" : "s"} waiting for a decision.`, href: "/app/approvals", priority: "high" });
-  if (input.policyEmergencyStop) actions.push({ id: "emergency-stop", title: "Review emergency stop", description: "Risky execution is currently blocked by policy.", href: "/app/policies", priority: "high" });
+  if (input.pendingApprovals > 0) actions.push({ id: "review-approvals", title: "Review pending approvals", description: `${input.pendingApprovals} approval${input.pendingApprovals === 1 ? "" : "s"} waiting for a decision.`, href: "/approvals", priority: "high" });
+  if (input.policyEmergencyStop) actions.push({ id: "emergency-stop", title: "Review emergency stop", description: "Risky execution is currently blocked by policy.", href: "/policies", priority: "high" });
   const slack = input.connectors.find((connector) => connector.key === "slack");
-  if (slack?.connected && !input.slackChannelSelected) actions.push({ id: "slack-channel", title: "Select Slack alert channel", description: "Choose where internal approval and operator alerts should appear.", href: "/app/connectors", priority: "medium" });
+  if (slack?.connected && !input.slackChannelSelected) actions.push({ id: "slack-channel", title: "Select Slack alert channel", description: "Choose where internal approval and operator alerts should appear.", href: "/connectors", priority: "medium" });
   const trello = input.connectors.find((connector) => connector.key === "trello");
-  if (trello?.connected && !input.trelloDestinationSet) actions.push({ id: "trello-default", title: "Choose Trello default board", description: "Set the board and list for approved task updates.", href: "/app/connectors", priority: "medium" });
-  if (missing.length > 0) actions.push({ id: "connect-tools", title: `Connect ${missing.slice(0, 2).join(" and ")}`, description: "Connect real accounts before operators can run end to end.", href: "/app/connectors", priority: "medium" });
-  if (input.runsCount === 0) actions.push({ id: "first-check", title: "Run first operator check", description: "Start with Revenue, Client Flow, or Operations from the operator cards.", href: "/app/agents", priority: "low" });
-  if (actions.length === 0) actions.push({ id: "open-operators", title: "Open operators", description: "Review monitoring settings or run a manual check when you are ready.", href: "/app/agents", priority: "low" });
+  if (trello?.connected && !input.trelloDestinationSet) actions.push({ id: "trello-default", title: "Choose Trello default board", description: "Set the board and list for approved task updates.", href: "/connectors", priority: "medium" });
+  if (missing.length > 0) actions.push({ id: "connect-tools", title: `Connect ${missing.slice(0, 2).join(" and ")}`, description: "Connect real accounts before operators can run end to end.", href: "/connectors", priority: "medium" });
+  if (input.runsCount === 0) actions.push({ id: "first-check", title: "Run first operator check", description: "Start with Revenue, Client Flow, or Operations from the operator cards.", href: "/agents", priority: "low" });
+  if (actions.length === 0) actions.push({ id: "open-operators", title: "Open operators", description: "Review monitoring settings or run a manual check when you are ready.", href: "/agents", priority: "low" });
   return actions.slice(0, 5);
 }
 
@@ -482,7 +482,7 @@ export async function getDashboardOverview(input: {
     operatorKey: stringValue(row.operator_key),
     connectorKey: null,
     severity: stringValue(row.status) === "failed" ? "danger" : stringValue(row.status) === "completed" ? "success" : "info",
-    href: "/app/logs",
+    href: "/logs",
   }));
   const activity = [...approvalActivities, ...logActivities, ...runActivities]
     .sort((a, b) => new Date(b.time ?? 0).getTime() - new Date(a.time ?? 0).getTime())
@@ -519,7 +519,7 @@ export async function getDashboardOverview(input: {
           operatorKey: stringValue(payload.operatorKey) ?? stringValue(row.agent_id),
           riskLevel: riskFromPayload(payload),
           policyDecision: policyDecisionFromPayload(payload) ?? "approval_required",
-          href: "/app/approvals",
+          href: "/approvals",
         };
       }),
     },

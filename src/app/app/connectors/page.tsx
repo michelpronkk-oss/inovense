@@ -297,7 +297,7 @@ export default function ConnectorsPage() {
     const connected = searchParams.get("connected");
     if (connected === "gmail") {
       setFeedback("Gmail connected. Approval-gated compose/send permissions are now active.");
-      router.replace("/app/connectors");
+      router.replace("/connectors");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

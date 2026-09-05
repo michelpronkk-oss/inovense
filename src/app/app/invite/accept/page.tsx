@@ -29,14 +29,14 @@ export default function InviteAcceptPage() {
         return;
       }
       setStatus("done");
-      setTimeout(() => router.replace("/app"), 900);
+      setTimeout(() => router.replace("/"), 900);
     });
     return () => {
       cancelled = true;
     };
   }, [token, router]);
 
-  const loginHref = `/app/login?from=${encodeURIComponent(`/app/invite/accept?token=${token}`)}`;
+  const loginHref = `/login?from=${encodeURIComponent(`/invite/accept?token=${token}`)}`;
 
   return (
     <div className="auth-shell">

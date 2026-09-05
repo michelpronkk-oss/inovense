@@ -376,7 +376,7 @@ export default function ApprovalsPage() {
           <div className="os-page-sub">Review and approve AI operator outputs before they execute or send.</div>
         </div>
         <div className="os-page-actions">
-          <button className="btn btn-ghost btn-sm" onClick={() => router.push("/app/logs")}>History</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => router.push("/logs")}>History</button>
           <button
             className="btn btn-primary btn-sm"
             onClick={approveAll}
@@ -873,7 +873,7 @@ export default function ApprovalsPage() {
 
       <div style={{ padding: "14px 18px", borderRadius: 12, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", fontSize: 12.5, color: "var(--text-mute)", lineHeight: 1.6 }}>
         <strong style={{ color: "var(--text-dim)" }}>Approval policy:</strong> Outbound communications require manual approval before execution. This inbox now reads real workspace approvals from the database.{" "}
-        <button className="lnk-open" style={{ fontSize: 12.5 }} onClick={() => router.push("/app/policies")}>Edit policies</button>
+        <button className="lnk-open" style={{ fontSize: 12.5 }} onClick={() => router.push("/policies")}>Edit policies</button>
       </div>
     </div>
   );

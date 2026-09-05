@@ -56,22 +56,27 @@ export function isMarketingHost(hostname: string): boolean {
   return Boolean(marketingHost && normalized === marketingHost);
 }
 
-export function getAppRoute(path: string = "/onboarding"): string {
+/**
+ * Public product routes always live at the root of app.auterim.com. The
+ * internal Next route segment remains `/app` for now, but middleware rewrites
+ * these canonical URLs without exposing that implementation detail.
+ */
+export function getAppRoute(path: string = "/"): string {
   const normalized = ensureLeadingSlash(path);
-  const appUrl = getAppUrl();
-  const appHost = toHostname(appUrl);
-  const shouldUseLegacyPath = isLocalHostName(appHost);
-
-  if (shouldUseLegacyPath) {
+  const appHost = toHostname(getAppUrl());
+  // Local development shares one localhost origin with the marketing app, so
+  // retain its internal product prefix. Production uses app.auterim.com and
+  // never exposes that prefix.
+  if (isLocalHostName(appHost)) {
     return normalized.startsWith("/app") ? normalized : `/app${normalized}`;
   }
-
+  // Accept legacy callers while never generating a legacy public URL.
   if (normalized === "/app") return "/";
   if (normalized.startsWith("/app/")) return normalized.slice(4);
   return normalized;
 }
 
-export function appHref(path: string = "/app"): string {
+export function appHref(path: string = "/"): string {
   const appBase = getAppUrl();
   const appPath = getAppRoute(path);
   return join(appBase, appPath);

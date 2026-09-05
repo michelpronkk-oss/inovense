@@ -235,7 +235,7 @@ export default function SettingsPage() {
       window.location.assign(`/api/connectors/gmail/auth?${qs.toString()}`);
       return;
     }
-    window.location.assign("/app/connectors");
+    window.location.assign("/connectors");
   };
 
   const openBillingPortal = async () => {

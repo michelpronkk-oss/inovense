@@ -93,7 +93,7 @@ export async function inviteWorkspaceMember(input: InviteInput): Promise<InviteR
 
   const appUrl = getAppUrl();
   const acceptPath = `/invite/accept?token=${inviteInsert.data.token}`;
-  const directAcceptUrl = `${appUrl}/app${acceptPath}`;
+  const directAcceptUrl = `${appUrl}${acceptPath}`;
 
   // Route the invite through the auth callback first so the invite token is
   // exchanged for a real session cookie before the accept page (a Server
@@ -104,7 +104,7 @@ export async function inviteWorkspaceMember(input: InviteInput): Promise<InviteR
   // `inviteUserByEmail`, which silently fired Supabase's own unbranded
   // invite email in addition to this one -- that double-send is the bug
   // this fixes.)
-  const supabaseInviteRedirect = `${appUrl}/app/auth/callback?next=${encodeURIComponent(acceptPath)}`;
+  const supabaseInviteRedirect = `${appUrl}/auth/callback?next=${encodeURIComponent(acceptPath)}`;
   const generated = await supabase.auth.admin.generateLink({
     type: "invite",
     email,

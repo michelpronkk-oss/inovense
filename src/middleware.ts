@@ -52,6 +52,15 @@ export async function middleware(request: NextRequest) {
     if (originalPathname.startsWith("/admin")) {
       return redirectToHost(request, getAdminHost(), stripAdminPrefix(originalPathname));
     }
+    // Historical product links occasionally used the marketing host plus the
+    // internal segment. Move them straight to the canonical product origin.
+    if (originalPathname === "/app" || originalPathname.startsWith("/app/")) {
+      return redirectToHost(
+        request,
+        getAppHost(),
+        originalPathname === "/app" ? "/" : originalPathname.slice(4)
+      );
+    }
     if (isClientSurfacePath(originalPathname)) {
       return redirectToHost(request, getAppHost(), originalPathname);
     }
@@ -75,17 +84,23 @@ export async function middleware(request: NextRequest) {
   }
 
   if (surface === "app") {
+    // `/app` is an internal App Router segment, not a public URL. Canonicalize
+    // old email/bookmark links before rewriting canonical paths internally.
+    // This is deliberately a single external redirect, so legacy links never
+    // enter the auth/onboarding guard under the wrong pathname.
+    if (originalPathname === "/app" || originalPathname.startsWith("/app/")) {
+      const canonicalUrl = request.nextUrl.clone();
+      canonicalUrl.pathname = originalPathname === "/app" ? "/" : originalPathname.slice(4);
+      return NextResponse.redirect(canonicalUrl, { status: 308 });
+    }
+
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set("x-pathname", originalPathname);
     if (originalPathname.startsWith("/api")) {
       return NextResponse.next({ request: { headers: requestHeaders } });
     }
 
-    const target = originalPathname === "/"
-      ? "/app"
-      : originalPathname.startsWith("/app")
-        ? originalPathname
-        : `/app${originalPathname}`;
+    const target = originalPathname === "/" ? "/app" : `/app${originalPathname}`;
     return rewriteTo(request, target, requestHeaders);
   }
 

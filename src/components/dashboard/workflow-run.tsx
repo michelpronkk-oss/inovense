@@ -32,8 +32,8 @@ export function WorkflowRunPanel() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn btn-ghost btn-sm" onClick={() => router.push("/app/logs")}>View logs</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => router.push("/app/workflows")}>Open workflow</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => router.push("/logs")}>View logs</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => router.push("/workflows")}>Open workflow</button>
           </div>
         </div>
         <div className="wfx-progress">

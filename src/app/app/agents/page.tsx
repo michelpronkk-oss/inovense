@@ -16,9 +16,9 @@ type OperatorReadiness = {
 type AgentStatus = "available" | "upgrade" | "coming";
 
 const HREF_BY_KEY: Record<string, string> = {
-  revenue: "/app/agents/revenue",
-  client_flow: "/app/agents/client-flow",
-  operations: "/app/agents/operations",
+  revenue: "/agents/revenue",
+  client_flow: "/agents/client-flow",
+  operations: "/agents/operations",
 };
 
 const LOOP_STEPS = ["Detect", "Prepare", "Approve", "Execute", "Log"];
@@ -155,8 +155,8 @@ export default function AgentsRegistryPage() {
           <div className="os-page-sub">Your operating layer. Fifteen operators, one disciplined loop.</div>
         </div>
         <div className="os-page-actions">
-          <Link href="/app/approvals" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Approval inbox</Link>
-          <Link href="/app/connectors" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Connectors</Link>
+          <Link href="/approvals" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Approval inbox</Link>
+          <Link href="/connectors" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Connectors</Link>
         </div>
       </div>
 

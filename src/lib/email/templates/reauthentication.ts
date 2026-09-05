@@ -49,7 +49,7 @@ export const HTML = `<!DOCTYPE html>
               <table role="presentation" cellpadding="0" cellspacing="0">
                 <tr>
                   <td style="vertical-align:middle;padding-right:10px;">
-                    <img src="https://auterim.com/brand/auterim-icon-64.png" alt="Auterim" width="28" height="28" style="display:block;width:28px;height:28px;border:0;border-radius:7px;" />
+                    <img src="https://auterim.com/brand/auterim-icon-32.png" alt="Auterim" width="28" height="28" style="display:block;width:28px;height:28px;border:0;border-radius:7px;" />
                   </td>
                   <td style="vertical-align:middle;">
                     <span style="font-size:14px;font-weight:700;letter-spacing:0.06em;color:${C.ink};">AUTERIM</span>

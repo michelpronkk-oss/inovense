@@ -450,7 +450,7 @@ export async function scanOperationsSignals(input: {
           risk: decision.severity,
           source: "trello",
           actionLabel: preparedTrelloAction ? preparedTrelloAction.actionType.replace(/_/g, " ") : "internal Slack update",
-          approvalUrl: `${getAppUrl()}/app/approvals`,
+          approvalUrl: `${getAppUrl()}/approvals`,
           metadata: { dedupeKey, signalType: decision.signalType, contactName: card?.name ?? listName, subject: card?.name ?? listName, preparedActions: [preparedSlackAction ? "send_slack_message" : null, preparedTrelloAction?.actionType ?? null].filter(Boolean) },
         });
       } catch (error) {

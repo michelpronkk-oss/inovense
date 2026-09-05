@@ -56,8 +56,8 @@ assert.match(nangoSession, /resolveWorkspaceContext/);
 
 // ── 4. /app route guard exists and enforces auth + onboarding order ──────
 assert.match(appLayout, /resolveAppGateway/);
-assert.match(appLayout, /redirect\(`\/app\/login/);
-assert.match(appLayout, /"\/app\/onboarding"/);
+assert.match(appLayout, /redirect\(`\/login/);
+assert.match(appLayout, /"\/onboarding"/);
 
 assert.match(appGateway, /getVerifiedSupabaseUser/);
 assert.match(appGateway, /provisionInitialWorkspace/);

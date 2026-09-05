@@ -35,7 +35,7 @@ const content = {
   ctaText: "Reset password",
   ctaHref: "{{ .ConfirmationURL }}",
   securityNote: "If you didn't request this, you can ignore this email. Your password will remain unchanged.",
-  logoUrl: "https://auterim.com/brand/auterim-icon-64.png",
+  logoUrl: "https://auterim.com/brand/auterim-icon-32.png",
 };
 
 export const HTML = renderAuterimEmailHtml(content);

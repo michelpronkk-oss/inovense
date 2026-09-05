@@ -230,8 +230,8 @@ export function OSOverview() {
         <div className="os-page-actions" style={{ alignItems: "center" }}>
           <span className="pill">{mode}</span>
           {pending > 0
-            ? <Link className="btn btn-primary btn-sm" href="/app/approvals">Open approvals</Link>
-            : <Link className="btn btn-ghost btn-sm" href="/app/agents">View operators</Link>}
+            ? <Link className="btn btn-primary btn-sm" href="/approvals">Open approvals</Link>
+            : <Link className="btn btn-ghost btn-sm" href="/agents">View operators</Link>}
         </div>
       </div>
 
@@ -260,7 +260,7 @@ export function OSOverview() {
               {activationLabels[preferredDemoPath] ?? "Operations"} demo - {activationProgress}/6 steps ready. {activationNextStep}
             </div>
           </div>
-          <Link className="btn btn-primary btn-sm" href="/app/activate">Continue setup</Link>
+          <Link className="btn btn-primary btn-sm" href="/activate">Continue setup</Link>
         </div>
       )}
 
@@ -357,7 +357,7 @@ export function OSOverview() {
         <div className="p">
           <div className="p-head">
             <h3>Activity</h3>
-            <Link className="lnk-open" href="/app/logs">Open logs</Link>
+            <Link className="lnk-open" href="/logs">Open logs</Link>
           </div>
           <div>
             {overview.activity.length === 0 ? (
@@ -379,7 +379,7 @@ export function OSOverview() {
         <div className="p">
           <div className="p-head">
             <h3>Policy</h3>
-            <Link className="lnk-open" href="/app/policies">Manage policies</Link>
+            <Link className="lnk-open" href="/policies">Manage policies</Link>
           </div>
           <div style={{ padding: "14px 18px", display: "grid", gap: 8 }}>
             <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>

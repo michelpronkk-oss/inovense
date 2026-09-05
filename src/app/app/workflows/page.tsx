@@ -210,7 +210,7 @@ export default function WorkflowsPage() {
               <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--green)" }}>{w.successRate}%</span>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-mute)" }}>{w.totalRuns.toLocaleString()} runs</span>
               <div style={{ display: "flex", gap: 6 }}>
-                <button className="appr-btn edit" onClick={() => router.push("/app/logs")}>View logs</button>
+                <button className="appr-btn edit" onClick={() => router.push("/logs")}>View logs</button>
                 <button className="appr-btn approve" onClick={() => runWorkflow(w.id)}>{isPreview ? "Run demo" : "Run live"}</button>
               </div>
             </div>
@@ -267,9 +267,9 @@ export default function WorkflowsPage() {
                 ))}
               </div>
               <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                <button className="appr-btn edit" onClick={() => router.push("/app/connectors")}>Open connectors</button>
-                <button className="appr-btn edit" onClick={() => router.push("/app/agents")}>Open operators</button>
-                <button className="appr-btn edit" onClick={() => router.push("/app/policies")}>Open policies</button>
+                <button className="appr-btn edit" onClick={() => router.push("/connectors")}>Open connectors</button>
+                <button className="appr-btn edit" onClick={() => router.push("/agents")}>Open operators</button>
+                <button className="appr-btn edit" onClick={() => router.push("/policies")}>Open policies</button>
               </div>
             </div>
           </div>

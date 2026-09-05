@@ -71,7 +71,7 @@ export default function ForgotPasswordPage() {
         )}
 
         <div className="auth-foot">
-          <Link href="/app/login">Back to sign in</Link>
+          <Link href="/login">Back to sign in</Link>
         </div>
       </div>
     </div>
