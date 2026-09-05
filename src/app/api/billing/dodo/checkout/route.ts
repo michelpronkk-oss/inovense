@@ -51,6 +51,11 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     // Avoid leaking billing-provider internals into the browser URL. The
     // detailed provider response remains available in server logs.
+    console.error("[dodo.checkout] checkout creation failed", {
+      plan,
+      workspaceId,
+      message: error instanceof Error ? error.message : "Unknown checkout error",
+    });
     return NextResponse.redirect(new URL("/plans?billing=error", getAppUrl()));
   }
 }

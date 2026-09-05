@@ -42,7 +42,7 @@ export async function createDodoCheckoutSession(input: DodoCheckoutSessionInput)
     // Land paid or trialing workspaces at the next real action, not a generic
     // dashboard. Connector setup is where an operator becomes useful.
     success_url: `${input.siteUrl}/connectors?billing=success&plan=${input.plan}`,
-    cancel_url: `${input.siteUrl}/pricing?billing=cancelled&plan=${input.plan}`,
+    cancel_url: `${input.siteUrl}/plans?billing=cancelled&plan=${input.plan}`,
     metadata: {
       plan: input.plan,
       plan_tier: input.plan,
