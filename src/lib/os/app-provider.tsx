@@ -29,6 +29,13 @@ const DEV_USER_KEY = "auterim-os-dev-user-v1";
 const LEGACY_DEV_USER_KEY = "inovense-os-dev-user-v1";
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
+function workspaceAccessMessage(value: string | undefined): string {
+  if (value?.includes("missing_membership") || value?.includes("workspace_forbidden")) {
+    return "Your signed-in account is not yet assigned to this workspace.";
+  }
+  return value || "Your workspace access could not be verified.";
+}
+
 type OSAction =
   | { type: "HYDRATE"; state: OSState }
   | { type: "COMPLETE_ONBOARDING"; onboarding: OnboardingState; workspace: Workspace; currentUser: CurrentUser; connectors: string[]; preferredOperator: string; mainGoals: string[]; approvalOwner: string; preferredDemoPath: NonNullable<OnboardingState["preferredDemoPath"]>; safetyMode: "safe" | "assisted" }
@@ -584,7 +591,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (!res.ok) {
           if (IS_PRODUCTION && res.status !== 503) {
             const payload = await res.json().catch(() => ({} as { error?: string }));
-            setWorkspaceLoadError(payload.error || "Your workspace access could not be verified.");
+            setWorkspaceLoadError(workspaceAccessMessage(payload.error));
           }
           if (res.status === 503) {
             const payload = await res.json().catch(() => ({} as { message?: string }));
