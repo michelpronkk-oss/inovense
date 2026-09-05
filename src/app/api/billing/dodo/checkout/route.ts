@@ -23,10 +23,10 @@ function resolveSiteUrl(): string {
 export async function GET(req: NextRequest) {
   const plan = parsePlan(req.nextUrl.searchParams.get("plan"));
   if (!plan) {
-    return NextResponse.redirect(new URL("/pricing?billing=invalid_plan", req.url));
+    return NextResponse.redirect(new URL("/plans?billing=invalid_plan", getAppUrl()));
   }
   if (!isPlanConfigured(plan)) {
-    return NextResponse.redirect(new URL(`/pricing?billing=setup_required&plan=${plan}`, req.url));
+    return NextResponse.redirect(new URL(`/plans?billing=setup_required&plan=${plan}`, getAppUrl()));
   }
 
   const user = await getVerifiedSupabaseUser();
@@ -49,7 +49,8 @@ export async function GET(req: NextRequest) {
     });
     return NextResponse.redirect(checkoutUrl);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Checkout initialization failed";
-    return NextResponse.redirect(new URL(`/pricing?billing=error&reason=${encodeURIComponent(message)}`, req.url));
+    // Avoid leaking billing-provider internals into the browser URL. The
+    // detailed provider response remains available in server logs.
+    return NextResponse.redirect(new URL("/plans?billing=error", getAppUrl()));
   }
 }

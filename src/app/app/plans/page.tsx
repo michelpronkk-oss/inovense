@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useOS } from "@/lib/os/app-provider";
 import { getEntitlements } from "@/lib/os/entitlements";
 import { appHref } from "@/lib/urls";
@@ -40,6 +41,7 @@ function displayDate(value?: string): string | null {
 
 export default function PlansPage() {
   const { state } = useOS();
+  const searchParams = useSearchParams();
   const entitlements = getEntitlements(state.workspace);
   const [submitting, setSubmitting] = useState<"starter" | "growth" | null>(null);
   const canManageBilling = state.currentUser.roleLabel === "Owner" || state.currentUser.roleLabel === "Admin";
@@ -60,6 +62,9 @@ export default function PlansPage() {
           <div className="os-page-sub">Choose the operating capacity your workspace needs. Every live connector and operator action remains controlled by your approval policy.</div>
         </div>
       </div>
+
+      {searchParams.get("billing") === "error" && <div style={{ padding: "11px 14px", borderRadius: 10, marginBottom: 18, background: "rgba(242,118,124,.07)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,.18)", color: "#F2B3B7", fontSize: 12.5 }}>Checkout could not be opened. Confirm the Dodo API key, product IDs, and checkout mode are all from the same Dodo environment.</div>}
+      {searchParams.get("billing") === "setup_required" && <div style={{ padding: "11px 14px", borderRadius: 10, marginBottom: 18, background: "rgba(242,118,124,.07)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,.18)", color: "#F2B3B7", fontSize: 12.5 }}>This plan is not configured yet. Add its Dodo product ID to the deployment environment and redeploy.</div>}
 
       <section style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 20, alignItems: "center", padding: "18px 20px", borderRadius: 14, background: "linear-gradient(110deg, rgba(77,232,225,.085), rgba(77,232,225,.018) 48%, rgba(255,255,255,.012))", boxShadow: "inset 0 0 0 1px rgba(77,232,225,.18)", marginBottom: 18 }}>
         <div>

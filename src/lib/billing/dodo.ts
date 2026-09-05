@@ -26,7 +26,11 @@ export function getDodoProductId(plan: CheckoutPlanTier): string {
 
 function resolveCheckoutUrl(): string {
   const envUrl = process.env.DODO_CHECKOUT_SESSIONS_URL;
-  return envUrl || "https://api.dodopayments.com/checkouts";
+  if (envUrl) return envUrl;
+  // Dodo test credentials are only accepted by its test endpoint. Keep this
+  // explicit so a test product/key can never silently call the live API.
+  if (process.env.DODO_ENVIRONMENT === "test") return "https://test.dodopayments.com/checkouts";
+  return "https://api.dodopayments.com/checkouts";
 }
 
 export async function createDodoCheckoutSession(input: DodoCheckoutSessionInput): Promise<{ checkoutUrl: string; raw: JsonObject }> {
