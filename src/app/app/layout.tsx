@@ -64,7 +64,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         redirect("/onboarding");
       }
       if (onboardingDone && pathname === "/onboarding") {
-        redirect("/activate?first=1");
+        redirect("/");
       }
     }
     // gateway.status === "unconfigured": Supabase isn't set up in this

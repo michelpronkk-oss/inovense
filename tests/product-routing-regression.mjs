@@ -21,12 +21,12 @@ assert.match(middleware, /originalPathname === "\/" \? "\/app" : `\/app\$\{origi
 assert.match(layout, /const PUBLIC_APP_PATHS = new Set\(\[\s*"\/login"/, "server guard must use canonical public routes");
 assert.match(layout, /redirect\(`\/login\?from=/, "unauthenticated users must go to canonical login");
 assert.match(layout, /redirect\("\/onboarding"\)/, "incomplete onboarding must have one canonical target");
-assert.match(layout, /redirect\("\/activate\?first=1"\)/, "completed onboarding must route canonically");
+assert.match(layout, /redirect\("\/"\)/, "completed onboarding must return to the overview");
 
 assert.doesNotMatch(shell, /router\.replace\(/, "client shell must not compete with the server routing authority");
 assert.match(urls, /if \(normalized === "\/app"\) return "\/"/, "production helpers must remove legacy prefix");
 assert.match(callback, /\? next : "\/onboarding"/, "verified signup must land on onboarding by default");
 assert.match(team, /\$\{appUrl\}\/auth\/callback/, "invite email callback cannot retain /app prefix");
-assert.match(onboarding, /router\.replace\("\/activate\?first=1"\)/, "onboarding completion must use canonical activation route");
+assert.match(onboarding, /router\.replace\("\/"\)/, "onboarding completion must return to the overview");
 
 console.log("Product routing regression contracts passed.");

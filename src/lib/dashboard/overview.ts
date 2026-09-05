@@ -313,7 +313,7 @@ function latestRunAt(operatorKey: string, runs: Row[]): string | null {
   return found ? timeValue(found) : null;
 }
 
-function buildOperators(input: { approvals: Row[]; runs: Row[]; truth: SafeConnectorTruth[]; trelloReady: boolean; slackReady: boolean }): DashboardOperator[] {
+function buildOperators(input: { approvals: Row[]; runs: Row[]; truth: SafeConnectorTruth[]; trelloReady: boolean; slackReady: boolean; operatorKeys?: DashboardOperator["key"][] }): DashboardOperator[] {
   const connected = (key: string) => connectorIsConnected(input.truth.find((item) => item.connectorKey === key));
   const specs = [
     { key: "revenue" as const, needs: connected("gmail"), monitoring: connected("gmail"), description: "Monitors Gmail for revenue opportunities and prepares follow-up email with CRM context." },
@@ -321,7 +321,7 @@ function buildOperators(input: { approvals: Row[]; runs: Row[]; truth: SafeConne
     { key: "operations" as const, needs: input.trelloReady, monitoring: input.trelloReady, description: "Watches Trello boards for stalled work and prepares Slack or Trello updates." },
   ];
 
-  return specs.map((spec) => {
+  return specs.filter((spec) => !input.operatorKeys || input.operatorKeys.includes(spec.key)).map((spec) => {
     const def = getOperatorDefinition(spec.key);
     const pending = input.approvals.filter((row) => stringValue(row.status) === "pending" && (stringValue(row.agent_id) === spec.key || stringValue(asRecord(row.continuation_payload).operatorKey) === spec.key)).length;
     const lastRunAtValue = latestRunAt(spec.key, input.runs);
@@ -436,7 +436,7 @@ export async function getDashboardOverview(input: {
   const supabase = input.supabase ?? createSupabaseAdmin();
   const workspace = await supabase
     .from("os_workspaces")
-    .select("id,name,plan_tier,billing_status")
+    .select("id,name,plan_tier,billing_status,onboarding_data")
     .eq("id", input.workspaceId)
     .single();
   if (workspace.error || !workspace.data) throw new Error(workspace.error?.message || "Workspace not found.");
@@ -458,7 +458,12 @@ export async function getDashboardOverview(input: {
   const slackChannelSelected = Boolean(workspaceSettings.slack.slackDefaultChannelId);
   const trelloReady = Boolean(connectors.find((connector) => connector.key === "trello")?.connected && trelloDestinationSet);
   const slackReady = Boolean(connectors.find((connector) => connector.key === "slack")?.connected && slackChannelSelected);
-  const operators = buildOperators({ approvals, runs, truth, trelloReady, slackReady });
+  const onboardingData = asRecord(workspace.data.onboarding_data);
+  const selectedPriority = stringValue(onboardingData.first_priority);
+  const selectedKeys: DashboardOperator["key"][] | undefined = selectedPriority === "revenue" || selectedPriority === "client_flow" || selectedPriority === "operations"
+    ? [selectedPriority]
+    : undefined;
+  const operators = buildOperators({ approvals, runs, truth, trelloReady, slackReady, operatorKeys: selectedKeys });
   const today = summarizeToday({ approvals, runs, logs });
   const pendingApprovals = approvals.filter((row) => stringValue(row.status) === "pending");
   const highRiskCount = pendingApprovals.filter((row) => riskFromPayload(asRecord(row.continuation_payload)) === "high").length;

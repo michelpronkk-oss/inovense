@@ -27,6 +27,7 @@ const STORAGE_KEY = "auterim-os-state-v7";
 const LEGACY_STORAGE_KEYS = ["inovense-os-state-v7", "inovense-os-state-v1"];
 const DEV_USER_KEY = "auterim-os-dev-user-v1";
 const LEGACY_DEV_USER_KEY = "inovense-os-dev-user-v1";
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 type OSAction =
   | { type: "HYDRATE"; state: OSState }
@@ -515,11 +516,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       userId: state.currentUser.id || devIdentity.id,
       userEmail: state.currentUser.email || devIdentity.email,
       userName: state.currentUser.name || devIdentity.name,
-      workspaceId: state.workspace.id,
+      // The server derives the active workspace from the verified session.
+      // Never let a prior browser snapshot select a production workspace.
+      workspaceId: IS_PRODUCTION ? "" : state.workspace.id,
     };
   }, [state.currentUser.email, state.currentUser.id, state.currentUser.name, state.workspace.id]);
 
   useEffect(() => {
+    if (IS_PRODUCTION) {
+      setClientHydrated(true);
+      return;
+    }
     try {
       const sourceKey = localStorage.getItem(STORAGE_KEY)
         ? STORAGE_KEY
@@ -618,6 +625,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!finishedInitialHydration.current) return;
+    if (IS_PRODUCTION && !hydratedFromRemote.current) return;
     if (persistTimeout.current) {
       clearTimeout(persistTimeout.current);
     }

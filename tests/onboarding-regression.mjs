@@ -17,7 +17,7 @@ assert.match(page, /Gmail/, "systems must include Gmail");
 assert.match(page, /HubSpot/, "systems must include HubSpot");
 assert.match(page, /Slack/, "systems must include Slack");
 assert.match(page, /Trello/, "systems must include Trello");
-assert.match(page, /router\.replace\("\/activate\?first=1"\)/, "activation must route canonically");
+assert.match(page, /router\.replace\("\/"\)/, "activation must route to the overview");
 
 assert.match(actions, /getVerifiedSupabaseUser\(\)/, "writes must use a verified session");
 assert.match(actions, /requireWorkspaceAdmin/, "writes must authorize the active workspace");

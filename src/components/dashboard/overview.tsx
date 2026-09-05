@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useOS } from "@/lib/os/app-provider";
 import type { DashboardOverview, DashboardOperator } from "@/lib/dashboard/overview";
 
@@ -14,10 +15,10 @@ const scanRoutes: Record<ScanKey, string> = {
   operations: "/api/operators/operations/scan",
 };
 
-const operatorMeta: Record<ScanKey, { mark: string; color: string; tag: string }> = {
-  revenue: { mark: "RV", color: "#4DE8E1", tag: "Revenue Â· Pipeline" },
-  client_flow: { mark: "CF", color: "#5B8DEF", tag: "Client Â· Onboarding" },
-  operations: { mark: "OP", color: "#51D88A", tag: "Operations Â· Internal" },
+const operatorMeta: Record<ScanKey, { mark: string; color: string; tag: string; avatar: string }> = {
+  revenue: { mark: "RV", color: "#4DE8E1", tag: "Revenue Â· Pipeline", avatar: "/operators/revenue-operator.png" },
+  client_flow: { mark: "CF", color: "#5B8DEF", tag: "Client Â· Onboarding", avatar: "/operators/client-flow-operator.png" },
+  operations: { mark: "OP", color: "#51D88A", tag: "Operations Â· Internal", avatar: "/operators/operations-operator.png" },
 };
 
 const connectorMeta: Record<string, { letter: string; color: string }> = {
@@ -184,32 +185,12 @@ export function OSOverview() {
   const now = new Date();
   const hh = now.getHours();
   const greet = hh < 5 ? "Good night" : hh < 12 ? "Good morning" : hh < 18 ? "Good afternoon" : "Good evening";
-  const firstName = titleCase((state.currentUser.email?.split("@")[0] || "there").split(/[._-]/)[0]);
+  const firstName = state.currentUser.name?.trim().split(/\s+/)[0] || titleCase((state.currentUser.email?.split("@")[0] || "there").split(/[._-]/)[0]);
   const pending = overview.approvals.pendingCount;
   const monitoringCount = overview.operators.filter((o) => o.status !== "needs_setup" && o.status !== "disabled").length;
   const healthyConnectors = overview.connectors.filter((c) => c.connected).length;
   const mode = autonomyLabel(overview.policy.autonomyMode);
   const busy = busyScan !== null || busyApproval !== null;
-  const preferredDemoPath = state.settings.activation?.preferredDemoPath ?? state.onboarding.preferredDemoPath ?? "operations";
-  const activationLabels: Record<string, string> = {
-    operations: "Operations",
-    client_flow: "Client Flow",
-    revenue: "Revenue",
-  };
-  const activationOperator = overview.operators.find((operator) => operator.key === preferredDemoPath);
-  const activationComplete = Boolean(state.settings.activation?.completedAt || state.settings.activation?.firstApprovalCreatedAt);
-  const activationSetupIncomplete = !activationOperator || activationOperator.status === "needs_setup";
-  const showActivationCard = !activationComplete && (activationSetupIncomplete || !state.settings.activation?.firstRunAt);
-  const activationProgress = state.settings.activation?.firstRunAt
-    ? 5
-    : activationSetupIncomplete
-      ? Math.max(1, healthyConnectors)
-      : 4;
-  const activationNextStep = activationSetupIncomplete
-    ? "Connect the required tools for this path."
-    : state.settings.activation?.firstRunAt
-      ? "Review the first approval when a signal is found."
-      : "Run your first operator check.";
 
   const kpis = [
     { label: "Pending approvals", val: pending, sub: overview.approvals.highRiskCount > 0 ? `${overview.approvals.highRiskCount} high risk` : "Waiting for review", subCls: overview.approvals.highRiskCount > 0 ? "amber" : "neutral" },
@@ -252,24 +233,12 @@ export function OSOverview() {
         ))}
       </div>
 
-      {showActivationCard && (
-        <div className="p" style={{ padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-          <div style={{ minWidth: 220 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Finish your first workflow</div>
-            <div style={{ fontSize: 12.5, color: "var(--text-dim)", lineHeight: 1.5 }}>
-              {activationLabels[preferredDemoPath] ?? "Operations"} demo - {activationProgress}/6 steps ready. {activationNextStep}
-            </div>
-          </div>
-          <Link className="btn btn-primary btn-sm" href="/activate">Continue setup</Link>
-        </div>
-      )}
-
       {/* Operators + Approvals */}
       <div className="os-grid-2">
         <div className="p">
           <div className="p-head">
-            <h3>Active operators</h3>
-            <span className="p-meta">{overview.operators.length} operators Â· manual checks only</span>
+            <h3>{overview.operators.length === 1 ? "Your first operator" : "Active operators"}</h3>
+            <span className="p-meta">{overview.operators.length} configured Â· no actions run without approval</span>
           </div>
           <div className="ops-grid">
             {overview.operators.map((operator) => {
@@ -279,7 +248,7 @@ export function OSOverview() {
               return (
                 <div className="ops-card" key={operator.key}>
                   <div className="ops-card-head">
-                    <div className="ops-card-avatar" style={{ color: meta.color, background: `linear-gradient(135deg, ${meta.color}22, ${meta.color}06)`, boxShadow: `inset 0 0 0 1px ${meta.color}55` }}>{meta.mark}</div>
+                    <div className="ops-card-avatar" style={{ color: meta.color, background: `linear-gradient(135deg, ${meta.color}22, ${meta.color}06)`, boxShadow: `inset 0 0 0 1px ${meta.color}55`, overflow: "hidden" }}><Image src={meta.avatar} alt="" width={30} height={30} style={{ width: 27, height: 27, objectFit: "contain" }} /></div>
                     <div style={{ minWidth: 0 }}>
                       <div className="ops-card-name">{operator.name}</div>
                       <div className="ops-card-tag">{meta.tag}</div>

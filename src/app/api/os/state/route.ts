@@ -86,6 +86,26 @@ function roleLabelFor(roleKey: string | null | undefined, legacyRole: string | n
 
 async function buildStateFromDatabase(workspaceId: string, supabase: ReturnType<typeof createSupabaseAdmin>): Promise<OSState> {
   const seeded = buildSeedState();
+  // Seed fixtures are only a development shell. A real, newly provisioned
+  // workspace must never look like a populated demo account.
+  seeded.agents = [];
+  seeded.agentRuns = [];
+  seeded.workflows = [];
+  seeded.approvals = [];
+  seeded.memory = [];
+  seeded.logs = [];
+  seeded.policies = [];
+  seeded.connectors = seeded.connectors.map((connector) => ({
+    ...connector,
+    isConnected: false,
+    status: "available",
+    health: "disabled",
+    lastSync: "-",
+    lastSynced: "",
+    eventsSynced: 0,
+    records: "Not connected",
+    source: undefined,
+  }));
   const agents = await supabase.from("os_agents").select("*").eq("workspace_id", workspaceId);
 
   if (!agents.error && agents.data?.length) {
