@@ -4497,3 +4497,66 @@
   .auterim-v3-page .hero-editorial { padding-top: 42px; }
   .auterim-v3-page .hero-editorial h1 { font-size: clamp(37px, 10.2vw, 40px); }
 }
+
+/* --------------------------------------------------------------------
+   Final mobile-only polish pass: tighten the hero above-the-fold rhythm,
+   fix the secondary CTA's leftover boxed outline, and replace the pricing
+   section's hard cyan seam with a soft, centered accent line. Every rule
+   below is intentionally the last of its selector in this stylesheet so
+   it wins the cascade over the older stacked mobile passes above without
+   having to touch or delete them. Desktop (> 767px / > 820px as noted)
+   is untouched.
+   -------------------------------------------------------------------- */
+@media (max-width: 767px) {
+  /* Hero: shorter above-the-fold footprint so the artifact proof arrives
+     sooner, without shrinking the message below a comfortable read. */
+  .auterim-v3-page .hero-editorial { padding-top: 34px; }
+  .auterim-v3-page .hero-editorial-in { gap: 22px; }
+  .auterim-v3-page .hero-editorial h1 { margin-top: 16px; }
+  .auterim-v3-page .hero-editorial .say { margin-top: 14px; }
+  .auterim-v3-page .hero-editorial .hero-cta { margin-top: 20px; gap: 12px; }
+  .auterim-v3-page .hero-editorial .note { margin-top: 14px; }
+
+  /* CTA: one full-width primary action, one quiet text-only secondary
+     action underneath. The secondary previously kept an inset box-shadow
+     from the shared .btn-b class after its border/background were reset,
+     which rendered as a hard outlined rectangle: remove it explicitly. */
+  .auterim-v3-page .hero-editorial .hero-cta .btn-a { width: 100%; }
+  .auterim-v3-page .hero-editorial .hero-cta .btn-b {
+    box-shadow: none;
+    padding: 4px 0;
+    color: var(--dim);
+    font-size: 13px;
+  }
+  .auterim-v3-page .hero-editorial .hero-cta .btn-b:hover,
+  .auterim-v3-page .hero-editorial .hero-cta .btn-b:focus-visible {
+    background: transparent;
+    color: var(--ink);
+  }
+}
+
+/* Pricing: this also covers the 768px tablet regression width, since it
+   shares the same single-column plan stack as phone (see the existing
+   `max-width: 820px` breakpoint above that collapses `.plans` to one
+   column) and would otherwise keep the exact hard-cut seam this pass
+   fixes on phone. Nothing here changes the 3-column desktop layout. */
+@media (max-width: 820px) {
+  .auterim-v3-page .plans .pl {
+    position: relative;
+  }
+  .auterim-v3-page .plans .pl.now {
+    border-top: 1px solid rgba(148, 164, 180, .16);
+  }
+  .auterim-v3-page .plans .pl.now::before {
+    content: "";
+    position: absolute;
+    top: -1px;
+    left: 12%;
+    right: 12%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(55, 230, 212, .55), transparent);
+  }
+  .auterim-v3-page #pricing .pl.now {
+    background: linear-gradient(180deg, rgba(55, 230, 212, .05), rgba(55, 230, 212, .012) 46%, transparent 82%);
+  }
+}
