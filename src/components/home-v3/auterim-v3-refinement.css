@@ -4509,8 +4509,12 @@
    -------------------------------------------------------------------- */
 @media (max-width: 767px) {
   /* Hero: shorter above-the-fold footprint so the artifact proof arrives
-     sooner, without shrinking the message below a comfortable read. */
-  .auterim-v3-page .hero-editorial { padding-top: 34px; }
+     sooner, without shrinking the message below a comfortable read. The
+     header is `position:fixed` at ~65px tall and is never in normal flow,
+     so this padding is the ONLY thing keeping the eyebrow from rendering
+     underneath it — it must clear the header height plus real breathing
+     room, not just look right in a mockup. */
+  .auterim-v3-page .hero-editorial { padding-top: 90px; }
   .auterim-v3-page .hero-editorial-in { gap: 22px; }
   .auterim-v3-page .hero-editorial h1 { margin-top: 16px; }
   .auterim-v3-page .hero-editorial .say { margin-top: 14px; }

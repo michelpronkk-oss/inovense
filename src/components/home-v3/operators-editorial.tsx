@@ -61,24 +61,35 @@ export default function OperatorsEditorial() {
         <Reveal>
           <div className="ops">
             {operators.map(({ op, type, body, gate, status, tools }) => (
-              <article className="op" key={op.name}>
-                <span className="op-avatar"><OperatorAvatar color={op.color} glyph={GLYPHS[op.glyph]} size={42} /></span>
-                <div className="op-name">
-                  <h3 style={{ color: "var(--auterim-v3-ink)" }}>{op.name}</h3>
-                  <div className="t">{type}</div>
+              <details className="op" key={op.name}>
+                <summary>
+                  <div className="op-row">
+                    <span className="op-avatar"><OperatorAvatar color={op.color} glyph={GLYPHS[op.glyph]} size={42} /></span>
+                    <div className="op-name">
+                      <h3 style={{ color: "var(--auterim-v3-ink)" }}>{op.name}</h3>
+                      <div className="t">{type}</div>
+                    </div>
+                    <p className="op-say">{body}<span className="gate">Gate: {gate}</span></p>
+                    <div className="op-end">
+                      <span className={`st ${status === "Preview" ? "preview" : ""}`}><i />{status}</span>
+                      <span className="tools">
+                        {tools.map((tool) => (
+                          LOGOS[tool]
+                            ? <span className="tool-logo" key={tool} title={tool}>{LOGOS[tool]}</span>
+                            : <span key={tool}>{tool}</span>
+                        ))}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="op-toggle" aria-hidden="true" />
+                </summary>
+                <div className="op-expand">
+                  <p className="op-mission">{op.mission}</p>
+                  <ul className="op-loop">
+                    {op.loop.map((step) => <li key={step.k}><b>{step.k}</b><span>{step.t}</span></li>)}
+                  </ul>
                 </div>
-                <p className="op-say">{body}<span className="gate">Gate: {gate}</span></p>
-                <div className="op-end">
-                  <span className={`st ${status === "Preview" ? "preview" : ""}`}><i />{status}</span>
-                  <span className="tools">
-                    {tools.map((tool) => (
-                      LOGOS[tool]
-                        ? <span className="tool-logo" key={tool} title={tool}>{LOGOS[tool]}</span>
-                        : <span key={tool}>{tool}</span>
-                    ))}
-                  </span>
-                </div>
-              </article>
+              </details>
             ))}
           </div>
           <Link href="/operators" className="ops-more">View the full operator registry <span aria-hidden="true">→</span></Link>

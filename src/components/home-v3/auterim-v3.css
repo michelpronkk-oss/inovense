@@ -113,8 +113,28 @@ a:hover{color:var(--acc-hi)}
 
 /* ---------- operators ---------- */
 .ops{border-top:1px solid var(--rule)}
-.op{display:grid;grid-template-columns:64px minmax(0,300px) minmax(0,1fr) auto;gap:36px;align-items:start;padding:38px 0;border-bottom:1px solid var(--rule);transition:background .35s}
+.op{position:relative;border-bottom:1px solid var(--rule);transition:background .35s}
 .op:hover{background:rgba(255,255,255,.016)}
+.op>summary{position:relative;display:block;padding:38px 0;cursor:pointer;list-style:none}
+.op>summary::-webkit-details-marker{display:none}
+.op>summary::marker{content:none}
+.op-row{display:grid;grid-template-columns:64px minmax(0,300px) minmax(0,1fr) auto;gap:36px;align-items:start}
+.op-toggle{position:absolute;top:12px;right:0;display:grid;place-items:center;width:26px;height:26px;border-radius:50%;color:var(--mute);box-shadow:inset 0 0 0 1px var(--rule-2);transition:color .22s ease,box-shadow .22s ease}
+.op-toggle::before,.op-toggle::after{content:"";position:absolute;background:currentColor;transition:transform .22s ease,opacity .22s ease}
+.op-toggle::before{width:10px;height:1px}
+.op-toggle::after{width:1px;height:10px}
+.op:hover .op-toggle,.op[open] .op-toggle{color:var(--acc);box-shadow:inset 0 0 0 1px rgba(111,242,229,.4)}
+.op[open] .op-toggle::after{transform:rotate(90deg);opacity:0}
+.op-expand{padding:0 0 30px}
+.op-mission{margin:0;padding-top:22px;border-top:1px solid var(--rule);max-width:56ch;color:var(--dim);font-size:15px;line-height:1.6}
+.op-loop{display:grid;gap:14px;margin:18px 0 0;padding:0;list-style:none}
+.op-loop li{display:grid;grid-template-columns:84px minmax(0,1fr);gap:6px 16px;align-items:baseline}
+.op-loop b{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.13em;text-transform:uppercase;color:var(--acc)}
+.op-loop span{color:var(--dim);font-size:14px;line-height:1.5}
+@media (prefers-reduced-motion: no-preference) {
+  .op-expand{animation:v3-op-open 220ms ease-out}
+}
+@keyframes v3-op-open{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 .op-ic{width:34px;height:34px}
 .op-ic svg{width:34px;height:34px;fill:none;stroke:currentColor;stroke-width:1.25;stroke-linecap:round;stroke-linejoin:round}
 .op-name h3{font-size:22px;letter-spacing:-.025em}
@@ -283,7 +303,7 @@ a:hover{color:var(--acc-hi)}
 @media (max-width:1080px){
   .head{grid-template-columns:1fr;gap:20px}
   .tr{grid-template-columns:150px 1px minmax(0,1fr);gap:0 30px}
-  .op{grid-template-columns:44px minmax(0,1fr);gap:24px 28px}
+  .op-row{grid-template-columns:44px minmax(0,1fr);gap:24px 28px}
   .op-say{grid-column:2;max-width:56ch}
   .op-end{grid-column:2;align-items:flex-start;text-align:left;flex-direction:row;justify-content:space-between;width:100%}
   .plans{grid-template-columns:1fr 1fr}
