@@ -76,6 +76,18 @@ function activityColor(severity: string): string {
   return "#4DE8E1";
 }
 
+function ActivitySparkline({ activity, now, color = "#4DE8E1" }: { activity: DashboardOverview["activity"]; now: number; color?: string }) {
+  const bins = Array.from({ length: 7 }, () => 0);
+  for (const item of activity) {
+    if (!item.time) continue;
+    const age = Math.floor((now - new Date(item.time).getTime()) / 86400000);
+    if (age >= 0 && age < 7) bins[6 - age] += 1;
+  }
+  const max = Math.max(1, ...bins);
+  const points = bins.map((count, index) => `${index * 18},${28 - (count / max) * 20}`).join(" ");
+  return <svg width="116" height="32" viewBox="0 0 108 32" fill="none" aria-label="Activity over the last seven days"><polyline points={points} stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" opacity="0.95" /></svg>;
+}
+
 function Skeleton() {
   return (
     <div className="os-page">
@@ -192,12 +204,14 @@ export function OSOverview() {
   const healthyConnectors = overview.connectors.filter((c) => c.connected).length;
   const mode = autonomyLabel(overview.policy.autonomyMode);
   const busy = busyScan !== null || busyApproval !== null;
+  const activationSteps = [overview.operators.length > 0, healthyConnectors > 0, overview.today.runsCount > 0];
+  const activationScore = Math.round((activationSteps.filter(Boolean).length / activationSteps.length) * 100);
 
   const kpis = [
-    { label: "Pending approvals", val: pending, sub: overview.approvals.highRiskCount > 0 ? `${overview.approvals.highRiskCount} high risk` : "Waiting for review", subCls: overview.approvals.highRiskCount > 0 ? "amber" : "neutral" },
-    { label: "Actions today", val: overview.today.actionsExecuted, sub: "After approval", subCls: "neutral" },
-    { label: "Blocked by policy", val: overview.today.blockedByPolicy, sub: "Live re-check", subCls: "neutral" },
-    { label: "Healthy connectors", val: `${healthyConnectors}/${overview.connectors.length}`, sub: "Connected", subCls: "neutral" },
+    { label: "Operating setup", val: `${activationScore}%`, sub: activationScore === 100 ? "Live operating layer" : "Choose plan to unlock live systems", subCls: activationScore === 100 ? "neutral" : "amber", color: "#4DE8E1" },
+    { label: "Pending approvals", val: pending, sub: overview.approvals.highRiskCount > 0 ? `${overview.approvals.highRiskCount} high risk` : "Waiting for review", subCls: overview.approvals.highRiskCount > 0 ? "amber" : "neutral", color: "#F5C26B" },
+    { label: "Actions today", val: overview.today.actionsExecuted, sub: "After approval", subCls: "neutral", color: "#4DE8E1" },
+    { label: "Activity (7d)", val: overview.activity.length, sub: overview.activity.length ? "Recorded operating events" : "Begins with your first live run", subCls: "neutral", color: "#5B8DEF" },
   ];
 
   return (
@@ -226,10 +240,11 @@ export function OSOverview() {
       {/* KPI row (real metrics, no fabricated trends) */}
       <div className="kpi-row">
         {kpis.map((k) => (
-          <div className="kpi" key={k.label}>
+          <div className="kpi" key={k.label} style={{ position: "relative", overflow: "hidden" }}>
             <div className="kpi-top"><span className="lab">{k.label}</span></div>
             <div className="kpi-val">{k.val}</div>
             <div className="kpi-meta"><span className={`kpi-delta ${k.subCls}`}>{k.sub}</span></div>
+            <div style={{ position: "absolute", right: 12, bottom: 9, opacity: 0.82 }}><ActivitySparkline activity={overview.activity} now={now.getTime()} color={k.color} /></div>
           </div>
         ))}
       </div>

@@ -34,6 +34,7 @@ export function OSSidebar() {
   const [profileTab, setProfileTab] = useState<"profile" | "notifications" | "experience">("profile");
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileFeedback, setProfileFeedback] = useState("");
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [draft, setDraft] = useState({
     name: state.currentUser.name,
     email: state.currentUser.email,
@@ -64,6 +65,31 @@ export function OSSidebar() {
   ];
 
   const isActive = (href: string) => (href === "/" ? pathname === "/" || pathname === "/app" : pathname.startsWith(href));
+  const avatarStyle = state.currentUser.avatarUrl ? { backgroundImage: `url(${state.currentUser.avatarUrl})`, backgroundSize: "cover", backgroundPosition: "center", color: "transparent" } : undefined;
+
+  const uploadAvatar = async (file: File | undefined) => {
+    if (!file) return;
+    if (!["image/png", "image/jpeg", "image/webp", "image/svg+xml"].includes(file.type) || file.size > 2 * 1024 * 1024) {
+      setProfileFeedback("Choose a PNG, JPG, WebP, or SVG under 2 MB.");
+      return;
+    }
+    setUploadingAvatar(true);
+    setProfileFeedback("");
+    const form = new FormData();
+    form.set("workspaceId", state.workspace.id);
+    form.set("file", file);
+    try {
+      const response = await fetch("/api/profile/avatar", { method: "POST", body: form });
+      const result = await response.json().catch(() => ({} as { avatarUrl?: string; error?: string }));
+      if (!response.ok || !result.avatarUrl) throw new Error(result.error || "Could not upload your photo.");
+      updateCurrentUser({ avatarUrl: result.avatarUrl });
+      setProfileFeedback("Profile photo saved.");
+    } catch (error) {
+      setProfileFeedback(error instanceof Error ? error.message : "Could not upload your photo.");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   return (
     <aside className="os-side">
@@ -122,7 +148,7 @@ export function OSSidebar() {
         setProfileFeedback("");
         setProfileOpen(true);
       }}>
-        <div className="os-avatar">{state.currentUser.initials}</div>
+        <div className="os-avatar" style={avatarStyle}>{state.currentUser.initials}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 12.5, fontWeight: 500 }}>{state.currentUser.name}</div>
           <div style={{ fontSize: 10.5, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>{state.currentUser.roleLabel}</div>
@@ -141,7 +167,7 @@ export function OSSidebar() {
               <button className="appr-btn deny" onClick={() => setProfileOpen(false)}>Close</button>
             </div>
             <div className="os-profile-identity">
-              <div className="os-profile-avatar">{state.currentUser.initials}</div>
+              <div className="os-profile-avatar" style={avatarStyle}>{state.currentUser.initials}</div>
               <div>
                 <div className="os-profile-name">{state.currentUser.name}</div>
                 <div className="os-profile-email">{state.currentUser.email}</div>
@@ -158,6 +184,13 @@ export function OSSidebar() {
               {profileTab === "profile" && (
                 <div className="os-profile-section">
                   <div className="os-profile-section-head"><strong>Your identity</strong><span>Used across approvals and activity.</span></div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0 4px" }}>
+                    <div className="os-profile-avatar" style={{ width: 48, height: 48, ...avatarStyle }}>{state.currentUser.initials}</div>
+                    <label className="btn btn-ghost btn-sm" style={{ width: "fit-content", cursor: uploadingAvatar ? "wait" : "pointer" }}>
+                      {uploadingAvatar ? "Uploading..." : "Change photo"}
+                      <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" disabled={uploadingAvatar} onChange={(event) => void uploadAvatar(event.target.files?.[0])} style={{ display: "none" }} />
+                    </label>
+                  </div>
                   <label className="os-profile-field">
                     <span>Full name</span>
                     <input className="os-input" value={draft.name} autoComplete="name" onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
@@ -221,6 +254,7 @@ export function OSSidebar() {
                       email: draft.email,
                       roleLabel: draft.roleLabel.trim(),
                       initials: draft.name.trim().split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase(),
+                      avatarUrl: state.currentUser.avatarUrl,
                       notifications: draft.notifications,
                       dashboard: draft.dashboard,
                     });

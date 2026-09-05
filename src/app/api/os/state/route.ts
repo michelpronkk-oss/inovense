@@ -329,7 +329,7 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
   const [profileResult, preferencesResult] = await Promise.all([
     supabase
       .from("os_user_profiles")
-      .select("full_name,notification_approvals,notification_digest,notification_alerts")
+      .select("full_name,avatar_url,notification_approvals,notification_digest,notification_alerts")
       .eq("user_id", profileUserId)
       .maybeSingle(),
     supabase
@@ -349,6 +349,7 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
     email: memberEmail,
     roleLabel,
     initials: initialsFor(profileName),
+    avatarUrl: profile?.avatar_url ?? undefined,
     notifications: {
       approvals: profile?.notification_approvals ?? state.currentUser.notifications.approvals,
       digest: profile?.notification_digest ?? state.currentUser.notifications.digest,

@@ -15,6 +15,7 @@ type SaveProfileInput = {
   email: string;
   roleLabel: string;
   initials: string;
+  avatarUrl?: string;
   notifications: {
     approvals: boolean;
     digest: boolean;
@@ -57,6 +58,7 @@ export async function saveProfileSettings(input: SaveProfileInput): Promise<{ su
     full_name: input.name,
     role_label: input.roleLabel,
     initials: input.initials,
+    avatar_url: input.avatarUrl ?? null,
     notification_approvals: input.notifications.approvals,
     notification_digest: input.notifications.digest,
     notification_alerts: input.notifications.alerts,

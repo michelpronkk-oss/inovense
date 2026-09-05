@@ -28,8 +28,6 @@ const APPROVAL_OPTIONS: ApprovalMode[] = [
 ];
 const APPROVAL_EDITABLE_KEYS: ApprovalPolicyEditableKey[] = ["outboundComms", "proposals", "internalReports", "crmWrites"];
 
-const ENV_OPTIONS = ["production", "staging", "development"];
-const REGION_OPTIONS = ["eu-west-1", "us-east-1", "us-west-2"];
 const NOTIFICATION_LABELS: Record<keyof OSSettings["notifications"], string> = {
   approvalInbox: "Approval inbox",
   weeklyDigest: "Weekly digest",
@@ -79,6 +77,9 @@ export default function SettingsPage() {
   const [connectedAccounts, setConnectedAccounts] = useState<ConnectedAccount[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(true);
   const entitlements = getEntitlements(state.workspace);
+  const workspacePlanLabel = entitlements.billingStatus === "preview"
+    ? "Preview - no plan activated"
+    : `${entitlements.planTier.charAt(0).toUpperCase()}${entitlements.planTier.slice(1)} - ${entitlements.billingStatus}`;
   const showManageBilling = entitlements.billingStatus === "active" || entitlements.billingStatus === "trialing" || entitlements.billingStatus === "past_due";
 
   const [workspaceDraft, setWorkspaceDraft] = useState(state.settings.workspace);
@@ -327,7 +328,7 @@ export default function SettingsPage() {
               {billingBusy ? "Opening..." : "Manage billing"}
             </button>
           ) : (
-            <a className="btn btn-primary btn-sm" href="/api/billing/dodo/checkout?plan=starter">Activate Starter</a>
+            <a className="btn btn-primary btn-sm" href="/pricing?source=settings">Choose a plan</a>
           )}
         </div>
         <div style={{ padding: "12px 18px", fontSize: 12.5, color: "var(--text-dim)" }}>
@@ -422,9 +423,7 @@ export default function SettingsPage() {
               <div className="settings-workspace-id">{state.workspace.id}</div>
             </div>
             <div className="settings-workspace-meta">
-              <span>{state.workspace.environment}</span>
-              <span>{state.workspace.region}</span>
-              <span>{state.workspace.planTier ?? state.workspace.plan}</span>
+              <span>{workspacePlanLabel}</span>
             </div>
           </div>
           <div className="settings-workspace-foot">Your workspace identity appears in the operating rail and shared workspace context.</div>
@@ -485,13 +484,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <input value={workspaceDraft.name} onChange={(e) => setWorkspaceDraft((p) => ({ ...p, name: e.target.value }))} className="os-input" placeholder="Workspace name" />
-                <select value={workspaceDraft.environment} onChange={(e) => setWorkspaceDraft((p) => ({ ...p, environment: e.target.value }))} className="os-input">
-                  {ENV_OPTIONS.map((v) => <option key={v} value={v}>{v}</option>)}
-                </select>
-                <select value={workspaceDraft.region} onChange={(e) => setWorkspaceDraft((p) => ({ ...p, region: e.target.value }))} className="os-input">
-                  {REGION_OPTIONS.map((v) => <option key={v} value={v}>{v}</option>)}
-                </select>
-                <div className="workspace-plan-note"><span>Plan</span><strong>{workspaceDraft.plan}</strong><small>Billing changes are managed securely in the billing portal.</small></div>
+                <div className="workspace-plan-note"><span>Workspace access</span><strong>{workspacePlanLabel}</strong><small>{entitlements.billingStatus === "preview" ? "Choose a plan when you are ready. A trial starts only after checkout is completed." : "Billing changes are managed securely in the billing portal."}</small></div>
               </div>
             )}
 

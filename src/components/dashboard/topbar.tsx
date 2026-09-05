@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useOS } from "@/lib/os/app-provider";
 import { TEMPLATE_LIST } from "@/lib/os/templates";
+import { getEntitlements } from "@/lib/os/entitlements";
 import type { DeployConfig } from "@/lib/os/types";
 import { SearchIcon, SparkIcon, BellIcon, MessageIcon, PlusIcon, XIcon, ArrowIcon, CpuIcon, FlowIcon, DocIcon, DatabaseIcon } from "@/components/dashboard/icons";
 
@@ -774,7 +775,7 @@ export function OSTopbar() {
         </div>
 
         <span className="os-env">
-          <span className="dot dot-cyan" /> {state.workspace.environment}
+          <span className="dot dot-cyan" /> {getEntitlements(state.workspace).billingStatus === "preview" ? "preview" : "live"}
         </span>
 
         <button

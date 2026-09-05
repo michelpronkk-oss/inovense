@@ -333,6 +333,7 @@ export interface CurrentUser {
   email: string;
   roleLabel: string;
   initials: string;
+  avatarUrl?: string;
   notifications: {
     approvals: boolean;
     digest: boolean;

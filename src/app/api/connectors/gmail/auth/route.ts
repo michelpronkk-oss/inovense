@@ -3,6 +3,7 @@ import { buildGoogleAuthUrl } from "@/lib/connectors/gmail";
 import { createOAuthState } from "@/lib/connectors/oauth-state";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
+import { getAppUrl } from "@/lib/urls";
 
 function canUseRealConnectors(status: string | null, flag: boolean | null): boolean {
   return Boolean(flag) && status !== "preview";
@@ -40,7 +41,12 @@ export async function GET(req: NextRequest) {
   }
 
   if (!canUseRealConnectors(workspace.data.billing_status, workspace.data.can_use_real_connectors)) {
-    return NextResponse.json({ error: "Activate Starter to connect real Gmail." }, { status: 402 });
+    // A browser navigation must land on the plan decision, never expose a
+    // raw 402 JSON document. API callers still receive a useful status.
+    if (req.headers.get("accept")?.includes("text/html")) {
+      return NextResponse.redirect(new URL("/pricing?gate=connectors&source=gmail", getAppUrl()));
+    }
+    return NextResponse.json({ error: "Choose a plan to begin a trial before connecting live Gmail.", code: "trial_required" }, { status: 402 });
   }
 
   const state = createOAuthState(workspaceId, userEmail);

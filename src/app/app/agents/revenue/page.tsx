@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useOS } from "@/lib/os/app-provider";
+import { getEntitlements } from "@/lib/os/entitlements";
 
 type OperatorReadiness = {
   operatorKey: string;
@@ -156,6 +157,7 @@ function MetricCard({ label, value }: { label: string; value: string }) {
 
 export default function RevenueOperatorPage() {
   const { state } = useOS();
+  const entitlements = getEntitlements(state.workspace);
   const [revenueReadiness, setRevenueReadiness] = useState<OperatorReadiness | null>(null);
   const [revenueStatus, setRevenueStatus] = useState<RevenueStatus | null>(null);
   const [revenueRuns, setRevenueRuns] = useState<RevenueRun[]>([]);
@@ -211,6 +213,10 @@ export default function RevenueOperatorPage() {
   useEffect(() => { void loadRevenueRuntime(); }, [loadRevenueRuntime]);
 
   const startGmailReconnect = () => {
+    if (!entitlements.canUseRealConnectors) {
+      window.location.assign("/pricing?gate=connectors&source=revenue");
+      return;
+    }
     const params = new URLSearchParams({ workspaceId: state.workspace.id, userEmail: state.currentUser.email });
     window.location.href = `/api/connectors/gmail/auth?${params.toString()}`;
   };
@@ -278,6 +284,7 @@ export default function RevenueOperatorPage() {
     ? "Gmail and HubSpot are connected. CRM contact and deal updates execute after approval."
     : "Gmail is connected. HubSpot is missing, so Revenue Operator prepares email follow-ups only.";
   const revenueStatusMessage = (() => {
+    if (!entitlements.canUseRealConnectors) return "Choose a plan to begin a trial before connecting live systems.";
     if (!revenueReadiness) return "Loading Revenue Operator readiness.";
     if (revenueReadiness.status === "missing_connector") return "Connect Gmail to run Revenue Operator.";
     if (revenueReadiness.status === "draft_only") return "HubSpot missing, Gmail draft and approval mode available.";
@@ -289,12 +296,16 @@ export default function RevenueOperatorPage() {
 
   if (!showLegacyDiagnostics) {
     const setupTone = gmailReconnectRequired || revenueReadiness?.status === "missing_connector" || revenueReadiness?.status === "upgrade_required";
-    const nextAction = gmailReconnectRequired || revenueReadiness?.status === "missing_connector"
-      ? { label: "Connect Gmail", onClick: startGmailReconnect }
+    const nextAction = !entitlements.canUseRealConnectors
+      ? { label: "Choose plan & start trial", onClick: () => window.location.assign("/pricing?gate=connectors&source=revenue") }
+      : gmailReconnectRequired || revenueReadiness?.status === "missing_connector"
+      ? { label: "Connect required system", onClick: startGmailReconnect }
       : revenueReadiness?.status === "upgrade_required"
         ? null
         : { label: scanSubmitting ? "Checking..." : "Run a check", onClick: submitRevenueScan };
-    const connectionLabel = revenueStatus?.gmail?.accountEmail
+    const connectionLabel = !entitlements.canUseRealConnectors
+      ? "Available after trial activation"
+      : revenueStatus?.gmail?.accountEmail
       ? revenueStatus.gmail.accountEmail
       : "Gmail connection required";
 

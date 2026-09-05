@@ -121,12 +121,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div>
               <div style={{ color: "#C9FFFB", fontSize: 12.5, fontWeight: 600 }}>Preview workspace</div>
               <div style={{ color: "var(--text-dim)", fontSize: 12.5 }}>
-                Configure your operating layer for free. Activate Starter to connect tools and run operators live.
+                Configure your operating layer freely. Choose a plan when you are ready to begin its trial and connect live systems.
               </div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <Link className="btn btn-ghost btn-sm" href="/pricing">Compare plans</Link>
-              <Link className="btn btn-primary btn-sm" href="/api/billing/dodo/checkout?plan=starter">Activate Starter</Link>
+              <Link className="btn btn-primary btn-sm" href="/pricing?source=workspace">Choose a plan</Link>
             </div>
           </div>
         )}
