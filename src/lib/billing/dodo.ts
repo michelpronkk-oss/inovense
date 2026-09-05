@@ -30,7 +30,7 @@ function resolveCheckoutUrl(): string {
   // Dodo test credentials are only accepted by its test endpoint. Keep this
   // explicit so a test product/key can never silently call the live API.
   if (process.env.DODO_ENVIRONMENT === "test") return "https://test.dodopayments.com/checkouts";
-  return "https://api.dodopayments.com/checkouts";
+  return "https://live.dodopayments.com/checkouts";
 }
 
 export async function createDodoCheckoutSession(input: DodoCheckoutSessionInput): Promise<{ checkoutUrl: string; raw: JsonObject }> {
@@ -39,10 +39,9 @@ export async function createDodoCheckoutSession(input: DodoCheckoutSessionInput)
 
   const payload: JsonObject = {
     product_cart: [{ product_id: productId, quantity: 1 }],
-    // Land paid or trialing workspaces at the next real action, not a generic
-    // dashboard. Connector setup is where an operator becomes useful.
-    success_url: `${input.siteUrl}/connectors?billing=success&plan=${input.plan}`,
-    cancel_url: `${input.siteUrl}/plans?billing=cancelled&plan=${input.plan}`,
+    // Dodo Checkout Sessions use one return_url. Send a completed checkout to
+    // the next meaningful action: connect the systems for the first operator.
+    return_url: `${input.siteUrl}/connectors?billing=success&plan=${input.plan}`,
     metadata: {
       plan: input.plan,
       plan_tier: input.plan,
