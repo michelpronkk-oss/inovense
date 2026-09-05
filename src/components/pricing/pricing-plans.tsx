@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePublicUserState } from "@/lib/public-user-state";
 import { resolvePublicPlanCta, type CheckoutPlanTier, type PricingPlan } from "@/lib/pricing";
+import { appHref } from "@/lib/urls";
 
 export function PricingPlans({ plans }: { plans: PricingPlan[] }) {
   const userState = usePublicUserState();
@@ -10,7 +11,7 @@ export function PricingPlans({ plans }: { plans: PricingPlan[] }) {
   const startCheckout = (plan: CheckoutPlanTier) => {
     // The server route verifies the signed-in owner and active workspace.
     // Do not reconstruct billing identity from browser storage.
-    window.location.assign(`/api/billing/dodo/checkout?plan=${plan}`);
+    window.location.assign(appHref(`/api/billing/dodo/checkout?plan=${plan}`));
   };
 
   return (

@@ -95,7 +95,7 @@ export function UpgradePrompt({ feature, description, requiredPlan }: UpgradePro
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
         <Link
-          href="/pricing"
+          href="/plans"
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -115,7 +115,7 @@ export function UpgradePrompt({ feature, description, requiredPlan }: UpgradePro
           Upgrade to {planLabel}
         </Link>
         <Link
-          href="/pricing"
+          href="/plans"
           style={{
             fontSize: 13,
             color: "var(--text-mute)",
@@ -164,7 +164,7 @@ export function UsageBanner({ used, max, label, planLabel }: UpgradeBannerProps)
           : `${used} of ${max} ${label} used.`}
       </span>
       <Link
-        href="/pricing"
+        href="/plans"
         style={{
           fontSize: 12,
           color: "#4DE8E1",

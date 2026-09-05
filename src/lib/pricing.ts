@@ -1,4 +1,5 @@
 import type { PublicUserState } from "@/lib/public-user-state";
+import { appHref } from "@/lib/urls";
 
 export type PublicPlanTier = "starter" | "growth" | "operator" | "enterprise";
 export type CheckoutPlanTier = Exclude<PublicPlanTier, "enterprise">;
@@ -44,7 +45,7 @@ export const pricingPlans: PricingPlan[] = [
     tagline: "Deploy your first controlled AI operators.",
     billingLabel: "3-day trial included",
     cta: "Choose Foundation",
-    ctaHref: "/api/billing/dodo/checkout?plan=starter",
+    ctaHref: appHref("/api/billing/dodo/checkout?plan=starter"),
     features: [
       "Up to 3 active operators",
       "Up to 3 connected systems",
@@ -76,7 +77,7 @@ export const pricingPlans: PricingPlan[] = [
     badge: "Most chosen",
     featured: true,
     cta: "Choose Workforce",
-    ctaHref: "/api/billing/dodo/checkout?plan=growth",
+    ctaHref: appHref("/api/billing/dodo/checkout?plan=growth"),
     features: [
       "Up to 8 active operators",
       "Up to 8 connected systems",
@@ -118,7 +119,7 @@ export function resolvePublicPlanCta(
   if (plan.plan_tier === "enterprise") {
     return { label: plan.cta, href: plan.ctaHref };
   }
-  return { label: plan.cta, href: `/api/billing/dodo/checkout?plan=${plan.plan_tier}` };
+  return { label: plan.cta, href: appHref(`/api/billing/dodo/checkout?plan=${plan.plan_tier}`) };
 }
 
 export type BillingEntitlementSnapshot = {

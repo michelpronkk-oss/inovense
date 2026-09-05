@@ -39,8 +39,8 @@ export function resolveWorkspacePlanTier(workspace: Workspace): PlanTier {
   const raw = (workspace.plan || "").toLowerCase();
   if (raw.includes("enterprise")) return "enterprise";
   if (raw.includes("operator")) return "operator";
-  if (raw.includes("growth")) return "growth";
-  if (raw.includes("starter")) return "starter";
+  if (raw.includes("growth") || raw.includes("workforce")) return "growth";
+  if (raw.includes("starter") || raw.includes("foundation")) return "starter";
   return "preview";
 }
 
@@ -71,9 +71,9 @@ export function getEntitlements(workspace: Workspace): Entitlements {
       planTier,
       billingStatus,
       trialEndsAt: workspace.trialEndsAt,
-      operatorsLimit: 2,
-      connectorsLimit: 5,
-      actionsLimit: 2000,
+      operatorsLimit: 3,
+      connectorsLimit: 3,
+      actionsLimit: 1000,
       logRetentionDays: 30,
       canUseRealConnectors: true,
       canRunRealActions: true,
@@ -89,9 +89,9 @@ export function getEntitlements(workspace: Workspace): Entitlements {
       planTier,
       billingStatus,
       trialEndsAt: workspace.trialEndsAt,
-      operatorsLimit: 5,
-      connectorsLimit: 15,
-      actionsLimit: 25000,
+      operatorsLimit: 8,
+      connectorsLimit: 8,
+      actionsLimit: 5000,
       logRetentionDays: 90,
       canUseRealConnectors: true,
       canRunRealActions: true,

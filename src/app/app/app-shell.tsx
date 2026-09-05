@@ -7,6 +7,7 @@ import { OSSidebar } from "@/components/dashboard/sidebar";
 import { OSTopbar } from "@/components/dashboard/topbar";
 import { trialDaysRemaining } from "@/lib/os/plans";
 import { getEntitlements } from "@/lib/os/entitlements";
+import { appHref } from "@/lib/urls";
 
 function TrialBanner({ trialEndsAt }: { trialEndsAt?: string }) {
   const days = trialDaysRemaining(trialEndsAt);
@@ -36,7 +37,7 @@ function TrialBanner({ trialEndsAt }: { trialEndsAt?: string }) {
             : `${days} days left in your Foundation trial.`}
       </span>
       <Link
-        href="/api/billing/dodo/checkout?plan=starter"
+        href={appHref("/api/billing/dodo/checkout?plan=starter")}
         style={{
           display: "inline-flex",
           alignItems: "center",
@@ -125,8 +126,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <Link className="btn btn-ghost btn-sm" href="/pricing">Compare plans</Link>
-              <Link className="btn btn-primary btn-sm" href="/pricing?source=workspace">Choose a plan</Link>
+              <Link className="btn btn-ghost btn-sm" href="/plans">Compare plans</Link>
+              <Link className="btn btn-primary btn-sm" href="/plans">Choose a plan</Link>
             </div>
           </div>
         )}

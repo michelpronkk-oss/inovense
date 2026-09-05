@@ -15,6 +15,7 @@ const ADMIN_NAV = [
   { icon: UsersIcon, label: "Team", href: "/team" },
   { icon: ShieldIcon, label: "Policies", href: "/policies" },
   { icon: KeyIcon, label: "API keys", href: "/api-keys" },
+  { icon: SettingsIcon, label: "Plans & billing", href: "/plans" },
   { icon: SettingsIcon, label: "Settings", href: "/settings" },
 ];
 

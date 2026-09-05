@@ -328,7 +328,7 @@ export default function SettingsPage() {
               {billingBusy ? "Opening..." : "Manage billing"}
             </button>
           ) : (
-            <a className="btn btn-primary btn-sm" href="/pricing?source=settings">Choose a plan</a>
+            <a className="btn btn-primary btn-sm" href="/plans">Choose a plan</a>
           )}
         </div>
         <div style={{ padding: "12px 18px", fontSize: 12.5, color: "var(--text-dim)" }}>

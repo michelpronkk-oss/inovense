@@ -115,7 +115,7 @@ export default function TeamPage() {
         <div className="os-page-actions">
           {!canManage ? null : atMemberLimit ? (
             <Link
-              href="/pricing"
+              href="/plans"
               className="btn btn-sm"
               style={{ background: "rgba(77,232,225,0.08)", color: "#4DE8E1", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.22)" }}
             >

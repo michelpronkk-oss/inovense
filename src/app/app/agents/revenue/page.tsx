@@ -214,7 +214,7 @@ export default function RevenueOperatorPage() {
 
   const startGmailReconnect = () => {
     if (!entitlements.canUseRealConnectors) {
-      window.location.assign("/pricing?gate=connectors&source=revenue");
+      window.location.assign("/plans?source=revenue");
       return;
     }
     const params = new URLSearchParams({ workspaceId: state.workspace.id, userEmail: state.currentUser.email });
@@ -297,7 +297,7 @@ export default function RevenueOperatorPage() {
   if (!showLegacyDiagnostics) {
     const setupTone = gmailReconnectRequired || revenueReadiness?.status === "missing_connector" || revenueReadiness?.status === "upgrade_required";
     const nextAction = !entitlements.canUseRealConnectors
-      ? { label: "Choose plan & start trial", onClick: () => window.location.assign("/pricing?gate=connectors&source=revenue") }
+      ? { label: "Choose plan & start trial", onClick: () => window.location.assign("/plans?source=revenue") }
       : gmailReconnectRequired || revenueReadiness?.status === "missing_connector"
       ? { label: "Connect required system", onClick: startGmailReconnect }
       : revenueReadiness?.status === "upgrade_required"
@@ -333,7 +333,7 @@ export default function RevenueOperatorPage() {
               </div>
               <p style={{ margin: "12px 0 0", maxWidth: 620, color: "var(--text-mute)", fontSize: 13, lineHeight: 1.65 }}>{revenueStatusMessage}</p>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 22 }}>
-                {nextAction ? <button className="btn btn-primary btn-sm" type="button" onClick={nextAction.onClick} disabled={scanSubmitting || (!gmailReconnectRequired && !canRunRevenue)}>{nextAction.label}</button> : <Link href="/pricing" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>View plans</Link>}
+                {nextAction ? <button className="btn btn-primary btn-sm" type="button" onClick={nextAction.onClick} disabled={scanSubmitting || (!gmailReconnectRequired && !canRunRevenue)}>{nextAction.label}</button> : <Link href="/plans" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>View plans</Link>}
                 <Link href="/connectors" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Manage connections</Link>
               </div>
             </div>

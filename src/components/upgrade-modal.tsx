@@ -33,8 +33,8 @@ export function UpgradeModal({
             {hint}
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
-            <Link className="btn btn-ghost btn-sm" href="/pricing">View plans</Link>
-            <Link className="btn btn-primary btn-sm" href="/pricing">Choose Foundation</Link>
+            <Link className="btn btn-ghost btn-sm" href="/plans">View plans</Link>
+            <Link className="btn btn-primary btn-sm" href="/plans">Choose Foundation</Link>
           </div>
         </div>
       </div>

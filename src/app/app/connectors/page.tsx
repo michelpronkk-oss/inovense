@@ -672,7 +672,7 @@ export default function ConnectorsPage() {
         <div className="os-page-actions">
           {atConnectorLimit ? (
             <Link
-              href="/pricing"
+              href="/plans"
               className="btn btn-sm"
               style={{ background: "rgba(77,232,225,0.08)", color: "#4DE8E1", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.22)" }}
             >

@@ -63,6 +63,9 @@ export function isMarketingHost(hostname: string): boolean {
  */
 export function getAppRoute(path: string = "/"): string {
   const normalized = ensureLeadingSlash(path);
+  // API routes live at the app host root in every environment. They are not
+  // dashboard pages and must never receive the local `/app` route prefix.
+  if (normalized.startsWith("/api/")) return normalized;
   const appHost = toHostname(getAppUrl());
   // Local development shares one localhost origin with the marketing app, so
   // retain its internal product prefix. Production uses app.auterim.com and
