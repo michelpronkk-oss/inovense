@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getVerifiedSupabaseUser } from "@/lib/supabase/server";
+import { resolveAppGateway } from "@/lib/server/app-gateway";
 
 export const dynamic = "force-dynamic";
 
@@ -17,10 +17,13 @@ function corsHeaders(request: NextRequest): HeadersInit {
 
 /** A minimal, non-cacheable cross-subdomain session check for public CTAs. */
 export async function GET(request: NextRequest) {
-  const user = await getVerifiedSupabaseUser();
+  const gateway = await resolveAppGateway();
+  const authenticated = gateway.status === "ready";
   return NextResponse.json(
-    { authenticated: Boolean(user) },
+    {
+      authenticated,
+      onboardingComplete: authenticated ? Boolean(gateway.onboardingCompletedAt) : null,
+    },
     { headers: { "Cache-Control": "private, no-store", ...corsHeaders(request) } },
   );
 }
-

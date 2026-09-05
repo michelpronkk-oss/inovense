@@ -3,7 +3,7 @@
 // @ts-nocheck
 import React from 'react';
 import './claude-home.css';
-import { usePublicUserState } from '@/lib/public-user-state';
+import { getPublicWorkspaceCta, usePublicUserState } from '@/lib/public-user-state';
 import { pricingPlans, resolvePublicPlanCta } from '@/lib/pricing';
 import { appHref } from '@/lib/urls';
 // Inovense  -  Premium line icons (24x24, 1.5 stroke)
@@ -101,13 +101,7 @@ const Header = () => {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const userState = usePublicUserState();
   const appDashboardHref = appHref("/");
-  const appOnboardingHref = appHref("/onboarding");
-  const primaryCta =
-    userState === "signed_in"
-      ? { label: "Open workspace", href: appDashboardHref }
-      : userState === "registered"
-        ? { label: "Sign in", href: appDashboardHref }
-        : { label: "Get Started", href: appOnboardingHref };
+  const primaryCta = getPublicWorkspaceCta(userState);
   const showSignIn = userState === "guest" || userState === "loading";
 
   React.useEffect(() => {
@@ -2467,13 +2461,7 @@ const PricingSection = () => {
 const FinalCTA = () => {
   const userState = usePublicUserState();
   const appDashboardHref = appHref("/");
-  const appOnboardingHref = appHref("/onboarding");
-  const primaryCta =
-    userState === "signed_in"
-      ? { label: "Open workspace", href: appDashboardHref }
-      : userState === "registered"
-        ? { label: "Sign in", href: appDashboardHref }
-        : { label: "Get Started", href: appOnboardingHref };
+  const primaryCta = getPublicWorkspaceCta(userState);
   return (
     <section className="section section-sm" id="start">
       <div className="container">

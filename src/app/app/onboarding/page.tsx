@@ -2,6 +2,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { marketingHref } from "@/lib/urls";
 import { useOS } from "@/lib/os/app-provider";
 import type { OnboardingState } from "@/lib/os/types";
 import { completeOnboardingAction, getOnboardingDraftAction, saveOnboardingDraftAction, type OnboardingDraft } from "./actions";
@@ -30,7 +31,7 @@ export default function OnboardingPage() {
   const back = () => { if (draft.step > 1) update({ step: draft.step - 1 }); };
   if (!ready) return <div className="onboarding-shell onboarding-loading">Preparing your operating profile…</div>;
   return <div className="onboarding-shell">
-    <header className="onboarding-header"><div className="onboarding-brand"><Image src="/brand/auterim-mark-live.svg" alt="" width={22} height={22} priority /><span>AUTERIM</span><span>/ operating profile</span></div><div className="onboarding-progress"><span>{labels[draft.step - 1]}</span><i><b style={{ width: `${draft.step * 20}%` }} /></i><em>{String(draft.step).padStart(2, "0")} / 05</em></div><button type="button" onClick={() => router.push("/")}>Exit</button></header>
+    <header className="onboarding-header"><div className="onboarding-brand"><Image src="/brand/auterim-mark-live.svg" alt="" width={22} height={22} priority /><span>AUTERIM</span><span>/ operating profile</span></div><div className="onboarding-progress"><span>{labels[draft.step - 1]}</span><i><b style={{ width: `${draft.step * 20}%` }} /></i><em>{String(draft.step).padStart(2, "0")} / 05</em></div><button type="button" onClick={() => window.location.assign(marketingHref("/"))}>Exit</button></header>
     <main className={`onboarding-main step-${draft.step}`}>
       <section className="onboarding-content"><p className="onboarding-kicker"><i /> {labels[draft.step - 1]}</p>
         {draft.step === 1 && <><h1>Set up your workspace.</h1><p className="onboarding-lead">A clear owner and workspace give every operator the right place to begin.</p><div className="onboarding-fields"><label>YOUR NAME<input value={draft.fullName} onChange={(e) => update({ fullName: e.target.value })} autoComplete="name" /></label><label>WORKSPACE NAME<input value={draft.workspaceName} onChange={(e) => update({ workspaceName: e.target.value })} autoComplete="organization" /></label></div></>}

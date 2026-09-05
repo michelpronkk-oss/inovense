@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { usePublicUserState } from "@/lib/public-user-state";
+import { getPublicWorkspaceCta, usePublicUserState } from "@/lib/public-user-state";
 import { appHref } from "@/lib/urls";
 import {
   Sheet,
@@ -34,12 +34,7 @@ export default function Nav({ homepage = false }: { homepage?: boolean }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const userState = usePublicUserState();
-  const primaryCta =
-    userState === "signed_in"
-      ? { label: "Open workspace", href: appHref("/") }
-      : userState === "registered"
-        ? { label: "Sign in", href: appHref("/") }
-        : { label: "Start preview", href: appHref("/onboarding") };
+  const primaryCta = getPublicWorkspaceCta(userState);
   const showSecondarySignIn = userState === "guest" || userState === "loading";
   const navLinks = homepage
     ? [

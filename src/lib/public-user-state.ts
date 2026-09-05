@@ -3,7 +3,15 @@
 import { useEffect, useState } from "react";
 import { appHref } from "@/lib/urls";
 
-export type PublicUserState = "loading" | "guest" | "registered" | "signed_in";
+export type PublicUserState = "loading" | "guest" | "registered" | "onboarding" | "signed_in";
+
+export function getPublicWorkspaceCta(state: PublicUserState): { label: string; href: string } {
+  if (state === "signed_in") return { label: "Open workspace", href: appHref("/") };
+  if (state === "onboarding") return { label: "Continue setup", href: appHref("/") };
+  if (state === "registered") return { label: "Sign in", href: appHref("/") };
+  if (state === "loading") return { label: "Continue", href: appHref("/") };
+  return { label: "Start preview", href: appHref("/onboarding") };
+}
 
 const APP_STATE_KEY = "auterim-os-state-v1";
 const LEGACY_APP_STATE_KEY = "inovense-os-state-v1";
@@ -33,10 +41,15 @@ export function usePublicUserState(): PublicUserState {
     void fetch(appHref("/api/auth/status"), { credentials: "include", cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error("Could not read session state.");
-        return response.json() as Promise<{ authenticated?: boolean }>;
+        return response.json() as Promise<{ authenticated?: boolean; onboardingComplete?: boolean | null }>;
       })
       .then((result) => {
-        if (!cancelled) setState(result.authenticated ? "signed_in" : hasRegisteredWorkspace() ? "registered" : "guest");
+        if (cancelled) return;
+        if (result.authenticated) {
+          setState(result.onboardingComplete ? "signed_in" : "onboarding");
+          return;
+        }
+        setState(hasRegisteredWorkspace() ? "registered" : "guest");
       })
       .catch(setSignedOutState);
 

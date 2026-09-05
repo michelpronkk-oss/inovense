@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { appHref } from "@/lib/urls";
+import { getPublicWorkspaceCta, usePublicUserState } from "@/lib/public-user-state";
 import { Icon } from "./icons";
 import { ResponsiveCopy } from "./responsive-copy";
 
@@ -30,6 +30,7 @@ const RAIL_PATHS = [
 ];
 
 export default function HeroEditorial() {
+  const workspaceCta = getPublicWorkspaceCta(usePublicUserState());
   /* Mouse-driven parallax intentionally removed: it caused perceptible shaking and soft text. */
   /* useEffect(() => {
     const section = sectionRef.current;
@@ -105,7 +106,7 @@ export default function HeroEditorial() {
           <h1>Work moves <em className="hero-editorial-forward">forward.</em><span>You stay in control.</span></h1>
           <p className="say"><ResponsiveCopy desktop="Auterim gives operators the context and policies to run the right work across your tools." mobile="Operators use your context and policies to move the right work across your tools." /></p>
           <div className="hero-cta">
-            <Link href={appHref("/app/onboarding")} className="btn btn-a">Start preview <span className="arrow">→</span></Link>
+            <Link href={workspaceCta.href} className="btn btn-a">{workspaceCta.label} <span className="arrow">→</span></Link>
             <a href="#how" className="btn btn-b">See how it works</a>
           </div>
           <span className="note">Preview first. Connect systems later.</span>

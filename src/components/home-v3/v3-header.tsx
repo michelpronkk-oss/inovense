@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { appHref } from "@/lib/urls";
-import { usePublicUserState } from "@/lib/public-user-state";
+import { getPublicWorkspaceCta, usePublicUserState } from "@/lib/public-user-state";
 
 export default function V3Header() {
   const [scrolled, setScrolled] = useState(false);
@@ -11,11 +11,7 @@ export default function V3Header() {
   const menuRef = useRef<HTMLDetailsElement>(null);
   const userState = usePublicUserState();
   const appWorkspaceHref = appHref("/");
-  const primaryCta = userState === "signed_in"
-    ? { label: "Open workspace", href: appWorkspaceHref }
-    : userState === "registered"
-      ? { label: "Sign in", href: appWorkspaceHref }
-      : { label: "Start preview", href: appHref("/onboarding") };
+  const primaryCta = getPublicWorkspaceCta(userState);
   const showSignIn = userState === "guest" || userState === "loading";
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 14);
