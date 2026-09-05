@@ -26,14 +26,13 @@ const MODES: { key: AutonomyMode; label: string; help: string; locked?: boolean 
 ];
 
 function Row({ label, value, tone, help }: { label: string; value: string; tone: "green" | "amber" | "rose" | "neutral"; help?: string }) {
-  const color = tone === "green" ? "var(--green)" : tone === "amber" ? "var(--amber)" : tone === "rose" ? "var(--rose)" : "var(--text-dim)";
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "13px 0" }}>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600 }}>{label}</div>
-        {help && <div style={{ marginTop: 2, fontSize: 11.5, color: "var(--text-mute)" }}>{help}</div>}
+    <div className="policy-rule-row">
+      <div>
+        <div>{label}</div>
+        {help && <small>{help}</small>}
       </div>
-      <span style={{ fontSize: 12, fontWeight: 600, color, flexShrink: 0 }}>{value}</span>
+      <span className={`policy-rule-state ${tone}`}>{value}</span>
     </div>
   );
 }
@@ -92,13 +91,14 @@ export default function PoliciesPage() {
   const stop = Boolean(policy?.emergencyStopEnabled);
 
   return (
-    <div className="os-page">
-      <div className="os-page-head">
+    <div className="os-page policy-page">
+      <div className="os-page-head policy-page-head">
         <div>
-          <span className="os-greet">Policy engine v1 - real enforcement</span>
-          <h1>Policies</h1>
-          <div className="os-page-sub">Auterim runs automatically where it is safe, and asks for approval where it matters. These settings are enforced live, including a re-check at execution time.</div>
+          <span className="os-greet">Control center</span>
+          <h1>Execution policy</h1>
+          <div className="os-page-sub">Set the operating boundary once. Auterim enforces it when work is prepared and again immediately before it runs.</div>
         </div>
+        <div className={`policy-live-state ${stop ? "stopped" : ""}`}><i />{stop ? "Execution paused" : "Live enforcement on"}</div>
       </div>
 
       {error && <div style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>{error}</div>}
@@ -110,9 +110,9 @@ export default function PoliciesPage() {
       )}
 
       {/* Autonomy mode */}
-      <div className="p" style={{ gap: 0 }}>
-        <div className="p-head"><h3><ShieldIcon size={13} /> Autonomy mode</h3><span className="p-meta">{loading ? "Loading..." : `Current: ${policy?.autonomyMode ?? "safe"}`}</span></div>
-        <div style={{ padding: "16px 18px", display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 12 }}>
+      <div className="p policy-mode-card" style={{ gap: 0 }}>
+        <div className="p-head"><h3><ShieldIcon size={13} /> Operating posture</h3><span className="p-meta">{loading ? "Loading" : `Now: ${policy?.autonomyMode ?? "safe"}`}</span></div>
+        <div className="policy-mode-grid">
           {MODES.map((mode) => {
             const active = policy?.autonomyMode === mode.key;
             return (
@@ -121,18 +121,7 @@ export default function PoliciesPage() {
                 type="button"
                 disabled={saving || loading || mode.locked}
                 onClick={() => !mode.locked && patch({ autonomyMode: mode.key })}
-                style={{
-                  textAlign: "left",
-                  padding: "14px 15px",
-                  borderRadius: 14,
-                  cursor: mode.locked ? "not-allowed" : "pointer",
-                  background: active ? "rgba(77,232,225,0.07)" : "rgba(255,255,255,0.02)",
-                  boxShadow: `inset 0 0 0 1px ${active ? "rgba(77,232,225,0.4)" : "var(--line)"}`,
-                  opacity: mode.locked ? 0.55 : 1,
-                  color: "inherit",
-                  display: "grid",
-                  gap: 6,
-                }}
+                className={`policy-choice ${active ? "active" : ""} ${mode.locked ? "locked" : ""}`}
               >
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                   <span style={{ fontSize: 13.5, fontWeight: 600 }}>{mode.label}</span>
@@ -146,46 +135,43 @@ export default function PoliciesPage() {
       </div>
 
       {/* Emergency stop */}
-      <div className="p" style={{ gap: 0 }}>
+      <div className={`p policy-stop-card ${stop ? "is-on" : ""}`} style={{ gap: 0 }}>
         <div className="p-head"><h3>Emergency stop</h3></div>
-        <div style={{ padding: "8px 18px 16px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "13px 0" }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>Block all risky execution</div>
-              <div style={{ marginTop: 2, fontSize: 11.5, color: "var(--text-mute)" }}>Conservative kill switch. Blocks customer emails, CRM, project tool changes and operator Slack messages. Re-checked live at execution.</div>
-            </div>
-            <button
-              type="button"
-              className={`appr-btn ${stop ? "deny" : "edit"}`}
-              disabled={saving || loading}
-              onClick={() => patch({ emergencyStopEnabled: !stop })}
-            >
-              {stop ? "Emergency stop ON" : "Emergency stop OFF"}
-            </button>
+        <div className="policy-stop-body">
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>Block all risky execution</div>
+            <div style={{ marginTop: 2, fontSize: 11.5, color: "var(--text-mute)" }}>Conservative kill switch. Blocks customer emails, CRM, project tool changes and operator Slack messages. Re-checked live at execution.</div>
           </div>
+          <button
+            type="button"
+            className={`appr-btn ${stop ? "deny" : "edit"}`}
+            disabled={saving || loading}
+            onClick={() => patch({ emergencyStopEnabled: !stop })}
+          >
+            {stop ? "Emergency stop ON" : "Emergency stop OFF"}
+          </button>
         </div>
       </div>
 
       {/* Customer email */}
-      <div className="p" style={{ gap: 0 }}>
+      <div className="p policy-email-card" style={{ gap: 0 }}>
         <div className="p-head"><h3>Customer email</h3><span className="p-meta">Enforced</span></div>
-        <div style={{ padding: "16px 18px", display: "grid", gap: 10 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
+        <div className="policy-email-body">
+          <div className="policy-email-options">
             {([
               { key: "approval_required", label: "Approval required", help: "Operators draft the reply; you approve before Gmail sends." },
               { key: "draft_only", label: "Draft only", help: "Operators prepare the reply but Gmail never sends it." },
             ] as const).map((opt) => {
               const active = policy?.customerEmailMode === opt.key;
               return (
-                <button key={opt.key} type="button" disabled={saving || loading} onClick={() => patch({ customerEmailMode: opt.key })}
-                  style={{ textAlign: "left", padding: "13px 14px", borderRadius: 12, cursor: "pointer", background: active ? "rgba(77,232,225,0.07)" : "rgba(255,255,255,0.02)", boxShadow: `inset 0 0 0 1px ${active ? "rgba(77,232,225,0.4)" : "var(--line)"}`, color: "inherit", display: "grid", gap: 5 }}>
+                <button key={opt.key} type="button" disabled={saving || loading} onClick={() => patch({ customerEmailMode: opt.key })} className={`policy-choice ${active ? "active" : ""}`}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><span style={{ fontSize: 13, fontWeight: 600 }}>{opt.label}</span>{active && <span className="pill pill-cyan" style={{ fontSize: 10 }}>Active</span>}</div>
                   <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>{opt.help}</div>
                 </button>
               );
             })}
           </div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.015)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+          <div className="policy-not-available">
             <div>
               <div style={{ fontSize: 12.5, fontWeight: 600 }}>Auto-send low risk</div>
               <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>Customer emails never auto-send in v1.</div>
@@ -196,10 +182,10 @@ export default function PoliciesPage() {
       </div>
 
       {/* Automatic-where-safe + approval-where-it-matters */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div className="policy-enforcement-grid">
         <div className="p" style={{ gap: 0 }}>
           <div className="p-head"><h3>Runs automatically</h3></div>
-          <div style={{ padding: "6px 18px 14px" }}>
+          <div className="policy-rule-list">
             <Row label="Connector health checks" value={policy?.connectorHealthChecksAllowed ? "Auto" : "Off"} tone={policy?.connectorHealthChecksAllowed ? "green" : "neutral"} help="System checks, internal only." />
             <div style={{ borderTop: "1px solid var(--line)" }} />
             <Row label="Internal Slack notifications" value={policy?.internalSlackNotificationsAllowed ? "Auto (enabled)" : "Off"} tone={policy?.internalSlackNotificationsAllowed ? "green" : "neutral"} help="Controlled in Slack connector settings." />
@@ -212,7 +198,7 @@ export default function PoliciesPage() {
 
         <div className="p" style={{ gap: 0 }}>
           <div className="p-head"><h3>Always needs approval</h3></div>
-          <div style={{ padding: "6px 18px 14px" }}>
+          <div className="policy-rule-list">
             <Row label="Customer emails" value={stop ? "Blocked (stop)" : policy?.customerEmailMode === "draft_only" ? "Draft only" : "Approval required"} tone={stop ? "rose" : "amber"} />
             <div style={{ borderTop: "1px solid var(--line)" }} />
             <Row label="CRM writes (HubSpot)" value={stop ? "Blocked (stop)" : "Approval required"} tone={stop ? "rose" : "amber"} />
@@ -226,7 +212,7 @@ export default function PoliciesPage() {
         </div>
       </div>
 
-      <div style={{ padding: "14px 18px", borderRadius: 12, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", fontSize: 12.5, color: "var(--text-mute)", lineHeight: 1.6 }}>
+      <div className="policy-proof">
         <strong style={{ color: "var(--text-dim)" }}>How enforcement works:</strong> every operator action is evaluated against this policy when prepared, and <strong style={{ color: "var(--text-dim)" }}>re-evaluated against the live policy at execution time</strong>. Changing a setting affects pending approvals too, so a tightened policy can turn an approval into draft-only or blocked when it runs.
       </div>
     </div>
