@@ -68,12 +68,14 @@ export function OSSidebar() {
   return (
     <aside className="os-side">
       <Link href="/" className="os-brand">
-        <Image src="/brand/auterim-mark-live.svg" alt="Auterim" width={18} height={18} priority />
+        <Image className="os-brand-mark" src="/brand/auterim-mark-live.svg" alt="Auterim" width={18} height={18} priority />
         <span>AUTERIM</span>
       </Link>
 
       <div className="os-side-ws">
-        <div className="os-side-ws-mark">{state.workspace.name.charAt(0)}</div>
+        <div className="os-side-ws-mark" style={state.workspace.logoUrl ? { backgroundImage: `url(${state.workspace.logoUrl})` } : undefined}>
+          {!state.workspace.logoUrl && state.workspace.name.charAt(0)}
+        </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="os-side-ws-name">{state.workspace.name}</div>
           <div className="os-side-ws-sub">{state.workspace.environment}</div>

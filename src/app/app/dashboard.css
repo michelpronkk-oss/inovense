@@ -48,17 +48,23 @@
   display: grid;
   grid-template-columns: 240px 1fr;
   min-height: 100vh;
+  align-items: start;
 }
 .os-main {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 100vh;
 }
 
 /* ---- Sidebar ---- */
 .os-side {
   display: flex;
   flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  box-sizing: border-box;
   padding: 14px 10px;
   background: linear-gradient(180deg, #08090D, #060709);
   border-right: 1px solid var(--line);
@@ -75,9 +81,10 @@
   font-weight: 600;
   font-size: 12.5px;
   letter-spacing: 0.14em;
-  color: var(--cyan);
+  color: #f6f7f9;
   text-decoration: none;
 }
+.os-brand-mark { filter: brightness(0) invert(1); }
 .os-side-ws {
   display: flex;
   align-items: center;
@@ -100,10 +107,12 @@
   font-size: 12px;
   font-weight: 600;
   box-shadow: inset 0 0 0 1px var(--cyan-line);
+  background-position: center;
+  background-size: cover;
 }
 .os-side-ws-name { font-size: 13px; font-weight: 500; }
 .os-side-ws-sub { font-size: 10.5px; color: var(--text-mute); font-family: var(--font-mono); }
-.os-side-nav { padding-bottom: 4px; }
+.os-side-nav { padding-bottom: 4px; flex: 1 1 auto; overflow-y: auto; min-height: 0; }
 .os-side-label {
   padding: 14px 12px 6px;
   font-family: var(--font-mono);
@@ -141,7 +150,7 @@
 }
 .os-nav.active .badge { background: rgba(77, 232, 225, 0.18); color: var(--cyan); }
 .os-side-bottom {
-  margin-top: 12px;
+  margin-top: auto;
   padding: 10px;
   border-top: 1px solid var(--line);
   display: flex;
@@ -166,12 +175,12 @@
 .os-top {
   position: sticky;
   top: 0;
-  z-index: 5;
+  z-index: 20;
   display: flex;
   align-items: center;
   gap: 16px;
   padding: 9px 24px;
-  background: rgba(6, 7, 10, 0.75);
+  background: rgba(6, 7, 10, 0.9);
   border-bottom: 1px solid var(--line);
   backdrop-filter: saturate(140%) blur(12px);
   -webkit-backdrop-filter: saturate(140%) blur(12px);
@@ -435,6 +444,16 @@ select.os-input option {
 .os-profile-toggle input::after { content: ""; position: absolute; width: 14px; height: 14px; left: 3px; top: 3px; border-radius: 50%; background: var(--text-mute); transition: transform .15s ease, background .15s ease; }
 .os-profile-toggle input:checked { background: rgba(77,232,225,.22); box-shadow: inset 0 0 0 1px var(--cyan-line); }
 .os-profile-toggle input:checked::after { transform: translateX(14px); background: var(--cyan); }
+
+.workspace-identity-editor { display: flex; align-items: center; gap: 12px; padding: 13px; border-radius: 11px; background: rgba(77,232,225,.05); box-shadow: inset 0 0 0 1px rgba(77,232,225,.15); }
+.workspace-logo-preview { width: 50px; height: 50px; border-radius: 14px; display: grid; place-items: center; flex: 0 0 auto; color: var(--cyan); background: linear-gradient(135deg, #1a3a3a, #06262a); box-shadow: inset 0 0 0 1px var(--cyan-line); background-position: center; background-size: cover; font: 600 16px var(--font-mono); }
+.workspace-identity-title { color: var(--text); font-size: 12.5px; font-weight: 600; }
+.workspace-identity-copy { color: var(--text-mute); font-size: 11px; margin-top: 3px; }
+.workspace-logo-upload { display: inline-flex; position: relative; margin-top: 9px; overflow: hidden; }
+.workspace-logo-upload input { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; }
+.workspace-plan-note { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 11px 12px; border-radius: 8px; background: rgba(255,255,255,.025); box-shadow: inset 0 0 0 1px var(--line); color: var(--text-mute); font: 10px var(--font-mono); letter-spacing: .07em; text-transform: uppercase; }
+.workspace-plan-note strong { color: var(--text); font: 12px var(--font-sans); letter-spacing: normal; text-transform: none; }
+.workspace-plan-note small { grid-column: 1 / -1; font: 11px var(--font-sans); letter-spacing: normal; text-transform: none; }
 
 /* ---- Dots / status ---- */
 .os-root .dot {

@@ -3,6 +3,39 @@
 -- Run after 20260905_auth_identity_foundation.sql and
 -- 20260905_auth_rls_policies.sql. All statements are additive/idempotent.
 
+-- Repair the small cohort provisioned before role_key was populated. The
+-- workspace owner is unambiguously an owner; legacy admin labels map to
+-- admin until every historical row has been normalized.
+update os_workspace_members m
+set role_key = 'owner'
+from os_workspaces w
+where m.workspace_id = w.id
+  and m.user_id = w.owner_user_id
+  and coalesce(m.role_key, '') <> 'owner';
+
+update os_workspace_members
+set role_key = 'admin'
+where role_key is null
+  and role = 'Operator - Admin';
+
+-- Workspace identity is public within a workspace and intentionally separate
+-- from user identity. Logo files are stored under workspace-assets/<id>/.
+alter table os_workspaces
+  add column if not exists logo_url text;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'workspace-assets',
+  'workspace-assets',
+  true,
+  2097152,
+  array['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']
+)
+on conflict (id) do update
+set public = excluded.public,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
+
 -- A preference belongs to exactly one signed-in user in one workspace. The
 -- primary key already enforces this; these policies make the intended access
 -- model explicit for any future user-scoped Supabase reads.

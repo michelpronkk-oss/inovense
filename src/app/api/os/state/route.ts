@@ -33,6 +33,7 @@ function workspaceUpdateFromState(state: OSState) {
     name: state.workspace.name,
     environment: state.workspace.environment,
     region: state.workspace.region,
+    logo_url: state.workspace.logoUrl ?? null,
     updated_at: new Date().toISOString(),
   };
 }
@@ -180,7 +181,9 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
     dodoCustomerId: db.dodo_customer_id ?? undefined,
     dodoSubscriptionId: db.dodo_subscription_id ?? undefined,
     dodoProductId: db.dodo_product_id ?? undefined,
+    logoUrl: db.logo_url ?? undefined,
   };
+  state.settings = { ...state.settings, workspace: { ...state.settings.workspace, ...state.workspace } };
 
   // A snapshot is workspace data, never an identity source. Always project
   // the current authenticated member onto it so a new customer cannot see a
@@ -196,7 +199,10 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
     : memberQuery.eq("email", context.memberEmail ?? context.userEmail ?? "");
   const memberResult = await memberQuery.maybeSingle();
   const member = memberResult.data;
-  const memberEmail = member?.email ?? context.userEmail ?? state.currentUser.email;
+  // The verified Auth email is authoritative for the signed-in identity.
+  // A historical membership row can contain an old invite/seed address and
+  // must never make the profile chrome display somebody else's email.
+  const memberEmail = context.userEmail ?? member?.email ?? state.currentUser.email;
   const memberName = member?.full_name?.trim() || context.userName?.trim() || memberEmail.split("@")[0] || "Workspace member";
   const roleLabel = roleLabelFor(member?.role_key, member?.role);
   const profileUserId = member?.user_id ?? context.userId ?? state.currentUser.id;

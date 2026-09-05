@@ -38,7 +38,7 @@ export async function saveWorkspaceSettings(input: SaveSettingsInput): Promise<{
     name: input.workspace.name,
     environment: input.workspace.environment,
     region: input.workspace.region,
-    plan: input.workspace.plan,
+    logo_url: input.workspace.logoUrl ?? null,
   });
   if (wsResult.error) return { success: false, error: wsResult.error.message };
 
@@ -64,4 +64,3 @@ export async function saveWorkspaceSettings(input: SaveSettingsInput): Promise<{
 
   return { success: true };
 }
-

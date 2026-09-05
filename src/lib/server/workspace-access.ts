@@ -14,6 +14,7 @@ export type RoleKey = "owner" | "admin" | "reviewer" | "member" | "viewer";
 export type WorkspaceMembershipRow = {
   workspace_id: string;
   role_key: RoleKey;
+  role?: string | null;
   status: string;
   active: boolean;
   created_at?: string;
@@ -30,6 +31,14 @@ export class AuthorizationError extends Error {
   }
 }
 
+function normalizeRoleKey(roleKey: string | null | undefined, legacyRole: string | null | undefined): RoleKey {
+  if (roleKey === "owner" || roleKey === "admin" || roleKey === "reviewer" || roleKey === "member" || roleKey === "viewer") return roleKey;
+  if (legacyRole === "Operator - Admin") return "admin";
+  if (legacyRole === "Operator - Reviewer") return "reviewer";
+  if (legacyRole === "Operator - Viewer") return "viewer";
+  return "member";
+}
+
 /**
  * All authoritative membership reads/writes below use the service-role
  * admin client with an explicit `user_id` filter supplied by the caller.
@@ -44,14 +53,17 @@ export async function listActiveMemberships(
 ): Promise<WorkspaceMembershipRow[]> {
   const { data, error } = await supabase
     .from("os_workspace_members")
-    .select("workspace_id, role_key, status, active, created_at")
+    .select("workspace_id, role_key, role, status, active, created_at")
     .eq("user_id", userId)
     .eq("active", true)
     .neq("status", "pending")
     .order("created_at", { ascending: true });
 
   if (error) throw new Error(error.message);
-  return (data ?? []) as WorkspaceMembershipRow[];
+  return (data ?? []).map((membership) => ({
+    ...membership,
+    role_key: normalizeRoleKey(membership.role_key, membership.role),
+  })) as WorkspaceMembershipRow[];
 }
 
 /**
@@ -94,7 +106,7 @@ export async function getMembership(
   if (!userId || !workspaceId) return null;
   const { data, error } = await supabase
     .from("os_workspace_members")
-    .select("workspace_id, role_key, status, active, created_at")
+    .select("workspace_id, role_key, role, status, active, created_at")
     .eq("user_id", userId)
     .eq("workspace_id", workspaceId)
     .eq("active", true)
@@ -102,7 +114,11 @@ export async function getMembership(
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  return (data as WorkspaceMembershipRow | null) ?? null;
+  if (!data) return null;
+  return {
+    ...data,
+    role_key: normalizeRoleKey(data.role_key, data.role),
+  } as WorkspaceMembershipRow;
 }
 
 /**

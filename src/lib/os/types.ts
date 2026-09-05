@@ -324,6 +324,7 @@ export interface Workspace {
   dodoCustomerId?: string;
   dodoSubscriptionId?: string;
   dodoProductId?: string;
+  logoUrl?: string;
 }
 
 export interface CurrentUser {
@@ -357,6 +358,7 @@ export interface OSSettings {
     environment: string;
     region: string;
     plan: string;
+    logoUrl?: string;
   };
   approvalPolicy: {
     outboundComms: string;

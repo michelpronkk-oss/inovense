@@ -8,6 +8,7 @@ import { useOS } from "@/lib/os/app-provider";
 import type { OSSettings } from "@/lib/os/types";
 import { saveWorkspaceSettings } from "./actions";
 import { getEntitlements } from "@/lib/os/entitlements";
+import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-grid";
 
 type SectionKey = keyof OSSettings;
 type ApprovalPolicyEditableKey = "outboundComms" | "proposals" | "internalReports" | "crmWrites";
@@ -29,8 +30,6 @@ const APPROVAL_EDITABLE_KEYS: ApprovalPolicyEditableKey[] = ["outboundComms", "p
 
 const ENV_OPTIONS = ["production", "staging", "development"];
 const REGION_OPTIONS = ["eu-west-1", "us-east-1", "us-west-2"];
-const PLAN_OPTIONS = ["starter", "growth", "operator", "enterprise"];
-
 const NOTIFICATION_LABELS: Record<keyof OSSettings["notifications"], string> = {
   approvalInbox: "Approval inbox",
   weeklyDigest: "Weekly digest",
@@ -90,13 +89,15 @@ function serializeNotificationValue(row: NotificationDraftRow): string {
 }
 
 export default function SettingsPage() {
-  const { state, updateSettingsSection, updateWorkspace } = useOS();
+  const { state, updateSettingsSection, updateWorkspace, disconnectConnector } = useOS();
   const searchParams = useSearchParams();
   const [editing, setEditing] = useState<SectionKey | null>(null);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [billingBusy, setBillingBusy] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [disconnectingAccount, setDisconnectingAccount] = useState<string | null>(null);
   const [connectedAccounts, setConnectedAccounts] = useState<ConnectedAccount[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(true);
   const entitlements = getEntitlements(state.workspace);
@@ -123,7 +124,6 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!state.workspace.id) return;
     // This effect starts the client-only connector account synchronization.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAccountsLoading(true);
     const qs = new URLSearchParams({
       workspaceId: state.workspace.id,
@@ -238,6 +238,58 @@ export default function SettingsPage() {
     window.location.assign("/connectors");
   };
 
+  const disconnectAccount = async (connectorKey: string) => {
+    setDisconnectingAccount(connectorKey);
+    setError("");
+    setFeedback("");
+    try {
+      const response = await fetch("/api/connectors/disconnect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId: state.workspace.id, connectorKey }),
+      });
+      const result = await response.json().catch(() => ({} as { error?: string }));
+      if (!response.ok) {
+        setError(result.error || "Could not disconnect this account.");
+        return;
+      }
+      disconnectConnector(connectorKey);
+      setConnectedAccounts((accounts) => accounts.map((account) => account.connectorKey === connectorKey ? { ...account, status: "not_connected", reconnectRequired: false, accountEmail: null } : account));
+      setFeedback("Account disconnected. Auterim no longer has access.");
+    } catch {
+      setError("Could not disconnect this account.");
+    } finally {
+      setDisconnectingAccount(null);
+    }
+  };
+
+  const uploadWorkspaceLogo = async (file: File | undefined) => {
+    if (!file) return;
+    setLogoUploading(true);
+    setError("");
+    setFeedback("");
+    try {
+      const form = new FormData();
+      form.set("workspaceId", state.workspace.id);
+      form.set("file", file);
+      const response = await fetch("/api/workspace/logo", { method: "POST", body: form });
+      const result = await response.json().catch(() => ({} as { logoUrl?: string; error?: string }));
+      if (!response.ok || !result.logoUrl) {
+        setError(result.error || "Could not upload workspace logo.");
+        return;
+      }
+      const workspace = { ...state.workspace, logoUrl: result.logoUrl };
+      updateWorkspace(workspace);
+      updateSettingsSection("workspace", workspace);
+      setWorkspaceDraft((current) => ({ ...current, logoUrl: result.logoUrl }));
+      setFeedback("Workspace logo updated.");
+    } catch {
+      setError("Could not upload workspace logo.");
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
   const openBillingPortal = async () => {
     setBillingBusy(true);
     setError("");
@@ -324,8 +376,8 @@ export default function SettingsPage() {
                 key={acct.connectorKey}
                 style={{ display: "grid", gridTemplateColumns: "40px 1fr auto", alignItems: "center", gap: 14, padding: "14px 18px", borderBottom: "1px solid var(--line)" }}
               >
-                <div style={{ width: 34, height: 34, borderRadius: 10, background: `${color}18`, boxShadow: `inset 0 0 0 1px ${color}45`, display: "grid", placeItems: "center", color, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 700, flexShrink: 0 }}>
-                  {letter}
+                <div className="connector-brand-logo" style={{ width: 34, height: 34, borderRadius: 10, color, flexShrink: 0 }}>
+                  {IntegrationLogos[acct.displayName] ?? letter}
                 </div>
                 <div>
                   <div style={{ fontSize: 13.5, fontWeight: 500 }}>{acct.displayName}</div>
@@ -353,11 +405,11 @@ export default function SettingsPage() {
                   </button>
                   <button
                     className="appr-btn deny"
-                    style={{ fontSize: 11, opacity: 0.45, cursor: "not-allowed" }}
-                    disabled
-                    title="Disconnect coming soon"
+                    style={{ fontSize: 11, opacity: disconnectingAccount === acct.connectorKey ? 0.6 : 1 }}
+                    disabled={!isConnected || disconnectingAccount === acct.connectorKey}
+                    onClick={() => void disconnectAccount(acct.connectorKey)}
                   >
-                    Disconnect
+                    {disconnectingAccount === acct.connectorKey ? "Disconnecting..." : "Disconnect"}
                   </button>
                 </div>
               </div>
@@ -395,7 +447,20 @@ export default function SettingsPage() {
             </div>
 
             {editing === "workspace" && (
-              <div style={{ display: "grid", gap: 10 }}>
+              <div style={{ display: "grid", gap: 12 }}>
+                <div className="workspace-identity-editor">
+                  <div className="workspace-logo-preview" style={workspaceDraft.logoUrl ? { backgroundImage: `url(${workspaceDraft.logoUrl})` } : undefined}>
+                    {!workspaceDraft.logoUrl && workspaceDraft.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="workspace-identity-title">Workspace emblem</div>
+                    <div className="workspace-identity-copy">Use a square PNG, JPG, WebP, or SVG. Maximum 2 MB.</div>
+                    <label className="btn btn-ghost btn-sm workspace-logo-upload">
+                      {logoUploading ? "Uploading..." : "Upload logo"}
+                      <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" disabled={logoUploading} onChange={(event) => void uploadWorkspaceLogo(event.target.files?.[0])} />
+                    </label>
+                  </div>
+                </div>
                 <input value={workspaceDraft.name} onChange={(e) => setWorkspaceDraft((p) => ({ ...p, name: e.target.value }))} className="os-input" placeholder="Workspace name" />
                 <select value={workspaceDraft.environment} onChange={(e) => setWorkspaceDraft((p) => ({ ...p, environment: e.target.value }))} className="os-input">
                   {ENV_OPTIONS.map((v) => <option key={v} value={v}>{v}</option>)}
@@ -403,9 +468,7 @@ export default function SettingsPage() {
                 <select value={workspaceDraft.region} onChange={(e) => setWorkspaceDraft((p) => ({ ...p, region: e.target.value }))} className="os-input">
                   {REGION_OPTIONS.map((v) => <option key={v} value={v}>{v}</option>)}
                 </select>
-                <select value={workspaceDraft.plan} onChange={(e) => setWorkspaceDraft((p) => ({ ...p, plan: e.target.value }))} className="os-input">
-                  {PLAN_OPTIONS.map((v) => <option key={v} value={v}>{v}</option>)}
-                </select>
+                <div className="workspace-plan-note"><span>Plan</span><strong>{workspaceDraft.plan}</strong><small>Billing changes are managed securely in the billing portal.</small></div>
               </div>
             )}
 

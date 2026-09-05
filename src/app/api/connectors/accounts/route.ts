@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
       ]
       : getConnectorDefinition(connector.connectorKey)?.readActions.concat(getConnectorDefinition(connector.connectorKey)?.writeActions ?? []) ?? ["Managed connector access"],
     canReconnect: true,
-    canDisconnect: false,
+    canDisconnect: connector.status === "connected" || connector.status === "healthy" || connector.status === "reconnect_required",
   }));
 
   return NextResponse.json(accounts);
