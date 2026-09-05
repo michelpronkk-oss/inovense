@@ -6,6 +6,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { getPublicWorkspaceCta, usePublicUserState } from "@/lib/public-user-state";
+import { pricingPlans, resolvePublicPlanCta } from "@/lib/pricing";
 import { OperatorAvatar } from "@/components/operators/avatar";
 import { GLYPHS } from "@/data/operators";
 import OperatorsEditorial from "./operators-editorial";
@@ -94,7 +95,27 @@ export default function V3Page() {
       <div className="architecture-gate"><span className="gate-tag">Approval boundary</span><strong>Every external action waits for your decision.</strong></div>
     </div></div></section>
     <section className="sec"><div className="wrap"><Head label="Where work gets unstuck" title="Not another app. The layer your operations run through." body="Auterim sits across the systems you already use, qualifying and preparing the work that used to wait on a person, and pausing wherever approval is required." /><div className="body uc rv">{[["Lead response", "New enquiries sit in an inbox until someone gets to them.", "Qualified, replied to and logged in the CRM within minutes.", "Nothing sends until someone approves it."], ["Client onboarding", "Key details get chased across email, docs and calls before delivery even starts.", "One onboarding plan, with next steps and handoff, prepared before the first call.", "Client data stays in the systems your team already uses."], ["Weekly operations", "Status updates get collected by hand from multiple systems, and still arrive late.", "A weekly brief surfaces blockers, next actions and pending approvals automatically.", "Your team reviews the output before anything important goes out."]].map(([h, before, after, proof]) => <div className="ucr" key={h}><h3>{h}</h3><div className="b"><span className="k">Without Auterim</span>{before}</div><div className="a"><span className="k">With Auterim</span><strong>{after}</strong><span className="ucr-proof"><i />{proof}</span></div></div>)}</div><p className="uc-result rv"><i />Three of the patterns already running today. The same approach applies anywhere work in your business waits on a person.</p></div></section>
-    <section className="sec" id="pricing"><div className="wrap"><Head label="Getting started" title="Choose the plan that fits your operation." body="Start with a three-day trial on Foundation or Workforce. Connect systems and deploy approval-gated operators when you are ready." /><div className="body plans rv">{[["Foundation", "$299 / month", "Deploy your first operators", "3-day trial", ["Up to 3 active operators", "Connect up to 3 systems", "Company memory, approvals and audit history", "1,000 controlled runs / month"]], ["Workforce", "$799 / month", "Run essential work across teams", "3-day trial", ["Up to 8 active operators", "Connect up to 8 systems", "Shared approvals and advanced policies", "5,000 controlled runs / month"]], ["Enterprise", "From $1,599 / month", "Roll out with control", null, ["Custom operators, connectors and policies", "SSO, security and dedicated environments", "Implementation and enablement", "SLA, governance and priority support"]]].map(([h, amount, fit, trial, items], i) => { const [pricePart, period] = (amount as string).split(" / "); const from = pricePart.startsWith("From "); const price = from ? pricePart.slice(5) : pricePart; const popular = i === 1; return <div className={`pl ${popular ? "now" : ""}`} key={h}>{popular && <span className="pl-badge pl-badge-alt">Most popular</span>}<h3>{h}</h3><span className="amt">{from && <i>From </i>}<b>{price}</b><i> / {period}</i></span><p className="pl-fit">{fit}</p>{trial && <span className="pl-trial">{trial}</span>}<span className="pl-includes">Includes</span><ul>{(items as string[]).map((x) => <li key={x}><Icon name="check" size={13} strokeWidth={2} />{x}</li>)}</ul><a className="go" href="mailto:hello@auterim.com?subject=Auterim%20pricing">Talk to us →</a></div>; })}</div></div></section>
+    <section className="sec" id="pricing">
+      <div className="wrap">
+        <Head label="Getting started" title="Choose the plan that fits your operation." body="Start with a three-day trial on Foundation or Workforce. Connect systems and deploy approval-gated operators when you are ready." />
+        <div className="v3-pricing-grid body rv">
+          {pricingPlans.map((plan) => {
+            const cta = resolvePublicPlanCta(plan, userState);
+            return <article className={`v3-price-card${plan.featured ? " featured" : ""}`} key={plan.plan_tier}>
+              {plan.featured && <span className="v3-price-badge">Most popular</span>}
+              <span className="v3-price-eyebrow">Auterim {plan.plan_name}</span>
+              <div className="v3-price-value"><strong>{plan.price}</strong><span>/ month</span></div>
+              <p className="v3-price-tagline">{plan.tagline}</p>
+              <span className="v3-price-trial">3 days free · payment begins only if you continue</span>
+              <ul className="v3-price-features">
+                {plan.features.slice(0, 5).map((feature) => <li key={feature}><Icon name="check" size={14} strokeWidth={2} />{feature}</li>)}
+              </ul>
+              <Link className="v3-price-cta" href={cta.href}>{cta.label}<span aria-hidden="true">→</span></Link>
+            </article>;
+          })}
+        </div>
+      </div>
+    </section>
     <section className="sec" id="faq"><div className="wrap"><Head label="Questions" title="How it works, and where it stops." /><div className="body faq rv">{DATA.faq.map(([q, a], i) => <details key={q}><summary><span className="faq-index">{String(i + 1).padStart(2, "0")}</span><span className="faq-q">{q}</span><span className="faq-toggle" aria-hidden="true" /></summary><p>{a}</p></details>)}</div></div></section>
     <section className="close"><div className="wrap close-in rv"><div className="close-main"><span className="lbl"><i aria-hidden="true" />Your operating profile</span><h2>Find your first operator.</h2><p>Tell us how your business works. We&apos;ll recommend the first controlled operator to put in place.</p><div className="close-actions"><Link href={workspaceCta.href} className="btn btn-a">{workspaceCta.label} <span className="arrow">→</span></Link><a href="#run" className="close-run">See a real run <span>→</span></a></div></div><aside className="close-preview close-identity" aria-label="Recommended Revenue Operator"><div className="close-identity-top"><span className="close-identity-index">01 / Recommended</span><span className="close-identity-ready"><i />Ready</span></div><div className="close-identity-op"><OperatorAvatar color="#4DE8E1" glyph={GLYPHS.trend} size={44} /><div><h3>Revenue Operator</h3><span className="close-identity-tag">Sales / Pipeline</span></div></div><p className="close-identity-task">Lead follow-up: qualify replies and keep every deal moving.</p><ul className="close-identity-seq"><li>New lead detected<em>Done</em></li><li>Follow-up drafted<em>Done</em></li><li className="now">Send reply<em>Held at gate</em></li></ul><div className="close-identity-gate"><i />External replies wait for approval</div></aside></div></section>
     <V3Footer />
