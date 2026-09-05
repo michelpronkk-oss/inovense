@@ -126,33 +126,29 @@ function secureEqual(a: string, b: string): boolean {
   return crypto.timingSafeEqual(aBuf, bBuf);
 }
 
-function possibleSignatureParts(headerValue: string): string[] {
-  return headerValue
-    .split(",")
-    .map((part) => part.trim())
-    .flatMap((part) => {
-      if (part.includes("=")) {
-        const [, value] = part.split("=");
-        return [value.trim()];
-      }
-      if (part.startsWith("sha256=")) return [part.replace("sha256=", "").trim()];
-      return [part];
-    })
-    .filter(Boolean);
+function standardWebhookCandidates(headerValue: string): string[] {
+  return Array.from(headerValue.matchAll(/(?:^|\s)v1,([^\s,]+)/g), (match) => match[1]);
 }
 
-export function verifyDodoWebhookSignature(rawBody: string, signatureHeader: string | null): boolean {
+function webhookSigningKey(secret: string): Buffer {
+  const normalized = secret.trim();
+  // Standard Webhooks secrets are base64 encoded and prefixed with `whsec_`.
+  // Retain raw-key support for existing legacy endpoint secrets.
+  return normalized.startsWith("whsec_")
+    ? Buffer.from(normalized.slice("whsec_".length), "base64")
+    : Buffer.from(normalized, "utf8");
+}
+
+export function verifyDodoWebhookSignature(
+  rawBody: string,
+  headers: { id: string | null; timestamp: string | null; signature: string | null },
+): boolean {
   const secret = process.env.DODO_WEBHOOK_SECRET;
-  if (!secret || !signatureHeader) return false;
+  if (!secret || !headers.id || !headers.timestamp || !headers.signature) return false;
 
-  const digestHex = crypto.createHmac("sha256", secret).update(rawBody, "utf8").digest("hex");
-  const digestBase64 = crypto.createHmac("sha256", secret).update(rawBody, "utf8").digest("base64");
-  const candidates = possibleSignatureParts(signatureHeader);
+  const signedContent = `${headers.id}.${headers.timestamp}.${rawBody}`;
+  const expected = crypto.createHmac("sha256", webhookSigningKey(secret)).update(signedContent, "utf8").digest("base64");
+  const candidates = standardWebhookCandidates(headers.signature);
 
-  return candidates.some((candidate) =>
-    secureEqual(candidate, digestHex)
-    || secureEqual(candidate, `sha256=${digestHex}`)
-    || secureEqual(candidate, digestBase64)
-    || secureEqual(candidate, `sha256=${digestBase64}`)
-  );
+  return candidates.some((candidate) => secureEqual(candidate, expected));
 }

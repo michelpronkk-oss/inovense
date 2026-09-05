@@ -56,13 +56,11 @@ function fromPath(obj: Record<string, unknown>, path: string): unknown {
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
-  const signature =
-    req.headers.get("x-dodo-signature")
-    || req.headers.get("dodo-signature")
-    || req.headers.get("x-webhook-signature")
-    || req.headers.get("webhook-signature");
-
-  if (!verifyDodoWebhookSignature(rawBody, signature)) {
+  if (!verifyDodoWebhookSignature(rawBody, {
+    id: req.headers.get("webhook-id"),
+    timestamp: req.headers.get("webhook-timestamp"),
+    signature: req.headers.get("webhook-signature"),
+  })) {
     return NextResponse.json({ error: "Invalid webhook signature." }, { status: 401 });
   }
 
