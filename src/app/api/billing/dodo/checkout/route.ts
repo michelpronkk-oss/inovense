@@ -53,35 +53,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL(`/pricing?billing=error&reason=${encodeURIComponent(message)}`, req.url));
   }
 }
-
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json().catch(() => ({})) as {
-      plan?: string;
-      workspaceId?: string;
-      userId?: string;
-      customerEmail?: string;
-    };
-
-    const plan = parsePlan(body.plan ?? null);
-    if (!plan) {
-      return NextResponse.json({ error: "Invalid plan. Use starter, growth, or operator." }, { status: 400 });
-    }
-    if (!isPlanConfigured(plan)) {
-      return NextResponse.json({ error: "Checkout is not configured for this plan yet." }, { status: 503 });
-    }
-
-    const { checkoutUrl } = await createDodoCheckoutSession({
-      plan,
-      siteUrl: resolveSiteUrl(),
-      workspaceId: body.workspaceId,
-      userId: body.userId,
-      customerEmail: body.customerEmail,
-    });
-
-    return NextResponse.json({ checkoutUrl });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Checkout initialization failed";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
-}

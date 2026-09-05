@@ -15,7 +15,7 @@ export function UpgradeModal({
   onClose,
   title = "Activate real execution",
   body = "Preview mode lets you configure your operating layer. Activate a plan to connect real tools, run operators live and execute approved actions.",
-  hint = "Starter includes 2 operators, 5 connected tools and a 3-day trial.",
+  hint = "Foundation includes 3 operators, 3 connected systems and a 3-day trial.",
 }: UpgradeModalProps) {
   if (!open) return null;
   return (
@@ -34,7 +34,7 @@ export function UpgradeModal({
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
             <Link className="btn btn-ghost btn-sm" href="/pricing">View plans</Link>
-            <Link className="btn btn-primary btn-sm" href="/api/billing/dodo/checkout?plan=starter">Activate Starter</Link>
+            <Link className="btn btn-primary btn-sm" href="/pricing">Choose Foundation</Link>
           </div>
         </div>
       </div>

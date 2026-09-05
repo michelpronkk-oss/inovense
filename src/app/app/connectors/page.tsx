@@ -665,7 +665,7 @@ export default function ConnectorsPage() {
           </div>
           {isPreview && (
             <div style={{ marginTop: 8, color: "#9DEFEA", fontSize: 12.5 }}>
-              Preview mode: connectors run in local mock mode. Activate Starter to connect real accounts.
+              Preview mode: connectors run in local mock mode. Choose a plan to connect real accounts.
             </div>
           )}
         </div>
@@ -1044,7 +1044,7 @@ export default function ConnectorsPage() {
         open={upgradeOpen}
         onClose={() => setUpgradeOpen(false)}
         title="Activate real connectors"
-        body="Preview connectors let you model your stack. Activate Starter to connect real accounts and run operators live."
+        body="Preview connectors let you model your stack. Choose a plan to connect real accounts and run operators live."
       />
     </div>
   );
@@ -1052,7 +1052,7 @@ export default function ConnectorsPage() {
 
 function getConnectorSetupMessage({ isPreview, isConnected }: { isPreview: boolean; isConnected: boolean }): string {
   if (isConnected) return "Account connected.";
-  if (isPreview) return "Activate Starter to connect real accounts.";
+  if (isPreview) return "Choose a plan to connect real accounts.";
   return "Connect your account to enable this connector.";
 }
 

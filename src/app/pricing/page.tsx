@@ -30,13 +30,14 @@ export const metadata: Metadata = {
 };
 
 const capacityRows = [
-  { label: "Operators", values: ["2", "Up to 5", "Up to 12", "Unlimited"] },
-  { label: "Connected tools", values: ["5", "15", "All standard", "Custom and private"] },
-  { label: "Actions per month", values: ["2,000", "25,000", "100,000", "Custom volume"] },
-  { label: "Execution logs", values: ["30 days", "90 days", "180 days", "Custom retention"] },
+  { label: "Active operators", values: ["Foundation · up to 3", "Workforce · up to 8"] },
+  { label: "Connected systems", values: ["Foundation · up to 3", "Workforce · up to 8"] },
+  { label: "Controlled runs", values: ["Foundation · 1,000 / month", "Workforce · 5,000 / month"] },
+  { label: "Execution history", values: ["Foundation · 30 days", "Workforce · 90 days"] },
 ];
 
-export default function PricingPage() {
+export default async function PricingPage({ searchParams }: PageProps<"/pricing">) {
+  const billing = (await searchParams).billing;
   return (
     <>
       <Nav />
@@ -51,6 +52,14 @@ export default function PricingPage() {
               descMaxWidth="56ch"
             />
           </Reveal>
+
+          {(billing === "setup_required" || billing === "error") && (
+            <div className="mx-auto mt-6 max-w-6xl px-6">
+              <div className="rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(242,118,124,0.07)", color: "#F2B3B7", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.2)" }}>
+                Checkout is not ready yet. Confirm that the matching Dodo product ID is set in the deployment environment, then try again.
+              </div>
+            </div>
+          )}
 
           <section className="relative py-8">
             <div className="mx-auto grid max-w-6xl gap-8 px-6 lg:grid-cols-[1fr_1.08fr]">
@@ -102,7 +111,7 @@ export default function PricingPage() {
               <div className="grid gap-4">
                 {capacityRows.map((row) => (
                   <MktCard key={row.label} className="p-0">
-                    <div className="grid grid-cols-1 gap-3 p-5 md:grid-cols-5 md:items-center">
+                    <div className="grid grid-cols-1 gap-3 p-5 md:grid-cols-3 md:items-center">
                       <p className="font-mono text-[11px] uppercase tracking-[0.12em]" style={{ color: "#4A4F57" }}>
                         {row.label}
                       </p>

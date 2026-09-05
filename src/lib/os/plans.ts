@@ -33,11 +33,11 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     insights: false,
   },
   starter: {
-    name: "Starter",
-    price: "$149/mo",
-    maxOperators: 2,
-    maxConnectors: 5,
-    maxMonthlyRuns: 2000,
+    name: "Foundation",
+    price: "$299/mo",
+    maxOperators: 3,
+    maxConnectors: 3,
+    maxMonthlyRuns: 1000,
     maxTeamMembers: 3,
     logRetentionDays: 30,
     policies: true,
@@ -47,11 +47,11 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     insights: false,
   },
   growth: {
-    name: "Growth",
-    price: "$699/mo",
-    maxOperators: 5,
-    maxConnectors: 15,
-    maxMonthlyRuns: 25000,
+    name: "Workforce",
+    price: "$799/mo",
+    maxOperators: 8,
+    maxConnectors: 8,
+    maxMonthlyRuns: 5000,
     maxTeamMembers: 8,
     logRetentionDays: 90,
     policies: true,
@@ -96,7 +96,7 @@ export function resolvePlanId(raw: string): PlanId {
   if (s.includes("preview")) return "preview";
   if (s.includes("enterprise")) return "enterprise";
   if (s.includes("operator")) return "operator";
-  if (s.includes("growth")) return "growth";
+  if (s.includes("growth") || s.includes("workforce")) return "growth";
   return "starter";
 }
 

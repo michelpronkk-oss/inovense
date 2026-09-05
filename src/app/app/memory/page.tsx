@@ -14,6 +14,18 @@ const TYPE_COLORS: Record<string, string> = {
   agent: "#F2767C",
 };
 
+const CONTEXT_FIELDS = ["Workspace", "Industry", "Team size", "Website", "First priority", "Relevant systems", "Source"];
+
+function contextFields(content: string): Array<{ label: string; value: string }> {
+  const expression = new RegExp(`(${CONTEXT_FIELDS.join("|")}):\\s*(.*?)(?=\\s+(?:${CONTEXT_FIELDS.join("|")}):|$)`, "gi");
+  const fields: Array<{ label: string; value: string }> = [];
+  let match: RegExpExecArray | null;
+  while ((match = expression.exec(content)) !== null) {
+    fields.push({ label: match[1], value: match[2].trim().replace(/[.]$/, "") });
+  }
+  return fields;
+}
+
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
@@ -93,39 +105,47 @@ export default function MemoryPage() {
         {visibleEntries.map((e) => {
           const color = TYPE_COLORS[e.type] ?? "#4DE8E1";
           const isOpen = expanded === e.id;
+          const fields = contextFields(e.content);
           return (
             <div key={e.id} style={{ borderBottom: "1px solid var(--line)" }}>
               <button
                 onClick={() => setExpanded(isOpen ? null : e.id)}
-                style={{ width: "100%", textAlign: "left", padding: "14px 18px", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}
+                style={{ width: "100%", textAlign: "left", padding: "13px 16px", background: isOpen ? "rgba(255,255,255,0.014)" : "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 11 }}
               >
-                <div style={{ width: 32, height: 32, borderRadius: 9, background: `${color}15`, boxShadow: `inset 0 0 0 1px ${color}40`, display: "grid", placeItems: "center", flexShrink: 0 }}>
-                  <DatabaseIcon size={13} style={{ color }} />
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: `${color}10`, boxShadow: `inset 0 0 0 1px ${color}30`, display: "grid", placeItems: "center", flexShrink: 0 }}>
+                  <DatabaseIcon size={12} style={{ color }} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-                    <span style={{ fontSize: 13.5, fontWeight: 500, color: "var(--text)" }}>{e.label}</span>
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, padding: "1px 6px", borderRadius: 4, background: `${color}15`, color, textTransform: "uppercase", letterSpacing: "0.06em" }}>{e.type}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2 }}>
+                    <span style={{ fontSize: 13, fontWeight: 560, letterSpacing: "-0.01em", color: "var(--text)" }}>{e.label}</span>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 8.5, padding: "2px 5px", borderRadius: 4, background: `${color}12`, color, textTransform: "uppercase", letterSpacing: "0.05em" }}>{e.type}</span>
                   </div>
-                  <div style={{ fontSize: 11.5, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>{e.summary} - {e.fieldCount} fields - updated {relativeTime(e.updatedAt)}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-mute)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.summary} <span style={{ color: "var(--text-faint)" }}>· {e.fieldCount} fields · {relativeTime(e.updatedAt)}</span></div>
                 </div>
                 <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                  {e.tags.map((t) => (
-                    <span key={t} style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, padding: "2px 7px", borderRadius: 4, background: "rgba(255,255,255,0.04)", color: "var(--text-mute)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+                  {e.tags.slice(0, 2).map((t) => (
+                    <span key={t} style={{ fontFamily: "var(--font-mono)", fontSize: 8.5, padding: "3px 6px", borderRadius: 4, background: "rgba(255,255,255,0.025)", color: "var(--text-mute)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
                       {t}
                     </span>
                   ))}
                 </div>
-                <div style={{ color: "var(--text-faint)", marginLeft: 8, fontSize: 18, fontWeight: 300, transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>&gt;</div>
+                <div style={{ color: "var(--text-faint)", marginLeft: 4, fontSize: 15, fontWeight: 300, transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>&gt;</div>
               </button>
               {isOpen && (
-                <div style={{ padding: "0 18px 16px 62px" }}>
-                  <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", fontSize: 13, color: "var(--text-dim)", lineHeight: 1.6, marginBottom: 10 }}>
-                    {e.content}
-                  </div>
-                  <div style={{ color: "var(--text-mute)", fontSize: 11.5 }}>
-                    Provenance is preserved. Context is added from onboarding, connected sources, and approved operator outputs.
-                  </div>
+                <div style={{ padding: "0 16px 15px 55px" }}>
+                  {fields.length > 0 ? (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 7 }}>
+                      {fields.map((field) => (
+                        <div key={field.label} style={{ padding: "9px 10px", borderRadius: 8, background: "rgba(255,255,255,0.018)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+                          <div style={{ fontFamily: "var(--font-mono)", fontSize: 8.5, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{field.label}</div>
+                          <div style={{ color: "var(--text-dim)", fontSize: 12, lineHeight: 1.4, overflowWrap: "anywhere" }}>{field.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.018)", boxShadow: "inset 0 0 0 1px var(--line)", fontSize: 12.5, color: "var(--text-dim)", lineHeight: 1.6 }}>{e.content}</div>
+                  )}
+                  <div style={{ color: "var(--text-faint)", fontSize: 10.5, marginTop: 9 }}>Owner-confirmed context · Available to approved operators</div>
                 </div>
               )}
             </div>

@@ -45,8 +45,8 @@ export function isDemoLog(log: ExecutionLog): boolean {
 // Capitalised plan label from tier string.
 export function getPlanLabel(planTier: string): string {
   const t = planTier.toLowerCase();
-  if (t === "starter") return "Starter";
-  if (t === "growth") return "Growth";
+  if (t === "starter") return "Foundation";
+  if (t === "growth") return "Workforce";
   if (t === "operator") return "Operator";
   if (t === "enterprise") return "Enterprise";
   return "Preview";

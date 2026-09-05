@@ -148,7 +148,7 @@ export async function POST(req: NextRequest) {
   const entitlements = getBillingEntitlementsForPlan(plan);
   const billingStatus = mapEventToBillingStatus(eventType, trialEndsAt);
   const updatePayload = {
-    plan: `Inovense OS - ${plan.charAt(0).toUpperCase()}${plan.slice(1)}`,
+    plan: plan === "starter" ? "Foundation" : plan === "growth" ? "Workforce" : "Operator",
     plan_tier: entitlements.planTier,
     billing_status: billingStatus,
     trial_ends_at: trialEndsAt ?? null,

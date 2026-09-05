@@ -4,46 +4,17 @@ import Link from "next/link";
 import { usePublicUserState } from "@/lib/public-user-state";
 import { resolvePublicPlanCta, type CheckoutPlanTier, type PricingPlan } from "@/lib/pricing";
 
-type AppStateShape = {
-  workspace?: { id?: string };
-  currentUser?: { id?: string; email?: string };
-};
-
 export function PricingPlans({ plans }: { plans: PricingPlan[] }) {
   const userState = usePublicUserState();
 
-  const startCheckout = async (plan: CheckoutPlanTier) => {
-    let appState: AppStateShape = {};
-    try {
-      const raw = window.localStorage.getItem("auterim-os-state-v7")
-        ?? window.localStorage.getItem("auterim-os-state-v1")
-        ?? window.localStorage.getItem("inovense-os-state-v1");
-      if (raw) appState = JSON.parse(raw) as AppStateShape;
-    } catch {
-      appState = {};
-    }
-
-    const response = await fetch("/api/billing/dodo/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        plan,
-        workspaceId: appState.workspace?.id,
-        userId: appState.currentUser?.id,
-        customerEmail: appState.currentUser?.email,
-      }),
-    });
-
-    const json = (await response.json().catch(() => ({}))) as { checkoutUrl?: string; error?: string };
-    if (!response.ok || !json.checkoutUrl) {
-      window.location.assign("/pricing?billing=error");
-      return;
-    }
-    window.location.assign(json.checkoutUrl);
+  const startCheckout = (plan: CheckoutPlanTier) => {
+    // The server route verifies the signed-in owner and active workspace.
+    // Do not reconstruct billing identity from browser storage.
+    window.location.assign(`/api/billing/dodo/checkout?plan=${plan}`);
   };
 
   return (
-    <div className="grid gap-5 xl:grid-cols-4 md:grid-cols-2">
+    <div className="grid gap-5 md:grid-cols-2">
       {plans.map((plan) => {
         const cta = resolvePublicPlanCta(plan, userState);
         return (
@@ -65,7 +36,7 @@ export function PricingPlans({ plans }: { plans: PricingPlan[] }) {
                 {plan.badge}
               </span>
             )}
-            <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: "#4A4F57" }}>{plan.plan_name.replace("Inovense OS ", "")}</p>
+            <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: "#4A4F57" }}>{plan.plan_name}</p>
             <div className="mb-2 flex items-end gap-1.5">
               <span className="text-3xl font-semibold" style={{ color: "#ECEFF3", letterSpacing: "-0.02em" }}>{plan.price}</span>
               <span className="mb-0.5 text-sm" style={{ color: "#6B7178" }}>{plan.period}</span>

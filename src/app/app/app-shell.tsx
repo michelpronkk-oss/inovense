@@ -33,7 +33,7 @@ function TrialBanner({ trialEndsAt }: { trialEndsAt?: string }) {
           ? "Your 3-day trial has ended."
           : days === 1
             ? "Last day of your trial."
-            : `${days} days left in your Starter trial.`}
+            : `${days} days left in your Foundation trial.`}
       </span>
       <Link
         href="/api/billing/dodo/checkout?plan=starter"
