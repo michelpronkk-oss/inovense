@@ -1,0 +1,9 @@
+/* Responsive copy is one semantic text element in the component tree. The
+   inactive variant is display:none, so it is excluded from the accessibility
+   tree as well as the visual layout. */
+.responsive-copy-mobile { display: none; }
+
+@media (max-width: 520px) {
+  .responsive-copy-desktop { display: none; }
+  .responsive-copy-mobile { display: inline; }
+}

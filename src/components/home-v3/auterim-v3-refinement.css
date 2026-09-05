@@ -3280,6 +3280,7 @@
   .auterim-v3-page .hero-editorial h1 { font-size: clamp(37px, 10.2vw, 40px); }
 }
 
+
 /* Launch mobile composition. This intentionally lives after the legacy responsive
    layers: the phone experience is a continuous editorial canvas, not desktop
    panels stacked one after another. Desktop geometry is deliberately untouched. */

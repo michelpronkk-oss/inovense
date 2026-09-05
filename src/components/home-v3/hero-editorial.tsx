@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { appHref } from "@/lib/urls";
 import { Icon } from "./icons";
+import { ResponsiveCopy } from "./responsive-copy";
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -102,7 +103,7 @@ export default function HeroEditorial() {
         <div className="hero-editorial-copy">
           <p className="hero-editorial-eyebrow">Auterim / operating layer</p>
           <h1>Work moves <em className="hero-editorial-forward">forward.</em><span>You stay in control.</span></h1>
-          <p className="say">Auterim gives operators the context and policies to run the right work across your tools.</p>
+          <p className="say"><ResponsiveCopy desktop="Auterim gives operators the context and policies to run the right work across your tools." mobile="Operators use your context and policies to move the right work across your tools." /></p>
           <div className="hero-cta">
             <Link href={appHref("/app/onboarding")} className="btn btn-a">Start preview <span className="arrow">→</span></Link>
             <a href="#how" className="btn btn-b">See how it works</a>

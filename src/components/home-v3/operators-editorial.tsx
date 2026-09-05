@@ -4,6 +4,7 @@ import { OperatorAvatar } from "@/components/operators/avatar";
 import { GLYPHS, OPERATORS } from "@/data/operators";
 import { LOGOS } from "./integrations-grid";
 import "./auterim-v3-editorial.module.css";
+import { ResponsiveCopy } from "./responsive-copy";
 
 function operator(name: string) {
   const match = OPERATORS.find((item) => item.name === name);
@@ -54,7 +55,7 @@ export default function OperatorsEditorial() {
           <div className="font-mono text-[10px] uppercase tracking-[.2em]" style={{ color: "var(--auterim-v3-mute)" }}>The workforce</div>
           <div>
             <h2 className="max-w-[22ch] font-medium" style={{ color: "var(--auterim-v3-ink)", fontSize: "clamp(30px,3.5vw,46px)", lineHeight: 1.1 }}>Operators are roles, not chatbots.</h2>
-            <p className="mt-[22px] max-w-[56ch] text-lg leading-[1.6]" style={{ color: "var(--auterim-v3-dim)" }}>Each operator has a defined job, its own context, connected tools and clear execution boundaries. Four of fifteen are shown.</p>
+            <p className="mt-[22px] max-w-[56ch] text-lg leading-[1.6]" style={{ color: "var(--auterim-v3-dim)" }}><ResponsiveCopy desktop="Each operator has a defined job, its own context, connected tools and clear execution boundaries. Four of fifteen are shown." mobile="Specialized roles work with your context, tools and boundaries." /></p>
           </div>
         </div>
         <Reveal>

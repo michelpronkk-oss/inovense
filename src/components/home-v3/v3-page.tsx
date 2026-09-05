@@ -13,11 +13,13 @@ import HeroEditorial from "./hero-editorial";
 import RunTrace from "./run-trace";
 import V3Footer from "./v3-footer";
 import { Icon } from "./icons";
+import { ResponsiveCopy } from "./responsive-copy";
 import "./auterim-v3.css";
 import "./auterim-v3-refinement.css";
 import "./auterim-v3-typography.css";
 import "./premium-home-sections.css";
 import "./premium-profile.css";
+import "./responsive-copy.css";
 
 
 const DATA = {
@@ -25,7 +27,21 @@ const DATA = {
   faq: [["What is an operator?", "A role with a defined scope, its own instructions and memory, the connectors its work requires, and a fixed approval boundary. It detects work, prepares it, waits at the gate, executes what you approve and logs the result."], ["How does Auterim know which operators I need?", "From your operating profile: website, industry, size, goals, tools and team structure. It looks for work that is delayed, missed or repeated by hand, and states the reason behind every recommendation."], ["Do I have to build workflows?", "No. Operators arrive with their role and workflows already defined, adapted to your profile. You adjust boundaries rather than designing anything from scratch."], ["Can an operator act without approval?", "Only where you have allowed it, such as reading messages or preparing drafts. Everything on the approval list waits for the named owner, and blocked actions never run."], ["Which tools connect today?", "Gmail, HubSpot, Google Calendar and Slack are available. Notion and Google Drive are in preview, Stripe is coming."], ["What if an operator lacks information?", "It stops and says so. Missing context is marked as not provided and the operator asks you instead of guessing."], ["Can I explore without connecting real data?", "Yes. Preview builds a profile from public information and shows recommendations and demo runs without touching a single system."]],
 };
 
-export function Head({ label, title, body }: { label: string; title: string; body?: string }) { return <div className="head rv"><span className="lbl">{label}</span><div><h2>{title}</h2>{body && <p className="say">{body}</p>}</div></div>; }
+const MOBILE_HEAD_COPY: Record<string, { title?: string; body?: string }> = {
+  "01 / Connect": { body: "Turn your systems, rules and business knowledge into a shared starting point." },
+  "The loop": { title: "Understand first. Recommend next. Execute with control.", body: "Auterim starts with your business, not an empty canvas." },
+  "Company context": { title: "Know the business first.", body: "Auterim turns your context into a profile every operator can use." },
+  "One real run": { body: "See one inbound lead become prepared work, then pause at human approval." },
+  "Boundaries": { body: "Some actions run. Sensitive actions pause. Others never do." },
+  "Architecture": { body: "Auterim prepares work across your systems, then pauses for judgment." },
+  "Where work gets unstuck": { title: "Work should not wait.", body: "Auterim prepares and coordinates work across the systems you already use." },
+  "Getting started": { title: "Choose your operation.", body: "Start with Foundation or Workforce. Add live systems when you are ready." },
+};
+
+export function Head({ label, title, body }: { label: string; title: string; body?: string }) {
+  const mobile = MOBILE_HEAD_COPY[label];
+  return <div className="head rv"><span className="lbl">{label}</span><div><h2><ResponsiveCopy desktop={title} mobile={mobile?.title} /></h2>{body && <p className="say"><ResponsiveCopy desktop={body} mobile={mobile?.body} /></p>}</div></div>;
+}
 
 export default function V3Page() {
   useEffect(() => {

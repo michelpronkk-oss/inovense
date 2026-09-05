@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ResponsiveCopy } from "./responsive-copy";
 import { openCookiePreferences } from "@/lib/cookie-consent";
 
 function Mark() {
@@ -19,7 +20,7 @@ export default function V3Footer() {
         <div className="foot-grid">
           <div className="foot-brand">
             <Link href="/" className="mark"><Mark /></Link>
-            <p>The operating layer between company context and AI execution.</p>
+            <p><ResponsiveCopy desktop="The operating layer between company context and AI execution." mobile="The operating layer for controlled AI work." /></p>
           </div>
           <div>
             <h4>Platform</h4>
