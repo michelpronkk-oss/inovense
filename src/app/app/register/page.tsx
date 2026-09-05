@@ -5,20 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { appHref } from "@/lib/urls";
+import { AuthBackdrop, AuthBrand, AuthCardBadge } from "@/app/app/_auth/auth-chrome";
 import "@/app/app/_auth/auth.css";
-
-function AuterimMark() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 64 64" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
-      <g fill="#ECEFF3">
-        <rect x="10" y="10" width="44" height="9" />
-        <rect x="26" y="19" width="12" height="12" />
-        <rect x="26" y="33" width="12" height="12" />
-        <rect x="10" y="45" width="44" height="9" />
-      </g>
-    </svg>
-  );
-}
 
 function passwordIssue(password: string): string | null {
   if (password.length < 8) return "Password must be at least 8 characters.";
@@ -97,11 +85,13 @@ export default function RegisterPage() {
   if (awaitingVerification) {
     return (
       <div className="auth-shell">
-        <div className="auth-brand"><AuterimMark /> AUTERIM</div>
+        <AuthBackdrop />
+        <AuthBrand />
         <div className="auth-card">
+          <AuthCardBadge />
           <h1 className="auth-title">Check your inbox</h1>
           <p className="auth-sub">
-            We sent a verification link to <strong style={{ color: "var(--text)" }}>{email.trim()}</strong>.
+            We sent a verification link to <strong style={{ color: "var(--ink)" }}>{email.trim()}</strong>.
             Confirm your email to finish creating your account and set up your workspace.
           </p>
           <div className="auth-foot">
@@ -114,8 +104,10 @@ export default function RegisterPage() {
 
   return (
     <div className="auth-shell">
-      <div className="auth-brand"><AuterimMark /> AUTERIM</div>
+      <AuthBackdrop />
+      <AuthBrand />
       <div className="auth-card">
+        <AuthCardBadge />
         <h1 className="auth-title">Create your account</h1>
         <p className="auth-sub">Set up the AI workforce for your business.</p>
 

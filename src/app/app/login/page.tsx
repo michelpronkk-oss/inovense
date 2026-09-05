@@ -4,20 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { AuthBackdrop, AuthBrand, AuthCardBadge } from "@/app/app/_auth/auth-chrome";
 import "@/app/app/_auth/auth.css";
-
-function AuterimMark() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 64 64" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
-      <g fill="#ECEFF3">
-        <rect x="10" y="10" width="44" height="9" />
-        <rect x="26" y="19" width="12" height="12" />
-        <rect x="26" y="33" width="12" height="12" />
-        <rect x="10" y="45" width="44" height="9" />
-      </g>
-    </svg>
-  );
-}
 
 function errorMessageFor(code: string | undefined, message: string): string {
   if (code === "provisioning_failed") return "We couldn't finish setting up your workspace. Please sign in again.";
@@ -65,8 +53,10 @@ export default function LoginPage() {
 
   return (
     <div className="auth-shell">
-      <div className="auth-brand"><AuterimMark /> AUTERIM</div>
+      <AuthBackdrop />
+      <AuthBrand />
       <div className="auth-card">
+        <AuthCardBadge />
         <h1 className="auth-title">Sign in</h1>
         <p className="auth-sub">Access your Auterim AI workforce.</p>
 

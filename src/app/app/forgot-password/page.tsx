@@ -4,20 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { appHref } from "@/lib/urls";
+import { AuthBackdrop, AuthBrand, AuthCardBadge } from "@/app/app/_auth/auth-chrome";
 import "@/app/app/_auth/auth.css";
-
-function AuterimMark() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 64 64" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
-      <g fill="#ECEFF3">
-        <rect x="10" y="10" width="44" height="9" />
-        <rect x="26" y="19" width="12" height="12" />
-        <rect x="26" y="33" width="12" height="12" />
-        <rect x="10" y="45" width="44" height="9" />
-      </g>
-    </svg>
-  );
-}
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -51,8 +39,10 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="auth-shell">
-      <div className="auth-brand"><AuterimMark /> AUTERIM</div>
+      <AuthBackdrop />
+      <AuthBrand />
       <div className="auth-card">
+        <AuthCardBadge />
         <h1 className="auth-title">Reset your password</h1>
         <p className="auth-sub">We&apos;ll email you a link to set a new password.</p>
 

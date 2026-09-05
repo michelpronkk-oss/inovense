@@ -3,20 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { AuthBackdrop, AuthBrand, AuthCardBadge } from "@/app/app/_auth/auth-chrome";
 import "@/app/app/_auth/auth.css";
-
-function AuterimMark() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 64 64" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
-      <g fill="#ECEFF3">
-        <rect x="10" y="10" width="44" height="9" />
-        <rect x="26" y="19" width="12" height="12" />
-        <rect x="26" y="33" width="12" height="12" />
-        <rect x="10" y="45" width="44" height="9" />
-      </g>
-    </svg>
-  );
-}
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -70,8 +58,10 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="auth-shell">
-      <div className="auth-brand"><AuterimMark /> AUTERIM</div>
+      <AuthBackdrop />
+      <AuthBrand />
       <div className="auth-card">
+        <AuthCardBadge />
         <h1 className="auth-title">Set a new password</h1>
         <p className="auth-sub">Choose a new password for your Auterim account.</p>
 
