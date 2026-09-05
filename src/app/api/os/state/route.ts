@@ -79,6 +79,11 @@ function initialsFor(name: string) {
   return initials || "A";
 }
 
+function isLegacySeedIdentity(value: string | null | undefined) {
+  const normalized = value?.trim().toLowerCase() ?? "";
+  return normalized === "workspace admin" || normalized === "admin" || normalized === "admin@workspace.com";
+}
+
 function roleLabelFor(roleKey: string | null | undefined, legacyRole: string | null | undefined) {
   if (roleKey === "owner") return "Owner";
   if (roleKey === "admin") return "Admin";
@@ -203,7 +208,8 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
   // A historical membership row can contain an old invite/seed address and
   // must never make the profile chrome display somebody else's email.
   const memberEmail = context.userEmail ?? member?.email ?? state.currentUser.email;
-  const memberName = member?.full_name?.trim() || context.userName?.trim() || memberEmail.split("@")[0] || "Workspace member";
+  const verifiedFallbackName = context.userName?.trim() || memberEmail.split("@")[0] || "Workspace member";
+  const memberName = isLegacySeedIdentity(member?.full_name) ? verifiedFallbackName : member?.full_name?.trim() || verifiedFallbackName;
   const roleLabel = roleLabelFor(member?.role_key, member?.role);
   const profileUserId = member?.user_id ?? context.userId ?? state.currentUser.id;
   const [profileResult, preferencesResult] = await Promise.all([
@@ -221,7 +227,7 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
   ]);
   const profile = profileResult.data;
   const preferences = preferencesResult.data;
-  const profileName = profile?.full_name?.trim() || memberName;
+  const profileName = isLegacySeedIdentity(profile?.full_name) ? verifiedFallbackName : profile?.full_name?.trim() || memberName;
   state.currentUser = {
     ...state.currentUser,
     id: profileUserId,

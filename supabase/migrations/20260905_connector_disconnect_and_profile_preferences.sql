@@ -18,6 +18,34 @@ set role_key = 'admin'
 where role_key is null
   and role = 'Operator - Admin';
 
+-- Replace historical seed identity values with the verified Auth identity.
+-- This only touches the known placeholder rows; real user-selected names are
+-- never overwritten.
+update os_workspace_members m
+set email = lower(u.email),
+    full_name = coalesce(
+      nullif(u.raw_user_meta_data->>'full_name', ''),
+      nullif(u.raw_user_meta_data->>'name', ''),
+      initcap(replace(split_part(u.email, '@', 1), '.', ' '))
+    )
+from auth.users u
+where m.user_id = u.id
+  and (
+    lower(coalesce(m.email, '')) = 'admin@workspace.com'
+    or lower(coalesce(m.full_name, '')) in ('workspace admin', 'admin')
+  );
+
+update os_user_profiles p
+set full_name = coalesce(
+      nullif(u.raw_user_meta_data->>'full_name', ''),
+      nullif(u.raw_user_meta_data->>'name', ''),
+      initcap(replace(split_part(u.email, '@', 1), '.', ' '))
+    ),
+    initials = upper(left(split_part(u.email, '@', 1), 2))
+from auth.users u
+where p.user_id = u.id
+  and lower(coalesce(p.full_name, '')) in ('workspace admin', 'admin');
+
 -- Workspace identity is public within a workspace and intentionally separate
 -- from user identity. Logo files are stored under workspace-assets/<id>/.
 alter table os_workspaces
