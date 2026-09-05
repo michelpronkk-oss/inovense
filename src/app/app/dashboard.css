@@ -454,12 +454,20 @@ select.os-input option {
 .workspace-plan-note strong { color: var(--text); font: 12px var(--font-sans); letter-spacing: normal; text-transform: none; }
 .workspace-plan-note small { grid-column: 1 / -1; font: 11px var(--font-sans); letter-spacing: normal; text-transform: none; }
 
-.settings-control-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
-.settings-control-card { min-width: 0; }
-.settings-summary-grid { display: grid; gap: 1px; padding: 10px; }
-.settings-summary-item { display: grid; gap: 5px; min-height: 60px; padding: 10px 11px; border-radius: 9px; background: rgba(255,255,255,.018); box-shadow: inset 0 0 0 1px rgba(255,255,255,.035); }
-.settings-summary-item span { color: var(--text-mute); font: 9.5px var(--font-mono); letter-spacing: .075em; text-transform: uppercase; }
-.settings-summary-item strong { color: var(--text); font-size: 12px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }
+.settings-studio { display: grid; grid-template-columns: minmax(0, 1.38fr) minmax(280px, .88fr) minmax(280px, .88fr); gap: 12px; align-items: start; }
+.settings-workspace-surface, .settings-policy-surface, .settings-notifications-surface { min-width: 0; }
+.settings-workspace-body { display: flex; align-items: center; gap: 13px; padding: 18px; }
+.settings-workspace-mark { width: 48px; height: 48px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 13px; color: var(--cyan); background: linear-gradient(135deg, #13383a, #071f23); box-shadow: inset 0 0 0 1px var(--cyan-line); background-position: center; background-size: cover; font: 600 16px var(--font-mono); }
+.settings-workspace-name { color: var(--text); font-size: 15px; font-weight: 600; }
+.settings-workspace-id { margin-top: 3px; color: var(--text-mute); font: 10px var(--font-mono); letter-spacing: .06em; }
+.settings-workspace-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; justify-content: flex-end; }
+.settings-workspace-meta span { border-radius: 999px; padding: 4px 7px; color: var(--text-dim); background: rgba(255,255,255,.035); box-shadow: inset 0 0 0 1px var(--line); font: 9px var(--font-mono); letter-spacing: .05em; text-transform: uppercase; }
+.settings-workspace-foot { padding: 11px 18px 14px; border-top: 1px solid var(--line); color: var(--text-mute); font-size: 11px; line-height: 1.45; }
+.settings-boundary-lead { display: flex; align-items: center; gap: 8px; margin: 16px 16px 10px; color: var(--text); font-size: 12.5px; font-weight: 500; }
+.settings-policy-list, .settings-notification-list { display: grid; padding: 6px 16px 14px; }
+.settings-policy-list div, .settings-notification-list div { display: grid; gap: 4px; padding: 10px 0; border-top: 1px solid var(--line); }
+.settings-policy-list span, .settings-notification-list span { color: var(--text-mute); font: 9px var(--font-mono); letter-spacing: .075em; text-transform: uppercase; }
+.settings-policy-list strong, .settings-notification-list strong { color: var(--text-dim); font-size: 11.5px; font-weight: 400; line-height: 1.35; overflow-wrap: anywhere; }
 
 /* ---- Dots / status ---- */
 .os-root .dot {
@@ -920,7 +928,7 @@ select.os-input option {
   .ops-grid { grid-template-columns: 1fr; }
   .conn-strip { grid-template-columns: repeat(3, 1fr); }
   .wfx-steps { grid-template-columns: repeat(2, 1fr); }
-  .settings-control-grid { grid-template-columns: 1fr; }
+  .settings-studio { grid-template-columns: 1fr; }
 }
 @media (max-width: 600px) {
   .os-top { padding: 10px 16px; }

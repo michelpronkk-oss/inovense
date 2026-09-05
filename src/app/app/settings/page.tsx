@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { LinkIcon, SettingsIcon } from "@/components/dashboard/icons";
 import type { ConnectedAccount } from "@/app/api/connectors/accounts/route";
@@ -44,29 +44,6 @@ const APPROVAL_LABELS: Record<ApprovalPolicyEditableKey, string> = {
   crmWrites: "CRM writes",
 };
 
-const ROW_LABELS: Record<string, string> = {
-  name: "Name",
-  environment: "Environment",
-  region: "Region",
-  plan: "Plan",
-  outboundComms: "Outbound Comms",
-  proposals: "Proposals",
-  internalReports: "Internal Reports",
-  crmWrites: "CRM Writes",
-  approvalInbox: "Approval Inbox",
-  weeklyDigest: "Weekly Digest",
-  errorAlerts: "Error Alerts",
-  newAgentDeployed: "New Agent Deployed",
-};
-
-function formatRowLabel(key: string): string {
-  if (ROW_LABELS[key]) return ROW_LABELS[key];
-  return key
-    .replace(/([A-Z])/g, " $1")
-    .trim()
-    .replace(/\b\w/g, (m) => m.toUpperCase());
-}
-
 function parseNotificationValue(value: string): NotificationDraftRow {
   if (value.toLowerCase() === "off") return { channel: "Off", target: "" };
   if (value.toLowerCase().includes("slack") && value.toLowerCase().includes("email")) {
@@ -96,7 +73,8 @@ export default function SettingsPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [billingBusy, setBillingBusy] = useState(false);
-  const [logoUploading, setLogoUploading] = useState(false);
+  const [workspaceLogoFile, setWorkspaceLogoFile] = useState<File | null>(null);
+  const [workspaceLogoPreview, setWorkspaceLogoPreview] = useState("");
   const [disconnectingAccount, setDisconnectingAccount] = useState<string | null>(null);
   const [connectedAccounts, setConnectedAccounts] = useState<ConnectedAccount[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(true);
@@ -137,24 +115,13 @@ export default function SettingsPage() {
       .finally(() => setAccountsLoading(false));
   }, [state.currentUser.email, state.currentUser.id, state.workspace.id]);
 
-  const approvalPolicyFields = useMemo<Record<ApprovalPolicyEditableKey, string>>(() => ({
-    outboundComms: state.settings.approvalPolicy.outboundComms,
-    proposals: state.settings.approvalPolicy.proposals,
-    internalReports: state.settings.approvalPolicy.internalReports,
-    crmWrites: state.settings.approvalPolicy.crmWrites,
-  }), [state.settings.approvalPolicy]);
-
-  const sections: Array<{ key: SectionKey; title: string; fields: Record<string, string> }> = useMemo(() => ([
-    { key: "workspace", title: "Workspace", fields: state.settings.workspace },
-    { key: "approvalPolicy", title: "Approval policy", fields: approvalPolicyFields },
-    { key: "notifications", title: "Notifications", fields: state.settings.notifications },
-  ]), [approvalPolicyFields, state.settings.notifications, state.settings.workspace]);
-
   const startEdit = (key: SectionKey) => {
     setEditing(key);
     setError("");
     setFeedback("");
     setWorkspaceDraft(state.settings.workspace);
+    setWorkspaceLogoFile(null);
+    setWorkspaceLogoPreview(state.settings.workspace.logoUrl ?? "");
     setApprovalDraft(state.settings.approvalPolicy);
     setNotificationDraft({
       approvalInbox: parseNotificationValue(state.settings.notifications.approvalInbox),
@@ -176,9 +143,21 @@ export default function SettingsPage() {
       return;
     }
 
+    let workspaceToSave = { ...state.workspace, ...workspaceDraft };
+    if (editing === "workspace" && workspaceLogoFile) {
+      const logoUrl = await uploadWorkspaceLogo(workspaceLogoFile);
+      if (!logoUrl) {
+        setSaving(false);
+        return;
+      }
+      workspaceToSave = { ...workspaceToSave, logoUrl };
+      setWorkspaceDraft((current) => ({ ...current, logoUrl }));
+      setWorkspaceLogoPreview(logoUrl);
+    }
+
     if (editing === "workspace") {
-      updateWorkspace(workspaceDraft);
-      updateSettingsSection("workspace", workspaceDraft);
+      updateWorkspace(workspaceToSave);
+      updateSettingsSection("workspace", workspaceToSave);
     }
 
     if (editing === "approvalPolicy") {
@@ -196,7 +175,7 @@ export default function SettingsPage() {
     }
 
     const nextSettings: OSSettings = {
-      workspace: editing === "workspace" ? workspaceDraft : state.settings.workspace,
+      workspace: editing === "workspace" ? workspaceToSave : state.settings.workspace,
       approvalPolicy: editing === "approvalPolicy" ? approvalDraft : state.settings.approvalPolicy,
       notifications: editing === "notifications"
         ? {
@@ -210,7 +189,7 @@ export default function SettingsPage() {
     };
 
     const saveResult = await saveWorkspaceSettings({
-      workspace: editing === "workspace" ? { ...state.workspace, ...workspaceDraft } : state.workspace,
+      workspace: editing === "workspace" ? workspaceToSave : state.workspace,
       settings: nextSettings,
     });
 
@@ -222,7 +201,8 @@ export default function SettingsPage() {
 
     setEditing(null);
     setSaving(false);
-    setFeedback("Settings saved.");
+    setWorkspaceLogoFile(null);
+    setFeedback(editing === "workspace" ? "Workspace settings saved." : "Settings saved.");
   };
 
   const reconnectAccount = (connectorKey: string) => {
@@ -263,11 +243,25 @@ export default function SettingsPage() {
     }
   };
 
-  const uploadWorkspaceLogo = async (file: File | undefined) => {
+  const selectWorkspaceLogo = (file: File | undefined) => {
     if (!file) return;
-    setLogoUploading(true);
+    const permittedTypes = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
+    if (!permittedTypes.includes(file.type) || file.size > 2 * 1024 * 1024) {
+      setError("Choose a PNG, JPG, WebP, or SVG under 2 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setWorkspaceLogoFile(file);
+      setWorkspaceLogoPreview(typeof reader.result === "string" ? reader.result : "");
+      setError("");
+      setFeedback("New emblem selected. Save workspace to apply it.");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const uploadWorkspaceLogo = async (file: File): Promise<string | null> => {
     setError("");
-    setFeedback("");
     try {
       const form = new FormData();
       form.set("workspaceId", state.workspace.id);
@@ -276,17 +270,12 @@ export default function SettingsPage() {
       const result = await response.json().catch(() => ({} as { logoUrl?: string; error?: string }));
       if (!response.ok || !result.logoUrl) {
         setError(result.error || "Could not upload workspace logo.");
-        return;
+        return null;
       }
-      const workspace = { ...state.workspace, logoUrl: result.logoUrl };
-      updateWorkspace(workspace);
-      updateSettingsSection("workspace", workspace);
-      setWorkspaceDraft((current) => ({ ...current, logoUrl: result.logoUrl }));
-      setFeedback("Workspace logo updated.");
+      return result.logoUrl;
     } catch {
       setError("Could not upload workspace logo.");
-    } finally {
-      setLogoUploading(false);
+      return null;
     }
   };
 
@@ -418,23 +407,53 @@ export default function SettingsPage() {
         )}
       </div>
 
-      <div className="settings-control-grid">
-      {sections.map((section) => (
-        <div className="p settings-control-card" key={section.title}>
+      <div className="settings-studio">
+        <section className="p settings-workspace-surface">
           <div className="p-head">
-            <h3><SettingsIcon size={13} /> {section.title}</h3>
-            <button className="appr-btn edit" onClick={() => startEdit(section.key)}>Edit</button>
+            <h3><SettingsIcon size={13} /> Workspace identity</h3>
+            <button className="appr-btn edit" onClick={() => startEdit("workspace")}>Edit workspace</button>
           </div>
-          <div className="settings-summary-grid">
-            {Object.entries(section.fields).map(([label, value]) => (
-              <div key={label} className="settings-summary-item">
-                <span>{formatRowLabel(label)}</span>
-                <strong>{value}</strong>
-              </div>
-            ))}
+          <div className="settings-workspace-body">
+            <div className="settings-workspace-mark" style={state.workspace.logoUrl ? { backgroundImage: `url(${state.workspace.logoUrl})` } : undefined}>
+              {!state.workspace.logoUrl && state.workspace.name.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div className="settings-workspace-name">{state.workspace.name}</div>
+              <div className="settings-workspace-id">{state.workspace.id}</div>
+            </div>
+            <div className="settings-workspace-meta">
+              <span>{state.workspace.environment}</span>
+              <span>{state.workspace.region}</span>
+              <span>{state.workspace.planTier ?? state.workspace.plan}</span>
+            </div>
           </div>
-        </div>
-      ))}
+          <div className="settings-workspace-foot">Your workspace identity appears in the operating rail and shared workspace context.</div>
+        </section>
+
+        <section className="p settings-policy-surface">
+          <div className="p-head">
+            <h3><SettingsIcon size={13} /> Control boundary</h3>
+            <button className="appr-btn edit" onClick={() => startEdit("approvalPolicy")}>Edit policy</button>
+          </div>
+          <div className="settings-boundary-lead"><span className="dot dot-cyan" /> External changes wait for review</div>
+          <div className="settings-policy-list">
+            <div><span>Customer communications</span><strong>{state.settings.approvalPolicy.outboundComms}</strong></div>
+            <div><span>CRM writes</span><strong>{state.settings.approvalPolicy.crmWrites}</strong></div>
+            <div><span>Internal reports</span><strong>{state.settings.approvalPolicy.internalReports}</strong></div>
+          </div>
+        </section>
+
+        <section className="p settings-notifications-surface">
+          <div className="p-head">
+            <h3><SettingsIcon size={13} /> Notification routing</h3>
+            <button className="appr-btn edit" onClick={() => startEdit("notifications")}>Edit routing</button>
+          </div>
+          <div className="settings-notification-list">
+            <div><span>Approval inbox</span><strong>{state.settings.notifications.approvalInbox}</strong></div>
+            <div><span>Control alerts</span><strong>{state.settings.notifications.errorAlerts}</strong></div>
+            <div><span>Operating digest</span><strong>{state.settings.notifications.weeklyDigest}</strong></div>
+          </div>
+        </section>
       </div>
 
       {feedback && <div style={{ color: "#64ffd7", fontSize: 12 }}>{feedback}</div>}
@@ -451,15 +470,17 @@ export default function SettingsPage() {
             {editing === "workspace" && (
               <div style={{ display: "grid", gap: 12 }}>
                 <div className="workspace-identity-editor">
-                  <div className="workspace-logo-preview" style={workspaceDraft.logoUrl ? { backgroundImage: `url(${workspaceDraft.logoUrl})` } : undefined}>
-                    {!workspaceDraft.logoUrl && workspaceDraft.name.charAt(0).toUpperCase()}
+                  <div className="workspace-logo-preview" style={workspaceLogoPreview ? { backgroundImage: `url(${workspaceLogoPreview})` } : undefined}>
+                    {!workspaceLogoPreview && workspaceDraft.name.charAt(0).toUpperCase()}
                   </div>
                   <div>
                     <div className="workspace-identity-title">Workspace emblem</div>
-                    <div className="workspace-identity-copy">Use a square PNG, JPG, WebP, or SVG. Maximum 2 MB.</div>
+                    <div className="workspace-identity-copy">
+                      {workspaceLogoFile ? `${workspaceLogoFile.name} selected — save workspace to apply it.` : "Use a square PNG, JPG, WebP, or SVG. Maximum 2 MB."}
+                    </div>
                     <label className="btn btn-ghost btn-sm workspace-logo-upload">
-                      {logoUploading ? "Uploading..." : "Upload logo"}
-                      <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" disabled={logoUploading} onChange={(event) => void uploadWorkspaceLogo(event.target.files?.[0])} />
+                      {workspaceLogoPreview ? "Replace logo" : "Upload logo"}
+                      <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={(event) => selectWorkspaceLogo(event.target.files?.[0])} />
                     </label>
                   </div>
                 </div>

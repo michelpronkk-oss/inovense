@@ -27,6 +27,13 @@ function asState(value: unknown): OSState | null {
   return rec as OSState;
 }
 
+function stringSettings(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter(([, entry]) => typeof entry === "string"),
+  ) as Record<string, string>;
+}
+
 function workspaceUpdateFromState(state: OSState) {
   return {
     id: state.workspace.id,
@@ -189,6 +196,28 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
     logoUrl: db.logo_url ?? undefined,
   };
   state.settings = { ...state.settings, workspace: { ...state.settings.workspace, ...state.workspace } };
+
+  // Settings are stored independently from the UI snapshot. Hydrate them on
+  // every load so workspace controls remain durable across browsers/devices.
+  const workspaceSettingsResult = await supabase
+    .from("os_workspace_settings")
+    .select("approval_policy,notifications")
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
+  if (!workspaceSettingsResult.error && workspaceSettingsResult.data) {
+    state.settings = {
+      ...state.settings,
+      workspace: { ...state.settings.workspace, ...state.workspace },
+      approvalPolicy: {
+        ...state.settings.approvalPolicy,
+        ...stringSettings(workspaceSettingsResult.data.approval_policy),
+      },
+      notifications: {
+        ...state.settings.notifications,
+        ...stringSettings(workspaceSettingsResult.data.notifications),
+      },
+    };
+  }
 
   // A snapshot is workspace data, never an identity source. Always project
   // the current authenticated member onto it so a new customer cannot see a

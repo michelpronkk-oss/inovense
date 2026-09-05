@@ -33,13 +33,15 @@ export async function saveWorkspaceSettings(input: SaveSettingsInput): Promise<{
 
   const supabase = createClient(url, key, { auth: { persistSession: false } });
 
-  const wsResult = await supabase.from("os_workspaces").upsert({
-    id: input.workspace.id,
+  // A workspace is provisioned before anyone reaches Settings. Updating the
+  // existing row avoids accidental create semantics and preserves all billing
+  // and ownership fields that the client must never control.
+  const wsResult = await supabase.from("os_workspaces").update({
     name: input.workspace.name,
     environment: input.workspace.environment,
     region: input.workspace.region,
     logo_url: input.workspace.logoUrl ?? null,
-  });
+  }).eq("id", input.workspace.id);
   if (wsResult.error) return { success: false, error: wsResult.error.message };
 
   const settingsResult = await supabase.from("os_workspace_settings").upsert({
