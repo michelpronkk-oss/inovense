@@ -13,7 +13,7 @@ type OperatorReadiness = {
   reason: string;
 };
 
-type AgentStatus = "available" | "upgrade" | "coming";
+type AgentStatus = "configured" | "available" | "upgrade" | "coming";
 
 const HREF_BY_KEY: Record<string, string> = {
   revenue: "/agents/revenue",
@@ -62,18 +62,20 @@ type CardModel = {
 
 function AgentCard({ model }: { model: CardModel }) {
   const { op, status, href, needsSetup } = model;
-  const dim = status !== "available";
-  const statusLabel = status === "available" ? "Available" : status === "upgrade" ? "Upgrade" : "Coming next";
+  const dim = status === "upgrade" || status === "coming";
+  const statusLabel = status === "configured" ? "Configured" : status === "available" ? "Available" : status === "upgrade" ? "Upgrade" : "Coming next";
 
-  const foot = status === "available"
+  const foot = status === "configured"
     ? (needsSetup
       ? <span className="ag-ready warn"><span className="rd" /> Needs setup</span>
-      : <span className="ag-ready on"><span className="rd" /> Ready</span>)
+      : <span className="ag-ready on"><span className="rd" /> Monitoring</span>)
+    : status === "available"
+      ? <span className="ag-ready"><span className="rd" /> Available to configure</span>
     : status === "upgrade"
       ? <span className="ag-ready"><Lock /> Plan upgrade</span>
       : <span className="ag-ready"><Lock /> On the roadmap</span>;
 
-  const openEl = status === "available" && href
+  const openEl = (status === "configured" || status === "available") && href
     ? <Link className="ag-open" href={href}>Open operator <Arrow /></Link>
     : <span className="ag-open muted">View details <Arrow /></span>;
 
@@ -127,6 +129,7 @@ export default function AgentsRegistryPage() {
   useEffect(() => { void loadReadiness(); }, [loadReadiness]);
 
   const readinessByKey = useMemo(() => new Map(readiness.map((item) => [item.operatorKey, item])), [readiness]);
+  const configuredKeys = useMemo(() => new Set(state.agents.map((agent) => agent.templateId)), [state.agents]);
 
   // Each design roster entry maps 1:1 (same order) to the real operator registry.
   const cards: CardModel[] = useMemo(() => OPERATORS.map((op, i): CardModel => {
@@ -134,16 +137,18 @@ export default function AgentsRegistryPage() {
     const key = registry?.key ?? "";
     const openable = Boolean(HREF_BY_KEY[key]);
     const status: AgentStatus = openable
-      ? "available"
+      ? (configuredKeys.has(key) ? "configured" : "available")
       : registry?.currentReleaseStatus === "coming_next" ? "coming" : "upgrade";
     const r = readinessByKey.get(key);
     const needsSetup = openable && Boolean(r && (r.status === "missing_connector" || r.status === "upgrade_required"));
     return { op, status, href: HREF_BY_KEY[key], needsSetup };
-  }), [readinessByKey]);
+  }), [configuredKeys, readinessByKey]);
 
-  const active = cards.filter((c) => c.status === "available");
-  const expanding = cards.filter((c) => c.status !== "available");
-  const showActive = filter !== "expanding";
+  const configured = cards.filter((c) => c.status === "configured");
+  const available = cards.filter((c) => c.status === "available");
+  const expanding = cards.filter((c) => c.status === "upgrade" || c.status === "coming");
+  const showConfigured = filter !== "expanding";
+  const showAvailable = filter === "all";
   const showExpanding = filter !== "active";
 
   return (
@@ -173,21 +178,34 @@ export default function AgentsRegistryPage() {
           ))}
         </div>
         <div className="ag-filter" style={{ marginLeft: "auto" }}>
-          {([["all", "All 15"], ["active", "Active"], ["expanding", "Expanding"]] as const).map(([k, label]) => (
+          {([["all", "All 15"], ["active", "Configured"], ["expanding", "Expanding"]] as const).map(([k, label]) => (
             <button key={k} className={filter === k ? "on" : ""} onClick={() => setFilter(k)}>{label}</button>
           ))}
         </div>
       </div>
 
-      {showActive && (
+      {showConfigured && (
         <section>
           <div className="ag-sec-head">
-            <h2>Active</h2>
-            <span className="count">{active.length} operators ready in production</span>
+            <h2>Configured</h2>
+            <span className="count">{configured.length} operator{configured.length === 1 ? "" : "s"} selected for this workspace</span>
             <span className="rule" />
           </div>
           <div className="ag-grid">
-            {active.map((model) => <AgentCard key={model.op.name} model={model} />)}
+            {configured.map((model) => <AgentCard key={model.op.name} model={model} />)}
+          </div>
+        </section>
+      )}
+
+      {showAvailable && available.length > 0 && (
+        <section>
+          <div className="ag-sec-head">
+            <h2>Available paths</h2>
+            <span className="count">Add only when there is a defined operating need</span>
+            <span className="rule" />
+          </div>
+          <div className="ag-grid">
+            {available.map((model) => <AgentCard key={model.op.name} model={model} />)}
           </div>
         </section>
       )}
@@ -196,7 +214,7 @@ export default function AgentsRegistryPage() {
         <section>
           <div className="ag-sec-head">
             <h2>Expanding roster</h2>
-            <span className="count">{expanding.length} operators · upgrade or roadmap</span>
+            <span className="count">{expanding.length} operators - upgrade or roadmap</span>
             <span className="rule" />
           </div>
           <div className="ag-grid">

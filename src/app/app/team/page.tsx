@@ -5,7 +5,7 @@ import Link from "next/link";
 import { UsersIcon, PlusIcon } from "@/components/dashboard/icons";
 import { useOS } from "@/lib/os/app-provider";
 import type { TeamMember } from "@/lib/os/types";
-import { inviteWorkspaceMember } from "./actions";
+import { inviteWorkspaceMember, updateWorkspaceMember } from "./actions";
 import { getPlanLimits, isAtMemberLimit } from "@/lib/os/plans";
 import { UsageBanner } from "@/components/upgrade-prompt";
 
@@ -15,6 +15,13 @@ const rolePerms: Record<string, string[]> = {
   "Operator - Viewer": ["Insights", "Outputs"],
 };
 
+const roleOptions = ["Operator - Viewer", "Operator - Reviewer", "Operator - Admin"] as const;
+type WorkspaceRole = (typeof roleOptions)[number];
+
+function roleFromLabel(role: string): WorkspaceRole {
+  return role === "Admin" ? "Operator - Admin" : role === "Reviewer" ? "Operator - Reviewer" : "Operator - Viewer";
+}
+
 export default function TeamPage() {
   const { state, inviteMember, updateMember } = useOS();
   const limits = getPlanLimits(state.workspace.plan);
@@ -22,9 +29,12 @@ export default function TeamPage() {
   const [showInvite, setShowInvite] = useState(false);
   const [editing, setEditing] = useState<TeamMember | null>(null);
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("Operator - Viewer");
+  const [role, setRole] = useState<WorkspaceRole>("Operator - Viewer");
   const [inviting, setInviting] = useState(false);
   const [inviteFeedback, setInviteFeedback] = useState<string>("");
+  const [savingMember, setSavingMember] = useState(false);
+  const canManage = state.currentUser.roleLabel === "Owner" || state.currentUser.roleLabel === "Admin";
+  const isOwner = state.currentUser.roleLabel === "Owner";
 
   const countLabel = useMemo(() => `${state.teamMembers.length} members`, [state.teamMembers.length]);
 
@@ -40,7 +50,7 @@ export default function TeamPage() {
       inviterName: state.currentUser.name,
       inviterUserId: state.currentUser.id,
       email: normalizedEmail,
-      role: role as "Operator - Admin" | "Operator - Reviewer" | "Operator - Viewer",
+      role,
       permissions,
     });
     if (!result.success) {
@@ -56,6 +66,44 @@ export default function TeamPage() {
     setShowInvite(false);
   };
 
+  const saveMember = async () => {
+    if (!editing) return;
+    const memberRole = roleFromLabel(editing.role);
+    setSavingMember(true);
+    const result = await updateWorkspaceMember({
+      workspaceId: state.workspace.id,
+      memberId: editing.id,
+      role: memberRole,
+      permissions: editing.access,
+      active: editing.active,
+    });
+    setSavingMember(false);
+    if (!result.success) {
+      setInviteFeedback(result.error);
+      return;
+    }
+    updateMember(editing.id, { role: memberRole.replace("Operator - ", ""), access: editing.access, active: editing.active, status: editing.active ? "online" : "offline" });
+    setInviteFeedback("");
+    setEditing(null);
+  };
+
+  const toggleMember = async (member: TeamMember) => {
+    setSavingMember(true);
+    const result = await updateWorkspaceMember({
+      workspaceId: state.workspace.id,
+      memberId: member.id,
+      role: roleFromLabel(member.role),
+      permissions: member.access,
+      active: !member.active,
+    });
+    setSavingMember(false);
+    if (!result.success) {
+      setInviteFeedback(result.error);
+      return;
+    }
+    updateMember(member.id, { active: !member.active, status: member.active ? "offline" : "online" });
+  };
+
   return (
     <div className="os-page">
       <div className="os-page-head">
@@ -65,7 +113,7 @@ export default function TeamPage() {
           <div className="os-page-sub">Manage who can view, approve, and configure operators in this workspace.</div>
         </div>
         <div className="os-page-actions">
-          {atMemberLimit ? (
+          {!canManage ? null : atMemberLimit ? (
             <Link
               href="/pricing"
               className="btn btn-sm"
@@ -101,8 +149,12 @@ export default function TeamPage() {
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
               {m.access.map((a) => <span key={a} style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, padding: "2px 7px", borderRadius: 4, background: "rgba(255,255,255,0.04)", color: "var(--text-dim)", boxShadow: "inset 0 0 0 1px var(--line)" }}>{a}</span>)}
             </div>
-            <button className="appr-btn edit" onClick={() => setEditing(m)}>Edit</button>
-            <button className="appr-btn deny" onClick={() => updateMember(m.id, { active: !m.active, status: m.active ? "offline" : "online" })}>{m.active ? "Disable" : "Enable"}</button>
+            {canManage && m.role !== "Owner" && (
+              <>
+                <button className="appr-btn edit" onClick={() => { setInviteFeedback(""); setEditing({ ...m, role: roleFromLabel(m.role) }); }}>Edit</button>
+                <button className="appr-btn deny" disabled={savingMember} onClick={() => void toggleMember(m)}>{m.active ? "Disable" : "Enable"}</button>
+              </>
+            )}
           </div>
         ))}
       </div>
@@ -116,20 +168,21 @@ export default function TeamPage() {
             </div>
             {editing ? (
               <div style={{ display: "grid", gap: 10 }}>
-                <input value={editing.role} onChange={(e) => setEditing({ ...editing, role: e.target.value })} className="os-input" />
+                <select value={editing.role} onChange={(e) => setEditing({ ...editing, role: e.target.value })} className="os-input" disabled={!isOwner && editing.role === "Operator - Admin"}>
+                  {roleOptions.filter((option) => isOwner || option !== "Operator - Admin").map((option) => <option key={option}>{option}</option>)}
+                </select>
                 <input value={editing.access.join(", ")} onChange={(e) => setEditing({ ...editing, access: e.target.value.split(",").map((x) => x.trim()).filter(Boolean) })} className="os-input" />
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
                   <button className="btn btn-ghost btn-sm" onClick={() => setEditing(null)}>Cancel</button>
-                  <button className="btn btn-primary btn-sm" onClick={() => { updateMember(editing.id, { role: editing.role, access: editing.access }); setEditing(null); }}>Save</button>
+                  <button className="btn btn-primary btn-sm" disabled={savingMember} onClick={() => void saveMember()}>{savingMember ? "Saving..." : "Save access"}</button>
                 </div>
+                {inviteFeedback && <div style={{ fontSize: 12, color: "#ff8f8f" }}>{inviteFeedback}</div>}
               </div>
             ) : (
               <div style={{ display: "grid", gap: 10 }}>
                 <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="os-input" />
-                <select value={role} onChange={(e) => setRole(e.target.value)} className="os-input">
-                  <option>Operator - Viewer</option>
-                  <option>Operator - Reviewer</option>
-                  <option>Operator - Admin</option>
+                <select value={role} onChange={(e) => setRole(e.target.value as WorkspaceRole)} className="os-input">
+                  {roleOptions.filter((option) => isOwner || option !== "Operator - Admin").map((option) => <option key={option}>{option}</option>)}
                 </select>
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
                   <button className="btn btn-ghost btn-sm" onClick={() => setShowInvite(false)}>Cancel</button>

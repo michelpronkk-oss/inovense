@@ -61,5 +61,32 @@ export async function completeOnboardingAction(input: OnboardingDraft): Promise<
   if ("error" in access) return { ok: false, error: access.error ?? "Could not access your workspace." };
   const activated = await access.admin.from("os_workspaces").update({ onboarding_completed_at: new Date().toISOString(), onboarding_version: ONBOARDING_VERSION }).eq("id", access.workspaceId).is("onboarding_completed_at", null);
   if (activated.error) return { ok: false, error: activated.error.message };
+
+  // The onboarding brief is the first trusted company context. It is
+  // server-written with a stable ID so retries update this brief rather than
+  // multiplying memory entries.
+  const priorityLabel = { revenue: "New leads", client_flow: "Client handoffs", operations: "Operations" }[draft.priority];
+  const memory = await access.admin.from("os_memory_entries").upsert({
+    id: `mem-onboarding-${access.workspaceId}`,
+    workspace_id: access.workspaceId,
+    type: "process",
+    label: `${draft.workspaceName} operating brief`,
+    summary: `${priorityLabel} is the first operating priority.`,
+    content: [
+      `Workspace: ${draft.workspaceName}`,
+      `Industry: ${draft.industry}`,
+      `Team size: ${draft.teamSize}`,
+      `Website: ${draft.websiteUrl || "Not provided"}`,
+      `First priority: ${priorityLabel}`,
+      `Relevant systems: ${draft.systems.length ? draft.systems.join(", ") : "Not provided"}`,
+      "Source: owner-confirmed onboarding.",
+    ].join("\n"),
+    tags: ["onboarding", draft.priority, ...draft.systems],
+    agent_scope: [draft.priority],
+    field_count: 6,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "id" });
+  if (memory.error) return { ok: false, error: memory.error.message };
+
   return saved;
 }

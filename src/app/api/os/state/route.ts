@@ -219,6 +219,91 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
     };
   }
 
+  // Company memory is workspace-scoped and is deliberately independent from
+  // a browser snapshot. This makes the onboarding brief and approved
+  // operator learnings durable across sessions and devices.
+  const memoryResult = await supabase
+    .from("os_memory_entries")
+    .select("id,type,label,summary,content,tags,agent_scope,field_count,updated_at")
+    .eq("workspace_id", workspaceId)
+    .order("updated_at", { ascending: false });
+  if (!memoryResult.error) {
+    let memoryEntries = memoryResult.data ?? [];
+    const onboardingData = db.onboarding_data && typeof db.onboarding_data === "object"
+      ? db.onboarding_data as Record<string, unknown>
+      : null;
+    if (memoryEntries.length === 0 && db.onboarding_completed_at && onboardingData) {
+      const priority = onboardingData.first_priority === "revenue"
+        ? "New leads"
+        : onboardingData.first_priority === "client_flow"
+          ? "Client handoffs"
+          : onboardingData.first_priority === "operations"
+            ? "Operations"
+            : "Not specified";
+      const systems = Array.isArray(onboardingData.systems)
+        ? onboardingData.systems.filter((system): system is string => typeof system === "string")
+        : [];
+      const brief = {
+        id: `mem-onboarding-${workspaceId}`,
+        workspace_id: workspaceId,
+        type: "process",
+        label: `${state.workspace.name} operating brief`,
+        summary: `${priority} is the first operating priority.`,
+        content: [
+          `Workspace: ${state.workspace.name}`,
+          `Industry: ${typeof onboardingData.industry === "string" ? onboardingData.industry : "Not provided"}`,
+          `Team size: ${typeof onboardingData.team_size === "string" ? onboardingData.team_size : "Not provided"}`,
+          `Website: ${typeof onboardingData.website === "string" ? onboardingData.website : "Not provided"}`,
+          `First priority: ${priority}`,
+          `Relevant systems: ${systems.length ? systems.join(", ") : "Not provided"}`,
+          "Source: owner-confirmed onboarding.",
+        ].join("\n"),
+        tags: ["onboarding", ...(typeof onboardingData.first_priority === "string" ? [onboardingData.first_priority] : []), ...systems],
+        agent_scope: typeof onboardingData.first_priority === "string" ? [onboardingData.first_priority] : [],
+        field_count: 6,
+        updated_at: new Date().toISOString(),
+      };
+      const insertedBrief = await supabase.from("os_memory_entries").upsert(brief, { onConflict: "id" }).select("id,type,label,summary,content,tags,agent_scope,field_count,updated_at").maybeSingle();
+      if (!insertedBrief.error && insertedBrief.data) memoryEntries = [insertedBrief.data];
+    }
+    state.memory = memoryEntries.map((entry) => ({
+      id: entry.id,
+      type: entry.type as OSState["memory"][number]["type"],
+      label: entry.label,
+      summary: entry.summary,
+      content: entry.content,
+      tags: Array.isArray(entry.tags) ? entry.tags.filter((tag): tag is string => typeof tag === "string") : [],
+      agentScope: Array.isArray(entry.agent_scope) ? entry.agent_scope.filter((scope): scope is string => typeof scope === "string") : [],
+      fieldCount: entry.field_count,
+      updatedAt: entry.updated_at,
+    }));
+  }
+
+  // Operator learning is append-only audit data. Only approved learnings may
+  // influence future work; rejected decisions remain in the audit trail.
+  const operatorMemoryResult = await supabase
+    .from("os_operator_memory")
+    .select("id,operator_key,memory_type,title,content,updated_at")
+    .eq("workspace_id", workspaceId)
+    .eq("approval_status", "approved")
+    .order("updated_at", { ascending: false })
+    .limit(100);
+  if (!operatorMemoryResult.error && operatorMemoryResult.data?.length) {
+    const approvedLearnings = operatorMemoryResult.data.map((learning) => ({
+      id: learning.id,
+      type: "agent" as const,
+      label: learning.title,
+      summary: `Approved learning from ${learning.operator_key.replace(/_/g, " ")} operator.`,
+      content: learning.content,
+      tags: ["approved-learning", learning.memory_type],
+      agentScope: [learning.operator_key],
+      fieldCount: 2,
+      updatedAt: learning.updated_at,
+    }));
+    state.memory = [...state.memory, ...approvedLearnings]
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }
+
   // A snapshot is workspace data, never an identity source. Always project
   // the current authenticated member onto it so a new customer cannot see a
   // seed "Workspace Admin" (or another browser user's cached profile).
@@ -277,17 +362,32 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
       viewMode: preferences.view_mode as OSState["dashboard"]["viewMode"],
     };
   }
-  state.teamMembers = [{
-    id: state.currentUser.id,
-    name: profileName,
-    email: memberEmail,
-    role: roleLabel,
-    initials: state.currentUser.initials,
-    color: "#4DE8E1",
-    access: ["All operators", "Approvals", "Settings"],
-    status: "online",
-    active: true,
-  }];
+  const teamResult = await supabase
+    .from("os_workspace_members")
+    .select("id,user_id,email,full_name,role,role_key,access,status,active")
+    .eq("workspace_id", workspaceId)
+    .order("created_at", { ascending: true });
+  if (!teamResult.error && teamResult.data) {
+    state.teamMembers = teamResult.data.map((teamMember) => {
+      const name = isLegacySeedIdentity(teamMember.full_name)
+        ? (teamMember.email?.split("@")[0] || "Workspace member")
+        : teamMember.full_name?.trim() || teamMember.email?.split("@")[0] || "Workspace member";
+      const access = Array.isArray(teamMember.access)
+        ? teamMember.access.filter((item): item is string => typeof item === "string")
+        : [];
+      return {
+        id: teamMember.id,
+        name,
+        email: teamMember.email,
+        role: roleLabelFor(teamMember.role_key, teamMember.role),
+        initials: initialsFor(name),
+        color: teamMember.role_key === "owner" ? "#4DE8E1" : teamMember.role_key === "admin" ? "#A78BFA" : "#5B8DEF",
+        access,
+        status: teamMember.status as OSState["teamMembers"][number]["status"],
+        active: teamMember.active,
+      };
+    });
+  }
 
   state = { ...state, connectors: reconcileConnectorsWithRegistry(state.connectors) };
   const connectorTruth = await getConnectorTruth({ workspaceId, supabase });

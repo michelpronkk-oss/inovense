@@ -2,8 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useOS } from "@/lib/os/app-provider";
-import { DatabaseIcon, PlusIcon, SearchIcon } from "@/components/dashboard/icons";
-import type { MemoryEntry } from "@/lib/os/types";
+import { DatabaseIcon, SearchIcon } from "@/components/dashboard/icons";
 import { getEntitlements } from "@/lib/os/entitlements";
 
 const TYPE_COLORS: Record<string, string> = {
@@ -33,19 +32,7 @@ export default function MemoryPage() {
   const [q, setQ] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(5);
-  const [draftEntries, setDraftEntries] = useState<MemoryEntry[]>([]);
-  const [archivedIds, setArchivedIds] = useState<string[]>([]);
-  const [fieldIncrements, setFieldIncrements] = useState<Record<string, number>>({});
-
-  const entries = useMemo(
-    () => [...draftEntries, ...state.memory.filter((entry) => !archivedIds.includes(entry.id))]
-      .map((entry) => {
-        const bump = fieldIncrements[entry.id] ?? 0;
-        if (!bump) return entry;
-        return { ...entry, fieldCount: entry.fieldCount + bump };
-      }),
-    [draftEntries, state.memory, archivedIds, fieldIncrements]
-  );
+  const entries = useMemo(() => state.memory, [state.memory]);
 
   const totalFields = entries.reduce((sum, e) => sum + e.fieldCount, 0);
   const mostRecent = entries.reduce((latest, e) =>
@@ -66,35 +53,9 @@ export default function MemoryPage() {
           <span className="os-greet">Business context - {entries.length} entries</span>
           <h1>Memory</h1>
           <div className="os-page-sub">Structured business knowledge that operators reference during execution. Clients, brand voice, processes, market intelligence.</div>
-          {isPreview && (
-            <div style={{ marginTop: 8, color: "#9DEFEA", fontSize: 12.5 }}>
-              Preview mode includes basic memory entries. Synced company memory graph activates on paid plans.
-            </div>
-          )}
-        </div>
-        <div className="os-page-actions">
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={() => {
-              const now = new Date().toISOString();
-              setDraftEntries((prev) => [
-                {
-                  id: `mem-${Date.now()}`,
-                  type: "process",
-                  label: "New memory entry",
-                  summary: "Draft entry",
-                  content: "Add your structured memory content here.",
-                  tags: ["draft"],
-                  agentScope: [],
-                  fieldCount: 1,
-                  updatedAt: now,
-                },
-                ...prev,
-              ]);
-            }}
-          >
-            <PlusIcon size={12} /> Add entry
-          </button>
+          <div style={{ marginTop: 8, color: "#9DEFEA", fontSize: 12.5 }}>
+            {isPreview ? "Your owner-confirmed brief is available now. Connected systems and approved operator outputs enrich memory when you activate." : "Memory is enriched from connected systems and approved operator outputs."}
+          </div>
         </div>
       </div>
 
@@ -102,7 +63,7 @@ export default function MemoryPage() {
         {[
           { label: "Total entries", val: String(entries.length), sub: `${totalFields} total fields` },
           { label: "Categories", val: String(new Set(entries.map((e) => e.type)).size), sub: "client, brand, process..." },
-          { label: "Referenced (7d)", val: "284", sub: "times by operators" },
+          { label: "Referenced (7d)", val: "-", sub: "Available after first operator run" },
           { label: "Last updated", val: mostRecent ? relativeTime(mostRecent.updatedAt) : "-", sub: mostRecent?.label ?? "" },
         ].map((s) => (
           <div className="kpi" key={s.label}>
@@ -155,22 +116,15 @@ export default function MemoryPage() {
                     </span>
                   ))}
                 </div>
-                <div style={{ color: "var(--text-faint)", marginLeft: 8, fontSize: 18, fontWeight: 300, transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>›</div>
+                <div style={{ color: "var(--text-faint)", marginLeft: 8, fontSize: 18, fontWeight: 300, transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>&gt;</div>
               </button>
               {isOpen && (
                 <div style={{ padding: "0 18px 16px 62px" }}>
                   <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", fontSize: 13, color: "var(--text-dim)", lineHeight: 1.6, marginBottom: 10 }}>
                     {e.content}
                   </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button className="appr-btn edit" disabled aria-disabled="true" title="Editor is coming soon">Edit entry</button>
-                    <button
-                      className="appr-btn edit"
-                      onClick={() => setFieldIncrements((prev) => ({ ...prev, [e.id]: (prev[e.id] ?? 0) + 1 }))}
-                    >
-                      Add field
-                    </button>
-                    <button className="appr-btn deny" onClick={() => setArchivedIds((prev) => [...prev, e.id])}>Archive</button>
+                  <div style={{ color: "var(--text-mute)", fontSize: 11.5 }}>
+                    Provenance is preserved. Context is added from onboarding, connected sources, and approved operator outputs.
                   </div>
                 </div>
               )}

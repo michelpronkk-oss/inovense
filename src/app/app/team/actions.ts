@@ -7,6 +7,12 @@ import { getVerifiedSupabaseUser } from "@/lib/supabase/server";
 import { requireWorkspaceAdmin, AuthorizationError } from "@/lib/server/workspace-access";
 import { renderTeamInviteEmail } from "@/lib/email/auth-emails";
 
+type WorkspaceRole = "Operator - Admin" | "Operator - Reviewer" | "Operator - Viewer";
+
+function roleKeyFor(role: WorkspaceRole) {
+  return role === "Operator - Admin" ? "admin" : role === "Operator - Reviewer" ? "reviewer" : "viewer";
+}
+
 type InviteInput = {
   workspaceId: string;
   workspaceName: string;
@@ -17,7 +23,7 @@ type InviteInput = {
    */
   inviterUserId?: string;
   email: string;
-  role: "Operator - Admin" | "Operator - Reviewer" | "Operator - Viewer";
+  role: WorkspaceRole;
   permissions: string[];
 };
 
@@ -39,11 +45,15 @@ export async function inviteWorkspaceMember(input: InviteInput): Promise<InviteR
   const verifiedUser = await getVerifiedSupabaseUser();
   if (!verifiedUser) return { success: false, error: "Sign in to invite team members." };
 
-  const workspaceId = input.workspaceId || "ws-atlas";
+  const workspaceId = input.workspaceId;
   const workspaceName = input.workspaceName || "Auterim Workspace";
+  if (!workspaceId) return { success: false, error: "A workspace is required." };
 
   try {
-    await requireWorkspaceAdmin(verifiedUser.id, workspaceId);
+    const inviter = await requireWorkspaceAdmin(verifiedUser.id, workspaceId);
+    if (input.role === "Operator - Admin" && inviter.role_key !== "owner") {
+      return { success: false, error: "Only the workspace owner can grant admin access." };
+    }
   } catch (error) {
     if (error instanceof AuthorizationError) {
       return { success: false, error: "You do not have permission to invite members to this workspace." };
@@ -85,6 +95,7 @@ export async function inviteWorkspaceMember(input: InviteInput): Promise<InviteR
     email,
     full_name: email.split("@")[0],
     role: input.role,
+    role_key: roleKeyFor(input.role),
     access: input.permissions,
     status: "pending",
     active: true,
@@ -171,4 +182,59 @@ export async function inviteWorkspaceMember(input: InviteInput): Promise<InviteR
   }
 
   return { success: true, status: sent ? "sent" : "queued", message: sent ? "Invite email sent." : "Invite queued." };
+}
+
+type UpdateMemberInput = {
+  workspaceId: string;
+  memberId: string;
+  role: WorkspaceRole;
+  permissions: string[];
+  active: boolean;
+};
+
+export async function updateWorkspaceMember(input: UpdateMemberInput): Promise<InviteResult> {
+  const user = await getVerifiedSupabaseUser();
+  if (!user) return { success: false, error: "Sign in to manage team members." };
+  if (!input.workspaceId || !input.memberId) return { success: false, error: "A workspace member is required." };
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return { success: false, error: "Supabase service role config is missing." };
+
+  let actor;
+  try {
+    actor = await requireWorkspaceAdmin(user.id, input.workspaceId);
+  } catch (error) {
+    if (error instanceof AuthorizationError) return { success: false, error: "You do not have permission to manage members in this workspace." };
+    return { success: false, error: "Could not verify your workspace permissions." };
+  }
+
+  const supabase = createClient(url, key, { auth: { persistSession: false } });
+  const targetResult = await supabase
+    .from("os_workspace_members")
+    .select("id,email,role_key")
+    .eq("id", input.memberId)
+    .eq("workspace_id", input.workspaceId)
+    .maybeSingle();
+  if (targetResult.error || !targetResult.data) return { success: false, error: "Workspace member not found." };
+  if (targetResult.data.role_key === "owner") return { success: false, error: "The workspace owner role cannot be changed here." };
+  if (actor.role_key !== "owner" && (input.role === "Operator - Admin" || targetResult.data.role_key === "admin")) {
+    return { success: false, error: "Only the workspace owner can grant or change admin access." };
+  }
+
+  const update = await supabase
+    .from("os_workspace_members")
+    .update({ role: input.role, role_key: roleKeyFor(input.role), access: input.permissions, active: input.active, status: input.active ? "online" : "offline" })
+    .eq("id", input.memberId)
+    .eq("workspace_id", input.workspaceId);
+  if (update.error) return { success: false, error: update.error.message };
+
+  await supabase
+    .from("os_member_invites")
+    .update({ role: input.role, permissions: input.permissions })
+    .eq("workspace_id", input.workspaceId)
+    .eq("email", targetResult.data.email)
+    .eq("status", "pending");
+
+  return { success: true, status: "sent", message: "Member access updated." };
 }
