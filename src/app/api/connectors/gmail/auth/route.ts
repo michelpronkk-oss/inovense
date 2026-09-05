@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildGoogleAuthUrl } from "@/lib/connectors/gmail";
 import { createOAuthState } from "@/lib/connectors/oauth-state";
-import { hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
-import { resolveWorkspaceMembership } from "@/lib/server/workspace-membership";
-import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
+import { resolveWorkspaceContext } from "@/lib/os/workspace";
 
 function canUseRealConnectors(status: string | null, flag: boolean | null): boolean {
   return Boolean(flag) && status !== "preview";
@@ -14,23 +13,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
   }
 
-  const workspaceId = req.nextUrl.searchParams.get("workspaceId") || "";
-  const userEmail = (req.nextUrl.searchParams.get("userEmail") || "").toLowerCase();
-  const userId = req.nextUrl.searchParams.get("userId") || "";
-
-  if (!workspaceId || !userEmail) {
-    return NextResponse.json({ error: "workspaceId and userEmail are required." }, { status: 400 });
-  }
-
-  const membership = await resolveWorkspaceMembership({ workspaceId, userId, email: userEmail });
-  if (!membership.found) {
-    return NextResponse.json({
-      error: "Workspace membership not found.",
-      code: "workspace_membership_not_found",
-    }, { status: 403 });
-  }
-
+  // The requested workspaceId is only a hint - identity is always resolved
+  // from the verified session, and membership in this exact workspace is
+  // required before an OAuth flow can be started on its behalf.
+  const requestedWorkspaceId = req.nextUrl.searchParams.get("workspaceId") || undefined;
   const supabase = createSupabaseAdmin();
+  const context = await resolveWorkspaceContext({ workspaceId: requestedWorkspaceId, supabase });
+  if (!context.ok) {
+    return NextResponse.json({ error: context.error, code: context.code }, { status: context.status });
+  }
+  if (!context.userEmail) {
+    return NextResponse.json({ error: "A verified account email is required to connect Gmail.", code: "email_required" }, { status: 400 });
+  }
+
+  const workspaceId = context.workspaceId;
+  const userEmail = context.userEmail;
+
   const workspace = await supabase
     .from("os_workspaces")
     .select("billing_status, can_use_real_connectors")

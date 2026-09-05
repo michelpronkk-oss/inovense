@@ -128,23 +128,52 @@ async function getSignedCookieIdentity(cookieName: string, source: "app_session"
   };
 }
 
-async function resolveRequestIdentity(input: {
-  userId?: string;
-  userEmail?: string;
-  userName?: string;
-}): Promise<ResolvedIdentity | null> {
-  const userId = input.userId?.trim() || undefined;
-  const userEmail = normalizeEmail(input.userEmail);
-  const userName = input.userName?.trim() || undefined;
-  if (userId || userEmail) {
-    return { userId, userEmail, userName, source: "input" };
-  }
-
+/**
+ * Resolve the caller's identity from VERIFIED server-side session state only.
+ *
+ * SECURITY: This function must never trust caller-supplied `userId` /
+ * `userEmail` values (query params, request body, etc.) as identity. Doing so
+ * previously allowed any request that simply included a valid member's email
+ * or user id to impersonate that member with zero authentication. Verified
+ * sources only:
+ *   1. Supabase auth cookie, checked against Supabase Auth via
+ *      `supabase.auth.getUser(token)` (real JWT verification).
+ *   2. Server-issued signed app/admin session cookies (HMAC-verified, not
+ *      client-suppliable).
+ *
+ * Caller-supplied `userId`/`userName`/`userEmail` in `input` are NEVER used
+ * to establish identity. They may still be read elsewhere as a *requested*
+ * workspaceId/display name, but identity itself always comes from a verified
+ * session.
+ */
+async function resolveRequestIdentity(): Promise<ResolvedIdentity | null> {
   return await getSupabaseCookieIdentity()
     ?? await getSignedCookieIdentity(APP_SESSION_COOKIE, "app_session")
     ?? await getSignedCookieIdentity(LEGACY_APP_SESSION_COOKIE, "app_session")
     ?? await getSignedCookieIdentity(SESSION_COOKIE, "admin_session")
     ?? await getSignedCookieIdentity(LEGACY_SESSION_COOKIE, "admin_session");
+}
+
+/**
+ * DEV-ONLY convenience identity for local iteration before a real session
+ * exists (e.g. first local run with no cookies at all). Never reachable in
+ * production: gated by NODE_ENV and by `allowDevFallback`, and only used
+ * when no verified session was found. This intentionally mirrors the
+ * previous "input" identity but is now clearly scoped, logged as such via
+ * `devFallback: true` on the returned context, and unreachable once
+ * NODE_ENV === "production".
+ */
+function resolveDevOnlyInputIdentity(input: {
+  userId?: string;
+  userEmail?: string;
+  userName?: string;
+}): ResolvedIdentity | null {
+  if (process.env.NODE_ENV === "production") return null;
+  const userId = input.userId?.trim() || undefined;
+  const userEmail = normalizeEmail(input.userEmail);
+  const userName = input.userName?.trim() || undefined;
+  if (!userId && !userEmail) return null;
+  return { userId, userEmail, userName, source: "input" };
 }
 
 async function findMembership(input: {
@@ -153,6 +182,10 @@ async function findMembership(input: {
   userId?: string;
   userEmail?: string;
 }) {
+  // Prefer matching by verified user_id. Email is only used as a fallback for
+  // legacy rows that predate the user_id column being populated. A "pending"
+  // (not-yet-accepted invite) row must never grant access on its own -
+  // membership only becomes real after invite acceptance.
   const conditions: string[] = [];
   if (isUuid(input.userId)) conditions.push(`user_id.eq.${input.userId}`);
   if (input.userEmail) conditions.push(`email.eq.${input.userEmail}`);
@@ -162,6 +195,9 @@ async function findMembership(input: {
     .from("os_workspace_members")
     .select("workspace_id,email")
     .or(conditions.join(","))
+    .neq("status", "pending")
+    .eq("active", true)
+    .order("created_at", { ascending: true })
     .limit(1);
 
   if (input.workspaceId) {
@@ -237,11 +273,15 @@ export async function resolveWorkspaceContext(input: {
 }): Promise<WorkspaceContext> {
   const supabase = input.supabase ?? createSupabaseAdmin();
   const workspaceId = input.workspaceId?.trim() || undefined;
-  const identity = await resolveRequestIdentity(input);
+  const allowDevFallback = input.allowDevFallback !== false && process.env.NODE_ENV !== "production";
+
+  // Verified identity ONLY. `input.userId` / `input.userEmail` are never
+  // trusted as identity in production - see resolveRequestIdentity().
+  const verifiedIdentity = await resolveRequestIdentity();
+  const identity = verifiedIdentity ?? (allowDevFallback ? resolveDevOnlyInputIdentity(input) : null);
   const userId = identity?.userId;
   const userEmail = identity?.userEmail;
-  const userName = identity?.userName ?? input.userName;
-  const allowDevFallback = input.allowDevFallback !== false && process.env.NODE_ENV !== "production";
+  const userName = identity?.userName ?? (verifiedIdentity ? undefined : input.userName);
 
   if (!userId && !userEmail) {
     return { ok: false, status: 401, error: "Unauthenticated request. Sign in before accessing workspace APIs.", code: "unauthenticated" };

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useOS } from "@/lib/os/app-provider";
 import type { OnboardingState } from "@/lib/os/types";
+import { completeOnboardingAction } from "./actions";
 import "./styles-onboarding.css";
 
 type DemoPath = NonNullable<OnboardingState["preferredDemoPath"]>;
@@ -64,6 +65,7 @@ export default function OnboardingPage() {
   const [approvalOwner, setApprovalOwner] = useState(state.currentUser.email || "");
   const [safetyMode, setSafetyMode] = useState<SafetyMode>("safe");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const selectedPath = DEMO_PATHS[demoPath];
   const readiness = useMemo(() => {
@@ -75,7 +77,7 @@ export default function OnboardingPage() {
     return Math.min(100, score);
   }, [approvalOwner, companyName, demoPath, safetyMode]);
 
-  const submit = () => {
+  const submit = async () => {
     const company = companyName.trim();
     const owner = approvalOwner.trim() || state.currentUser.email;
     if (!company) {
@@ -87,6 +89,26 @@ export default function OnboardingPage() {
       return;
     }
     setError("");
+    setSubmitting(true);
+
+    // Authoritative persistence: server-side completion record, checked by
+    // the /app route guard on every subsequent request.
+    const result = await completeOnboardingAction({
+      companyName: company,
+      websiteUrl: normalizeWebsite(websiteUrl),
+      useCase,
+      preferredDemoPath: demoPath,
+      safetyMode,
+      approvalOwner: owner,
+    });
+
+    if (!result.ok) {
+      setSubmitting(false);
+      setError(result.error);
+      return;
+    }
+
+    // Client-side cache only, for instant UI state - never authoritative.
     completeOnboarding({
       companyName: company,
       websiteUrl: normalizeWebsite(websiteUrl),
@@ -229,7 +251,9 @@ export default function OnboardingPage() {
       <div className="actionbar">
         <div className="hint">Connectors come next</div>
         <div className="actionbar-mid">
-          <button className="btn btn-primary btn-sm" onClick={submit}>Continue to activation</button>
+          <button className="btn btn-primary btn-sm" onClick={submit} disabled={submitting}>
+            {submitting ? "Saving..." : "Continue to activation"}
+          </button>
         </div>
       </div>
     </div>

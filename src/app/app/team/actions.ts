@@ -3,11 +3,17 @@
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { getAppUrl } from "@/lib/urls";
+import { getVerifiedSupabaseUser } from "@/lib/supabase/server";
+import { requireWorkspaceAdmin, AuthorizationError } from "@/lib/server/workspace-access";
 
 type InviteInput = {
   workspaceId: string;
   workspaceName: string;
   inviterName: string;
+  /**
+   * @deprecated no longer trusted for authorization. The inviter identity is
+   * always re-derived from the verified session server-side.
+   */
   inviterUserId?: string;
   email: string;
   role: "Operator - Admin" | "Operator - Reviewer" | "Operator - Viewer";
@@ -17,11 +23,6 @@ type InviteInput = {
 type InviteResult =
   | { success: true; status: "sent" | "queued"; message: string }
   | { success: false; error: string };
-
-function isUuid(v: string | undefined): v is string {
-  if (!v) return false;
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
-}
 
 function inviteHtml(args: { workspaceName: string; inviterName: string; role: string; acceptUrl: string }) {
   return `<!DOCTYPE html>
@@ -62,11 +63,26 @@ export async function inviteWorkspaceMember(input: InviteInput): Promise<InviteR
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return { success: false, error: "Supabase service role config is missing." };
 
-  const supabase = createClient(url, key, { auth: { persistSession: false } });
+  // Identity and authorization are always re-derived from the verified
+  // session, never from client-supplied inviterUserId/workspaceId alone.
+  // Only workspace admins/owners may invite new members.
+  const verifiedUser = await getVerifiedSupabaseUser();
+  if (!verifiedUser) return { success: false, error: "Sign in to invite team members." };
 
-  const inviterUserId = isUuid(input.inviterUserId) ? input.inviterUserId : null;
   const workspaceId = input.workspaceId || "ws-atlas";
   const workspaceName = input.workspaceName || "Auterim Workspace";
+
+  try {
+    await requireWorkspaceAdmin(verifiedUser.id, workspaceId);
+  } catch (error) {
+    if (error instanceof AuthorizationError) {
+      return { success: false, error: "You do not have permission to invite members to this workspace." };
+    }
+    return { success: false, error: "Could not verify your workspace permissions." };
+  }
+
+  const supabase = createClient(url, key, { auth: { persistSession: false } });
+  const inviterUserId = verifiedUser.id;
 
   // Ensure workspace and pending member row exist.
   await supabase.from("os_workspaces").upsert({
@@ -106,12 +122,17 @@ export async function inviteWorkspaceMember(input: InviteInput): Promise<InviteR
   }, { onConflict: "workspace_id,email" });
 
   const appUrl = getAppUrl();
-  const acceptUrl = `${appUrl}/app?invite=${inviteInsert.data.token}`;
+  const acceptPath = `/invite/accept?token=${inviteInsert.data.token}`;
+  const acceptUrl = `${appUrl}/app${acceptPath}`;
   const subject = `You are invited to ${workspaceName} on Auterim OS`;
   const textBody = `${input.inviterName} invited you to ${workspaceName} as ${input.role}. Accept invite: ${acceptUrl}`;
   const htmlBody = inviteHtml({ workspaceName, inviterName: input.inviterName, role: input.role, acceptUrl });
 
-  const authInvite = await supabase.auth.admin.inviteUserByEmail(email, { redirectTo: acceptUrl });
+  // Route Supabase's own invite email through the auth callback first so the
+  // recovery/invite token is exchanged for a real session cookie before the
+  // accept page (a Server Action) tries to read the verified user.
+  const supabaseInviteRedirect = `${appUrl}/app/auth/callback?next=${encodeURIComponent(acceptPath)}`;
+  const authInvite = await supabase.auth.admin.inviteUserByEmail(email, { redirectTo: supabaseInviteRedirect });
 
   let sent = false;
   let providerError = "";

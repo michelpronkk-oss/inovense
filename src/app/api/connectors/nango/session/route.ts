@@ -2,15 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { createNangoConnectSession, NangoConnectSessionError } from "@/lib/integrations/nango";
 import { isSupportedNangoConnector } from "@/lib/connectors/registry";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
-import { resolveWorkspaceMembership } from "@/lib/server/workspace-membership";
+import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { getEntitlements } from "@/lib/os/entitlements";
 import type { Workspace } from "@/lib/os/types";
 
 type SessionBody = {
   workspaceId?: string;
   connectorKey?: string;
-  userEmail?: string;
-  userId?: string;
 };
 
 export async function POST(req: NextRequest) {
@@ -20,31 +18,31 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = (await req.json()) as SessionBody;
-    const workspaceId = (body.workspaceId || "").trim();
+    const requestedWorkspaceId = (body.workspaceId || "").trim() || undefined;
     const connectorKey = (body.connectorKey || "").trim();
-    const userEmail = (body.userEmail || "").trim().toLowerCase();
-    const userId = (body.userId || "").trim();
 
-    if (!workspaceId || !connectorKey) {
-      return NextResponse.json({ error: "workspaceId and connectorKey are required.", code: "invalid_params" }, { status: 400 });
+    if (!connectorKey) {
+      return NextResponse.json({ error: "connectorKey is required.", code: "invalid_params" }, { status: 400 });
     }
     if (!isSupportedNangoConnector(connectorKey)) {
       return NextResponse.json({ error: "This connector is not available to connect yet.", code: "unsupported_connector" }, { status: 400 });
     }
-    if (!userEmail) {
-      return NextResponse.json({ error: "userEmail is required.", code: "not_authenticated" }, { status: 400 });
-    }
 
-    // Resolve membership: checks by user_id OR email, with bootstrap fallback.
-    const membership = await resolveWorkspaceMembership({ workspaceId, userId, email: userEmail });
-    if (!membership.found) {
-      return NextResponse.json({
-        error: "Workspace membership not found. Make sure your account is linked to this workspace.",
-        code: "workspace_membership_not_found",
-      }, { status: 403 });
-    }
-
+    // Identity always comes from the verified session. workspaceId in the
+    // body is only a hint; membership in that exact workspace is enforced.
     const supabase = createSupabaseAdmin();
+    const context = await resolveWorkspaceContext({ workspaceId: requestedWorkspaceId, supabase });
+    if (!context.ok) {
+      return NextResponse.json({ error: context.error, code: context.code }, { status: context.status });
+    }
+    if (!context.userEmail) {
+      return NextResponse.json({ error: "A verified account email is required to connect this tool.", code: "email_required" }, { status: 400 });
+    }
+
+    const workspaceId = context.workspaceId;
+    const userEmail = context.userEmail;
+    const userId = context.userId;
+
     const workspaceRes = await supabase
       .from("os_workspaces")
       .select("id,name,environment,region,plan,plan_tier,billing_status,trial_ends_at")

@@ -2,6 +2,8 @@
 
 import { createClient } from "@supabase/supabase-js";
 import type { OSSettings, Workspace } from "@/lib/os/types";
+import { getVerifiedSupabaseUser } from "@/lib/supabase/server";
+import { requireWorkspaceAdmin, AuthorizationError } from "@/lib/server/workspace-access";
 
 type SaveSettingsInput = {
   workspace: Workspace;
@@ -12,6 +14,22 @@ export async function saveWorkspaceSettings(input: SaveSettingsInput): Promise<{
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return { success: false, error: "Supabase config missing." };
+
+  // Workspace configuration is an admin/owner-only action. Identity and
+  // authorization are re-derived from the verified session - the client
+  // supplied `input.workspace.id` is only used as the target to check
+  // membership against, never trusted on its own.
+  const verifiedUser = await getVerifiedSupabaseUser();
+  if (!verifiedUser) return { success: false, error: "Sign in to update workspace settings." };
+
+  try {
+    await requireWorkspaceAdmin(verifiedUser.id, input.workspace.id);
+  } catch (error) {
+    if (error instanceof AuthorizationError) {
+      return { success: false, error: "You do not have permission to update this workspace." };
+    }
+    return { success: false, error: "Could not verify your workspace permissions." };
+  }
 
   const supabase = createClient(url, key, { auth: { persistSession: false } });
 

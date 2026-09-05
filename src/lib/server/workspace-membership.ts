@@ -12,14 +12,22 @@ export type MembershipResult =
 /**
  * Resolve workspace membership for a given identity.
  *
- * Strategy:
- *   1. Match by workspace_id AND (user_id OR email) in one query.
- *   2. Bootstrap fallback: if no member row found but the workspace exists,
- *      upsert the user as a member. This handles email-change or first-access
- *      scenarios where the member row was not created for this identity yet.
+ * SECURITY: `userId` / `email` here must already come from a VERIFIED
+ * session (see `resolveWorkspaceContext` in `src/lib/os/workspace.ts`),
+ * never from unauthenticated request params. This function does not
+ * perform any authentication itself - it only checks whether an already
+ * -verified identity has an accepted membership row for the requested
+ * workspace.
  *
- * Security: workspace_id must refer to a real row in os_workspaces.
- * Arbitrary workspace IDs are rejected at the upsert gate.
+ * This function previously auto-created ("bootstrapped") a brand new
+ * `Operator - Admin` membership row for any email + workspaceId pair that
+ * did not already have one, as long as the workspace existed. That allowed
+ * unauthenticated callers to grant themselves admin access to any real
+ * workspace by guessing its id. That bootstrap behavior has been removed.
+ * Missing membership now always resolves to `not_found`; the caller must
+ * treat that as 401/403. The only way to gain a legitimate membership row
+ * is via workspace provisioning (owner) or invite acceptance
+ * (`accept_workspace_invite` RPC).
  */
 export async function resolveWorkspaceMembership(params: {
   workspaceId: string;
@@ -43,37 +51,14 @@ export async function resolveWorkspaceMembership(params: {
     .select("workspace_id,email")
     .eq("workspace_id", workspaceId)
     .or(conditions.join(","))
+    .neq("status", "pending")
+    .eq("active", true)
+    .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
 
   if (membership.data) {
     return { found: true, workspaceId: membership.data.workspace_id, memberEmail: membership.data.email };
-  }
-
-  // Bootstrap fallback: if workspace exists, add this identity as a member.
-  // Handles the common case where the user's email changed after initial
-  // bootstrap, or they access the workspace via a different identity.
-  if (normalizedEmail) {
-    const workspaceCheck = await supabase
-      .from("os_workspaces")
-      .select("id")
-      .eq("id", workspaceId)
-      .maybeSingle();
-
-    if (workspaceCheck.data) {
-      await supabase.from("os_workspace_members").upsert({
-        workspace_id: workspaceId,
-        user_id: isUuid(userId) ? userId : null,
-        email: normalizedEmail,
-        full_name: normalizedEmail.split("@")[0],
-        role: "Operator - Admin",
-        access: ["All operators", "Approvals", "Settings"],
-        status: "online",
-        active: true,
-      }, { onConflict: "workspace_id,email" });
-
-      return { found: true, workspaceId, memberEmail: normalizedEmail };
-    }
   }
 
   return { found: false, reason: "not_found" };

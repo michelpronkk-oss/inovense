@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:rebrand": "node tests/auterim-phase4-smoke.mjs",
+    "test:auth-security": "node tests/auth-security-smoke.mjs",
     "trigger:dev": "npx trigger.dev@latest dev",
     "trigger:deploy": "npx trigger.dev@latest deploy"
   },
@@ -21,7 +22,8 @@
     "@react-pdf/renderer": "^4.4.0",
     "@remotion/cli": "^4.0.448",
     "@remotion/player": "4.0.447",
-    "@supabase/supabase-js": "^2.102.1",
+    "@supabase/ssr": "^0.12.6",
+    "@supabase/supabase-js": "^2.115.0",
     "@trigger.dev/sdk": "4.5.16",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

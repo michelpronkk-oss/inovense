@@ -63,12 +63,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { state, clientHydrated } = useOS();
   const isOnboardingRoute = pathname === "/app/onboarding";
+  const isBareRoute = isOnboardingRoute || Boolean(pathname && (
+    pathname === "/app/login" ||
+    pathname === "/app/register" ||
+    pathname === "/app/forgot-password" ||
+    pathname === "/app/reset-password" ||
+    pathname === "/app/auth/callback" ||
+    pathname === "/app/invite/accept"
+  ));
   const isOnboarded = state.onboarding.isComplete;
   const entitlements = getEntitlements(state.workspace);
   const showManageBilling = entitlements.billingStatus === "active" || entitlements.billingStatus === "trialing" || entitlements.billingStatus === "past_due";
 
   useEffect(() => {
-    if (!clientHydrated) return;
+    if (!clientHydrated || isBareRoute) return;
     if (!isOnboarded && !isOnboardingRoute) {
       router.replace("/app/onboarding");
       return;
@@ -76,9 +84,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (isOnboarded && isOnboardingRoute) {
       router.replace("/app/activate?first=1");
     }
-  }, [clientHydrated, isOnboarded, isOnboardingRoute, router]);
+  }, [clientHydrated, isBareRoute, isOnboarded, isOnboardingRoute, router]);
 
-  if (isOnboardingRoute) {
+  if (isBareRoute) {
     return (
       <div className="os-main" style={{ width: "100%", minHeight: "100vh" }}>
         {children}

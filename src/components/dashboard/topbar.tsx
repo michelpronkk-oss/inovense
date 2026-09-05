@@ -832,6 +832,20 @@ export function OSTopbar() {
               {contextualAction.icon && <PlusIcon size={12} />} {contextualAction.label}
             </button>
           )}
+
+          <button
+            className="os-iconbtn"
+            title="Sign out"
+            aria-label="Sign out"
+            onClick={() => {
+              closeAll();
+              fetch("/api/auth/logout", { method: "POST" }).finally(() => {
+                window.location.href = "/app/login";
+              });
+            }}
+          >
+            <XIcon size={14} />
+          </button>
         </div>
       </div>
 
