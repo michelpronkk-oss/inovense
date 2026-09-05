@@ -52,7 +52,7 @@ export function PricingPlans({ plans }: { plans: PricingPlan[] }) {
                 </li>
               ))}
             </ul>
-            {plan.plan_tier === "enterprise" ? (
+            {plan.plan_tier === "enterprise" || userState !== "signed_in" ? (
               <Link
                 href={cta.href}
                 className="block w-full rounded-xl py-2.5 text-center text-sm font-medium transition-all hover:-translate-y-px"

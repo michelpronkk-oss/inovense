@@ -36,10 +36,10 @@ export default function Nav({ homepage = false }: { homepage?: boolean }) {
   const userState = usePublicUserState();
   const primaryCta =
     userState === "signed_in"
-      ? { label: "Open dashboard", href: appHref("/app") }
+      ? { label: "Open workspace", href: appHref("/") }
       : userState === "registered"
-        ? { label: "Sign in", href: appHref("/app") }
-        : { label: "Start preview", href: appHref("/app/onboarding") };
+        ? { label: "Sign in", href: appHref("/") }
+        : { label: "Start preview", href: appHref("/onboarding") };
   const showSecondarySignIn = userState === "guest" || userState === "loading";
   const navLinks = homepage
     ? [
@@ -98,7 +98,7 @@ export default function Nav({ homepage = false }: { homepage?: boolean }) {
         <div className="hidden items-center gap-4 lg:flex">
           {showSecondarySignIn && (
             <Link
-              href={appHref("/app")}
+              href={appHref("/")}
               className="text-[13px] text-zinc-400 transition-colors duration-150 hover:text-zinc-200"
             >
               Sign in
@@ -187,7 +187,7 @@ export default function Nav({ homepage = false }: { homepage?: boolean }) {
                 })}
                 {showSecondarySignIn && (
                   <Link
-                    href={appHref("/app")}
+                    href={appHref("/")}
                     onClick={() => setOpen(false)}
                     className="border-b border-zinc-800/60 py-4 text-sm text-zinc-400 transition-colors hover:text-zinc-100"
                   >

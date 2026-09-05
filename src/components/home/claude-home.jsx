@@ -100,11 +100,11 @@ const Header = () => {
   const [scrolled, setScrolled] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const userState = usePublicUserState();
-  const appDashboardHref = appHref("/app");
-  const appOnboardingHref = appHref("/app/onboarding");
+  const appDashboardHref = appHref("/");
+  const appOnboardingHref = appHref("/onboarding");
   const primaryCta =
     userState === "signed_in"
-      ? { label: "Open dashboard", href: appDashboardHref }
+      ? { label: "Open workspace", href: appDashboardHref }
       : userState === "registered"
         ? { label: "Sign in", href: appDashboardHref }
         : { label: "Get Started", href: appOnboardingHref };
@@ -2466,11 +2466,11 @@ const PricingSection = () => {
 // ============================================================================
 const FinalCTA = () => {
   const userState = usePublicUserState();
-  const appDashboardHref = appHref("/app");
-  const appOnboardingHref = appHref("/app/onboarding");
+  const appDashboardHref = appHref("/");
+  const appOnboardingHref = appHref("/onboarding");
   const primaryCta =
     userState === "signed_in"
-      ? { label: "Open dashboard", href: appDashboardHref }
+      ? { label: "Open workspace", href: appDashboardHref }
       : userState === "registered"
         ? { label: "Sign in", href: appDashboardHref }
         : { label: "Get Started", href: appOnboardingHref };

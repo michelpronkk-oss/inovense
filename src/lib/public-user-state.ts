@@ -1,22 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { appHref } from "@/lib/urls";
 
 export type PublicUserState = "loading" | "guest" | "registered" | "signed_in";
 
 const APP_STATE_KEY = "auterim-os-state-v1";
 const LEGACY_APP_STATE_KEY = "inovense-os-state-v1";
-const ADMIN_SESSION_COOKIE = "auterim_admin_session";
-const LEGACY_ADMIN_SESSION_COOKIE = "inovense_admin_session";
-
-function hasSignedInCookie(): boolean {
-  if (typeof document === "undefined") return false;
-  return document.cookie.split(";").some((cookie) => {
-    const value = cookie.trim();
-    return value.startsWith(`${ADMIN_SESSION_COOKIE}=`) || value.startsWith(`${LEGACY_ADMIN_SESSION_COOKIE}=`);
-  });
-}
-
 function hasRegisteredWorkspace(): boolean {
   if (typeof window === "undefined") return false;
   try {
@@ -33,14 +23,24 @@ export function usePublicUserState(): PublicUserState {
   const [state, setState] = useState<PublicUserState>("loading");
 
   useEffect(() => {
-    const signedIn = hasSignedInCookie();
-    if (signedIn) {
-      // This effect synchronizes client-only cookie state after hydration.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setState("signed_in");
-      return;
-    }
-    setState(hasRegisteredWorkspace() ? "registered" : "guest");
+    let cancelled = false;
+    const setSignedOutState = () => {
+      if (!cancelled) setState(hasRegisteredWorkspace() ? "registered" : "guest");
+    };
+
+    // Auth cookies can be HttpOnly and scoped to app.auterim.com. Ask the app
+    // host directly instead of inferring state from marketing-site storage.
+    void fetch(appHref("/api/auth/status"), { credentials: "include", cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Could not read session state.");
+        return response.json() as Promise<{ authenticated?: boolean }>;
+      })
+      .then((result) => {
+        if (!cancelled) setState(result.authenticated ? "signed_in" : hasRegisteredWorkspace() ? "registered" : "guest");
+      })
+      .catch(setSignedOutState);
+
+    return () => { cancelled = true; };
   }, []);
 
   return state;

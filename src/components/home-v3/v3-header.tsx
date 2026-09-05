@@ -3,11 +3,20 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { appHref } from "@/lib/urls";
+import { usePublicUserState } from "@/lib/public-user-state";
 
 export default function V3Header() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDetailsElement>(null);
+  const userState = usePublicUserState();
+  const appWorkspaceHref = appHref("/");
+  const primaryCta = userState === "signed_in"
+    ? { label: "Open workspace", href: appWorkspaceHref }
+    : userState === "registered"
+      ? { label: "Sign in", href: appWorkspaceHref }
+      : { label: "Start preview", href: appHref("/onboarding") };
+  const showSignIn = userState === "guest" || userState === "loading";
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 14);
     onScroll();
@@ -38,8 +47,8 @@ export default function V3Header() {
           <Link href="/#pricing">Pricing</Link>
         </nav>
         <div className="cta">
-          <Link className="in" href={appHref("/app")}>Sign in</Link>
-          <Link className="btn btn-a" href={appHref("/app/onboarding")}>Start preview</Link>
+          {showSignIn && <Link className="in" href={appWorkspaceHref}>Sign in</Link>}
+          <Link className="btn btn-a" href={primaryCta.href}>{primaryCta.label}</Link>
         </div>
         <details className="mobile-menu" ref={menuRef} onToggle={(event) => setMenuOpen(event.currentTarget.open)}>
           <summary aria-label={menuOpen ? "Close navigation" : "Open navigation"} aria-expanded={menuOpen} aria-controls="mobile-navigation">
@@ -55,9 +64,9 @@ export default function V3Header() {
               <Link href="/#operators" onClick={closeMenu}>Operators</Link>
               <Link href="/#how" onClick={closeMenu}>How it works</Link>
               <Link href="/#pricing" onClick={closeMenu}>Pricing</Link>
-              <Link href={appHref("/app")} onClick={closeMenu}>Sign in</Link>
+              {showSignIn && <Link href={appWorkspaceHref} onClick={closeMenu}>Sign in</Link>}
             </div>
-            <Link className="mobile-menu-cta btn btn-a" href={appHref("/app/onboarding")} onClick={closeMenu}>Start preview <span className="arrow">→</span></Link>
+            <Link className="mobile-menu-cta btn btn-a" href={primaryCta.href} onClick={closeMenu}>{primaryCta.label} <span className="arrow">→</span></Link>
           </nav>
         </details>
       </div>

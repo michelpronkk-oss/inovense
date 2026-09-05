@@ -113,11 +113,13 @@ export function getPlanByTier(tier: PublicPlanTier): PricingPlan | undefined {
 
 export function resolvePublicPlanCta(
   plan: PricingPlan,
-  _userState: PublicUserState,
+  userState: PublicUserState,
 ): { label: string; href: string } {
-  void _userState;
   if (plan.plan_tier === "enterprise") {
     return { label: plan.cta, href: plan.ctaHref };
+  }
+  if (userState !== "signed_in") {
+    return { label: "Sign in to choose", href: appHref("/") };
   }
   return { label: plan.cta, href: appHref(`/api/billing/dodo/checkout?plan=${plan.plan_tier}`) };
 }
