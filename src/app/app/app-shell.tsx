@@ -59,7 +59,7 @@ function TrialBanner({ trialEndsAt }: { trialEndsAt?: string }) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { state } = useOS();
+  const { state, workspaceLoadError } = useOS();
   // The browser keeps the canonical URL while middleware rewrites to the
   // internal `/app/*` segment. Accept both during client navigation, but do
   // not redirect here: the server layout + gateway are the sole authority.
@@ -80,6 +80,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="os-main" style={{ width: "100%", minHeight: "100vh" }}>
         {children}
       </div>
+    );
+  }
+
+  // Never let a failed authenticated workspace lookup fall back to the local
+  // demo shell. Showing a seed "Workspace Admin" after a 403 is misleading
+  // and makes an authorization repair look like a real user profile.
+  if (workspaceLoadError) {
+    return (
+      <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "#06070A" }}>
+        <section style={{ width: "min(460px, 100%)", padding: 28, borderRadius: 18, background: "#0c1014", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.09)" }}>
+          <div style={{ color: "#4DE8E1", fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.12em" }}>WORKSPACE ACCESS</div>
+          <h1 style={{ margin: "12px 0 8px", fontSize: 24 }}>Your account needs a workspace assignment.</h1>
+          <p style={{ margin: 0, color: "var(--text-dim)", lineHeight: 1.55, fontSize: 13.5 }}>
+            {workspaceLoadError} No demo profile or workspace data is being shown.
+          </p>
+          <Link className="btn btn-primary" href="/login" style={{ marginTop: 20 }}>Return to sign in</Link>
+        </section>
+      </main>
     );
   }
 

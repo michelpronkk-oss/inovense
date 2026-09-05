@@ -393,6 +393,7 @@ interface OSContextValue {
   installSuggestedWorkflow: (suggestion: SuggestedWorkflow) => void;
   pendingApprovals: number;
   clientHydrated: boolean;
+  workspaceLoadError: string | null;
 }
 
 const OSContext = createContext<OSContextValue | null>(null);
@@ -477,6 +478,7 @@ let deployCounter = 0;
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, null, () => buildSeedState());
   const [clientHydrated, setClientHydrated] = useState(false);
+  const [workspaceLoadError, setWorkspaceLoadError] = useState<string | null>(null);
   const hydratedFromRemote = useRef(false);
   const finishedInitialHydration = useRef(false);
   const persistTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -580,6 +582,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
 
         if (!res.ok) {
+          if (IS_PRODUCTION && res.status !== 503) {
+            const payload = await res.json().catch(() => ({} as { error?: string }));
+            setWorkspaceLoadError(payload.error || "Your workspace access could not be verified.");
+          }
           if (res.status === 503) {
             const payload = await res.json().catch(() => ({} as { message?: string }));
             if (payload?.message) {
@@ -594,10 +600,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (payload.state && Array.isArray(payload.state.agents) && payload.state.workspace) {
           dispatch({ type: "HYDRATE", state: payload.state });
           hydratedFromRemote.current = true;
+          setWorkspaceLoadError(null);
         }
       } catch (error) {
         if (!cancelled) {
           console.warn("[inovense-os] Supabase hydrate failed, continuing with local state.", error);
+          if (IS_PRODUCTION) setWorkspaceLoadError("Your workspace could not be loaded. Refresh to try again.");
         }
       } finally {
         if (!cancelled) {
@@ -1033,6 +1041,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         installSuggestedWorkflow,
         pendingApprovals,
         clientHydrated,
+        workspaceLoadError,
       }}
     >
       {children}
