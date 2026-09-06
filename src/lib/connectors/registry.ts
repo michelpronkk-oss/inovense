@@ -7,8 +7,8 @@
 // connectable. Everything else is "coming_soon" / "planned" and must render
 // as visibly disabled. Presence in this catalog never implies a connection.
 //
-// Today gmail (direct OAuth), hubspot (Nango), slack (Nango), and Trello
-// (Nango) are available.
+// Today gmail (direct OAuth), hubspot (Nango), outlook (Nango), slack
+// (Nango), and Trello (Nango) are available.
 
 import type { Capability } from "@/lib/connectors/capabilities";
 import type { OperatorKey } from "@/lib/operators/registry";
@@ -74,6 +74,7 @@ export const CONNECTOR_CATEGORY_LABELS: Record<ConnectorCategory, string> = {
 const HUBSPOT_PROVIDER_CONFIG_KEY = process.env.NANGO_HUBSPOT_CONFIG_KEY || "hubspot";
 const SLACK_PROVIDER_CONFIG_KEY = process.env.NANGO_SLACK_CONFIG_KEY || "slack";
 const TRELLO_PROVIDER_CONFIG_KEY = process.env.NANGO_TRELLO_CONFIG_KEY || "trello";
+const OUTLOOK_PROVIDER_CONFIG_KEY = process.env.NANGO_OUTLOOK_CONFIG_KEY || "outlook";
 
 export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
   // ── Available (real, functional today) ───────────────────────────────
@@ -115,15 +116,17 @@ export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
     setupNotes: "Managed OAuth through Nango. No tokens are stored in Auterim.",
   },
 
-  // ── Coming soon (clear near-term path) ───────────────────────────────
   outlook: {
     connectorKey: "outlook", displayName: "Outlook", category: "email", authType: "nango",
+    providerConfigKey: OUTLOOK_PROVIDER_CONFIG_KEY,
     letter: "O", color: "#0078D4", description: "Microsoft 365 inbox context and approval-gated email send.",
-    status: "coming_soon", capabilities: ["email.read", "email.draft", "email.send_after_approval", "email.thread.read"],
+    status: "available", capabilities: ["email.read", "email.draft", "email.send_after_approval", "email.thread.read"],
     usedByOperators: ["revenue", "support"], readActions: ["Read recent mail"], writeActions: ["Create draft", "Send approved email"],
     approvalRequiredActions: ["External email send"], eventTypes: ["email.received"], riskLevel: "medium",
-    setupNotes: "Planned via Microsoft Graph (Nango). Not connectable yet.",
+    setupNotes: "Connects through Microsoft Graph via Nango. Requires an Entra ID app with Mail.Read, Mail.Send, offline_access, and User.Read delegated permissions, registered as an integration in the Nango dashboard.",
   },
+
+  // ── Coming soon (clear near-term path) ───────────────────────────────
   google_calendar: {
     connectorKey: "google_calendar", displayName: "Google Calendar", category: "calendar", authType: "nango",
     letter: "GC", color: "#1A73E8", description: "Read availability and create approval-gated events.",

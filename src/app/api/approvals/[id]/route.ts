@@ -66,8 +66,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   }
 
   const continuation = asRecord(approval.data.continuation_payload);
-  if (continuation.kind !== "gmail.send_after_approval") {
-    return NextResponse.json({ error: "unsupported_approval_type", message: "Only Gmail draft approvals can be edited." }, { status: 409 });
+  if (continuation.kind !== "gmail.send_after_approval" && continuation.kind !== "outlook.send_after_approval") {
+    return NextResponse.json({ error: "unsupported_approval_type", message: "Only email draft approvals can be edited." }, { status: 409 });
   }
 
   const editedAt = new Date().toISOString();

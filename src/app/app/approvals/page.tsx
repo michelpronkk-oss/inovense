@@ -164,7 +164,7 @@ function timeAgo(createdAt: string | null): string {
 }
 
 function displayCategory(item: ApprovalRow): string {
-  if (item.continuation_kind === "gmail.send_after_approval") return "follow-up";
+  if (item.continuation_kind === "gmail.send_after_approval" || item.continuation_kind === "outlook.send_after_approval") return "follow-up";
   return item.category || item.approval_type || "action";
 }
 
@@ -176,6 +176,7 @@ function matchesFilter(item: ApprovalRow, filter: string): boolean {
 
 function actionLabel(action: string): string {
   if (action === "send_gmail_follow_up") return "Send Gmail follow-up";
+  if (action === "send_outlook_follow_up") return "Send Outlook follow-up";
   if (action === "update_hubspot_contact") return "Update HubSpot contact/deal";
   if (action === "update_hubspot_deal") return "Update HubSpot deal";
   if (action === "add_hubspot_note") return "Add CRM note";

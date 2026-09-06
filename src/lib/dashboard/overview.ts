@@ -172,7 +172,7 @@ function riskFromPayload(payload: Row): string | null {
   return stringValue(decision.riskLevel)
     ?? stringValue(action.riskLevel)
     ?? stringValue(source.riskLevel)
-    ?? (payload.kind === "gmail.send_after_approval" ? "high" : null);
+    ?? (payload.kind === "gmail.send_after_approval" || payload.kind === "outlook.send_after_approval" ? "high" : null);
 }
 
 export function mapApprovalToActivity(row: Row): DashboardActivity {
@@ -181,7 +181,7 @@ export function mapApprovalToActivity(row: Row): DashboardActivity {
   const kind = stringValue(payload.kind);
   const operatorKey = stringValue(payload.operatorKey) ?? stringValue(row.agent_id);
   const title = status === "pending" ? "Approval created" : status === "approved" ? "Approval approved" : status === "failed" ? "Approval failed" : "Approval updated";
-  const connectorKey = kind?.includes("gmail") ? "gmail" : kind?.includes("slack") ? "slack" : kind?.includes("shared_action") ? "trello" : null;
+  const connectorKey = kind?.includes("gmail") ? "gmail" : kind?.includes("outlook") ? "outlook" : kind?.includes("slack") ? "slack" : kind?.includes("shared_action") ? "trello" : null;
   return {
     id: `approval-${String(row.id)}`,
     time: timeValue(row),

@@ -42,6 +42,7 @@ export type NangoConnectionMetadata = {
 export const HUBSPOT_PROVIDER_CONFIG_KEY = getProviderConfigKey("hubspot") || "hubspot";
 export const SLACK_PROVIDER_CONFIG_KEY = getProviderConfigKey("slack") || "slack";
 export const TRELLO_PROVIDER_CONFIG_KEY = getProviderConfigKey("trello") || "trello";
+export const OUTLOOK_PROVIDER_CONFIG_KEY = getProviderConfigKey("outlook") || "outlook";
 
 export class NangoConnectSessionError extends Error {
   details: {
@@ -101,6 +102,15 @@ export async function verifyNangoConnection(input: {
       await nango.proxy({
         method: "GET" as HTTP_METHOD,
         endpoint: "/crm/v3/objects/contacts?limit=1&properties=email",
+        providerConfigKey: input.providerConfigKey,
+        connectionId: input.connectionId,
+      });
+    }
+
+    if (input.connectorKey === "outlook") {
+      await nango.proxy({
+        method: "GET" as HTTP_METHOD,
+        endpoint: "/v1.0/me",
         providerConfigKey: input.providerConfigKey,
         connectionId: input.connectionId,
       });

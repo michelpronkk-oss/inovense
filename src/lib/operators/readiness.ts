@@ -1,3 +1,4 @@
+import { connectorHasCapability, type Capability } from "@/lib/connectors/capabilities";
 import { getConnectorTruth, type SafeConnectorTruth } from "@/lib/connectors/truth";
 import { getEntitlements, type Entitlements, type PlanTier } from "@/lib/os/entitlements";
 import type { Workspace } from "@/lib/os/types";
@@ -31,11 +32,25 @@ export type OperatorReadiness = {
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
 function connectorConnected(connectorKey: ConnectorKey, truth: SafeConnectorTruth[]): boolean {
-  if (connectorKey !== "gmail" && connectorKey !== "hubspot") return false;
+  if (connectorKey !== "gmail" && connectorKey !== "hubspot" && connectorKey !== "outlook") return false;
   return truth.some((connector) =>
     connector.connectorKey === connectorKey
     && (connector.status === "connected" || connector.status === "healthy")
   );
+}
+
+/**
+ * Connector-agnostic capability check: any connector the workspace actually
+ * has connected (status connected/healthy) that provides this capability.
+ * This is how Gmail and Outlook both satisfy "an email connector is
+ * connected" without operators special-casing either connector by name, and
+ * lets any future email connector light up the same operators automatically.
+ */
+function connectedConnectorsWithCapability(capability: Capability, truth: SafeConnectorTruth[]): ConnectorKey[] {
+  return truth
+    .filter((connector) => connector.status === "connected" || connector.status === "healthy")
+    .filter((connector) => connectorHasCapability(connector.connectorKey, capability))
+    .map((connector) => connector.connectorKey as ConnectorKey);
 }
 
 function getConnectedRequiredConnectors(operator: OperatorDefinition, truth: SafeConnectorTruth[]): ConnectorKey[] {
@@ -49,6 +64,7 @@ function planAllows(operator: OperatorDefinition, planTier: PlanTier): boolean {
 function getNextConnectorStep(missing: ConnectorKey[]): string {
   const first = missing[0];
   if (first === "gmail") return "Connect Gmail with real OAuth.";
+  if (first === "outlook") return "Connect Outlook through Nango.";
   if (first === "hubspot") return "Connect HubSpot through Nango.";
   if (first) return `Connect ${first.replace(/_/g, " ")}.`;
   return "No connector setup required.";
@@ -188,27 +204,28 @@ function evaluateOperator(input: {
   }
 
   if (operator.key === "revenue") {
-    const hasGmail = connectorConnected("gmail", truth);
+    const emailConnectors = connectedConnectorsWithCapability("email.send_after_approval", truth);
+    const hasEmail = emailConnectors.length > 0;
     const hasHubSpot = connectorConnected("hubspot", truth);
-    if (!hasGmail) {
+    if (!hasEmail) {
       return baseResult({
         operator,
         status: "missing_connector",
         connectedRequired,
         missingRequired,
         entitlements,
-        reason: "Revenue readiness requires a real Gmail credential.",
-        nextSetupStep: "Connect Gmail with real OAuth.",
+        reason: "Revenue readiness requires a connected email connector (Gmail or Outlook).",
+        nextSetupStep: "Connect Gmail or Outlook.",
       });
     }
     if (!hasHubSpot) {
       return baseResult({
         operator,
         status: "draft_only",
-        connectedRequired,
+        connectedRequired: emailConnectors,
         missingRequired: [],
         entitlements,
-        reason: "Gmail is connected, so draft and approval work is available. HubSpot is missing, so CRM execution is disabled.",
+        reason: `${emailConnectors[0] === "outlook" ? "Outlook" : "Gmail"} is connected, so draft and approval work is available. HubSpot is missing, so CRM execution is disabled.`,
         nextSetupStep: "Connect HubSpot through Nango for full revenue readiness.",
         canRunManual: true,
       });
@@ -216,59 +233,61 @@ function evaluateOperator(input: {
     return baseResult({
       operator,
       status: "ready",
-      connectedRequired: ["gmail"],
+      connectedRequired: emailConnectors,
       missingRequired: [],
       entitlements,
-      reason: "Gmail and HubSpot connector truth are both present.",
-      nextSetupStep: "Ready for approval-gated Gmail send and HubSpot contact/deal updates.",
+      reason: "An email connector and HubSpot connector truth are both present.",
+      nextSetupStep: "Ready for approval-gated email send and HubSpot contact/deal updates.",
       canRunManual: true,
     });
   }
 
   if (operator.key === "client_flow") {
-    if (!connectorConnected("gmail", truth)) {
+    const emailConnectors = connectedConnectorsWithCapability("email.send_after_approval", truth);
+    if (emailConnectors.length === 0) {
       return baseResult({
         operator,
         status: "missing_connector",
         connectedRequired,
         missingRequired,
         entitlements,
-        reason: "Client Flow requires a real Gmail credential for safe draft preparation.",
-        nextSetupStep: "Connect Gmail with real OAuth.",
+        reason: "Client Flow requires a connected email connector (Gmail or Outlook) for safe draft preparation.",
+        nextSetupStep: "Connect Gmail or Outlook.",
       });
     }
     return baseResult({
       operator,
       status: "draft_only",
-      connectedRequired,
+      connectedRequired: emailConnectors,
       missingRequired: [],
       entitlements,
-      reason: "Gmail is connected. Drive/Notion context is not available yet, so readiness is limited to draft preparation.",
+      reason: `${emailConnectors[0] === "outlook" ? "Outlook" : "Gmail"} is connected. Drive/Notion context is not available yet, so readiness is limited to draft preparation.`,
       nextSetupStep: "Connect Drive or Notion when those connector truth checks are available.",
       canRunManual: true,
     });
   }
 
   if (operator.key === "operations") {
-    if (!connectorConnected("gmail", truth)) {
+    const emailConnectors = connectedConnectorsWithCapability("email.send_after_approval", truth);
+    if (emailConnectors.length === 0) {
       return baseResult({
         operator,
         status: "missing_connector",
         connectedRequired,
         missingRequired,
         entitlements,
-        reason: "Operations readiness requires Gmail plus verifiable approval/log activity.",
-        nextSetupStep: "Connect Gmail with real OAuth.",
+        reason: "Operations readiness requires a connected email connector (Gmail or Outlook) plus verifiable approval/log activity.",
+        nextSetupStep: "Connect Gmail or Outlook.",
       });
     }
     if (!runtimeSignals.hasApprovalActivity || !runtimeSignals.hasWorkspaceScopedLogs) {
       return baseResult({
         operator,
         status: "draft_only",
-        connectedRequired,
+        connectedRequired: emailConnectors,
         missingRequired: [],
         entitlements,
-        reason: "Gmail is connected, but approval/log activity is not fully workspace-scoped yet.",
+        reason: `${emailConnectors[0] === "outlook" ? "Outlook" : "Gmail"} is connected, but approval/log activity is not fully workspace-scoped yet.`,
         nextSetupStep: "Add workspace-scoped approval and execution log tables before marking Operations ready.",
         canRunManual: true,
       });
@@ -276,10 +295,10 @@ function evaluateOperator(input: {
     return baseResult({
       operator,
       status: "ready",
-      connectedRequired,
+      connectedRequired: emailConnectors,
       missingRequired: [],
       entitlements,
-      reason: "Gmail, approvals, and workspace-scoped logs are available.",
+      reason: "An email connector, approvals, and workspace-scoped logs are available.",
       nextSetupStep: "Ready for manual preparation once execution is implemented.",
       canRunManual: true,
     });

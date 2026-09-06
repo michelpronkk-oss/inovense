@@ -1,10 +1,27 @@
 import { getOperatorReadiness, type OperatorReadiness } from "@/lib/operators/readiness";
 import { evaluateManualRunPolicy } from "@/lib/operators/policies";
 import { createGmailSendApproval, prepareRevenueFollowUpEmail, type RevenueFollowUpInput } from "@/lib/operators/executors/gmail";
+import { createOutlookSendApproval } from "@/lib/operators/executors/outlook";
 import { logOperatorEvent, operatorRuntimeId } from "@/lib/operators/logging";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
+
+/**
+ * Revenue Operator supports Gmail and Outlook as interchangeable email
+ * connectors. Readiness already reports which connector(s) are actually
+ * connected (readiness.connectedRequiredConnectors); this picks the one to
+ * execute against. Gmail is preferred when both are somehow connected, which
+ * keeps existing Gmail-only workspaces behaving exactly as before.
+ */
+type EmailConnectorKey = "gmail" | "outlook";
+
+function resolveEmailConnector(readiness: OperatorReadiness): EmailConnectorKey | null {
+  const connected = readiness.connectedRequiredConnectors;
+  if (connected.includes("gmail")) return "gmail";
+  if (connected.includes("outlook")) return "outlook";
+  return null;
+}
 
 export type RevenueOperatorRunInput = RevenueFollowUpInput;
 
@@ -85,10 +102,15 @@ export async function runRevenueOperator(input: RunOperatorInput) {
   const allowed = assertRunAllowed(readiness);
   if (!allowed.ok) return allowed;
 
+  const emailConnector = resolveEmailConnector(readiness);
+  if (!emailConnector) {
+    return { ok: false as const, status: 409, error: "Revenue readiness reported ready, but no connected email connector (Gmail or Outlook) was found.", readiness };
+  }
+
   const policy = evaluateManualRunPolicy({
     operatorKey: "revenue",
     readiness,
-    action: "gmail.follow_up_send",
+    action: emailConnector === "outlook" ? "outlook.follow_up_send" : "gmail.follow_up_send",
   });
   if (!policy.ok) {
     return { ok: false as const, status: 403, error: policy.reason, readiness };
@@ -156,7 +178,7 @@ export async function runRevenueOperator(input: RunOperatorInput) {
       supabase,
       workspaceId: input.workspaceId,
       runId,
-      eventType: "gmail.follow_up.prepared",
+      eventType: emailConnector === "outlook" ? "outlook.follow_up.prepared" : "gmail.follow_up.prepared",
       message: `Prepared follow-up email for ${draft.to}.`,
       metadata: { to: draft.to, subject: draft.subject },
     });
@@ -179,15 +201,25 @@ export async function runRevenueOperator(input: RunOperatorInput) {
       metadata: { requiresApproval: policy.requiresApproval, riskLevel: policy.riskLevel },
     });
 
-    const approval = await createGmailSendApproval({
-      supabase,
-      workspaceId: input.workspaceId,
-      runId,
-      to: draft.to,
-      subject: draft.subject,
-      body: draft.body,
-      policyReason: policy.reason,
-    });
+    const approval = emailConnector === "outlook"
+      ? await createOutlookSendApproval({
+        supabase,
+        workspaceId: input.workspaceId,
+        runId,
+        to: draft.to,
+        subject: draft.subject,
+        body: draft.body,
+        policyReason: policy.reason,
+      })
+      : await createGmailSendApproval({
+        supabase,
+        workspaceId: input.workspaceId,
+        runId,
+        to: draft.to,
+        subject: draft.subject,
+        body: draft.body,
+        policyReason: policy.reason,
+      });
     await insertStep({
       supabase,
       workspaceId: input.workspaceId,
@@ -202,12 +234,13 @@ export async function runRevenueOperator(input: RunOperatorInput) {
       workspaceId: input.workspaceId,
       runId,
       eventType: "approval.created",
-      message: `Created Gmail send approval ${approval.approvalId}.`,
+      message: `Created ${emailConnector === "outlook" ? "Outlook" : "Gmail"} send approval ${approval.approvalId}.`,
       metadata: { approvalId: approval.approvalId },
     });
 
+    const outputType = emailConnector === "outlook" ? "outlook_follow_up_draft" : "gmail_follow_up_draft";
     const output = {
-      type: "gmail_follow_up_draft",
+      type: outputType,
       draft,
       approvalId: approval.approvalId,
     };
@@ -216,7 +249,7 @@ export async function runRevenueOperator(input: RunOperatorInput) {
       workspace_id: input.workspaceId,
       run_id: runId,
       operator_key: "revenue",
-      output_type: "gmail_follow_up_draft",
+      output_type: outputType,
       title: `Follow-up draft for ${input.input.leadName}`,
       payload: output,
       requires_approval: true,

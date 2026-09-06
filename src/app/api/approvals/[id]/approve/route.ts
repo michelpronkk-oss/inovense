@@ -4,6 +4,7 @@ import { executePreparedActionAfterApproval } from "@/lib/actions/execute";
 import type { PreparedAction } from "@/lib/actions/types";
 import { createGmailDraft, GmailApiError, getMissingGmailScopes, hasGmailSendScope, resolveAccessTokenFromCredential, sendGmailDraft, sendGmailMessage, type StoredConnectorCredential } from "@/lib/connectors/gmail";
 import { executeHubSpotRevenueActions, HubSpotExecutionError, type HubSpotExecutionResult, type PreparedHubSpotActions } from "@/lib/operators/executors/hubspot";
+import { getOutlookConnection, OutlookExecutionError, sendOutlookMessageAfterApproval } from "@/lib/operators/executors/outlook";
 import { sendSlackMessageAfterApproval, SlackExecutionError, type PreparedSlackMessageAction } from "@/lib/operators/executors/slack";
 import { TrelloExecutionError } from "@/lib/operators/executors/trello";
 import { sendSlackApprovalNotification } from "@/lib/notifications/slack";
@@ -25,7 +26,10 @@ type ApproveBody = {
 };
 
 type GmailContinuationPayload = {
-  kind: "gmail.send_after_approval";
+  // Widened so the Gmail/Outlook continuation shape (identical apart from
+  // provider) can share helpers like effectiveDraft() by structural typing.
+  // Runtime dispatch always checks the literal value explicitly.
+  kind: "gmail.send_after_approval" | "outlook.send_after_approval";
   workspaceId: string;
   operatorRunId?: string;
   operatorKey?: string;
@@ -1062,6 +1066,415 @@ async function executeSlackApproval(input: {
   }
 }
 
+type OutlookContinuationPayload = Omit<GmailContinuationPayload, "kind"> & { kind: "outlook.send_after_approval" };
+
+function validateOutlookPayload(value: unknown): { ok: true; payload: OutlookContinuationPayload } | { ok: false; details: InvalidPayloadDetail[] } {
+  const details: InvalidPayloadDetail[] = [];
+  if (!value || typeof value !== "object") {
+    return { ok: false, details: [{ field: "continuation_payload", issue: "Must be an object." }] };
+  }
+  const rec = value as Record<string, unknown>;
+  if (rec.kind !== "outlook.send_after_approval") details.push({ field: "kind", issue: "Must equal outlook.send_after_approval." });
+  if (typeof rec.workspaceId !== "string" || !rec.workspaceId.trim()) details.push({ field: "workspaceId", issue: "Required." });
+  if (typeof rec.to !== "string" || !rec.to.trim()) {
+    details.push({ field: "to", issue: "Required." });
+  } else if (!isEmail(rec.to)) {
+    details.push({ field: "to", issue: "Must be a valid-looking email address." });
+  }
+  if (typeof rec.subject !== "string" || !rec.subject.trim()) details.push({ field: "subject", issue: "Required." });
+  if (typeof rec.body !== "string" || !rec.body.trim()) details.push({ field: "body", issue: "Required." });
+  if (details.length > 0) return { ok: false, details };
+  return {
+    ok: true,
+    payload: {
+      kind: "outlook.send_after_approval",
+      workspaceId: String(rec.workspaceId).trim(),
+      operatorRunId: typeof rec.operatorRunId === "string" ? rec.operatorRunId : undefined,
+      operatorKey: typeof rec.operatorKey === "string" ? rec.operatorKey : undefined,
+      to: String(rec.to).trim().toLowerCase(),
+      subject: String(rec.subject).trim(),
+      body: String(rec.body).trim(),
+      draftSubject: typeof rec.draftSubject === "string" ? rec.draftSubject.trim() : undefined,
+      draftBody: typeof rec.draftBody === "string" ? rec.draftBody.trim() : undefined,
+      originalDraftSubject: typeof rec.originalDraftSubject === "string" ? rec.originalDraftSubject.trim() : undefined,
+      originalDraftBody: typeof rec.originalDraftBody === "string" ? rec.originalDraftBody.trim() : undefined,
+      editedDraftSubject: typeof rec.editedDraftSubject === "string" ? rec.editedDraftSubject.trim() : null,
+      editedDraftBody: typeof rec.editedDraftBody === "string" ? rec.editedDraftBody.trim() : null,
+      wasEdited: rec.wasEdited === true,
+      editedAt: typeof rec.editedAt === "string" ? rec.editedAt : null,
+      editedBy: typeof rec.editedBy === "string" ? rec.editedBy : null,
+      preparedActions: Array.isArray(rec.preparedActions) ? rec.preparedActions.filter((item): item is string => typeof item === "string") : undefined,
+      dedupeKey: typeof rec.dedupeKey === "string" ? rec.dedupeKey : null,
+      dedupeMetadata: rec.dedupeMetadata && typeof rec.dedupeMetadata === "object" ? rec.dedupeMetadata as Record<string, unknown> : null,
+      crmPreparationStatus: typeof rec.crmPreparationStatus === "string" ? rec.crmPreparationStatus : null,
+      crmPreparation: rec.crmPreparation && typeof rec.crmPreparation === "object" ? rec.crmPreparation as Record<string, unknown> : null,
+      preparedHubSpotActions: rec.preparedHubSpotActions && typeof rec.preparedHubSpotActions === "object" ? rec.preparedHubSpotActions as PreparedHubSpotActions : null,
+      sourceMetadata: rec.sourceMetadata && typeof rec.sourceMetadata === "object" ? rec.sourceMetadata as Record<string, unknown> : null,
+      customerEmailPolicy: rec.customerEmailPolicy && typeof rec.customerEmailPolicy === "object" ? rec.customerEmailPolicy as GmailContinuationPayload["customerEmailPolicy"] : null,
+    },
+  };
+}
+
+function shouldExecuteHubSpotForOutlook(payload: OutlookContinuationPayload): boolean {
+  const actions = payload.preparedActions ?? [];
+  const hasHubSpotAction = actions.some((action) => action.includes("hubspot"));
+  return Boolean(
+    hasHubSpotAction
+    && payload.crmPreparationStatus !== "hubspot_not_connected"
+    && payload.preparedHubSpotActions?.executionStatus === "execution_enabled"
+  );
+}
+
+function outlookErrorResponse(error: unknown) {
+  if (error instanceof OutlookExecutionError) {
+    return NextResponse.json({
+      error: "outlook_send_failed",
+      message: error.message,
+      details: error.details,
+    }, { status: error.details.status ?? 502 });
+  }
+  return NextResponse.json({
+    error: "outlook_send_failed",
+    message: error instanceof Error ? error.message : "Outlook execution failed.",
+    details: null,
+  }, { status: 502 });
+}
+
+/**
+ * Outlook mirrors the Gmail approval-gated send contract (same continuation
+ * shape, same HubSpot follow-through, same policy/logging/notification
+ * surface), executed through Microsoft Graph via the workspace's Nango
+ * connection instead of a native Gmail credential. Kept as its own function
+ * (matching the existing Slack/Operations/Shared-action pattern in this file)
+ * so the working Gmail path above is never touched.
+ */
+async function executeOutlookApproval(input: {
+  supabase: ReturnType<typeof createSupabaseAdmin>;
+  approvalId: string;
+  approvalRow: Record<string, unknown>;
+  payload: OutlookContinuationPayload;
+  resolvedBy: string;
+}) {
+  const { supabase, approvalId, approvalRow, payload, resolvedBy } = input;
+  const continuation = approvalRow.continuation_payload && typeof approvalRow.continuation_payload === "object"
+    ? approvalRow.continuation_payload as Record<string, unknown>
+    : {};
+  if (continuation.executionResult && typeof continuation.executionResult === "object") {
+    return alreadyResolvedResponse(approvalRow);
+  }
+  if (payload.workspaceId !== approvalRow.workspace_id) {
+    return NextResponse.json({ error: "Workspace mismatch for approval payload." }, { status: 403 });
+  }
+
+  const finalDraft = effectiveDraft(payload);
+  const ws = await supabase
+    .from("os_workspaces")
+    .select("billing_status, can_run_real_actions")
+    .eq("id", payload.workspaceId)
+    .single();
+  if (ws.error || !ws.data) return NextResponse.json({ error: "Workspace not found." }, { status: 404 });
+
+  const livePolicy = await loadPolicyWorkspaceSettings({ supabase, workspaceId: payload.workspaceId });
+  const liveEntitlements: PolicyEvaluationEntitlements = { canRunRealActions: Boolean(ws.data.can_run_real_actions), billingStatus: String(ws.data.billing_status) };
+  const policyInput = buildPolicyInputFromContinuation({ workspaceId: payload.workspaceId, kind: "outlook.send_after_approval", continuation });
+  const policyDecision = policyInput ? evaluatePolicy(policyInput, livePolicy, liveEntitlements) : null;
+  const runId = payload.operatorRunId || (typeof approvalRow.run_id === "string" ? approvalRow.run_id : "");
+
+  if (policyDecision && policyInput) {
+    if (policyDecision.decision === "blocked") {
+      await logPolicyDecision({ supabase, workspaceId: payload.workspaceId, runId: runId || null, approvalId, decision: policyDecision, policyInput, live: true });
+      const executionResult = { outlookStatus: "blocked_by_policy", hubspotStatus: "not_attempted", policyDecision, blockedReason: policyDecision.reason };
+      await supabase.from("os_approvals").update({
+        status: "failed",
+        resolved_at: new Date().toISOString(),
+        resolved_by: resolvedBy,
+        continuation_payload: { ...continuation, executionResult },
+      }).eq("id", approvalId).eq("workspace_id", payload.workspaceId);
+      if (runId) {
+        await supabase.from("os_operator_runs").update({
+          status: "blocked",
+          completed_at: new Date().toISOString(),
+          output: { outlook: executionResult, policyDecision },
+          error: policyDecision.reason,
+        }).eq("id", runId).eq("workspace_id", payload.workspaceId);
+      }
+      return NextResponse.json({ ok: false, status: "blocked_by_policy", policyDecision, executionResult });
+    }
+    if (policyDecision.decision === "draft_only") {
+      await logPolicyDecision({ supabase, workspaceId: payload.workspaceId, runId: runId || null, approvalId, decision: policyDecision, policyInput, live: true });
+      const executionResult = {
+        outlookStatus: "draft_only_not_sent",
+        hubspotStatus: "not_attempted",
+        policyDecision,
+        usedEditedDraft: finalDraft.usedEditedDraft,
+        finalSubject: finalDraft.subject,
+        finalBodyPreview: finalDraft.bodyPreview,
+        finalBodyHash: finalDraft.bodyHash,
+      };
+      const update = await supabase.from("os_approvals").update({
+        status: "approved",
+        resolved_at: new Date().toISOString(),
+        resolved_by: resolvedBy,
+        continuation_payload: { ...continuation, executionResult },
+      }).eq("id", approvalId).eq("workspace_id", payload.workspaceId);
+      if (update.error) return NextResponse.json({ error: "approval_update_failed", message: update.error.message }, { status: 500 });
+      if (runId) {
+        await supabase.from("os_operator_runs").update({
+          status: "completed",
+          completed_at: new Date().toISOString(),
+          output: { outlook: executionResult },
+          error: null,
+        }).eq("id", runId).eq("workspace_id", payload.workspaceId).eq("approval_id", approvalId);
+      }
+      await optionalStep([], "slack_notification.approval_approved", () => sendSlackApprovalNotification({
+        supabase,
+        workspaceId: payload.workspaceId,
+        approvalId,
+        runId: runId || null,
+        eventType: "approval_approved",
+        operatorKey: payload.operatorKey || "revenue",
+        title: "Approval approved.",
+        summary: "Draft-only customer email was reviewed. No Outlook message was sent.",
+        approvalUrl: `${getAppUrl()}/app/approvals`,
+        metadata: { customerEmailMode: "draft_only" },
+      }));
+      return NextResponse.json({ ok: true, status: "draft_only_reviewed", executionResult });
+    }
+    await logPolicyDecision({ supabase, workspaceId: payload.workspaceId, runId: runId || null, approvalId, decision: policyDecision, policyInput, live: true });
+  }
+
+  if (!ws.data.can_run_real_actions || ws.data.billing_status === "preview") {
+    return NextResponse.json({ error: "Real execution requires an active plan." }, { status: 402 });
+  }
+
+  const connection = await getOutlookConnection(payload.workspaceId, supabase);
+  if (!connection) {
+    return NextResponse.json({
+      error: "missing_outlook_connection",
+      message: "Outlook is not connected for this workspace.",
+    }, { status: 409 });
+  }
+
+  const executionClaim = await supabase
+    .from("os_approvals")
+    .update({ status: "executing", resolved_by: resolvedBy })
+    .eq("id", approvalId)
+    .eq("workspace_id", payload.workspaceId)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+  if (executionClaim.error || !executionClaim.data) {
+    const latest = await supabase.from("os_approvals").select("*").eq("id", approvalId).eq("workspace_id", payload.workspaceId).maybeSingle();
+    if (latest.data) {
+      const latestRow = latest.data as Record<string, unknown>;
+      if (latestRow.status === "approved" || latestRow.status === "partially_completed" || latestRow.resolved_at) {
+        return alreadyResolvedResponse(latestRow);
+      }
+      return NextResponse.json({ error: "approval_execution_in_progress", message: "Approval execution is already in progress. Outlook was not sent again." }, { status: 409 });
+    }
+    return NextResponse.json({ error: "approval_claim_failed", message: executionClaim.error?.message || "Could not claim approval for execution." }, { status: 409 });
+  }
+
+  try {
+    await sendOutlookMessageAfterApproval({ workspaceId: payload.workspaceId, to: payload.to, subject: finalDraft.subject, body: finalDraft.body });
+  } catch (error) {
+    const errorPayload = error instanceof OutlookExecutionError
+      ? { message: error.message, details: error.details }
+      : { message: error instanceof Error ? error.message : "Outlook execution failed.", details: null };
+    const executionResult = { outlookStatus: "failed", hubspotStatus: "not_attempted", error: errorPayload };
+    await supabase.from("os_approvals").update({
+      status: "failed",
+      resolved_at: new Date().toISOString(),
+      resolved_by: resolvedBy,
+      continuation_payload: { ...continuation, executionResult },
+    }).eq("id", approvalId).eq("workspace_id", payload.workspaceId);
+    if (runId) {
+      await supabase.from("os_operator_runs").update({
+        status: "failed",
+        completed_at: new Date().toISOString(),
+        output: { outlook: executionResult },
+        error: errorPayload.message,
+      }).eq("id", runId).eq("workspace_id", payload.workspaceId);
+    }
+    await optionalStep([], "slack_notification.execution_failed", () => sendSlackApprovalNotification({
+      supabase,
+      workspaceId: payload.workspaceId,
+      approvalId,
+      runId: runId || null,
+      eventType: "execution_failed",
+      operatorKey: payload.operatorKey || "revenue",
+      title: "Execution failed.",
+      summary: "Outlook execution failed before the customer email could be sent.",
+      approvalUrl: `${getAppUrl()}/app/approvals`,
+      metadata: { to: payload.to, error: errorPayload.message },
+    }));
+    return outlookErrorResponse(error);
+  }
+
+  const warnings: string[] = [];
+  let hubspotResult: HubSpotExecutionResult | null = null;
+  if (shouldExecuteHubSpotForOutlook(payload)) {
+    try {
+      hubspotResult = await executeHubSpotRevenueActions(payload.workspaceId, {
+        to: payload.to,
+        subject: finalDraft.subject,
+        crmPreparation: payload.crmPreparation,
+        preparedHubSpotActions: payload.preparedHubSpotActions,
+      });
+    } catch (error) {
+      const safeError = hubspotErrorPayload(error);
+      hubspotResult = {
+        status: "failed",
+        error: safeError,
+        note: { status: "prepared_not_enabled", reason: "HubSpot note execution is intentionally not enabled in v1.6." },
+        task: { status: "prepared_not_enabled", reason: "HubSpot task execution is intentionally not enabled in v1.6." },
+      };
+      warnings.push("hubspot_execution_failed");
+    }
+  } else if (payload.crmPreparationStatus === "hubspot_not_connected") {
+    hubspotResult = { status: "skipped", error: { code: "hubspot_not_connected" } };
+    warnings.push("hubspot_not_connected");
+  } else if (payload.preparedActions?.some((action) => action.includes("hubspot"))) {
+    hubspotResult = { status: "skipped", error: { code: "hubspot_execution_not_enabled" } };
+    warnings.push("hubspot_execution_not_enabled");
+  }
+
+  const hubspotFailed = hubspotResult?.status === "failed";
+  const finalStatus = hubspotFailed ? "partially_completed" : "approved";
+  const executionResult = {
+    outlookStatus: "sent",
+    hubspotStatus: hubspotResult?.status ?? "not_applicable",
+    hubspotContactId: hubspotResult?.contactId ?? null,
+    hubspotDealId: hubspotResult?.dealId ?? null,
+    policyDecision,
+    outlook: { to: payload.to, subject: finalDraft.subject, sendEndpoint: "me/sendMail" },
+    usedEditedDraft: finalDraft.usedEditedDraft,
+    finalSubject: finalDraft.subject,
+    finalBodyPreview: finalDraft.bodyPreview,
+    finalBodyHash: finalDraft.bodyHash,
+    hubspot: hubspotResult,
+  };
+
+  const approvalUpdate = await supabase.from("os_approvals").update({
+    status: finalStatus,
+    resolved_at: new Date().toISOString(),
+    resolved_by: resolvedBy,
+    continuation_payload: { ...continuation, executionResult },
+  }).eq("id", approvalId).eq("workspace_id", payload.workspaceId);
+  if (approvalUpdate.error) {
+    return NextResponse.json({ error: "approval_update_failed", message: approvalUpdate.error.message }, { status: 500 });
+  }
+
+  await optionalStep(warnings, "os_execution_logs.insert", () => supabase.from("os_execution_logs").insert([
+    {
+      id: `log-outlook-send-${Date.now()}`,
+      ts: toTs(),
+      run_id: approvalRow.run_id || "manual",
+      agent_id: approvalRow.agent_id || "system",
+      agent_mark: approvalRow.agent_mark || "OS",
+      agent_color: approvalRow.agent_color || "#4DE8E1",
+      event: "outlook.message_sent",
+      message: `Sent approved Outlook message to ${payload.to}`,
+      duration: "-",
+      status: "ok",
+    },
+    {
+      id: `log-approval-approved-${Date.now() + 1}`,
+      ts: toTs(),
+      run_id: approvalRow.run_id || "manual",
+      agent_id: approvalRow.agent_id || "system",
+      agent_mark: approvalRow.agent_mark || "OS",
+      agent_color: approvalRow.agent_color || "#4DE8E1",
+      event: "approval.approved",
+      message: hubspotFailed ? "Approval approved, Outlook send completed, HubSpot execution failed" : "Approval approved and Outlook send completed",
+      duration: "-",
+      status: hubspotFailed ? "warn" : "ok",
+    },
+  ]).then((res) => {
+    if (res.error) throw new Error(res.error.message);
+    return res;
+  }));
+
+  if (runId) {
+    await optionalStep(warnings, "os_operator_runs.update", () => supabase.from("os_operator_runs").update({
+      status: hubspotFailed ? "partially_completed" : "completed",
+      completed_at: new Date().toISOString(),
+      output: {
+        outlook: executionResult.outlook,
+        hubspot: hubspotResult,
+        executionResult,
+        crmPreparationStatus: payload.crmPreparationStatus ?? null,
+        crmPreparation: payload.crmPreparation ?? null,
+        preparedHubSpotActions: payload.preparedHubSpotActions ?? null,
+        preparedActions: payload.preparedActions ?? ["send_outlook_follow_up"],
+      },
+      error: hubspotFailed ? "HubSpot execution failed after Outlook send." : null,
+    }).eq("id", runId).eq("workspace_id", payload.workspaceId).eq("approval_id", approvalId).then((res) => {
+      if (res.error) throw new Error(res.error.message);
+      return res;
+    }));
+    await optionalStep(warnings, "os_operator_run_logs.insert", () => logOperatorEvent({
+      supabase,
+      workspaceId: payload.workspaceId,
+      runId,
+      eventType: hubspotFailed ? "approval.partially_completed" : "outlook.send.completed",
+      message: hubspotFailed
+        ? `Outlook message sent to ${payload.to}, but HubSpot execution failed.`
+        : `Approved Outlook message sent to ${payload.to}.`,
+      metadata: { executionResult },
+    }));
+    if (hubspotResult) {
+      await optionalStep(warnings, "os_operator_run_logs.hubspot.insert", () => logOperatorEvent({
+        supabase,
+        workspaceId: payload.workspaceId,
+        runId,
+        eventType: hubspotFailed ? "hubspot.execution.failed" : `hubspot.execution.${hubspotResult.status}`,
+        message: hubspotFailed
+          ? "HubSpot contact/deal execution failed after Outlook send."
+          : `HubSpot execution status: ${hubspotResult.status}.`,
+        metadata: hubspotResult,
+      }));
+    }
+    await optionalStep(warnings, "os_operator_usage_events.insert", () => recordOperatorUsage({
+      supabase,
+      workspaceId: payload.workspaceId,
+      runId,
+      operatorKey: payload.operatorKey || "revenue",
+      eventType: "outlook.send",
+      quantity: 1,
+      metadata: { to: payload.to },
+    }));
+  }
+
+  await optionalStep(warnings, hubspotFailed ? "slack_notification.execution_failed" : "slack_notification.approval_approved", () => sendSlackApprovalNotification({
+    supabase,
+    workspaceId: payload.workspaceId,
+    approvalId,
+    runId: runId || (typeof approvalRow.run_id === "string" ? approvalRow.run_id : null),
+    eventType: hubspotFailed ? "execution_failed" : "approval_approved",
+    operatorKey: payload.operatorKey || "revenue",
+    title: hubspotFailed ? "Execution failed." : "Approval approved.",
+    summary: hubspotFailed
+      ? "Outlook was sent, but HubSpot execution failed. Review the approval logs in Auterim."
+      : "Revenue Operator sent the email and updated the run.",
+    approvalUrl: `${getAppUrl()}/app/approvals`,
+    metadata: { to: payload.to, hubspotStatus: hubspotResult?.status ?? null },
+  }));
+
+  return NextResponse.json({
+    ok: true,
+    messageId: null,
+    sendEndpoint: "me/sendMail",
+    warnings,
+    crmPreparationStatus: payload.crmPreparationStatus ?? null,
+    outlookStatus: executionResult.outlookStatus,
+    hubspotStatus: executionResult.hubspotStatus,
+    hubspotContactId: executionResult.hubspotContactId,
+    hubspotDealId: executionResult.hubspotDealId,
+    executionResult,
+  });
+}
+
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   if (!hasSupabaseAdminConfig()) {
     return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
@@ -1225,6 +1638,29 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       approvalId: id,
       approvalRow: approvalRow as Record<string, unknown>,
       payload: slackPayload,
+      resolvedBy: context.userEmail || context.userId || userEmail || userId,
+    });
+  }
+
+  if (continuationKind === "outlook.send_after_approval") {
+    const payloadValidation = validateOutlookPayload(continuation);
+    if (!payloadValidation.ok) {
+      return NextResponse.json({
+        error: "invalid_payload",
+        message: "Approval has an invalid Outlook continuation payload.",
+        details: payloadValidation.details,
+      }, { status: 400 });
+    }
+    const outlookPayload = payloadValidation.payload;
+    if (outlookPayload.workspaceId !== context.workspaceId || approvalRow.workspace_id !== context.workspaceId) {
+      return NextResponse.json({ error: "Workspace mismatch for approval payload." }, { status: 403 });
+    }
+
+    return executeOutlookApproval({
+      supabase,
+      approvalId: id,
+      approvalRow: approvalRow as Record<string, unknown>,
+      payload: outlookPayload,
       resolvedBy: context.userEmail || context.userId || userEmail || userId,
     });
   }

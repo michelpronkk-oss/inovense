@@ -100,20 +100,21 @@ export function buildPolicyInputFromContinuation(input: {
   const operatorKey = stringValue(c.operatorKey) ?? "unknown";
   const sourceMetadata = asRecord(c.sourceMetadata);
 
-  if (input.kind === "gmail.send_after_approval") {
+  if (input.kind === "gmail.send_after_approval" || input.kind === "outlook.send_after_approval") {
     const to = stringValue(c.to);
+    const connectorKey = input.kind === "outlook.send_after_approval" ? "outlook" : "gmail";
     return {
       workspaceId: input.workspaceId,
       operatorKey,
       actionType: "send_email",
-      connectorKey: "gmail",
+      connectorKey,
       capability: "email.send_after_approval",
       destinationType: "customer",
       riskLevel: "high",
       confidence: confidenceValue(sourceMetadata.confidence),
       recipient: to,
       domain: to ? to.split("@")[1] : undefined,
-      source: stringValue(c.source) ?? "gmail_scan",
+      source: stringValue(c.source) ?? `${connectorKey}_scan`,
       metadata: { dedupeKey: stringValue(c.dedupeKey) },
     };
   }

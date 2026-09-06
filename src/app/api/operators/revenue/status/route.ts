@@ -127,7 +127,14 @@ export async function GET(req: NextRequest) {
   }
 
   const gmail = connectorTruth.find((connector) => connector.connectorKey === "gmail") ?? null;
+  const outlook = connectorTruth.find((connector) => connector.connectorKey === "outlook") ?? null;
   const hubspot = connectorTruth.find((connector) => connector.connectorKey === "hubspot") ?? null;
+  const outlookConnected = Boolean(
+    outlook
+    && outlook.status === "connected"
+    && outlook.providerConfigKey
+    && outlook.nangoConnectionId
+  );
   const hubspotConnected = Boolean(
     hubspot
     && hubspot.status === "connected"
@@ -167,6 +174,7 @@ export async function GET(req: NextRequest) {
   // Nango connection), so this never reports readiness the workspace lacks.
   const connectedConnectorKeys: string[] = [];
   if (gmail?.executable) connectedConnectorKeys.push("gmail");
+  if (outlookConnected) connectedConnectorKeys.push("outlook");
   if (hubspotConnected) connectedConnectorKeys.push("hubspot");
   const revenueCapabilityReadiness = getOperatorConnectorReadiness("revenue", connectedConnectorKeys);
   const connectedCapabilities = revenueCapabilityReadiness?.connectedCapabilities ?? [];
@@ -187,6 +195,13 @@ export async function GET(req: NextRequest) {
         send: gmailScopes.includes("https://www.googleapis.com/auth/gmail.send"),
         readonly: gmailScopes.includes(GMAIL_READONLY_SCOPE),
       },
+    } : null,
+    outlook: outlook ? {
+      status: outlook.status,
+      accountEmail: outlook.accountEmail,
+      connected: outlookConnected,
+      providerConfigKey: outlook.providerConfigKey,
+      hasNangoConnection: Boolean(outlook.nangoConnectionId),
     } : null,
     hubspot: hubspot ? {
       status: hubspot.status,
@@ -209,12 +224,13 @@ export async function GET(req: NextRequest) {
     },
     revenueMode: hubspotConnected ? "full_crm_mode" : "email_only_mode",
     revenueModeMessage: hubspotConnected
-      ? "Gmail and HubSpot are connected. CRM contact and deal updates execute after approval."
-      : "Gmail is connected. HubSpot is missing, so Revenue Operator prepares email follow-ups only.",
+      ? `${emailExecutionReady ? (gmail?.executable ? "Gmail" : "Outlook") : "An email connector"} and HubSpot are connected. CRM contact and deal updates execute after approval.`
+      : `${gmail?.executable ? "Gmail" : outlookConnected ? "Outlook" : "An email connector"} is connected. HubSpot is missing, so Revenue Operator prepares email follow-ups only.`,
     v1Readiness: {
-      status: gmail?.executable && hubspotConnected ? "Revenue Operator v1 ready" : "Setup required",
+      status: (gmail?.executable || outlookConnected) && hubspotConnected ? "Revenue Operator v1 ready" : "Setup required",
       checks: {
         gmailSendAfterApproval: gmail?.executable ? "ready" : "missing",
+        outlookSendAfterApproval: outlookConnected ? "ready" : "missing",
         hubspotContactDealExecution: hubspotConnected ? "ready" : "missing",
         contactDealAssociation: hubspotConnected ? "ready" : "missing",
         hubspotAttributionProperties: hubspotPropertyReadiness?.status ?? "not_checked",

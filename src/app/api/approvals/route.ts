@@ -109,9 +109,14 @@ function stringList(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim()) : [];
 }
 
+function isEmailKind(kind: GmailContinuationPayload["kind"] | undefined): boolean {
+  return kind === "gmail.send_after_approval" || kind === "outlook.send_after_approval";
+}
+
 function approvalReason(continuation: GmailContinuationPayload, policyReason: string | null): string {
   if (policyReason) return policyReason;
   if (continuation.kind === "gmail.send_after_approval") return "External email send requires human approval before Gmail execution.";
+  if (continuation.kind === "outlook.send_after_approval") return "External email send requires human approval before Outlook execution.";
   if (continuation.kind === "slack.send_after_approval") return "Slack message sends require human approval before posting.";
   if (continuation.kind === "operations.execute_after_approval") return "Operations actions require human approval before any Slack message or Trello change.";
   return "Operator action requires human approval.";
@@ -122,7 +127,7 @@ function crmStatusText(status: string | undefined): string | null {
   if (status === "hubspot_execution_not_ready") return "HubSpot actions are prepared but not executed yet.";
   if (status === "hubspot_execution_enabled") return "HubSpot contact and deal updates will execute after approval. Notes and tasks remain prepared only.";
   if (status === "hubspot_execution_completed") return "HubSpot contact and deal updates completed after approval.";
-  if (status === "hubspot_execution_failed") return "Gmail was sent, but HubSpot execution failed.";
+  if (status === "hubspot_execution_failed") return "The email was sent, but HubSpot execution failed.";
   return null;
 }
 
@@ -132,17 +137,18 @@ function expectedOutcome(continuation: GmailContinuationPayload): string | null 
   if (aiExpectedOutcome) return aiExpectedOutcome;
   if (continuation.kind === "slack.send_after_approval") return "Post the approved Slack message and record the approval decision.";
   if (continuation.kind === "shared_action.execute_after_approval") return "Execute the approved action through the selected connector and record the result.";
-  if (continuation.kind !== "gmail.send_after_approval") return null;
+  if (!isEmailKind(continuation.kind)) return null;
+  const provider = continuation.kind === "outlook.send_after_approval" ? "Outlook" : "Gmail";
   if (continuation.crmPreparationStatus === "hubspot_execution_enabled") {
-    return "Send the approved Gmail follow-up now, then create or update the HubSpot contact/deal. CRM notes and tasks remain prepared only.";
+    return `Send the approved ${provider} follow-up now, then create or update the HubSpot contact/deal. CRM notes and tasks remain prepared only.`;
   }
   if (continuation.crmPreparationStatus === "hubspot_execution_not_ready") {
-    return "Send the approved Gmail follow-up now. HubSpot actions remain prepared only until CRM execution is implemented.";
+    return `Send the approved ${provider} follow-up now. HubSpot actions remain prepared only until CRM execution is implemented.`;
   }
   if (continuation.crmPreparationStatus === "hubspot_not_connected") {
-    return "Send the approved Gmail follow-up now. CRM updates are skipped because HubSpot is not connected.";
+    return `Send the approved ${provider} follow-up now. CRM updates are skipped because HubSpot is not connected.`;
   }
-  return "Send the approved Gmail follow-up now and record the approval decision.";
+  return `Send the approved ${provider} follow-up now and record the approval decision.`;
 }
 
 function afterApprovalText(continuation: GmailContinuationPayload): string | null {
@@ -155,10 +161,11 @@ function afterApprovalText(continuation: GmailContinuationPayload): string | nul
   if (continuation.kind === "operations.execute_after_approval") {
     return "Auterim posts the internal Slack update and applies the prepared Trello change after approval. Nothing runs before approval.";
   }
-  if (continuation.kind !== "gmail.send_after_approval") return null;
+  if (!isEmailKind(continuation.kind)) return null;
   const crmText = crmStatusText(continuation.crmPreparationStatus);
+  const provider = continuation.kind === "outlook.send_after_approval" ? "Outlook" : "Gmail";
   return [
-    "Gmail sends this exact draft using the connected workspace Gmail account.",
+    `${provider} sends this exact draft using the connected workspace ${provider} account.`,
     crmText,
     "The run, logs and operator memory are updated with the approval decision.",
   ].filter(Boolean).join(" ");
@@ -198,7 +205,7 @@ function mapApproval(row: Record<string, unknown>, livePolicy: PolicyWorkspaceSe
     resolved_at: typeof row.resolved_at === "string" ? row.resolved_at : null,
     resolved_by: typeof row.resolved_by === "string" ? row.resolved_by : null,
     approval_type: typeof row.type === "string" ? row.type : "action",
-    category: continuation.kind === "gmail.send_after_approval" ? "follow-up" : continuation.kind === "slack.send_after_approval" ? "slack-message" : continuation.kind === "shared_action.execute_after_approval" ? "task-action" : continuation.kind === "operations.execute_after_approval" ? "operations" : typeof row.type === "string" ? row.type : "action",
+    category: isEmailKind(continuation.kind) ? "follow-up" : continuation.kind === "slack.send_after_approval" ? "slack-message" : continuation.kind === "shared_action.execute_after_approval" ? "task-action" : continuation.kind === "operations.execute_after_approval" ? "operations" : typeof row.type === "string" ? row.type : "action",
     continuation_kind: continuation.kind ?? null,
     run_id: runId,
     linked_run_id: continuation.operatorRunId ?? runId,
@@ -250,7 +257,7 @@ function mapApproval(row: Record<string, unknown>, livePolicy: PolicyWorkspaceSe
       confidence,
       matchedKeywords,
       whyThisMatters: why,
-      riskLevel: continuation.kind === "gmail.send_after_approval" || continuation.kind === "slack.send_after_approval" || continuation.kind === "shared_action.execute_after_approval" ? "medium" : "low",
+      riskLevel: isEmailKind(continuation.kind) || continuation.kind === "slack.send_after_approval" || continuation.kind === "shared_action.execute_after_approval" ? "medium" : "low",
       riskNotes: stringValue(sourceMetadata.riskNotes),
       expectedOutcome: expectedOutcome(continuation),
       approvalReason: approvalReason(continuation, policyReason),

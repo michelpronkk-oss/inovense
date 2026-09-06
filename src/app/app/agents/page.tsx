@@ -70,7 +70,9 @@ function AgentCard({ model }: { model: CardModel }) {
       ? <span className="ag-ready warn"><span className="rd" /> Needs setup</span>
       : <span className="ag-ready on"><span className="rd" /> Monitoring</span>)
     : status === "available"
-      ? <span className="ag-ready"><span className="rd" /> Available to configure</span>
+      ? (needsSetup
+        ? <span className="ag-ready warn"><span className="rd" /> Connect a required tool first</span>
+        : <span className="ag-ready"><span className="rd" /> Available to configure</span>)
     : status === "upgrade"
       ? <span className="ag-ready"><Lock /> Plan upgrade</span>
       : <span className="ag-ready"><Lock /> On the roadmap</span>;
