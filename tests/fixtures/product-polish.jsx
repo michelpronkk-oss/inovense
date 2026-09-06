@@ -37,20 +37,26 @@ const productStates = keys.map((key, index) => ({
   description: ({ A: "Connect your business systems to get started.", B: "Connect an email account to start monitoring.", C: "Your connected systems are ready. Turn on scheduled monitoring.", D: "Choose a plan to start scheduled monitoring.", E: index === 1 ? "Scheduled checks are paused. Your setup is saved." : "Scheduled monitoring is on. Actions wait for your approval.", F: "Reconnect Gmail to resume email monitoring." })[lifecycle],
   connectedSystems: lifecycle === "A" ? [] : lifecycle === "B" ? ["HubSpot"] : ["Gmail", "HubSpot"],
   availableNow: lifecycle === "A" ? [] : ["Prepare customer replies", "Review pipeline context"],
-  nextAction: { label: lifecycle === "C" ? "Activate operator" : lifecycle === "D" ? "Choose a plan" : "Open operator", href: "/agents/" + key.replace("_", "-") },
+  nextAction: { label: lifecycle === "C" ? "Activate operator" : lifecycle === "D" ? "Choose a plan" : lifecycle === "F" ? "Reconnect system" : lifecycle === "B" ? "Connect required system" : "Open operator", href: lifecycle === "F" || lifecycle === "B" ? "/connectors" : "/agents/" + key.replace("_", "-") },
   degraded: lifecycle === "F" ? { unhealthyConnectors: ["Gmail"], lostCapabilities: ["Email monitoring"], stillAvailableCapabilities: ["CRM context"] } : null,
 }));
 const eligibility = { eligible: lifecycle !== "D", status: lifecycle === "D" ? "plan_required" : "eligible", reason: "Ready" };
 const readiness = keys.map((operatorKey) => ({ operatorKey, status: "ready", readinessPercent: 100, canRunManual: true, canExecuteRealActions: true, availableActions: ["gmail.createDraft"], connectedRequiredConnectors: ["gmail"], missingRequiredConnectors: [], blockedActions: [], approvalRequiredActions: [], reason: "Connected systems are ready.", nextSetupStep: "Activate when ready.", executionEligibility: eligibility }));
 const policy = { autonomyMode: "safe", emergencyStopEnabled: false, customerEmailMode: "approval_required", dailyBriefAllowed: true, connectorHealthChecksAllowed: true, internalSlackNotificationsAllowed: true, crmWritesRequireApproval: true, projectToolWritesRequireApproval: true, customerFacingActionsRequireApproval: true };
+const fixtureActivity = lifecycle === "E" ? [
+  { id: "activity-run", time: new Date(Date.now() - 45 * 60 * 1000).toISOString(), type: "run.completed", title: "Revenue check completed", description: "Scheduled check completed.", operatorKey: "revenue", connectorKey: null, severity: "success", href: "/logs" },
+  { id: "activity-approval", time: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), type: "approval.pending", title: "Approval created", description: "A prepared follow-up is waiting for review.", operatorKey: "revenue", connectorKey: "gmail", severity: "warning", href: "/approvals" },
+  { id: "activity-signal", time: new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString(), type: "operator.signal", title: "Client request detected", description: "A client message was identified.", operatorKey: "client_flow", connectorKey: "gmail", severity: "info", href: "/logs" },
+] : [];
+const connectorPurpose = { gmail: "Email follow-ups", hubspot: "CRM execution", slack: "Team alerts", trello: "Project tasks" };
 const overview = {
   workspace: state.workspace, executionEligibility: eligibility, lifecycleState: lifecycle,
   operatorProductStates: productStates, systemStatus: { status: "healthy", label: "Ready", description: "Your workspace is ready." },
   policy, approvals: { pendingCount: 0, highRiskCount: 0, blockedCount: 0, draftOnlyCount: 0, latest: [] },
   today: Object.fromEntries(["runsCount", "approvalsCreated", "approvalsApproved", "actionsExecuted", "autoHandled", "blockedByPolicy", "emailsSent", "hubspotUpdates", "trelloUpdates", "slackMessages", "failedExecutions"].map((key) => [key, 0])),
   operators: keys.map((key, index) => ({ key, name: names[index], status: "monitoring", lastRunAt: null, nextRunAt: null, pendingApprovals: 0, signalsToday: 0, actionsToday: 0, href: "/agents/" + key.replace("_", "-") })),
-  connectors: state.connectors.filter((c) => c.isConnected).map((c) => ({ key: c.id, name: c.name, connected: true, status: "connected", href: "/connectors", usedBy: [], lastCheckedAt: null })),
-  activity: [], nextBestActions: [], lastUpdatedAt: new Date().toISOString(),
+  connectors: state.connectors.filter((c) => Object.hasOwn(connectorPurpose, c.id)).map((c) => ({ key: c.id, name: c.name, connected: c.isConnected, status: c.isConnected ? "connected" : "needs_setup", purpose: connectorPurpose[c.id], href: "/connectors", usedBy: c.id === "hubspot" ? ["Revenue"] : c.id === "trello" ? ["Client Flow", "Operations"] : ["Revenue", "Client Flow"], lastCheckedAt: null })),
+  activity: fixtureActivity, nextBestActions: [], lastUpdatedAt: new Date().toISOString(),
 };
 window.fetch = async (input, options) => {
   if (options?.method && options.method !== "GET") throw new Error("Fixture blocks every mutation");

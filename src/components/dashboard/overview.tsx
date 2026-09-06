@@ -8,7 +8,6 @@ import { useOS } from "@/lib/os/app-provider";
 import type { DashboardOverview, DashboardOperator } from "@/lib/dashboard/overview";
 import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-grid";
 import { DashboardLoadingState } from "@/components/dashboard/loading-state";
-import { getConnectorDefinition } from "@/lib/connectors/registry";
 
 type ScanKey = DashboardOperator["key"];
 type OverviewResponse = DashboardOverview & { error?: string; message?: string };
@@ -72,13 +71,6 @@ function operatorMark(operatorKey: string | null | undefined): { mark: string; c
   return { mark: "OS", color: "#4DE8E1" };
 }
 
-const RECOMMENDED_FALLBACK_SYSTEMS = ["gmail", "hubspot", "trello"];
-
-function systemLabel(connectorKey: string): string {
-  const def = getConnectorDefinition(connectorKey);
-  return def?.displayName ?? titleCase(connectorKey);
-}
-
 function activityColor(severity: string): string {
   if (severity === "success") return "#51D88A";
   if (severity === "danger") return "#F2767C";
@@ -86,16 +78,188 @@ function activityColor(severity: string): string {
   return "#4DE8E1";
 }
 
-function ActivitySparkline({ activity, now, color = "#4DE8E1" }: { activity: DashboardOverview["activity"]; now: number; color?: string }) {
-  const bins = Array.from({ length: 7 }, () => 0);
-  for (const item of activity) {
-    if (!item.time) continue;
-    const age = Math.floor((now - new Date(item.time).getTime()) / 86400000);
-    if (age >= 0 && age < 7) bins[6 - age] += 1;
-  }
-  const max = Math.max(1, ...bins);
-  const points = bins.map((count, index) => `${index * 18},${28 - (count / max) * 20}`).join(" ");
-  return <svg width="116" height="32" viewBox="0 0 108 32" fill="none" aria-label="Activity over the last seven days"><polyline points={points} stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" opacity="0.95" /></svg>;
+function dashboardCounts(overview: DashboardOverview) {
+  return {
+    connected: overview.connectors.filter((connector) => connector.connected).length,
+    ready: overview.operatorProductStates.filter((operator) => operator.state === "ready_to_activate").length,
+    active: overview.operatorProductStates.filter((operator) => operator.state === "active" || operator.state === "enhanced").length,
+    attention: overview.operatorProductStates.filter((operator) => operator.state === "needs_attention" || operator.degraded).length,
+  };
+}
+
+function DashboardMetrics({ overview }: { overview: DashboardOverview }) {
+  const counts = dashboardCounts(overview);
+  const metrics = [
+    { label: "Systems connected", value: counts.connected },
+    { label: "Operators ready", value: counts.ready },
+    { label: "Active operators", value: counts.active },
+    { label: "Needs attention", value: counts.attention, attention: counts.attention > 0 },
+  ];
+
+  return (
+    <section className="dashboard-metrics" aria-labelledby="auterim-overview-title">
+      <div className="dashboard-section-label" id="auterim-overview-title">Auterim overview</div>
+      <div className="dashboard-metric-grid">
+        {metrics.map((metric) => (
+          <div className="dashboard-metric" data-attention={metric.attention || undefined} key={metric.label}>
+            <span>{metric.label}</span>
+            <strong>{metric.value}</strong>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function WorkforceActivity({ overview, now }: { overview: DashboardOverview; now: number }) {
+  const windowStart = now - 7 * 86400000;
+  const events = overview.activity.flatMap((item) => {
+    const time = item.time ? new Date(item.time).getTime() : Number.NaN;
+    if (!Number.isFinite(time) || time < windowStart || time > now) return [];
+    const lane = item.type.startsWith("run.")
+      ? 0
+      : item.type.startsWith("approval.")
+        ? 1
+        : item.type.includes("executed") || item.type.includes("sent") || item.type.includes("completed")
+          ? 2
+          : 3;
+    const x = 66 + ((time - windowStart) / (now - windowStart)) * 618;
+    return [{ ...item, lane, x }];
+  });
+  const lanes = ["Runs", "Approvals", "Actions", "Other"];
+
+  return (
+    <section className="p dashboard-workforce-activity" aria-labelledby="workforce-activity-title">
+      <div className="p-head">
+        <div>
+          <h3 id="workforce-activity-title">Workforce activity</h3>
+          <span>Latest recorded events across the last 7 days</span>
+        </div>
+        {events.length > 0 && <Link className="lnk-open" href="/logs">Open logs</Link>}
+      </div>
+      <div className="dashboard-telemetry-frame">
+        <svg viewBox="0 0 720 154" role="img" aria-label={events.length > 0 ? `${events.length} recent workforce events shown across the last seven days` : "No workforce activity recorded yet"}>
+          {lanes.map((lane, index) => (
+            <g key={lane}>
+              <text x="0" y={31 + index * 28}>{lane}</text>
+              <line x1="66" x2="704" y1={27 + index * 28} y2={27 + index * 28} />
+            </g>
+          ))}
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((day) => {
+            const x = 66 + day * (618 / 7);
+            return <line className="dashboard-telemetry-day" x1={x} x2={x} y1="12" y2="125" key={day} />;
+          })}
+          {events.map((event) => (
+            <circle cx={event.x} cy={27 + event.lane * 28} r="4" fill={activityColor(event.severity)} key={event.id}>
+              <title>{event.title}: {event.description}</title>
+            </circle>
+          ))}
+          <text className="dashboard-telemetry-axis" x="66" y="148">7 days ago</text>
+          <text className="dashboard-telemetry-axis" x="704" y="148" textAnchor="end">Now</text>
+        </svg>
+        {events.length === 0 && (
+          <div className="dashboard-telemetry-empty">
+            <strong>Activity begins when your first operator is activated.</strong>
+            <span>The timeline will show real runs, approvals, actions, and other recorded work.</span>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function DashboardReadinessSummary({ overview }: { overview: DashboardOverview }) {
+  const counts = dashboardCounts(overview);
+  const states = overview.operatorProductStates;
+  const firstReady = states.find((operator) => operator.state === "ready_to_activate");
+  const firstAttention = states.find((operator) => operator.state === "needs_attention" || operator.degraded);
+  const planBlocked = states.filter((operator) => operator.state === "plan_required" || operator.state === "billing_attention" || operator.state === "suspended").length;
+  const lifecycle = overview.lifecycleState;
+  const summary = lifecycle === "A"
+    ? { state: "needs_setup", label: "Connect workspace", message: "Connect a system so Auterim can understand your workspace.", primary: "Connect systems", href: "/connectors" }
+    : lifecycle === "B"
+      ? { state: "needs_setup", label: "Workspace connected", message: `${counts.connected} system${counts.connected === 1 ? " is" : "s are"} connected. Auterim is mapping what each operator needs.`, primary: "Manage connections", href: "/connectors" }
+      : lifecycle === "C"
+        ? { state: "ready_to_activate", label: "Setup ready", message: `Auterim understands enough of your workspace to deploy ${counts.ready} operator${counts.ready === 1 ? "" : "s"}.`, primary: "Activate first operator", href: firstReady?.nextAction?.href ?? "/agents" }
+        : lifecycle === "D"
+          ? { state: "plan_required", label: "Ready for a plan", message: `${planBlocked} operator${planBlocked === 1 ? " is" : "s are"} configured and waiting to deploy.`, primary: "Choose a plan", href: "/plans" }
+          : lifecycle === "F"
+            ? { state: "needs_attention", label: "Needs attention", message: `${counts.attention} operator${counts.attention === 1 ? " needs" : "s need"} a connection restored.`, primary: firstAttention?.nextAction?.label ?? "Review connections", href: firstAttention?.nextAction?.href ?? "/connectors" }
+            : { state: "active", label: "Workforce active", message: `${counts.active} operator${counts.active === 1 ? " is" : "s are"} monitoring your workspace.`, primary: overview.approvals.pendingCount > 0 ? "Open approvals" : "View operators", href: overview.approvals.pendingCount > 0 ? "/approvals" : "/agents" };
+
+  return (
+    <section className="p dashboard-readiness-summary" data-state={lifecycle} aria-labelledby="readiness-summary-title">
+      <div className="dashboard-readiness-copy">
+        <StatusBadge state={summary.state}>{summary.label}</StatusBadge>
+        <h2 id="readiness-summary-title">{summary.message}</h2>
+      </div>
+      <div className="dashboard-readiness-actions">
+        <Link className="btn btn-primary btn-sm" href={summary.href}>{summary.primary}</Link>
+        <Link className="btn btn-ghost btn-sm" href={summary.href === "/connectors" ? "/agents" : "/connectors"}>{summary.href === "/connectors" ? "View operators" : "Manage connections"}</Link>
+      </div>
+    </section>
+  );
+}
+
+function WhatAuterimCanDo({ overview }: { overview: DashboardOverview }) {
+  const capabilities = Array.from(new Set(overview.operatorProductStates.flatMap((operator) => operator.availableNow))).slice(0, 6);
+  return (
+    <section className="p dashboard-capabilities" aria-labelledby="dashboard-capabilities-title">
+      <div className="p-head"><h3 id="dashboard-capabilities-title">What Auterim can do now</h3><span className="p-meta">From connected systems</span></div>
+      {capabilities.length > 0 ? (
+        <ul>{capabilities.map((capability) => <li key={capability}><span aria-hidden="true">✓</span>{capability}</li>)}</ul>
+      ) : (
+        <div className="dashboard-compact-empty">Capabilities will appear here as systems connect.</div>
+      )}
+    </section>
+  );
+}
+
+function ReadyToDeploy({ overview }: { overview: DashboardOverview }) {
+  const deployable = overview.operatorProductStates.filter((operator) => operator.state === "ready_to_activate" || operator.state === "plan_required" || operator.state === "billing_attention");
+  if (deployable.length === 0) return null;
+  return (
+    <section className="p dashboard-ready-panel" aria-labelledby="dashboard-ready-title">
+      <div className="p-head"><h3 id="dashboard-ready-title">Ready to deploy</h3><span className="p-meta">{deployable.length} operator{deployable.length === 1 ? "" : "s"}</span></div>
+      <div className="dashboard-ready-list">
+        {deployable.map((operator) => (
+          <div className="dashboard-ready-row" key={operator.operatorKey}>
+            <div>
+              <strong>{operator.operatorName}</strong>
+              <span>{operator.connectedSystems.join(" · ") || operator.label}</span>
+              <p>{operator.availableNow[0] ?? "Ready for activation"}</p>
+            </div>
+            {operator.nextAction && <Link className="btn btn-ghost btn-sm" href={operator.nextAction.href}>{operator.nextAction.label}</Link>}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function UnlockMore({ overview }: { overview: DashboardOverview }) {
+  const onboarding = new Set(overview.workspace.onboardingSystems);
+  const missing = overview.connectors
+    .filter((connector) => connector.status === "needs_setup")
+    .sort((a, b) => Number(onboarding.has(b.key)) - Number(onboarding.has(a.key)))
+    .slice(0, 3);
+  if (missing.length === 0) return null;
+  return (
+    <section className="p dashboard-unlock-panel" aria-labelledby="dashboard-unlock-title">
+      <div className="p-head"><h3 id="dashboard-unlock-title">Unlock more</h3><Link className="lnk-open" href="/connectors">All connections</Link></div>
+      <div className="dashboard-unlock-list">
+        {missing.map((connector) => (
+          <div className="dashboard-unlock-row" key={connector.key}>
+            <div>
+              <strong>{connector.name}</strong>
+              <p>{connector.purpose}{connector.usedBy.length > 0 ? ` for ${connector.usedBy.slice(0, 2).join(" and ")}.` : "."}</p>
+            </div>
+            <Link className="btn btn-ghost btn-sm" href={connector.href}>Connect</Link>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 export function OSOverview() {
@@ -211,24 +375,21 @@ export function OSOverview() {
   const greet = hh < 5 ? "Good night" : hh < 12 ? "Good morning" : hh < 18 ? "Good afternoon" : "Good evening";
   const firstName = state.currentUser.name?.trim().split(/\s+/)[0] || titleCase((state.currentUser.email?.split("@")[0] || "there").split(/[._-]/)[0]);
   const pending = overview.approvals.pendingCount;
-  const monitoringCount = overview.operatorProductStates.filter((operator) => operator.state === "active" || operator.state === "enhanced").length;
   const healthyConnectors = overview.connectors.filter((c) => c.connected).length;
   const mode = autonomyLabel(overview.policy.autonomyMode);
   const busy = busyScan !== null || busyApproval !== null;
 
-  // State A: zero connected connectors. Never show the KPI row / connector
-  // strip / empty activity feed alongside this - it must read as a
-  // deliberate first-run moment, not a populated dashboard with zeros in it.
+  // State A remains an explicit server-backed first-run branch, but uses the
+  // same control-center frame as later states so the dashboard stays familiar.
   if (healthyConnectors === 0) {
-    const onboardingSystems = overview.workspace.onboardingSystems;
-    const recommended = (onboardingSystems.length ? onboardingSystems : RECOMMENDED_FALLBACK_SYSTEMS).slice(0, 4);
+    const hasOnboardingPriorities = overview.workspace.onboardingSystems.length > 0;
     return (
       <div className="os-page dashboard-overview dashboard-first-run">
         <div className="os-page-head">
           <div>
             <span className="os-greet">Auterim workspace</span>
             <h1>{greet}, {firstName}.</h1>
-            <div className="os-page-sub">Connect your systems to get started. Activate an operator when you are ready.</div>
+            <div className="os-page-sub">See what Auterim understands, what is ready, and what happens next.</div>
           </div>
         </div>
 
@@ -238,51 +399,16 @@ export function OSOverview() {
           </div>
         )}
 
-        <div className="p dashboard-lifecycle">
-          <div>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.09em", textTransform: "uppercase", color: "#64ffd7" }}>Connect your business</div>
-            <h2 style={{ marginTop: 12, fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em", maxWidth: 560 }}>No systems are connected yet.</h2>
-            <p style={{ marginTop: 8, maxWidth: 560, color: "var(--text-mute)", fontSize: 13.5, lineHeight: 1.6 }}>
-              {onboardingSystems.length
-                ? "Start with a system your team already uses."
-                : "Connect the tools your team already uses so Auterim has real context to work from."}
-            </p>
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {recommended.map((key) => {
-              const def = getConnectorDefinition(key);
-              const meta = connectorMeta[key] ?? { letter: key.slice(0, 2).toUpperCase(), color: "#4DE8E1" };
-              return (
-                <span key={key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 999, background: "rgba(255,255,255,0.03)", boxShadow: "inset 0 0 0 1px var(--line)", fontSize: 12.5 }}>
-                  <span className="connector-brand-logo" style={{ width: 20, height: 20, color: meta.color }}>{IntegrationLogos[def?.displayName ?? ""] ?? meta.letter}</span>
-                  {systemLabel(key)}
-                </span>
-              );
-            })}
-          </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Link className="btn btn-primary btn-sm" href="/connectors">Connect systems</Link>
-            <Link className="btn btn-ghost btn-sm" href="/agents">Explore operators</Link>
+        <DashboardReadinessSummary overview={overview} />
+        <DashboardMetrics overview={overview} />
+        <WorkforceActivity overview={overview} now={Date.parse(overview.lastUpdatedAt)} />
+        <div className="dashboard-value-grid" data-onboarding-priorities={hasOnboardingPriorities || undefined}>
+          <WhatAuterimCanDo overview={overview} />
+          <div className="dashboard-value-stack">
+            <ReadyToDeploy overview={overview} />
+            <UnlockMore overview={overview} />
           </div>
         </div>
-
-        <details className="p dashboard-how">
-          <summary>How this works</summary>
-          <div style={{ padding: "16px 20px", display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 16 }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>1. Connect</div>
-              <div style={{ marginTop: 4, fontSize: 12.5, color: "var(--text-mute)" }}>Link the systems your team already uses.</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>2. Review what unlocks</div>
-              <div style={{ marginTop: 4, fontSize: 12.5, color: "var(--text-mute)" }}>See exactly which operators become ready.</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>3. Activate when ready</div>
-              <div style={{ marginTop: 4, fontSize: 12.5, color: "var(--text-mute)" }}>Nothing runs unattended until you turn it on.</div>
-            </div>
-          </div>
-        </details>
       </div>
     );
   }
@@ -291,8 +417,7 @@ export function OSOverview() {
   // branch itself is computed server-side (selectDashboardLifecycleState,
   // from the shared operator product-state model) so the client never
   // re-derives this precedence - see src/lib/dashboard/lifecycle.ts. Each
-  // branch returns its own compact tree, matching State A's established
-  // pattern: no KPI row, no connector strip, no fabricated zero metrics.
+  // branch uses the same presentation frame while retaining the selected state.
   if (overview.lifecycleState === "B" || overview.lifecycleState === "C" || overview.lifecycleState === "D" || overview.lifecycleState === "F") {
     return (
       <LifecyclePreOperationalState
@@ -320,13 +445,6 @@ export function OSOverview() {
   const eligibility = overview.executionEligibility;
   const showEligibilityBanner = !eligibility.eligible;
 
-  const kpis = [
-    { label: "Checks today", val: overview.today.runsCount, sub: "Scheduled and manual checks", subCls: "neutral", color: "#4DE8E1" },
-    { label: "Pending approvals", val: pending, sub: overview.approvals.highRiskCount > 0 ? `${overview.approvals.highRiskCount} high risk` : "Waiting for review", subCls: overview.approvals.highRiskCount > 0 ? "amber" : "neutral", color: "#F5C26B" },
-    { label: "Actions today", val: overview.today.actionsExecuted, sub: "After approval", subCls: "neutral", color: "#4DE8E1" },
-    { label: "Activity (7d)", val: overview.activity.length, sub: overview.activity.length ? "Recorded operating events" : "Begins with your first live run", subCls: "neutral", color: "#5B8DEF" },
-  ];
-
   return (
     <div className="os-page dashboard-overview">
       {/* Header */}
@@ -337,16 +455,7 @@ export function OSOverview() {
             <span className="mobile-only">{overview.systemStatus.label}</span>
           </span>
           <h1>{greet}, {firstName}.</h1>
-          <div className="os-page-sub">
-            <span className="desktop-only">{pending} approval{pending === 1 ? "" : "s"} waiting · {monitoringCount} operator{monitoringCount === 1 ? "" : "s"} monitoring · running under {mode}.</span>
-            <span className="mobile-only">{monitoringCount} monitoring · {pending} need review</span>
-          </div>
-        </div>
-        <div className="os-page-actions" style={{ alignItems: "center" }}>
-          <span className="pill">{mode}</span>
-          {pending > 0
-            ? <Link className="btn btn-primary btn-sm" href="/approvals">Open approvals</Link>
-            : <Link className="btn btn-ghost btn-sm" href="/agents">View operators</Link>}
+          <div className="os-page-sub">See what Auterim understands, what is ready, and what happens next.</div>
         </div>
       </div>
 
@@ -355,6 +464,19 @@ export function OSOverview() {
           {error}
         </div>
       )}
+
+      <DashboardReadinessSummary overview={overview} />
+      {/* KPI row (real metrics, no fabricated trends) */}
+      <DashboardMetrics overview={overview} />
+      <WorkforceActivity overview={overview} now={Date.parse(overview.lastUpdatedAt)} />
+
+      <div className="dashboard-value-grid">
+        <WhatAuterimCanDo overview={overview} />
+        <div className="dashboard-value-stack">
+          <ReadyToDeploy overview={overview} />
+          <UnlockMore overview={overview} />
+        </div>
+      </div>
 
       {showEligibilityBanner && (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap", padding: "12px 16px", borderRadius: 12, background: "rgba(245,194,107,0.07)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.2)" }}>
@@ -391,18 +513,6 @@ export function OSOverview() {
           </div>
         </div>
       )}
-
-      {/* KPI row (real metrics, no fabricated trends) */}
-      <div className="kpi-row">
-        {kpis.map((k) => (
-          <div className="kpi" key={k.label} style={{ position: "relative", overflow: "hidden" }}>
-            <div className="kpi-top"><span className="lab">{k.label}</span></div>
-            <div className="kpi-val">{k.val}</div>
-            <div className="kpi-meta"><span className={`kpi-delta ${k.subCls}`}>{k.sub}</span></div>
-            <div style={{ position: "absolute", right: 12, bottom: 9, opacity: 0.82 }}><ActivitySparkline activity={overview.activity} now={now.getTime()} color={k.color} /></div>
-          </div>
-        ))}
-      </div>
 
       {/* Operators + Approvals */}
       <div className="os-grid-2 dashboard-focus-grid">
@@ -560,9 +670,8 @@ export function OSOverview() {
  * Dashboard lifecycle states B, C, D, and F. Which branch to render is
  * decided entirely server-side (overview.lifecycleState, from
  * selectDashboardLifecycleState) - this component only renders the copy for
- * whichever one it is handed. No KPI row, connector strip, or fabricated
- * zero-metric activity feed in any of these states, matching State A's
- * established pattern.
+ * whichever one it is handed. The presentation stays stable while real
+ * counts, capabilities, and activity change with the selected state.
  */
 function LifecyclePreOperationalState({
   lifecycleState,
@@ -578,17 +687,7 @@ function LifecyclePreOperationalState({
   error: string;
 }) {
   const states = overview.operatorProductStates;
-  const connectedSystems = overview.connectors.filter((connector) => connector.connected);
-  const readyStates = states.filter((item) => item.state === "ready_to_activate");
-  const planBlockedStates = states.filter((item) => item.state === "plan_required" || item.state === "billing_attention" || item.state === "suspended");
   const attentionStates = states.filter((item) => item.state === "needs_attention" || item.degraded);
-
-  const copy = {
-    B: { eyebrow: "Understanding your business", title: "Finish connecting your systems.", sub: "See what each operator needs to get started." },
-    C: { eyebrow: "Setup ready", title: "Your setup is ready.", sub: "One or more operators are ready to turn on." },
-    D: { eyebrow: "Ready to deploy", title: "Your setup is complete.", sub: "Choose a plan to put your operators to work." },
-    F: { eyebrow: "Needs attention", title: "A connected system needs attention.", sub: "Reconnect it to resume full operator coverage." },
-  }[lifecycleState];
 
   return (
     <div className="os-page dashboard-overview">
@@ -596,7 +695,7 @@ function LifecyclePreOperationalState({
         <div>
           <span className="os-greet">Auterim workspace</span>
           <h1>{greet}, {firstName}.</h1>
-          <div className="os-page-sub">{copy.sub}</div>
+          <div className="os-page-sub">See what Auterim understands, what is ready, and what happens next.</div>
         </div>
       </div>
 
@@ -606,78 +705,34 @@ function LifecyclePreOperationalState({
         </div>
       )}
 
-      <div className="p dashboard-lifecycle" data-state={lifecycleState}>
-        <div>
-          <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.09em", textTransform: "uppercase", color: lifecycleState === "F" ? "var(--amber)" : "#64ffd7" }}>{copy.eyebrow}</div>
-          <h2 style={{ marginTop: 10, fontSize: 20, fontWeight: 600, letterSpacing: "-0.02em", maxWidth: 560 }}>{copy.title}</h2>
-        </div>
+      <DashboardReadinessSummary overview={overview} />
+      <DashboardMetrics overview={overview} />
+      <WorkforceActivity overview={overview} now={Date.parse(overview.lastUpdatedAt)} />
 
-        {/* State B: what is understood so far + what to connect next. */}
-        {lifecycleState === "B" && (
-          <>
-            <div>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-faint)" }}>Connected so far</div>
-              <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {connectedSystems.map((connector) => (
-                  <span key={connector.key} style={{ padding: "7px 11px", borderRadius: 999, background: "rgba(255,255,255,0.03)", boxShadow: "inset 0 0 0 1px var(--line)", fontSize: 12.5 }}>{connector.name}</span>
-                ))}
+      {lifecycleState === "F" && attentionStates.length > 0 && (
+        <section className="p dashboard-attention-panel" aria-labelledby="dashboard-attention-title">
+          <div className="p-head"><h3 id="dashboard-attention-title">Needs attention</h3><span className="p-meta">Restore full coverage</span></div>
+          <div className="dashboard-attention-list">
+            {attentionStates.map((item) => (
+              <div className="dashboard-attention-row" key={item.operatorKey}>
+                <div>
+                  <strong>{item.operatorName}</strong>
+                  <p>{item.description}</p>
+                  {item.degraded?.lostCapabilities.length ? <span>Unavailable: {item.degraded.lostCapabilities.join(", ")}</span> : null}
+                  {item.degraded?.stillAvailableCapabilities.length ? <span>Still available: {item.degraded.stillAvailableCapabilities.join(", ")}</span> : null}
+                </div>
+                {item.nextAction && <Link className="btn btn-ghost btn-sm" href={item.nextAction.href}>{item.nextAction.label}</Link>}
               </div>
-            </div>
-            <div style={{ display: "grid", gap: 8 }}>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-faint)" }}>What to connect next</div>
-              {states.map((item) => (
-                <div key={item.operatorKey} style={{ fontSize: 12.5, color: "var(--text-dim)" }}>{item.operatorName}: {item.description}</div>
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* State C: recommended ready operators + why + activate CTA. */}
-        {lifecycleState === "C" && readyStates.map((item) => (
-          <div key={item.operatorKey} className="dashboard-lifecycle-row">
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>{item.operatorName}</div>
-              <div style={{ marginTop: 3, fontSize: 12, color: "var(--text-mute)" }}>{item.description}</div>
-              {item.connectedSystems.length > 0 && <div style={{ marginTop: 3, fontSize: 11.5, color: "var(--text-faint)" }}>Using: {item.connectedSystems.join(", ")}</div>}
-            </div>
-            {item.nextAction && <Link className="btn btn-primary btn-sm" href={item.nextAction.href} style={{ textDecoration: "none", flexShrink: 0 }}>{item.nextAction.label}</Link>}
+            ))}
           </div>
-        ))}
+        </section>
+      )}
 
-        {/* State D: ready operators blocked purely by plan/billing. */}
-        {lifecycleState === "D" && planBlockedStates.map((item) => (
-          <div key={item.operatorKey} className="dashboard-lifecycle-row">
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>{item.operatorName}</div>
-              <div style={{ marginTop: 3, fontSize: 12, color: "var(--text-mute)" }}>{item.description}</div>
-              {item.connectedSystems.length > 0 && <div style={{ marginTop: 3, fontSize: 11.5, color: "var(--text-faint)" }}>Using: {item.connectedSystems.join(", ")}</div>}
-            </div>
-            {item.nextAction && <Link className="btn btn-primary btn-sm" href={item.nextAction.href} style={{ textDecoration: "none", flexShrink: 0 }}>{item.nextAction.label}</Link>}
-          </div>
-        ))}
-
-        {/* State F: which connector needs attention, affected operator(s), lost vs still-available capability. */}
-        {lifecycleState === "F" && attentionStates.map((item) => (
-          <div key={item.operatorKey} className="dashboard-lifecycle-impact">
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>{item.operatorName}</div>
-                <div style={{ marginTop: 3, fontSize: 12, color: "var(--text-mute)" }}>{item.description}</div>
-                {item.degraded && (
-                  <div style={{ marginTop: 5, fontSize: 11.5, color: "var(--text-mute)" }}>
-                    {item.degraded.lostCapabilities.length > 0 && <>Unavailable: {item.degraded.lostCapabilities.join(", ")}<br /></>}
-                    {item.degraded.stillAvailableCapabilities.length > 0 && <>Still available: {item.degraded.stillAvailableCapabilities.join(", ")}</>}
-                  </div>
-                )}
-              </div>
-              {item.nextAction && <Link className="btn btn-primary btn-sm" href={item.nextAction.href} style={{ textDecoration: "none", flexShrink: 0 }}>{item.nextAction.label}</Link>}
-            </div>
-          </div>
-        ))}
-
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Link className="btn btn-ghost btn-sm" href="/connectors">Connect systems</Link>
-          <Link className="btn btn-ghost btn-sm" href="/agents">Explore operators</Link>
+      <div className="dashboard-value-grid">
+        <WhatAuterimCanDo overview={overview} />
+        <div className="dashboard-value-stack">
+          <ReadyToDeploy overview={overview} />
+          <UnlockMore overview={overview} />
         </div>
       </div>
     </div>

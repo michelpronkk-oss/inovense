@@ -2458,3 +2458,96 @@ select.os-input option {
   .os-root .os-mobile-sheet-backdrop .os-mobile-menu { animation: none; }
   .os-root .operator-activation-switch, .os-root .operator-activation-switch::before, .os-root .operator-activation-switch > span { transition: none; }
 }
+
+/* Dashboard control-center composition. Lifecycle logic remains server-owned. */
+.os-root .dashboard-readiness-summary {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 118px;
+  padding: 22px 24px;
+  border-left: 2px solid var(--cyan-deep);
+  background: linear-gradient(105deg, rgba(77,232,225,.055), rgba(255,255,255,.012) 42%, transparent);
+}
+.os-root .dashboard-readiness-summary[data-state="F"] { border-left-color: var(--amber); background: linear-gradient(105deg, rgba(245,194,107,.055), rgba(255,255,255,.012) 42%, transparent); }
+.os-root .dashboard-readiness-copy { display: grid; min-width: 0; gap: 10px; }
+.os-root .dashboard-readiness-copy h2 { max-width: 760px; margin: 0; font-size: clamp(18px, 2vw, 24px); font-weight: 540; line-height: 1.28; letter-spacing: -.025em; text-wrap: balance; }
+.os-root .dashboard-readiness-actions { display: flex; flex: none; gap: 8px; }
+.os-root .dashboard-readiness-actions a { text-decoration: none; white-space: nowrap; }
+
+.os-root .dashboard-metrics { display: grid; gap: 10px; }
+.os-root .dashboard-section-label { color: var(--text-mute); font: 600 11px/1.4 var(--font-sans); letter-spacing: .035em; text-transform: uppercase; }
+.os-root .dashboard-metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.os-root .dashboard-metric { position: relative; display: grid; min-height: 82px; align-content: space-between; gap: 8px; padding: 13px 15px; border-radius: 11px; background: #0b0e13; box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
+.os-root .dashboard-metric::after { content: ""; position: absolute; right: 14px; bottom: 14px; width: 28px; height: 14px; opacity: .34; background: repeating-linear-gradient(90deg, transparent 0 4px, var(--line-cyan) 4px 5px); }
+.os-root .dashboard-metric[data-attention="true"]::after { background: repeating-linear-gradient(90deg, transparent 0 4px, rgba(245,194,107,.5) 4px 5px); }
+.os-root .dashboard-metric span { color: var(--text-mute); font-size: 12px; line-height: 1.35; }
+.os-root .dashboard-metric strong { font-size: 25px; font-weight: 520; line-height: 1; font-variant-numeric: tabular-nums; }
+.os-root .dashboard-metric[data-attention="true"] strong { color: var(--amber); }
+
+.os-root .dashboard-workforce-activity { min-height: 228px; }
+.os-root .dashboard-workforce-activity .p-head > div { display: grid; gap: 3px; }
+.os-root .dashboard-workforce-activity .p-head span { color: var(--text-mute); font-size: 11.5px; }
+.os-root .dashboard-telemetry-frame { position: relative; min-height: 174px; padding: 10px 16px 8px; overflow: hidden; background: linear-gradient(180deg, rgba(255,255,255,.008), rgba(77,232,225,.012)); }
+.os-root .dashboard-telemetry-frame svg { display: block; width: 100%; height: 154px; overflow: visible; }
+.os-root .dashboard-telemetry-frame line { stroke: rgba(255,255,255,.07); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.os-root .dashboard-telemetry-frame .dashboard-telemetry-day { stroke: rgba(77,232,225,.055); }
+.os-root .dashboard-telemetry-frame text { fill: var(--text-faint); font: 10px var(--font-mono); }
+.os-root .dashboard-telemetry-frame .dashboard-telemetry-axis { font-size: 9px; }
+.os-root .dashboard-telemetry-frame circle { stroke: #0a0d12; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.os-root .dashboard-telemetry-empty { position: absolute; inset: 42px 20px 32px 82px; display: grid; place-content: center; gap: 5px; text-align: center; pointer-events: none; }
+.os-root .dashboard-telemetry-empty strong { font-size: 13px; font-weight: 550; }
+.os-root .dashboard-telemetry-empty span { color: var(--text-mute); font-size: 11.5px; }
+
+.os-root .dashboard-value-grid { display: grid; grid-template-columns: minmax(0, 1.18fr) minmax(340px, .82fr); gap: 14px; align-items: start; }
+.os-root .dashboard-value-stack { display: grid; gap: 14px; }
+.os-root .dashboard-capabilities ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin: 0; padding: 4px 18px 10px; list-style: none; }
+.os-root .dashboard-capabilities li { display: flex; align-items: flex-start; gap: 9px; min-height: 46px; padding: 13px 10px 12px 0; border-bottom: 1px solid var(--line); color: var(--text-dim); font-size: 12.5px; line-height: 1.45; }
+.os-root .dashboard-capabilities li:nth-child(odd) { margin-right: 16px; }
+.os-root .dashboard-capabilities li span { color: var(--green); font-size: 12px; }
+.os-root .dashboard-compact-empty { padding: 24px 18px; color: var(--text-mute); font-size: 12.5px; }
+.os-root :is(.dashboard-ready-list, .dashboard-unlock-list, .dashboard-attention-list) { display: grid; padding: 0 16px; }
+.os-root :is(.dashboard-ready-row, .dashboard-unlock-row, .dashboard-attention-row) { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-width: 0; padding: 14px 2px; border-bottom: 1px solid var(--line); }
+.os-root :is(.dashboard-ready-row, .dashboard-unlock-row, .dashboard-attention-row):last-child { border-bottom: 0; }
+.os-root :is(.dashboard-ready-row, .dashboard-unlock-row, .dashboard-attention-row) > div { display: grid; min-width: 0; gap: 3px; }
+.os-root :is(.dashboard-ready-row, .dashboard-unlock-row, .dashboard-attention-row) strong { font-size: 13px; font-weight: 560; }
+.os-root .dashboard-ready-row span, .os-root .dashboard-attention-row span { color: var(--text-faint); font-size: 11px; line-height: 1.4; }
+.os-root :is(.dashboard-ready-row, .dashboard-unlock-row, .dashboard-attention-row) p { margin: 0; color: var(--text-mute); font-size: 12px; line-height: 1.45; }
+.os-root :is(.dashboard-ready-row, .dashboard-unlock-row, .dashboard-attention-row) .btn { flex: none; }
+.os-root .dashboard-attention-panel { border-left: 2px solid var(--amber); }
+
+@media (max-width: 1023px) {
+  .os-root .dashboard-value-grid { grid-template-columns: 1fr; }
+  .os-root .dashboard-value-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 800px) {
+  .os-root .dashboard-overview > * { order: initial; }
+  .os-root .dashboard-readiness-summary { align-items: stretch; flex-direction: column; min-height: 0; gap: 16px; padding: 18px; }
+  .os-root .dashboard-readiness-copy h2 { font-size: 18px; line-height: 1.32; }
+  .os-root .dashboard-readiness-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .os-root .dashboard-readiness-actions .btn { width: 100%; white-space: normal; }
+  .os-root .dashboard-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .os-root .dashboard-metric { min-height: 76px; padding: 12px 13px; }
+  .os-root .dashboard-metric strong { font-size: 23px; }
+  .os-root .dashboard-workforce-activity { min-height: 0; }
+  .os-root .dashboard-workforce-activity .p-head { align-items: flex-start; }
+  .os-root .dashboard-workforce-activity .p-head .lnk-open { display: none; }
+  .os-root .dashboard-telemetry-frame { min-height: 138px; padding: 4px 10px; }
+  .os-root .dashboard-telemetry-frame svg { height: 130px; }
+  .os-root .dashboard-telemetry-empty { inset: 28px 18px 24px 68px; }
+  .os-root .dashboard-telemetry-empty span { max-width: 28ch; }
+  .os-root .dashboard-value-stack { grid-template-columns: 1fr; }
+  .os-root .dashboard-capabilities ul { grid-template-columns: 1fr; padding-inline: 16px; }
+  .os-root .dashboard-capabilities li:nth-child(odd) { margin-right: 0; }
+  .os-root :is(.dashboard-ready-row, .dashboard-unlock-row, .dashboard-attention-row) { align-items: flex-start; }
+  .os-root :is(.dashboard-ready-row, .dashboard-unlock-row, .dashboard-attention-row) .btn { min-width: 86px; }
+}
+
+@media (max-width: 359px) {
+  .os-root .dashboard-readiness-actions { grid-template-columns: 1fr; }
+  .os-root :is(.dashboard-ready-row, .dashboard-unlock-row, .dashboard-attention-row) { flex-direction: column; }
+  .os-root :is(.dashboard-ready-row, .dashboard-unlock-row, .dashboard-attention-row) .btn { width: 100%; }
+}
