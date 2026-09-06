@@ -38,7 +38,7 @@ export const metadata: Metadata = {
 const useCases = [
   {
     title: "Client onboarding",
-    description: "Structured onboarding workflows that run from signed contract to fully active client without manual coordination at each step.",
+    description: "Prepared onboarding summaries, handoffs, and client update drafts that keep the next owner clear.",
   },
   {
     title: "Status reporting",
@@ -63,7 +63,7 @@ const steps = [
   {
     number: "02",
     title: "Deploy the operator",
-    description: "The operator runs each stage on schedule, surfaces anomalies, and drafts client communications for your review.",
+    description: "The operator prepares client communication and handoff work from the context you approve, then routes client-facing messages for review.",
   },
   {
     number: "03",
@@ -74,7 +74,7 @@ const steps = [
 
 const blueprint = [
   { label: "Recommended operator", value: "Client Flow Operator" },
-  { label: "Required connectors", value: "CRM, Gmail or Outlook, Slack, docs connector, calendar" },
+  { label: "Start with", value: "Gmail or Microsoft 365 for client communication context. Calendar and document context expand the role as those integrations become available." },
   { label: "Approval rules", value: "Client-facing outbound updates and schedule changes require approval." },
   { label: "Expected outcome", value: "Structured onboarding and communication with fewer handoff delays." },
 ];
@@ -90,7 +90,7 @@ export default function ClientServicesPage() {
           <PageHero
             eyebrow="Solutions"
             heading="Client services that scale without adding headcount."
-            description="Onboarding automation, status updates, and account health monitoring that runs without a dedicated ops hire. Every client gets a consistent, high-quality experience."
+            description="Prepare client updates, onboarding handoffs, and follow-up work from approved context while keeping every client-facing action reviewable."
             mobileHeading="Scale client services without more headcount"
             mobileDescription="Automate onboarding, updates and account health while keeping every client experience consistent."
           >
@@ -167,7 +167,7 @@ export default function ClientServicesPage() {
                 className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
                 style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
               >
-                From client intake to renewal, fully structured.
+                A clearer handoff from intake into delivery.
               </h2>
               <StepRow steps={steps} />
             </div>

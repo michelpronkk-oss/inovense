@@ -38,26 +38,26 @@ export const metadata: Metadata = {
 
 const features = [
   {
-    title: "Trigger-based execution",
-    description: "Workflows start on schedule, inbound events, or connector state changes.",
+    title: "A defined business signal",
+    description: "A workflow begins with useful context: an inbox thread, a CRM record, a Trello card, or a deliberate operator check.",
   },
   {
-    title: "Step planning and branching",
-    description: "Each run creates step-level plans with branching conditions and fallbacks.",
+    title: "A prepared next step",
+    description: "The operator turns that context into a specific draft, update, handoff, or internal escalation rather than a generic suggestion.",
   },
   {
-    title: "Approval-first actions",
-    description: "Risky steps pause in approval inbox until a reviewer approves or skips.",
+    title: "A controlled decision",
+    description: "External sends, CRM writes, card changes, and Slack messages pause when the workspace policy requires an owner to decide.",
   },
 ];
 
 const properties = [
-  "Event, scheduled, and manual triggers",
-  "Agent plan steps with status tracking",
-  "Connector tool actions with policy checks",
-  "Approval gates on risky steps",
-  "Suggested workflows from workspace activity",
-  "Execution logs linked to run IDs",
+  "Connector context from the systems you approve",
+  "Role-specific preparation instead of generic automation",
+  "Policy checks before consequential tool actions",
+  "Approval gates for external and high-impact steps",
+  "Manual operator checks where a human should initiate the review",
+  "Execution logs that retain the outcome and decision",
 ];
 
 export default function WorkflowsPage() {
@@ -70,8 +70,8 @@ export default function WorkflowsPage() {
           <Reveal>
             <PageHero
               eyebrow="Platform"
-            heading="Execution chains with no manual handoff"
-            description="Structured workflows that move work across agents, connectors, and approval gates. Build once. Run continuously. Every step logged and auditable."
+            heading="Controlled workflows that move the next piece of work."
+            description="Auterim connects the signal, the relevant company context, the operator’s prepared action, and the approval decision in one reviewable flow."
             mobileHeading="Workflows that keep moving"
             mobileDescription="Structured work moves across operators, connectors and approval gates. Every step is logged."
             >
@@ -85,10 +85,10 @@ export default function WorkflowsPage() {
                     "inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(77,232,225,0.45), 0 8px 28px -8px rgba(77,232,225,0.5)",
                 }}
               >
-                Get Starter
+                Start with a workflow
               </Link>
               <Link
-                href="/docs"
+                href="/operators"
                 className="inline-flex rounded-xl px-6 py-3 text-sm font-medium transition-colors"
                 style={{
                   background: "rgba(255,255,255,0.03)",
@@ -96,7 +96,7 @@ export default function WorkflowsPage() {
                   boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
                 }}
               >
-                Read the docs
+                Explore operators
               </Link>
             </PageHero>
           </Reveal>
@@ -107,22 +107,22 @@ export default function WorkflowsPage() {
                 <div>
                   <p className="font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: "#4A4F57" }}>Execution blueprint</p>
                   <h2 className="mt-3 text-3xl font-semibold md:text-4xl" style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}>
-                    Production-style workflow runs.
+                    A useful workflow is more than a trigger.
                   </h2>
                   <p className="mt-4 text-base leading-relaxed" style={{ color: "#A4ABB4" }}>
-                    Triggers, agent steps, tool actions, and approval gates execute as a deterministic run with full observability.
+                    It starts from the systems that already hold the work, prepares one clear next step, and gives the right person control before anything consequential happens.
                   </p>
                 </div>
               </Reveal>
               <Reveal delayMs={120}>
                 <MockupWindow
-                  title="Inbound Revenue - Run #4,812"
-                  subtitle="agent runtime / policy engine / approvals"
+                  title="Inbound opportunity workflow"
+                  subtitle="context / prepare / approve / log"
                   rows={[
-                    { label: "Trigger - New lead submitted", meta: "forms / crm", status: "ok" },
-                    { label: "Qualify lead and enrich context", meta: "memory + hubspot", status: "ok" },
-                    { label: "Draft outbound reply", meta: "gmail.createDraft", status: "ok" },
-                    { label: "Send email", meta: "approval required", status: "pending" },
+                    { label: "Read the inbox and CRM context", meta: "Gmail, Microsoft 365, HubSpot, or Salesforce", status: "ok" },
+                    { label: "Prepare the follow-up", meta: "Revenue Operator draft", status: "ok" },
+                    { label: "Request approval", meta: "external send or CRM change", status: "pending" },
+                    { label: "Record the outcome", meta: "execution and decision log", status: "live" },
                   ]}
                 />
               </Reveal>
@@ -177,18 +177,18 @@ export default function WorkflowsPage() {
                 className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
                 style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
               >
-                Every configuration you need to run production workflows.
+                The mechanics that keep control attached to the work.
               </h2>
               <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
                 <PropList items={properties} />
                 <MockupWindow
-                  title="Workflow branch preview"
-                  subtitle="inbound revenue / policy-aware path"
+                  title="Blocked task workflow"
+                  subtitle="Trello context / internal follow-through"
                   rows={[
-                    { label: "Trigger - new form lead", meta: "event bus", status: "ok" },
-                    { label: "Branch - score >= 70", meta: "continue to follow-up", status: "live" },
-                    { label: "Branch - score < 70", meta: "route to nurture queue", status: "ok" },
-                    { label: "Outbound send", meta: "approval gate before execute", status: "pending" },
+                    { label: "Find stalled or blocked work", meta: "Trello board and card context", status: "ok" },
+                    { label: "Prepare an escalation or card action", meta: "Operations Operator", status: "live" },
+                    { label: "Approve the internal action", meta: "message, move, comment, or new card", status: "pending" },
+                    { label: "Keep the result visible", meta: "run and approval history", status: "ok" },
                   ]}
                 />
               </div>
@@ -197,9 +197,9 @@ export default function WorkflowsPage() {
           </section>
 
           <PageCTA
-            heading="Build your first workflow."
-            sub="Start with controlled workflow volume, then expand by operator count and execution needs."
-            primary="Get Starter"
+            heading="Start with the business loop that is already getting delayed."
+            sub="Choose the signal, the operator, and the control boundary before you connect more systems."
+            primary="Start with a workflow"
             primaryHref="/app/onboarding"
           />
         </PageShell>

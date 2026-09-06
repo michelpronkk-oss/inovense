@@ -50,31 +50,31 @@ const useCases = [
   },
   {
     title: "CRM hygiene automation",
-    description: "Fields updated, contacts deduplicated, and records enriched on a continuous basis. CRM stays clean without a dedicated ops role.",
+    description: "Prepares contact and deal updates from approved context, with HubSpot changes held behind approval.",
   },
 ];
 
 const steps = [
   {
     number: "01",
-    title: "Connect your CRM",
-    description: "Link HubSpot, Salesforce, or Pipedrive. The Revenue Operator reads your pipeline and begins working immediately.",
+    title: "Connect the context that matters",
+    description: "Connect Gmail or Microsoft 365 for follow-up context. Add HubSpot for approval-gated CRM updates or Salesforce for read context.",
   },
   {
     number: "02",
     title: "Deploy Revenue Operator",
-    description: "Define what the operator can do autonomously and what requires your sign-off. Approvals happen in your inbox.",
+    description: "Define which external sends and HubSpot changes require a named approver before they are carried out.",
   },
   {
     number: "03",
-    title: "Watch pipeline work itself",
-    description: "Follow-ups execute on schedule. Signals surface automatically. Your team focuses on conversations that close deals.",
+    title: "Review the prepared next step",
+    description: "The operator prepares follow-up and relevant CRM work from approved context. You retain the final decision on external communication and record changes.",
   },
 ];
 
 const blueprint = [
   { label: "Recommended operator", value: "Revenue Operator" },
-  { label: "Required connectors", value: "Gmail or Outlook, HubSpot or Salesforce, Slack" },
+  { label: "Start with", value: "Gmail or Microsoft 365. HubSpot adds approval-gated CRM updates; Salesforce adds read context." },
   { label: "Approval rules", value: "External outbound email and pricing communications require approval." },
   { label: "Expected outcome", value: "Faster lead response, cleaner CRM updates, and consistent follow-up execution." },
 ];
@@ -90,7 +90,7 @@ export default function RevenuePage() {
           <PageHero
             eyebrow="Solutions"
             heading="Revenue teams that run without manual coordination."
-            description="Pipeline management, follow-up sequencing, and deal intelligence that runs autonomously. Your operators work every lead, surface every signal, and never miss a follow-up."
+            description="Prepare lead follow-up from approved email and CRM context, then route the external action through the approval boundary your team sets."
             mobileHeading="Revenue work without manual coordination"
             mobileDescription="Operators manage follow-ups, pipeline signals and deal intelligence so no lead goes quiet."
           >

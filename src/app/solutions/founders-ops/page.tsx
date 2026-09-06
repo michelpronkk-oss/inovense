@@ -50,7 +50,7 @@ const useCases = [
   },
   {
     title: "Finance monitoring",
-    description: "Expense review, invoice matching, and payment alerts run automatically. No manual reconciliation at month end.",
+    description: "A future workforce direction for making financial and operating signals easier to review without handing over financial control.",
   },
 ];
 
@@ -63,7 +63,7 @@ const steps = [
   {
     number: "02",
     title: "Define what matters",
-    description: "Set the policies. Define what needs your attention and what the operator can handle autonomously.",
+    description: "Set the policy boundary first. Today, begin with the available operator that matches the work you need to move.",
   },
   {
     number: "03",
@@ -74,7 +74,7 @@ const steps = [
 
 const blueprint = [
   { label: "Recommended operator", value: "Revenue Operator plus Operations Operator baseline" },
-  { label: "Required connectors", value: "Gmail or Outlook, CRM, Slack, docs connector, finance events" },
+  { label: "Status", value: "Expanding workforce. Start today with Revenue, Client Flow, or Operations based on the work at hand." },
   { label: "Approval rules", value: "External sends, pricing updates, and high-risk actions require approval." },
   { label: "Expected outcome", value: "One operating layer across leads, clients, approvals, and weekly execution." },
 ];
@@ -90,7 +90,7 @@ export default function FoundersOpsPage() {
           <PageHero
             eyebrow="Solutions"
             heading="Move faster than a team twice your size."
-            description="For founders running lean. Deploy operators that handle the work you would otherwise delegate or do yourself. Institutional knowledge stays in memory. Coordination happens automatically."
+            description="A direction for founders who want a clearer operating picture. Today, start with an available operator and a small, controlled business loop."
             mobileDescription="Deploy operators for the work you would otherwise delegate or do yourself."
           >
             <Link

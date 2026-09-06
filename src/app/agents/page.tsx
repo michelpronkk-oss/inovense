@@ -40,32 +40,17 @@ const agentTypes = [
   {
     label: "Revenue",
     name: "Revenue Operator",
-    description: "Pipeline management, follow-up sequencing, and deal intelligence across your CRM.",
-  },
-  {
-    label: "Marketing",
-    name: "Marketing Operator",
-    description: "Campaign briefs, content workflows, SEO pipelines, and performance summaries.",
+    description: "Prepares follow-up from email and CRM context, then routes external sends and HubSpot changes through approval.",
   },
   {
     label: "Client flow",
     name: "Client Flow Operator",
-    description: "Onboarding flows, handoffs, reminders, and client communication with approvals.",
+    description: "Prepares onboarding communication, handoffs, and client follow-up from approved workspace context.",
   },
   {
     label: "Operations",
     name: "Operations Operator",
-    description: "Cross-team task routing, status updates, and recurring execution on schedule.",
-  },
-  {
-    label: "Support",
-    name: "Support Operator",
-    description: "Drafted support replies, triage routing, and escalation flows with policy controls.",
-  },
-  {
-    label: "Content",
-    name: "Content Operator",
-    description: "Editorial planning, structured drafts, approval loops, and publishing coordination.",
+    description: "Finds stalled Trello work and prepares internal updates, card actions, and escalations for approval.",
   },
 ];
 
@@ -73,7 +58,7 @@ const steps = [
   {
     number: "01",
     title: "Deploy",
-    description: "Select an operator type and connect it to your stack in minutes.",
+    description: "Choose an available operator and connect the system it needs for its first operating loop.",
   },
   {
     number: "02",
@@ -97,7 +82,7 @@ export default function AgentsPage() {
           <Reveal>
             <PageHero
               eyebrow="Platform"
-            heading="Specialized operators for every function"
+            heading="Specialized operators for defined business work"
             description="Operators are not chatbots. They run structured workflows through connectors, policies, approvals, memory, and execution logs. They propose actions first, then execute only when allowed."
             mobileHeading="Operators built for real work"
             mobileDescription="Defined roles that prepare work, follow your policies and execute only within the boundaries you set."
@@ -115,7 +100,7 @@ export default function AgentsPage() {
                 Deploy your first operator
               </Link>
               <Link
-                href="/docs"
+                href="/operators"
                 className="inline-flex rounded-xl px-6 py-3 text-sm font-medium transition-colors"
                 style={{
                   background: "rgba(255,255,255,0.03)",
@@ -123,7 +108,7 @@ export default function AgentsPage() {
                   boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
                 }}
               >
-                Read the docs
+                Explore current operators
               </Link>
             </PageHero>
           </Reveal>
@@ -132,24 +117,24 @@ export default function AgentsPage() {
             <div className="mx-auto grid max-w-6xl gap-8 px-6 lg:grid-cols-[1fr_1.15fr]">
               <Reveal>
                 <div>
-                  <p className="font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: "#4A4F57" }}>Live operator layer</p>
+                  <p className="font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: "#4A4F57" }}>Operator model</p>
                   <h2 className="mt-3 text-3xl font-semibold md:text-4xl" style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}>
-                    Real operators with scoped execution.
+                    Why a role beats a general-purpose chat.
                   </h2>
                   <p className="mt-4 text-base leading-relaxed" style={{ color: "#A4ABB4" }}>
-                    Each operator has role-specific goals, connector permissions, and policy constraints before any action can run.
+                    A chatbot waits for a prompt. An Auterim operator has an operating loop, approved context, connector scope, and a durable record of the decisions made around its work.
                   </p>
                 </div>
               </Reveal>
               <Reveal delayMs={120}>
                 <MockupWindow
-                  title="Operators - Live status"
-                  subtitle="workspace: auterim / production"
+                  title="A controlled operator run"
+                  subtitle="role / context / policy / approval"
                   rows={[
-                    { label: "Revenue Operator", meta: "Drafting 14 follow-ups", status: "live" },
-                    { label: "Marketing Operator", meta: "Building Q3 campaign brief", status: "live" },
-                    { label: "Client Flow Operator", meta: "Awaiting onboarding approval", status: "pending" },
-                    { label: "Operations Operator", meta: "Weekly digest run complete", status: "ok" },
+                    { label: "Detect a business signal", meta: "approved connector context", status: "live" },
+                    { label: "Prepare the next step", meta: "role-specific work", status: "ok" },
+                    { label: "Evaluate the policy", meta: "allow / require approval / block", status: "pending" },
+                    { label: "Record the outcome", meta: "reviewable run history", status: "ok" },
                   ]}
                 />
               </Reveal>
@@ -164,13 +149,13 @@ export default function AgentsPage() {
                 className="font-mono text-[11px] uppercase tracking-[0.14em]"
                 style={{ color: "#4A4F57" }}
               >
-                Operator types
+                Available operators
               </span>
               <h2
                 className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
                 style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
               >
-                One operator per function. All under the same policy layer.
+                Current roles for the work Auterim can support today.
               </h2>
               <div className="grid gap-5 sm:grid-cols-2">
                 {agentTypes.map((agent) => (
@@ -179,7 +164,7 @@ export default function AgentsPage() {
                       className="mb-2 font-mono text-[11px] uppercase tracking-[0.16em]"
                       style={{ color: "#4DE8E1" }}
                     >
-                      {agent.label}
+                      {agent.label} · Available today
                     </p>
                     <h3
                       className="mb-2 text-base font-semibold"
@@ -210,7 +195,7 @@ export default function AgentsPage() {
                   <div className="space-y-3">
                     {[
                       { t: "Load goal and context", m: "memory.search + workspace state", s: "ok" },
-                      { t: "Generate deterministic plan", m: "step-level risk markers", s: "ok" },
+                      { t: "Prepare the next action", m: "role-specific work and risk markers", s: "ok" },
                       { t: "Evaluate policy for each tool action", m: "allow / require approval / block", s: "live" },
                       { t: "Escalate risky actions", m: "approval inbox continuation", s: "pending" },
                       { t: "Execute approved actions", m: "connector executor", s: "live" },
@@ -237,13 +222,13 @@ export default function AgentsPage() {
                   </div>
                 </MktCard>
                 <MockupWindow
-                  title="Agent run - Revenue Operator"
-                  subtitle="run id: #4,812 / status: awaiting approval"
+                  title="Revenue Operator example"
+                  subtitle="inbound signal / controlled follow-up"
                   rows={[
-                    { label: "Step 1 - Lead qualified", meta: "score: 78 / ICP match", status: "ok" },
-                    { label: "Step 2 - CRM enriched", meta: "hubspot.updateLead", status: "ok" },
-                    { label: "Step 3 - Draft generated", meta: "gmail.createDraft", status: "ok" },
-                    { label: "Step 4 - Send outbound email", meta: "policy: require approval", status: "pending" },
+                    { label: "Read inbox and CRM context", meta: "Gmail, Microsoft 365, HubSpot, or Salesforce", status: "ok" },
+                    { label: "Prepare a follow-up", meta: "draft and relevant next step", status: "ok" },
+                    { label: "Request approval", meta: "before an external send or CRM write", status: "pending" },
+                    { label: "Log the decision", meta: "reviewable result", status: "live" },
                   ]}
                 />
               </div>
@@ -277,8 +262,8 @@ export default function AgentsPage() {
             sub="Start with one. Expand when the value is proven."
             primary="Deploy your first operator"
             primaryHref="/app/onboarding"
-            secondary="Read the docs"
-            secondaryHref="/docs"
+            secondary="Explore operator roles"
+            secondaryHref="/operators"
           />
         </PageShell>
       </main>

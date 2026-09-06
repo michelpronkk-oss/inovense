@@ -35,21 +35,13 @@ export const metadata: Metadata = {
   },
 };
 
-const categories = [
-  {
-    label: "CRM & Sales",
-    connectors: ["HubSpot", "Salesforce", "Pipedrive", "Airtable"],
-  },
-  {
-    label: "Communication",
-    connectors: ["Gmail", "Outlook", "Slack", "Microsoft Teams"],
-  },
-  { label: "Calendar & Scheduling", connectors: ["Google Calendar", "Outlook Calendar", "Calendly"] },
-  { label: "Docs & Knowledge", connectors: ["Notion", "Google Drive", "Confluence", "Google Sheets"] },
-  { label: "Payments & Commerce", connectors: ["Stripe", "Shopify"] },
-  { label: "Support", connectors: ["Intercom", "Zendesk"] },
-  { label: "Work Management", connectors: ["Linear", "ClickUp", "Monday", "Asana"] },
-  { label: "Automation & Custom", connectors: ["Zapier", "Make", "n8n", "Webhooks", "Custom API"] },
+const currentIntegrations = [
+  { name: "Gmail", label: "Email context", adds: "Recent inbox and thread context.", enables: "Draft follow-up and send approved external email.", improves: "Revenue and Client Flow Operators." },
+  { name: "Microsoft 365", label: "Mail and calendar", adds: "Outlook mail context and calendar visibility.", enables: "Draft and approved email; calendar changes after approval.", improves: "Revenue and Client Flow Operators." },
+  { name: "HubSpot", label: "CRM", adds: "Contact, deal, pipeline, and association context.", enables: "Approval-gated contact and deal updates.", improves: "Revenue Operator." },
+  { name: "Salesforce", label: "CRM context", adds: "Contact, lead, account, and open opportunity context.", enables: "Read-context foundation only; Salesforce writes are not enabled.", improves: "Revenue Operator." },
+  { name: "Trello", label: "Project work", adds: "Boards, lists, cards, and stalled-work signals.", enables: "Prepared card moves, comments, and new cards after approval.", improves: "Operations Operator." },
+  { name: "Slack", label: "Team chat", adds: "Allowed channel and message context.", enables: "Prepared internal messages and alerts after approval.", improves: "Operations, Client Flow, and Revenue Operators." },
 ];
 
 const permissionModel = [
@@ -69,8 +61,8 @@ export default function IntegrationsPage() {
           <Reveal>
             <PageHero
               eyebrow="Platform"
-            heading="Connect the systems your operators work in."
-            description="Auterim reads the context in your approved systems, then prepares or runs work only within the scopes and approval rules you set."
+            heading="Connect the systems your work already depends on."
+            description="Auterim does not ask a team to rebuild its stack. It reads approved business context and prepares controlled actions in the systems already carrying the work."
             mobileHeading="Connect the systems your work already uses"
             mobileDescription="Auterim reads approved context and prepares work within the scopes you set."
             >
@@ -84,10 +76,10 @@ export default function IntegrationsPage() {
                     "inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(77,232,225,0.45), 0 8px 28px -8px rgba(77,232,225,0.5)",
                 }}
               >
-                Get Starter
+                Start with your systems
               </Link>
               <Link
-                href="/docs"
+                href="/operators"
                 className="inline-flex rounded-xl px-6 py-3 text-sm font-medium transition-colors"
                 style={{
                   background: "rgba(255,255,255,0.03)",
@@ -95,7 +87,7 @@ export default function IntegrationsPage() {
                   boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
                 }}
               >
-                Browse connectors
+                Explore operators
               </Link>
             </PageHero>
           </Reveal>
@@ -109,7 +101,7 @@ export default function IntegrationsPage() {
                     Tool access with boundaries.
                   </h2>
                   <p className="mt-4 text-base leading-relaxed" style={{ color: "#A4ABB4" }}>
-                    Connectors expose explicit read/write scopes. Every action is checked by policy and approvals before execution.
+                    Every current connector has a defined purpose. Context can improve an operator without granting it write access; any consequential action still moves through policy and approval.
                   </p>
                 </div>
               </Reveal>
@@ -118,10 +110,10 @@ export default function IntegrationsPage() {
                   title="Connector health and scopes"
                   subtitle="connected systems / permission model"
                   rows={[
-                    { label: "Gmail - read threads, write drafts", meta: "approval on send_external_email", status: "live" },
-                    { label: "HubSpot - read/update leads", meta: "crm.updateRecord allowed", status: "ok" },
-                    { label: "Slack - post summaries", meta: "internal channel only", status: "ok" },
-                    { label: "Stripe - read customer events", meta: "refund_create blocked", status: "pending" },
+                    { label: "Gmail — inbox and thread context", meta: "draft, then approval-gated send", status: "live" },
+                    { label: "HubSpot — contact and deal context", meta: "writes require approval", status: "ok" },
+                    { label: "Salesforce — opportunity context", meta: "read-context foundation", status: "ok" },
+                    { label: "Trello — board and card signals", meta: "actions prepared for approval", status: "pending" },
                   ]}
                 />
               </Reveal>
@@ -136,55 +128,27 @@ export default function IntegrationsPage() {
                 className="font-mono text-[11px] uppercase tracking-[0.14em]"
                 style={{ color: "#4A4F57" }}
               >
-                Connector categories
+                Current integrations
               </span>
               <h2
                 className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
                 style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
               >
-                Built for the tools teams actually use.
+                Six live connections, with their real boundaries.
               </h2>
               <div className="grid gap-5 sm:grid-cols-2">
-                {categories.map((cat) => (
-                  <MktCard key={cat.label}>
+                {currentIntegrations.map((connector) => (
+                  <MktCard key={connector.name}>
                     <p
                       className="mb-4 font-mono text-[11px] uppercase tracking-[0.14em]"
                       style={{ color: "#4A4F57" }}
                     >
-                      {cat.label}
+                      {connector.label}
                     </p>
-                    <ul className="space-y-2">
-                      {cat.connectors.map((c) => (
-                        <li key={c} className="flex items-center gap-2">
-                          <span
-                            className="h-1 w-1 rounded-full"
-                            style={{ background: "rgba(77,232,225,0.55)" }}
-                            aria-hidden
-                          />
-                          <span
-                            className="font-mono text-[11px] uppercase tracking-[0.12em]"
-                            style={{ color: "#6B7178" }}
-                          >
-                            {c}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
+                    <h3 className="mb-4 text-lg font-semibold" style={{ color: "#ECEFF3", letterSpacing: "-0.02em" }}>{connector.name}</h3>
+                    <div className="space-y-3 text-sm leading-relaxed" style={{ color: "#A4ABB4" }}><p><strong style={{ color: "#ECEFF3" }}>Adds:</strong> {connector.adds}</p><p><strong style={{ color: "#ECEFF3" }}>Enables:</strong> {connector.enables}</p><p><strong style={{ color: "#4DE8E1" }}>Useful for:</strong> {connector.improves}</p></div>
                   </MktCard>
                 ))}
-              </div>
-
-              {/* Webhook callout */}
-              <div
-                className="mt-8 rounded-xl px-6 py-5"
-                style={{
-                  background: "rgba(13,16,21,0.6)",
-                  boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.15)",
-                }}
-              >
-                <p className="text-sm leading-relaxed" style={{ color: "#4DE8E1", opacity: 0.85 }}>
-                  Missing a connector? Every integration is configurable via webhook. Bring any tool into your operating layer.
-                </p>
               </div>
             </div>
           </section>
@@ -196,7 +160,7 @@ export default function IntegrationsPage() {
                 Permission model
               </span>
               <h2 className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl" style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}>
-                OAuth-ready connector architecture with policy enforcement.
+                Context first. Permissions second. Approval before consequential action.
               </h2>
               <div className="grid gap-5 sm:grid-cols-2">
                 {permissionModel.map((item) => (
@@ -212,12 +176,12 @@ export default function IntegrationsPage() {
           </section>
 
           <PageCTA
-            heading="Connect your stack."
-            sub="Deploy operators that know your tools."
-            primary="Get Starter"
+            heading="Start with the systems that make the first operator useful."
+            sub="Connection is scoped. Setup stays explicit. The value starts with the work you need to move."
+            primary="Start with your systems"
             primaryHref="/app/onboarding"
-            secondary="Browse connectors"
-            secondaryHref="/docs"
+            secondary="Meet the operators"
+            secondaryHref="/operators"
           />
         </PageShell>
       </main>

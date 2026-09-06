@@ -35,23 +35,23 @@ export const metadata: Metadata = {
 
 const features = [
   {
-    title: "Company memory graph",
-    description: "Accounts, documents, workflows, CRM records, inbox threads, and decisions connected in one graph.",
+    title: "Shared workspace context",
+    description: "The operating facts, goals, policies, and ownership rules a workspace makes available to its operators.",
   },
   {
-    title: "Scoped retrieval",
-    description: "Operators retrieve only the memory slices they are authorized to read by role and policy.",
+    title: "Connected business signals",
+    description: "Email, CRM, board, and channel context improves an operator only after your workspace connects and authorizes the relevant system.",
   },
   {
-    title: "Auditable writes",
-    description: "Memory writes are logged with actor, timestamp, and linked run IDs for traceability.",
+    title: "Continuity you can inspect",
+    description: "Prepared work, approval decisions, and execution results remain visible in the workspace so the next review starts with context.",
   },
 ];
 
 const examples = [
-  "Agent knows your pricing tiers before drafting a proposal.",
-  "Operator references last quarter's decisions without being prompted.",
-  "New agent deploys with full company context from day one.",
+  "A Revenue Operator starts from the email and CRM context your workspace has approved.",
+  "A Client Flow Operator can prepare a handoff from the client details and ownership rules already in the workspace.",
+  "An Operations Operator can explain why a card was flagged and leave the next decision visible for the team.",
 ];
 
 export default function MemoryPage() {
@@ -63,9 +63,9 @@ export default function MemoryPage() {
           {/* Hero */}
           <PageHero
             eyebrow="Platform"
-            heading="Your business, remembered"
-            description="Persistent company memory that gives every agent context, history, and institutional knowledge. Agents know who your clients are, what was decided, and what your standards are before they take a single action."
-            mobileDescription="Persistent company context that gives every operator the history, standards and decisions it needs."
+            heading="Business context that stays attached to the work."
+            description="Auterim uses the workspace facts, connected system context, policy rules, and review history you approve to make the next operator action specific. It does not treat memory as an unbounded record of everything."
+            mobileDescription="Approved workspace facts, connected context, policy rules, and review history for the next operator action."
           >
             <Link
               href="/app/onboarding"
@@ -106,7 +106,7 @@ export default function MemoryPage() {
                 className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
                 style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
               >
-                One memory layer for every operator in your account.
+                Context is useful only when its source and boundary are clear.
               </h2>
               <div className="grid gap-5 md:grid-cols-3">
                 {features.map((f) => (
@@ -140,7 +140,7 @@ export default function MemoryPage() {
                 className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
                 style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
               >
-                What memory-aware operators look like.
+                What context-aware operators look like.
               </h2>
               <div className="flex flex-col gap-5">
                 {examples.map((ex) => (
@@ -166,8 +166,8 @@ export default function MemoryPage() {
           </section>
 
           <PageCTA
-            heading="Memory that compounds."
-            sub="Every operator starts with full context. Every run adds to it."
+            heading="Start with the context that makes the first operator useful."
+            sub="Connect only the systems you need, make the policy boundary explicit, and keep the next decision reviewable."
             primary="Get Starter"
             primaryHref="/app/onboarding"
           />

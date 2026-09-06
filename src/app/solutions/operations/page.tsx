@@ -38,11 +38,11 @@ export const metadata: Metadata = {
 const useCases = [
   {
     title: "Recurring task execution",
-    description: "Operator runs defined tasks on schedule. Weekly reports, data syncs, and routine processes execute without a trigger.",
+    description: "Operator reviews connected Trello work for stalled, overdue, and blocked cards, then prepares the next internal action.",
   },
   {
     title: "Cross-team coordination",
-    description: "Routes tasks across functions with full context. Status updates flow automatically. No one has to chase down a handoff.",
+    description: "Prepares a focused internal update or escalation with the card context needed for the next owner to act.",
   },
   {
     title: "Process documentation",
@@ -63,7 +63,7 @@ const steps = [
   {
     number: "02",
     title: "Set approval thresholds",
-    description: "Define what runs automatically and what surfaces for your review. Every step is logged regardless.",
+    description: "Define which card changes, comments, or Slack messages need review before they are carried out. Every decision remains logged.",
   },
   {
     number: "03",
@@ -74,7 +74,7 @@ const steps = [
 
 const blueprint = [
   { label: "Recommended operator", value: "Operations Operator" },
-  { label: "Required connectors", value: "Slack, docs connector, CRM, calendar, internal webhook sources" },
+  { label: "Start with", value: "Trello for board and card context. Slack adds approval-gated internal messages." },
   { label: "Approval rules", value: "External communications and high-impact changes require approval." },
   { label: "Expected outcome", value: "Weekly digests, routed tasks, and cleaner internal reporting with full logs." },
 ];
@@ -166,7 +166,7 @@ export default function OperationsPage() {
                 className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
                 style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
               >
-                From process definition to continuous execution.
+                From a blocked card to a prepared next action.
               </h2>
               <StepRow steps={steps} />
             </div>

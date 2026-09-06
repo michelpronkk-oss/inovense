@@ -68,13 +68,13 @@ const steps = [
   {
     number: "03",
     title: "Review and publish",
-    description: "Drafts surface in your inbox for approval. Approved content publishes on schedule. Every action is logged.",
+    description: "Drafts and planning material can be reviewed before any future publishing capability is connected.",
   },
 ];
 
 const blueprint = [
   { label: "Recommended operator", value: "Marketing Operator and Content Operator" },
-  { label: "Required connectors", value: "Google Drive or Notion, Slack, Gmail, analytics source, webhooks" },
+  { label: "Status", value: "Expanding workforce. Marketing Operator is not a current production-ready automation surface." },
   { label: "Approval rules", value: "Customer-facing campaign copy and publish actions require approval." },
   { label: "Expected outcome", value: "Consistent content velocity with policy-safe review and performance digests." },
 ];
@@ -90,7 +90,7 @@ export default function MarketingPage() {
           <PageHero
             eyebrow="Solutions"
             heading="Marketing that executes without a coordinator."
-            description="Operators that run content workflows, track campaign performance, and surface optimization opportunities. Marketing at the pace of the business, not the calendar."
+            description="A view of where the workforce can expand for campaign briefs, content preparation, and controlled publishing. This is not presented as live production automation today."
             mobileDescription="Operators run content workflows, track campaigns and surface the next opportunity."
           >
             <Link
