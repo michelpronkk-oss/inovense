@@ -1,6 +1,6 @@
 export type SignalSource =
   | "gmail"
-  | "outlook"
+  | "microsoft"
   | "imap"
   | "hubspot"
   | "form"

@@ -66,6 +66,7 @@ function normalizeConnectorKey(id: string): string {
 
 function connectorCapabilities(connectorId: string): string[] {
   if (connectorId === "gmail") return ["Read recent inbox metadata", "Draft customer replies", "Send emails after approval"];
+  if (connectorId === "microsoft") return ["Read recent Outlook mail", "Read Outlook Calendar events", "Send emails after approval", "Create or update calendar events after approval"];
   if (connectorId === "hubspot") return ["Create or update contacts", "Create or update deals", "Link contacts to deals"];
   if (connectorId === "slack") return ["Read available channels", "Send internal approval alerts", "Notify the team after important actions"];
   if (connectorId === "trello") return ["Read boards, lists and cards", "Create cards after approval", "Move cards after approval", "Add comments after approval"];
@@ -75,6 +76,7 @@ function connectorCapabilities(connectorId: string): string[] {
 
 function connectorSafetyNotes(connectorId: string): string[] {
   if (connectorId === "gmail") return ["External customer emails require approval before sending.", "Auterim never sends from Gmail without a reviewed approval."];
+  if (connectorId === "microsoft") return ["External customer emails require approval before sending.", "Calendar event creation, updates and deletion require approval.", "Auterim never sends from Outlook or changes your calendar without a reviewed approval."];
   if (connectorId === "hubspot") return ["CRM changes require approval.", "Customer records are updated only through approved actions."];
   if (connectorId === "slack") return ["Slack alerts are internal.", "Customer-facing Slack messages are not sent automatically."];
   if (connectorId === "trello") return ["Trello task changes require approval.", "Cards, moves and comments execute only after review."];
@@ -207,6 +209,15 @@ export default function ConnectorsPage() {
     window.location.href = `/api/connectors/gmail/auth?${qs.toString()}`;
   };
 
+  const startRealMicrosoftOAuth = () => {
+    const qs = new URLSearchParams({
+      workspaceId: state.workspace.id,
+      userEmail: state.currentUser.email,
+      userId: state.currentUser.id,
+    });
+    window.location.href = `/api/connectors/microsoft/auth?${qs.toString()}`;
+  };
+
   const disconnectRealConnector = async (connector: Connector) => {
     setDisconnectingConnectorId(connector.id);
     setFeedback("");
@@ -288,6 +299,10 @@ export default function ConnectorsPage() {
       setFeedback("Gmail connected. Approval-gated compose/send permissions are now active.");
       router.replace("/connectors");
     }
+    if (connected === "microsoft") {
+      setFeedback("Microsoft 365 connected. Approval-gated mail and calendar permissions are now active.");
+      router.replace("/connectors");
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -297,6 +312,7 @@ export default function ConnectorsPage() {
 
     const setupMap: Record<string, string> = {
       gmail: "gmail",
+      microsoft: "microsoft",
       hubspot: "hubspot",
       slack: "slack",
       trello: "trello",
@@ -758,9 +774,9 @@ export default function ConnectorsPage() {
                           <div style={{ fontSize: 13, fontWeight: 500 }}>{c.name}</div>
                         </div>
                         <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-mute)" }}>{c.category}</div>
-                        {(c.id === "gmail" || getConnectorDefinition(c.id)?.authType === "nango") && (
+                        {(c.id === "gmail" || c.id === "microsoft" || getConnectorDefinition(c.id)?.authType === "nango") && (
                           <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--cyan)", marginTop: 2 }}>
-                            {c.id === "gmail" ? "Secure OAuth" : "Managed OAuth"}
+                            {c.id === "gmail" || c.id === "microsoft" ? "Secure OAuth" : "Managed OAuth"}
                           </div>
                         )}
                         <div style={{ fontSize: 11.5, color: "var(--text-dim)", marginTop: 6 }}>{c.description}</div>
@@ -781,6 +797,9 @@ export default function ConnectorsPage() {
                 {setupConnector.id === "gmail" && (
                   <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>Secure connection via Google OAuth · Native connector</div>
                 )}
+                {setupConnector.id === "microsoft" && (
+                  <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>Secure connection via Microsoft Entra ID OAuth · Native connector</div>
+                )}
                 {getConnectorDefinition(setupConnector.id)?.authType === "nango" && (
                   <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>
                     Managed OAuth connection{nangoStatuses[setupConnector.id]?.provider_email ? ` - ${nangoStatuses[setupConnector.id].provider_email}` : ""}
@@ -796,6 +815,10 @@ export default function ConnectorsPage() {
                       }
                       if (setupConnector.id === "gmail") {
                         startRealGmailOAuth();
+                        return;
+                      }
+                      if (setupConnector.id === "microsoft") {
+                        startRealMicrosoftOAuth();
                         return;
                       }
                       if (getConnectorDefinition(setupConnector.id)?.authType === "nango") {
@@ -841,6 +864,11 @@ export default function ConnectorsPage() {
                 {drawerConnector.records.includes("opportunity scanning")
                   ? "Reconnect required to enable opportunity scanning. Existing Gmail credentials do not include Gmail readonly scope."
                   : "Reconnect required to enable send permissions. Existing Gmail credentials do not include Gmail send scope."}
+              </div>
+            )}
+            {drawerConnector.id === "microsoft" && drawerConnector.isConnected && (drawerConnector.health !== "healthy" || drawerConnector.records.includes("Reconnect required")) && (
+              <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "rgba(245,194,107,0.08)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.2)", fontSize: 12, color: "var(--amber)" }}>
+                Reconnect required to restore Microsoft 365 access. This can happen if Microsoft permissions were revoked, or if required scopes are missing.
               </div>
             )}
             {getConnectorDefinition(drawerConnector.id)?.authType === "nango" && nangoStatuses[drawerConnector.id]?.status === "connected" && (
@@ -1016,11 +1044,14 @@ export default function ConnectorsPage() {
                       if (getConnectorDefinition(drawerConnector.id)?.authType === "nango") void testNangoConnection(drawerConnector.id);
                       else { testConnector(drawerConnector.id); setFeedback(`${drawerConnector.name} tested.`); }
                     }}>Test connection</button>
-                    {drawerConnector.id !== "gmail" && (
+                    {drawerConnector.id !== "gmail" && drawerConnector.id !== "microsoft" && (
                       <button className="btn btn-ghost btn-sm" onClick={() => { resyncConnector(drawerConnector.id); setFeedback(`${drawerConnector.name} resynced.`); }}>Resync</button>
                     )}
                     {drawerConnector.id === "gmail" && (
                       <button className="btn btn-primary btn-sm" onClick={startRealGmailOAuth}>Reconnect Gmail</button>
+                    )}
+                    {drawerConnector.id === "microsoft" && (
+                      <button className="btn btn-primary btn-sm" onClick={startRealMicrosoftOAuth}>Reconnect Microsoft 365</button>
                     )}
                   </>
                 )}

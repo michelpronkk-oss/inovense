@@ -21,7 +21,7 @@ export const ACTION_REGISTRY: Record<ActionType, ActionDefinition> = {
     defaultConnectorKey: "gmail",
     riskLevel: "high",
     approvalDefault: true,
-    allowedExecutionAdapters: ["gmail", "outlook"],
+    allowedExecutionAdapters: ["gmail", "microsoft"],
   },
   send_slack_message: {
     actionType: "send_slack_message",

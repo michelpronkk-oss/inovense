@@ -7,8 +7,8 @@
 // connectable. Everything else is "coming_soon" / "planned" and must render
 // as visibly disabled. Presence in this catalog never implies a connection.
 //
-// Today gmail (direct OAuth), hubspot (Nango), outlook (Nango), slack
-// (Nango), and Trello (Nango) are available.
+// Today gmail (direct OAuth), microsoft (direct OAuth), hubspot (Nango),
+// slack (Nango), and Trello (Nango) are available.
 
 import type { Capability } from "@/lib/connectors/capabilities";
 import type { OperatorKey } from "@/lib/operators/registry";
@@ -74,7 +74,6 @@ export const CONNECTOR_CATEGORY_LABELS: Record<ConnectorCategory, string> = {
 const HUBSPOT_PROVIDER_CONFIG_KEY = process.env.NANGO_HUBSPOT_CONFIG_KEY || "hubspot";
 const SLACK_PROVIDER_CONFIG_KEY = process.env.NANGO_SLACK_CONFIG_KEY || "slack";
 const TRELLO_PROVIDER_CONFIG_KEY = process.env.NANGO_TRELLO_CONFIG_KEY || "trello";
-const OUTLOOK_PROVIDER_CONFIG_KEY = process.env.NANGO_OUTLOOK_CONFIG_KEY || "outlook";
 
 export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
   // ── Available (real, functional today) ───────────────────────────────
@@ -116,14 +115,18 @@ export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
     setupNotes: "Managed OAuth through Nango. No tokens are stored in Auterim.",
   },
 
-  outlook: {
-    connectorKey: "outlook", displayName: "Outlook", category: "email", authType: "nango",
-    providerConfigKey: OUTLOOK_PROVIDER_CONFIG_KEY,
-    letter: "O", color: "#0078D4", description: "Microsoft 365 inbox context and approval-gated email send.",
-    status: "available", capabilities: ["email.read", "email.draft", "email.send_after_approval", "email.thread.read"],
-    usedByOperators: ["revenue", "support"], readActions: ["Read recent mail"], writeActions: ["Create draft", "Send approved email"],
-    approvalRequiredActions: ["External email send"], eventTypes: ["email.received"], riskLevel: "medium",
-    setupNotes: "Connects through Microsoft Graph via Nango. Requires an Entra ID app with Mail.Read, Mail.Send, offline_access, and User.Read delegated permissions, registered as an integration in the Nango dashboard.",
+  microsoft: {
+    connectorKey: "microsoft", displayName: "Microsoft 365", category: "email", authType: "direct_oauth",
+    letter: "Ms", color: "#0078D4", description: "Outlook Mail context, approval-gated email send, and Outlook Calendar read/write.",
+    status: "available",
+    capabilities: ["email.read", "email.draft", "email.send_after_approval", "email.thread.read", "calendar.events.read", "calendar.events.write_after_approval"],
+    usedByOperators: ["revenue", "client_flow", "operations", "support"],
+    readActions: ["Read recent mail", "Read calendar events"],
+    writeActions: ["Send approved email", "Create or update calendar event after approval"],
+    approvalRequiredActions: ["External email send", "Calendar event create/update/delete"],
+    eventTypes: ["email.received", "email.sent", "calendar.event.created"],
+    riskLevel: "medium",
+    setupNotes: "Connects directly with Microsoft Entra ID OAuth (multitenant app, delegated permissions: User.Read, Mail.Read, Mail.Send, Calendars.ReadWrite, offline_access, openid, profile). No third-party OAuth broker is involved.",
   },
 
   // ── Coming soon (clear near-term path) ───────────────────────────────

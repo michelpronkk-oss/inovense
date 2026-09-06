@@ -45,8 +45,8 @@ export function executeMockTool(
       return { ok: true, output: `Drafted follow-up email for ${String(input.payload.company ?? "lead")}` };
     case "gmail.sendApprovedEmailMock":
       return { ok: true, output: `Mock-sent approved email to ${String(input.payload.email ?? "recipient")}` };
-    case "outlook.createDraft":
-      return { ok: true, output: "Drafted Outlook response" };
+    case "microsoft.createDraft":
+      return { ok: true, output: "Drafted Microsoft 365 response" };
     case "hubspot.createLead":
       return { ok: true, output: `Created HubSpot lead ${String(input.payload.leadId ?? "new")}` };
     case "hubspot.updateLead":

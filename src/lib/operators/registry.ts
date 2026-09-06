@@ -30,7 +30,7 @@ export type OperatorCategory =
 
 export type OperatorReleaseStatus = "ready" | "preview" | "coming_next" | "requires_connector";
 export type OperatorMode = "draft" | "approval_gated" | "read_only" | "real_action";
-export type ConnectorKey = "gmail" | "outlook" | "hubspot" | "google_drive" | "notion" | "slack" | "stripe" | "linear" | "calendar";
+export type ConnectorKey = "gmail" | "microsoft" | "hubspot" | "google_drive" | "notion" | "slack" | "stripe" | "linear" | "calendar";
 
 export type OperatorDefinition = {
   key: OperatorKey;

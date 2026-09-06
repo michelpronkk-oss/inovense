@@ -32,7 +32,7 @@ export type OperatorReadiness = {
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
 function connectorConnected(connectorKey: ConnectorKey, truth: SafeConnectorTruth[]): boolean {
-  if (connectorKey !== "gmail" && connectorKey !== "hubspot" && connectorKey !== "outlook") return false;
+  if (connectorKey !== "gmail" && connectorKey !== "hubspot" && connectorKey !== "microsoft") return false;
   return truth.some((connector) =>
     connector.connectorKey === connectorKey
     && (connector.status === "connected" || connector.status === "healthy")
@@ -42,7 +42,7 @@ function connectorConnected(connectorKey: ConnectorKey, truth: SafeConnectorTrut
 /**
  * Connector-agnostic capability check: any connector the workspace actually
  * has connected (status connected/healthy) that provides this capability.
- * This is how Gmail and Outlook both satisfy "an email connector is
+ * This is how Gmail and Microsoft 365 both satisfy "an email connector is
  * connected" without operators special-casing either connector by name, and
  * lets any future email connector light up the same operators automatically.
  */
@@ -64,7 +64,7 @@ function planAllows(operator: OperatorDefinition, planTier: PlanTier): boolean {
 function getNextConnectorStep(missing: ConnectorKey[]): string {
   const first = missing[0];
   if (first === "gmail") return "Connect Gmail with real OAuth.";
-  if (first === "outlook") return "Connect Outlook through Nango.";
+  if (first === "microsoft") return "Connect Microsoft 365 with real OAuth.";
   if (first === "hubspot") return "Connect HubSpot through Nango.";
   if (first) return `Connect ${first.replace(/_/g, " ")}.`;
   return "No connector setup required.";
@@ -214,8 +214,8 @@ function evaluateOperator(input: {
         connectedRequired,
         missingRequired,
         entitlements,
-        reason: "Revenue readiness requires a connected email connector (Gmail or Outlook).",
-        nextSetupStep: "Connect Gmail or Outlook.",
+        reason: "Revenue readiness requires a connected email connector (Gmail or Microsoft 365).",
+        nextSetupStep: "Connect Gmail or Microsoft 365.",
       });
     }
     if (!hasHubSpot) {
@@ -225,7 +225,7 @@ function evaluateOperator(input: {
         connectedRequired: emailConnectors,
         missingRequired: [],
         entitlements,
-        reason: `${emailConnectors[0] === "outlook" ? "Outlook" : "Gmail"} is connected, so draft and approval work is available. HubSpot is missing, so CRM execution is disabled.`,
+        reason: `${emailConnectors[0] === "microsoft" ? "Microsoft 365" : "Gmail"} is connected, so draft and approval work is available. HubSpot is missing, so CRM execution is disabled.`,
         nextSetupStep: "Connect HubSpot through Nango for full revenue readiness.",
         canRunManual: true,
       });
@@ -251,8 +251,8 @@ function evaluateOperator(input: {
         connectedRequired,
         missingRequired,
         entitlements,
-        reason: "Client Flow requires a connected email connector (Gmail or Outlook) for safe draft preparation.",
-        nextSetupStep: "Connect Gmail or Outlook.",
+        reason: "Client Flow requires a connected email connector (Gmail or Microsoft 365) for safe draft preparation.",
+        nextSetupStep: "Connect Gmail or Microsoft 365.",
       });
     }
     return baseResult({
@@ -261,7 +261,7 @@ function evaluateOperator(input: {
       connectedRequired: emailConnectors,
       missingRequired: [],
       entitlements,
-      reason: `${emailConnectors[0] === "outlook" ? "Outlook" : "Gmail"} is connected. Drive/Notion context is not available yet, so readiness is limited to draft preparation.`,
+      reason: `${emailConnectors[0] === "microsoft" ? "Microsoft 365" : "Gmail"} is connected. Drive/Notion context is not available yet, so readiness is limited to draft preparation.`,
       nextSetupStep: "Connect Drive or Notion when those connector truth checks are available.",
       canRunManual: true,
     });
@@ -276,8 +276,8 @@ function evaluateOperator(input: {
         connectedRequired,
         missingRequired,
         entitlements,
-        reason: "Operations readiness requires a connected email connector (Gmail or Outlook) plus verifiable approval/log activity.",
-        nextSetupStep: "Connect Gmail or Outlook.",
+        reason: "Operations readiness requires a connected email connector (Gmail or Microsoft 365) plus verifiable approval/log activity.",
+        nextSetupStep: "Connect Gmail or Microsoft 365.",
       });
     }
     if (!runtimeSignals.hasApprovalActivity || !runtimeSignals.hasWorkspaceScopedLogs) {
@@ -287,7 +287,7 @@ function evaluateOperator(input: {
         connectedRequired: emailConnectors,
         missingRequired: [],
         entitlements,
-        reason: `${emailConnectors[0] === "outlook" ? "Outlook" : "Gmail"} is connected, but approval/log activity is not fully workspace-scoped yet.`,
+        reason: `${emailConnectors[0] === "microsoft" ? "Microsoft 365" : "Gmail"} is connected, but approval/log activity is not fully workspace-scoped yet.`,
         nextSetupStep: "Add workspace-scoped approval and execution log tables before marking Operations ready.",
         canRunManual: true,
       });

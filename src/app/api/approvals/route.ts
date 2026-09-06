@@ -110,13 +110,13 @@ function stringList(value: unknown): string[] {
 }
 
 function isEmailKind(kind: GmailContinuationPayload["kind"] | undefined): boolean {
-  return kind === "gmail.send_after_approval" || kind === "outlook.send_after_approval";
+  return kind === "gmail.send_after_approval" || kind === "microsoft.send_after_approval";
 }
 
 function approvalReason(continuation: GmailContinuationPayload, policyReason: string | null): string {
   if (policyReason) return policyReason;
   if (continuation.kind === "gmail.send_after_approval") return "External email send requires human approval before Gmail execution.";
-  if (continuation.kind === "outlook.send_after_approval") return "External email send requires human approval before Outlook execution.";
+  if (continuation.kind === "microsoft.send_after_approval") return "External email send requires human approval before Microsoft 365 execution.";
   if (continuation.kind === "slack.send_after_approval") return "Slack message sends require human approval before posting.";
   if (continuation.kind === "operations.execute_after_approval") return "Operations actions require human approval before any Slack message or Trello change.";
   return "Operator action requires human approval.";
@@ -138,7 +138,7 @@ function expectedOutcome(continuation: GmailContinuationPayload): string | null 
   if (continuation.kind === "slack.send_after_approval") return "Post the approved Slack message and record the approval decision.";
   if (continuation.kind === "shared_action.execute_after_approval") return "Execute the approved action through the selected connector and record the result.";
   if (!isEmailKind(continuation.kind)) return null;
-  const provider = continuation.kind === "outlook.send_after_approval" ? "Outlook" : "Gmail";
+  const provider = continuation.kind === "microsoft.send_after_approval" ? "Microsoft 365" : "Gmail";
   if (continuation.crmPreparationStatus === "hubspot_execution_enabled") {
     return `Send the approved ${provider} follow-up now, then create or update the HubSpot contact/deal. CRM notes and tasks remain prepared only.`;
   }
@@ -163,7 +163,7 @@ function afterApprovalText(continuation: GmailContinuationPayload): string | nul
   }
   if (!isEmailKind(continuation.kind)) return null;
   const crmText = crmStatusText(continuation.crmPreparationStatus);
-  const provider = continuation.kind === "outlook.send_after_approval" ? "Outlook" : "Gmail";
+  const provider = continuation.kind === "microsoft.send_after_approval" ? "Microsoft 365" : "Gmail";
   return [
     `${provider} sends this exact draft using the connected workspace ${provider} account.`,
     crmText,

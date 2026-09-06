@@ -1,25 +1,25 @@
 import { getOperatorReadiness, type OperatorReadiness } from "@/lib/operators/readiness";
 import { evaluateManualRunPolicy } from "@/lib/operators/policies";
 import { createGmailSendApproval, prepareRevenueFollowUpEmail, type RevenueFollowUpInput } from "@/lib/operators/executors/gmail";
-import { createOutlookSendApproval } from "@/lib/operators/executors/outlook";
+import { createMicrosoftSendApproval } from "@/lib/operators/executors/microsoft";
 import { logOperatorEvent, operatorRuntimeId } from "@/lib/operators/logging";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
 /**
- * Revenue Operator supports Gmail and Outlook as interchangeable email
+ * Revenue Operator supports Gmail and Microsoft 365 as interchangeable email
  * connectors. Readiness already reports which connector(s) are actually
  * connected (readiness.connectedRequiredConnectors); this picks the one to
  * execute against. Gmail is preferred when both are somehow connected, which
  * keeps existing Gmail-only workspaces behaving exactly as before.
  */
-type EmailConnectorKey = "gmail" | "outlook";
+type EmailConnectorKey = "gmail" | "microsoft";
 
 function resolveEmailConnector(readiness: OperatorReadiness): EmailConnectorKey | null {
   const connected = readiness.connectedRequiredConnectors;
   if (connected.includes("gmail")) return "gmail";
-  if (connected.includes("outlook")) return "outlook";
+  if (connected.includes("microsoft")) return "microsoft";
   return null;
 }
 
@@ -104,13 +104,13 @@ export async function runRevenueOperator(input: RunOperatorInput) {
 
   const emailConnector = resolveEmailConnector(readiness);
   if (!emailConnector) {
-    return { ok: false as const, status: 409, error: "Revenue readiness reported ready, but no connected email connector (Gmail or Outlook) was found.", readiness };
+    return { ok: false as const, status: 409, error: "Revenue readiness reported ready, but no connected email connector (Gmail or Microsoft 365) was found.", readiness };
   }
 
   const policy = evaluateManualRunPolicy({
     operatorKey: "revenue",
     readiness,
-    action: emailConnector === "outlook" ? "outlook.follow_up_send" : "gmail.follow_up_send",
+    action: emailConnector === "microsoft" ? "microsoft.follow_up_send" : "gmail.follow_up_send",
   });
   if (!policy.ok) {
     return { ok: false as const, status: 403, error: policy.reason, readiness };
@@ -178,7 +178,7 @@ export async function runRevenueOperator(input: RunOperatorInput) {
       supabase,
       workspaceId: input.workspaceId,
       runId,
-      eventType: emailConnector === "outlook" ? "outlook.follow_up.prepared" : "gmail.follow_up.prepared",
+      eventType: emailConnector === "microsoft" ? "microsoft.follow_up.prepared" : "gmail.follow_up.prepared",
       message: `Prepared follow-up email for ${draft.to}.`,
       metadata: { to: draft.to, subject: draft.subject },
     });
@@ -201,8 +201,8 @@ export async function runRevenueOperator(input: RunOperatorInput) {
       metadata: { requiresApproval: policy.requiresApproval, riskLevel: policy.riskLevel },
     });
 
-    const approval = emailConnector === "outlook"
-      ? await createOutlookSendApproval({
+    const approval = emailConnector === "microsoft"
+      ? await createMicrosoftSendApproval({
         supabase,
         workspaceId: input.workspaceId,
         runId,
@@ -234,11 +234,11 @@ export async function runRevenueOperator(input: RunOperatorInput) {
       workspaceId: input.workspaceId,
       runId,
       eventType: "approval.created",
-      message: `Created ${emailConnector === "outlook" ? "Outlook" : "Gmail"} send approval ${approval.approvalId}.`,
+      message: `Created ${emailConnector === "microsoft" ? "Microsoft 365" : "Gmail"} send approval ${approval.approvalId}.`,
       metadata: { approvalId: approval.approvalId },
     });
 
-    const outputType = emailConnector === "outlook" ? "outlook_follow_up_draft" : "gmail_follow_up_draft";
+    const outputType = emailConnector === "microsoft" ? "microsoft_follow_up_draft" : "gmail_follow_up_draft";
     const output = {
       type: outputType,
       draft,

@@ -1,0 +1,63 @@
+import { NextRequest, NextResponse } from "next/server";
+import { buildMicrosoftAuthUrl, getMicrosoftConfigStatus } from "@/lib/connectors/microsoft";
+import { createMicrosoftOAuthState } from "@/lib/connectors/oauth-state";
+import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
+import { resolveWorkspaceContext } from "@/lib/os/workspace";
+import { getAppUrl } from "@/lib/urls";
+
+function canUseRealConnectors(status: string | null, flag: boolean | null): boolean {
+  return Boolean(flag) && status !== "preview";
+}
+
+export async function GET(req: NextRequest) {
+  if (!hasSupabaseAdminConfig()) {
+    return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
+  }
+
+  const configStatus = getMicrosoftConfigStatus();
+  if (!configStatus.configured) {
+    // Never leak which secret values are set - only that server-side
+    // Microsoft configuration is incomplete.
+    console.error("[microsoft-connector] missing_configuration", { missing: configStatus.missing });
+    return NextResponse.json({ error: "Microsoft 365 is not configured yet. Contact support." }, { status: 503 });
+  }
+
+  // The requested workspaceId is only a hint - identity is always resolved
+  // from the verified session, and membership in this exact workspace is
+  // required before an OAuth flow can be started on its behalf.
+  const requestedWorkspaceId = req.nextUrl.searchParams.get("workspaceId") || undefined;
+  const supabase = createSupabaseAdmin();
+  const context = await resolveWorkspaceContext({ workspaceId: requestedWorkspaceId, supabase });
+  if (!context.ok) {
+    return NextResponse.json({ error: context.error, code: context.code }, { status: context.status });
+  }
+  if (!context.userEmail) {
+    return NextResponse.json({ error: "A verified account email is required to connect Microsoft 365.", code: "email_required" }, { status: 400 });
+  }
+
+  const workspaceId = context.workspaceId;
+  const userEmail = context.userEmail;
+
+  const workspace = await supabase
+    .from("os_workspaces")
+    .select("billing_status, can_use_real_connectors")
+    .eq("id", workspaceId)
+    .single();
+
+  if (workspace.error || !workspace.data) {
+    return NextResponse.json({ error: "Workspace not found." }, { status: 404 });
+  }
+
+  if (!canUseRealConnectors(workspace.data.billing_status, workspace.data.can_use_real_connectors)) {
+    // A browser navigation must land on the plan decision, never expose a
+    // raw 402 JSON document. API callers still receive a useful status.
+    if (req.headers.get("accept")?.includes("text/html")) {
+      return NextResponse.redirect(new URL("/pricing?gate=connectors&source=microsoft", getAppUrl()));
+    }
+    return NextResponse.json({ error: "Choose a plan to begin a trial before connecting live Microsoft 365.", code: "trial_required" }, { status: 402 });
+  }
+
+  const state = createMicrosoftOAuthState(workspaceId, userEmail);
+  const authUrl = buildMicrosoftAuthUrl(state);
+  return NextResponse.redirect(authUrl);
+}

@@ -9,7 +9,7 @@ const BLOCKED_READINESS = new Set(["missing_connector", "upgrade_required", "com
 export function evaluateManualRunPolicy(input: {
   operatorKey: string;
   readiness: OperatorReadiness;
-  action: "gmail.follow_up_send" | "outlook.follow_up_send";
+  action: "gmail.follow_up_send" | "microsoft.follow_up_send";
 }): OperatorPolicyDecision {
   if (BLOCKED_READINESS.has(input.readiness.status)) {
     return {
@@ -36,12 +36,12 @@ export function evaluateManualRunPolicy(input: {
     };
   }
 
-  if (input.action === "outlook.follow_up_send") {
+  if (input.action === "microsoft.follow_up_send") {
     return {
       ok: true,
       riskLevel: "medium",
       requiresApproval: true,
-      reason: "External email send requires human approval before Outlook execution.",
+      reason: "External email send requires human approval before Microsoft 365 execution.",
     };
   }
 

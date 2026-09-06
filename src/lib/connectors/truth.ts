@@ -1,5 +1,6 @@
 import type { Connector, OSState } from "@/lib/os/types";
 import { GMAIL_COMPOSE_SCOPE, GMAIL_READONLY_SCOPE, GMAIL_SCAN_REQUIRED_SCOPES, GMAIL_SEND_SCOPE, getMissingGmailScopes } from "@/lib/connectors/gmail";
+import { MICROSOFT_REQUIRED_SCOPES, getMissingMicrosoftScopes } from "@/lib/connectors/microsoft";
 import { getConnectorDefinition, listSupportedNangoConnectors } from "@/lib/connectors/registry";
 import { verifyNangoConnection } from "@/lib/integrations/nango";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
@@ -36,12 +37,18 @@ export async function getConnectorTruth(input: {
   const supabase = input.supabase ?? createSupabaseAdmin();
 
   const supportedNangoKeys = listSupportedNangoConnectors().map((def) => def.connectorKey);
-  const [gmailRes, nangoRes] = await Promise.all([
+  const [gmailRes, microsoftRes, nangoRes] = await Promise.all([
     supabase
       .from("os_connector_credentials")
       .select("connector_key, provider_email, scopes, status, created_at")
       .eq("workspace_id", input.workspaceId)
       .eq("connector_key", "gmail")
+      .maybeSingle(),
+    supabase
+      .from("os_connector_credentials")
+      .select("connector_key, provider_email, scopes, status, created_at")
+      .eq("workspace_id", input.workspaceId)
+      .eq("connector_key", "microsoft")
       .maybeSingle(),
     supabase
       .from("os_connectors")
@@ -57,6 +64,14 @@ export async function getConnectorTruth(input: {
   const gmailMissingScopes = Array.from(new Set([...gmailMissingSendScopes, ...gmailMissingScanScopes]));
   const gmailSendReconnectRequired = Boolean(gmailRow && gmailMissingSendScopes.length > 0);
   const gmailScanReconnectRequired = Boolean(gmailRow && gmailMissingScanScopes.length > 0);
+
+  const microsoftRow = microsoftRes.data;
+  const microsoftScopes = asStringArray(microsoftRow?.scopes);
+  // "needs_attention" is written by resolveMicrosoftAccessToken() when
+  // Microsoft reports the refresh token itself is dead (revoked/expired).
+  const microsoftNeedsAttention = microsoftRow?.status === "needs_attention";
+  const microsoftMissingScopes = microsoftRow ? getMissingMicrosoftScopes(microsoftScopes, MICROSOFT_REQUIRED_SCOPES) : [];
+  const microsoftReconnectRequired = Boolean(microsoftRow && (microsoftNeedsAttention || microsoftMissingScopes.length > 0));
   const nangoRows = Array.isArray(nangoRes.data) ? nangoRes.data : [];
   const nangoTruth: SafeConnectorTruth[] = await Promise.all(supportedNangoKeys.map(async (connectorKey) => {
     const def = getConnectorDefinition(connectorKey);
@@ -119,6 +134,24 @@ export async function getConnectorTruth(input: {
           : "Not connected",
       source: gmailRow ? "native" : undefined,
     },
+    {
+      connectorKey: "microsoft",
+      displayName: "Microsoft 365",
+      authType: "native",
+      status: microsoftRes.error ? "error" : microsoftReconnectRequired ? "reconnect_required" : microsoftRow ? "healthy" : "missing",
+      accountEmail: microsoftRow?.provider_email ?? null,
+      connectedAt: microsoftRow?.created_at ?? null,
+      scopes: microsoftScopes,
+      missingScopes: microsoftMissingScopes,
+      reconnectRequired: microsoftReconnectRequired,
+      executable: Boolean(microsoftRow && !microsoftReconnectRequired),
+      statusMessage: microsoftReconnectRequired
+        ? "Reconnect required to restore Microsoft 365 access"
+        : microsoftRow
+          ? "Ready for approval-gated Outlook mail and calendar actions"
+          : "Not connected",
+      source: microsoftRow ? "native" : undefined,
+    },
     ...nangoTruth,
   ];
 }
@@ -166,6 +199,43 @@ function applyTruth(connector: Connector, truth: SafeConnectorTruth): Connector 
     };
   }
 
+  if (truth.connectorKey === "microsoft") {
+    const hasCredential = truth.status !== "missing" && truth.status !== "not_connected" && truth.status !== "error";
+    const reconnectRequired = truth.status === "reconnect_required";
+    return {
+      ...connector,
+      isConnected: hasCredential,
+      status: hasCredential ? "connected" : truth.status === "error" ? "error" : "available",
+      health: reconnectRequired || !hasCredential ? "disabled" : "healthy",
+      lastSync: "-",
+      lastSynced: truth.connectedAt ?? "",
+      syncMode: "manual",
+      syncFreq: "Approval-gated",
+      permissions: ["Read recent mail", "Read calendar events", "Send approved emails", "Create/update calendar events after approval"],
+      readScopes: [
+        `Mail read access: ${truth.scopes.some((scope) => scope.toLowerCase() === "mail.read") ? "granted" : "missing"}`,
+        `Mail send access: ${truth.scopes.some((scope) => scope.toLowerCase() === "mail.send") ? "granted" : "missing"}`,
+        `Calendar access: ${truth.scopes.some((scope) => scope.toLowerCase() === "calendars.readwrite") ? "granted" : "missing"}`,
+        "Approval required for external email and calendar writes",
+      ],
+      writeScopes: truth.scopes.filter((scope) => ["mail.send", "calendars.readwrite"].includes(scope.toLowerCase())),
+      approvalRequiredFor: ["External email send", "Calendar event create/update/delete"],
+      blockedActions: ["Send without approval", "Modify calendar without approval"],
+      operatorsAllowed: ["Revenue Operator", "Client Flow Operator"],
+      records: reconnectRequired
+        ? "Reconnect required to restore Microsoft 365 access"
+        : truth.accountEmail
+          ? `Real account connected: ${truth.accountEmail}`
+          : hasCredential
+            ? "Real account connected"
+            : "Not connected",
+      eventsSynced: 0,
+      recentSyncEvents: [],
+      authErrors: reconnectRequired || truth.status === "error" ? 1 : 0,
+      source: hasCredential ? truth.source : undefined,
+    };
+  }
+
   if (truth.status !== "connected" && truth.status !== "healthy") {
     return {
       ...connector,
@@ -196,7 +266,7 @@ function applyTruth(connector: Connector, truth: SafeConnectorTruth): Connector 
 }
 
 function isTruthConnectorKey(connectorId: string): connectorId is SafeConnectorTruth["connectorKey"] {
-  return connectorId === "gmail" || listSupportedNangoConnectors().some((def) => def.connectorKey === connectorId);
+  return connectorId === "gmail" || connectorId === "microsoft" || listSupportedNangoConnectors().some((def) => def.connectorKey === connectorId);
 }
 
 export function applyConnectorTruthToState(state: OSState, truthRows: SafeConnectorTruth[]): OSState {

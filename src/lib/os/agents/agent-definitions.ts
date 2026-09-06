@@ -78,7 +78,7 @@ export const OS_AGENT_DEFINITIONS: OSAgentDefinition[] = [
     systemInstructions: "Draft first, send only when approved by policy.",
     goals: ["Faster support response preparation"],
     requiredConnectors: ["gmail"],
-    allowedTools: ["gmail.createDraft", "outlook.createDraft", "memory.search", "logs.write"],
+    allowedTools: ["gmail.createDraft", "microsoft.createDraft", "memory.search", "logs.write"],
     blockedTools: ["refund.create"],
     approvalRules: ["send_external_email requires approval"],
     memoryScopes: ["client", "brand"],

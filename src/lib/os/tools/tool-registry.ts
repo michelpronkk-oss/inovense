@@ -58,9 +58,9 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
     handler: (input) => simpleOutput(`Mock email sent to ${String(input.email ?? "recipient")}`, { sent: true, messageId: `msg-${Date.now()}` }),
   },
   {
-    id: "outlook.createDraft",
-    name: "Outlook Create Draft",
-    connectorId: "outlook",
+    id: "microsoft.createDraft",
+    name: "Microsoft 365 Create Draft",
+    connectorId: "microsoft",
     description: "Create outbound draft in Outlook.",
     inputSchema: { email: "string", company: "string" },
     outputShape: { draftId: "string" },
@@ -68,7 +68,7 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
     requiresApproval: false,
     blocked: false,
     actionType: "email.createDraft",
-    handler: (input) => simpleOutput(`Outlook draft created for ${String(input.company ?? "lead")}`, { draftId: `odraft-${Date.now()}` }),
+    handler: (input) => simpleOutput(`Microsoft 365 draft created for ${String(input.company ?? "lead")}`, { draftId: `odraft-${Date.now()}` }),
   },
   {
     id: "hubspot.createLead",

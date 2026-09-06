@@ -92,7 +92,7 @@ export function getSuggestedWorkflows(state: OSState): SuggestedWorkflow[] {
   const hasOperationalLogs = state.logs.length > 4 || state.agentRuns.length > 0;
 
   if (
-    hasAnyConnected(state, ["gmail", "outlook"])
+    hasAnyConnected(state, ["gmail", "microsoft"])
     && hasAnyConnected(state, ["hubspot", "salesforce", "pipedrive", "airtable"])
   ) {
     suggestions.push(finalizeSuggestion(state, {

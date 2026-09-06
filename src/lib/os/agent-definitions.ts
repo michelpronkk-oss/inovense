@@ -82,7 +82,7 @@ export const AGENT_DEFINITIONS: AgentDefinition[] = [
     description: "Drafts support replies and escalates risky outputs.",
     systemInstructions: "Draft first, send only after policy and approval checks.",
     goals: ["Support reply drafting", "Client communication consistency"],
-    allowedTools: ["gmail.createDraft", "outlook.createDraft", "memory.search", "logs.write"],
+    allowedTools: ["gmail.createDraft", "microsoft.createDraft", "memory.search", "logs.write"],
     requiredConnectors: ["gmail"],
     defaultWorkflows: ["support_reply_drafting"],
     approvalRules: ["all external sends require approval"],

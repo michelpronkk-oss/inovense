@@ -65,7 +65,7 @@ function stripSnapshotTruth(state: OSState): OSState {
     ...state,
     workspace: safeWorkspace,
     connectors: reconcileConnectorsWithRegistry(state.connectors).map((connector) => {
-      if (connector.id !== "gmail" && !isSupportedNangoConnector(connector.id)) return connector;
+      if (connector.id !== "gmail" && connector.id !== "microsoft" && !isSupportedNangoConnector(connector.id)) return connector;
       return {
         ...connector,
         isConnected: false,

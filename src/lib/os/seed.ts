@@ -206,7 +206,7 @@ export const SEED_POLICIES: Policy[] = [
     category: "communication",
     actionType: "email.send",
     appliesToAgents: ["all"],
-    appliesToConnectors: ["gmail", "outlook"],
+    appliesToConnectors: ["gmail", "microsoft"],
     conditions: { externalRecipient: true },
     decision: "require_approval",
     reviewerRole: "admin",

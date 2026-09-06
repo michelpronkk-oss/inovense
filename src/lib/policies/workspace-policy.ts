@@ -100,9 +100,9 @@ export function buildPolicyInputFromContinuation(input: {
   const operatorKey = stringValue(c.operatorKey) ?? "unknown";
   const sourceMetadata = asRecord(c.sourceMetadata);
 
-  if (input.kind === "gmail.send_after_approval" || input.kind === "outlook.send_after_approval") {
+  if (input.kind === "gmail.send_after_approval" || input.kind === "microsoft.send_after_approval") {
     const to = stringValue(c.to);
-    const connectorKey = input.kind === "outlook.send_after_approval" ? "outlook" : "gmail";
+    const connectorKey = input.kind === "microsoft.send_after_approval" ? "microsoft" : "gmail";
     return {
       workspaceId: input.workspaceId,
       operatorKey,

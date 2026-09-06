@@ -4,7 +4,7 @@ import { executePreparedActionAfterApproval } from "@/lib/actions/execute";
 import type { PreparedAction } from "@/lib/actions/types";
 import { createGmailDraft, GmailApiError, getMissingGmailScopes, hasGmailSendScope, resolveAccessTokenFromCredential, sendGmailDraft, sendGmailMessage, type StoredConnectorCredential } from "@/lib/connectors/gmail";
 import { executeHubSpotRevenueActions, HubSpotExecutionError, type HubSpotExecutionResult, type PreparedHubSpotActions } from "@/lib/operators/executors/hubspot";
-import { getOutlookConnection, OutlookExecutionError, sendOutlookMessageAfterApproval } from "@/lib/operators/executors/outlook";
+import { getMicrosoftConnection, MicrosoftExecutionError, sendMicrosoftMessageAfterApproval } from "@/lib/operators/executors/microsoft";
 import { sendSlackMessageAfterApproval, SlackExecutionError, type PreparedSlackMessageAction } from "@/lib/operators/executors/slack";
 import { TrelloExecutionError } from "@/lib/operators/executors/trello";
 import { sendSlackApprovalNotification } from "@/lib/notifications/slack";
@@ -26,10 +26,10 @@ type ApproveBody = {
 };
 
 type GmailContinuationPayload = {
-  // Widened so the Gmail/Outlook continuation shape (identical apart from
+  // Widened so the Gmail/Microsoft 365 continuation shape (identical apart from
   // provider) can share helpers like effectiveDraft() by structural typing.
   // Runtime dispatch always checks the literal value explicitly.
-  kind: "gmail.send_after_approval" | "outlook.send_after_approval";
+  kind: "gmail.send_after_approval" | "microsoft.send_after_approval";
   workspaceId: string;
   operatorRunId?: string;
   operatorKey?: string;
@@ -1066,15 +1066,15 @@ async function executeSlackApproval(input: {
   }
 }
 
-type OutlookContinuationPayload = Omit<GmailContinuationPayload, "kind"> & { kind: "outlook.send_after_approval" };
+type MicrosoftContinuationPayload = Omit<GmailContinuationPayload, "kind"> & { kind: "microsoft.send_after_approval" };
 
-function validateOutlookPayload(value: unknown): { ok: true; payload: OutlookContinuationPayload } | { ok: false; details: InvalidPayloadDetail[] } {
+function validateMicrosoftPayload(value: unknown): { ok: true; payload: MicrosoftContinuationPayload } | { ok: false; details: InvalidPayloadDetail[] } {
   const details: InvalidPayloadDetail[] = [];
   if (!value || typeof value !== "object") {
     return { ok: false, details: [{ field: "continuation_payload", issue: "Must be an object." }] };
   }
   const rec = value as Record<string, unknown>;
-  if (rec.kind !== "outlook.send_after_approval") details.push({ field: "kind", issue: "Must equal outlook.send_after_approval." });
+  if (rec.kind !== "microsoft.send_after_approval") details.push({ field: "kind", issue: "Must equal microsoft.send_after_approval." });
   if (typeof rec.workspaceId !== "string" || !rec.workspaceId.trim()) details.push({ field: "workspaceId", issue: "Required." });
   if (typeof rec.to !== "string" || !rec.to.trim()) {
     details.push({ field: "to", issue: "Required." });
@@ -1087,7 +1087,7 @@ function validateOutlookPayload(value: unknown): { ok: true; payload: OutlookCon
   return {
     ok: true,
     payload: {
-      kind: "outlook.send_after_approval",
+      kind: "microsoft.send_after_approval",
       workspaceId: String(rec.workspaceId).trim(),
       operatorRunId: typeof rec.operatorRunId === "string" ? rec.operatorRunId : undefined,
       operatorKey: typeof rec.operatorKey === "string" ? rec.operatorKey : undefined,
@@ -1115,7 +1115,7 @@ function validateOutlookPayload(value: unknown): { ok: true; payload: OutlookCon
   };
 }
 
-function shouldExecuteHubSpotForOutlook(payload: OutlookContinuationPayload): boolean {
+function shouldExecuteHubSpotForMicrosoft(payload: MicrosoftContinuationPayload): boolean {
   const actions = payload.preparedActions ?? [];
   const hasHubSpotAction = actions.some((action) => action.includes("hubspot"));
   return Boolean(
@@ -1125,34 +1125,35 @@ function shouldExecuteHubSpotForOutlook(payload: OutlookContinuationPayload): bo
   );
 }
 
-function outlookErrorResponse(error: unknown) {
-  if (error instanceof OutlookExecutionError) {
+function microsoftErrorResponse(error: unknown) {
+  if (error instanceof MicrosoftExecutionError) {
     return NextResponse.json({
-      error: "outlook_send_failed",
+      error: "microsoft_send_failed",
       message: error.message,
       details: error.details,
     }, { status: error.details.status ?? 502 });
   }
   return NextResponse.json({
-    error: "outlook_send_failed",
-    message: error instanceof Error ? error.message : "Outlook execution failed.",
+    error: "microsoft_send_failed",
+    message: error instanceof Error ? error.message : "Microsoft 365 execution failed.",
     details: null,
   }, { status: 502 });
 }
 
 /**
- * Outlook mirrors the Gmail approval-gated send contract (same continuation
- * shape, same HubSpot follow-through, same policy/logging/notification
- * surface), executed through Microsoft Graph via the workspace's Nango
- * connection instead of a native Gmail credential. Kept as its own function
- * (matching the existing Slack/Operations/Shared-action pattern in this file)
- * so the working Gmail path above is never touched.
+ * Microsoft 365 mirrors the Gmail approval-gated send contract (same
+ * continuation shape, same HubSpot follow-through, same policy/logging/
+ * notification surface), executed directly against Microsoft Graph using the
+ * workspace's own stored OAuth tokens instead of a third-party OAuth broker.
+ * Kept as its own function (matching the existing Slack/Operations/
+ * Shared-action pattern in this file) so the working Gmail path above is
+ * never touched.
  */
-async function executeOutlookApproval(input: {
+async function executeMicrosoftApproval(input: {
   supabase: ReturnType<typeof createSupabaseAdmin>;
   approvalId: string;
   approvalRow: Record<string, unknown>;
-  payload: OutlookContinuationPayload;
+  payload: MicrosoftContinuationPayload;
   resolvedBy: string;
 }) {
   const { supabase, approvalId, approvalRow, payload, resolvedBy } = input;
@@ -1176,14 +1177,14 @@ async function executeOutlookApproval(input: {
 
   const livePolicy = await loadPolicyWorkspaceSettings({ supabase, workspaceId: payload.workspaceId });
   const liveEntitlements: PolicyEvaluationEntitlements = { canRunRealActions: Boolean(ws.data.can_run_real_actions), billingStatus: String(ws.data.billing_status) };
-  const policyInput = buildPolicyInputFromContinuation({ workspaceId: payload.workspaceId, kind: "outlook.send_after_approval", continuation });
+  const policyInput = buildPolicyInputFromContinuation({ workspaceId: payload.workspaceId, kind: "microsoft.send_after_approval", continuation });
   const policyDecision = policyInput ? evaluatePolicy(policyInput, livePolicy, liveEntitlements) : null;
   const runId = payload.operatorRunId || (typeof approvalRow.run_id === "string" ? approvalRow.run_id : "");
 
   if (policyDecision && policyInput) {
     if (policyDecision.decision === "blocked") {
       await logPolicyDecision({ supabase, workspaceId: payload.workspaceId, runId: runId || null, approvalId, decision: policyDecision, policyInput, live: true });
-      const executionResult = { outlookStatus: "blocked_by_policy", hubspotStatus: "not_attempted", policyDecision, blockedReason: policyDecision.reason };
+      const executionResult = { microsoftStatus: "blocked_by_policy", hubspotStatus: "not_attempted", policyDecision, blockedReason: policyDecision.reason };
       await supabase.from("os_approvals").update({
         status: "failed",
         resolved_at: new Date().toISOString(),
@@ -1194,7 +1195,7 @@ async function executeOutlookApproval(input: {
         await supabase.from("os_operator_runs").update({
           status: "blocked",
           completed_at: new Date().toISOString(),
-          output: { outlook: executionResult, policyDecision },
+          output: { microsoft: executionResult, policyDecision },
           error: policyDecision.reason,
         }).eq("id", runId).eq("workspace_id", payload.workspaceId);
       }
@@ -1203,7 +1204,7 @@ async function executeOutlookApproval(input: {
     if (policyDecision.decision === "draft_only") {
       await logPolicyDecision({ supabase, workspaceId: payload.workspaceId, runId: runId || null, approvalId, decision: policyDecision, policyInput, live: true });
       const executionResult = {
-        outlookStatus: "draft_only_not_sent",
+        microsoftStatus: "draft_only_not_sent",
         hubspotStatus: "not_attempted",
         policyDecision,
         usedEditedDraft: finalDraft.usedEditedDraft,
@@ -1222,7 +1223,7 @@ async function executeOutlookApproval(input: {
         await supabase.from("os_operator_runs").update({
           status: "completed",
           completed_at: new Date().toISOString(),
-          output: { outlook: executionResult },
+          output: { microsoft: executionResult },
           error: null,
         }).eq("id", runId).eq("workspace_id", payload.workspaceId).eq("approval_id", approvalId);
       }
@@ -1234,7 +1235,7 @@ async function executeOutlookApproval(input: {
         eventType: "approval_approved",
         operatorKey: payload.operatorKey || "revenue",
         title: "Approval approved.",
-        summary: "Draft-only customer email was reviewed. No Outlook message was sent.",
+        summary: "Draft-only customer email was reviewed. No Microsoft 365 message was sent.",
         approvalUrl: `${getAppUrl()}/app/approvals`,
         metadata: { customerEmailMode: "draft_only" },
       }));
@@ -1247,11 +1248,11 @@ async function executeOutlookApproval(input: {
     return NextResponse.json({ error: "Real execution requires an active plan." }, { status: 402 });
   }
 
-  const connection = await getOutlookConnection(payload.workspaceId, supabase);
+  const connection = await getMicrosoftConnection(payload.workspaceId, supabase);
   if (!connection) {
     return NextResponse.json({
-      error: "missing_outlook_connection",
-      message: "Outlook is not connected for this workspace.",
+      error: "missing_microsoft_connection",
+      message: "Microsoft 365 is not connected for this workspace.",
     }, { status: 409 });
   }
 
@@ -1270,18 +1271,18 @@ async function executeOutlookApproval(input: {
       if (latestRow.status === "approved" || latestRow.status === "partially_completed" || latestRow.resolved_at) {
         return alreadyResolvedResponse(latestRow);
       }
-      return NextResponse.json({ error: "approval_execution_in_progress", message: "Approval execution is already in progress. Outlook was not sent again." }, { status: 409 });
+      return NextResponse.json({ error: "approval_execution_in_progress", message: "Approval execution is already in progress. Microsoft 365 was not sent again." }, { status: 409 });
     }
     return NextResponse.json({ error: "approval_claim_failed", message: executionClaim.error?.message || "Could not claim approval for execution." }, { status: 409 });
   }
 
   try {
-    await sendOutlookMessageAfterApproval({ workspaceId: payload.workspaceId, to: payload.to, subject: finalDraft.subject, body: finalDraft.body });
+    await sendMicrosoftMessageAfterApproval({ workspaceId: payload.workspaceId, to: payload.to, subject: finalDraft.subject, body: finalDraft.body, supabase });
   } catch (error) {
-    const errorPayload = error instanceof OutlookExecutionError
+    const errorPayload = error instanceof MicrosoftExecutionError
       ? { message: error.message, details: error.details }
-      : { message: error instanceof Error ? error.message : "Outlook execution failed.", details: null };
-    const executionResult = { outlookStatus: "failed", hubspotStatus: "not_attempted", error: errorPayload };
+      : { message: error instanceof Error ? error.message : "Microsoft 365 execution failed.", details: null };
+    const executionResult = { microsoftStatus: "failed", hubspotStatus: "not_attempted", error: errorPayload };
     await supabase.from("os_approvals").update({
       status: "failed",
       resolved_at: new Date().toISOString(),
@@ -1292,7 +1293,7 @@ async function executeOutlookApproval(input: {
       await supabase.from("os_operator_runs").update({
         status: "failed",
         completed_at: new Date().toISOString(),
-        output: { outlook: executionResult },
+        output: { microsoft: executionResult },
         error: errorPayload.message,
       }).eq("id", runId).eq("workspace_id", payload.workspaceId);
     }
@@ -1304,16 +1305,16 @@ async function executeOutlookApproval(input: {
       eventType: "execution_failed",
       operatorKey: payload.operatorKey || "revenue",
       title: "Execution failed.",
-      summary: "Outlook execution failed before the customer email could be sent.",
+      summary: "Microsoft 365 execution failed before the customer email could be sent.",
       approvalUrl: `${getAppUrl()}/app/approvals`,
       metadata: { to: payload.to, error: errorPayload.message },
     }));
-    return outlookErrorResponse(error);
+    return microsoftErrorResponse(error);
   }
 
   const warnings: string[] = [];
   let hubspotResult: HubSpotExecutionResult | null = null;
-  if (shouldExecuteHubSpotForOutlook(payload)) {
+  if (shouldExecuteHubSpotForMicrosoft(payload)) {
     try {
       hubspotResult = await executeHubSpotRevenueActions(payload.workspaceId, {
         to: payload.to,
@@ -1342,12 +1343,12 @@ async function executeOutlookApproval(input: {
   const hubspotFailed = hubspotResult?.status === "failed";
   const finalStatus = hubspotFailed ? "partially_completed" : "approved";
   const executionResult = {
-    outlookStatus: "sent",
+    microsoftStatus: "sent",
     hubspotStatus: hubspotResult?.status ?? "not_applicable",
     hubspotContactId: hubspotResult?.contactId ?? null,
     hubspotDealId: hubspotResult?.dealId ?? null,
     policyDecision,
-    outlook: { to: payload.to, subject: finalDraft.subject, sendEndpoint: "me/sendMail" },
+    microsoft: { to: payload.to, subject: finalDraft.subject, sendEndpoint: "me/sendMail" },
     usedEditedDraft: finalDraft.usedEditedDraft,
     finalSubject: finalDraft.subject,
     finalBodyPreview: finalDraft.bodyPreview,
@@ -1367,14 +1368,14 @@ async function executeOutlookApproval(input: {
 
   await optionalStep(warnings, "os_execution_logs.insert", () => supabase.from("os_execution_logs").insert([
     {
-      id: `log-outlook-send-${Date.now()}`,
+      id: `log-microsoft-send-${Date.now()}`,
       ts: toTs(),
       run_id: approvalRow.run_id || "manual",
       agent_id: approvalRow.agent_id || "system",
       agent_mark: approvalRow.agent_mark || "OS",
       agent_color: approvalRow.agent_color || "#4DE8E1",
-      event: "outlook.message_sent",
-      message: `Sent approved Outlook message to ${payload.to}`,
+      event: "microsoft.message_sent",
+      message: `Sent approved Microsoft 365 message to ${payload.to}`,
       duration: "-",
       status: "ok",
     },
@@ -1386,7 +1387,7 @@ async function executeOutlookApproval(input: {
       agent_mark: approvalRow.agent_mark || "OS",
       agent_color: approvalRow.agent_color || "#4DE8E1",
       event: "approval.approved",
-      message: hubspotFailed ? "Approval approved, Outlook send completed, HubSpot execution failed" : "Approval approved and Outlook send completed",
+      message: hubspotFailed ? "Approval approved, Microsoft 365 send completed, HubSpot execution failed" : "Approval approved and Microsoft 365 send completed",
       duration: "-",
       status: hubspotFailed ? "warn" : "ok",
     },
@@ -1400,15 +1401,15 @@ async function executeOutlookApproval(input: {
       status: hubspotFailed ? "partially_completed" : "completed",
       completed_at: new Date().toISOString(),
       output: {
-        outlook: executionResult.outlook,
+        microsoft: executionResult.microsoft,
         hubspot: hubspotResult,
         executionResult,
         crmPreparationStatus: payload.crmPreparationStatus ?? null,
         crmPreparation: payload.crmPreparation ?? null,
         preparedHubSpotActions: payload.preparedHubSpotActions ?? null,
-        preparedActions: payload.preparedActions ?? ["send_outlook_follow_up"],
+        preparedActions: payload.preparedActions ?? ["send_microsoft_follow_up"],
       },
-      error: hubspotFailed ? "HubSpot execution failed after Outlook send." : null,
+      error: hubspotFailed ? "HubSpot execution failed after Microsoft 365 send." : null,
     }).eq("id", runId).eq("workspace_id", payload.workspaceId).eq("approval_id", approvalId).then((res) => {
       if (res.error) throw new Error(res.error.message);
       return res;
@@ -1417,10 +1418,10 @@ async function executeOutlookApproval(input: {
       supabase,
       workspaceId: payload.workspaceId,
       runId,
-      eventType: hubspotFailed ? "approval.partially_completed" : "outlook.send.completed",
+      eventType: hubspotFailed ? "approval.partially_completed" : "microsoft.send.completed",
       message: hubspotFailed
-        ? `Outlook message sent to ${payload.to}, but HubSpot execution failed.`
-        : `Approved Outlook message sent to ${payload.to}.`,
+        ? `Microsoft 365 message sent to ${payload.to}, but HubSpot execution failed.`
+        : `Approved Microsoft 365 message sent to ${payload.to}.`,
       metadata: { executionResult },
     }));
     if (hubspotResult) {
@@ -1430,7 +1431,7 @@ async function executeOutlookApproval(input: {
         runId,
         eventType: hubspotFailed ? "hubspot.execution.failed" : `hubspot.execution.${hubspotResult.status}`,
         message: hubspotFailed
-          ? "HubSpot contact/deal execution failed after Outlook send."
+          ? "HubSpot contact/deal execution failed after Microsoft 365 send."
           : `HubSpot execution status: ${hubspotResult.status}.`,
         metadata: hubspotResult,
       }));
@@ -1440,7 +1441,7 @@ async function executeOutlookApproval(input: {
       workspaceId: payload.workspaceId,
       runId,
       operatorKey: payload.operatorKey || "revenue",
-      eventType: "outlook.send",
+      eventType: "microsoft.send",
       quantity: 1,
       metadata: { to: payload.to },
     }));
@@ -1455,7 +1456,7 @@ async function executeOutlookApproval(input: {
     operatorKey: payload.operatorKey || "revenue",
     title: hubspotFailed ? "Execution failed." : "Approval approved.",
     summary: hubspotFailed
-      ? "Outlook was sent, but HubSpot execution failed. Review the approval logs in Auterim."
+      ? "Microsoft 365 was sent, but HubSpot execution failed. Review the approval logs in Auterim."
       : "Revenue Operator sent the email and updated the run.",
     approvalUrl: `${getAppUrl()}/app/approvals`,
     metadata: { to: payload.to, hubspotStatus: hubspotResult?.status ?? null },
@@ -1467,7 +1468,7 @@ async function executeOutlookApproval(input: {
     sendEndpoint: "me/sendMail",
     warnings,
     crmPreparationStatus: payload.crmPreparationStatus ?? null,
-    outlookStatus: executionResult.outlookStatus,
+    microsoftStatus: executionResult.microsoftStatus,
     hubspotStatus: executionResult.hubspotStatus,
     hubspotContactId: executionResult.hubspotContactId,
     hubspotDealId: executionResult.hubspotDealId,
@@ -1642,25 +1643,25 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     });
   }
 
-  if (continuationKind === "outlook.send_after_approval") {
-    const payloadValidation = validateOutlookPayload(continuation);
+  if (continuationKind === "microsoft.send_after_approval") {
+    const payloadValidation = validateMicrosoftPayload(continuation);
     if (!payloadValidation.ok) {
       return NextResponse.json({
         error: "invalid_payload",
-        message: "Approval has an invalid Outlook continuation payload.",
+        message: "Approval has an invalid Microsoft 365 continuation payload.",
         details: payloadValidation.details,
       }, { status: 400 });
     }
-    const outlookPayload = payloadValidation.payload;
-    if (outlookPayload.workspaceId !== context.workspaceId || approvalRow.workspace_id !== context.workspaceId) {
+    const microsoftPayload = payloadValidation.payload;
+    if (microsoftPayload.workspaceId !== context.workspaceId || approvalRow.workspace_id !== context.workspaceId) {
       return NextResponse.json({ error: "Workspace mismatch for approval payload." }, { status: 403 });
     }
 
-    return executeOutlookApproval({
+    return executeMicrosoftApproval({
       supabase,
       approvalId: id,
       approvalRow: approvalRow as Record<string, unknown>,
-      payload: outlookPayload,
+      payload: microsoftPayload,
       resolvedBy: context.userEmail || context.userId || userEmail || userId,
     });
   }
