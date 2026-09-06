@@ -21,6 +21,7 @@ import { CONNECTOR_CATEGORY_LABELS, type ConnectorCategory } from "@/lib/connect
 import { connectorDefinitionToSeedConnector } from "@/lib/os/seed";
 import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-grid";
 import { getUnconnectedOnboardingSystems, unlockMessageForConnector } from "@/lib/operators/unlock-copy";
+import { humanizeOperatorActions } from "@/lib/operators/action-labels";
 
 type SlackChannel = {
   id: string;
@@ -163,6 +164,7 @@ export default function ConnectorsPage() {
     defaultListName: null,
   });
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [operatorReadiness, setOperatorReadiness] = useState<{ operatorKey: string; status: string; canRunManual: boolean; availableActions: string[] }[]>([]);
 
   // Real connected = authenticated via native OAuth or managed OAuth integration
   const realConnectedConnectors = useMemo(
@@ -333,6 +335,29 @@ export default function ConnectorsPage() {
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.workspace.id]);
+
+  // Real, server-computed operator readiness (getWorkspaceOperatorReadiness) -
+  // never re-derived client-side - powers the "What Auterim can do now"
+  // section below.
+  useEffect(() => {
+    if (!state.workspace.id) return;
+    const qs = new URLSearchParams({ workspaceId: state.workspace.id, userId: state.currentUser.id, userEmail: state.currentUser.email });
+    fetch(`/api/operators/readiness?${qs.toString()}`, { cache: "no-store" })
+      .then((res) => res.json().catch(() => ({})))
+      .then((json: { readiness?: { operatorKey: string; status: string; canRunManual: boolean; availableActions: string[] }[] }) => {
+        setOperatorReadiness(Array.isArray(json.readiness) ? json.readiness : []);
+      })
+      .catch(() => undefined);
+  }, [state.workspace.id, state.currentUser.id, state.currentUser.email]);
+
+  // Only real capabilities from operators that can actually run today
+  // (ready or draft_only + canRunManual) - never a fabricated combination.
+  const whatAuterimCanDoNow = useMemo(() => {
+    const actions = operatorReadiness
+      .filter((r) => r.canRunManual && (r.status === "ready" || r.status === "draft_only"))
+      .flatMap((r) => humanizeOperatorActions(r.availableActions ?? []));
+    return Array.from(new Set(actions));
+  }, [operatorReadiness]);
 
   useEffect(() => {
     const connected = searchParams.get("connected");
@@ -713,9 +738,9 @@ export default function ConnectorsPage() {
       <div className="os-page-head">
         <div>
           <span className="os-greet">Auterim workspace</span>
-          <h1>Connectors</h1>
+          <h1>Connect your business</h1>
           <div className="os-page-sub">
-            Connect the tools Auterim needs to understand and operate your business.
+            Connect the tools your team already uses. Auterim will show what becomes possible.
           </div>
           {isPreview && (
             <div style={{ marginTop: 8, color: "#9DEFEA", fontSize: 12.5 }}>
@@ -775,6 +800,25 @@ export default function ConnectorsPage() {
         </div>
       )}
 
+      {/* Real, capability-derived business outcomes - only ever populated from
+          operators that can actually run today (see whatAuterimCanDoNow). */}
+      {whatAuterimCanDoNow.length > 0 && (
+        <div className="p" style={{ borderRadius: 16 }}>
+          <div className="p-head">
+            <h3>What Auterim can do now</h3>
+            <div className="p-meta">Based on your connected systems</div>
+          </div>
+          <div style={{ padding: "14px 18px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 8 }}>
+            {whatAuterimCanDoNow.map((item) => (
+              <div key={item} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--text-dim)" }}>
+                <span style={{ color: "var(--cyan)", fontSize: 13 }}>✓</span>
+                <span style={{ textTransform: "capitalize" }}>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Connected tools */}
       <div className="p connectors-list" style={{ borderRadius: 16 }}>
         <div className="p-head">
@@ -811,7 +855,7 @@ export default function ConnectorsPage() {
                 </div>
                 <div className="connector-list-copy">
                   <div style={{ fontSize: 13.5, fontWeight: 500 }}>{c.name}</div>
-                  <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>{c.category} · {c.operatorsAllowed.length ? `${c.operatorsAllowed.length} operator${c.operatorsAllowed.length === 1 ? "" : "s"}` : "No operators assigned"}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>Adds: {connectorCapabilities(c.id)[0]}{c.operatorsAllowed.length ? ` · Supports: ${shortOperatorLabel(c.operatorsAllowed[0])}${c.operatorsAllowed.length > 1 ? ` +${c.operatorsAllowed.length - 1}` : ""}` : ""}</div>
                 </div>
                 <div style={{ justifySelf: "start", fontSize: 11.5, color: "#8df5cf", padding: "5px 8px", borderRadius: 999, background: "rgba(81,216,138,0.08)", boxShadow: "inset 0 0 0 1px rgba(81,216,138,0.2)" }}>Manage</div>
               </button>
@@ -849,6 +893,11 @@ export default function ConnectorsPage() {
                               </div>
                             )}
                             <div style={{ fontSize: 11.5, color: "var(--text-dim)", marginTop: 6 }}>{c.description}</div>
+                            {!isRealConnectedConnector(c) && (
+                              <div style={{ fontSize: 11, color: "var(--text-mute)", marginTop: 4 }}>
+                                Adds: {connectorCapabilities(c.id)[0]}{c.operatorsAllowed.length ? ` · Can improve: ${shortOperatorLabel(c.operatorsAllowed[0])}` : ""}
+                              </div>
+                            )}
                             <div style={{ marginTop: 10, color: isRealConnectedConnector(c) ? "#8df5cf" : c.records.includes("Reconnect required") ? "var(--amber)" : "var(--cyan)", fontSize: 11.5, fontWeight: 600 }}>{isRealConnectedConnector(c) ? "Connected" : c.records.includes("Reconnect required") ? "Reconnect" : "Connect"}</div>
                           </button>
                         ))}

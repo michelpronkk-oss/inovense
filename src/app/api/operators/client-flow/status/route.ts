@@ -4,6 +4,7 @@ import { MICROSOFT_READ_REQUIRED_SCOPES, MICROSOFT_SEND_REQUIRED_SCOPES } from "
 import { getConnectorTruth } from "@/lib/connectors/truth";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { getOperatorReadiness } from "@/lib/operators/readiness";
+import { getOptionalUpsellConnectors } from "@/lib/operators/connector-requirements";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 
@@ -170,8 +171,21 @@ export async function GET(req: NextRequest) {
   const lastRunSourceMode = stringValue(triggerSettings.sourceMode) ?? latestScan?.sourceMode ?? "scheduled";
   const monitoringStatus = reconnectRequired ? "reconnect_required" : monitoringEnabled ? "monitoring_active" : "idle";
 
+  // Same declarative capability graph revenue/operations already use - only
+  // names which connectors are actually connected today.
+  const connectedConnectorKeys: string[] = [];
+  if (gmail?.executable) connectedConnectorKeys.push("gmail");
+  if (microsoft?.executable) connectedConnectorKeys.push("microsoft");
+  if (trelloConnected) connectedConnectorKeys.push("trello");
+  if (slackConnected) connectedConnectorKeys.push("slack");
+
   return NextResponse.json({
     readiness,
+    optionalUpsellConnectors: getOptionalUpsellConnectors("client_flow", connectedConnectorKeys).map((def) => ({
+      connectorKey: def.connectorKey,
+      displayName: def.displayName,
+      status: def.status,
+    })),
     emailProvider,
     gmail: gmail ? {
       status: gmail.status,

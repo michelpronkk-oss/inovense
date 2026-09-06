@@ -61,12 +61,14 @@ type CardModel = {
   currentTask?: string;
   connectedTools?: string[];
   outcome?: string;
+  /** Real readiness reason (readiness.ts) - only set when the operator can actually run today. */
+  readyReason?: string;
 };
 
 function AgentCard({ model }: { model: CardModel }) {
-  const { op, status, href, needsSetup, currentTask, connectedTools, outcome } = model;
+  const { op, status, href, needsSetup, currentTask, connectedTools, outcome, readyReason } = model;
   const dim = status === "upgrade" || status === "coming";
-  const statusLabel = status === "configured" ? "Configured" : status === "available" ? "Available" : status === "upgrade" ? "Upgrade" : "Coming next";
+  const statusLabel = status === "configured" ? "Configured" : status === "available" ? (readyReason ? "Ready to activate" : "Available") : status === "upgrade" ? "Upgrade" : "Coming next";
 
   const foot = status === "configured"
     ? (needsSetup
@@ -96,6 +98,10 @@ function AgentCard({ model }: { model: CardModel }) {
       </div>
 
       <div className="ag-mission">{op.mission}</div>
+
+      {status === "available" && readyReason && (
+        <div style={{ fontSize: 11.5, color: "var(--text-mute)", marginTop: -6 }}>Because: {readyReason}</div>
+      )}
 
       {status === "configured" && (
         <div className="ag-operating-context">
@@ -155,6 +161,7 @@ export default function AgentsRegistryPage() {
     const r = readinessByKey.get(key);
     const configuredAgent = state.agents.find((agent) => agent.templateId === key);
     const needsSetup = openable && Boolean(r && (r.status === "missing_connector" || r.status === "upgrade_required"));
+    const isReadyNow = status === "available" && Boolean(r && (r.status === "ready" || r.status === "draft_only"));
     return {
       op,
       status,
@@ -163,6 +170,7 @@ export default function AgentsRegistryPage() {
       currentTask: configuredAgent?.currentTask,
       connectedTools: configuredAgent?.config.tools,
       outcome: configuredAgent ? `${configuredAgent.stats.metricValue} ${configuredAgent.stats.metricLabel}` : undefined,
+      readyReason: isReadyNow ? r?.reason : undefined,
     };
   }), [configuredKeys, readinessByKey, state.agents]);
 

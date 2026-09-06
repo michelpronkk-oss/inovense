@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getConnectorTruth } from "@/lib/connectors/truth";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
+import { getOperatorReadiness } from "@/lib/operators/readiness";
+import { getOptionalUpsellConnectors } from "@/lib/operators/connector-requirements";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 
 type OperationsScanSummaryOutput = {
@@ -86,7 +88,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: context.error, code: context.code }, { status: context.status });
   }
 
-  const [connectorTruth, policy, runs, pendingApprovals, triggerConfig] = await Promise.all([
+  const [readiness, connectorTruth, policy, runs, pendingApprovals, triggerConfig] = await Promise.all([
+    getOperatorReadiness({ workspaceId: context.workspaceId, operatorKey: "operations" }),
     getConnectorTruth({ workspaceId: context.workspaceId, supabase }),
     loadWorkspacePolicySettings({ supabase, workspaceId: context.workspaceId }),
     supabase
@@ -147,7 +150,20 @@ export async function GET(req: NextRequest) {
   const lastRunSummary = asRecord(triggerSettings.lastRunSummary);
   const monitoringStatus = !coreReady ? "setup_incomplete" : monitoringEnabled ? "monitoring_active" : "idle";
 
+  // Same declarative capability graph revenue/client-flow already use - only
+  // names which connectors are actually connected today, for optional-upgrade
+  // copy. Never invents a connector Operations does not really support.
+  const connectedConnectorKeys: string[] = [];
+  if (trelloConnected) connectedConnectorKeys.push("trello");
+  if (slackConnected) connectedConnectorKeys.push("slack");
+
   return NextResponse.json({
+    readiness,
+    optionalUpsellConnectors: getOptionalUpsellConnectors("operations", connectedConnectorKeys).map((def) => ({
+      connectorKey: def.connectorKey,
+      displayName: def.displayName,
+      status: def.status,
+    })),
     trello: trello ? { status: trello.status, connected: trelloConnected, defaultBoardName: policy.trello.defaultBoardName, defaultListName: policy.trello.defaultListName } : { status: "not_connected", connected: false, defaultBoardName: policy.trello.defaultBoardName, defaultListName: policy.trello.defaultListName },
     slack: slack ? { status: slack.status, connected: slackConnected, channelSelected: slackChannelSelected, defaultChannelName: policy.slack.slackDefaultChannelName } : { status: "not_connected", connected: false, channelSelected: slackChannelSelected, defaultChannelName: policy.slack.slackDefaultChannelName },
     setup: {

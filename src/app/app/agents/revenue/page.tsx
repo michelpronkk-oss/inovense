@@ -4,6 +4,8 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useOS } from "@/lib/os/app-provider";
 import { getEntitlements } from "@/lib/os/entitlements";
+import { getConnectorDefinition } from "@/lib/connectors/registry";
+import { humanizeOperatorActions } from "@/lib/operators/action-labels";
 import { OperatorActivationToggle, type ActivationEligibility } from "@/components/operators/activation-toggle";
 
 type OperatorReadiness = {
@@ -73,6 +75,9 @@ type RevenueStatus = {
     hasNangoConnection?: boolean;
   } | null;
   revenueMode?: "email_only_mode" | "full_crm_mode" | string;
+  capabilityReadiness?: {
+    optionalUpsellConnectors?: { connectorKey: string; displayName: string; status: string }[];
+  };
   v1Readiness?: {
     status: string;
     checks: {
@@ -301,7 +306,10 @@ export default function RevenueOperatorPage() {
     const nextAction = !entitlements.canUseRealConnectors
       ? { label: "Choose plan & start trial", onClick: () => window.location.assign("/plans?source=revenue") }
       : gmailReconnectRequired || revenueReadiness?.status === "missing_connector"
-      ? { label: "Connect required system", onClick: startGmailReconnect }
+      // Route through the central Connectors hub rather than launching a
+      // single provider's OAuth inline from the operator page - Connectors
+      // is where reconnect/connect always happens now (see /app/connectors).
+      ? { label: "Connect required system", onClick: () => window.location.assign("/connectors") }
       : revenueReadiness?.status === "upgrade_required"
         ? null
         : { label: scanSubmitting ? "Checking..." : "Run a check", onClick: submitRevenueScan };
@@ -377,6 +385,53 @@ export default function RevenueOperatorPage() {
             <div><div className="p-meta">Control boundary</div><div style={{ marginTop: 6, fontSize: 12.5 }}>External sends require approval</div><div style={{ marginTop: 4, color: "var(--text-mute)", fontSize: 11.5 }}>{v1Checks?.pipelineMapping ? `Pipeline mapping: ${v1Checks.pipelineMapping}` : "No uncontrolled actions."}</div></div>
           </div>
         </details>
+
+        {(() => {
+          const systemsInUse = [
+            ...(revenueReadiness?.connectedRequiredConnectors ?? []).map((key) => getConnectorDefinition(key)?.displayName ?? key),
+            ...(revenueStatus?.hubspot?.connected ? ["HubSpot"] : []),
+          ];
+          const availableNow = humanizeOperatorActions(revenueReadiness?.availableActions ?? []);
+          const upgrades = (revenueStatus?.capabilityReadiness?.optionalUpsellConnectors ?? []).filter((c) => c.status === "available");
+          const configured = Boolean(revenueReadiness?.canRunManual);
+          const eligibility = revenueReadiness?.executionEligibility;
+          return (
+            <section className="p" style={{ marginTop: 14, padding: 0 }}>
+              <div className="p-head"><h3>Activation</h3></div>
+              <div style={{ padding: "16px 18px", display: "grid", gap: 16 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16 }}>
+                  <div>
+                    <div className="p-meta">Systems in use</div>
+                    <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-dim)" }}>{systemsInUse.length ? systemsInUse.join(", ") : "None connected yet"}</div>
+                    <Link href="/app/connectors" className="lnk-open" style={{ marginTop: 6, display: "inline-block" }}>Manage connections</Link>
+                  </div>
+                  <div>
+                    <div className="p-meta">Available now</div>
+                    <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-dim)" }}>{availableNow.length ? availableNow.join(", ") : "Connect a system to unlock capabilities"}</div>
+                  </div>
+                </div>
+                {upgrades.length > 0 && (
+                  <div>
+                    <div className="p-meta">Optional upgrades</div>
+                    <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-dim)" }}>
+                      {upgrades.map((c) => c.displayName).join(", ")} could add further context. <Link href="/app/connectors" className="lnk-open">Connect</Link>
+                    </div>
+                  </div>
+                )}
+                {eligibility && state.workspace.id && (
+                  <OperatorActivationToggle
+                    operatorKey="revenue"
+                    workspaceId={state.workspace.id}
+                    userId={state.currentUser.id}
+                    userEmail={state.currentUser.email}
+                    executionEligibility={eligibility}
+                    configured={configured}
+                  />
+                )}
+              </div>
+            </section>
+          );
+        })()}
 
         <details className="p" style={{ marginTop: 14, padding: 0 }} open={advancedOpen} onToggle={(event) => setAdvancedOpen((event.currentTarget as HTMLDetailsElement).open)}>
           <summary style={{ cursor: "pointer", listStyle: "none", padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontSize: 13, fontWeight: 540 }}>Prepare a one-off follow-up</span><span style={{ color: "var(--text-faint)", fontFamily: "var(--font-mono)", fontSize: 10 }}>Advanced</span></summary>

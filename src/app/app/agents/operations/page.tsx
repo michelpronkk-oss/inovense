@@ -3,6 +3,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useOS } from "@/lib/os/app-provider";
+import { getConnectorDefinition } from "@/lib/connectors/registry";
+import { humanizeOperatorActions } from "@/lib/operators/action-labels";
+import { OperatorActivationToggle, type ActivationEligibility } from "@/components/operators/activation-toggle";
+
+type OperatorReadiness = {
+  operatorKey: string;
+  status: string;
+  connectedRequiredConnectors: string[];
+  availableActions: string[];
+  canRunManual: boolean;
+  executionEligibility?: ActivationEligibility;
+};
 
 type OperationsRun = {
   id: string;
@@ -40,6 +52,8 @@ type OperationsSetup = {
 };
 
 type OperationsStatus = {
+  readiness?: OperatorReadiness | null;
+  optionalUpsellConnectors?: { connectorKey: string; displayName: string; status: string }[];
   trello?: { status?: string; connected?: boolean; defaultBoardName?: string | null; defaultListName?: string | null } | null;
   slack?: { status?: string; connected?: boolean; channelSelected?: boolean; defaultChannelName?: string | null } | null;
   setup?: OperationsSetup;
@@ -343,6 +357,53 @@ export default function OperationsOperatorPage() {
           )}
         </div>
       </div>
+
+      {(() => {
+        const systemsInUse = [
+          ...(setup?.trelloConnected ? [getConnectorDefinition("trello")?.displayName ?? "Trello"] : []),
+          ...(setup?.slackConnected ? [getConnectorDefinition("slack")?.displayName ?? "Slack"] : []),
+        ];
+        const availableNow = humanizeOperatorActions(status?.readiness?.availableActions ?? []);
+        const upgrades = (status?.optionalUpsellConnectors ?? []).filter((c) => c.status === "available");
+        const configured = Boolean(status?.readiness?.canRunManual ?? setup?.canRunManual);
+        const eligibility = status?.readiness?.executionEligibility;
+        return (
+          <div className="p" style={{ gap: 0 }}>
+            <div className="p-head"><h3>Activation</h3></div>
+            <div style={{ padding: "18px 20px", display: "grid", gap: 16 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16 }}>
+                <div>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Systems in use</div>
+                  <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-mute)" }}>{systemsInUse.length ? systemsInUse.join(", ") : "None connected yet"}</div>
+                  <Link href="/app/connectors" className="lnk-open" style={{ marginTop: 6, display: "inline-block" }}>Manage connections</Link>
+                </div>
+                <div>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Available now</div>
+                  <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-mute)" }}>{availableNow.length ? availableNow.join(", ") : "Connect a system to unlock capabilities"}</div>
+                </div>
+              </div>
+              {upgrades.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Optional upgrades</div>
+                  <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-mute)" }}>
+                    {upgrades.map((c) => c.displayName).join(", ")} could add further context. <Link href="/app/connectors" className="lnk-open">Connect</Link>
+                  </div>
+                </div>
+              )}
+              {eligibility && state.workspace.id && (
+                <OperatorActivationToggle
+                  operatorKey="operations"
+                  workspaceId={state.workspace.id}
+                  userId={state.currentUser.id}
+                  userEmail={state.currentUser.email}
+                  executionEligibility={eligibility}
+                  configured={configured}
+                />
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="p" style={{ gap: 0 }}>
         <div className="p-head">
