@@ -1,13 +1,14 @@
 import type { Connector, OSState } from "@/lib/os/types";
 import { GMAIL_COMPOSE_SCOPE, GMAIL_READONLY_SCOPE, GMAIL_SCAN_REQUIRED_SCOPES, GMAIL_SEND_SCOPE, getMissingGmailScopes } from "@/lib/connectors/gmail";
 import { MICROSOFT_REQUIRED_SCOPES, getMissingMicrosoftScopes } from "@/lib/connectors/microsoft";
+import { getSalesforceConfigStatus } from "@/lib/connectors/salesforce";
 import { getConnectorDefinition, listSupportedNangoConnectors } from "@/lib/connectors/registry";
 import { verifyNangoConnection } from "@/lib/integrations/nango";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
-export type ConnectorTruthStatus = "connected" | "healthy" | "disabled" | "reconnect_required" | "missing" | "not_connected" | "error";
+export type ConnectorTruthStatus = "connected" | "healthy" | "disabled" | "reconnect_required" | "missing" | "not_connected" | "not_configured" | "error";
 
 export type SafeConnectorTruth = {
   connectorKey: string;
@@ -37,7 +38,7 @@ export async function getConnectorTruth(input: {
   const supabase = input.supabase ?? createSupabaseAdmin();
 
   const supportedNangoKeys = listSupportedNangoConnectors().map((def) => def.connectorKey);
-  const [gmailRes, microsoftRes, nangoRes] = await Promise.all([
+  const [gmailRes, microsoftRes, salesforceRes, nangoRes] = await Promise.all([
     supabase
       .from("os_connector_credentials")
       .select("connector_key, provider_email, scopes, status, created_at")
@@ -49,6 +50,12 @@ export async function getConnectorTruth(input: {
       .select("connector_key, provider_email, scopes, status, created_at")
       .eq("workspace_id", input.workspaceId)
       .eq("connector_key", "microsoft")
+      .maybeSingle(),
+    supabase
+      .from("os_connector_credentials")
+      .select("connector_key, provider_email, scopes, status, created_at")
+      .eq("workspace_id", input.workspaceId)
+      .eq("connector_key", "salesforce")
       .maybeSingle(),
     supabase
       .from("os_connectors")
@@ -72,6 +79,7 @@ export async function getConnectorTruth(input: {
   const microsoftNeedsAttention = microsoftRow?.status === "needs_attention";
   const microsoftMissingScopes = microsoftRow ? getMissingMicrosoftScopes(microsoftScopes, MICROSOFT_REQUIRED_SCOPES) : [];
   const microsoftReconnectRequired = Boolean(microsoftRow && (microsoftNeedsAttention || microsoftMissingScopes.length > 0));
+  const salesforceRow = salesforceRes.data;
   const nangoRows = Array.isArray(nangoRes.data) ? nangoRes.data : [];
   const nangoTruth: SafeConnectorTruth[] = await Promise.all(supportedNangoKeys.map(async (connectorKey) => {
     const def = getConnectorDefinition(connectorKey);
@@ -151,6 +159,23 @@ export async function getConnectorTruth(input: {
           ? "Ready for approval-gated Outlook mail and calendar actions"
           : "Not connected",
       source: microsoftRow ? "native" : undefined,
+    },
+    {
+      connectorKey: "salesforce",
+      displayName: "Salesforce",
+      authType: "native",
+      status: salesforceRes.error ? "error" : salesforceRow?.status === "needs_attention" ? "reconnect_required" : salesforceRow ? "connected" : getSalesforceConfigStatus().configured ? "not_connected" : "not_configured",
+      accountEmail: salesforceRow?.provider_email ?? null,
+      connectedAt: salesforceRow?.created_at ?? null,
+      scopes: asStringArray(salesforceRow?.scopes),
+      reconnectRequired: salesforceRow?.status === "needs_attention",
+      executable: false,
+      statusMessage: salesforceRow?.status === "needs_attention"
+        ? "Reconnect required to restore Salesforce access"
+        : salesforceRow
+          ? "Connected. Revenue CRM capabilities are not enabled yet."
+          : getSalesforceConfigStatus().configured ? "Ready to connect" : "Salesforce is not configured yet",
+      source: salesforceRow ? "native" : undefined,
     },
     ...nangoTruth,
   ];
@@ -236,6 +261,22 @@ function applyTruth(connector: Connector, truth: SafeConnectorTruth): Connector 
     };
   }
 
+  if (truth.connectorKey === "salesforce") {
+    const connected = truth.status === "connected" || truth.status === "reconnect_required";
+    return {
+      ...connector,
+      isConnected: connected,
+      status: connected ? "connected" : truth.status === "error" ? "error" : "available",
+      health: connected && truth.status !== "reconnect_required" ? "healthy" : "disabled",
+      lastSync: "-", lastSynced: truth.connectedAt ?? "", syncMode: "manual", syncFreq: "Not enabled",
+      permissions: [], readScopes: [], writeScopes: [],
+      approvalRequiredFor: ["Future Salesforce record changes require approval"],
+      blockedActions: ["Revenue CRM reads and writes are not enabled yet"], operatorsAllowed: ["Revenue Operator (future)"],
+      records: truth.statusMessage ?? "Not connected", eventsSynced: 0, recentSyncEvents: [], authErrors: truth.status === "error" || truth.status === "reconnect_required" ? 1 : 0,
+      source: connected ? truth.source : undefined,
+    };
+  }
+
   if (truth.status !== "connected" && truth.status !== "healthy") {
     return {
       ...connector,
@@ -266,7 +307,7 @@ function applyTruth(connector: Connector, truth: SafeConnectorTruth): Connector 
 }
 
 function isTruthConnectorKey(connectorId: string): connectorId is SafeConnectorTruth["connectorKey"] {
-  return connectorId === "gmail" || connectorId === "microsoft" || listSupportedNangoConnectors().some((def) => def.connectorKey === connectorId);
+  return connectorId === "gmail" || connectorId === "microsoft" || connectorId === "salesforce" || listSupportedNangoConnectors().some((def) => def.connectorKey === connectorId);
 }
 
 export function applyConnectorTruthToState(state: OSState, truthRows: SafeConnectorTruth[]): OSState {

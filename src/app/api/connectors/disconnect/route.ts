@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as DisconnectBody;
   const workspaceId = body.workspaceId?.trim() || "";
   const connectorKey = body.connectorKey?.trim() || "";
-  if (!workspaceId || (connectorKey !== "gmail" && connectorKey !== "microsoft" && !isSupportedNangoConnector(connectorKey))) {
+  if (!workspaceId || (connectorKey !== "gmail" && connectorKey !== "microsoft" && connectorKey !== "salesforce" && !isSupportedNangoConnector(connectorKey))) {
     return NextResponse.json({ error: "A workspace and supported connector are required." }, { status: 400 });
   }
 
@@ -87,6 +87,8 @@ export async function POST(req: NextRequest) {
       .eq("connector_key", "gmail");
     if (removed.error) return NextResponse.json({ error: removed.error.message }, { status: 500 });
   } else if (connectorKey === "microsoft") {
+    // Microsoft and Salesforce-side revocation are not implemented here.
+    // Removing the workspace-scoped encrypted credential blocks Auterim access.
     // Microsoft does not expose a public "revoke my own app's tokens"
     // endpoint for delegated permissions the way Google does - deleting the
     // stored credential below is what actually removes Auterim's access.
@@ -98,6 +100,15 @@ export async function POST(req: NextRequest) {
       .delete()
       .eq("workspace_id", workspaceId)
       .eq("connector_key", "microsoft");
+    if (removed.error) return NextResponse.json({ error: removed.error.message }, { status: 500 });
+  } else if (connectorKey === "salesforce") {
+    // Salesforce-side token revocation is not implemented yet. Removing this
+    // workspace-scoped encrypted credential immediately blocks Auterim access.
+    const removed = await supabase
+      .from("os_connector_credentials")
+      .delete()
+      .eq("workspace_id", workspaceId)
+      .eq("connector_key", "salesforce");
     if (removed.error) return NextResponse.json({ error: removed.error.message }, { status: 500 });
   } else {
     const connection = await supabase

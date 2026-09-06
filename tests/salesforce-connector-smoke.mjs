@@ -1,0 +1,48 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+
+const root = process.cwd();
+const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
+const salesforce = read("src/lib/connectors/salesforce.ts");
+const registry = read("src/lib/connectors/registry.ts");
+const oauthState = read("src/lib/connectors/oauth-state.ts");
+const auth = read("src/app/api/connectors/salesforce/auth/route.ts");
+const callback = read("src/app/api/connectors/salesforce/callback/route.ts");
+const disconnect = read("src/app/api/connectors/disconnect/route.ts");
+const crm = read("src/lib/operators/revenue/crm.ts");
+const env = read(".env.example");
+
+assert.match(registry, /salesforce: \{/);
+assert.match(registry, /authType: "direct_oauth"/);
+assert.match(registry, /status: "available", capabilities: \[\]/, "OAuth availability must not claim CRM capability support");
+assert.match(salesforce, /https:\/\/app\.auterim\.com\/api\/connectors\/salesforce\/callback/);
+assert.doesNotMatch(salesforce, /\/app\/api\/connectors\/salesforce\/callback/);
+assert.match(salesforce, /export function getSalesforceRedirectUri/);
+assert.match(salesforce, /export function normalizeSalesforceInstanceUrl/);
+assert.match(salesforce, /host\.endsWith\("\.salesforce\.com"\)/);
+assert.match(salesforce, /host\.endsWith\("\.force\.com"\)/);
+assert.match(salesforce, /encrypted_access_token: encryptToken/);
+assert.match(salesforce, /encrypted_refresh_token: input\.token\.refresh_token \? encryptToken/);
+assert.match(salesforce, /status: "needs_attention"/);
+assert.match(oauthState, /createSalesforceOAuthState/);
+assert.match(oauthState, /parseSalesforceOAuthState/);
+assert.match(oauthState, /payload\.provider !== provider/);
+assert.match(oauthState, /timingSafeEqual/);
+assert.match(auth, /resolveWorkspaceContext/);
+assert.doesNotMatch(auth, /searchParams\.get\("userEmail"\)/);
+assert.doesNotMatch(auth, /searchParams\.get\("userId"\)/);
+assert.match(callback, /parseSalesforceOAuthState/);
+const callbackTry = callback.slice(callback.indexOf("try {"));
+assert.ok(callbackTry.indexOf("parseSalesforceOAuthState") < callbackTry.indexOf("exchangeSalesforceCode"));
+assert.match(callback, /onConflict: "workspace_id,connector_key"/);
+assert.match(disconnect, /connectorKey === "salesforce"/);
+assert.match(disconnect, /\.eq\("workspace_id", workspaceId\)[\s\S]*?\.eq\("connector_key", "salesforce"\)/);
+assert.match(crm, /interface RevenueCrmAdapter/);
+assert.match(crm, /const hubspotAdapter/);
+assert.match(crm, /const salesforceAdapter/);
+assert.match(crm, /status: "unsupported"/);
+for (const name of ["SALESFORCE_CLIENT_ID", "SALESFORCE_CLIENT_SECRET", "SALESFORCE_REDIRECT_URI"]) assert.match(env, new RegExp(`^${name}=`, "m"));
+assert.doesNotMatch(env, /NEXT_PUBLIC_SALESFORCE/);
+
+console.log("Auterim Salesforce connector foundation smoke contracts passed.");

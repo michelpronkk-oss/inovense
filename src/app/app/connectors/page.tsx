@@ -67,6 +67,7 @@ function normalizeConnectorKey(id: string): string {
 function connectorCapabilities(connectorId: string): string[] {
   if (connectorId === "gmail") return ["Read recent inbox metadata", "Draft customer replies", "Send emails after approval"];
   if (connectorId === "microsoft") return ["Read recent Outlook mail", "Read Outlook Calendar events", "Send emails after approval", "Create or update calendar events after approval"];
+  if (connectorId === "salesforce") return ["Secure OAuth connection", "Revenue CRM reads and writes are not enabled yet"];
   if (connectorId === "hubspot") return ["Create or update contacts", "Create or update deals", "Link contacts to deals"];
   if (connectorId === "slack") return ["Read available channels", "Send internal approval alerts", "Notify the team after important actions"];
   if (connectorId === "trello") return ["Read boards, lists and cards", "Create cards after approval", "Move cards after approval", "Add comments after approval"];
@@ -77,6 +78,7 @@ function connectorCapabilities(connectorId: string): string[] {
 function connectorSafetyNotes(connectorId: string): string[] {
   if (connectorId === "gmail") return ["External customer emails require approval before sending.", "Auterim never sends from Gmail without a reviewed approval."];
   if (connectorId === "microsoft") return ["External customer emails require approval before sending.", "Calendar event creation, updates and deletion require approval.", "Auterim never sends from Outlook or changes your calendar without a reviewed approval."];
+  if (connectorId === "salesforce") return ["Salesforce CRM actions are not enabled yet.", "Future record changes will require approval."];
   if (connectorId === "hubspot") return ["CRM changes require approval.", "Customer records are updated only through approved actions."];
   if (connectorId === "slack") return ["Slack alerts are internal.", "Customer-facing Slack messages are not sent automatically."];
   if (connectorId === "trello") return ["Trello task changes require approval.", "Cards, moves and comments execute only after review."];
@@ -218,6 +220,11 @@ export default function ConnectorsPage() {
     window.location.href = `/api/connectors/microsoft/auth?${qs.toString()}`;
   };
 
+  const startRealSalesforceOAuth = () => {
+    const qs = new URLSearchParams({ workspaceId: state.workspace.id, userEmail: state.currentUser.email, userId: state.currentUser.id });
+    window.location.href = `/api/connectors/salesforce/auth?${qs.toString()}`;
+  };
+
   const disconnectRealConnector = async (connector: Connector) => {
     setDisconnectingConnectorId(connector.id);
     setFeedback("");
@@ -301,6 +308,10 @@ export default function ConnectorsPage() {
     }
     if (connected === "microsoft") {
       setFeedback("Microsoft 365 connected. Approval-gated mail and calendar permissions are now active.");
+      router.replace("/connectors");
+    }
+    if (connected === "salesforce") {
+      setFeedback("Salesforce connected. Revenue CRM reads and writes are not enabled yet.");
       router.replace("/connectors");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -822,6 +833,10 @@ export default function ConnectorsPage() {
                         startRealMicrosoftOAuth();
                         return;
                       }
+                      if (setupConnector.id === "salesforce") {
+                        startRealSalesforceOAuth();
+                        return;
+                      }
                       if (getConnectorDefinition(setupConnector.id)?.authType === "nango") {
                         startNangoConnect(setupConnector.id);
                         return;
@@ -1045,7 +1060,7 @@ export default function ConnectorsPage() {
                       if (getConnectorDefinition(drawerConnector.id)?.authType === "nango") void testNangoConnection(drawerConnector.id);
                       else { testConnector(drawerConnector.id); setFeedback(`${drawerConnector.name} tested.`); }
                     }}>Test connection</button>
-                    {drawerConnector.id !== "gmail" && drawerConnector.id !== "microsoft" && (
+                    {drawerConnector.id !== "gmail" && drawerConnector.id !== "microsoft" && drawerConnector.id !== "salesforce" && (
                       <button className="btn btn-ghost btn-sm" onClick={() => { resyncConnector(drawerConnector.id); setFeedback(`${drawerConnector.name} resynced.`); }}>Resync</button>
                     )}
                     {drawerConnector.id === "gmail" && (
@@ -1053,6 +1068,9 @@ export default function ConnectorsPage() {
                     )}
                     {drawerConnector.id === "microsoft" && (
                       <button className="btn btn-primary btn-sm" onClick={startRealMicrosoftOAuth}>Reconnect Microsoft 365</button>
+                    )}
+                    {drawerConnector.id === "salesforce" && (
+                      <button className="btn btn-primary btn-sm" onClick={startRealSalesforceOAuth}>Reconnect Salesforce</button>
                     )}
                   </>
                 )}

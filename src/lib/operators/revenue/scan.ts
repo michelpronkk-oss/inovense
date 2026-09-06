@@ -15,7 +15,8 @@ import {
 import { getConnectorTruth } from "@/lib/connectors/truth";
 import { createGmailSendApproval } from "@/lib/operators/executors/gmail";
 import { createMicrosoftSendApproval } from "@/lib/operators/executors/microsoft";
-import { findContactByEmail, type PreparedHubSpotActions } from "@/lib/operators/executors/hubspot";
+import { getRevenueCrmAdapter, isRevenueCrmUnsupported, type RevenueCrmAdapter } from "@/lib/operators/revenue/crm";
+import type { PreparedHubSpotActions } from "@/lib/operators/executors/hubspot";
 import { logOperatorEvent, operatorRuntimeId } from "@/lib/operators/logging";
 import { getOperatorReadiness, type OperatorReadiness } from "@/lib/operators/readiness";
 import { draftRevenueFollowUpWithAI } from "@/lib/operators/revenue/ai-drafting";
@@ -525,19 +526,21 @@ function nameFromSignatureText(text: string): { name: string | null; candidate?:
 async function buildPersonalization(input: {
   workspaceId: string;
   message: SafeGmailMessage;
-  hubspotConnected: boolean;
+  crm: RevenueCrmAdapter | null;
 }): Promise<Personalization> {
   const email = input.message.fromEmail;
   const rejectedNameCandidates: { candidate: string; reason: string; source: string }[] = [];
-  if (input.hubspotConnected) {
+  if (input.crm?.supports("person.read")) {
     try {
-      const contact = await findContactByEmail(input.workspaceId, email);
-      const first = typeof contact?.properties?.firstname === "string" ? contact.properties.firstname.trim() : "";
-      const last = typeof contact?.properties?.lastname === "string" ? contact.properties.lastname.trim() : "";
-      const contactName = safeHumanName([first, last].filter(Boolean).join(" ")).name;
-      if (contactName) {
-        const split = splitHumanName(contactName);
-        return { contactEmail: email, contactName, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? contactName},`, personalizationSource: "hubspot", rejectedNameCandidates };
+      const contact = await input.crm.findPersonByEmail(input.workspaceId, email);
+      if (!isRevenueCrmUnsupported(contact)) {
+        const first = contact?.firstName?.trim() ?? "";
+        const last = contact?.lastName?.trim() ?? "";
+        const contactName = safeHumanName([first, last].filter(Boolean).join(" ")).name;
+        if (contactName) {
+          const split = splitHumanName(contactName);
+          return { contactEmail: email, contactName, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? contactName},`, personalizationSource: "hubspot", rejectedNameCandidates };
+        }
       }
     } catch (error) {
       console.warn("[revenue-scan] hubspot contact personalization skipped", {
@@ -1223,7 +1226,8 @@ export async function scanRevenueOpportunities(input: {
         continue;
       }
 
-      const personalization = await buildPersonalization({ workspaceId, message: opportunity.message, hubspotConnected });
+      const revenueCrm = getRevenueCrmAdapter(hubspotConnected ? "hubspot" : null);
+      const personalization = await buildPersonalization({ workspaceId, message: opportunity.message, crm: revenueCrm });
       // A HubSpot contact match is a real relationship signal - boost priority
       // and record why, without re-deciding a next action that was already
       // chosen deterministically above.

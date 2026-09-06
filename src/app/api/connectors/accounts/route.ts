@@ -66,6 +66,8 @@ export async function GET(req: NextRequest) {
         connector.scopes.some((scope) => scope.toLowerCase() === "calendars.readwrite") ? "Calendar access" : "Calendar access missing",
         "Approval required for external email and calendar writes",
       ]
+      : connector.connectorKey === "salesforce"
+      ? ["OAuth connection only", "Revenue CRM reads and writes are not enabled yet", "Future CRM writes require approval"]
       : getConnectorDefinition(connector.connectorKey)?.readActions.concat(getConnectorDefinition(connector.connectorKey)?.writeActions ?? []) ?? ["Managed connector access"],
     canReconnect: true,
     canDisconnect: connector.status === "connected" || connector.status === "healthy" || connector.status === "reconnect_required",

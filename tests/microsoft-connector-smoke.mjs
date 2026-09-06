@@ -59,7 +59,7 @@ assert.doesNotMatch(microsoftConnector, /import\s*\{[^}]*getAppUrl/, "redirect U
 // ── C. Invalid/missing state rejected ─────────────────────────────────────
 assert.match(oauthState, /export function createMicrosoftOAuthState/);
 assert.match(oauthState, /export function parseMicrosoftOAuthState/);
-assert.match(oauthState, /if \(expected !== sig\) throw new Error\("Invalid OAuth state signature"\);/);
+assert.match(oauthState, /timingSafeEqual/, "OAuth state signatures must be compared in constant time");
 assert.match(oauthState, /if \(payload\.provider !== "microsoft"\) throw new Error\("OAuth state provider mismatch"\);/, "Microsoft state must reject state minted for a different provider");
 assert.match(oauthState, /if \(Date\.now\(\) > payload\.exp\) throw new Error\("OAuth state expired"\);/);
 assert.match(callbackRoute, /parseMicrosoftOAuthState\(stateRaw\)/, "callback must validate state before any token exchange");

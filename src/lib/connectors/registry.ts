@@ -181,12 +181,14 @@ export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
     setupNotes: "Planned via Pipedrive API (Nango). Will reuse the CRM adapter pattern.",
   },
   salesforce: {
-    connectorKey: "salesforce", displayName: "Salesforce", category: "crm", authType: "nango",
-    letter: "SF", color: "#00A1E0", description: "Enterprise CRM contact and opportunity updates after approval.",
-    status: "coming_soon", capabilities: ["crm.contacts.read", "crm.contacts.write", "crm.deals.read", "crm.deals.write"],
-    usedByOperators: ["revenue"], readActions: ["Read leads", "Read opportunities"], writeActions: ["Write lead after approval", "Write opportunity after approval"],
-    approvalRequiredActions: ["Record write"], eventTypes: ["crm.opportunity.created"], riskLevel: "medium",
-    setupNotes: "Planned via Salesforce API (Nango).",
+    connectorKey: "salesforce", displayName: "Salesforce", category: "crm", authType: "direct_oauth",
+    letter: "SF", color: "#00A1E0", description: "Securely connect Salesforce for future Revenue CRM context and approved actions.",
+    // OAuth connectivity is available, but no Revenue API capability is
+    // advertised until the Salesforce read/write implementation exists.
+    status: "available", capabilities: [],
+    usedByOperators: ["revenue"], readActions: [], writeActions: [],
+    approvalRequiredActions: ["Create task", "Add note/activity", "Update contact or lead", "Update opportunity", "Change opportunity stage"], eventTypes: [], riskLevel: "medium",
+    setupNotes: "Direct Salesforce OAuth. CRM reads and writes are intentionally not enabled yet.",
   },
   stripe: {
     connectorKey: "stripe", displayName: "Stripe", category: "billing", authType: "nango",
