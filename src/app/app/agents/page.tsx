@@ -96,9 +96,6 @@ type CardModel = {
   status: AgentStatus;
   href?: string;
   needsSetup: boolean;
-  currentTask?: string;
-  connectedTools?: string[];
-  outcome?: string;
   /** Real readiness reason (readiness.ts) - only set when the operator can actually run today. */
   readyReason?: string;
   /** Real shared product state (product-state.ts) - set only for the three real operators (revenue/client_flow/operations). When present, this is the single source of truth for this card's label/foot/connected-systems/next-action; readyReason/needsSetup above are not used. */
@@ -106,8 +103,8 @@ type CardModel = {
   value?: { owns: string; value: string; enhancement: string };
 };
 
-function AgentCard({ model }: { model: CardModel }) {
-  const { op, status, href, needsSetup, currentTask, connectedTools, outcome, readyReason, productState, value } = model;
+function AgentCard({ model, onOpenDetails }: { model: CardModel; onOpenDetails: (model: CardModel) => void }) {
+  const { op, status, href, needsSetup, readyReason, productState } = model;
   const dim = status === "upgrade" || status === "coming";
   const running = Boolean(productState && RUNNING_PRODUCT_STATES.has(productState.state));
   const statusLabel = productState
@@ -118,10 +115,10 @@ function AgentCard({ model }: { model: CardModel }) {
 
   const foot = productState
     ? (attentionState
-      ? <span className="ag-ready warn"><span className="rd" /> {productState.description}</span>
+      ? <span className="ag-ready warn"><span className="rd" /> {productState.label}</span>
       : running
-        ? <span className={`ag-ready ${productState.state === "paused" ? "warn" : "on"}`}><span className="rd" /> {productState.description}</span>
-        : <span className="ag-ready"><span className="rd" /> {productState.description}</span>)
+        ? <span className={`ag-ready ${productState.state === "paused" ? "warn" : "on"}`}><span className="rd" /> {productState.state === "paused" ? "Monitoring paused" : "Monitoring"}</span>
+        : <span className="ag-ready"><span className="rd" /> {productState.label}</span>)
     : status === "configured"
     ? (needsSetup
       ? <span className="ag-ready warn"><span className="rd" /> Needs setup</span>
@@ -157,31 +154,44 @@ function AgentCard({ model }: { model: CardModel }) {
         <div style={{ fontSize: 11.5, color: "var(--text-mute)", marginTop: -6 }}>Because: {readyReason}</div>
       )}
 
-      {productState && (
-        <div className="ag-operating-context">
-          {value && <div><span>Owns</span><strong>{value.owns}</strong></div>}
-          {value && <div><span>Value</span><strong>{value.value}</strong></div>}
-          <div><span>Systems</span><strong>{productState.connectedSystems.length ? productState.connectedSystems.join(" · ") : "None yet"}</strong></div>
-          {productState.availableNow.length > 0
-            ? <div><span>Can do now</span><strong>{productState.availableNow.join(" · ")}</strong></div>
-            : <div><span>Needs next</span><strong>{productState.nextAction?.label ?? productState.description}</strong></div>}
-          {value && <div><span>{productState.state === "enhanced" ? "Enhanced by" : "Enhance with"}</span><strong>{value.enhancement}</strong></div>}
-          {productState.degraded && <div><span>Needs attention</span><strong>Unavailable: {productState.degraded.lostCapabilities.join(", ")}</strong></div>}
-        </div>
-      )}
-
-      {!productState && status === "configured" && (
-        <div className="ag-operating-context">
-          <div><span>Now</span><strong>{currentTask || "Monitoring workspace signals"}</strong></div>
-          <div><span>Systems</span><strong>{connectedTools?.length ? connectedTools.join(" · ") : "No tools connected"}</strong></div>
-          {outcome && <div><span>Outcome</span><strong>{outcome}</strong></div>}
-        </div>
-      )}
-
       <div className="ag-foot">
         {foot}
-        {openEl}
+        <div className="ag-card-actions">
+          {productState && <button className="ag-details" type="button" onClick={() => onOpenDetails(model)}>Details <Arrow /></button>}
+          {openEl}
+        </div>
       </div>
+    </div>
+  );
+}
+
+function OperatorDetails({ model, onClose }: { model: CardModel; onClose: () => void }) {
+  const { op, productState, value, href } = model;
+  if (!productState || !value) return null;
+  const available = productState.availableNow;
+  const next = productState.nextAction;
+  return (
+    <div className="os-modal-backdrop agent-details-backdrop" role="presentation" onClick={onClose}>
+      <section className="os-modal agent-details-modal" style={{ "--c": op.color } as CSSProperties} role="dialog" aria-modal="true" aria-labelledby="operator-details-title" onClick={(event) => event.stopPropagation()}>
+        <div className="agent-details-topline"><span>Operator briefing</span><button className="agent-details-close" type="button" onClick={onClose}>Close</button></div>
+        <div className="agent-details-hero" style={{ "--c": op.color } as CSSProperties}>
+          <AgAvatar color={op.color} glyph={op.glyph} />
+          <div><span>{op.tag}</span><h2 id="operator-details-title">{op.name}</h2><p>{op.mission}</p></div>
+          <StatusBadge state={productState.state}>{productState.label}</StatusBadge>
+        </div>
+        <div className="agent-details-value"><span>Business value</span><strong>{value.value}</strong></div>
+        <div className="agent-details-grid">
+          <div><span>Owns</span><strong>{value.owns}</strong></div>
+          <div><span>Your systems</span><strong>{productState.connectedSystems.length ? productState.connectedSystems.join(" · ") : "None connected yet"}</strong></div>
+          <div><span>{available.length ? "Can do now" : "Needs next"}</span><strong>{available.length ? available.join(" · ") : next?.label ?? productState.description}</strong></div>
+          <div><span>{productState.state === "enhanced" ? "Enhanced by" : "Enhance with"}</span><strong>{value.enhancement}</strong></div>
+        </div>
+        {productState.degraded && <div className="agent-details-alert">Unavailable while a connection needs attention: {productState.degraded.lostCapabilities.join(", ")}</div>}
+        <div className="agent-details-actions">
+          {next && <Link className="btn btn-primary btn-sm" href={next.href}>{next.label} <Arrow /></Link>}
+          {href && next?.href !== href && <Link className="btn btn-ghost btn-sm" href={href}>Open operator</Link>}
+        </div>
+      </section>
     </div>
   );
 }
@@ -193,6 +203,7 @@ export default function AgentsRegistryPage() {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "expanding">("all");
   const [showAllExpanding, setShowAllExpanding] = useState(false);
+  const [detailModel, setDetailModel] = useState<CardModel | null>(null);
 
   const identityParams = useMemo(() => new URLSearchParams({
     workspaceId: state.workspace.id,
@@ -220,6 +231,15 @@ export default function AgentsRegistryPage() {
 
   useEffect(() => { void loadReadiness(); }, [loadReadiness]);
 
+  useEffect(() => {
+    if (!detailModel) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setDetailModel(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [detailModel]);
+
   const readinessByKey = useMemo(() => new Map(readiness.map((item) => [item.operatorKey, item])), [readiness]);
   const productStateByKey = useMemo(() => new Map(productStates.map((item) => [item.operatorKey, item])), [productStates]);
   const configuredKeys = useMemo(() => new Set(state.agents.map((agent) => agent.templateId)), [state.agents]);
@@ -234,7 +254,6 @@ export default function AgentsRegistryPage() {
       ? (productState ? (RUNNING_PRODUCT_STATES.has(productState.state) ? "configured" : "available") : (configuredKeys.has(key) ? "configured" : "available"))
       : registry?.currentReleaseStatus === "coming_next" ? "coming" : "upgrade";
     const r = readinessByKey.get(key);
-    const configuredAgent = state.agents.find((agent) => agent.templateId === key);
     const needsSetup = openable && Boolean(r && (r.status === "missing_connector" || r.status === "upgrade_required"));
     const isReadyNow = status === "available" && Boolean(r && (r.status === "ready" || r.status === "draft_only"));
     return {
@@ -243,14 +262,11 @@ export default function AgentsRegistryPage() {
       status,
       href: HREF_BY_KEY[key],
       needsSetup,
-      currentTask: configuredAgent?.currentTask,
-      connectedTools: configuredAgent?.config.tools,
-      outcome: configuredAgent ? `${configuredAgent.stats.metricValue} ${configuredAgent.stats.metricLabel}` : undefined,
       readyReason: isReadyNow ? r?.reason : undefined,
       productState,
       value: REAL_OPERATOR_VALUE[key],
     };
-  }), [configuredKeys, productStateByKey, readinessByKey, state.agents]);
+  }), [configuredKeys, productStateByKey, readinessByKey]);
 
   const current = cards.filter((c) => Boolean(HREF_BY_KEY[c.key]));
   const expanding = cards.filter((c) => c.status === "upgrade" || c.status === "coming");
@@ -299,7 +315,7 @@ export default function AgentsRegistryPage() {
             <span className="rule" />
           </div>
           <div className="ag-grid">
-            {current.map((model) => <AgentCard key={model.op.name} model={model} />)}
+            {current.map((model) => <AgentCard key={model.op.name} model={model} onOpenDetails={setDetailModel} />)}
           </div>
         </section>
       )}
@@ -312,11 +328,12 @@ export default function AgentsRegistryPage() {
             <span className="rule" />
           </div>
           <div className="ag-grid">
-            {(showAllExpanding ? expanding : expanding.slice(0, 6)).map((model) => <AgentCard key={model.op.name} model={model} />)}
+            {(showAllExpanding ? expanding : expanding.slice(0, 6)).map((model) => <AgentCard key={model.op.name} model={model} onOpenDetails={setDetailModel} />)}
           </div>
           {expanding.length > 6 && <button className="appr-btn edit" onClick={() => setShowAllExpanding((value) => !value)} style={{ marginTop: 10 }}>{showAllExpanding ? "Show less" : `Show ${expanding.length - 6} more`}</button>}
         </section>
       )}
+      {detailModel && <OperatorDetails model={detailModel} onClose={() => setDetailModel(null)} />}
     </div>
   );
 }

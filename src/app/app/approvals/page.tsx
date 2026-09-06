@@ -874,8 +874,7 @@ export default function ApprovalsPage() {
       </div>
 
       <div className="approval-policy-note" style={{ padding: "14px 18px", borderRadius: 12, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", fontSize: 12.5, color: "var(--text-mute)", lineHeight: 1.6 }}>
-        <span><strong style={{ color: "var(--text-dim)" }}>Protected by default.</strong> Outbound actions require approval.</span>
-        <button className="lnk-open" style={{ fontSize: 12.5 }} onClick={() => router.push("/policies")}>Manage policies</button>
+        <span><strong style={{ color: "var(--text-dim)" }}>Protected by default.</strong> Outbound actions require approval.<button className="lnk-open approval-policy-link" onClick={() => router.push("/policies")}>Manage policies</button></span>
       </div>
     </div>
   );
