@@ -199,6 +199,12 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
 
   let state = asState(snapshotResult.data?.state) ?? await buildStateFromDatabase(workspaceId, supabase);
   const db = workspaceResult.data;
+  const onboardingDataForSystems = db.onboarding_data && typeof db.onboarding_data === "object"
+    ? db.onboarding_data as Record<string, unknown>
+    : null;
+  const onboardingSystems = Array.isArray(onboardingDataForSystems?.systems)
+    ? onboardingDataForSystems.systems.filter((system): system is string => typeof system === "string")
+    : [];
 
   state.workspace = {
     ...state.workspace,
@@ -214,6 +220,9 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
     dodoSubscriptionId: db.dodo_subscription_id ?? undefined,
     dodoProductId: db.dodo_product_id ?? undefined,
     logoUrl: db.logo_url ?? undefined,
+    // Descriptive-only: what onboarding said this workspace already uses.
+    // Never treated as real connector truth (see getConnectorTruth below).
+    onboardingSystems,
   };
   state.settings = { ...state.settings, workspace: { ...state.settings.workspace, ...state.workspace } };
 

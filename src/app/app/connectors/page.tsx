@@ -17,8 +17,10 @@ import {
   getConnectorDefinition,
 } from "@/lib/connectors/registry";
 import { getAvailableConnectors } from "@/lib/connectors/capabilities";
+import { CONNECTOR_CATEGORY_LABELS, type ConnectorCategory } from "@/lib/connectors/registry";
 import { connectorDefinitionToSeedConnector } from "@/lib/os/seed";
 import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-grid";
+import { getUnconnectedOnboardingSystems, unlockMessageForConnector } from "@/lib/operators/unlock-copy";
 
 type SlackChannel = {
   id: string;
@@ -189,6 +191,38 @@ export default function ConnectorsPage() {
     });
   }, [availableCatalogConnectors, search]);
 
+  // Group the real catalog by its declared category (registry.ts) instead of
+  // one flat list, so discovery reflects what each system is actually for.
+  const groupedAvailable = useMemo(() => {
+    const groups = new Map<ConnectorCategory, Connector[]>();
+    for (const connector of filteredAvailable) {
+      const category = (getConnectorDefinition(normalizeConnectorKey(connector.id))?.category ?? "custom_api") as ConnectorCategory;
+      const list = groups.get(category) ?? [];
+      list.push(connector);
+      groups.set(category, list);
+    }
+    return Array.from(groups.entries());
+  }, [filteredAvailable]);
+
+  // What onboarding said this workspace already uses, that is not yet
+  // actually connected (real OAuth/Nango truth, never the onboarding
+  // selection itself). Never fabricated - falls back to an empty list when
+  // onboarding recorded nothing or everything is already connected.
+  const connectedConnectorKeys = useMemo(
+    () => realConnectedConnectors.map((c) => normalizeConnectorKey(c.id)),
+    [realConnectedConnectors]
+  );
+  const onboardingHighlightKeys = useMemo(() => getUnconnectedOnboardingSystems({
+    onboardingSystems: state.workspace.onboardingSystems ?? [],
+    connectedConnectorKeys,
+  }), [state.workspace.onboardingSystems, connectedConnectorKeys]);
+  const onboardingHighlightConnectors = useMemo(
+    () => onboardingHighlightKeys
+      .map((key) => availableCatalogConnectors.find((c) => normalizeConnectorKey(c.id) === key))
+      .filter((c): c is Connector => Boolean(c)),
+    [onboardingHighlightKeys, availableCatalogConnectors]
+  );
+
   const setupConnector = availableCatalogConnectors.find((c) => c.id === setupConnectorId) ?? null;
   const drawerConnector = state.connectors.find((c) => c.id === drawerConnectorId) ?? null;
   const drawerSlackReady = Boolean(slackAlertSettings.slackNotificationsEnabled && slackAlertSettings.slackApprovalAlertsEnabled && slackAlertSettings.slackDefaultChannelId);
@@ -302,18 +336,11 @@ export default function ConnectorsPage() {
 
   useEffect(() => {
     const connected = searchParams.get("connected");
-    if (connected === "gmail") {
-      setFeedback("Gmail connected. Approval-gated compose/send permissions are now active.");
-      router.replace("/connectors");
-    }
-    if (connected === "microsoft") {
-      setFeedback("Microsoft 365 connected. Approval-gated mail and calendar permissions are now active.");
-      router.replace("/connectors");
-    }
-    if (connected === "salesforce") {
-      setFeedback("Salesforce connected. Revenue CRM reads and writes are not enabled yet.");
-      router.replace("/connectors");
-    }
+    if (!connected) return;
+    // Real capability delta, not per-connector hardcoded prose - see
+    // unlockMessageForConnector (src/lib/operators/unlock-copy.ts).
+    setFeedback(unlockMessageForConnector({ connectorKey: connected, connectedConnectorKeys }));
+    router.replace("/connectors");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -719,6 +746,35 @@ export default function ConnectorsPage() {
 
       {feedback && <div style={{ color: "#64ffd7", fontSize: 12 }}>{feedback}</div>}
 
+      {/* Systems this workspace said it already uses during onboarding, not
+          yet actually connected. Highlighted first and prioritized over the
+          generic catalog, per the onboarding brief - never marked
+          "connected" from the onboarding selection alone. */}
+      {onboardingHighlightConnectors.length > 0 && (
+        <div className="p" style={{ borderRadius: 16, background: "rgba(77,232,225,0.045)", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.16)" }}>
+          <div className="p-head">
+            <h3>Systems you already use</h3>
+            <div className="p-meta">From your onboarding answers</div>
+          </div>
+          <div style={{ padding: "14px 18px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
+            {onboardingHighlightConnectors.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => { setAddOpen(true); setSetupConnectorId(c.id); setSearch(""); }}
+                style={{ textAlign: "left", border: "none", cursor: "pointer", padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.03)", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.22)" }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <div className="connector-brand-logo" style={{ width: 28, height: 28, borderRadius: 8 }}>{IntegrationLogos[c.name] ?? <span style={{ color: c.color, fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{c.letter}</span>}</div>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{c.name}</div>
+                </div>
+                <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>You said your team uses {c.name} — connect it to add real context.</div>
+                <div style={{ marginTop: 8, color: "var(--cyan)", fontSize: 11.5, fontWeight: 600 }}>Connect</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Connected tools */}
       <div className="p connectors-list" style={{ borderRadius: 16 }}>
         <div className="p-head">
@@ -777,25 +833,28 @@ export default function ConnectorsPage() {
                 <div style={{ color: "var(--text-mute)", fontSize: 12.5, marginBottom: 4 }}>Connect a system only when it gives your operator useful live context.</div>
                 <div style={{ display: "grid", gap: 10 }}>
                   <input className="os-input" placeholder="Search available integrations..." value={search} onChange={(e) => setSearch(e.target.value)} />
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.08em", color: "var(--text-mute)", textTransform: "uppercase", marginTop: 8 }}>Available to connect</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
-                    {filteredAvailable.map((c) => (
-                      <button key={c.id} onClick={() => { if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); }} style={{ textAlign: "left", border: "none", cursor: "pointer", padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                          <div className="connector-brand-logo" style={{ width: 28, height: 28, borderRadius: 8 }}>{IntegrationLogos[c.name] ?? <span style={{ color: c.color, fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{c.letter}</span>}</div>
-                          <div style={{ fontSize: 13, fontWeight: 500 }}>{c.name}</div>
-                        </div>
-                        <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-mute)" }}>{c.category}</div>
-                        {(c.id === "gmail" || c.id === "microsoft" || getConnectorDefinition(c.id)?.authType === "nango") && (
-                          <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--cyan)", marginTop: 2 }}>
-                            {c.id === "gmail" || c.id === "microsoft" ? "Secure OAuth" : "Managed OAuth"}
-                          </div>
-                        )}
-                        <div style={{ fontSize: 11.5, color: "var(--text-dim)", marginTop: 6 }}>{c.description}</div>
-                        <div style={{ marginTop: 10, color: isRealConnectedConnector(c) ? "#8df5cf" : c.records.includes("Reconnect required") ? "var(--amber)" : "var(--cyan)", fontSize: 11.5, fontWeight: 600 }}>{isRealConnectedConnector(c) ? "Connected" : c.records.includes("Reconnect required") ? "Reconnect" : "Connect"}</div>
-                      </button>
-                    ))}
-                  </div>
+                  {groupedAvailable.map(([category, connectors]) => (
+                    <div key={category} style={{ display: "grid", gap: 10 }}>
+                      <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.08em", color: "var(--text-mute)", textTransform: "uppercase", marginTop: 8 }}>{CONNECTOR_CATEGORY_LABELS[category] ?? category}</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
+                        {connectors.map((c) => (
+                          <button key={c.id} onClick={() => { if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); }} style={{ textAlign: "left", border: "none", cursor: "pointer", padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                              <div className="connector-brand-logo" style={{ width: 28, height: 28, borderRadius: 8 }}>{IntegrationLogos[c.name] ?? <span style={{ color: c.color, fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{c.letter}</span>}</div>
+                              <div style={{ fontSize: 13, fontWeight: 500 }}>{c.name}</div>
+                            </div>
+                            {(c.id === "gmail" || c.id === "microsoft" || getConnectorDefinition(c.id)?.authType === "nango") && (
+                              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--cyan)", marginTop: 2 }}>
+                                {c.id === "gmail" || c.id === "microsoft" ? "Secure OAuth" : "Managed OAuth"}
+                              </div>
+                            )}
+                            <div style={{ fontSize: 11.5, color: "var(--text-dim)", marginTop: 6 }}>{c.description}</div>
+                            <div style={{ marginTop: 10, color: isRealConnectedConnector(c) ? "#8df5cf" : c.records.includes("Reconnect required") ? "var(--amber)" : "var(--cyan)", fontSize: 11.5, fontWeight: 600 }}>{isRealConnectedConnector(c) ? "Connected" : c.records.includes("Reconnect required") ? "Reconnect" : "Connect"}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                   <div style={{ paddingTop: 12, borderTop: "1px solid var(--line)", color: "var(--text-mute)", fontSize: 11.5 }}>More integrations are planned. Auterim adds systems when they support a controlled operating use case—not as a directory of logos.</div>
                 </div>
               </>

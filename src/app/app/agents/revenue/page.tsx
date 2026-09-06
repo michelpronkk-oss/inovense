@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useOS } from "@/lib/os/app-provider";
 import { getEntitlements } from "@/lib/os/entitlements";
+import { OperatorActivationToggle, type ActivationEligibility } from "@/components/operators/activation-toggle";
 
 type OperatorReadiness = {
   operatorKey: string;
@@ -18,6 +19,7 @@ type OperatorReadiness = {
   nextSetupStep: string;
   canRunManual: boolean;
   canExecuteRealActions: boolean;
+  executionEligibility?: ActivationEligibility;
   reason: string;
 };
 

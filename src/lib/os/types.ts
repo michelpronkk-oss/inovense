@@ -325,6 +325,14 @@ export interface Workspace {
   dodoSubscriptionId?: string;
   dodoProductId?: string;
   logoUrl?: string;
+  /**
+   * Connector ids the workspace owner said their team already uses, captured
+   * during onboarding (os_workspaces.onboarding_data.systems). Descriptive
+   * only - never a substitute for real connector truth. Populated by
+   * /api/os/state from the same onboarding_data column the memory brief
+   * already reads. See src/app/app/onboarding/actions.ts.
+   */
+  onboardingSystems?: string[];
 }
 
 export interface CurrentUser {

@@ -7,6 +7,7 @@ import { useOS } from "@/lib/os/app-provider";
 import type { DashboardOverview, DashboardOperator } from "@/lib/dashboard/overview";
 import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-grid";
 import { DashboardLoadingState } from "@/components/dashboard/loading-state";
+import { getConnectorDefinition } from "@/lib/connectors/registry";
 
 type ScanKey = DashboardOperator["key"];
 type OverviewResponse = DashboardOverview & { error?: string; message?: string };
@@ -68,6 +69,13 @@ function customerEmailLabel(mode: DashboardOverview["policy"]["customerEmailMode
 function operatorMark(operatorKey: string | null | undefined): { mark: string; color: string } {
   if (operatorKey && operatorKey in operatorMeta) return operatorMeta[operatorKey as ScanKey];
   return { mark: "OS", color: "#4DE8E1" };
+}
+
+const RECOMMENDED_FALLBACK_SYSTEMS = ["gmail", "hubspot", "trello"];
+
+function systemLabel(connectorKey: string): string {
+  const def = getConnectorDefinition(connectorKey);
+  return def?.displayName ?? titleCase(connectorKey);
 }
 
 function activityColor(severity: string): string {
@@ -209,6 +217,85 @@ export function OSOverview() {
   const activationSteps = [overview.operators.length > 0, healthyConnectors > 0, overview.today.runsCount > 0];
   const activationScore = Math.round((activationSteps.filter(Boolean).length / activationSteps.length) * 100);
 
+  // State A: zero connected connectors. Never show the KPI row / connector
+  // strip / empty activity feed alongside this - it must read as a
+  // deliberate first-run moment, not a populated dashboard with zeros in it.
+  if (healthyConnectors === 0) {
+    const onboardingSystems = overview.workspace.onboardingSystems;
+    const recommended = (onboardingSystems.length ? onboardingSystems : RECOMMENDED_FALLBACK_SYSTEMS).slice(0, 4);
+    return (
+      <div className="os-page dashboard-overview dashboard-first-run">
+        <div className="os-page-head">
+          <div>
+            <span className="os-greet">Auterim workspace</span>
+            <h1>{greet}, {firstName}.</h1>
+            <div className="os-page-sub">Connect your business to see what Auterim can do here. Nothing runs until you choose to connect a system.</div>
+          </div>
+        </div>
+
+        {error && (
+          <div className="dashboard-alert" style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>
+            {error}
+          </div>
+        )}
+
+        <div className="p" style={{ padding: "34px 30px", display: "grid", gap: 18, background: "linear-gradient(112deg, rgba(77,232,225,0.08), rgba(255,255,255,0.012) 45%, rgba(255,255,255,0.01))" }}>
+          <div>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.09em", textTransform: "uppercase", color: "#64ffd7" }}>Connect your business</div>
+            <h2 style={{ marginTop: 12, fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em", maxWidth: 560 }}>No systems are connected yet.</h2>
+            <p style={{ marginTop: 8, maxWidth: 560, color: "var(--text-mute)", fontSize: 13.5, lineHeight: 1.6 }}>
+              {onboardingSystems.length
+                ? `You told us your team uses ${recommended.map(systemLabel).join(", ")}. Connect them so Auterim has real context to work from.`
+                : "Connect the tools your team already uses so Auterim has real context to work from."}
+            </p>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {recommended.map((key) => {
+              const def = getConnectorDefinition(key);
+              const meta = connectorMeta[key] ?? { letter: key.slice(0, 2).toUpperCase(), color: "#4DE8E1" };
+              return (
+                <span key={key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 999, background: "rgba(255,255,255,0.03)", boxShadow: "inset 0 0 0 1px var(--line)", fontSize: 12.5 }}>
+                  <span className="connector-brand-logo" style={{ width: 20, height: 20, color: meta.color }}>{IntegrationLogos[def?.displayName ?? ""] ?? meta.letter}</span>
+                  {systemLabel(key)}
+                </span>
+              );
+            })}
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <Link className="btn btn-primary btn-sm" href="/connectors">Connect systems</Link>
+            <Link className="btn btn-ghost btn-sm" href="/agents">Explore operators</Link>
+          </div>
+        </div>
+
+        <div className="p" style={{ gap: 0 }}>
+          <div className="p-head"><h3>How this works</h3></div>
+          <div style={{ padding: "16px 20px", display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>1. Connect</div>
+              <div style={{ marginTop: 4, fontSize: 12.5, color: "var(--text-mute)" }}>Link the systems your team already uses.</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>2. Review what unlocks</div>
+              <div style={{ marginTop: 4, fontSize: 12.5, color: "var(--text-mute)" }}>See exactly which operators become ready.</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>3. Activate when ready</div>
+              <div style={{ marginTop: 4, fontSize: 12.5, color: "var(--text-mute)" }}>Nothing runs unattended until you turn it on.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // State C messaging: at least one connector is live but the workspace
+  // cannot execute real actions yet (trial not started / plan required /
+  // billing attention / suspended). Surfaced as a reachable banner, not a
+  // full-dashboard takeover - the rest of the dashboard (State B/D) still
+  // renders underneath so configuration work is never blocked by billing.
+  const eligibility = overview.executionEligibility;
+  const showEligibilityBanner = !eligibility.eligible;
+
   const kpis = [
     { label: "Operating setup", val: `${activationScore}%`, sub: activationScore === 100 ? "Live operating layer" : "Choose plan to unlock live systems", subCls: activationScore === 100 ? "neutral" : "amber", color: "#4DE8E1" },
     { label: "Pending approvals", val: pending, sub: overview.approvals.highRiskCount > 0 ? `${overview.approvals.highRiskCount} high risk` : "Waiting for review", subCls: overview.approvals.highRiskCount > 0 ? "amber" : "neutral", color: "#F5C26B" },
@@ -242,6 +329,15 @@ export function OSOverview() {
       {error && (
         <div className="dashboard-alert" style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>
           {error}
+        </div>
+      )}
+
+      {showEligibilityBanner && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap", padding: "12px 16px", borderRadius: 12, background: "rgba(245,194,107,0.07)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.2)" }}>
+          <div style={{ fontSize: 12.8, color: "var(--text-dim)" }}>
+            <strong style={{ color: "var(--amber)" }}>{eligibility.status === "plan_required" ? "Plan required" : eligibility.status === "billing_attention" ? "Billing needs attention" : "Execution paused"}.</strong> {eligibility.reason} You can still connect systems and configure operators now.
+          </div>
+          <Link className="btn btn-primary btn-sm" href="/plans" style={{ textDecoration: "none" }}>{eligibility.status === "billing_attention" ? "Update billing" : "Choose a plan"}</Link>
         </div>
       )}
 

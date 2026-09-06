@@ -4,6 +4,8 @@ import { getOperatorDefinition } from "@/lib/operators/registry";
 import { loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { getWorkspaceExecutionEligibilityFromWorkspace, type WorkspaceExecutionEligibility } from "@/lib/os/execution-eligibility";
+import type { Workspace } from "@/lib/os/types";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
@@ -25,7 +27,16 @@ export type DashboardOverview = {
     name: string;
     planTier: string | null;
     billingStatus: string | null;
+    /** Connector ids the owner said their team already uses during onboarding. Descriptive only. */
+    onboardingSystems: string[];
   };
+  /**
+   * Same real billing gate the operator scan paths enforce
+   * (getWorkspaceExecutionEligibility) - exposed here for first-run/state-C
+   * dashboard copy. Never used by any route to authorize an action; it is
+   * descriptive UI state only.
+   */
+  executionEligibility: WorkspaceExecutionEligibility;
   systemStatus: {
     status: "healthy" | "needs_attention" | "setup_incomplete" | "emergency_stop";
     label: string;
@@ -436,7 +447,7 @@ export async function getDashboardOverview(input: {
   const supabase = input.supabase ?? createSupabaseAdmin();
   const workspace = await supabase
     .from("os_workspaces")
-    .select("id,name,plan_tier,billing_status,onboarding_data")
+    .select("id,name,environment,region,plan,plan_tier,billing_status,trial_ends_at,onboarding_data")
     .eq("id", input.workspaceId)
     .single();
   if (workspace.error || !workspace.data) throw new Error(workspace.error?.message || "Workspace not found.");
@@ -463,6 +474,20 @@ export async function getDashboardOverview(input: {
   const selectedKeys: DashboardOperator["key"][] | undefined = selectedPriority === "revenue" || selectedPriority === "client_flow" || selectedPriority === "operations"
     ? [selectedPriority]
     : undefined;
+  const onboardingSystems = Array.isArray(onboardingData.systems)
+    ? onboardingData.systems.filter((system): system is string => typeof system === "string")
+    : [];
+  const eligibilityWorkspace: Workspace = {
+    id: String(workspace.data.id),
+    name: stringValue(workspace.data.name) ?? "Workspace",
+    environment: stringValue(workspace.data.environment) ?? "production",
+    region: stringValue(workspace.data.region) ?? "us",
+    plan: stringValue(workspace.data.plan) ?? "starter",
+    planTier: (stringValue(workspace.data.plan_tier) as Workspace["planTier"]) ?? undefined,
+    billingStatus: (stringValue(workspace.data.billing_status) as Workspace["billingStatus"]) ?? undefined,
+    trialEndsAt: stringValue(workspace.data.trial_ends_at) ?? undefined,
+  };
+  const executionEligibility = getWorkspaceExecutionEligibilityFromWorkspace(eligibilityWorkspace);
   const operators = buildOperators({ approvals, runs, truth, trelloReady, slackReady, operatorKeys: selectedKeys });
   const today = summarizeToday({ approvals, runs, logs });
   const pendingApprovals = approvals.filter((row) => stringValue(row.status) === "pending");
@@ -499,7 +524,9 @@ export async function getDashboardOverview(input: {
       name: stringValue(workspace.data.name) ?? "Workspace",
       planTier: stringValue(workspace.data.plan_tier),
       billingStatus: stringValue(workspace.data.billing_status),
+      onboardingSystems,
     },
+    executionEligibility,
     systemStatus,
     policy: {
       autonomyMode: policy.autonomyMode,
