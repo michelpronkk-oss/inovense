@@ -12,6 +12,7 @@ export type ActivationEligibility = {
 type ActivationState = {
   activated: boolean;
   activatedAt: string | null;
+  deactivatedAt?: string | null;
   updatedAt: string | null;
 } | null;
 
@@ -92,6 +93,10 @@ export function OperatorActivationToggle({
   };
 
   const activated = Boolean(state?.activated);
+  // Distinguishes "never turned on" (ready_to_activate) from "explicitly
+  // turned off after being set up" (paused) - same distinction as
+  // OperatorProductState's "paused" vs "ready_to_activate" (product-state.ts).
+  const wasEverActivated = Boolean(state?.activatedAt || state?.deactivatedAt);
   const blockedReason = !executionEligibility.eligible
     ? executionEligibility.status === "plan_required"
       ? "Choose a plan to let this operator run unattended."
@@ -127,7 +132,7 @@ export function OperatorActivationToggle({
       </button>
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ fontSize: 13, fontWeight: 600 }}>
-          {activated ? "Active — running on schedule" : "Not active"}
+          {activated ? "Active — running on schedule" : wasEverActivated ? "Paused" : "Not active"}
         </div>
         <div style={{ marginTop: 2, fontSize: 12, color: "var(--text-mute)" }}>
           {!configured
@@ -136,7 +141,9 @@ export function OperatorActivationToggle({
               ? blockedReason
               : activated
                 ? "This operator runs its scheduled check automatically. Every risky action still waits for approval."
-                : "Turn on to let this operator run its scheduled check automatically. Manual checks stay available either way."}
+                : wasEverActivated
+                  ? "Auterim will keep your configuration but stop continuous monitoring. Turn back on to resume."
+                  : "Turn on to let this operator run its scheduled check automatically. Manual checks stay available either way."}
         </div>
         {error && <div style={{ marginTop: 4, fontSize: 11.5, color: "#ffaaaa" }}>{error}</div>}
       </div>

@@ -288,11 +288,36 @@ export function OSOverview() {
     );
   }
 
-  // State C messaging: at least one connector is live but the workspace
-  // cannot execute real actions yet (trial not started / plan required /
-  // billing attention / suspended). Surfaced as a reachable banner, not a
-  // full-dashboard takeover - the rest of the dashboard (State B/D) still
-  // renders underneath so configuration work is never blocked by billing.
+  // States B/C/D/F: no real operator is actively running yet. The lifecycle
+  // branch itself is computed server-side (selectDashboardLifecycleState,
+  // from the shared operator product-state model) so the client never
+  // re-derives this precedence - see src/lib/dashboard/lifecycle.ts. Each
+  // branch returns its own compact tree, matching State A's established
+  // pattern: no KPI row, no connector strip, no fabricated zero metrics.
+  if (overview.lifecycleState === "B" || overview.lifecycleState === "C" || overview.lifecycleState === "D" || overview.lifecycleState === "F") {
+    return (
+      <LifecyclePreOperationalState
+        lifecycleState={overview.lifecycleState}
+        overview={overview}
+        greet={greet}
+        firstName={firstName}
+        error={error}
+      />
+    );
+  }
+
+  // State E: at least one operator is actively running (active/enhanced).
+  // This is the normal operational dashboard. A needs-attention/degraded
+  // situation elsewhere in the workspace does not demote this to State F -
+  // it is surfaced as a section within E instead (below), so the rest of the
+  // product is never hidden behind an attention screen.
+  const attentionStates = overview.operatorProductStates.filter((item) => item.state === "needs_attention" || item.degraded);
+
+  // Billing eligibility banner: at least one connector is live and an
+  // operator is actively running (State E), but the workspace itself is not
+  // execution-eligible. In practice this should not happen (an operator only
+  // reaches "active" when eligible), but this stays as a defensive,
+  // non-blocking banner rather than assuming it can never occur.
   const eligibility = overview.executionEligibility;
   const showEligibilityBanner = !eligibility.eligible;
 
@@ -338,6 +363,33 @@ export function OSOverview() {
             <strong style={{ color: "var(--amber)" }}>{eligibility.status === "plan_required" ? "Plan required" : eligibility.status === "billing_attention" ? "Billing needs attention" : "Execution paused"}.</strong> {eligibility.reason} You can still connect systems and configure operators now.
           </div>
           <Link className="btn btn-primary btn-sm" href="/plans" style={{ textDecoration: "none" }}>{eligibility.status === "billing_attention" ? "Update billing" : "Choose a plan"}</Link>
+        </div>
+      )}
+
+      {/* Needs-attention section: surfaced inside the normal operational
+          dashboard rather than replacing it, so an operator that is degraded
+          (optional connector unhealthy) or needs_attention (required
+          connector broke) never hides the rest of the product once
+          something else is actively running. */}
+      {attentionStates.length > 0 && (
+        <div className="p" style={{ borderRadius: 14, background: "rgba(245,194,107,0.05)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.18)" }}>
+          <div className="p-head"><h3>Needs attention</h3><span className="p-meta">{attentionStates.length} operator{attentionStates.length === 1 ? "" : "s"}</span></div>
+          <div style={{ padding: "12px 18px", display: "grid", gap: 10 }}>
+            {attentionStates.map((item) => (
+              <div key={item.operatorKey} style={{ display: "flex", justifyContent: "space-between", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontSize: 12.8, fontWeight: 600 }}>{item.operatorName}</div>
+                  <div style={{ marginTop: 3, fontSize: 12, color: "var(--text-mute)" }}>{item.description}</div>
+                  {item.degraded && item.state !== "needs_attention" && (
+                    <div style={{ marginTop: 3, fontSize: 11.5, color: "var(--text-mute)" }}>
+                      Unavailable: {item.degraded.lostCapabilities.join(", ")}{item.degraded.stillAvailableCapabilities.length ? ` · Still available: ${item.degraded.stillAvailableCapabilities.join(", ")}` : ""}
+                    </div>
+                  )}
+                </div>
+                {item.nextAction && <Link className="btn btn-ghost btn-sm" href={item.nextAction.href} style={{ textDecoration: "none", flexShrink: 0 }}>{item.nextAction.label}</Link>}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -505,6 +557,134 @@ export function OSOverview() {
               </Link>
             );
           })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Dashboard lifecycle states B, C, D, and F. Which branch to render is
+ * decided entirely server-side (overview.lifecycleState, from
+ * selectDashboardLifecycleState) - this component only renders the copy for
+ * whichever one it is handed. No KPI row, connector strip, or fabricated
+ * zero-metric activity feed in any of these states, matching State A's
+ * established pattern.
+ */
+function LifecyclePreOperationalState({
+  lifecycleState,
+  overview,
+  greet,
+  firstName,
+  error,
+}: {
+  lifecycleState: "B" | "C" | "D" | "F";
+  overview: DashboardOverview;
+  greet: string;
+  firstName: string;
+  error: string;
+}) {
+  const states = overview.operatorProductStates;
+  const connectedSystems = overview.connectors.filter((connector) => connector.connected);
+  const readyStates = states.filter((item) => item.state === "ready_to_activate");
+  const planBlockedStates = states.filter((item) => item.state === "plan_required" || item.state === "billing_attention" || item.state === "suspended");
+  const attentionStates = states.filter((item) => item.state === "needs_attention" || item.degraded);
+
+  const copy = {
+    B: { eyebrow: "Understanding your business", title: "Auterim is learning what it can do here.", sub: "Your systems are connected. Connect one more to unlock a ready operator." },
+    C: { eyebrow: "Setup ready", title: "Your setup is ready.", sub: "One or more operators are ready to turn on." },
+    D: { eyebrow: "Ready to deploy", title: "Your setup is complete.", sub: "Start a plan to begin continuous execution." },
+    F: { eyebrow: "Needs attention", title: "A connected system needs attention.", sub: "Reconnect it to resume full operator coverage." },
+  }[lifecycleState];
+
+  return (
+    <div className="os-page dashboard-overview">
+      <div className="os-page-head">
+        <div>
+          <span className="os-greet">Auterim workspace</span>
+          <h1>{greet}, {firstName}.</h1>
+          <div className="os-page-sub">{copy.sub}</div>
+        </div>
+      </div>
+
+      {error && (
+        <div className="dashboard-alert" style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>
+          {error}
+        </div>
+      )}
+
+      <div className="p" style={{ padding: "26px 26px", display: "grid", gap: 16, background: "linear-gradient(112deg, rgba(77,232,225,0.07), rgba(255,255,255,0.012) 45%, rgba(255,255,255,0.01))" }}>
+        <div>
+          <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.09em", textTransform: "uppercase", color: lifecycleState === "F" ? "var(--amber)" : "#64ffd7" }}>{copy.eyebrow}</div>
+          <h2 style={{ marginTop: 10, fontSize: 20, fontWeight: 600, letterSpacing: "-0.02em", maxWidth: 560 }}>{copy.title}</h2>
+        </div>
+
+        {/* State B: what is understood so far + what to connect next. */}
+        {lifecycleState === "B" && (
+          <>
+            <div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-faint)" }}>Connected so far</div>
+              <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {connectedSystems.map((connector) => (
+                  <span key={connector.key} style={{ padding: "7px 11px", borderRadius: 999, background: "rgba(255,255,255,0.03)", boxShadow: "inset 0 0 0 1px var(--line)", fontSize: 12.5 }}>{connector.name}</span>
+                ))}
+              </div>
+            </div>
+            <div style={{ display: "grid", gap: 8 }}>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-faint)" }}>What to connect next</div>
+              {states.map((item) => (
+                <div key={item.operatorKey} style={{ fontSize: 12.5, color: "var(--text-dim)" }}>{item.operatorName}: {item.description}</div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* State C: recommended ready operators + why + activate CTA. */}
+        {lifecycleState === "C" && readyStates.map((item) => (
+          <div key={item.operatorKey} style={{ display: "flex", justifyContent: "space-between", gap: 14, flexWrap: "wrap", alignItems: "center", padding: "12px 14px", borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>{item.operatorName}</div>
+              <div style={{ marginTop: 3, fontSize: 12, color: "var(--text-mute)" }}>{item.description}</div>
+              {item.connectedSystems.length > 0 && <div style={{ marginTop: 3, fontSize: 11.5, color: "var(--text-faint)" }}>Using: {item.connectedSystems.join(", ")}</div>}
+            </div>
+            {item.nextAction && <Link className="btn btn-primary btn-sm" href={item.nextAction.href} style={{ textDecoration: "none", flexShrink: 0 }}>{item.nextAction.label}</Link>}
+          </div>
+        ))}
+
+        {/* State D: ready operators blocked purely by plan/billing. */}
+        {lifecycleState === "D" && planBlockedStates.map((item) => (
+          <div key={item.operatorKey} style={{ display: "flex", justifyContent: "space-between", gap: 14, flexWrap: "wrap", alignItems: "center", padding: "12px 14px", borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>{item.operatorName}</div>
+              <div style={{ marginTop: 3, fontSize: 12, color: "var(--text-mute)" }}>{item.description}</div>
+              {item.connectedSystems.length > 0 && <div style={{ marginTop: 3, fontSize: 11.5, color: "var(--text-faint)" }}>Using: {item.connectedSystems.join(", ")}</div>}
+            </div>
+            {item.nextAction && <Link className="btn btn-primary btn-sm" href={item.nextAction.href} style={{ textDecoration: "none", flexShrink: 0 }}>{item.nextAction.label}</Link>}
+          </div>
+        ))}
+
+        {/* State F: which connector needs attention, affected operator(s), lost vs still-available capability. */}
+        {lifecycleState === "F" && attentionStates.map((item) => (
+          <div key={item.operatorKey} style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(245,194,107,0.05)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.18)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{item.operatorName}</div>
+                <div style={{ marginTop: 3, fontSize: 12, color: "var(--text-mute)" }}>{item.description}</div>
+                {item.degraded && (
+                  <div style={{ marginTop: 5, fontSize: 11.5, color: "var(--text-mute)" }}>
+                    {item.degraded.lostCapabilities.length > 0 && <>Unavailable: {item.degraded.lostCapabilities.join(", ")}<br /></>}
+                    {item.degraded.stillAvailableCapabilities.length > 0 && <>Still available: {item.degraded.stillAvailableCapabilities.join(", ")}</>}
+                  </div>
+                )}
+              </div>
+              {item.nextAction && <Link className="btn btn-primary btn-sm" href={item.nextAction.href} style={{ textDecoration: "none", flexShrink: 0 }}>{item.nextAction.label}</Link>}
+            </div>
+          </div>
+        ))}
+
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <Link className="btn btn-ghost btn-sm" href="/connectors">Connect systems</Link>
+          <Link className="btn btn-ghost btn-sm" href="/agents">Explore operators</Link>
         </div>
       </div>
     </div>

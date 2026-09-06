@@ -7,6 +7,7 @@
 
 import {
   getCapabilitiesForConnectors,
+  getConnectorsForCapability,
   type Capability,
 } from "@/lib/connectors/capabilities";
 import {
@@ -26,7 +27,14 @@ export const OPERATOR_CONNECTOR_REQUIREMENTS: Record<OperatorKey, OperatorConnec
   revenue: {
     operatorKey: "revenue",
     required: ["email.read", "email.send_after_approval"],
-    optional: ["crm.contacts.write", "crm.deals.write", "calendar.events.read"],
+    // crm.contacts.read/crm.deals.read are what Salesforce actually provides
+    // today (read-only CRM context - see Salesforce's real capabilities in
+    // connectors/registry.ts and "Add Salesforce read-context capability to
+    // Revenue Operator"); declared here so the connector-impact model
+    // (getConnectorImpactForOperators) and optional-upsell suggestions
+    // correctly recognize Salesforce as a real Revenue enhancement, not an
+    // untracked connector.
+    optional: ["crm.contacts.write", "crm.deals.write", "crm.contacts.read", "crm.deals.read", "calendar.events.read"],
   },
   client_flow: {
     operatorKey: "client_flow",
@@ -207,6 +215,107 @@ export function getOptionalUpsellConnectors(
 /** Convenience: connector definitions an operator can use, from the catalog. */
 export function getOperatorCatalogConnectors(operatorKey: OperatorKey): ConnectorDefinition[] {
   return listConnectors().filter((def) => def.usedByOperators.includes(operatorKey));
+}
+
+export type RequiredCapabilityHealth = "ok" | "unhealthy" | "missing";
+
+/**
+ * Health of an operator's hard-required capability set against real
+ * connector truth. Distinguishes "never connected" (-> needs_setup) from
+ * "was connected, now unhealthy" (-> needs_attention), which a plain
+ * connected/not-connected boolean cannot - see
+ * src/lib/operators/product-state.ts, the one shared consumer of this
+ * distinction. `truth` only needs connectorKey + a coarse status string, so
+ * any real SafeConnectorTruth[]-shaped array works without a direct import
+ * of that (Supabase-backed) module here.
+ */
+export function getRequiredConnectorHealth(
+  operatorKey: string,
+  truth: Array<{ connectorKey: string; status: string }>,
+): RequiredCapabilityHealth {
+  const requirement = getOperatorConnectorRequirement(operatorKey);
+  if (!requirement || requirement.required.length === 0) return "ok";
+
+  let anyHealthy = false;
+  let anyUnhealthy = false;
+  for (const capability of requirement.required) {
+    for (const def of getConnectorsForCapability(capability)) {
+      const row = truth.find((item) => item.connectorKey === def.connectorKey);
+      if (!row) continue;
+      if (row.status === "connected" || row.status === "healthy") anyHealthy = true;
+      else if (row.status === "reconnect_required" || row.status === "error") anyUnhealthy = true;
+    }
+  }
+  if (anyHealthy) return "ok";
+  if (anyUnhealthy) return "unhealthy";
+  return "missing";
+}
+
+export type OperatorConnectorImpact = {
+  operatorKey: OperatorKey;
+  impact: "hard_requirement" | "enhancement";
+  lostCapabilities: Capability[];
+  stillAvailableCapabilities: Capability[];
+};
+
+/**
+ * What happens to each real operator if `connectorKey` becomes unhealthy,
+ * given the workspace's other currently-connected connectors (the connector
+ * in question must not already be included in
+ * `connectedConnectorKeysWithoutThisConnector`). Diffs each operator's
+ * declared capability readiness with vs without this one connector added
+ * back as healthy - a direct extension of getOperatorConnectorReadiness
+ * above, not a new parallel capability system. Used by the connectors page
+ * (degraded connector rows), operator detail pages (the "degraded" section),
+ * and dashboard State F.
+ */
+export function getConnectorImpactForOperators(input: {
+  connectorKey: string;
+  connectedConnectorKeysWithoutThisConnector: string[];
+}): OperatorConnectorImpact[] {
+  const currentKeys = input.connectedConnectorKeysWithoutThisConnector.filter((key) => key !== input.connectorKey);
+  const healthyKeys = [...currentKeys, input.connectorKey];
+
+  const impacts: OperatorConnectorImpact[] = [];
+  for (const operatorKey of Object.keys(OPERATOR_CONNECTOR_REQUIREMENTS) as OperatorKey[]) {
+    const requirement = OPERATOR_CONNECTOR_REQUIREMENTS[operatorKey];
+    const withThisHealthy = getOperatorConnectorReadiness(operatorKey, healthyKeys);
+    const withoutThisConnector = getOperatorConnectorReadiness(operatorKey, currentKeys);
+    if (!withThisHealthy || !withoutThisConnector) continue;
+
+    const lostRequired = withThisHealthy.satisfiedRequired.filter((capability) => !withoutThisConnector.satisfiedRequired.includes(capability));
+    const lostOptional = withThisHealthy.satisfiedOptional.filter((capability) => !withoutThisConnector.satisfiedOptional.includes(capability));
+    if (lostRequired.length === 0 && lostOptional.length === 0) continue;
+
+    const stillAvailable = [...requirement.required, ...requirement.optional].filter((capability) => withoutThisConnector.connectedCapabilities.includes(capability));
+
+    impacts.push({
+      operatorKey,
+      impact: lostRequired.length > 0 ? "hard_requirement" : "enhancement",
+      lostCapabilities: [...lostRequired, ...lostOptional],
+      stillAvailableCapabilities: stillAvailable,
+    });
+  }
+  return impacts;
+}
+
+/**
+ * Convenience wrapper: takes the workspace's real connected-connector keys
+ * (or truth rows) directly and excludes `connectorKey` itself before diffing
+ * - the shape the connectors page / dashboard already have on hand.
+ */
+export function getWorkspaceConnectorImpact(input: {
+  connectorKey: string;
+  workspaceConnectorTruth: WorkspaceConnectorTruthInput;
+}): { connectorKey: string; affectedOperators: OperatorConnectorImpact[] } {
+  const connectedKeys = normalizeConnectedKeys(input.workspaceConnectorTruth).filter((key) => key !== input.connectorKey);
+  return {
+    connectorKey: input.connectorKey,
+    affectedOperators: getConnectorImpactForOperators({
+      connectorKey: input.connectorKey,
+      connectedConnectorKeysWithoutThisConnector: connectedKeys,
+    }),
+  };
 }
 
 // Re-export for callers that only import this module.

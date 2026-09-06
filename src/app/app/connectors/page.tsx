@@ -22,6 +22,10 @@ import { connectorDefinitionToSeedConnector } from "@/lib/os/seed";
 import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-grid";
 import { getUnconnectedOnboardingSystems, unlockMessageForConnector } from "@/lib/operators/unlock-copy";
 import { humanizeOperatorActions } from "@/lib/operators/action-labels";
+import { humanizeCapabilities } from "@/lib/operators/capability-labels";
+import { getWorkspaceConnectorImpact } from "@/lib/operators/connector-requirements";
+import { getOperatorDefinition } from "@/lib/operators/registry";
+import { getRealWorkspaceSuggestedWorkflows } from "@/lib/os/workflow-recommendations";
 
 type SlackChannel = {
   id: string;
@@ -359,12 +363,38 @@ export default function ConnectorsPage() {
     return Array.from(new Set(actions));
   }, [operatorReadiness]);
 
+  // Real-connector-only workflow suggestions (see getRealWorkspaceSuggestedWorkflows,
+  // src/lib/os/workflow-recommendations.ts) - never the mock/demo engine.
+  const suggestedWorkflows = useMemo(() => getRealWorkspaceSuggestedWorkflows({
+    connectedConnectorKeys,
+    operatorReadiness: operatorReadiness.map((r) => ({ operatorKey: r.operatorKey, ready: r.status === "ready" || r.status === "draft_only" })),
+  }), [connectedConnectorKeys, operatorReadiness]);
+
+  // Connectors that are really connected but currently unhealthy (reconnect
+  // required / connection error) - distinct from "never connected". Drives
+  // the "Needs attention" degraded-connector section below.
+  const degradedConnectors = useMemo(
+    () => state.connectors.filter((c) => isRealConnectedConnector(c) && (c.health !== "healthy" || c.records.includes("Reconnect required"))),
+    [state.connectors]
+  );
+  const degradedConnectorImpacts = useMemo(() => degradedConnectors.map((c) => {
+    const connectorKey = normalizeConnectorKey(c.id);
+    const impact = getWorkspaceConnectorImpact({ connectorKey, workspaceConnectorTruth: connectedConnectorKeys });
+    return { connector: c, connectorKey, impact };
+  }).filter((entry) => entry.impact.affectedOperators.length > 0), [degradedConnectors, connectedConnectorKeys]);
+
   useEffect(() => {
     const connected = searchParams.get("connected");
     if (!connected) return;
     // Real capability delta, not per-connector hardcoded prose - see
-    // unlockMessageForConnector (src/lib/operators/unlock-copy.ts).
-    setFeedback(unlockMessageForConnector({ connectorKey: connected, connectedConnectorKeys }));
+    // unlockMessageForConnector (src/lib/operators/unlock-copy.ts). Passing
+    // real operatorReadiness lets it also mention a workflow suggestion that
+    // genuinely newly became available - never shown otherwise.
+    setFeedback(unlockMessageForConnector({
+      connectorKey: connected,
+      connectedConnectorKeys,
+      operatorReadiness: operatorReadiness.map((r) => ({ operatorKey: r.operatorKey, ready: r.status === "ready" || r.status === "draft_only" })),
+    }));
     router.replace("/connectors");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -800,6 +830,41 @@ export default function ConnectorsPage() {
         </div>
       )}
 
+      {/* Degraded connectors: a connector that is really connected but
+          currently unhealthy, and what that actually costs each real
+          operator - never destroys saved configuration, purely descriptive.
+          See getWorkspaceConnectorImpact (connector-requirements.ts). */}
+      {degradedConnectorImpacts.length > 0 && (
+        <div className="p" style={{ borderRadius: 16, background: "rgba(245,194,107,0.045)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.2)" }}>
+          <div className="p-head">
+            <h3>Needs attention</h3>
+            <div className="p-meta">{degradedConnectorImpacts.length} connector{degradedConnectorImpacts.length === 1 ? "" : "s"}</div>
+          </div>
+          <div style={{ padding: "14px 18px", display: "grid", gap: 14 }}>
+            {degradedConnectorImpacts.map(({ connector, impact }) => (
+              <div key={connector.id}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <div className="connector-brand-logo" style={{ width: 24, height: 24, borderRadius: 7 }}>{IntegrationLogos[connector.name] ?? <span style={{ color: connector.color, fontSize: 9, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{connector.letter}</span>}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{connector.name}</div>
+                  <span style={{ fontSize: 11, color: "var(--amber)" }}>Reconnect required</span>
+                </div>
+                <div style={{ display: "grid", gap: 6, marginLeft: 32 }}>
+                  {impact.affectedOperators.map((entry) => (
+                    <div key={entry.operatorKey} style={{ fontSize: 12, color: "var(--text-dim)" }}>
+                      <strong>{getOperatorDefinition(entry.operatorKey)?.name ?? entry.operatorKey}</strong>
+                      {entry.impact === "hard_requirement"
+                        ? <> — needs attention: reconnect to resume monitoring.</>
+                        : <> — {humanizeCapabilities(entry.lostCapabilities).join(", ")} unavailable{entry.stillAvailableCapabilities.length ? `, still available: ${humanizeCapabilities(entry.stillAvailableCapabilities).join(", ")}` : ""}.</>}
+                    </div>
+                  ))}
+                </div>
+                <button className="btn btn-primary btn-sm" style={{ marginTop: 8, marginLeft: 32 }} onClick={() => setDrawerConnectorId(connector.id)}>Reconnect {connector.name}</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Real, capability-derived business outcomes - only ever populated from
           operators that can actually run today (see whatAuterimCanDoNow). */}
       {whatAuterimCanDoNow.length > 0 && (
@@ -813,6 +878,29 @@ export default function ConnectorsPage() {
               <div key={item} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--text-dim)" }}>
                 <span style={{ color: "var(--cyan)", fontSize: 13 }}>✓</span>
                 <span style={{ textTransform: "capitalize" }}>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Suggested workflows: real-connector-only combos (see
+          getRealWorkspaceSuggestedWorkflows). Never executes a workflow
+          directly - only routes to the relevant operator's detail page to
+          inspect/configure/activate. */}
+      {suggestedWorkflows.length > 0 && (
+        <div className="p" style={{ borderRadius: 16 }}>
+          <div className="p-head">
+            <h3>Suggested workflows</h3>
+            <div className="p-meta">Backed by your connected systems</div>
+          </div>
+          <div style={{ padding: "14px 18px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 10 }}>
+            {suggestedWorkflows.map((workflow) => (
+              <div key={workflow.id} style={{ padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 6 }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{workflow.title}</div>
+                <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>{workflow.description}</div>
+                <div style={{ fontSize: 11, color: "var(--text-mute)" }}>Uses: {workflow.requiredConnectors.map((key) => getConnectorDefinition(key)?.displayName ?? key).join(", ")} · {getOperatorDefinition(workflow.operatorKey)?.name ?? workflow.operatorKey}</div>
+                <Link href={workflow.href} className="lnk-open" style={{ marginTop: 4 }}>View setup</Link>
               </div>
             ))}
           </div>

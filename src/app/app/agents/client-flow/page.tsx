@@ -6,6 +6,7 @@ import { useOS } from "@/lib/os/app-provider";
 import { getConnectorDefinition } from "@/lib/connectors/registry";
 import { humanizeOperatorActions } from "@/lib/operators/action-labels";
 import { OperatorActivationToggle, type ActivationEligibility } from "@/components/operators/activation-toggle";
+import { OperatorDegradedNotice } from "@/components/operators/degraded-notice";
 
 type OperatorReadiness = {
   operatorKey: string;
@@ -573,6 +574,15 @@ export default function ClientFlowOperatorPage() {
           </section>
         );
       })()}
+
+      {state.workspace.id && (
+        <OperatorDegradedNotice
+          operatorKey="client_flow"
+          workspaceId={state.workspace.id}
+          userId={state.currentUser.id}
+          userEmail={state.currentUser.email}
+        />
+      )}
 
       {/* Advanced details */}
       <details className="p" style={{ gap: 0 }}>

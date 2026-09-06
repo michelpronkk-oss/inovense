@@ -7,6 +7,7 @@ import { getEntitlements } from "@/lib/os/entitlements";
 import { getConnectorDefinition } from "@/lib/connectors/registry";
 import { humanizeOperatorActions } from "@/lib/operators/action-labels";
 import { OperatorActivationToggle, type ActivationEligibility } from "@/components/operators/activation-toggle";
+import { OperatorDegradedNotice } from "@/components/operators/degraded-notice";
 
 type OperatorReadiness = {
   operatorKey: string;
@@ -432,6 +433,15 @@ export default function RevenueOperatorPage() {
             </section>
           );
         })()}
+
+        {state.workspace.id && (
+          <OperatorDegradedNotice
+            operatorKey="revenue"
+            workspaceId={state.workspace.id}
+            userId={state.currentUser.id}
+            userEmail={state.currentUser.email}
+          />
+        )}
 
         <details className="p" style={{ marginTop: 14, padding: 0 }} open={advancedOpen} onToggle={(event) => setAdvancedOpen((event.currentTarget as HTMLDetailsElement).open)}>
           <summary style={{ cursor: "pointer", listStyle: "none", padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontSize: 13, fontWeight: 540 }}>Prepare a one-off follow-up</span><span style={{ color: "var(--text-faint)", fontFamily: "var(--font-mono)", fontSize: 10 }}>Advanced</span></summary>

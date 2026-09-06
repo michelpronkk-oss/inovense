@@ -21,6 +21,10 @@
     "test:app-loading": "node tests/app-loading-regression.mjs",
     "test:capability-billing-gating": "node tests/capability-billing-gating-smoke.mjs",
     "test:product-journey": "node tests/product-journey-pass2-smoke.mjs",
+    "test:operator-product-state": "node tests/operator-product-state-smoke.mjs",
+    "test:connector-impact": "node tests/connector-impact-smoke.mjs",
+    "test:workflow-recommendations": "node tests/workflow-recommendations-real-smoke.mjs",
+    "test:dashboard-lifecycle": "node tests/dashboard-lifecycle-smoke.mjs",
     "trigger:dev": "npx trigger.dev@latest dev",
     "trigger:deploy": "npx trigger.dev@latest deploy"
   },

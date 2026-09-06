@@ -8,6 +8,7 @@
 import { getConnectorDefinition, listConnectors } from "@/lib/connectors/registry";
 import { getOperatorDefinition, OPERATOR_REGISTRY, type OperatorKey } from "@/lib/operators/registry";
 import { getOperatorConnectorReadiness } from "@/lib/operators/connector-requirements";
+import { getRealWorkspaceSuggestedWorkflows, type RealWorkflowSuggestion } from "@/lib/os/workflow-recommendations";
 
 export type OperatorUnlockDelta = {
   operatorKey: OperatorKey;
@@ -51,19 +52,51 @@ export function getUnlockDeltaForConnector(input: {
 }
 
 /**
+ * Real workflow suggestion (getRealWorkspaceSuggestedWorkflows,
+ * workflow-recommendations.ts) that only became available because of this
+ * connection - a before/after diff over the exact same real connector-key
+ * set unlockMessageForConnector already builds. Only ever returns a
+ * suggestion that is genuinely new; never fabricated.
+ */
+function getNewlyAvailableWorkflowSuggestion(input: {
+  connectorKey: string;
+  connectedConnectorKeys: string[];
+  operatorReadiness: Array<{ operatorKey: string; ready: boolean }>;
+}): RealWorkflowSuggestion | null {
+  const before = input.connectedConnectorKeys.filter((key) => key !== input.connectorKey);
+  const after = before.includes(input.connectorKey) ? before : [...before, input.connectorKey];
+  const beforeIds = new Set(
+    getRealWorkspaceSuggestedWorkflows({ connectedConnectorKeys: before, operatorReadiness: input.operatorReadiness }).map((suggestion) => suggestion.id),
+  );
+  const afterSuggestions = getRealWorkspaceSuggestedWorkflows({ connectedConnectorKeys: after, operatorReadiness: input.operatorReadiness });
+  return afterSuggestions.find((suggestion) => !beforeIds.has(suggestion.id)) ?? null;
+}
+
+/**
  * Human copy for a just-completed connector OAuth/managed-auth connection,
  * derived entirely from the real capability deltas above. Falls back to a
  * generic confirmation when the connector does not change any operator's
  * declared readiness (still true, still not fabricated).
+ *
+ * `operatorReadiness` is optional: when the caller has real per-operator
+ * readiness on hand (ready = hard capability requirements met), the message
+ * may also mention a real workflow suggestion that newly became available -
+ * only when one genuinely did (see getNewlyAvailableWorkflowSuggestion).
+ * Never shown when `operatorReadiness` is omitted or nothing new unlocked.
  */
 export function unlockMessageForConnector(input: {
   connectorKey: string;
   connectedConnectorKeys: string[];
+  operatorReadiness?: Array<{ operatorKey: string; ready: boolean }>;
 }): string {
   const def = getConnectorDefinition(input.connectorKey);
   const displayName = def?.displayName ?? input.connectorKey;
   const deltas = getUnlockDeltaForConnector(input);
-  if (deltas.length === 0) return `${displayName} connected.`;
+  const newWorkflow = input.operatorReadiness
+    ? getNewlyAvailableWorkflowSuggestion({ ...input, operatorReadiness: input.operatorReadiness })
+    : null;
+
+  if (deltas.length === 0 && !newWorkflow) return `${displayName} connected.`;
 
   const readyNow = deltas.filter((delta) => delta.becameReady);
   const enriched = deltas.filter((delta) => !delta.becameReady && delta.newlySatisfiedOptionalCount > 0);
@@ -75,7 +108,9 @@ export function unlockMessageForConnector(input: {
   if (enriched.length) {
     parts.push(`${enriched.map((delta) => delta.operatorName).join(", ")} gained added context`);
   }
-  return `${displayName} connected. ${parts.join(" and ")}.`;
+
+  const summary = parts.length ? `${displayName} connected. ${parts.join(" and ")}.` : `${displayName} connected.`;
+  return newWorkflow ? `${summary} Suggested workflow: ${newWorkflow.title}.` : summary;
 }
 
 /** Real connector ids the workspace said it uses during onboarding but has not connected yet, ordered as onboarding recorded them. */

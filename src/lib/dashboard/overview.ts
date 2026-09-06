@@ -6,6 +6,8 @@ import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { getWorkspaceExecutionEligibilityFromWorkspace, type WorkspaceExecutionEligibility } from "@/lib/os/execution-eligibility";
 import type { Workspace } from "@/lib/os/types";
+import { getWorkspaceOperatorProductStates, type OperatorProductStateResult } from "@/lib/operators/product-state";
+import { selectDashboardLifecycleState, type DashboardLifecycleState } from "@/lib/dashboard/lifecycle";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
@@ -73,6 +75,16 @@ export type DashboardOverview = {
   connectors: DashboardConnector[];
   activity: DashboardActivity[];
   nextBestActions: DashboardNextAction[];
+  /**
+   * Real, shared product state per real operator (revenue/client_flow/operations)
+   * from src/lib/operators/product-state.ts - the single source of truth for
+   * dashboard lifecycle states B-F, never re-derived from `operators` above
+   * (which only carries the older ready/needs_setup/monitoring vocabulary
+   * used by the State-E operator cards).
+   */
+  operatorProductStates: OperatorProductStateResult[];
+  /** Precomputed via selectDashboardLifecycleState so the client component never re-derives the precedence itself. */
+  lifecycleState: DashboardLifecycleState;
   lastUpdatedAt: string;
 };
 
@@ -452,13 +464,16 @@ export async function getDashboardOverview(input: {
     .single();
   if (workspace.error || !workspace.data) throw new Error(workspace.error?.message || "Workspace not found.");
 
-  const [truth, policy, workspaceSettings, approvalsRes, runsRes, logsRes] = await Promise.all([
+  const [truth, policy, workspaceSettings, approvalsRes, runsRes, logsRes, operatorProductStates] = await Promise.all([
     getConnectorTruth({ workspaceId: input.workspaceId, supabase }),
     loadPolicyWorkspaceSettings({ supabase, workspaceId: input.workspaceId }),
     loadWorkspacePolicySettings({ supabase, workspaceId: input.workspaceId }),
     supabase.from("os_approvals").select("id,workspace_id,type,title,status,created_at,resolved_at,agent_id,run_id,continuation_payload,policy_reason").eq("workspace_id", input.workspaceId).order("created_at", { ascending: false }).limit(150),
     supabase.from("os_operator_runs").select("id,workspace_id,operator_key,status,trigger_type,created_at,completed_at,output,approval_id").eq("workspace_id", input.workspaceId).order("created_at", { ascending: false }).limit(200),
     supabase.from("os_operator_run_logs").select("*").eq("workspace_id", input.workspaceId).order("created_at", { ascending: false }).limit(200),
+    // Single shared operator product-state model (product-state.ts) - drives
+    // dashboard lifecycle states B-F. Never re-derived locally here.
+    getWorkspaceOperatorProductStates({ workspaceId: input.workspaceId, supabase }),
   ]);
 
   const approvals = approvalsRes.error ? [] : (approvalsRes.data ?? []).map((row) => row as Row);
@@ -518,6 +533,12 @@ export async function getDashboardOverview(input: {
     .sort((a, b) => new Date(b.time ?? 0).getTime() - new Date(a.time ?? 0).getTime())
     .slice(0, 12);
 
+  const healthyConnectorCount = connectors.filter((connector) => connector.connected).length;
+  const lifecycleState = selectDashboardLifecycleState({
+    healthyConnectorCount,
+    operatorStates: operatorProductStates.map((item) => ({ state: item.state, degraded: item.degraded })),
+  });
+
   return {
     workspace: {
       id: String(workspace.data.id),
@@ -559,6 +580,8 @@ export async function getDashboardOverview(input: {
     operators,
     connectors,
     activity,
+    operatorProductStates,
+    lifecycleState,
     nextBestActions: deriveNextBestActions({
       pendingApprovals: pendingApprovals.length,
       connectors,

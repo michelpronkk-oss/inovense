@@ -256,3 +256,117 @@ export function installWorkflowFromSuggestion(state: OSState, suggestion: Sugges
     createdAt: new Date().toISOString(),
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Real-workspace workflow suggestions (Pass 2B).
+//
+// getSuggestedWorkflows(state) above operates on the older mock/demo OSState
+// shape and references several aspirational connectors that are not real in
+// this product (pipedrive, airtable, teams, notion, google-drive, confluence,
+// stripe, shopify, google-calendar, outlook-calendar, calendly - only gmail,
+// microsoft, hubspot, salesforce, trello, and slack are real). It is left
+// completely untouched here - src/app/app/workflows/page.tsx and
+// src/lib/os/app-provider.tsx keep calling it exactly as before.
+//
+// This section is a real-data ADAPTER, not a second recommendation engine:
+// it defines its own small, real-connector-only suggestion pool (no
+// installStatus/missingRequirements/confidence-sorting machinery - that
+// mock-engine complexity is not needed here since every entry is either
+// fully real-eligible or hidden) and filters it against real, healthy
+// connector truth and real per-operator readiness. The first entry
+// intentionally mirrors "suggest-inbound-revenue-operator"'s title/intent
+// above (same real Gmail/Microsoft 365 + CRM -> Revenue follow-up combo) -
+// duplicated as a real-connector-only definition here rather than having
+// getSuggestedWorkflows() reference this module, because touching that
+// function's body at all was explicitly out of scope for this pass.
+
+export type RealOperatorKey = "revenue" | "client_flow" | "operations";
+
+type RealWorkflowSuggestionDefinition = {
+  id: string;
+  title: string;
+  description: string;
+  operatorKey: RealOperatorKey;
+  /** Each inner array is an OR-group (any one connector satisfies it); all groups must be satisfied (AND) for the suggestion to be real-eligible. */
+  requiredConnectorGroups: string[][];
+};
+
+const REAL_WORKFLOW_SUGGESTION_DEFINITIONS: RealWorkflowSuggestionDefinition[] = [
+  {
+    id: "real-inbound-revenue-followup",
+    title: "Inbound Revenue Operator",
+    description: "Qualify inbound leads from your inbox, draft a personalized follow-up, and update CRM context after approval.",
+    operatorKey: "revenue",
+    requiredConnectorGroups: [["gmail", "microsoft"], ["hubspot", "salesforce"]],
+  },
+  {
+    id: "real-operations-trello-slack-escalation",
+    title: "Operations escalation workflow",
+    description: "When a Trello card stalls or is overdue, prepare an internal Slack alert for the team to review.",
+    operatorKey: "operations",
+    requiredConnectorGroups: [["trello"], ["slack"]],
+  },
+  {
+    id: "real-client-flow-email-trello-delivery",
+    title: "Client Flow delivery task workflow",
+    description: "When a client email needs follow-through, prepare a Trello delivery task alongside the approval-gated reply draft.",
+    operatorKey: "client_flow",
+    requiredConnectorGroups: [["gmail", "microsoft"], ["trello"]],
+  },
+];
+
+export type RealWorkflowSuggestion = {
+  id: string;
+  title: string;
+  description: string;
+  operatorKey: RealOperatorKey;
+  /** The specific real, currently-healthy connectors that satisfy this suggestion in this workspace. */
+  requiredConnectors: string[];
+  /** Always routes to the operator's detail page to inspect/configure/activate - this adapter never executes a workflow directly. */
+  href: string;
+};
+
+function operatorHref(operatorKey: RealOperatorKey): string {
+  return `/agents/${operatorKey === "client_flow" ? "client-flow" : operatorKey}`;
+}
+
+/**
+ * Real-data adapter over REAL_WORKFLOW_SUGGESTION_DEFINITIONS: only surfaces
+ * a suggestion when every required-connector group has at least one real,
+ * currently-healthy connector AND the suggestion's operator has real,
+ * healthy readiness for its hard capability requirements (never
+ * state.agents/mock status, never a connector that exists only in the
+ * catalog as coming_soon/planned).
+ */
+export function getRealWorkspaceSuggestedWorkflows(input: {
+  /** Real, currently-healthy/connected connector keys only (e.g. from getConnectorTruth, status "connected"/"healthy"). */
+  connectedConnectorKeys: string[];
+  /** Real per-operator readiness - true only when that operator's hard capability requirements are actually met right now. */
+  operatorReadiness: Array<{ operatorKey: string; ready: boolean }>;
+}): RealWorkflowSuggestion[] {
+  const connected = new Set(input.connectedConnectorKeys);
+  const readyOperators = new Set(input.operatorReadiness.filter((item) => item.ready).map((item) => item.operatorKey));
+
+  const suggestions: RealWorkflowSuggestion[] = [];
+  for (const def of REAL_WORKFLOW_SUGGESTION_DEFINITIONS) {
+    if (!readyOperators.has(def.operatorKey)) continue;
+
+    const matchedConnectors: string[] = [];
+    const allGroupsSatisfied = def.requiredConnectorGroups.every((group) => {
+      const satisfied = group.filter((connectorKey) => connected.has(connectorKey));
+      matchedConnectors.push(...satisfied);
+      return satisfied.length > 0;
+    });
+    if (!allGroupsSatisfied) continue;
+
+    suggestions.push({
+      id: def.id,
+      title: def.title,
+      description: def.description,
+      operatorKey: def.operatorKey,
+      requiredConnectors: matchedConnectors,
+      href: operatorHref(def.operatorKey),
+    });
+  }
+  return suggestions;
+}

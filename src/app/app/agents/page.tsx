@@ -13,6 +13,24 @@ type OperatorReadiness = {
   reason: string;
 };
 
+// Mirrors OperatorProductStateResult (src/lib/operators/product-state.ts) -
+// the ONE shared server-computed state for the three real operators. This
+// page never re-derives readiness/activation/connector-truth logic itself;
+// it only renders whatever the shared API already decided.
+type ProductState = {
+  operatorKey: string;
+  operatorName: string;
+  state: "needs_setup" | "needs_attention" | "ready_to_activate" | "plan_required" | "billing_attention" | "suspended" | "paused" | "active" | "enhanced";
+  label: string;
+  description: string;
+  connectedSystems: string[];
+  availableNow: string[];
+  nextAction: { label: string; href: string } | null;
+  degraded: { unhealthyConnectors: string[]; lostCapabilities: string[]; stillAvailableCapabilities: string[] } | null;
+};
+
+const RUNNING_PRODUCT_STATES = new Set(["active", "enhanced", "paused"]);
+
 type AgentStatus = "configured" | "available" | "upgrade" | "coming";
 
 const HREF_BY_KEY: Record<string, string> = {
@@ -63,14 +81,27 @@ type CardModel = {
   outcome?: string;
   /** Real readiness reason (readiness.ts) - only set when the operator can actually run today. */
   readyReason?: string;
+  /** Real shared product state (product-state.ts) - set only for the three real operators (revenue/client_flow/operations). When present, this is the single source of truth for this card's label/foot/connected-systems/next-action; readyReason/needsSetup above are not used. */
+  productState?: ProductState;
 };
 
 function AgentCard({ model }: { model: CardModel }) {
-  const { op, status, href, needsSetup, currentTask, connectedTools, outcome, readyReason } = model;
+  const { op, status, href, needsSetup, currentTask, connectedTools, outcome, readyReason, productState } = model;
   const dim = status === "upgrade" || status === "coming";
-  const statusLabel = status === "configured" ? "Configured" : status === "available" ? (readyReason ? "Ready to activate" : "Available") : status === "upgrade" ? "Upgrade" : "Coming next";
+  const running = Boolean(productState && RUNNING_PRODUCT_STATES.has(productState.state));
+  const statusLabel = productState
+    ? productState.label
+    : status === "configured" ? "Configured" : status === "available" ? (readyReason ? "Ready to activate" : "Available") : status === "upgrade" ? "Upgrade" : "Coming next";
 
-  const foot = status === "configured"
+  const attentionState = productState?.state === "needs_attention" || productState?.state === "plan_required" || productState?.state === "billing_attention" || productState?.state === "suspended";
+
+  const foot = productState
+    ? (attentionState
+      ? <span className="ag-ready warn"><span className="rd" /> {productState.description}</span>
+      : running
+        ? <span className={`ag-ready ${productState.state === "paused" ? "warn" : "on"}`}><span className="rd" /> {productState.description}</span>
+        : <span className="ag-ready"><span className="rd" /> {productState.description}</span>)
+    : status === "configured"
     ? (needsSetup
       ? <span className="ag-ready warn"><span className="rd" /> Needs setup</span>
       : <span className="ag-ready on"><span className="rd" /> Monitoring</span>)
@@ -82,7 +113,9 @@ function AgentCard({ model }: { model: CardModel }) {
       ? <span className="ag-ready"><Lock /> Plan upgrade</span>
       : <span className="ag-ready"><Lock /> On the roadmap</span>;
 
-  const openEl = (status === "configured" || status === "available") && href
+  const openEl = productState?.nextAction
+    ? <Link className="ag-open" href={productState.nextAction.href}>{productState.nextAction.label} <Arrow /></Link>
+    : (status === "configured" || status === "available") && href
     ? <Link className="ag-open" href={href}>Open operator <Arrow /></Link>
     : <span className="ag-open muted">View details <Arrow /></span>;
 
@@ -99,11 +132,19 @@ function AgentCard({ model }: { model: CardModel }) {
 
       <div className="ag-mission">{op.mission}</div>
 
-      {status === "available" && readyReason && (
+      {!productState && status === "available" && readyReason && (
         <div style={{ fontSize: 11.5, color: "var(--text-mute)", marginTop: -6 }}>Because: {readyReason}</div>
       )}
 
-      {status === "configured" && (
+      {productState && (
+        <div className="ag-operating-context">
+          <div><span>Connected systems</span><strong>{productState.connectedSystems.length ? productState.connectedSystems.join(" · ") : "None yet"}</strong></div>
+          <div><span>Can do now</span><strong>{productState.availableNow.length ? productState.availableNow.join(" · ") : "Nothing yet"}</strong></div>
+          {productState.degraded && <div><span>Degraded</span><strong>Unavailable: {productState.degraded.lostCapabilities.join(", ")}</strong></div>}
+        </div>
+      )}
+
+      {!productState && status === "configured" && (
         <div className="ag-operating-context">
           <div><span>Now</span><strong>{currentTask || "Monitoring workspace signals"}</strong></div>
           <div><span>Connected systems</span><strong>{connectedTools?.length ? connectedTools.join(" · ") : "No tools connected"}</strong></div>
@@ -122,6 +163,7 @@ function AgentCard({ model }: { model: CardModel }) {
 export default function AgentsRegistryPage() {
   const { state } = useOS();
   const [readiness, setReadiness] = useState<OperatorReadiness[]>([]);
+  const [productStates, setProductStates] = useState<ProductState[]>([]);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "expanding">("all");
   const [showAllExpanding, setShowAllExpanding] = useState(false);
@@ -136,10 +178,15 @@ export default function AgentsRegistryPage() {
     if (!state.workspace.id) return;
     setError("");
     try {
-      const res = await fetch(`/api/operators/readiness?${identityParams.toString()}`, { cache: "no-store" });
-      const json = await res.json().catch(() => ({})) as { readiness?: OperatorReadiness[]; error?: string };
-      if (!res.ok) throw new Error(json.error || "Could not load operator readiness.");
+      const [readinessRes, productStateRes] = await Promise.all([
+        fetch(`/api/operators/readiness?${identityParams.toString()}`, { cache: "no-store" }),
+        fetch(`/api/operators/product-state?${identityParams.toString()}`, { cache: "no-store" }),
+      ]);
+      const json = await readinessRes.json().catch(() => ({})) as { readiness?: OperatorReadiness[]; error?: string };
+      if (!readinessRes.ok) throw new Error(json.error || "Could not load operator readiness.");
       setReadiness(Array.isArray(json.readiness) ? json.readiness : []);
+      const productStateJson = await productStateRes.json().catch(() => ({})) as { states?: ProductState[]; error?: string };
+      if (productStateRes.ok) setProductStates(Array.isArray(productStateJson.states) ? productStateJson.states : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load operator readiness.");
     }
@@ -148,6 +195,7 @@ export default function AgentsRegistryPage() {
   useEffect(() => { void loadReadiness(); }, [loadReadiness]);
 
   const readinessByKey = useMemo(() => new Map(readiness.map((item) => [item.operatorKey, item])), [readiness]);
+  const productStateByKey = useMemo(() => new Map(productStates.map((item) => [item.operatorKey, item])), [productStates]);
   const configuredKeys = useMemo(() => new Set(state.agents.map((agent) => agent.templateId)), [state.agents]);
 
   // Each design roster entry maps 1:1 (same order) to the real operator registry.
@@ -155,8 +203,9 @@ export default function AgentsRegistryPage() {
     const registry = OPERATOR_REGISTRY[i];
     const key = registry?.key ?? "";
     const openable = Boolean(HREF_BY_KEY[key]);
+    const productState = productStateByKey.get(key);
     const status: AgentStatus = openable
-      ? (configuredKeys.has(key) ? "configured" : "available")
+      ? (productState ? (RUNNING_PRODUCT_STATES.has(productState.state) ? "configured" : "available") : (configuredKeys.has(key) ? "configured" : "available"))
       : registry?.currentReleaseStatus === "coming_next" ? "coming" : "upgrade";
     const r = readinessByKey.get(key);
     const configuredAgent = state.agents.find((agent) => agent.templateId === key);
@@ -171,8 +220,9 @@ export default function AgentsRegistryPage() {
       connectedTools: configuredAgent?.config.tools,
       outcome: configuredAgent ? `${configuredAgent.stats.metricValue} ${configuredAgent.stats.metricLabel}` : undefined,
       readyReason: isReadyNow ? r?.reason : undefined,
+      productState,
     };
-  }), [configuredKeys, readinessByKey, state.agents]);
+  }), [configuredKeys, productStateByKey, readinessByKey, state.agents]);
 
   const configured = cards.filter((c) => c.status === "configured");
   const available = cards.filter((c) => c.status === "available");
