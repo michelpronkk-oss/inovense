@@ -17,7 +17,9 @@
       "Bash(grep -B1 \"css$\")",
       "Bash(cd \"c:\\\\Users\\\\miche\\\\Desktop\\\\inovense\" && cat /tmp/start.log 2>&1 | tail -20; echo \"---procs on 3000---\"; netstat -ano 2>/dev/null | grep \":3000\" | head -5)",
       "Bash(claude mcp *)",
-      "Bash(npx -y playwright install chromium)"
+      "Bash(npx -y playwright install chromium)",
+      "Bash(ls \"C:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\" 2>&1 | head -20; echo \"---browsers---\"; ls \"C:\\\\Users\\\\miche\\\\AppData\\\\Local\\\\ms-playwright\" 2>&1 | head -20)",
+      "Read(//c/Users/miche/AppData/Local/ms-playwright/**)"
     ]
   }
 }

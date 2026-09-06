@@ -205,11 +205,14 @@ export default function TeamPage() {
                 </div>
                 <fieldset className="team-role-picker">
                   <legend>Choose access level</legend>
-                  <div>
+                  <div className="team-role-list">
                     {roleOptions.filter((option) => isOwner || option !== "Operator - Admin").map((option) => (
-                      <button key={option} type="button" className={`team-role-option${role === option ? " active" : ""}`} onClick={() => setRole(option)}>
-                        <span>{option.replace("Operator - ", "")}</span>
-                        <small>{roleDescriptions[option]}</small>
+                      <button key={option} type="button" className={`team-role-row${role === option ? " active" : ""}`} onClick={() => setRole(option)}>
+                        <span className="trr-dot" aria-hidden="true" />
+                        <span className="trr-copy">
+                          <strong>{option.replace("Operator - ", "")}</strong>
+                          <small>{roleDescriptions[option]}</small>
+                        </span>
                       </button>
                     ))}
                   </div>

@@ -101,10 +101,11 @@ export default function PoliciesPage() {
         <div className={`policy-live-state ${stop ? "stopped" : ""}`}><i />{stop ? "Execution paused" : "Live enforcement on"}</div>
       </div>
 
-      {error && <div style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>{error}</div>}
+      {error && <div className="policy-alert rose"><i />{error}</div>}
 
       {stop && (
-        <div style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(242,118,124,0.1)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.28)", color: "#ffb4b4", fontSize: 12.8, fontWeight: 600 }}>
+        <div className="policy-alert rose strong">
+          <i />
           Emergency stop is ON. Customer emails, CRM writes, project tool changes and operator Slack messages are blocked at execution. System notifications and health checks still run.
         </div>
       )}
@@ -184,29 +185,22 @@ export default function PoliciesPage() {
       {/* Automatic-where-safe + approval-where-it-matters */}
       <div className="policy-enforcement-grid">
         <div className="p" style={{ gap: 0 }}>
-          <div className="p-head"><h3>Runs automatically</h3></div>
+          <div className="p-head"><h3><span className="policy-panel-dot green" /> Runs automatically</h3></div>
           <div className="policy-rule-list">
             <Row label="Connector health checks" value={policy?.connectorHealthChecksAllowed ? "Auto" : "Off"} tone={policy?.connectorHealthChecksAllowed ? "green" : "neutral"} help="System checks, internal only." />
-            <div style={{ borderTop: "1px solid var(--line)" }} />
             <Row label="Internal Slack notifications" value={policy?.internalSlackNotificationsAllowed ? "Auto (enabled)" : "Off"} tone={policy?.internalSlackNotificationsAllowed ? "green" : "neutral"} help="Controlled in Slack connector settings." />
-            <div style={{ borderTop: "1px solid var(--line)" }} />
             <Row label="Daily brief" value={stop ? "Blocked (stop)" : policy?.dailyBriefAllowed ? "Auto" : "Off"} tone={stop ? "rose" : policy?.dailyBriefAllowed ? "green" : "neutral"} help="Internal summary to the default Slack channel." />
-            <div style={{ borderTop: "1px solid var(--line)" }} />
             <Row label="Low-risk Trello comments" value={stop ? "Blocked (stop)" : assisted ? "Auto if confidence high" : "Approval required"} tone={stop ? "rose" : assisted ? "green" : "amber"} help="Only in Assisted autopilot, low risk and high confidence." />
           </div>
         </div>
 
         <div className="p" style={{ gap: 0 }}>
-          <div className="p-head"><h3>Always needs approval</h3></div>
+          <div className="p-head"><h3><span className="policy-panel-dot amber" /> Always needs approval</h3></div>
           <div className="policy-rule-list">
             <Row label="Customer emails" value={stop ? "Blocked (stop)" : policy?.customerEmailMode === "draft_only" ? "Draft only" : "Approval required"} tone={stop ? "rose" : "amber"} />
-            <div style={{ borderTop: "1px solid var(--line)" }} />
             <Row label="CRM writes (HubSpot)" value={stop ? "Blocked (stop)" : "Approval required"} tone={stop ? "rose" : "amber"} />
-            <div style={{ borderTop: "1px solid var(--line)" }} />
             <Row label="Trello card create / move" value={stop ? "Blocked (stop)" : "Approval required"} tone={stop ? "rose" : "amber"} />
-            <div style={{ borderTop: "1px solid var(--line)" }} />
             <Row label="Operator Slack messages" value={stop ? "Blocked (stop)" : "Approval required"} tone={stop ? "rose" : "amber"} />
-            <div style={{ borderTop: "1px solid var(--line)" }} />
             <Row label="Destructive actions" value="Blocked" tone="rose" help="Never automatic, in any mode." />
           </div>
         </div>

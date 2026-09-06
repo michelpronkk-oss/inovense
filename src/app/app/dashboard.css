@@ -358,13 +358,23 @@ select.os-input option {
 .team-invite-fields em { margin-left: 4px; color: var(--text-faint); font-style: normal; font-weight: 400; }
 .team-role-picker { min-width: 0; margin: 0; padding: 0; border: 0; }
 .team-role-picker legend { margin-bottom: 7px; padding: 0; }
-.team-role-picker > div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
-.team-role-option { min-width: 0; padding: 11px; border: 0; border-radius: 10px; background: rgba(255,255,255,.018); box-shadow: inset 0 0 0 1px var(--line); color: var(--text); text-align: left; cursor: pointer; transition: background .15s ease, box-shadow .15s ease; }
-.team-role-option:hover { background: rgba(255,255,255,.045); }
-.team-role-option.active { background: linear-gradient(135deg, rgba(77,232,225,.13), rgba(77,232,225,.035)); box-shadow: inset 0 0 0 1px rgba(77,232,225,.48); }
-.team-role-option span { display: block; font-size: 12px; font-weight: 600; }
-.team-role-option small { display: block; margin-top: 5px; color: var(--text-mute); font-size: 10.5px; line-height: 1.4; }
-.team-role-option.active small { color: var(--text-dim); }
+/* A single considered list, not three interchangeable cards: the selected
+   role carries real visual weight (filled dot, tinted row, brighter text)
+   while the others recede to plain rows. */
+.team-role-list { display: flex; flex-direction: column; border-radius: 10px; overflow: hidden; background: rgba(255,255,255,.016); box-shadow: inset 0 0 0 1px var(--line); }
+.team-role-row { position: relative; display: flex; align-items: flex-start; gap: 11px; width: 100%; min-width: 0; padding: 11px 13px; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; transition: background .15s ease; }
+.team-role-row:not(:first-child) { border-top: 1px solid var(--line); }
+.team-role-row:hover { background: rgba(255,255,255,.035); }
+.team-role-row .trr-dot { position: relative; flex: none; margin-top: 3px; width: 14px; height: 14px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--text-faint); transition: box-shadow .15s ease; }
+.team-role-row .trr-dot::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: transparent; transition: background .15s ease; }
+.team-role-row .trr-copy { min-width: 0; display: grid; gap: 3px; }
+.team-role-row .trr-copy strong { display: block; font-size: 12.5px; font-weight: 600; color: var(--text-dim); }
+.team-role-row .trr-copy small { display: block; color: var(--text-mute); font-size: 10.5px; line-height: 1.4; }
+.team-role-row.active { background: linear-gradient(90deg, rgba(77,232,225,.09), rgba(77,232,225,.012)); }
+.team-role-row.active .trr-dot { box-shadow: inset 0 0 0 1.5px var(--cyan); }
+.team-role-row.active .trr-dot::after { background: var(--cyan); }
+.team-role-row.active .trr-copy strong { color: var(--text); }
+.team-role-row.active .trr-copy small { color: var(--text-dim); }
 .team-invite-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 9px; background: rgba(255,255,255,.018); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
 .team-invite-summary strong { display: block; margin-top: 4px; color: var(--text-dim); font-size: 11px; font-weight: 500; }
 .team-invite-summary p { max-width: 175px; margin: 0; color: var(--text-mute); font-size: 10.5px; line-height: 1.4; text-align: right; }
@@ -1077,8 +1087,8 @@ select.os-input option {
   .team-member-row > div:nth-child(2) { min-width: calc(100% - 50px); }
   .team-member-row > div:nth-child(3) { width: 100%; justify-content: flex-start !important; }
   .team-access-modal { padding: 16px; }
-  .team-invite-fields, .team-role-picker > div { grid-template-columns: 1fr; }
-  .team-role-option { padding: 10px 11px; }
+  .team-invite-fields { grid-template-columns: 1fr; }
+  .team-role-row { padding: 10px 12px; }
   .team-invite-summary { align-items: flex-start; flex-direction: column; gap: 7px; }
   .team-invite-summary p { max-width: none; text-align: left; }
   .team-invite-actions { justify-content: stretch; }
@@ -1466,44 +1476,72 @@ select.os-input option {
 .policy-live-state { display: inline-flex; align-items: center; gap: 8px; flex: none; padding: 8px 11px; border-radius: 999px; color: var(--cyan); background: rgba(77,232,225,.06); box-shadow: inset 0 0 0 1px rgba(77,232,225,.22); font: 10px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
 .policy-live-state i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 9px currentColor; }
 .policy-live-state.stopped { color: var(--rose); background: rgba(242,118,124,.08); box-shadow: inset 0 0 0 1px rgba(242,118,124,.26); }
+
+/* Inline alert banners (error / emergency-stop notice) as a real component
+   instead of ad-hoc inline styles, using the same rose accent language as
+   the live-state pill and stop card. */
+.policy-alert { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 12px; font-size: 12.5px; line-height: 1.5; }
+.policy-alert i { flex: none; margin-top: 5px; width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
+.policy-alert.rose { color: #ffb4b4; background: linear-gradient(90deg, rgba(242,118,124,.09), rgba(242,118,124,.015)); box-shadow: inset 0 0 0 1px rgba(242,118,124,.22); }
+.policy-alert.rose.strong { font-weight: 600; background: linear-gradient(90deg, rgba(242,118,124,.13), rgba(242,118,124,.02)); box-shadow: inset 0 0 0 1px rgba(242,118,124,.3); }
+
 .policy-mode-card, .policy-email-card { overflow: hidden; }
-.policy-mode-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(250px, .72fr); gap: 8px; padding: 10px; }
-.policy-choice { min-width: 0; text-align: left; padding: 15px 16px; border: 0; border-radius: 12px; color: inherit; cursor: pointer; background: rgba(255,255,255,.018); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); display: grid; gap: 6px; transition: background .16s ease, box-shadow .16s ease, transform .16s ease; }
-.policy-choice:hover:not(:disabled) { background: rgba(255,255,255,.04); box-shadow: inset 0 0 0 1px rgba(77,232,225,.28); }
-.policy-choice:active:not(:disabled) { transform: translateY(1px); }
-.policy-choice.active { background: linear-gradient(135deg, rgba(77,232,225,.12), rgba(77,232,225,.035)); box-shadow: inset 0 0 0 1px rgba(77,232,225,.48), 0 12px 30px rgba(0,0,0,.14); }
-.policy-choice.locked { opacity: .38; cursor: not-allowed; }
+/* Operating posture / customer email pickers read as one considered list,
+   not several identical boxes: the active option gets a left accent bar and
+   tinted row, everything else recedes to a plain, muted row. */
+.policy-mode-grid, .policy-email-options { display: flex; flex-direction: column; padding: 6px; }
+.policy-choice { position: relative; min-width: 0; text-align: left; padding: 14px 16px 14px 19px; border: 0; border-radius: 10px; color: inherit; cursor: pointer; background: transparent; display: grid; gap: 5px; transition: background .16s ease; }
+.policy-choice:not(:first-child) { border-top: 1px solid var(--line); }
+.policy-choice::before { content: ""; position: absolute; left: 6px; top: 12px; bottom: 12px; width: 2px; border-radius: 2px; background: transparent; transition: background .16s ease, box-shadow .16s ease; }
+.policy-choice:hover:not(:disabled) { background: rgba(255,255,255,.03); }
+.policy-choice:active:not(:disabled) { background: rgba(255,255,255,.045); }
+.policy-choice.active { background: linear-gradient(90deg, rgba(77,232,225,.09), rgba(77,232,225,.012)); }
+.policy-choice.active::before { background: var(--cyan); box-shadow: 0 0 8px rgba(77,232,225,.55); }
+.policy-choice.locked { opacity: .42; cursor: not-allowed; }
 .policy-choice > div:first-child { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.policy-choice > div:first-child > span:first-child { font-size: 13px; font-weight: 600; }
-.policy-choice > div:last-child { color: var(--text-mute); font-size: 11.5px; line-height: 1.45; }
+.policy-choice > div:first-child > span:first-child { font-size: 13px; font-weight: 600; color: var(--text-dim); }
+.policy-choice.active > div:first-child > span:first-child { color: var(--text); }
+.policy-choice > div:last-child { color: var(--text-mute); font-size: 11.5px; line-height: 1.45; max-width: 62ch; }
 .policy-stop-card { border-color: rgba(255,255,255,.08); }
 .policy-stop-card.is-on { box-shadow: inset 0 0 0 1px rgba(242,118,124,.34); }
 .policy-stop-body { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 14px 18px 17px; }
 .policy-stop-body > div > div:first-child { font-size: 14px; font-weight: 600; }
 .policy-stop-body > div > div:nth-child(2) { max-width: 760px; margin-top: 4px; color: var(--text-mute); font-size: 11.5px; line-height: 1.45; }
 .policy-stop-body .appr-btn { min-width: 138px; padding: 8px 11px; }
-.policy-email-body { display: grid; grid-template-columns: minmax(0,1fr) 260px; gap: 8px; padding: 10px; }
-.policy-email-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+/* Emergency stop, ON, should read as an active danger state -- not the same
+   neutral grey as every other secondary button on the page. */
+.policy-stop-body .appr-btn.deny { background: var(--rose-soft); color: var(--rose); box-shadow: inset 0 0 0 1px rgba(242,118,124,.32); }
+.policy-email-body { display: grid; grid-template-columns: minmax(0,1fr) 260px; gap: 10px; padding: 10px; }
 .policy-not-available { display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 14px 16px; border-radius: 12px; background: rgba(255,255,255,.014); box-shadow: inset 0 0 0 1px rgba(255,255,255,.055); }
 .policy-not-available > div:first-child { font-size: 12px; font-weight: 600; }
 .policy-not-available > div:nth-child(2) { color: var(--text-mute); font-size: 11px; line-height: 1.4; }
 .policy-not-available .pill { align-self: flex-start; margin-top: 2px; }
 .policy-enforcement-grid { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 12px; }
 .policy-enforcement-grid .p { overflow: hidden; }
+/* Small semantic dot in each panel head so "runs automatically" vs "always
+   needs approval" register at a glance -- one considered accent per panel. */
+.policy-panel-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; display: inline-block; }
+.policy-panel-dot.green { background: var(--green); box-shadow: 0 0 7px rgba(81,216,138,.6); }
+.policy-panel-dot.amber { background: var(--amber); box-shadow: 0 0 7px rgba(245,194,107,.6); }
 .policy-rule-list { padding: 0 16px 6px; }
 .policy-rule-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 13px 0; }
+.policy-rule-row:not(:first-child) { border-top: 1px solid var(--line); }
 .policy-rule-row > div { min-width: 0; font-size: 12px; font-weight: 550; }
 .policy-rule-row small { display: block; margin-top: 3px; color: var(--text-mute); font-size: 10.5px; font-weight: 400; line-height: 1.35; }
-.policy-rule-state { flex: none; font: 10px var(--font-mono); letter-spacing: .04em; text-align: right; }
-.policy-rule-state.green { color: var(--green); }.policy-rule-state.amber { color: var(--amber); }.policy-rule-state.rose { color: var(--rose); }.policy-rule-state.neutral { color: var(--text-dim); }
+/* Status reads as a real badge (tinted pill + dot), not plain colored text. */
+.policy-rule-state { display: inline-flex; align-items: center; gap: 6px; flex: none; padding: 4px 10px; border-radius: 999px; font: 10px var(--font-mono); letter-spacing: .04em; }
+.policy-rule-state::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; box-shadow: 0 0 6px currentColor; }
+.policy-rule-state.green { color: var(--green); background: var(--green-soft); }
+.policy-rule-state.amber { color: var(--amber); background: var(--amber-soft); }
+.policy-rule-state.rose { color: var(--rose); background: var(--rose-soft); }
+.policy-rule-state.neutral { color: var(--text-dim); background: rgba(255,255,255,.035); }
 .policy-proof { padding: 12px 16px; border-radius: 12px; background: linear-gradient(90deg, rgba(77,232,225,.055), rgba(255,255,255,.012)); box-shadow: inset 0 0 0 1px rgba(77,232,225,.13); color: var(--text-mute); font-size: 11.5px; line-height: 1.55; }
 .policy-proof strong { color: var(--text-dim); }
 @media (min-width: 1540px) {
   .policy-page { padding-right: 32px; }
-  .policy-mode-grid { gap: 10px; padding: 12px; }
-  .policy-choice { min-height: 112px; padding: 17px 18px; }
+  .policy-choice { padding: 16px 18px 16px 21px; }
   .policy-stop-body { padding: 16px 20px 19px; }
-  .policy-email-body { grid-template-columns: minmax(0, 1fr) 300px; gap: 10px; padding: 12px; }
+  .policy-email-body { grid-template-columns: minmax(0, 1fr) 300px; gap: 12px; padding: 12px; }
   .policy-rule-list { padding-inline: 18px; }
   .policy-rule-row { padding-block: 14px; }
 }
@@ -1516,8 +1554,8 @@ select.os-input option {
   .workflow-preview-columns { grid-template-columns: 1fr; }
   .policy-page-head { align-items: flex-start; flex-direction: column; gap: 10px; }
   .policy-live-state { font-size: 9px; }
-  .policy-mode-grid, .policy-email-body, .policy-email-options, .policy-enforcement-grid { grid-template-columns: 1fr; }
-  .policy-choice { padding: 14px; }
+  .policy-email-body, .policy-enforcement-grid { grid-template-columns: 1fr; }
+  .policy-choice { padding: 13px 14px 13px 17px; }
   .policy-stop-body { align-items: flex-start; flex-direction: column; padding: 14px; }
   .policy-stop-body .appr-btn { width: 100%; min-height: 38px; }
   .policy-rule-list { padding-inline: 14px; }
