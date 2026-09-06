@@ -1,7 +1,7 @@
 ﻿import "./dashboard.css";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { AppProvider } from "@/lib/os/app-provider";
+import { AppProvider, type AppInitialContext } from "@/lib/os/app-provider";
 import { AppShell } from "@/app/app/app-shell";
 import { resolveAppGateway } from "@/lib/server/app-gateway";
 import { getVerifiedSupabaseUser } from "@/lib/supabase/server";
@@ -43,6 +43,7 @@ function normalizeExternalAppPath(raw: string | null): string {
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const headerList = await headers();
   const pathname = normalizeExternalAppPath(headerList.get("x-pathname"));
+  let initialContext: AppInitialContext | undefined;
 
   if (AUTH_ENTRY_PATHS.has(pathname)) {
     const user = await getVerifiedSupabaseUser();
@@ -59,6 +60,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }
 
     if (gateway.status === "ready") {
+      initialContext = {
+        workspaceId: gateway.workspaceId,
+        userId: gateway.userId,
+        email: gateway.email,
+      };
       const onboardingDone = Boolean(gateway.onboardingCompletedAt);
       if (!onboardingDone && pathname !== "/onboarding") {
         redirect("/onboarding");
@@ -74,7 +80,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <AppProvider>
+    <AppProvider initialContext={initialContext}>
       <div
         className="os-root"
         style={{

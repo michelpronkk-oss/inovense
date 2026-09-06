@@ -161,21 +161,41 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
   }
 
   const workspaceId = context.workspaceId;
-  const workspaceResult = await supabase
-    .from("os_workspaces")
-    .select("*")
-    .eq("id", workspaceId)
-    .single();
+  let memberQuery = supabase
+    .from("os_workspace_members")
+    .select("user_id,email,full_name,role,role_key")
+    .eq("workspace_id", workspaceId)
+    .eq("active", true)
+    .neq("status", "pending");
+  memberQuery = context.userId
+    ? memberQuery.eq("user_id", context.userId)
+    : memberQuery.eq("email", context.memberEmail ?? context.userEmail ?? "");
+
+  // Once identity + membership have been verified, these reads are
+  // independent. Start them together instead of building a serial waterfall.
+  const [
+    workspaceResult,
+    snapshotResult,
+    workspaceSettingsResult,
+    memoryResult,
+    operatorMemoryResult,
+    memberResult,
+    teamResult,
+    connectorTruth,
+  ] = await Promise.all([
+    supabase.from("os_workspaces").select("*").eq("id", workspaceId).single(),
+    supabase.from("os_state_snapshots").select("state").eq("workspace_id", workspaceId).maybeSingle(),
+    supabase.from("os_workspace_settings").select("approval_policy,notifications").eq("workspace_id", workspaceId).maybeSingle(),
+    supabase.from("os_memory_entries").select("id,type,label,summary,content,tags,agent_scope,field_count,updated_at").eq("workspace_id", workspaceId).order("updated_at", { ascending: false }),
+    supabase.from("os_operator_memory").select("id,operator_key,memory_type,title,content,updated_at").eq("workspace_id", workspaceId).eq("approval_status", "approved").order("updated_at", { ascending: false }).limit(100),
+    memberQuery.maybeSingle(),
+    supabase.from("os_workspace_members").select("id,user_id,email,full_name,role,role_key,access,status,active").eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
+    getConnectorTruth({ workspaceId, supabase }),
+  ]);
 
   if (workspaceResult.error || !workspaceResult.data) {
     throw new StateRouteError(workspaceResult.error?.message || "Workspace fetch failed", 404);
   }
-
-  const snapshotResult = await supabase
-    .from("os_state_snapshots")
-    .select("state")
-    .eq("workspace_id", workspaceId)
-    .maybeSingle();
 
   let state = asState(snapshotResult.data?.state) ?? await buildStateFromDatabase(workspaceId, supabase);
   const db = workspaceResult.data;
@@ -199,11 +219,6 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
 
   // Settings are stored independently from the UI snapshot. Hydrate them on
   // every load so workspace controls remain durable across browsers/devices.
-  const workspaceSettingsResult = await supabase
-    .from("os_workspace_settings")
-    .select("approval_policy,notifications")
-    .eq("workspace_id", workspaceId)
-    .maybeSingle();
   if (!workspaceSettingsResult.error && workspaceSettingsResult.data) {
     state.settings = {
       ...state.settings,
@@ -222,11 +237,6 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
   // Company memory is workspace-scoped and is deliberately independent from
   // a browser snapshot. This makes the onboarding brief and approved
   // operator learnings durable across sessions and devices.
-  const memoryResult = await supabase
-    .from("os_memory_entries")
-    .select("id,type,label,summary,content,tags,agent_scope,field_count,updated_at")
-    .eq("workspace_id", workspaceId)
-    .order("updated_at", { ascending: false });
   if (!memoryResult.error) {
     let memoryEntries = memoryResult.data ?? [];
     const onboardingData = db.onboarding_data && typeof db.onboarding_data === "object"
@@ -281,13 +291,6 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
 
   // Operator learning is append-only audit data. Only approved learnings may
   // influence future work; rejected decisions remain in the audit trail.
-  const operatorMemoryResult = await supabase
-    .from("os_operator_memory")
-    .select("id,operator_key,memory_type,title,content,updated_at")
-    .eq("workspace_id", workspaceId)
-    .eq("approval_status", "approved")
-    .order("updated_at", { ascending: false })
-    .limit(100);
   if (!operatorMemoryResult.error && operatorMemoryResult.data?.length) {
     const approvedLearnings = operatorMemoryResult.data.map((learning) => ({
       id: learning.id,
@@ -307,16 +310,6 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
   // A snapshot is workspace data, never an identity source. Always project
   // the current authenticated member onto it so a new customer cannot see a
   // seed "Workspace Admin" (or another browser user's cached profile).
-  let memberQuery = supabase
-    .from("os_workspace_members")
-    .select("user_id,email,full_name,role,role_key")
-    .eq("workspace_id", workspaceId)
-    .eq("active", true)
-    .neq("status", "pending");
-  memberQuery = context.userId
-    ? memberQuery.eq("user_id", context.userId)
-    : memberQuery.eq("email", context.memberEmail ?? context.userEmail ?? "");
-  const memberResult = await memberQuery.maybeSingle();
   const member = memberResult.data;
   // The verified Auth email is authoritative for the signed-in identity.
   // A historical membership row can contain an old invite/seed address and
@@ -363,11 +356,6 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
       viewMode: preferences.view_mode as OSState["dashboard"]["viewMode"],
     };
   }
-  const teamResult = await supabase
-    .from("os_workspace_members")
-    .select("id,user_id,email,full_name,role,role_key,access,status,active")
-    .eq("workspace_id", workspaceId)
-    .order("created_at", { ascending: true });
   if (!teamResult.error && teamResult.data) {
     state.teamMembers = teamResult.data.map((teamMember) => {
       const name = isLegacySeedIdentity(teamMember.full_name)
@@ -391,7 +379,6 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
   }
 
   state = { ...state, connectors: reconcileConnectorsWithRegistry(state.connectors) };
-  const connectorTruth = await getConnectorTruth({ workspaceId, supabase });
   state = applyConnectorTruthToState(state, connectorTruth);
 
   return { workspaceId, state, context };
@@ -419,7 +406,15 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown bootstrap error";
     const status = error instanceof StateRouteError ? error.status : 500;
-    return NextResponse.json({ error: message }, { status });
+    console.warn("[os-state] bootstrap failed", { status, error: message });
+    const customerMessage = status === 403
+      ? "You don’t have access to this workspace."
+      : status === 401
+        ? "Your session could not be verified. Please sign in again."
+        : status === 404
+          ? "This workspace is no longer available."
+          : "We couldn’t load your workspace. Refresh to try again.";
+    return NextResponse.json({ message: customerMessage }, { status });
   }
 }
 

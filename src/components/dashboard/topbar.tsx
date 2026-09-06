@@ -366,8 +366,18 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener("keydown", handle);
   }, [filtered, idx, go, onClose]);
 
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, []);
+
   return (
     <div
+      className="os-command-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Search Auterim"
       style={{
         position: "fixed", inset: 0, zIndex: 100,
         background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)",
@@ -376,28 +386,35 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
       }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div style={{
+      <div className="os-command-panel" style={{
         background: "linear-gradient(180deg, #0E1218, #0A0D12)",
         boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08), 0 40px 80px rgba(0,0,0,0.7)",
         borderRadius: 16, width: "100%", maxWidth: 520, overflow: "hidden",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderBottom: "1px solid var(--line)" }}>
+        <div className="os-command-search" style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderBottom: "1px solid var(--line)" }}>
           <SearchIcon size={15} style={{ color: "var(--text-mute)", flexShrink: 0 }} />
           <input
             autoFocus
+            type="search"
+            inputMode="search"
+            enterKeyHint="search"
+            autoCapitalize="none"
+            autoCorrect="off"
+            aria-label="Search operators, workflows, memory, and approvals"
+            className="os-command-input"
             value={q}
             onChange={(e) => { setQ(e.target.value); setIdx(0); }}
-            placeholder="Search agents, workflows, memory, approvals..."
+            placeholder="Search operators, workflows, approvals…"
             style={{
               flex: 1, background: "none", border: "none", outline: "none",
-              color: "var(--text)", fontFamily: "var(--font-sans)", fontSize: 14,
+              color: "var(--text)", fontFamily: "var(--font-sans)",
             }}
           />
-          <button onClick={onClose} style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-faint)", background: "rgba(255,255,255,0.04)", border: "none", padding: "3px 7px", borderRadius: 5, cursor: "pointer" }}>
-            esc
+          <button className="os-command-close" aria-label="Close search" onClick={onClose} style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-faint)", background: "rgba(255,255,255,0.04)", border: "none", padding: "3px 7px", borderRadius: 5, cursor: "pointer" }}>
+            <span className="desktop-only">esc</span><span className="mobile-only">Done</span>
           </button>
         </div>
-        <div style={{ maxHeight: 360, overflowY: "auto" }}>
+        <div className="os-command-results" style={{ maxHeight: 360, overflowY: "auto" }}>
           {filtered.length === 0 && (
             <div style={{ padding: "24px", textAlign: "center", color: "var(--text-mute)", fontSize: 13 }}>No results</div>
           )}
@@ -405,6 +422,7 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
             const Icon = it.icon;
             return (
               <button
+                className="os-command-result"
                 key={`${it.label}-${i}`}
                 onClick={() => go(it.href)}
                 style={{
@@ -415,10 +433,10 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
                 }}
                 onMouseEnter={() => setIdx(i)}
               >
-                <div style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(255,255,255,0.04)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+                <div className="os-command-result-icon" style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(255,255,255,0.04)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", placeItems: "center", flexShrink: 0 }}>
                   <Icon size={13} style={{ color: i === idx ? "var(--cyan)" : "var(--text-dim)" }} />
                 </div>
-                <div>
+                <div className="os-command-result-copy">
                   <div style={{ fontSize: 13, color: "var(--text)", fontWeight: 500 }}>{it.label}</div>
                   <div style={{ fontSize: 11, color: "var(--text-mute)", fontFamily: "var(--font-mono)", marginTop: 2 }}>{it.sub}</div>
                 </div>
@@ -427,7 +445,7 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
             );
           })}
         </div>
-        <div style={{ padding: "8px 16px", borderTop: "1px solid var(--line)", display: "flex", gap: 16 }}>
+        <div className="os-command-shortcuts" style={{ padding: "8px 16px", borderTop: "1px solid var(--line)", display: "flex", gap: 16 }}>
           {[["â†‘â†“", "navigate"], ["â†µ", "open"], ["esc", "close"]].map(([k, v]) => (
             <span key={v} style={{ display: "flex", gap: 6, alignItems: "center", fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-faint)" }}>
               <span style={{ background: "rgba(255,255,255,0.06)", padding: "2px 6px", borderRadius: 4 }}>{k}</span> {v}

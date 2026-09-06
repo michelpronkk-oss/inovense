@@ -8,6 +8,7 @@ import { OSTopbar } from "@/components/dashboard/topbar";
 import { trialDaysRemaining } from "@/lib/os/plans";
 import { getEntitlements } from "@/lib/os/entitlements";
 import { appHref } from "@/lib/urls";
+import { AppLoadingShell } from "@/components/dashboard/loading-state";
 
 function TrialBanner({ trialEndsAt }: { trialEndsAt?: string }) {
   const days = trialDaysRemaining(trialEndsAt);
@@ -61,12 +62,12 @@ function TrialBanner({ trialEndsAt }: { trialEndsAt?: string }) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { state, workspaceLoadError } = useOS();
+  const { state, bootstrapStatus, workspaceLoadError } = useOS();
   // The browser keeps the canonical URL while middleware rewrites to the
   // internal `/app/*` segment. Accept both during client navigation, but do
   // not redirect here: the server layout + gateway are the sole authority.
   const isOnboardingRoute = pathname === "/onboarding" || pathname === "/app/onboarding";
-  const isBareRoute = isOnboardingRoute || Boolean(pathname && (
+  const isPublicBareRoute = Boolean(pathname && (
     pathname === "/login" || pathname === "/register" ||
     pathname === "/forgot-password" || pathname === "/reset-password" ||
     pathname === "/auth/callback" || pathname === "/invite/accept" ||
@@ -77,7 +78,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const entitlements = getEntitlements(state.workspace);
   const showManageBilling = entitlements.billingStatus === "active" || entitlements.billingStatus === "trialing" || entitlements.billingStatus === "past_due";
 
-  if (isBareRoute) {
+  if (isPublicBareRoute) {
     return (
       <div className="os-main" style={{ width: "100%", minHeight: "100dvh" }}>
         {children}
@@ -85,21 +86,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Never let a failed authenticated workspace lookup fall back to the local
-  // demo shell. Showing a seed "Workspace Admin" after a 403 is misleading
-  // and makes an authorization repair look like a real user profile.
-  if (workspaceLoadError) {
+  if (bootstrapStatus === "loading") return <AppLoadingShell />;
+
+  // Only a completed server-authorized bootstrap may produce an access or
+  // load error. Seed state is never rendered while this decision is pending.
+  if (bootstrapStatus === "forbidden" || bootstrapStatus === "error") {
+    const forbidden = bootstrapStatus === "forbidden";
     return (
       <main style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: 24, background: "#06070A" }}>
         <section style={{ width: "min(460px, 100%)", padding: 28, borderRadius: 18, background: "#0c1014", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.09)" }}>
-          <div style={{ color: "#4DE8E1", fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.12em" }}>WORKSPACE ACCESS</div>
-          <h1 style={{ margin: "12px 0 8px", fontSize: 24 }}>Your account needs a workspace assignment.</h1>
+          <div style={{ color: "#4DE8E1", fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.12em" }}>{forbidden ? "WORKSPACE ACCESS" : "WORKSPACE"}</div>
+          <h1 style={{ margin: "12px 0 8px", fontSize: 24 }}>{forbidden ? "You don’t have access to this workspace." : "We couldn’t open your workspace."}</h1>
           <p style={{ margin: 0, color: "var(--text-dim)", lineHeight: 1.55, fontSize: 13.5 }}>
-            {workspaceLoadError} No demo profile or workspace data is being shown.
+            {workspaceLoadError || "Refresh to try again."}
           </p>
-          <Link className="btn btn-primary" href="/login" style={{ marginTop: 20 }}>Return to sign in</Link>
+          <button className="btn btn-primary" type="button" onClick={() => window.location.reload()} style={{ marginTop: 20 }}>Try again</button>
         </section>
       </main>
+    );
+  }
+
+  if (isOnboardingRoute) {
+    return (
+      <div className="os-main" style={{ width: "100%", minHeight: "100dvh" }}>
+        {children}
+      </div>
     );
   }
 

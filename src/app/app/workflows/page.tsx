@@ -139,12 +139,12 @@ export default function WorkflowsPage() {
       </div>
 
       {(!isPreview || state.workflows.length > 0) && (
-      <div className="p">
-        <div className="p-head">
+      <div className="p workflow-suggestions-panel">
+        <div className="p-head workflow-suggestions-head">
           <h3><FlowIcon size={13} /> Suggested workflows</h3>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span className="p-meta">Generated from your workspace state</span>
-            <button className="appr-btn edit" onClick={onRefreshSuggestions}>Refresh suggestions</button>
+          <div className="workflow-suggestions-actions" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span className="p-meta desktop-only">Generated from your workspace state</span>
+            <button className="appr-btn edit" onClick={onRefreshSuggestions}><span className="desktop-only">Refresh suggestions</span><span className="mobile-only">Refresh</span></button>
           </div>
         </div>
         <div className="workflow-suggestion-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, padding: "0 10px 10px" }}>

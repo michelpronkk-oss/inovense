@@ -29,11 +29,25 @@ const DEV_USER_KEY = "auterim-os-dev-user-v1";
 const LEGACY_DEV_USER_KEY = "inovense-os-dev-user-v1";
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
-function workspaceAccessMessage(value: string | undefined): string {
-  if (value?.includes("missing_membership") || value?.includes("workspace_forbidden")) {
-    return "Your signed-in account is not yet assigned to this workspace.";
+export type AppInitialContext = {
+  workspaceId: string;
+  userId: string;
+  email: string | null;
+};
+
+export type AppBootstrapStatus = "loading" | "ready" | "forbidden" | "error";
+
+function customerBootstrapFailure(status: number): { status: Exclude<AppBootstrapStatus, "loading" | "ready">; message: string } {
+  if (status === 403) {
+    return { status: "forbidden", message: "Ask a workspace owner to confirm your membership, then try again." };
   }
-  return value || "Your workspace access could not be verified.";
+  if (status === 401) {
+    return { status: "error", message: "Your session could not be verified. Please sign in again." };
+  }
+  if (status === 404) {
+    return { status: "error", message: "This workspace is no longer available." };
+  }
+  return { status: "error", message: "We couldn’t load your workspace. Refresh to try again." };
 }
 
 type OSAction =
@@ -400,6 +414,7 @@ interface OSContextValue {
   installSuggestedWorkflow: (suggestion: SuggestedWorkflow) => void;
   pendingApprovals: number;
   clientHydrated: boolean;
+  bootstrapStatus: AppBootstrapStatus;
   workspaceLoadError: string | null;
 }
 
@@ -482,15 +497,25 @@ function makePreviewRun(agent: Agent, goal: string, workflowId?: string): AgentR
 
 let deployCounter = 0;
 
-export function AppProvider({ children }: { children: React.ReactNode }) {
+export function AppProvider({ children, initialContext }: { children: React.ReactNode; initialContext?: AppInitialContext }) {
   const [state, dispatch] = useReducer(reducer, null, () => buildSeedState());
   const [clientHydrated, setClientHydrated] = useState(false);
+  const [bootstrapStatus, setBootstrapStatus] = useState<AppBootstrapStatus>(initialContext ? "loading" : "ready");
   const [workspaceLoadError, setWorkspaceLoadError] = useState<string | null>(null);
   const hydratedFromRemote = useRef(false);
   const finishedInitialHydration = useRef(false);
   const persistTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const getIdentity = useCallback(() => {
+    if (initialContext) {
+      return {
+        userId: initialContext.userId,
+        userEmail: initialContext.email ?? "",
+        userName: "",
+        workspaceId: initialContext.workspaceId,
+      };
+    }
+
     let devIdentity: { id: string; email: string; name: string } = {
       id: "dev-preview-user",
       email: "preview@inovense.local",
@@ -529,11 +554,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // Never let a prior browser snapshot select a production workspace.
       workspaceId: IS_PRODUCTION ? "" : state.workspace.id,
     };
-  }, [state.currentUser.email, state.currentUser.id, state.currentUser.name, state.workspace.id]);
+  }, [initialContext, state.currentUser.email, state.currentUser.id, state.currentUser.name, state.workspace.id]);
 
   useEffect(() => {
     if (IS_PRODUCTION) {
-      setClientHydrated(true);
+      if (!initialContext) setClientHydrated(true);
       return;
     }
     try {
@@ -571,9 +596,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setClientHydrated(true);
     }
-  }, []);
+  }, [initialContext]);
 
   useEffect(() => {
+    // Public production routes do not need workspace state. Protected routes
+    // always receive the server-verified workspace selected by the gateway.
+    if (IS_PRODUCTION && !initialContext) {
+      finishedInitialHydration.current = true;
+      return;
+    }
+
     let cancelled = false;
 
     const hydrateFromSupabase = async () => {
@@ -589,34 +621,54 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
 
         if (!res.ok) {
-          if (IS_PRODUCTION && res.status !== 503) {
-            const payload = await res.json().catch(() => ({} as { error?: string }));
-            setWorkspaceLoadError(workspaceAccessMessage(payload.error));
-          }
+          const payload = await res.json().catch(() => ({} as { error?: string; message?: string }));
           if (res.status === 503) {
-            const payload = await res.json().catch(() => ({} as { message?: string }));
-            if (payload?.message) {
+            if (!IS_PRODUCTION && payload?.message) {
               console.warn(`[inovense-os] ${payload.message}`);
             }
+            if (!IS_PRODUCTION) {
+              setBootstrapStatus("ready");
+            } else {
+              setWorkspaceLoadError("We couldn’t load your workspace. Refresh to try again.");
+              setBootstrapStatus("error");
+            }
+          } else {
+            const failure = customerBootstrapFailure(res.status);
+            setWorkspaceLoadError(failure.message);
+            setBootstrapStatus(failure.status);
           }
           finishedInitialHydration.current = true;
           return;
         }
 
-        const payload = await res.json() as { state?: OSState };
+        const payload = await res.json() as { workspaceId?: string; state?: OSState };
+        if (initialContext && payload.workspaceId !== initialContext.workspaceId) {
+          setWorkspaceLoadError("We couldn’t confirm your active workspace. Refresh to try again.");
+          setBootstrapStatus("error");
+          finishedInitialHydration.current = true;
+          return;
+        }
         if (payload.state && Array.isArray(payload.state.agents) && payload.state.workspace) {
           dispatch({ type: "HYDRATE", state: payload.state });
           hydratedFromRemote.current = true;
           setWorkspaceLoadError(null);
+          setBootstrapStatus("ready");
+        } else {
+          setWorkspaceLoadError("We couldn’t load your workspace. Refresh to try again.");
+          setBootstrapStatus("error");
         }
       } catch (error) {
         if (!cancelled) {
           console.warn("[inovense-os] Supabase hydrate failed, continuing with local state.", error);
-          if (IS_PRODUCTION) setWorkspaceLoadError("Your workspace could not be loaded. Refresh to try again.");
+          if (IS_PRODUCTION || initialContext) {
+            setWorkspaceLoadError("We couldn’t load your workspace. Refresh to try again.");
+            setBootstrapStatus("error");
+          }
         }
       } finally {
         if (!cancelled) {
           finishedInitialHydration.current = true;
+          setClientHydrated(true);
         }
       }
     };
@@ -626,7 +678,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  // Initial bootstrap only. State updates are persisted separately.
+  // Initial bootstrap only. State updates are persisted separately. Server
+  // context is immutable for this mounted app shell; a workspace switch
+  // performs a new navigation and receives a fresh server context.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1049,6 +1103,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         installSuggestedWorkflow,
         pendingApprovals,
         clientHydrated,
+        bootstrapStatus,
         workspaceLoadError,
       }}
     >

@@ -2106,3 +2106,165 @@ select.os-input option {
   .os-mobile-menu { max-height: calc(100dvh - 120px); }
   .approval-policy-note { align-items: flex-start; flex-direction: column; gap: 8px; }
 }
+
+/* =========================================================
+   Mobile interaction polish
+   Search, settings actions, connector truth and suggestions.
+   ========================================================= */
+.os-command-input { min-width: 0; font-size: 14px; }
+.settings-accounts-empty { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+@media (max-width: 800px) {
+  /* iOS never magnifies focused controls at a 16px input size. */
+  .os-command-backdrop {
+    align-items: flex-start !important;
+    justify-content: center !important;
+    padding: max(68px, calc(env(safe-area-inset-top) + 56px)) 12px calc(76px + env(safe-area-inset-bottom)) !important;
+    background: rgba(2, 4, 7, .72) !important;
+    backdrop-filter: blur(12px) !important;
+  }
+  .os-command-panel {
+    max-width: 560px !important;
+    max-height: calc(100dvh - 150px);
+    display: flex;
+    flex-direction: column;
+    border-radius: 18px !important;
+    background: rgba(11, 15, 21, .98) !important;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.09), 0 24px 72px rgba(0,0,0,.68) !important;
+  }
+  .os-command-search { min-height: 54px; gap: 11px !important; padding: 7px 10px 7px 15px !important; }
+  .os-command-search > svg { width: 17px; height: 17px; color: var(--cyan) !important; }
+  .os-command-input {
+    min-height: 40px;
+    font-size: 16px;
+    line-height: 1.3;
+    appearance: none;
+  }
+  .os-command-input::-webkit-search-cancel-button { display: none; }
+  .os-command-close {
+    min-width: 48px;
+    min-height: 40px;
+    padding: 0 9px !important;
+    border-radius: 10px !important;
+    color: var(--cyan) !important;
+    background: rgba(77,232,225,.055) !important;
+    font: 600 12px var(--font-sans) !important;
+  }
+  .os-command-results { flex: 1; max-height: min(56dvh, 430px) !important; overscroll-behavior: contain; }
+  .os-command-result { min-height: 60px; padding: 10px 14px !important; gap: 11px !important; }
+  .os-command-result-icon { width: 32px !important; height: 32px !important; border-radius: 9px !important; }
+  .os-command-result-copy { min-width: 0; }
+  .os-command-result-copy > div:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .os-command-result-copy > div:last-child {
+    overflow: hidden;
+    margin-top: 3px !important;
+    font: 11.5px/1.3 var(--font-sans) !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .os-command-shortcuts { display: none !important; }
+
+  /* Modal actions sit above the keyboard/safe area and above the tab bar. */
+  .os-modal-backdrop { z-index: 80; height: 100dvh; }
+  .settings-edit-backdrop { padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)); }
+  .settings-edit-modal { max-height: calc(100dvh - max(20px, env(safe-area-inset-top))) !important; overscroll-behavior: contain; }
+  .settings-edit-actions {
+    position: sticky;
+    z-index: 2;
+    bottom: -14px;
+    margin: 14px -14px -14px !important;
+    padding: 12px 14px max(12px, env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, rgba(10,13,18,.72), #0a0d12 28%);
+    border-top: 1px solid var(--line);
+  }
+  .settings-edit-actions .btn { flex: 1; justify-content: center; }
+  .settings-accounts-empty { align-items: flex-start; flex-direction: column; gap: 7px; padding: 14px 16px !important; }
+
+  /* Suggested workflows get one title and one quiet action on phones. */
+  .workflow-suggestions-head { align-items: center; flex-wrap: nowrap; min-height: 48px; padding: 10px 12px 10px 14px; }
+  .workflow-suggestions-head h3 { flex: 1; min-width: 0; }
+  .workflow-suggestions-actions { flex: 0 0 auto; gap: 0 !important; }
+  .workflow-suggestions-actions .appr-btn { min-height: 34px; padding: 6px 9px; font: 600 11.5px var(--font-sans); }
+}
+
+/* Authenticated bootstrap: neutral geometry until the verified workspace is ready. */
+.os-app-loading-shell { min-height: 100dvh; }
+.os-loading-rail {
+  min-height: 100dvh;
+  display: grid;
+  align-content: start;
+  gap: 13px;
+  padding: 24px 18px;
+  border-right: 1px solid var(--line);
+  background: #080a0e;
+}
+.os-loading-rail strong { margin-bottom: 17px; color: var(--text-dim); font: 650 13px var(--font-sans); letter-spacing: .08em; }
+.os-loading-top { min-height: 58px; display: flex; align-items: center; gap: 9px; padding: 9px 24px; border-bottom: 1px solid var(--line); }
+.os-loading-top .top-route { width: 104px; margin-right: auto; }
+.os-loading-top .top-action { width: 40px; height: 40px; border-radius: 10px; }
+.os-dashboard-loading { pointer-events: none; }
+.os-loading-heading { display: grid; gap: 9px; }
+.os-loading-bar, .os-loading-tile {
+  display: block;
+  overflow: hidden;
+  border-radius: 7px;
+  background: linear-gradient(100deg, rgba(255,255,255,.035) 20%, rgba(255,255,255,.075) 38%, rgba(255,255,255,.035) 56%);
+  background-size: 240% 100%;
+  animation: os-loading-sheen 1.8s ease-in-out infinite;
+}
+.os-loading-heading .status { width: 96px; height: 9px; }
+.os-loading-heading .title { width: min(280px, 58vw); height: 28px; border-radius: 9px; }
+.os-loading-heading .subtitle { width: min(360px, 72vw); height: 11px; }
+.os-loading-focus .p, .os-loading-lower .p { min-height: 150px; display: grid; align-content: start; gap: 14px; padding: 16px; }
+.os-loading-focus .p:first-child { min-height: 188px; }
+.os-loading-bar.panel-title { width: 124px; height: 12px; margin-bottom: 10px; }
+.os-loading-bar.row { width: 100%; height: 46px; border-radius: 10px; }
+.os-loading-bar.row.short { width: 72%; }
+.os-loading-tile { min-height: 104px; }
+.os-loading-rail .rail-workspace { width: 86%; height: 54px; margin-bottom: 8px; border-radius: 12px; }
+.os-loading-rail .rail-item { width: 72%; height: 13px; margin: 5px 8px; }
+.os-loading-mobile-nav { display: none; }
+@keyframes os-loading-sheen { from { background-position: 110% 0; } to { background-position: -110% 0; } }
+
+@media (max-width: 1180px) {
+  .os-app-loading-shell { grid-template-columns: 1fr; }
+  .os-loading-rail { display: none; }
+}
+
+@media (max-width: 800px) {
+  .os-loading-top { min-height: 58px; padding: 8px 16px; }
+  .os-dashboard-loading { gap: 14px; padding-top: 16px; }
+  .os-dashboard-loading > * { order: 10; }
+  .os-dashboard-loading > .os-loading-heading { order: 0; }
+  .os-dashboard-loading > .os-loading-focus { order: 1; }
+  .os-dashboard-loading > .os-loading-kpis { order: 2; }
+  .os-loading-heading .title { width: 190px; height: 24px; }
+  .os-loading-heading .subtitle { width: 230px; }
+  .os-loading-focus { gap: 12px; }
+  .os-loading-focus .p, .os-loading-focus .p:first-child { min-height: 126px; padding: 14px; }
+  .os-loading-focus .p:nth-child(2) { min-height: 166px; }
+  .os-loading-bar.row { height: 42px; }
+  .os-loading-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .os-loading-tile { min-height: 96px; }
+  .os-loading-lower { display: none; }
+  .os-loading-mobile-nav {
+    position: fixed;
+    z-index: 40;
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(7px, env(safe-area-inset-bottom));
+    left: max(10px, env(safe-area-inset-left));
+    min-height: 54px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 15px;
+    background: rgba(8,11,15,.94);
+  }
+  .os-loading-mobile-nav .os-loading-bar { width: 100%; height: 44px; border-radius: 9px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .os-loading-bar, .os-loading-tile { animation: none; }
+}

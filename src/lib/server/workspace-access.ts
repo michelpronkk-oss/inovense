@@ -78,15 +78,17 @@ export async function resolveActiveWorkspaceId(
   userId: string,
   supabase: SupabaseAdmin = createSupabaseAdmin()
 ): Promise<string | null> {
-  const memberships = await listActiveMemberships(userId, supabase);
+  const [memberships, profileResult] = await Promise.all([
+    listActiveMemberships(userId, supabase),
+    supabase
+      .from("os_user_profiles")
+      .select("last_active_workspace_id")
+      .eq("user_id", userId)
+      .maybeSingle(),
+  ]);
   if (memberships.length === 0) return null;
 
-  const { data: profile } = await supabase
-    .from("os_user_profiles")
-    .select("last_active_workspace_id")
-    .eq("user_id", userId)
-    .maybeSingle();
-
+  const profile = profileResult.data;
   const saved = profile?.last_active_workspace_id as string | null | undefined;
   if (saved && memberships.some((m) => m.workspace_id === saved)) {
     return saved;

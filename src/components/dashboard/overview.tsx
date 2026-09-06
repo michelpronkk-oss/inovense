@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useOS } from "@/lib/os/app-provider";
 import type { DashboardOverview, DashboardOperator } from "@/lib/dashboard/overview";
 import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-grid";
+import { DashboardLoadingState } from "@/components/dashboard/loading-state";
 
 type ScanKey = DashboardOperator["key"];
 type OverviewResponse = DashboardOverview & { error?: string; message?: string };
@@ -88,21 +89,6 @@ function ActivitySparkline({ activity, now, color = "#4DE8E1" }: { activity: Das
   return <svg width="116" height="32" viewBox="0 0 108 32" fill="none" aria-label="Activity over the last seven days"><polyline points={points} stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" opacity="0.95" /></svg>;
 }
 
-function Skeleton() {
-  return (
-    <div className="os-page dashboard-overview">
-      <div className="os-page-head">
-        <div>
-          <span className="os-greet">Operating</span>
-          <h1>Loading overview...</h1>
-          <div className="os-page-sub">Reading real workspace state.</div>
-        </div>
-      </div>
-      <div className="kpi-row">{[0, 1, 2, 3].map((i) => <div className="kpi" key={i} style={{ minHeight: 92, opacity: 0.6 }} />)}</div>
-    </div>
-  );
-}
-
 export function OSOverview() {
   const { state } = useOS();
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
@@ -117,22 +103,37 @@ export function OSOverview() {
     userEmail: state.currentUser.email,
   }), [state.currentUser.email, state.currentUser.id, state.workspace.id]);
 
-  const loadOverview = useCallback(async () => {
+  const loadOverview = useCallback(async (signal?: AbortSignal) => {
     if (!state.workspace.id) return;
     setError("");
     try {
-      const res = await fetch(`/api/dashboard/overview?${identityParams.toString()}`, { cache: "no-store" });
+      const res = await fetch(`/api/dashboard/overview?${identityParams.toString()}`, { cache: "no-store", signal });
       const json = await res.json().catch(() => ({})) as OverviewResponse;
-      if (!res.ok || json.error) throw new Error(json.message || json.error || "Could not load dashboard overview.");
+      if (!res.ok || json.error) {
+        const message = res.status === 403
+          ? "You don’t have access to this workspace."
+          : res.status === 401
+            ? "Your session could not be verified. Please sign in again."
+            : json.message || "We couldn’t load your dashboard. Refresh to try again.";
+        throw new Error(message);
+      }
       setOverview(json);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load dashboard overview.");
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      setError(err instanceof Error ? err.message : "We couldn’t load your dashboard. Refresh to try again.");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [identityParams, state.workspace.id]);
 
-  useEffect(() => { void loadOverview(); }, [loadOverview]);
+  useEffect(() => {
+    const controller = new AbortController();
+    setOverview(null);
+    setLoading(true);
+    setError("");
+    void loadOverview(controller.signal);
+    return () => controller.abort();
+  }, [loadOverview]);
 
   const runManualCheck = async (key: ScanKey) => {
     if (busyScan || busyApproval) return;
@@ -179,7 +180,7 @@ export function OSOverview() {
     }
   };
 
-  if (loading && !overview) return <Skeleton />;
+  if (loading && !overview) return <DashboardLoadingState />;
 
   if (!overview) {
     return (
@@ -187,8 +188,9 @@ export function OSOverview() {
         <div className="os-page-head">
           <div>
             <span className="os-greet">Auterim OS</span>
-            <h1>Overview unavailable</h1>
-            <div className="os-page-sub">{error || "Could not load real dashboard state."}</div>
+            <h1>We couldn’t load your dashboard.</h1>
+            <div className="os-page-sub">{error || "Refresh to try again."}</div>
+            <button className="btn btn-primary btn-sm" type="button" style={{ marginTop: 16 }} onClick={() => { setLoading(true); void loadOverview(); }}>Try again</button>
           </div>
         </div>
       </div>

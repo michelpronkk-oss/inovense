@@ -78,6 +78,9 @@ export default function SettingsPage() {
   const [disconnectingAccount, setDisconnectingAccount] = useState<string | null>(null);
   const [connectedAccounts, setConnectedAccounts] = useState<ConnectedAccount[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(true);
+  const visibleConnectedAccounts = connectedAccounts.filter((account) =>
+    account.status === "connected" || account.status === "healthy" || account.status === "reconnect_required"
+  );
   const entitlements = getEntitlements(state.workspace);
   const workspacePlanLabel = entitlements.billingStatus === "preview"
     ? "Preview - no plan activated"
@@ -358,10 +361,13 @@ export default function SettingsPage() {
         </div>
         {accountsLoading ? (
           <div style={{ padding: "16px 18px", fontSize: 12.5, color: "var(--text-faint)" }}>Loading...</div>
-        ) : connectedAccounts.length === 0 ? (
-          <div style={{ padding: "16px 18px", fontSize: 12.5, color: "var(--text-faint)" }}>No connector data available.</div>
+        ) : visibleConnectedAccounts.length === 0 ? (
+          <div className="settings-accounts-empty" style={{ padding: "16px 18px", fontSize: 12.5, color: "var(--text-faint)" }}>
+            <span>No accounts connected.</span>
+            <Link className="lnk-open" href="/connectors">Connect an account</Link>
+          </div>
         ) : (
-          connectedAccounts.map((acct) => {
+          visibleConnectedAccounts.map((acct) => {
             const color = acct.connectorKey === "gmail" ? "#EA4335" : "#FF7A59";
             const letter = acct.connectorKey === "gmail" ? "G" : "Hs";
             const authLabel = acct.authType === "native" ? "Native connector" : "Secure connector";
@@ -471,8 +477,8 @@ export default function SettingsPage() {
       {error && <div style={{ color: "#ff8f8f", fontSize: 12 }}>{error}</div>}
 
       {editing && (
-        <div className="os-modal-backdrop" onClick={() => setEditing(null)}>
-          <div className="os-modal" style={{ maxWidth: 680, width: "92%" }} onClick={(e) => e.stopPropagation()}>
+        <div className="os-modal-backdrop settings-edit-backdrop" onClick={() => setEditing(null)}>
+          <div className="os-modal settings-edit-modal" style={{ maxWidth: 680, width: "92%" }} onClick={(e) => e.stopPropagation()}>
             <div className="os-modal-head">
               <h3>Edit {editing === "approvalPolicy" ? "approval policy" : editing}</h3>
               <button className="appr-btn deny" onClick={() => setEditing(null)}>Close</button>
@@ -535,7 +541,7 @@ export default function SettingsPage() {
               </div>
             )}
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+            <div className="settings-edit-actions" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
               <button className="btn btn-ghost btn-sm" onClick={() => setEditing(null)}>Cancel</button>
               <button className="btn btn-primary btn-sm" onClick={save} disabled={saving} style={{ opacity: saving ? 0.7 : 1 }}>
                 {saving ? "Saving..." : "Save"}
