@@ -13,6 +13,7 @@ import type { Capability } from "@/lib/connectors/capabilities";
 import { logOperatorEvent, operatorRuntimeId } from "@/lib/operators/logging";
 import { sendSlackApprovalNotification } from "@/lib/notifications/slack";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { getWorkspaceExecutionEligibility } from "@/lib/os/execution-eligibility";
 import { loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 import { getAppUrl } from "@/lib/urls";
@@ -285,6 +286,26 @@ export async function scanOperationsSignals(input: {
 
   if (!trelloConnected || !boardId) {
     return { ok: true, status: 200, body: { status: "setup_incomplete", setupComplete: false, message: "Connect Trello and select a default board to run Operations.", sourceMode, setup } };
+  }
+
+  // Real billing enforcement - see the matching check in revenue/scan.ts for
+  // the full rationale. Checked after Trello setup (a real setup gap is
+  // still the more specific/useful error) and before any Trello API call,
+  // and never blocks review/action on approvals already sitting in the
+  // queue - it only gates starting new scan work.
+  const executionEligibility = await getWorkspaceExecutionEligibility(workspaceId, supabase);
+  if (!executionEligibility.eligible) {
+    return {
+      ok: false,
+      status: 402,
+      body: {
+        status: "plan_required",
+        message: executionEligibility.reason,
+        sourceMode,
+        setup,
+        details: { billingStatus: executionEligibility.billingStatus, planTier: executionEligibility.planTier, trialEndsAt: executionEligibility.trialEndsAt },
+      },
+    };
   }
 
   try {

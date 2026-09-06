@@ -27,6 +27,7 @@ import { prepareAction } from "@/lib/actions/execute";
 import type { PreparedAction } from "@/lib/actions/types";
 import { logOperatorEvent, operatorRuntimeId } from "@/lib/operators/logging";
 import { getOperatorReadiness, type OperatorReadiness } from "@/lib/operators/readiness";
+import { getWorkspaceExecutionEligibility } from "@/lib/os/execution-eligibility";
 import { draftClientFlowReplyWithAI } from "@/lib/operators/client-flow/ai-drafting";
 import { applyGreeting, buildContactPersonalization, type SharedPersonalization } from "@/lib/operators/shared/personalization";
 import { sendSlackApprovalNotification } from "@/lib/notifications/slack";
@@ -596,6 +597,25 @@ export async function scanClientFlowSignals(input: {
   }
   if (!readiness.canRunManual || (readiness.status !== "ready" && readiness.status !== "draft_only")) {
     return { ok: false, status: 409, body: { status: readiness.status, message: readiness.reason, readiness } };
+  }
+
+  // Real billing enforcement - see the matching check in revenue/scan.ts for
+  // the full rationale. Checked after connector readiness, before any
+  // connector API/model call, and never blocks review/action on approvals
+  // already sitting in the queue - it only gates starting new scan work.
+  const executionEligibility = await getWorkspaceExecutionEligibility(workspaceId, supabase);
+  if (!executionEligibility.eligible) {
+    return {
+      ok: false,
+      status: 402,
+      body: {
+        status: "plan_required",
+        message: executionEligibility.reason,
+        sourceMode,
+        readiness,
+        details: { billingStatus: executionEligibility.billingStatus, planTier: executionEligibility.planTier, trialEndsAt: executionEligibility.trialEndsAt },
+      },
+    };
   }
 
   const emailConnector = resolveClientFlowEmailConnector(readiness);

@@ -1,6 +1,8 @@
 import { schedules, task } from "@trigger.dev/sdk/v3";
 import { scanRevenueOpportunities } from "@/lib/operators/revenue/scan";
 import { getOperatorReadiness } from "@/lib/operators/readiness";
+import { getWorkspaceExecutionEligibility } from "@/lib/os/execution-eligibility";
+import { getOperatorActivationState } from "@/lib/operators/activation";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 type RevenueOperatorScanPayload = {
@@ -29,13 +31,23 @@ export const revenueOperatorScan = task({
 type WorkspaceDiscoveryResult = { ok: true; workspaceIds: string[] } | { ok: false; error: string };
 
 /**
- * List workspaces the daily cron should actually scan: only ones whose
- * Revenue readiness (same getOperatorReadiness() the manual scan route and
- * scanRevenueOpportunities() itself use) reports "ready" or "draft_only" with
- * canRunManual true - i.e. a real email connector (Gmail or Microsoft 365) is
- * connected. Workspaces with no connector, an unpaid plan, or a not-yet-built
- * status are never scanned. A readiness check failing for one workspace does
- * not stop discovery for the rest.
+ * List workspaces the daily cron should actually scan. A workspace must
+ * clear all three independent gates:
+ *   1. Revenue readiness (same getOperatorReadiness() the manual scan route
+ *      and scanRevenueOpportunities() itself use) reports "ready" or
+ *      "draft_only" with canRunManual true - i.e. a real email connector
+ *      (Gmail or Microsoft 365) is connected.
+ *   2. Billing eligibility (getWorkspaceExecutionEligibility()) - the same
+ *      real server-side billing check scanRevenueOpportunities() itself
+ *      enforces, so a lapsed/preview workspace is never even fanned out to.
+ *   3. Explicit activation (getOperatorActivationState()) - the workspace
+ *      must have intentionally turned Revenue's unattended scheduled cron on
+ *      (os_operator_triggers.enabled for trigger_type "operator_activation").
+ *      An operator that was never explicitly activated defaults to
+ *      not-activated and is excluded here.
+ * Workspaces failing any gate, or with a not-yet-built status, are never
+ * scanned. A check failing for one workspace does not stop discovery for the
+ * rest.
  */
 async function listEligibleRevenueWorkspaceIds(): Promise<WorkspaceDiscoveryResult> {
   const supabase = createSupabaseAdmin();
@@ -52,12 +64,20 @@ async function listEligibleRevenueWorkspaceIds(): Promise<WorkspaceDiscoveryResu
   for (const workspaceId of workspaceIds) {
     try {
       const readiness = await getOperatorReadiness({ workspaceId, operatorKey: "revenue" });
-      if (readiness?.canRunManual && (readiness.status === "ready" || readiness.status === "draft_only")) {
+      if (!readiness?.canRunManual || (readiness.status !== "ready" && readiness.status !== "draft_only")) {
+        continue;
+      }
+      const [eligibility, activation] = await Promise.all([
+        getWorkspaceExecutionEligibility(workspaceId, supabase),
+        getOperatorActivationState({ workspaceId, operatorKey: "revenue", supabase }),
+      ]);
+      if (eligibility.eligible && activation?.activated) {
         eligible.push(workspaceId);
       }
     } catch {
-      // A broken readiness check for one workspace must never block discovery
-      // for the others - it simply is not scanned this run.
+      // A broken readiness/billing/activation check for one workspace must
+      // never block discovery for the others - it simply is not scanned this
+      // run.
     }
   }
   return { ok: true, workspaceIds: eligible };

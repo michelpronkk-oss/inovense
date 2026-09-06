@@ -30,6 +30,7 @@ import {
 import type { PreparedHubSpotActions } from "@/lib/operators/executors/hubspot";
 import { logOperatorEvent, operatorRuntimeId } from "@/lib/operators/logging";
 import { getOperatorReadiness, type OperatorReadiness } from "@/lib/operators/readiness";
+import { getWorkspaceExecutionEligibility } from "@/lib/os/execution-eligibility";
 import { draftRevenueFollowUpWithAI } from "@/lib/operators/revenue/ai-drafting";
 import { loadRevenueCompanyGraphContext } from "@/lib/operators/revenue/context";
 import { sendSlackApprovalNotification } from "@/lib/notifications/slack";
@@ -1090,6 +1091,29 @@ export async function scanRevenueOpportunities(input: {
   }
   if (!readiness.canRunManual || (readiness.status !== "ready" && readiness.status !== "draft_only")) {
     return { ok: false, status: 409, body: { status: readiness.status, message: readiness.reason, readiness } };
+  }
+
+  // Real billing enforcement: connector readiness alone is never enough to
+  // let a scan create new approvals. This is checked after readiness (a
+  // missing connector is still the more specific/useful error) and before
+  // any connector API call or model call, so a lapsed workspace never
+  // consumes Gmail/Microsoft/HubSpot quota or model spend for a scan whose
+  // results could not be acted on anyway. Already-created approvals from
+  // before a workspace lapsed are untouched by this check - it only gates
+  // starting new scan work.
+  const executionEligibility = await getWorkspaceExecutionEligibility(workspaceId, supabase);
+  if (!executionEligibility.eligible) {
+    return {
+      ok: false,
+      status: 402,
+      body: {
+        status: "plan_required",
+        message: executionEligibility.reason,
+        sourceMode,
+        readiness,
+        details: { billingStatus: executionEligibility.billingStatus, planTier: executionEligibility.planTier, trialEndsAt: executionEligibility.trialEndsAt },
+      },
+    };
   }
 
   const emailConnector = resolveRevenueEmailConnector(readiness);

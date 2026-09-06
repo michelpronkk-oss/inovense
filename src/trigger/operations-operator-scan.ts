@@ -1,6 +1,8 @@
 import { schedules, task } from "@trigger.dev/sdk/v3";
 import { scanOperationsSignals } from "@/lib/operators/operations/scan";
 import { getOperatorReadiness } from "@/lib/operators/readiness";
+import { getWorkspaceExecutionEligibility } from "@/lib/os/execution-eligibility";
+import { getOperatorActivationState } from "@/lib/operators/activation";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 type OperationsOperatorScanPayload = {
@@ -46,16 +48,31 @@ async function listEligibleOperationsWorkspaceIds(): Promise<WorkspaceDiscoveryR
     .map((row) => (typeof row.id === "string" ? row.id : String(row.id ?? "")))
     .filter((id) => id.length > 0);
 
+  // A workspace must clear readiness (Trello connected + board selected),
+  // billing eligibility (getWorkspaceExecutionEligibility - the same real
+  // server-side check scanOperationsSignals() itself enforces), AND explicit
+  // activation (getOperatorActivationState - os_operator_triggers.enabled for
+  // trigger_type "operator_activation") to be included in the unattended
+  // daily cron. An operator never explicitly activated defaults to
+  // not-activated and is excluded. Mirrors revenue-operator-scan.ts exactly.
   const eligible: string[] = [];
   for (const workspaceId of workspaceIds) {
     try {
       const readiness = await getOperatorReadiness({ workspaceId, operatorKey: "operations" });
-      if (readiness?.canRunManual && (readiness.status === "ready" || readiness.status === "draft_only")) {
+      if (!readiness?.canRunManual || (readiness.status !== "ready" && readiness.status !== "draft_only")) {
+        continue;
+      }
+      const [eligibility, activation] = await Promise.all([
+        getWorkspaceExecutionEligibility(workspaceId, supabase),
+        getOperatorActivationState({ workspaceId, operatorKey: "operations", supabase }),
+      ]);
+      if (eligibility.eligible && activation?.activated) {
         eligible.push(workspaceId);
       }
     } catch {
-      // A broken readiness check for one workspace must never block discovery
-      // for the others - it simply is not scanned this run.
+      // A broken readiness/billing/activation check for one workspace must
+      // never block discovery for the others - it simply is not scanned this
+      // run.
     }
   }
   return { ok: true, workspaceIds: eligible };

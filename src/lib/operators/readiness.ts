@@ -1,6 +1,8 @@
 import { connectorHasCapability, type Capability } from "@/lib/connectors/capabilities";
 import { getConnectorTruth, type SafeConnectorTruth } from "@/lib/connectors/truth";
+import { getOperatorConnectorReadiness, type OperatorConnectorReadiness } from "@/lib/operators/connector-requirements";
 import { getEntitlements, type Entitlements, type PlanTier } from "@/lib/os/entitlements";
+import { getWorkspaceExecutionEligibilityFromWorkspace, type WorkspaceExecutionEligibility } from "@/lib/os/execution-eligibility";
 import type { Workspace } from "@/lib/os/types";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { getOperatorDefinition, OPERATOR_REGISTRY, type ConnectorKey, type OperatorDefinition, type OperatorKey } from "@/lib/operators/registry";
@@ -26,6 +28,16 @@ export type OperatorReadiness = {
   nextSetupStep: string;
   canRunManual: boolean;
   canExecuteRealActions: boolean;
+  /**
+   * Full workspace billing/plan eligibility detail from
+   * getWorkspaceExecutionEligibility() (src/lib/os/execution-eligibility.ts)
+   * - the same real, server-enforced billing gate the three operator scan
+   * paths check before creating new approvals. `canExecuteRealActions`
+   * above is `canRunManual && executionEligibility.eligible`; this field is
+   * exposed so Pass 2's UI can show the real reason (trial, plan required,
+   * billing attention, suspended) without re-deriving it.
+   */
+  executionEligibility: WorkspaceExecutionEligibility;
   reason: string;
 };
 
@@ -57,6 +69,27 @@ function connectedConnectorsWithCapability(capability: Capability, truth: SafeCo
 
 function getConnectedRequiredConnectors(operator: OperatorDefinition, truth: SafeConnectorTruth[]): ConnectorKey[] {
   return operator.requiredConnectors.filter((connector) => connectorConnected(connector, truth));
+}
+
+function connectedConnectorKeysFromTruth(truth: SafeConnectorTruth[]): string[] {
+  return truth
+    .filter((connector) => connector.status === "connected" || connector.status === "healthy")
+    .map((connector) => connector.connectorKey);
+}
+
+/**
+ * The generic capability base every operator branch below builds on top of:
+ * which capabilities does this workspace actually have, given real connector
+ * truth, per the shared declarative capability graph
+ * (OPERATOR_CONNECTOR_REQUIREMENTS in connector-requirements.ts +
+ * capabilities.ts). Operator-specific business rules that follow in
+ * evaluateOperator() (HubSpot-vs-Salesforce-vs-neither for Revenue, Trello
+ * board-selected + proven-run-log activity for Operations, etc.) are
+ * additional conditions layered on top of this - they are not
+ * re-derivations of "is a required capability connected".
+ */
+function getWorkspaceCapabilityReadiness(operator: OperatorDefinition, truth: SafeConnectorTruth[]): OperatorConnectorReadiness | null {
+  return getOperatorConnectorReadiness(operator.key, connectedConnectorKeysFromTruth(truth));
 }
 
 function planAllows(operator: OperatorDefinition, planTier: PlanTier): boolean {
@@ -91,6 +124,7 @@ function baseResult(input: {
   connectedRequired: ConnectorKey[];
   missingRequired: ConnectorKey[];
   entitlements: Entitlements;
+  executionEligibility: WorkspaceExecutionEligibility;
   reason: string;
   nextSetupStep: string;
   canRunManual?: boolean;
@@ -108,7 +142,12 @@ function baseResult(input: {
     blockedActions: input.operator.blockedActions,
     nextSetupStep: input.nextSetupStep,
     canRunManual,
-    canExecuteRealActions: canRunManual && input.entitlements.canRunRealActions,
+    // Real server-side billing enforcement now backs this value - see
+    // getWorkspaceExecutionEligibility() and its use in the three operator
+    // scan paths, which check the exact same eligibility.eligible boolean
+    // before creating new approvals.
+    canExecuteRealActions: canRunManual && input.executionEligibility.eligible,
+    executionEligibility: input.executionEligibility,
     reason: input.reason,
   };
 }
@@ -185,11 +224,16 @@ function evaluateOperator(input: {
   operator: OperatorDefinition;
   truth: SafeConnectorTruth[];
   entitlements: Entitlements;
+  executionEligibility: WorkspaceExecutionEligibility;
   runtimeSignals: { hasApprovalActivity: boolean; hasWorkspaceScopedLogs: boolean };
 }): OperatorReadiness {
-  const { operator, truth, entitlements, runtimeSignals } = input;
+  const { operator, truth, entitlements, executionEligibility, runtimeSignals } = input;
   const connectedRequired = getConnectedRequiredConnectors(operator, truth);
   const missingRequired = operator.requiredConnectors.filter((connector) => !connectedRequired.includes(connector));
+  // The shared capability-graph base (connector-requirements.ts +
+  // capabilities.ts) every branch below is built on top of - see
+  // getWorkspaceCapabilityReadiness's doc comment.
+  const capabilityReadiness = getWorkspaceCapabilityReadiness(operator, truth);
 
   if (operator.currentReleaseStatus === "coming_next") {
     return baseResult({
@@ -198,6 +242,7 @@ function evaluateOperator(input: {
       connectedRequired,
       missingRequired,
       entitlements,
+      executionEligibility,
       reason: "This operator is not built yet.",
       nextSetupStep: "No setup is required yet.",
     });
@@ -210,6 +255,7 @@ function evaluateOperator(input: {
       connectedRequired,
       missingRequired,
       entitlements,
+      executionEligibility,
       reason: `${operator.name} is not available on the ${entitlements.planTier} plan.`,
       nextSetupStep: "Upgrade the workspace plan.",
     });
@@ -222,6 +268,7 @@ function evaluateOperator(input: {
       connectedRequired,
       missingRequired,
       entitlements,
+      executionEligibility,
       reason: "This operator is available as a preview planning surface only.",
       nextSetupStep: missingRequired.length ? getNextConnectorStep(missingRequired) : "Review preview capabilities.",
       canRunManual: false,
@@ -229,8 +276,16 @@ function evaluateOperator(input: {
   }
 
   if (operator.key === "revenue") {
+    // Generic capability base: required = ["email.read", "email.send_after_approval"]
+    // (see OPERATOR_CONNECTOR_REQUIREMENTS.revenue). connectedConnectorsWithCapability
+    // stays in use only to name *which* connector (Gmail vs Microsoft 365)
+    // satisfies it, for downstream connector selection and copy.
     const emailConnectors = connectedConnectorsWithCapability("email.send_after_approval", truth);
-    const hasEmail = emailConnectors.length > 0;
+    const hasEmail = capabilityReadiness?.ready ?? emailConnectors.length > 0;
+    // HubSpot-vs-Salesforce-vs-neither is a Revenue-specific business rule
+    // (Revenue's write path is HubSpot-only today, see resolveRevenueCrmProvider
+    // in scan.ts) layered on top of the generic capability base, not a
+    // redundant connector check.
     const hasHubSpot = connectorConnected("hubspot", truth);
     if (!hasEmail) {
       return baseResult({
@@ -239,6 +294,7 @@ function evaluateOperator(input: {
         connectedRequired,
         missingRequired,
         entitlements,
+        executionEligibility,
         reason: "Revenue readiness requires a connected email connector (Gmail or Microsoft 365).",
         nextSetupStep: "Connect Gmail or Microsoft 365.",
       });
@@ -250,6 +306,7 @@ function evaluateOperator(input: {
         connectedRequired: emailConnectors,
         missingRequired: [],
         entitlements,
+        executionEligibility,
         reason: `${emailConnectors[0] === "microsoft" ? "Microsoft 365" : "Gmail"} is connected, so draft and approval work is available. HubSpot is missing, so CRM execution is disabled.`,
         nextSetupStep: "Connect HubSpot through Nango for full revenue readiness.",
         canRunManual: true,
@@ -261,6 +318,7 @@ function evaluateOperator(input: {
       connectedRequired: emailConnectors,
       missingRequired: [],
       entitlements,
+      executionEligibility,
       reason: "An email connector and HubSpot connector truth are both present.",
       nextSetupStep: "Ready for approval-gated email send and HubSpot contact/deal updates.",
       canRunManual: true,
@@ -268,14 +326,18 @@ function evaluateOperator(input: {
   }
 
   if (operator.key === "client_flow") {
+    // Generic capability base: required = ["email.read", "email.send_after_approval"]
+    // (see OPERATOR_CONNECTOR_REQUIREMENTS.client_flow).
     const emailConnectors = connectedConnectorsWithCapability("email.send_after_approval", truth);
-    if (emailConnectors.length === 0) {
+    const hasEmail = capabilityReadiness?.ready ?? emailConnectors.length > 0;
+    if (!hasEmail) {
       return baseResult({
         operator,
         status: "missing_connector",
         connectedRequired,
         missingRequired,
         entitlements,
+        executionEligibility,
         reason: "Client Flow requires a connected email connector (Gmail or Microsoft 365) for safe draft preparation.",
         nextSetupStep: "Connect Gmail or Microsoft 365.",
       });
@@ -286,6 +348,7 @@ function evaluateOperator(input: {
       connectedRequired: emailConnectors,
       missingRequired: [],
       entitlements,
+      executionEligibility,
       reason: `${emailConnectors[0] === "microsoft" ? "Microsoft 365" : "Gmail"} is connected. Drive/Notion context is not available yet, so readiness is limited to draft preparation.`,
       nextSetupStep: "Connect Drive or Notion when those connector truth checks are available.",
       canRunManual: true,
@@ -299,14 +362,20 @@ function evaluateOperator(input: {
     // the real hard requirement, not an email connector (Operations does not
     // send or draft email today). Slack stays optional: scan.ts degrades
     // gracefully and only prepares a Trello action when Slack/its channel is
-    // not connected.
-    if (missingRequired.length > 0) {
+    // not connected. The generic capability base (required: ["pm.tasks.read"],
+    // see OPERATOR_CONNECTOR_REQUIREMENTS.operations) is ANDed in here as the
+    // shared source of truth - Trello is the only connector today that
+    // satisfies it, so this never changes real-world behavior, only where
+    // the requirement is declared.
+    const missingCapability = capabilityReadiness ? !capabilityReadiness.ready : false;
+    if (missingRequired.length > 0 || missingCapability) {
       return baseResult({
         operator,
         status: "missing_connector",
         connectedRequired,
         missingRequired,
         entitlements,
+        executionEligibility,
         reason: "Operations readiness requires a connected Trello workspace with a selected default board.",
         nextSetupStep: "Connect Trello and select a default board.",
       });
@@ -318,6 +387,7 @@ function evaluateOperator(input: {
         connectedRequired,
         missingRequired: [],
         entitlements,
+        executionEligibility,
         reason: "Trello is connected, but this workspace has no recorded approval or operator run-log activity yet, so Operations has not proven it can run end to end.",
         nextSetupStep: "Run a manual Operations check to generate the first workspace-scoped approval and run log.",
         canRunManual: true,
@@ -329,6 +399,7 @@ function evaluateOperator(input: {
       connectedRequired,
       missingRequired: [],
       entitlements,
+      executionEligibility,
       reason: "Trello is connected, and this workspace has real approval and workspace-scoped run-log activity.",
       nextSetupStep: "Ready for approval-gated Slack updates and Trello card changes.",
       canRunManual: true,
@@ -342,6 +413,7 @@ function evaluateOperator(input: {
       connectedRequired,
       missingRequired,
       entitlements,
+      executionEligibility,
       reason: `${operator.name} is missing required connector truth.`,
       nextSetupStep: getNextConnectorStep(missingRequired),
     });
@@ -353,6 +425,7 @@ function evaluateOperator(input: {
     connectedRequired,
     missingRequired,
     entitlements,
+    executionEligibility,
     reason: "Readiness is based on release status, plan, and connector truth.",
     nextSetupStep: "Ready for manual preparation once execution is implemented.",
     canRunManual: operator.currentReleaseStatus === "ready",
@@ -363,12 +436,14 @@ export async function getWorkspaceOperatorReadiness(input: { workspaceId: string
   const supabase = createSupabaseAdmin();
   const workspace = await getWorkspace(input.workspaceId, supabase);
   const entitlements = getEntitlements(workspace);
+  // Same real os_workspaces row already loaded above - no duplicate query.
+  const executionEligibility = getWorkspaceExecutionEligibilityFromWorkspace(workspace);
   const [truth, runtimeSignals] = await Promise.all([
     getConnectorTruth({ workspaceId: input.workspaceId, supabase }),
     getWorkspaceRuntimeSignals(input.workspaceId, supabase),
   ]);
 
-  return OPERATOR_REGISTRY.map((operator) => evaluateOperator({ operator, truth, entitlements, runtimeSignals }));
+  return OPERATOR_REGISTRY.map((operator) => evaluateOperator({ operator, truth, entitlements, executionEligibility, runtimeSignals }));
 }
 
 export async function getOperatorReadiness(input: { workspaceId: string; operatorKey: string }): Promise<OperatorReadiness | null> {

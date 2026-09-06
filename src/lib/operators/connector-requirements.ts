@@ -30,13 +30,21 @@ export const OPERATOR_CONNECTOR_REQUIREMENTS: Record<OperatorKey, OperatorConnec
   },
   client_flow: {
     operatorKey: "client_flow",
-    required: ["email.read"],
+    // Client Flow prepares approval-gated replies, so it needs the same
+    // read+send email capability pair Revenue needs (see readiness.ts's
+    // client_flow branch, which resolves a specific Gmail/Microsoft 365
+    // connector via this exact capability pair) - not read-only access.
+    required: ["email.read", "email.send_after_approval"],
     optional: ["docs.read", "pm.tasks.write_after_approval", "chat.messages.send_after_approval"],
   },
   operations: {
     operatorKey: "operations",
-    required: [],
-    optional: ["chat.channels.read", "pm.tasks.read", "calendar.events.read", "automation.workflow.trigger_after_approval"],
+    // Operations reads Trello boards directly and cannot run at all without
+    // one connected (see readiness.ts's operations branch and
+    // scanOperationsSignals()), so pm.tasks.read is a real requirement here,
+    // matching OPERATOR_REGISTRY's requiredConnectors: ["trello"].
+    required: ["pm.tasks.read"],
+    optional: ["chat.channels.read", "calendar.events.read", "automation.workflow.trigger_after_approval"],
   },
   finance_billing: {
     operatorKey: "finance_billing",

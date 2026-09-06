@@ -19,6 +19,7 @@
     "test:product-routing": "node tests/product-routing-regression.mjs",
     "test:onboarding": "node tests/onboarding-regression.mjs",
     "test:app-loading": "node tests/app-loading-regression.mjs",
+    "test:capability-billing-gating": "node tests/capability-billing-gating-smoke.mjs",
     "trigger:dev": "npx trigger.dev@latest dev",
     "trigger:deploy": "npx trigger.dev@latest deploy"
   },
