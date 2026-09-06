@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useOS } from "@/lib/os/app-provider";
 import { saveProfileSettings } from "@/app/app/profile/actions";
 import {
@@ -283,27 +283,45 @@ export function OSMobileNav() {
   const pathname = usePathname();
   const { pendingApprovals } = useOS();
   const [open, setOpen] = useState(false);
+  const sheetTouchStartY = useRef<number | null>(null);
   const primary = [
     { icon: TargetIcon, label: "Dashboard", href: "/" },
     { icon: CpuIcon, label: "Operators", href: "/agents" },
     { icon: InboxIcon, label: "Approvals", href: "/approvals", badge: pendingApprovals },
     { icon: LinkIcon, label: "Connectors", href: "/connectors" },
   ];
-  const secondary = [
-    { icon: FlowIcon, label: "Workflows", href: "/workflows" },
-    { icon: DatabaseIcon, label: "Memory", href: "/memory" },
-    { icon: DocIcon, label: "Execution logs", href: "/logs" },
-    { icon: ChartIcon, label: "Insights", href: "/insights" },
-    { icon: UsersIcon, label: "Team", href: "/team" },
-    { icon: ShieldIcon, label: "Policies", href: "/policies" },
-    { icon: KeyIcon, label: "API keys", href: "/api-keys" },
-    { icon: SettingsIcon, label: "Plans & billing", href: "/plans" },
-    { icon: SettingsIcon, label: "Settings", href: "/settings" },
+  const groups = [
+    { label: "Workspace", items: [
+      { icon: FlowIcon, label: "Workflows", href: "/workflows" },
+      { icon: DatabaseIcon, label: "Memory", href: "/memory" },
+      { icon: DocIcon, label: "Execution logs", href: "/logs" },
+      { icon: ChartIcon, label: "Insights", href: "/insights" },
+    ] },
+    { label: "Administration", items: [
+      { icon: UsersIcon, label: "Team", href: "/team" },
+      { icon: ShieldIcon, label: "Policies", href: "/policies" },
+      { icon: SettingsIcon, label: "Plans & billing", href: "/plans" },
+      { icon: SettingsIcon, label: "Settings", href: "/settings" },
+    ] },
   ];
   const isActive = (href: string) => href === "/" ? pathname === "/" || pathname === "/app" : pathname.startsWith(href);
 
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
   return (
-    <nav className="os-mobile-nav" aria-label="Primary navigation">
+    <nav className={`os-mobile-nav${open ? " is-menu-open" : ""}`} aria-label="Primary navigation">
       {primary.map((item) => {
         const Icon = item.icon;
         return (
@@ -320,13 +338,34 @@ export function OSMobileNav() {
       {open && (
         <>
           <button type="button" className="os-mobile-nav-scrim" aria-label="Close navigation menu" onClick={() => setOpen(false)} />
-          <div id="os-mobile-more-menu" className="os-mobile-menu" role="dialog" aria-label="More navigation">
-            <div className="os-mobile-menu-head"><span>Workspace</span><button type="button" onClick={() => setOpen(false)}>Close</button></div>
-            <div className="os-mobile-menu-grid">
-              {secondary.map((item) => {
-                const Icon = item.icon;
-                return <Link key={item.href} href={item.href} className={isActive(item.href) ? "active" : ""} aria-current={isActive(item.href) ? "page" : undefined} onClick={() => setOpen(false)}><Icon size={16} />{item.label}</Link>;
-              })}
+          <div
+            id="os-mobile-more-menu"
+            className="os-mobile-menu"
+            role="dialog"
+            aria-modal="true"
+            aria-label="More navigation"
+            onTouchStart={(event) => { sheetTouchStartY.current = event.touches[0]?.clientY ?? null; }}
+            onTouchEnd={(event) => {
+              const startY = sheetTouchStartY.current;
+              const endY = event.changedTouches[0]?.clientY;
+              sheetTouchStartY.current = null;
+              if (startY !== null && endY !== undefined && endY - startY > 48) setOpen(false);
+            }}
+          >
+            <div className="os-mobile-menu-handle" aria-hidden="true" />
+            <div className="os-mobile-menu-head"><div><strong>More</strong><span>Workspace navigation</span></div><button type="button" onClick={() => setOpen(false)}>Done</button></div>
+            <div className="os-mobile-menu-groups">
+              {groups.map((group) => (
+                <section key={group.label} className="os-mobile-menu-group">
+                  <h2>{group.label}</h2>
+                  <div>
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      return <Link key={item.href} href={item.href} className={isActive(item.href) ? "active" : ""} aria-current={isActive(item.href) ? "page" : undefined} onClick={() => setOpen(false)}><span><Icon size={17} /></span><strong>{item.label}</strong><i aria-hidden="true">›</i></Link>;
+                    })}
+                  </div>
+                </section>
+              ))}
             </div>
           </div>
         </>

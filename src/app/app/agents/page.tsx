@@ -179,7 +179,7 @@ export default function AgentsRegistryPage() {
         <div>
           <span className="ag-head-eyebrow">Operator registry</span>
           <h1 style={{ marginTop: 10 }}>Operators</h1>
-          <div className="os-page-sub">Your AI workforce: purpose, live state, connected systems and measurable outcomes.</div>
+          <div className="os-page-sub">Manage the operators that run your work.</div>
         </div>
         <div className="os-page-actions">
           <Link href="/approvals" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Approval inbox</Link>
@@ -210,8 +210,8 @@ export default function AgentsRegistryPage() {
       {showConfigured && configured.length > 0 && (
         <section>
           <div className="ag-sec-head">
-            <h2>Configured</h2>
-            <span className="count">{configured.length} operator{configured.length === 1 ? "" : "s"} selected for this workspace</span>
+            <h2>Active operators</h2>
+            <span className="count"><span className="desktop-only">{configured.length} operator{configured.length === 1 ? "" : "s"} selected for this workspace</span><span className="mobile-only">{configured.length} configured</span></span>
             <span className="rule" />
           </div>
           <div className="ag-grid">
@@ -223,8 +223,8 @@ export default function AgentsRegistryPage() {
       {showAvailable && available.length > 0 && (
         <section>
           <div className="ag-sec-head">
-            <h2>Available paths</h2>
-            <span className="count">Add only when there is a defined operating need</span>
+            <h2>Available operators</h2>
+            <span className="count">Add when you need them.</span>
             <span className="rule" />
           </div>
           <div className="ag-grid">
@@ -236,8 +236,8 @@ export default function AgentsRegistryPage() {
       {showExpanding && (
         <section>
           <div className="ag-sec-head">
-            <h2>Expanding roster</h2>
-            <span className="count">{expanding.length} operators - upgrade or roadmap</span>
+            <h2>More operators</h2>
+            <span className="count">Upgrade or coming later.</span>
             <span className="rule" />
           </div>
           <div className="ag-grid">

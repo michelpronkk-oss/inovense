@@ -780,6 +780,7 @@ export function OSTopbar() {
 
         <button
           className="os-top-search"
+          aria-label="Search"
           style={{ cursor: "text", border: "none" }}
           onClick={() => setPaletteOpen(true)}
         >

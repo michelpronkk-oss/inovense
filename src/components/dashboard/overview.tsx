@@ -219,9 +219,15 @@ export function OSOverview() {
       {/* Header */}
       <div className="os-page-head">
         <div>
-          <span className="os-greet">{overview.systemStatus.label} · updated {timeAgo(overview.lastUpdatedAt)}</span>
+          <span className="os-greet">
+            <span className="desktop-only">{overview.systemStatus.label} · updated {timeAgo(overview.lastUpdatedAt)}</span>
+            <span className="mobile-only">{overview.systemStatus.label}</span>
+          </span>
           <h1>{greet}, {firstName}.</h1>
-          <div className="os-page-sub">{pending} approval{pending === 1 ? "" : "s"} waiting · {monitoringCount} operator{monitoringCount === 1 ? "" : "s"} monitoring · running under {mode}.</div>
+          <div className="os-page-sub">
+            <span className="desktop-only">{pending} approval{pending === 1 ? "" : "s"} waiting · {monitoringCount} operator{monitoringCount === 1 ? "" : "s"} monitoring · running under {mode}.</span>
+            <span className="mobile-only">{monitoringCount} monitoring · {pending} need review</span>
+          </div>
         </div>
         <div className="os-page-actions" style={{ alignItems: "center" }}>
           <span className="pill">{mode}</span>
@@ -254,7 +260,7 @@ export function OSOverview() {
         <div className="p dashboard-operators-panel">
           <div className="p-head">
             <h3>{overview.operators.length === 1 ? "Your first operator" : "Active operators"}</h3>
-            <span className="p-meta">{overview.operators.length} configured · no actions run without approval</span>
+            <span className="p-meta"><span className="desktop-only">{overview.operators.length} configured · no actions run without approval</span><span className="mobile-only">{overview.operators.length} active</span></span>
           </div>
           <div className="ops-grid">
             {overview.operators.map((operator) => {
@@ -311,7 +317,7 @@ export function OSOverview() {
           <div>
             {pending === 0 ? (
               <div className="appr-row">
-                <div className="appr-row-body" style={{ padding: "8px 0", color: "var(--text-mute)" }}>No approvals waiting. Operators will surface work here when review is needed.</div>
+                <div className="appr-row-body" style={{ padding: "8px 0", color: "var(--text-mute)" }}>Nothing needs your review.</div>
               </div>
             ) : overview.approvals.latest.slice(0, 4).map((approval) => {
               const isBusy = busyApproval === approval.id;

@@ -369,12 +369,12 @@ export default function ApprovalsPage() {
   };
 
   return (
-    <div className="os-page approvals-page">
+    <div className={`os-page approvals-page ${pending.length === 0 ? "no-approvals" : "has-approvals"}`}>
       <div className="os-page-head">
         <div>
           <span className="os-greet">Approval inbox - {pending.length} waiting</span>
           <h1>Approvals</h1>
-          <div className="os-page-sub">Review and approve AI operator outputs before they execute or send.</div>
+          <div className="os-page-sub">Review operator actions before they run.</div>
         </div>
         <div className="os-page-actions">
           <button className="btn btn-ghost btn-sm" onClick={() => router.push("/logs")}>History</button>
@@ -437,8 +437,8 @@ export default function ApprovalsPage() {
             <div style={{ fontSize: 28, marginBottom: 10 }}>
               <CheckIcon size={28} style={{ color: "var(--green)", margin: "0 auto" }} />
             </div>
-            <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 6 }}>All caught up</div>
-            <div style={{ fontSize: 13, color: "var(--text-mute)" }}>No pending approvals{filter !== "All" ? ` in "${filter}"` : ""}.</div>
+            <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 6 }}>No approvals waiting</div>
+            <div style={{ fontSize: 13, color: "var(--text-mute)" }}>You’re all caught up{filter !== "All" ? ` in ${filter.toLowerCase()}` : ""}.</div>
           </div>
         ) : (
           visible.map((item) => {
@@ -872,9 +872,9 @@ export default function ApprovalsPage() {
         )}
       </div>
 
-      <div style={{ padding: "14px 18px", borderRadius: 12, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", fontSize: 12.5, color: "var(--text-mute)", lineHeight: 1.6 }}>
-        <strong style={{ color: "var(--text-dim)" }}>Approval policy:</strong> Outbound communications require manual approval before execution. This inbox now reads real workspace approvals from the database.{" "}
-        <button className="lnk-open" style={{ fontSize: 12.5 }} onClick={() => router.push("/policies")}>Edit policies</button>
+      <div className="approval-policy-note" style={{ padding: "14px 18px", borderRadius: 12, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", fontSize: 12.5, color: "var(--text-mute)", lineHeight: 1.6 }}>
+        <span><strong style={{ color: "var(--text-dim)" }}>Protected by default.</strong> Outbound actions require approval.</span>
+        <button className="lnk-open" style={{ fontSize: 12.5 }} onClick={() => router.push("/policies")}>Manage policies</button>
       </div>
     </div>
   );
