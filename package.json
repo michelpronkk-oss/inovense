@@ -10,6 +10,7 @@
     "test:rebrand": "node tests/auterim-phase4-smoke.mjs",
     "test:auth-security": "node tests/auth-security-smoke.mjs",
     "test:microsoft-connector": "node tests/microsoft-connector-smoke.mjs",
+    "test:client-flow-operator": "node tests/client-flow-operator-smoke.mjs",
     "test:signup-auth": "node tests/signup-auth-regression.mjs",
     "test:product-routing": "node tests/product-routing-regression.mjs",
     "test:onboarding": "node tests/onboarding-regression.mjs",

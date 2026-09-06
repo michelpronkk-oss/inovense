@@ -49,6 +49,7 @@ type ClientFlowSetup = {
   readinessPercent?: number;
   coreReady?: boolean;
   gmailReady?: boolean;
+  emailProvider?: "gmail" | "microsoft" | null;
   slackConnected?: boolean;
   slackChannelSelected?: boolean;
   slackAlertsReady?: boolean;
@@ -62,7 +63,9 @@ type ClientFlowSetup = {
 
 type ClientFlowStatus = {
   readiness?: OperatorReadiness | null;
+  emailProvider?: "gmail" | "microsoft" | null;
   gmail?: { status?: string; accountEmail?: string | null; executable?: boolean; reconnectRequired?: boolean; permissions?: { compose?: boolean; send?: boolean; readonly?: boolean } } | null;
+  microsoft?: { status?: string; accountEmail?: string | null; executable?: boolean; reconnectRequired?: boolean; permissions?: { read?: boolean; send?: boolean } } | null;
   slack?: { status?: string; connected?: boolean; channelSelected?: boolean; notificationsEnabled?: boolean; approvalAlertsEnabled?: boolean; defaultChannelName?: string | null } | null;
   trello?: { status?: string; connected?: boolean; defaultBoardName?: string | null; defaultListName?: string | null } | null;
   customerEmailMode?: string;
@@ -239,9 +242,9 @@ export default function ClientFlowOperatorPage() {
 
   useEffect(() => { void loadRuntime(); }, [loadRuntime]);
 
-  const startGmailReconnect = () => {
+  const startEmailReconnect = (provider: "gmail" | "microsoft") => {
     const params = new URLSearchParams({ workspaceId: state.workspace.id, userEmail: state.currentUser.email });
-    window.location.href = `/api/connectors/gmail/auth?${params.toString()}`;
+    window.location.href = `/api/connectors/${provider}/auth?${params.toString()}`;
   };
 
   const submitScan = async () => {
@@ -256,7 +259,7 @@ export default function ClientFlowOperatorPage() {
       });
       const json = await res.json().catch(() => ({})) as ClientFlowScanResult;
       setScanResult(json);
-      if (!res.ok && json.status !== "requires_gmail_read_scope") throw new Error(json.message || json.error || "Client Flow check failed.");
+      if (!res.ok && json.status !== "requires_gmail_read_scope" && json.status !== "requires_microsoft_read_scope") throw new Error(json.message || json.error || "Client Flow check failed.");
       await loadRuntime();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Client Flow check failed.");
@@ -267,13 +270,23 @@ export default function ClientFlowOperatorPage() {
 
   const monitoring = status?.monitoring;
   const setup = status?.setup;
-  const gmailReconnectRequired = Boolean(status?.gmail?.reconnectRequired || monitoring?.reconnectRequired);
-  const scanNeedsReconnect = gmailReconnectRequired || scanResult?.status === "requires_gmail_read_scope" || scanResult?.status === "requires_gmail_send_scope";
+  // Client Flow accepts Gmail or Microsoft 365 as the connected inbox. Gmail
+  // is the active provider when both are connected, mirroring the backend's
+  // resolveClientFlowEmailConnector() preference order.
+  const activeProvider = status?.emailProvider ?? setup?.emailProvider ?? (status?.gmail ? "gmail" : status?.microsoft ? "microsoft" : null);
+  const activeProviderLabel = activeProvider === "microsoft" ? "Microsoft 365" : "Gmail";
+  const activeEmailConnector = activeProvider === "microsoft" ? status?.microsoft : status?.gmail;
+  const gmailReconnectRequired = Boolean(activeEmailConnector?.reconnectRequired || monitoring?.reconnectRequired);
+  const scanNeedsReconnect = gmailReconnectRequired
+    || scanResult?.status === "requires_gmail_read_scope"
+    || scanResult?.status === "requires_gmail_send_scope"
+    || scanResult?.status === "requires_microsoft_read_scope"
+    || scanResult?.status === "requires_microsoft_send_scope";
   const canRun = Boolean(readiness?.canRunManual && (readiness.status === "ready" || readiness.status === "draft_only"));
   const lastCheckAt = monitoring?.lastRunAt ?? monitoring?.lastScanTime ?? null;
   const hasRunScan = Boolean(lastCheckAt);
   const monitoringActive = monitoring?.status === "monitoring_active";
-  const setupState = setup?.state ?? (status?.gmail?.executable ? "setup_incomplete" : "needs_setup");
+  const setupState = setup?.state ?? (activeEmailConnector?.executable ? "setup_incomplete" : "needs_setup");
   const readinessPercent = setup?.readinessPercent ?? readiness?.readinessPercent ?? 0;
   const emailMode = status?.customerEmailMode === "draft_only" ? "Draft only" : "Approval required";
 
@@ -286,12 +299,12 @@ export default function ClientFlowOperatorPage() {
   })();
 
   const heroTitle = setupState === "needs_setup"
-    ? "Connect Gmail to start Client Flow"
+    ? "Connect Gmail or Microsoft 365 to start Client Flow"
     : setupState === "setup_incomplete"
       ? "Client Flow is almost ready"
       : "Client Flow is ready to monitor client requests";
   const heroSub = (() => {
-    if (setupState === "needs_setup") return "Client Flow reads client emails and prepares approved replies. Connect Gmail to begin.";
+    if (setupState === "needs_setup") return "Client Flow reads client emails and prepares approved replies. Connect Gmail or Microsoft 365 to begin.";
     if (setupState === "setup_incomplete") {
       if (!setup?.trelloTaskExecutionReady) return "Select a Trello board and list so Client Flow can turn requests into approved tasks.";
       return "A couple of setup steps remain. Complete them to unlock the full flow.";
@@ -301,14 +314,16 @@ export default function ClientFlowOperatorPage() {
 
   const checklist: ChecklistItem[] = [
     {
-      label: "Gmail connected",
-      ok: Boolean(status?.gmail?.executable) && !gmailReconnectRequired,
+      label: `${activeProviderLabel} connected`,
+      ok: Boolean(activeEmailConnector?.executable) && !gmailReconnectRequired,
       detail: gmailReconnectRequired
-        ? "Reconnect Gmail to restore reading and approval-gated replies."
-        : status?.gmail?.accountEmail
-          ? `Reading client emails as ${status.gmail.accountEmail}.`
-          : "Reads client emails and prepares approved replies.",
-      action: { label: gmailReconnectRequired ? "Reconnect Gmail" : "Open connectors", href: "/app/connectors" },
+        ? `Reconnect ${activeProviderLabel} to restore reading and approval-gated replies.`
+        : activeEmailConnector?.accountEmail
+          ? `Reading client emails as ${activeEmailConnector.accountEmail}.`
+          : "Reads client emails and prepares approved replies. Connect Gmail or Microsoft 365.",
+      action: gmailReconnectRequired
+        ? { label: `Reconnect ${activeProviderLabel}`, href: "/app/connectors" }
+        : { label: "Open connectors", href: "/app/connectors" },
     },
     {
       label: "Trello board and list selected",
@@ -398,11 +413,11 @@ export default function ClientFlowOperatorPage() {
         <div className="p-head"><h3>Connected tools</h3></div>
         <div style={{ padding: "18px 20px", display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
           <ToolCard
-            name="Gmail"
+            name={activeProviderLabel}
             tone="Client inbox"
-            ready={Boolean(status?.gmail?.executable) && !gmailReconnectRequired}
+            ready={Boolean(activeEmailConnector?.executable) && !gmailReconnectRequired}
             headline="Reads client emails and prepares approved replies."
-            note={gmailReconnectRequired ? "Reconnect Gmail to restore access." : undefined}
+            note={gmailReconnectRequired ? `Reconnect ${activeProviderLabel} to restore access.` : undefined}
           />
           <ToolCard
             name="Slack"
@@ -448,7 +463,7 @@ export default function ClientFlowOperatorPage() {
             )}
             {scanResult && (
               <div style={{ marginTop: 14, padding: "12px 14px", borderRadius: 12, background: scanNeedsReconnect ? "rgba(245,194,107,0.06)" : "rgba(95,211,168,0.06)", boxShadow: scanNeedsReconnect ? "inset 0 0 0 1px rgba(245,194,107,0.2)" : "inset 0 0 0 1px rgba(95,211,168,0.18)", display: "grid", gap: 5 }}>
-                <div style={{ fontSize: 12.8, fontWeight: 600 }}>{scanNeedsReconnect ? "Reconnect Gmail required" : `Manual check ${scanResult.status ?? "completed"}`}</div>
+                <div style={{ fontSize: 12.8, fontWeight: 600 }}>{scanNeedsReconnect ? `Reconnect ${activeProviderLabel} required` : `Manual check ${scanResult.status ?? "completed"}`}</div>
                 {scanResult.message && <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{scanResult.message}</div>}
                 {!scanNeedsReconnect && <div style={{ fontSize: 12, color: "var(--text-mute)" }}>{scanResult.scanned ?? 0} checked · {scanResult.signalsFound ?? 0} client requests · {scanResult.approvalsCreated ?? 0} approvals · {scanResult.routedToRevenueCount ?? 0} routed to Revenue.</div>}
               </div>
@@ -516,6 +531,7 @@ export default function ClientFlowOperatorPage() {
             <div style={{ display: "grid", gap: 6 }}>
               <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-faint)" }}>Connectors</div>
               <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Gmail: {status?.gmail?.status ?? "missing"}{status?.gmail?.accountEmail ? ` (${status.gmail.accountEmail})` : ""}</div>
+              <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Microsoft 365: {status?.microsoft?.status ?? "missing"}{status?.microsoft?.accountEmail ? ` (${status.microsoft.accountEmail})` : ""}</div>
               <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Slack: {status?.slack?.status ?? "not_connected"} · channel {status?.slack?.defaultChannelName || "none"}</div>
               <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Trello: {status?.trello?.status ?? "not_connected"} · list {status?.trello?.defaultListName || "none"}</div>
             </div>

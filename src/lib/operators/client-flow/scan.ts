@@ -9,11 +9,24 @@ import {
   type SafeGmailMessage,
   type StoredConnectorCredential,
 } from "@/lib/connectors/gmail";
+import {
+  MICROSOFT_READ_REQUIRED_SCOPES,
+  MICROSOFT_SEND_REQUIRED_SCOPES,
+  MicrosoftGraphError,
+  MicrosoftReauthRequiredError,
+  getMicrosoftCredential,
+  getMicrosoftMessage,
+  getMissingMicrosoftScopes,
+  listRecentMicrosoftMessages,
+  resolveMicrosoftAccessToken,
+  type SafeMicrosoftMessage,
+  type StoredMicrosoftCredential,
+} from "@/lib/connectors/microsoft";
 import { getConnectorTruth } from "@/lib/connectors/truth";
 import { prepareAction } from "@/lib/actions/execute";
 import type { PreparedAction } from "@/lib/actions/types";
 import { logOperatorEvent, operatorRuntimeId } from "@/lib/operators/logging";
-import { getOperatorReadiness } from "@/lib/operators/readiness";
+import { getOperatorReadiness, type OperatorReadiness } from "@/lib/operators/readiness";
 import { draftClientFlowReplyWithAI } from "@/lib/operators/client-flow/ai-drafting";
 import { applyGreeting, buildContactPersonalization, type SharedPersonalization } from "@/lib/operators/shared/personalization";
 import { sendSlackApprovalNotification } from "@/lib/notifications/slack";
@@ -29,6 +42,44 @@ type ClientFlowScanSourceMode = "scheduled" | "manual" | "event_ready";
 export const CLIENT_FLOW_AGENT_ID = "client_flow";
 const CLIENT_FLOW_AGENT_MARK = "CF";
 const CLIENT_FLOW_AGENT_COLOR = "#5FD3A8";
+
+/**
+ * Client Flow supports Gmail and Microsoft 365 as interchangeable inbox
+ * sources, mirroring runOperator.ts's resolveEmailConnector() for Revenue.
+ * Gmail is preferred when both happen to be connected, which keeps existing
+ * Gmail-only workspaces behaving exactly as before.
+ */
+export type ClientFlowEmailConnector = "gmail" | "microsoft";
+
+function resolveClientFlowEmailConnector(readiness: OperatorReadiness): ClientFlowEmailConnector | null {
+  const connected = readiness.connectedRequiredConnectors;
+  if (connected.includes("gmail")) return "gmail";
+  if (connected.includes("microsoft")) return "microsoft";
+  return null;
+}
+
+/**
+ * Normalizes a Microsoft Graph message into the same safe shape Gmail
+ * messages use, so signal detection, dedupe, and drafting below can stay
+ * provider-agnostic.
+ */
+function fromMicrosoftMessage(message: SafeMicrosoftMessage): SafeGmailMessage {
+  const fromEmail = (message.from ?? "").toLowerCase();
+  const from = message.fromName ? `${message.fromName} <${fromEmail}>` : fromEmail;
+  return {
+    id: message.id,
+    threadId: message.conversationId ?? undefined,
+    labelIds: [],
+    from,
+    fromEmail,
+    to: "",
+    subject: message.subject ?? "",
+    date: message.receivedAt ?? "",
+    snippet: message.bodyPreview ?? "",
+    bodyText: message.bodyText ?? message.bodyPreview ?? "",
+    internalDate: message.receivedAt ?? undefined,
+  };
+}
 
 export type ClientFlowSignalType =
   | "project_status_request"
@@ -142,7 +193,7 @@ type ClientFlowDedupeMetadata = {
   gmailThreadId?: string;
   contactEmail: string;
   normalizedSubject: string;
-  sourceProvider: "gmail";
+  sourceProvider: ClientFlowEmailConnector;
   operatorKey: "client_flow";
 };
 
@@ -252,18 +303,18 @@ function normalizeSubjectForDedupe(subject: string | undefined | null): string {
     .slice(0, 180);
 }
 
-function buildDedupeMetadata(message: SafeGmailMessage): ClientFlowDedupeMetadata {
+function buildDedupeMetadata(message: SafeGmailMessage, provider: ClientFlowEmailConnector): ClientFlowDedupeMetadata {
   const gmailMessageId = message.id;
   const gmailThreadId = message.threadId || undefined;
   const contactEmail = normalizeEmail(message.fromEmail || message.from);
   const normalizedSubject = normalizeSubjectForDedupe(message.subject);
-  const messageDedupeKey = gmailMessageId ? `client_flow:gmail:message:${gmailMessageId}` : undefined;
-  const threadDedupeKey = gmailThreadId ? `client_flow:gmail:thread:${gmailThreadId}` : undefined;
+  const messageDedupeKey = gmailMessageId ? `client_flow:${provider}:message:${gmailMessageId}` : undefined;
+  const threadDedupeKey = gmailThreadId ? `client_flow:${provider}:thread:${gmailThreadId}` : undefined;
   const contactSubjectDedupeKey = contactEmail && normalizedSubject
     ? `client_flow:contact_subject:${contactEmail}:${normalizedSubject}`
     : undefined;
   return {
-    dedupeKey: messageDedupeKey ?? threadDedupeKey ?? contactSubjectDedupeKey ?? `client_flow:gmail:message:${Date.now()}`,
+    dedupeKey: messageDedupeKey ?? threadDedupeKey ?? contactSubjectDedupeKey ?? `client_flow:${provider}:message:${Date.now()}`,
     messageDedupeKey,
     threadDedupeKey,
     contactSubjectDedupeKey,
@@ -271,7 +322,7 @@ function buildDedupeMetadata(message: SafeGmailMessage): ClientFlowDedupeMetadat
     gmailThreadId,
     contactEmail,
     normalizedSubject,
-    sourceProvider: "gmail",
+    sourceProvider: provider,
     operatorKey: "client_flow",
   };
 }
@@ -293,6 +344,10 @@ function setDedupeReason(map: Map<string, DedupeReason>, key: string | undefined
 function collectDedupeRefs(value: unknown, refs: Map<string, DedupeReason>, reason: DedupeReason) {
   if (!value || typeof value !== "object") return;
   const record = value as Record<string, unknown>;
+  // Historical records predate Microsoft 365 support and never stored
+  // sourceProvider - they were always Gmail, so default to "gmail" to keep
+  // existing dedupe keys (and therefore existing approval history) intact.
+  const provider: ClientFlowEmailConnector = record.sourceProvider === "microsoft" ? "microsoft" : "gmail";
   const messageId = typeof record.gmailMessageId === "string"
     ? record.gmailMessageId
     : typeof record.messageId === "string"
@@ -310,8 +365,8 @@ function collectDedupeRefs(value: unknown, refs: Map<string, DedupeReason>, reas
       ? normalizeSubjectForDedupe(record.subject)
       : "";
   setDedupeReason(refs, typeof record.dedupeKey === "string" ? record.dedupeKey : undefined, reason);
-  setDedupeReason(refs, messageId ? `client_flow:gmail:message:${messageId}` : undefined, reason);
-  setDedupeReason(refs, threadId ? `client_flow:gmail:thread:${threadId}` : undefined, reason);
+  setDedupeReason(refs, messageId ? `client_flow:${provider}:message:${messageId}` : undefined, reason);
+  setDedupeReason(refs, threadId ? `client_flow:${provider}:thread:${threadId}` : undefined, reason);
   setDedupeReason(refs, contactEmail && normalizedSubject ? `client_flow:contact_subject:${contactEmail}:${normalizedSubject}` : undefined, reason);
   Object.values(record).forEach((nested) => collectDedupeRefs(nested, refs, reason));
 }
@@ -406,10 +461,24 @@ function scanFailure(error: unknown): ClientFlowScanResult {
       body: { error: "gmail_scan_failed", message: error.message, details: error.details },
     };
   }
+  if (error instanceof MicrosoftReauthRequiredError) {
+    return {
+      ok: false,
+      status: 409,
+      body: { error: "microsoft_reconnect_required", message: error.message, reconnectRequired: true },
+    };
+  }
+  if (error instanceof MicrosoftGraphError) {
+    return {
+      ok: false,
+      status: error.details.status || 502,
+      body: { error: "microsoft_scan_failed", message: error.message, details: error.details },
+    };
+  }
   return {
     ok: false,
     status: 500,
-    body: { error: "gmail_scan_failed", message: error instanceof Error ? error.message : "Gmail scan failed." },
+    body: { error: "client_flow_scan_failed", message: error instanceof Error ? error.message : "Client Flow scan failed." },
   };
 }
 
@@ -475,6 +544,7 @@ function buildClientFlowTrelloAction(input: {
   taskDescription: string;
   dedupeKey: string;
   policySettings: PolicyWorkspaceSettings;
+  emailConnector: ClientFlowEmailConnector;
 }): PreparedAction | null {
   if (!input.trello.defaultBoardId || !input.trello.defaultListId) return null;
   return prepareAction({
@@ -494,7 +564,7 @@ function buildClientFlowTrelloAction(input: {
       description: input.taskDescription,
     },
     dedupeKey: `${input.dedupeKey}:trello_task`,
-    source: "gmail",
+    source: input.emailConnector,
     metadata: {
       operatorKey: "client_flow",
       signalType: input.signal.signalType,
@@ -519,7 +589,7 @@ export async function scanClientFlowSignals(input: {
     return { ok: false, status: 404, body: { error: "Client Flow Operator readiness was not found." } };
   }
   if (readiness.status === "missing_connector") {
-    return { ok: false, status: 409, body: { status: "missing_gmail", message: "Connect Gmail to monitor client communication.", readiness } };
+    return { ok: false, status: 409, body: { status: "missing_connector", message: "Connect Gmail or Microsoft 365 to monitor client communication.", readiness } };
   }
   if (readiness.status === "upgrade_required") {
     return { ok: false, status: 402, body: { status: "upgrade_required", message: readiness.reason, readiness } };
@@ -528,41 +598,76 @@ export async function scanClientFlowSignals(input: {
     return { ok: false, status: 409, body: { status: readiness.status, message: readiness.reason, readiness } };
   }
 
-  const credentialRes = await supabase
-    .from("os_connector_credentials")
-    .select("id,workspace_id,connector_key,provider_account_id,provider_email,encrypted_access_token,encrypted_refresh_token,token_expires_at,scopes,status,metadata")
-    .eq("workspace_id", workspaceId)
-    .eq("connector_key", "gmail")
-    .maybeSingle();
-
-  if (credentialRes.error) {
-    return { ok: false, status: 500, body: { error: credentialRes.error.message } };
-  }
-  if (!credentialRes.data) {
-    return { ok: false, status: 409, body: { status: "missing_gmail", message: "Connect Gmail to monitor client communication." } };
+  const emailConnector = resolveClientFlowEmailConnector(readiness);
+  if (!emailConnector) {
+    return { ok: false, status: 409, body: { status: "missing_connector", message: "Connect Gmail or Microsoft 365 to monitor client communication.", readiness } };
   }
 
-  const credential = credentialRes.data as StoredConnectorCredential;
-  const missingSendScopes = getMissingGmailScopes(credential.scopes, GMAIL_SEND_REQUIRED_SCOPES);
-  if (missingSendScopes.length > 0) {
-    return {
-      ok: false,
-      status: 409,
-      body: { status: "requires_gmail_send_scope", message: "Reconnect Gmail to enable approval-gated client replies.", missingScopes: missingSendScopes, reconnectRequired: true },
-    };
-  }
-  const missingScanScopes = getMissingGmailScopes(credential.scopes, GMAIL_SCAN_REQUIRED_SCOPES);
-  if (missingScanScopes.length > 0) {
-    return {
-      ok: false,
-      status: 409,
-      body: { status: "requires_gmail_read_scope", message: "Reconnect Gmail to enable client communication monitoring.", missingScopes: missingScanScopes, reconnectRequired: true },
-    };
+  let gmailCredential: StoredConnectorCredential | null = null;
+  let microsoftCredential: StoredMicrosoftCredential | null = null;
+
+  if (emailConnector === "gmail") {
+    const credentialRes = await supabase
+      .from("os_connector_credentials")
+      .select("id,workspace_id,connector_key,provider_account_id,provider_email,encrypted_access_token,encrypted_refresh_token,token_expires_at,scopes,status,metadata")
+      .eq("workspace_id", workspaceId)
+      .eq("connector_key", "gmail")
+      .maybeSingle();
+
+    if (credentialRes.error) {
+      return { ok: false, status: 500, body: { error: credentialRes.error.message } };
+    }
+    if (!credentialRes.data) {
+      return { ok: false, status: 409, body: { status: "missing_gmail", message: "Connect Gmail to monitor client communication." } };
+    }
+
+    gmailCredential = credentialRes.data as StoredConnectorCredential;
+    const missingSendScopes = getMissingGmailScopes(gmailCredential.scopes, GMAIL_SEND_REQUIRED_SCOPES);
+    if (missingSendScopes.length > 0) {
+      return {
+        ok: false,
+        status: 409,
+        body: { status: "requires_gmail_send_scope", message: "Reconnect Gmail to enable approval-gated client replies.", missingScopes: missingSendScopes, reconnectRequired: true },
+      };
+    }
+    const missingScanScopes = getMissingGmailScopes(gmailCredential.scopes, GMAIL_SCAN_REQUIRED_SCOPES);
+    if (missingScanScopes.length > 0) {
+      return {
+        ok: false,
+        status: 409,
+        body: { status: "requires_gmail_read_scope", message: "Reconnect Gmail to enable client communication monitoring.", missingScopes: missingScanScopes, reconnectRequired: true },
+      };
+    }
+  } else {
+    microsoftCredential = await getMicrosoftCredential(workspaceId, supabase);
+    if (!microsoftCredential || microsoftCredential.status === "needs_attention") {
+      return { ok: false, status: 409, body: { status: "missing_microsoft", message: "Connect Microsoft 365 to monitor client communication." } };
+    }
+    const missingSendScopes = getMissingMicrosoftScopes(microsoftCredential.scopes, MICROSOFT_SEND_REQUIRED_SCOPES);
+    if (missingSendScopes.length > 0) {
+      return {
+        ok: false,
+        status: 409,
+        body: { status: "requires_microsoft_send_scope", message: "Reconnect Microsoft 365 to enable approval-gated client replies.", missingScopes: missingSendScopes, reconnectRequired: true },
+      };
+    }
+    const missingScanScopes = getMissingMicrosoftScopes(microsoftCredential.scopes, MICROSOFT_READ_REQUIRED_SCOPES);
+    if (missingScanScopes.length > 0) {
+      return {
+        ok: false,
+        status: 409,
+        body: { status: "requires_microsoft_read_scope", message: "Reconnect Microsoft 365 to enable client communication monitoring.", missingScopes: missingScanScopes, reconnectRequired: true },
+      };
+    }
   }
 
   try {
-    const accessToken = await resolveAccessTokenFromCredential(credential);
-    const providerEmail = normalizeEmail(credential.provider_email);
+    const accessToken = emailConnector === "gmail"
+      ? await resolveAccessTokenFromCredential(gmailCredential as StoredConnectorCredential)
+      : await resolveMicrosoftAccessToken({ workspaceId, credential: microsoftCredential as StoredMicrosoftCredential, supabase });
+    const providerEmail = emailConnector === "gmail"
+      ? normalizeEmail((gmailCredential as StoredConnectorCredential).provider_email)
+      : normalizeEmail((microsoftCredential as StoredMicrosoftCredential).provider_email);
     const connectorTruth = await getConnectorTruth({ workspaceId, supabase });
     const hubspotConnected = connectorTruth.some((connector) =>
       connector.connectorKey === "hubspot" && connector.status === "connected" && connector.providerConfigKey && connector.nangoConnectionId);
@@ -575,7 +680,9 @@ export async function scanClientFlowSignals(input: {
     const signoffName = (typeof workspaceRow.data?.name === "string" && workspaceRow.data.name.trim()) ? workspaceRow.data.name.trim() : "The team";
 
     const maxResults = Math.min(Math.max(Number(input.maxResults) || 15, 1), 20);
-    const listed = await listRecentMessages(accessToken, { maxResults, query: "newer_than:30d" });
+    const listed = emailConnector === "gmail"
+      ? await listRecentMessages(accessToken, { maxResults, query: "newer_than:30d" })
+      : (await listRecentMicrosoftMessages(accessToken, maxResults)).map((message) => ({ id: message.id }));
     const handled = await loadClientFlowDedupeState({ supabase, workspaceId });
 
     const skipped: NonNullable<ClientFlowScanSummary["skipped"]> = [];
@@ -583,8 +690,10 @@ export async function scanClientFlowSignals(input: {
     let routedToRevenueCount = 0;
 
     for (const item of listed) {
-      const message = await getMessageDetails(accessToken, item.id);
-      const dedupe = buildDedupeMetadata(message);
+      const message = emailConnector === "gmail"
+        ? await getMessageDetails(accessToken, item.id)
+        : fromMicrosoftMessage(await getMicrosoftMessage(accessToken, item.id));
+      const dedupe = buildDedupeMetadata(message, emailConnector);
       const duplicateReason = findDuplicateReason(dedupe, handled);
       if (duplicateReason) {
         skipped.push({ messageId: message.id || item.id, subject: message.subject, from: message.from, reason: duplicateReason, dedupeKey: dedupe.dedupeKey });
@@ -604,7 +713,7 @@ export async function scanClientFlowSignals(input: {
     const created: NonNullable<ClientFlowScanSummary["signals"]> = [];
 
     for (const signal of signals) {
-      const dedupe = buildDedupeMetadata(signal.message);
+      const dedupe = buildDedupeMetadata(signal.message, emailConnector);
       const duplicateReason = findDuplicateReason(dedupe, handled);
       if (duplicateReason) {
         skipped.push({ messageId: signal.message.id, subject: signal.message.subject, from: signal.message.from, reason: duplicateReason, dedupeKey: dedupe.dedupeKey });
@@ -641,6 +750,7 @@ export async function scanClientFlowSignals(input: {
           taskDescription: aiDraft.trelloTaskDescription,
           dedupeKey: dedupe.dedupeKey,
           policySettings,
+          emailConnector,
         })
         : null;
       const trelloPrepared = Boolean(clientFlowTrelloAction);
@@ -732,7 +842,7 @@ export async function scanClientFlowSignals(input: {
         dedupe_key: dedupe.dedupeKey,
         created_at: new Date().toISOString(),
         continuation_payload: {
-          kind: "gmail.send_after_approval",
+          kind: emailConnector === "microsoft" ? "microsoft.send_after_approval" : "gmail.send_after_approval",
           workspaceId,
           operatorRunId: runId,
           operatorKey: "client_flow",

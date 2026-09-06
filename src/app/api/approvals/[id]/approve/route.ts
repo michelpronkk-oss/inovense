@@ -1110,6 +1110,12 @@ function validateMicrosoftPayload(value: unknown): { ok: true; payload: Microsof
       crmPreparation: rec.crmPreparation && typeof rec.crmPreparation === "object" ? rec.crmPreparation as Record<string, unknown> : null,
       preparedHubSpotActions: rec.preparedHubSpotActions && typeof rec.preparedHubSpotActions === "object" ? rec.preparedHubSpotActions as PreparedHubSpotActions : null,
       sourceMetadata: rec.sourceMetadata && typeof rec.sourceMetadata === "object" ? rec.sourceMetadata as Record<string, unknown> : null,
+      // Client Flow can bundle a prepared Trello task into any email
+      // connector's approval (Gmail or Microsoft 365). Parsed here the same
+      // way validateGmailPayload parses it, so executeClientFlowTrelloAction
+      // works identically regardless of which connector sent the approval.
+      clientFlowTrelloAction: rec.clientFlowTrelloAction && typeof rec.clientFlowTrelloAction === "object" ? rec.clientFlowTrelloAction as PreparedAction : null,
+      clientFlow: rec.clientFlow && typeof rec.clientFlow === "object" ? rec.clientFlow as Record<string, unknown> : null,
       customerEmailPolicy: rec.customerEmailPolicy && typeof rec.customerEmailPolicy === "object" ? rec.customerEmailPolicy as GmailContinuationPayload["customerEmailPolicy"] : null,
     },
   };
@@ -1203,9 +1209,18 @@ async function executeMicrosoftApproval(input: {
     }
     if (policyDecision.decision === "draft_only") {
       await logPolicyDecision({ supabase, workspaceId: payload.workspaceId, runId: runId || null, approvalId, decision: policyDecision, policyInput, live: true });
+      // Trello task is independent of the email send policy, same as the Gmail
+      // path's markDraftOnlyReviewed(). It stays approval-gated and runs even
+      // when the customer email itself is draft-only.
+      const clientFlowTrello = await executeClientFlowTrelloAction({
+        payload,
+        approvalId,
+        canRunRealActions: Boolean(ws.data.can_run_real_actions) && ws.data.billing_status !== "preview",
+      });
       const executionResult = {
         microsoftStatus: "draft_only_not_sent",
         hubspotStatus: "not_attempted",
+        clientFlowTrello,
         policyDecision,
         usedEditedDraft: finalDraft.usedEditedDraft,
         finalSubject: finalDraft.subject,
@@ -1226,6 +1241,36 @@ async function executeMicrosoftApproval(input: {
           output: { microsoft: executionResult },
           error: null,
         }).eq("id", runId).eq("workspace_id", payload.workspaceId).eq("approval_id", approvalId);
+        if (payload.operatorKey === "client_flow") {
+          await optionalStep([], "os_operator_run_logs.client_flow_draft_only", () => logOperatorEvent({
+            supabase,
+            workspaceId: payload.workspaceId,
+            runId,
+            eventType: "client_flow_draft_only",
+            message: "Client Flow email policy is draft-only. The client reply was reviewed but not sent.",
+            metadata: { approvalId, to: payload.to, subject: finalDraft.subject },
+          }));
+          if (clientFlowTrello?.status === "executed") {
+            await optionalStep([], "os_operator_run_logs.client_flow_trello_task_created", () => logOperatorEvent({
+              supabase,
+              workspaceId: payload.workspaceId,
+              runId,
+              eventType: "client_flow_trello_task_created",
+              message: "Client Flow Trello task created after approval.",
+              metadata: { approvalId, clientFlowTrello },
+            }));
+          } else if (clientFlowTrello?.status === "failed") {
+            await optionalStep([], "os_operator_run_logs.client_flow_execution_failed", () => logOperatorEvent({
+              supabase,
+              workspaceId: payload.workspaceId,
+              runId,
+              level: "warn",
+              eventType: "client_flow_execution_failed",
+              message: "Client Flow Trello task execution failed after approval.",
+              metadata: { approvalId, clientFlowTrello },
+            }));
+          }
+        }
       }
       await optionalStep([], "slack_notification.approval_approved", () => sendSlackApprovalNotification({
         supabase,
@@ -1340,6 +1385,15 @@ async function executeMicrosoftApproval(input: {
     warnings.push("hubspot_execution_not_enabled");
   }
 
+  // Client Flow can bundle a prepared Trello task. Reaching here means billing
+  // already allows real execution, matching the Gmail path's equivalent call.
+  const clientFlowTrello = await executeClientFlowTrelloAction({
+    payload,
+    approvalId,
+    canRunRealActions: true,
+  });
+  if (clientFlowTrello?.status === "failed") warnings.push("client_flow_trello_failed");
+
   const hubspotFailed = hubspotResult?.status === "failed";
   const finalStatus = hubspotFailed ? "partially_completed" : "approved";
   const executionResult = {
@@ -1347,6 +1401,7 @@ async function executeMicrosoftApproval(input: {
     hubspotStatus: hubspotResult?.status ?? "not_applicable",
     hubspotContactId: hubspotResult?.contactId ?? null,
     hubspotDealId: hubspotResult?.dealId ?? null,
+    clientFlowTrello,
     policyDecision,
     microsoft: { to: payload.to, subject: finalDraft.subject, sendEndpoint: "me/sendMail" },
     usedEditedDraft: finalDraft.usedEditedDraft,
@@ -1445,6 +1500,37 @@ async function executeMicrosoftApproval(input: {
       quantity: 1,
       metadata: { to: payload.to },
     }));
+
+    if (payload.operatorKey === "client_flow") {
+      await optionalStep(warnings, "os_operator_run_logs.client_flow_email_sent", () => logOperatorEvent({
+        supabase,
+        workspaceId: payload.workspaceId,
+        runId,
+        eventType: "client_flow_email_sent_after_approval",
+        message: `Client reply sent after approval to ${payload.to}.`,
+        metadata: { approvalId, to: payload.to, subject: finalDraft.subject, clientFlowTrello },
+      }));
+      if (clientFlowTrello?.status === "executed") {
+        await optionalStep(warnings, "os_operator_run_logs.client_flow_trello_task_created", () => logOperatorEvent({
+          supabase,
+          workspaceId: payload.workspaceId,
+          runId,
+          eventType: "client_flow_trello_task_created",
+          message: "Client Flow Trello task created after approval.",
+          metadata: { approvalId, clientFlowTrello },
+        }));
+      } else if (clientFlowTrello?.status === "failed") {
+        await optionalStep(warnings, "os_operator_run_logs.client_flow_execution_failed", () => logOperatorEvent({
+          supabase,
+          workspaceId: payload.workspaceId,
+          runId,
+          level: "warn",
+          eventType: "client_flow_execution_failed",
+          message: "Client Flow Trello task execution failed after the client reply was sent.",
+          metadata: { approvalId, clientFlowTrello },
+        }));
+      }
+    }
   }
 
   await optionalStep(warnings, hubspotFailed ? "slack_notification.execution_failed" : "slack_notification.approval_approved", () => sendSlackApprovalNotification({

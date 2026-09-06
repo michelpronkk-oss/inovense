@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GMAIL_READONLY_SCOPE } from "@/lib/connectors/gmail";
+import { MICROSOFT_READ_REQUIRED_SCOPES, MICROSOFT_SEND_REQUIRED_SCOPES } from "@/lib/connectors/microsoft";
 import { getConnectorTruth } from "@/lib/connectors/truth";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { getOperatorReadiness } from "@/lib/operators/readiness";
@@ -121,14 +122,22 @@ export async function GET(req: NextRequest) {
   if (triggerConfig.error) return NextResponse.json({ error: triggerConfig.error.message }, { status: 500 });
 
   const gmail = connectorTruth.find((connector) => connector.connectorKey === "gmail") ?? null;
+  const microsoft = connectorTruth.find((connector) => connector.connectorKey === "microsoft") ?? null;
   const slack = connectorTruth.find((connector) => connector.connectorKey === "slack") ?? null;
   const trello = connectorTruth.find((connector) => connector.connectorKey === "trello") ?? null;
   const slackConnected = Boolean(slack && slack.status === "connected" && slack.providerConfigKey && slack.nangoConnectionId);
   const trelloConnected = Boolean(trello && trello.status === "connected" && trello.providerConfigKey && trello.nangoConnectionId);
   const gmailScopes = gmail?.scopes ?? [];
-  const reconnectRequired = Boolean(gmail && !gmailScopes.includes(GMAIL_READONLY_SCOPE));
+  const microsoftScopes = microsoft?.scopes ?? [];
+  const gmailReconnectRequired = Boolean(gmail && !gmailScopes.includes(GMAIL_READONLY_SCOPE));
+  const microsoftReconnectRequired = Boolean(microsoft && !MICROSOFT_READ_REQUIRED_SCOPES.every((scope) => microsoftScopes.includes(scope)));
 
-  const emailReady = Boolean(gmail?.executable);
+  // Client Flow accepts Gmail or Microsoft 365 as the connected inbox. Gmail
+  // is treated as the active provider when both happen to be connected,
+  // mirroring resolveClientFlowEmailConnector() in scan.ts.
+  const emailProvider: "gmail" | "microsoft" | null = gmail ? "gmail" : microsoft ? "microsoft" : null;
+  const reconnectRequired = emailProvider === "microsoft" ? microsoftReconnectRequired : gmailReconnectRequired;
+  const emailReady = Boolean(gmail?.executable) || Boolean(microsoft?.executable);
   const slackChannelSelected = Boolean(policy.slack.slackDefaultChannelId);
   const slackAlertsReady = slackConnected && slackChannelSelected && policy.slack.slackNotificationsEnabled && policy.slack.slackApprovalAlertsEnabled;
   const trelloDestinationSet = Boolean(policy.trello.defaultBoardId && policy.trello.defaultListId);
@@ -163,15 +172,26 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     readiness,
+    emailProvider,
     gmail: gmail ? {
       status: gmail.status,
       accountEmail: gmail.accountEmail,
       executable: Boolean(gmail.executable),
-      reconnectRequired,
+      reconnectRequired: gmailReconnectRequired,
       permissions: {
         compose: gmailScopes.includes("https://www.googleapis.com/auth/gmail.compose"),
         send: gmailScopes.includes("https://www.googleapis.com/auth/gmail.send"),
         readonly: gmailScopes.includes(GMAIL_READONLY_SCOPE),
+      },
+    } : null,
+    microsoft: microsoft ? {
+      status: microsoft.status,
+      accountEmail: microsoft.accountEmail,
+      executable: Boolean(microsoft.executable),
+      reconnectRequired: microsoftReconnectRequired,
+      permissions: {
+        read: MICROSOFT_READ_REQUIRED_SCOPES.every((scope) => microsoftScopes.includes(scope)),
+        send: MICROSOFT_SEND_REQUIRED_SCOPES.every((scope) => microsoftScopes.includes(scope)),
       },
     } : null,
     slack: slack ? {
@@ -201,6 +221,7 @@ export async function GET(req: NextRequest) {
       readinessPercent,
       coreReady,
       gmailReady: emailReady,
+      emailProvider,
       slackConnected,
       slackChannelSelected,
       slackAlertsReady,

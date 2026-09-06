@@ -461,21 +461,74 @@ async function graphRequest<T = unknown>(accessToken: string, method: string, pa
 
 export type SafeMicrosoftMessage = {
   id: string;
+  conversationId: string | null;
   subject: string | null;
   from: string | null;
+  fromName: string | null;
   receivedAt: string | null;
   bodyPreview: string | null;
+  bodyText: string | null;
+};
+
+type GraphMessageFrom = { emailAddress?: { address?: string; name?: string } };
+
+type GraphMessageBody = { contentType?: string; content?: string };
+
+type GraphMessageShape = {
+  id?: string;
+  conversationId?: string;
+  subject?: string;
+  from?: GraphMessageFrom;
+  receivedDateTime?: string;
+  bodyPreview?: string;
+  body?: GraphMessageBody;
 };
 
 type GraphMessageListResult = {
-  value?: Array<{
-    id?: string;
-    subject?: string;
-    from?: { emailAddress?: { address?: string } };
-    receivedDateTime?: string;
-    bodyPreview?: string;
-  }>;
+  value?: GraphMessageShape[];
 };
+
+/**
+ * Strip HTML down to plain text for keyword-based signal detection. Mirrors
+ * the equivalent helper in gmail.ts (kept as a separate local copy rather
+ * than a shared import, matching this file's existing "parallel
+ * implementation" pattern relative to gmail.ts).
+ */
+function stripMicrosoftHtml(value: string): string {
+  return value
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
+function extractMicrosoftBodyText(body: GraphMessageBody | undefined): string | null {
+  if (!body?.content) return null;
+  const text = body.contentType?.toLowerCase() === "html" ? stripMicrosoftHtml(body.content) : body.content.trim();
+  if (!text) return null;
+  return text.length > 4000 ? `${text.slice(0, 4000)}...` : text;
+}
+
+function toSafeMicrosoftMessage(message: GraphMessageShape, fallbackId: string): SafeMicrosoftMessage {
+  return {
+    id: message.id ?? fallbackId,
+    conversationId: message.conversationId ?? null,
+    subject: message.subject ?? null,
+    from: message.from?.emailAddress?.address ?? null,
+    fromName: message.from?.emailAddress?.name ?? null,
+    receivedAt: message.receivedDateTime ?? null,
+    bodyPreview: message.bodyPreview ?? null,
+    bodyText: extractMicrosoftBodyText(message.body),
+  };
+}
 
 /** Mail.Read - read-only, no approval required. */
 export async function listRecentMicrosoftMessages(accessToken: string, limit = 20): Promise<SafeMicrosoftMessage[]> {
@@ -483,33 +536,21 @@ export async function listRecentMicrosoftMessages(accessToken: string, limit = 2
   const data = await graphRequest<GraphMessageListResult>(
     accessToken,
     "GET",
-    `/me/messages?$top=${top}&$select=id,subject,from,receivedDateTime,bodyPreview&$orderby=receivedDateTime desc`,
+    `/me/messages?$top=${top}&$select=id,subject,from,receivedDateTime,bodyPreview,conversationId&$orderby=receivedDateTime desc`,
   );
   return (data.value ?? [])
-    .filter((message): message is Required<Pick<typeof message, "id">> & typeof message => typeof message.id === "string")
-    .map((message) => ({
-      id: message.id as string,
-      subject: message.subject ?? null,
-      from: message.from?.emailAddress?.address ?? null,
-      receivedAt: message.receivedDateTime ?? null,
-      bodyPreview: message.bodyPreview ?? null,
-    }));
+    .filter((message): message is GraphMessageShape & { id: string } => typeof message.id === "string")
+    .map((message) => toSafeMicrosoftMessage(message, message.id));
 }
 
 /** Mail.Read - read-only, no approval required. */
 export async function getMicrosoftMessage(accessToken: string, messageId: string): Promise<SafeMicrosoftMessage> {
-  const message = await graphRequest<{ id?: string; subject?: string; from?: { emailAddress?: { address?: string } }; receivedDateTime?: string; bodyPreview?: string }>(
+  const message = await graphRequest<GraphMessageShape>(
     accessToken,
     "GET",
-    `/me/messages/${encodeURIComponent(messageId)}?$select=id,subject,from,receivedDateTime,bodyPreview`,
+    `/me/messages/${encodeURIComponent(messageId)}?$select=id,subject,from,receivedDateTime,bodyPreview,conversationId,body`,
   );
-  return {
-    id: message.id ?? messageId,
-    subject: message.subject ?? null,
-    from: message.from?.emailAddress?.address ?? null,
-    receivedAt: message.receivedDateTime ?? null,
-    bodyPreview: message.bodyPreview ?? null,
-  };
+  return toSafeMicrosoftMessage(message, messageId);
 }
 
 /**
