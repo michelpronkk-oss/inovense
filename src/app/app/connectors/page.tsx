@@ -671,7 +671,7 @@ export default function ConnectorsPage() {
   }, [drawerConnectorId, trelloSettings.defaultBoardId]);
 
   return (
-    <div className="os-page">
+    <div className="os-page connectors-page">
       <div className="os-page-head">
         <div>
           <span className="os-greet">Auterim workspace</span>
@@ -709,7 +709,7 @@ export default function ConnectorsPage() {
       {feedback && <div style={{ color: "#64ffd7", fontSize: 12 }}>{feedback}</div>}
 
       {/* Connected tools */}
-      <div className="p" style={{ overflowX: "auto", borderRadius: 16 }}>
+      <div className="p connectors-list" style={{ borderRadius: 16 }}>
         <div className="p-head">
           <h3><LinkIcon size={13} /> Connected tools</h3>
           <div className="p-meta">
@@ -735,15 +735,16 @@ export default function ConnectorsPage() {
             {realConnectedConnectors.map((c) => (
               <button
                 key={c.id}
+                className="connector-list-row"
                 onClick={() => setDrawerConnectorId(c.id)}
                 style={{ width: "100%", textAlign: "left", border: "none", background: "none", borderBottom: "1px solid var(--line)", padding: "17px 18px", display: "grid", gridTemplateColumns: "40px 1fr auto", alignItems: "center", gap: 14, cursor: "pointer" }}
               >
                 <div className="connector-brand-logo" style={{ width: 34, height: 34, borderRadius: 10 }}>
                   {IntegrationLogos[c.name] ?? <span style={{ color: c.color, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{c.letter}</span>}
                 </div>
-                <div>
+                <div className="connector-list-copy">
                   <div style={{ fontSize: 13.5, fontWeight: 500 }}>{c.name}</div>
-                  <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>{c.category}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>{c.category} · {c.operatorsAllowed.length ? `${c.operatorsAllowed.length} operator${c.operatorsAllowed.length === 1 ? "" : "s"}` : "No operators assigned"}</div>
                 </div>
                 <div style={{ justifySelf: "start", fontSize: 11.5, color: "#8df5cf", padding: "5px 8px", borderRadius: 999, background: "rgba(81,216,138,0.08)", boxShadow: "inset 0 0 0 1px rgba(81,216,138,0.2)" }}>Manage</div>
               </button>

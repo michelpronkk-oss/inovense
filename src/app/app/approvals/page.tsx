@@ -369,7 +369,7 @@ export default function ApprovalsPage() {
   };
 
   return (
-    <div className="os-page">
+    <div className="os-page approvals-page">
       <div className="os-page-head">
         <div>
           <span className="os-greet">Approval inbox - {pending.length} waiting</span>
@@ -389,7 +389,7 @@ export default function ApprovalsPage() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+      <div className="approval-stats" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
         {[
           { label: "Pending", val: String(pending.length), sub: "from database" },
           { label: "Approved today", val: String(approvedToday), sub: "resolved in DB today" },
@@ -404,7 +404,7 @@ export default function ApprovalsPage() {
         ))}
       </div>
 
-      <div style={{ display: "flex", gap: 4 }}>
+      <div className="approval-filters" style={{ display: "flex", gap: 4 }}>
         {FILTER_TABS.map((t) => (
           <button key={t} onClick={() => setFilter(t)} className={`appr-btn${filter === t ? " approve" : " edit"}`} style={{ fontSize: 11.5, padding: "5px 12px" }}>
             {t}
@@ -513,7 +513,7 @@ export default function ApprovalsPage() {
             ];
 
             return (
-              <div key={item.id} className="appr-row">
+              <article key={item.id} className="appr-row approval-review-card">
                 <div className="appr-row-top">
                   <span className={`pill ${tagClass(category)}`}>{category}</span>
                   <span className="appr-row-title">{item.title}</span>
@@ -845,8 +845,8 @@ export default function ApprovalsPage() {
                     </div>
                   );
                 })()}
-                <div style={{ marginTop: 12, padding: "11px 12px", borderRadius: 14, background: "rgba(0,0,0,0.16)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.065)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 280 }}>
+                <div className="approval-decision-bar" style={{ marginTop: 12, padding: "11px 12px", borderRadius: 14, background: "rgba(0,0,0,0.16)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.065)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                  <label className="approval-reject-reason" style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 280 }}>
                     <span style={{ fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.1em", whiteSpace: "nowrap" }}>Reject reason</span>
                     <select
                       value={rejectionReason}
@@ -866,7 +866,7 @@ export default function ApprovalsPage() {
                     </button>
                   </div>
                 </div>
-              </div>
+              </article>
             );
           })
         )}

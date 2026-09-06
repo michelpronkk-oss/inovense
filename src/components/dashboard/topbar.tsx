@@ -9,8 +9,8 @@ import type { DeployConfig } from "@/lib/os/types";
 import { SearchIcon, SparkIcon, BellIcon, MessageIcon, PlusIcon, XIcon, ArrowIcon, CpuIcon, FlowIcon, DocIcon, DatabaseIcon } from "@/components/dashboard/icons";
 
 const PAGE_LABELS: Record<string, string> = {
-  "/": "Overview",
-  "/agents": "Agents",
+  "/": "Dashboard",
+  "/agents": "Operators",
   "/workflows": "Workflows",
   "/approvals": "Approvals",
   "/memory": "Memory",
@@ -21,8 +21,8 @@ const PAGE_LABELS: Record<string, string> = {
   "/policies": "Policies",
   "/api-keys": "API keys",
   "/settings": "Settings",
-  "/app": "Overview",
-  "/app/agents": "Agents",
+  "/app": "Dashboard",
+  "/app/agents": "Operators",
   "/app/workflows": "Workflows",
   "/app/approvals": "Approvals",
   "/app/memory": "Memory",
@@ -732,7 +732,7 @@ export function OSTopbar() {
 
   const pageName = PAGE_LABELS[pathname] ?? "Overview";
   const contextualAction = pathname === "/agents" || pathname === "/app/agents"
-    ? { label: "Deploy agent", icon: true, onClick: () => setDeployOpen(true) }
+    ? { label: "Deploy operator", icon: true, onClick: () => setDeployOpen(true) }
     : null;
 
   // âŒ˜K opens palette; âŒ˜D opens deploy
@@ -785,7 +785,7 @@ export function OSTopbar() {
         >
           <SearchIcon size={13} />
           <span style={{ color: "var(--text-mute)", fontSize: 12.5, flex: 1, textAlign: "left" }}>
-            Search agents, workflows, memory...
+            Search operators, workflows, memory...
           </span>
           <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-faint)", background: "rgba(255,255,255,0.04)", padding: "2px 7px", borderRadius: 5 }}>
             âŒ˜K

@@ -19,7 +19,7 @@ function TrialBanner({ trialEndsAt }: { trialEndsAt?: string }) {
   const border = isExpired ? "rgba(242,118,124,0.18)" : "rgba(77,232,225,0.14)";
 
   return (
-    <div style={{
+    <div className="os-trial-banner" style={{
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
@@ -38,6 +38,7 @@ function TrialBanner({ trialEndsAt }: { trialEndsAt?: string }) {
       </span>
       <Link
         href={appHref("/api/billing/dodo/checkout?plan=starter")}
+        className="os-trial-cta"
         style={{
           display: "inline-flex",
           alignItems: "center",
@@ -78,7 +79,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (isBareRoute) {
     return (
-      <div className="os-main" style={{ width: "100%", minHeight: "100vh" }}>
+      <div className="os-main" style={{ width: "100%", minHeight: "100dvh" }}>
         {children}
       </div>
     );
@@ -89,7 +90,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // and makes an authorization repair look like a real user profile.
   if (workspaceLoadError) {
     return (
-      <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "#06070A" }}>
+      <main style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: 24, background: "#06070A" }}>
         <section style={{ width: "min(460px, 100%)", padding: 28, borderRadius: 18, background: "#0c1014", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.09)" }}>
           <div style={{ color: "#4DE8E1", fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.12em" }}>WORKSPACE ACCESS</div>
           <h1 style={{ margin: "12px 0 8px", fontSize: 24 }}>Your account needs a workspace assignment.</h1>
@@ -107,7 +108,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <OSSidebar />
         <div className="os-main">
         {entitlements.billingStatus === "preview" && (
-          <div className="os-billing-status" style={{
+          <div className="os-billing-status os-billing-preview" style={{
             margin: "8px 18px 0",
             padding: "8px 12px",
             borderRadius: 12,
@@ -132,7 +133,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         )}
         {showManageBilling && (
-          <div className="os-billing-status" style={{
+          <div className="os-billing-status os-billing-active" style={{
             margin: "8px 18px 0",
             padding: "8px 12px",
             borderRadius: 12,

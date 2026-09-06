@@ -80,7 +80,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         style={{
           background:
             "radial-gradient(800px 500px at 80% -200px, rgba(77,232,225,0.05), transparent 60%), #06070A",
-          minHeight: "100vh",
+          minHeight: "100dvh",
         }}
       >
         <AppShell>{children}</AppShell>

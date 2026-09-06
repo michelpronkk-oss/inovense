@@ -58,10 +58,13 @@ type CardModel = {
   status: AgentStatus;
   href?: string;
   needsSetup: boolean;
+  currentTask?: string;
+  connectedTools?: string[];
+  outcome?: string;
 };
 
 function AgentCard({ model }: { model: CardModel }) {
-  const { op, status, href, needsSetup } = model;
+  const { op, status, href, needsSetup, currentTask, connectedTools, outcome } = model;
   const dim = status === "upgrade" || status === "coming";
   const statusLabel = status === "configured" ? "Configured" : status === "available" ? "Available" : status === "upgrade" ? "Upgrade" : "Coming next";
 
@@ -93,6 +96,14 @@ function AgentCard({ model }: { model: CardModel }) {
       </div>
 
       <div className="ag-mission">{op.mission}</div>
+
+      {status === "configured" && (
+        <div className="ag-operating-context">
+          <div><span>Now</span><strong>{currentTask || "Monitoring workspace signals"}</strong></div>
+          <div><span>Connected systems</span><strong>{connectedTools?.length ? connectedTools.join(" · ") : "No tools connected"}</strong></div>
+          {outcome && <div><span>Outcome</span><strong>{outcome}</strong></div>}
+        </div>
+      )}
 
       <div className="ag-foot">
         {foot}
@@ -142,9 +153,18 @@ export default function AgentsRegistryPage() {
       ? (configuredKeys.has(key) ? "configured" : "available")
       : registry?.currentReleaseStatus === "coming_next" ? "coming" : "upgrade";
     const r = readinessByKey.get(key);
+    const configuredAgent = state.agents.find((agent) => agent.templateId === key);
     const needsSetup = openable && Boolean(r && (r.status === "missing_connector" || r.status === "upgrade_required"));
-    return { op, status, href: HREF_BY_KEY[key], needsSetup };
-  }), [configuredKeys, readinessByKey]);
+    return {
+      op,
+      status,
+      href: HREF_BY_KEY[key],
+      needsSetup,
+      currentTask: configuredAgent?.currentTask,
+      connectedTools: configuredAgent?.config.tools,
+      outcome: configuredAgent ? `${configuredAgent.stats.metricValue} ${configuredAgent.stats.metricLabel}` : undefined,
+    };
+  }), [configuredKeys, readinessByKey, state.agents]);
 
   const configured = cards.filter((c) => c.status === "configured");
   const available = cards.filter((c) => c.status === "available");
@@ -158,8 +178,8 @@ export default function AgentsRegistryPage() {
       <div className="os-page-head">
         <div>
           <span className="ag-head-eyebrow">Operator registry</span>
-          <h1 style={{ marginTop: 10 }}>Agents</h1>
-          <div className="os-page-sub">Your operating layer. Fifteen operators, one disciplined loop.</div>
+          <h1 style={{ marginTop: 10 }}>Operators</h1>
+          <div className="os-page-sub">Your AI workforce: purpose, live state, connected systems and measurable outcomes.</div>
         </div>
         <div className="os-page-actions">
           <Link href="/approvals" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Approval inbox</Link>

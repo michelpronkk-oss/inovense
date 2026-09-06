@@ -318,7 +318,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="os-page">
+    <div className="os-page settings-page">
       <div className="os-page-head">
         <div>
           <span className="os-greet">Workspace control</span>
@@ -375,6 +375,7 @@ export default function SettingsPage() {
             return (
               <div
                 key={acct.connectorKey}
+                className="settings-account-row"
                 style={{ display: "grid", gridTemplateColumns: "40px 1fr auto", alignItems: "center", gap: 14, padding: "14px 18px", borderBottom: "1px solid var(--line)" }}
               >
                 <div className="connector-brand-logo" style={{ width: 34, height: 34, borderRadius: 10, color, flexShrink: 0 }}>

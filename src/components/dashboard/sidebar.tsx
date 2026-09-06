@@ -55,8 +55,8 @@ export function OSSidebar() {
   ), [draft, state]);
 
   const OPS_NAV = [
-    { icon: TargetIcon, label: "Overview", href: "/" },
-    { icon: CpuIcon, label: "Agents", href: "/agents" },
+    { icon: TargetIcon, label: "Dashboard", href: "/" },
+    { icon: CpuIcon, label: "Operators", href: "/agents" },
     { icon: FlowIcon, label: "Workflows", href: "/workflows" },
     { icon: InboxIcon, label: "Approvals", href: "/approvals", badge: pendingApprovals > 0 ? String(pendingApprovals) : undefined },
     { icon: DatabaseIcon, label: "Memory", href: "/memory" },
@@ -116,7 +116,7 @@ export function OSSidebar() {
         const Icon = it.icon;
         const active = isActive(it.href);
         return (
-          <Link key={it.label} href={it.href} className={`os-nav${active ? " active" : ""}`}>
+          <Link key={it.label} href={it.href} className={`os-nav${active ? " active" : ""}`} aria-current={active ? "page" : undefined}>
             <span className="ico"><Icon size={14} /></span>
             <span>{it.label}</span>
             {it.badge && <span className="badge">{it.badge}</span>}
@@ -129,7 +129,7 @@ export function OSSidebar() {
         const Icon = it.icon;
         const active = isActive(it.href);
         return (
-          <Link key={it.label} href={it.href} className={`os-nav${active ? " active" : ""}`}>
+          <Link key={it.label} href={it.href} className={`os-nav${active ? " active" : ""}`} aria-current={active ? "page" : undefined}>
             <span className="ico"><Icon size={14} /></span>
             <span>{it.label}</span>
           </Link>
@@ -284,13 +284,12 @@ export function OSMobileNav() {
   const { pendingApprovals } = useOS();
   const [open, setOpen] = useState(false);
   const primary = [
-    { icon: TargetIcon, label: "Home", href: "/" },
-    { icon: CpuIcon, label: "Agents", href: "/agents" },
+    { icon: TargetIcon, label: "Dashboard", href: "/" },
+    { icon: CpuIcon, label: "Operators", href: "/agents" },
     { icon: InboxIcon, label: "Approvals", href: "/approvals", badge: pendingApprovals },
-    { icon: LinkIcon, label: "Connect", href: "/connectors" },
+    { icon: LinkIcon, label: "Connectors", href: "/connectors" },
   ];
-  const all = [
-    ...primary,
+  const secondary = [
     { icon: FlowIcon, label: "Workflows", href: "/workflows" },
     { icon: DatabaseIcon, label: "Memory", href: "/memory" },
     { icon: DocIcon, label: "Execution logs", href: "/logs" },
@@ -308,25 +307,25 @@ export function OSMobileNav() {
       {primary.map((item) => {
         const Icon = item.icon;
         return (
-          <Link key={item.href} href={item.href} className={`os-mobile-nav-link${isActive(item.href) ? " active" : ""}`}>
+          <Link key={item.href} href={item.href} className={`os-mobile-nav-link${isActive(item.href) ? " active" : ""}`} aria-current={isActive(item.href) ? "page" : undefined}>
             <span className="os-mobile-nav-icon"><Icon size={17} />{item.badge ? <i>{item.badge}</i> : null}</span>
             <span>{item.label}</span>
           </Link>
         );
       })}
-      <button type="button" className={`os-mobile-nav-link${open ? " active" : ""}`} aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+      <button type="button" className={`os-mobile-nav-link${open ? " active" : ""}`} aria-expanded={open} aria-controls="os-mobile-more-menu" onClick={() => setOpen((value) => !value)}>
         <span className="os-mobile-nav-icon"><SettingsIcon size={17} /></span>
         <span>More</span>
       </button>
       {open && (
         <>
           <button type="button" className="os-mobile-nav-scrim" aria-label="Close navigation menu" onClick={() => setOpen(false)} />
-          <div className="os-mobile-menu" role="dialog" aria-label="All navigation">
+          <div id="os-mobile-more-menu" className="os-mobile-menu" role="dialog" aria-label="More navigation">
             <div className="os-mobile-menu-head"><span>Workspace</span><button type="button" onClick={() => setOpen(false)}>Close</button></div>
             <div className="os-mobile-menu-grid">
-              {all.map((item) => {
+              {secondary.map((item) => {
                 const Icon = item.icon;
-                return <Link key={item.href} href={item.href} className={isActive(item.href) ? "active" : ""} onClick={() => setOpen(false)}><Icon size={16} />{item.label}</Link>;
+                return <Link key={item.href} href={item.href} className={isActive(item.href) ? "active" : ""} aria-current={isActive(item.href) ? "page" : undefined} onClick={() => setOpen(false)}><Icon size={16} />{item.label}</Link>;
               })}
             </div>
           </div>

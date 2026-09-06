@@ -90,7 +90,7 @@ function ActivitySparkline({ activity, now, color = "#4DE8E1" }: { activity: Das
 
 function Skeleton() {
   return (
-    <div className="os-page">
+    <div className="os-page dashboard-overview">
       <div className="os-page-head">
         <div>
           <span className="os-greet">Operating</span>
@@ -215,7 +215,7 @@ export function OSOverview() {
   ];
 
   return (
-    <div className="os-page">
+    <div className="os-page dashboard-overview">
       {/* Header */}
       <div className="os-page-head">
         <div>
@@ -232,7 +232,7 @@ export function OSOverview() {
       </div>
 
       {error && (
-        <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>
+        <div className="dashboard-alert" style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>
           {error}
         </div>
       )}
@@ -250,8 +250,8 @@ export function OSOverview() {
       </div>
 
       {/* Operators + Approvals */}
-      <div className="os-grid-2">
-        <div className="p">
+      <div className="os-grid-2 dashboard-focus-grid">
+        <div className="p dashboard-operators-panel">
           <div className="p-head">
             <h3>{overview.operators.length === 1 ? "Your first operator" : "Active operators"}</h3>
             <span className="p-meta">{overview.operators.length} configured · no actions run without approval</span>
@@ -303,7 +303,7 @@ export function OSOverview() {
           </div>
         </div>
 
-        <div className="p">
+        <div className="p dashboard-approvals-panel">
           <div className="p-head">
             <h3>Approval inbox</h3>
             <span className="p-meta">{pending > 0 && <span className="dot dot-cyan pulsing" />} {pending} waiting</span>
@@ -340,7 +340,7 @@ export function OSOverview() {
       </div>
 
       {/* Activity + Policy */}
-      <div className="os-grid-2">
+      <div className="os-grid-2 dashboard-activity-grid">
         <div className="p">
           <div className="p-head">
             <h3>Activity</h3>
@@ -380,7 +380,7 @@ export function OSOverview() {
       </div>
 
       {/* Connectors */}
-      <div className="p">
+      <div className="p dashboard-connectors-panel">
         <div className="p-head">
           <h3>Connectors</h3>
           <span className="p-meta">{healthyConnectors}/{overview.connectors.length} healthy</span>
