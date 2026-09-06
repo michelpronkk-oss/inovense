@@ -165,6 +165,10 @@ function AgentCard({ model, onOpenDetails }: { model: CardModel; onOpenDetails: 
   );
 }
 
+function sentenceCase(value: string): string {
+  return value ? `${value[0].toUpperCase()}${value.slice(1)}` : value;
+}
+
 function OperatorDetails({ model, onClose }: { model: CardModel; onClose: () => void }) {
   const { op, productState, value, href } = model;
   if (!productState || !value) return null;
@@ -179,12 +183,12 @@ function OperatorDetails({ model, onClose }: { model: CardModel; onClose: () => 
           <div><span>{op.tag}</span><h2 id="operator-details-title">{op.name}</h2><p>{op.mission}</p></div>
           <StatusBadge state={productState.state}>{productState.label}</StatusBadge>
         </div>
-        <div className="agent-details-value"><span>Business value</span><strong>{value.value}</strong></div>
+        <div className="agent-details-value"><span>Business value</span><strong>{sentenceCase(value.value)}</strong></div>
         <div className="agent-details-grid">
-          <div><span>Owns</span><strong>{value.owns}</strong></div>
-          <div><span>Your systems</span><strong>{productState.connectedSystems.length ? productState.connectedSystems.join(" · ") : "None connected yet"}</strong></div>
-          <div><span>{available.length ? "Can do now" : "Needs next"}</span><strong>{available.length ? available.join(" · ") : next?.label ?? productState.description}</strong></div>
-          <div><span>{productState.state === "enhanced" ? "Enhanced by" : "Enhance with"}</span><strong>{value.enhancement}</strong></div>
+          <div className="agent-details-area"><span>Owns</span><strong>{sentenceCase(value.owns)}</strong></div>
+          <div className="agent-details-area"><span>Your systems</span><strong>{productState.connectedSystems.length ? productState.connectedSystems.map(sentenceCase).join(" · ") : "None connected yet"}</strong></div>
+          <div className="agent-details-area agent-details-capabilities"><span>{available.length ? "Can do now" : "Needs next"}</span>{available.length ? <ul>{available.map((item) => <li key={item}>{sentenceCase(item)}</li>)}</ul> : <strong>{sentenceCase(next?.label ?? productState.description)}</strong>}</div>
+          <div className="agent-details-area"><span>{productState.state === "enhanced" ? "Enhanced by" : "Enhance with"}</span><strong>{sentenceCase(value.enhancement)}</strong></div>
         </div>
         {productState.degraded && <div className="agent-details-alert">Unavailable while a connection needs attention: {productState.degraded.lostCapabilities.join(", ")}</div>}
         <div className="agent-details-actions">
