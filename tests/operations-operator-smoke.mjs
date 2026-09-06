@@ -22,6 +22,8 @@ const aiDrafting = read("src/lib/operators/operations/ai-drafting.ts");
 const approveRoute = read("src/app/api/approvals/[id]/approve/route.ts");
 const scanRoute = read("src/app/api/operators/operations/scan/route.ts");
 const statusRoute = read("src/app/api/operators/operations/status/route.ts");
+const trelloExecutor = read("src/lib/operators/executors/trello.ts");
+const trigger = read("src/trigger/operations-operator-scan.ts");
 
 // ── A. hasWorkspaceScopedLogs is a real, workspace-filtered DB check, not a hardcoded false ──
 assert.doesNotMatch(readiness, /hasWorkspaceScopedLogs:\s*false,?\s*\n?\s*\};/, "hasWorkspaceScopedLogs must never be a hardcoded false stub");
@@ -74,5 +76,31 @@ for (const routeSrc of [scanRoute, statusRoute]) {
 // ── H. ai-drafting.ts is honestly deterministic (no live model call), not falsely presented as an Anthropic call ──
 assert.doesNotMatch(aiDrafting, /@anthropic-ai\/sdk/, "operations/ai-drafting.ts is a deterministic decision helper today - it must not silently claim to call Anthropic without actually doing so");
 assert.match(aiDrafting, /Deterministic/i, "the deterministic nature of this decision helper must stay documented in the source, since the filename alone (ai-drafting.ts) is misleading");
+
+// ── I. Trello executor fetches idMembers/labels/badges in the same list-cards call, plus a signal-gated comment read ──
+assert.match(trelloExecutor, /fields=name,desc,due,dueComplete,dateLastActivity,idList,url,shortUrl,closed,idMembers,labels,badges/, "listTrelloCardsDetailed must widen its fields to include idMembers/labels/badges in the same call, not a separate round-trip");
+assert.match(trelloExecutor, /export async function listRecentTrelloCardComments/, "a separate, cheap comment-read function must exist for signal-gated blocker-reason lookups");
+
+// ── J. scan.ts really uses the widened fields for no-owner, escalation-label, and checklist-based detection ──
+assert.match(scan, /detectEscalationLabels\(card\.labels\)\.length > 0\) return "escalation_label"/, "escalation labels must be checked first and win over other signal types");
+assert.match(scan, /card\.idMembers\.length === 0/, "no-owner detection must use the real idMembers field, not be absent");
+assert.match(scan, /checklistIncomplete && activity !== null && activity > STUCK_DAYS\) return "checklist_stalled"/, "checklist-based staleness must be checked before the generic stuck/no-activity fallback");
+
+// ── K. card-level dedupe reactivates on a severity/blocker band change instead of hard-suppressing forever ──
+assert.match(scan, /const legacyDedupeKey = `operations:trello:card:\$\{card\.id\}:\$\{signalType\}`;/, "the dedupe key must still be derivable from card+signal for backward compatibility");
+assert.match(scan, /const dedupeKey = `\$\{legacyDedupeKey\}:\$\{decision\.severity\}:/, "the dedupe key must include the computed severity band so a worsened/changed situation can reactivate");
+assert.match(scan, /if \(legacyReason === "existing_pending_approval"\) \{ bump\(legacyReason\); continue; \}/, "an unresolved legacy-format approval for the same card+signal must still hard-block a duplicate, even across the dedupe scheme change");
+
+// ── L. a genuinely low-severity or externally-blocked signal is a deliberate, logged no-action outcome, not silence ──
+assert.match(scan, /bestNextAction === "observe_low_severity" \|\| decision\.bestNextAction === "wait_external_dependency"/, "observe/wait outcomes must be handled as an explicit branch");
+assert.match(scan, /eventType: "operations\.scan\.no_action"/, "the deliberate no-action outcome must still be logged, mirroring Revenue's defer_low_priority pattern");
+
+// ── M. Trigger.dev daily scan is a real per-workspace fanout, not one hardcoded workspace ──
+assert.doesNotMatch(trigger, /TODO: multi-workspace fanout/, "the fanout TODO must be resolved, not left in place");
+assert.match(trigger, /async function listEligibleOperationsWorkspaceIds/, "a real workspace discovery function must exist");
+assert.match(trigger, /getOperatorReadiness\(\{ workspaceId, operatorKey: "operations" \}\)/, "fanout eligibility must reuse the same readiness check the manual scan route trusts, not a separate ad hoc check");
+assert.match(trigger, /for \(const workspaceId of discovery\.workspaceIds\) \{\s*\n\s*\/\/ Each workspace is isolated/, "each workspace in the fanout must be isolated so one failure cannot abort the others");
+assert.match(trigger, /try \{\s*\n\s*const result = await scanOperationsSignals\(\{ workspaceId, sourceMode: "scheduled" \}\);/, "each workspace scan must be individually try/caught inside the fanout loop");
+assert.match(trigger, /workspacesNeedingAttention/, "failed workspaces must be surfaced explicitly, not swallowed");
 
 console.log("Auterim Operations Operator smoke contracts passed.");

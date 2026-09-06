@@ -213,6 +213,9 @@ export async function listTrelloCards(workspaceId: string, listId: string): Prom
   })).filter((card) => card.id && card.name);
 }
 
+export type TrelloCardLabel = { id: string; name: string; color: string | null };
+export type TrelloCardBadges = { checklistItems: number; checklistItemsChecked: number; comments: number };
+
 export type TrelloCardDetailed = {
   id: string;
   name: string;
@@ -224,30 +227,90 @@ export type TrelloCardDetailed = {
   url: string | null;
   shortUrl: string | null;
   closed: boolean;
+  idMembers: string[];
+  labels: TrelloCardLabel[];
+  badges: TrelloCardBadges;
 };
 
-// Richer read used by Operations Operator to detect operational signals. Reads
-// only safe, cheap fields (no activity stream fetch). Excludes archived cards.
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" ? value as Record<string, unknown> : {};
+}
+
+// Richer read used by Operations Operator to detect operational signals.
+// idMembers/labels/badges are fetched in this same list-cards call (no extra
+// API round-trip) - Trello returns them for free on the /cards endpoint, they
+// were simply never requested before. This unlocks no-owner detection
+// (idMembers.length === 0), label-based priority/escalation detection, and
+// checklist-completion-based staleness, all from data already available.
+// Comments are intentionally NOT fetched here (see listRecentTrelloCardComments)
+// - that requires a separate, more expensive per-card call, so it is only made
+// for cards that already triggered a signal from these cheap fields.
 export async function listTrelloCardsDetailed(workspaceId: string, listId: string): Promise<TrelloCardDetailed[]> {
   const safeListId = listId.trim();
   if (!safeListId) throw new TrelloExecutionError("Trello listId is required.", { step: "trello.validate", code: "missing_list_id" });
   const data = await trelloRequest<Array<Record<string, unknown>>>(
     workspaceId,
     "GET",
-    `/1/lists/${encodeURIComponent(safeListId)}/cards?fields=name,desc,due,dueComplete,dateLastActivity,idList,url,shortUrl,closed&filter=open`,
+    `/1/lists/${encodeURIComponent(safeListId)}/cards?fields=name,desc,due,dueComplete,dateLastActivity,idList,url,shortUrl,closed,idMembers,labels,badges&filter=open`,
   );
-  return data.map((card) => ({
-    id: typeof card.id === "string" ? card.id : "",
-    name: typeof card.name === "string" ? card.name : "",
-    desc: typeof card.desc === "string" ? card.desc : "",
-    due: typeof card.due === "string" ? card.due : null,
-    dueComplete: card.dueComplete === true,
-    dateLastActivity: typeof card.dateLastActivity === "string" ? card.dateLastActivity : null,
-    listId: typeof card.idList === "string" ? card.idList : safeListId,
-    url: typeof card.url === "string" ? card.url : null,
-    shortUrl: typeof card.shortUrl === "string" ? card.shortUrl : null,
-    closed: card.closed === true,
-  })).filter((card) => card.id && card.name);
+  return data.map((card) => {
+    const badges = asRecord(card.badges);
+    const labels = Array.isArray(card.labels)
+      ? card.labels
+        .map((label) => asRecord(label))
+        .map((label) => ({
+          id: typeof label.id === "string" ? label.id : "",
+          name: typeof label.name === "string" ? label.name : "",
+          color: typeof label.color === "string" ? label.color : null,
+        }))
+        .filter((label) => label.id)
+      : [];
+    return {
+      id: typeof card.id === "string" ? card.id : "",
+      name: typeof card.name === "string" ? card.name : "",
+      desc: typeof card.desc === "string" ? card.desc : "",
+      due: typeof card.due === "string" ? card.due : null,
+      dueComplete: card.dueComplete === true,
+      dateLastActivity: typeof card.dateLastActivity === "string" ? card.dateLastActivity : null,
+      listId: typeof card.idList === "string" ? card.idList : safeListId,
+      url: typeof card.url === "string" ? card.url : null,
+      shortUrl: typeof card.shortUrl === "string" ? card.shortUrl : null,
+      closed: card.closed === true,
+      idMembers: Array.isArray(card.idMembers) ? card.idMembers.filter((memberId): memberId is string => typeof memberId === "string") : [],
+      labels,
+      badges: {
+        checklistItems: typeof badges.checkItems === "number" ? badges.checkItems : 0,
+        checklistItemsChecked: typeof badges.checkItemsChecked === "number" ? badges.checkItemsChecked : 0,
+        comments: typeof badges.comments === "number" ? badges.comments : 0,
+      },
+    };
+  }).filter((card) => card.id && card.name);
+}
+
+export type TrelloCardComment = { id: string; text: string; date: string | null };
+
+// Cheap, signal-gated comment read: only called for cards that already
+// triggered a signal from listTrelloCardsDetailed's cheap fields, never for
+// every card scanned. Trello's actions endpoint is a separate call per card,
+// so this is deliberately kept to a small `limit` and only reached when it is
+// already worth the extra request.
+export async function listRecentTrelloCardComments(workspaceId: string, cardId: string, limit = 8): Promise<TrelloCardComment[]> {
+  const safeCardId = cardId.trim();
+  if (!safeCardId) throw new TrelloExecutionError("Trello cardId is required.", { step: "trello.validate", code: "missing_card_id" });
+  const safeLimit = Math.min(Math.max(Math.trunc(limit) || 8, 1), 20);
+  const data = await trelloRequest<Array<Record<string, unknown>>>(
+    workspaceId,
+    "GET",
+    `/1/cards/${encodeURIComponent(safeCardId)}/actions?filter=commentCard&limit=${safeLimit}`,
+  );
+  return data.map((action) => {
+    const actionData = asRecord(action.data);
+    return {
+      id: typeof action.id === "string" ? action.id : "",
+      text: typeof actionData.text === "string" ? actionData.text : "",
+      date: typeof action.date === "string" ? action.date : null,
+    };
+  }).filter((comment) => comment.id && comment.text);
 }
 
 export async function createTrelloCardAfterApproval(input: {

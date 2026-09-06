@@ -2,6 +2,7 @@ import { getConnectorTruth } from "@/lib/connectors/truth";
 import {
   listTrelloLists,
   listTrelloCardsDetailed,
+  listRecentTrelloCardComments,
   TrelloExecutionError,
   type TrelloCardDetailed,
   type TrelloList,
@@ -18,6 +19,8 @@ import { getAppUrl } from "@/lib/urls";
 import {
   decideOperationsCardSignal,
   decideOperationsListSignal,
+  detectEscalationLabels,
+  extractBlockerReason,
   type OperationsDecision,
   type OperationsSignalType,
 } from "@/lib/operators/operations/ai-drafting";
@@ -37,7 +40,24 @@ const NO_ACTIVITY_DAYS = 30;
 const DUE_SOON_HOURS = 48;
 const TOO_MANY_OPEN = 12;
 const MIN_DESC_LENGTH = 15;
+const NO_OWNER_MIN_AGE_DAYS = 3;
 const BLOCKER_WORDS = ["blocked", "blocker", "waiting", "stuck", "issue", "problem", "on hold", "can't proceed", "cannot proceed"];
+
+// A signal-gated, per-run cap on the extra Trello "recent comments" call
+// (see listRecentTrelloCardComments). Comments are only fetched for cards
+// that already triggered a signal, and only for signal types where a blocker
+// phrase is actually useful context, but this hard cap keeps a single scan
+// bounded even on a very active board.
+const MAX_COMMENT_FETCHES_PER_RUN = 20;
+const COMMENT_FETCH_LIMIT = 8;
+const BLOCKER_CONTEXT_SIGNALS = new Set<OperationsSignalType>([
+  "blocked_work",
+  "stuck_card",
+  "no_recent_activity",
+  "checklist_stalled",
+  "escalation_label",
+  "overdue_card",
+]);
 
 export type OperationsScanSummary = {
   status?: string;
@@ -55,7 +75,24 @@ export type OperationsScanSummary = {
     runId: string;
     approvalId: string;
     dedupeKey: string;
+    isReactivation?: boolean;
   }[];
+  observed?: {
+    cardId: string;
+    cardName: string;
+    listName: string;
+    signalType: OperationsSignalType;
+    bestNextAction: string;
+    reason: string;
+    dedupeKey: string;
+    runId: string;
+  }[];
+  outcomeMetrics?: {
+    flaggedCardCount?: number;
+    cardsRecoveredSinceLastScan?: number;
+    observedCount?: number;
+    waitingExternalCount?: number;
+  };
   skipped?: { reason: string; count: number }[];
   setup?: Record<string, unknown>;
   error?: string;
@@ -137,8 +174,17 @@ function ageDays(iso: string | null): number | null {
   return (Date.now() - t) / 86400000;
 }
 
+// Signal detection order matters: escalation labels are the most explicit,
+// human-declared signal available (someone deliberately marked this card
+// urgent/blocked), so they are checked first and win over everything else.
+// Checklist-based staleness is checked before the generic stuck/no-activity
+// checks because a stalled card with an incomplete checklist is a stronger,
+// more specific signal than one with no checklist at all. no_owner is
+// checked last among the "positive" signals, after due-date/review/activity
+// checks, so it only surfaces when nothing more specific already did.
 function detectCardSignal(card: TrelloCardDetailed, kind: ReturnType<typeof listKind>): OperationsSignalType | null {
   if (kind === "done") return null;
+  if (detectEscalationLabels(card.labels).length > 0) return "escalation_label";
   const text = `${card.name} ${card.desc}`.toLowerCase();
   if (BLOCKER_WORDS.some((word) => text.includes(word))) return "blocked_work";
   if (card.due && !card.dueComplete) {
@@ -150,8 +196,11 @@ function detectCardSignal(card: TrelloCardDetailed, kind: ReturnType<typeof list
   }
   if (kind === "review" && !card.dueComplete) return "review_needed";
   const activity = ageDays(card.dateLastActivity);
+  const checklistIncomplete = card.badges.checklistItems > 0 && card.badges.checklistItemsChecked < card.badges.checklistItems;
+  if (checklistIncomplete && activity !== null && activity > STUCK_DAYS) return "checklist_stalled";
   if (activity !== null && activity > NO_ACTIVITY_DAYS) return "no_recent_activity";
   if (activity !== null && activity > STUCK_DAYS) return "stuck_card";
+  if (card.idMembers.length === 0 && activity !== null && activity > NO_OWNER_MIN_AGE_DAYS) return "no_owner";
   if (card.desc.trim().length < MIN_DESC_LENGTH) return "missing_next_step";
   return null;
 }
@@ -242,8 +291,11 @@ export async function scanOperationsSignals(input: {
     const lists = (await listTrelloLists(workspaceId, boardId)).filter((l) => !l.closed).slice(0, MAX_LISTS);
     const handled = await loadOperationsDedupeState({ supabase, workspaceId });
 
-    const candidates: { decision: OperationsDecision; card?: TrelloCardDetailed; listName: string; dedupeKey: string }[] = [];
+    const candidates: { decision: OperationsDecision; card?: TrelloCardDetailed; listName: string; dedupeKey: string; isReactivation: boolean; ageAtDetectionDays: number | null }[] = [];
+    const observed: NonNullable<OperationsScanSummary["observed"]> = [];
+    const flaggedCardIds = new Set<string>();
     let cardsChecked = 0;
+    let commentFetchCount = 0;
     const skippedCounts: Record<string, number> = {};
     const bump = (reason: string) => { skippedCounts[reason] = (skippedCounts[reason] ?? 0) + 1; };
 
@@ -264,6 +316,8 @@ export async function scanOperationsSignals(input: {
           decision: decideOperationsListSignal({ signalType: "too_many_open_tasks", listName: list.name, listId: list.id, boardName, boardId, openCount: cards.length }),
           listName: list.name,
           dedupeKey,
+          isReactivation: false,
+          ageAtDetectionDays: null,
         });
       }
 
@@ -271,14 +325,139 @@ export async function scanOperationsSignals(input: {
         cardsChecked += 1;
         const signalType = detectCardSignal(card, kind);
         if (!signalType) { bump(kind === "done" ? "completed_card" : "no_operational_signals"); continue; }
-        const dedupeKey = `operations:trello:card:${card.id}:${signalType}`;
-        if (handled.has(dedupeKey)) { bump(handled.get(dedupeKey)!); continue; }
-        candidates.push({
-          decision: decideOperationsCardSignal({ signalType, card, listName: list.name, boardName, boardId, lists: lists as TrelloList[] }),
+
+        // Real scoring inputs, now that idMembers/labels/badges are fetched.
+        const dueTime = card.due ? new Date(card.due).getTime() : NaN;
+        const daysOverdue = card.due && !card.dueComplete && Number.isFinite(dueTime) && dueTime < Date.now()
+          ? (Date.now() - dueTime) / 86400000
+          : null;
+        const hasOwner = card.idMembers.length > 0;
+        const escalationLabels = detectEscalationLabels(card.labels);
+        const unresolvedAgeDays = ageDays(card.dateLastActivity);
+        let blockerReason = extractBlockerReason([card.desc, card.name]);
+        // Comment fetch is signal-gated (only for cards that already
+        // triggered a signal where a blocker phrase adds real value) and
+        // capped per run - see MAX_COMMENT_FETCHES_PER_RUN.
+        if (!blockerReason && BLOCKER_CONTEXT_SIGNALS.has(signalType) && commentFetchCount < MAX_COMMENT_FETCHES_PER_RUN) {
+          commentFetchCount += 1;
+          try {
+            const comments = await listRecentTrelloCardComments(workspaceId, card.id, COMMENT_FETCH_LIMIT);
+            blockerReason = extractBlockerReason(comments.map((comment) => comment.text));
+          } catch (error) {
+            if (error instanceof TrelloExecutionError) bump("trello_comment_read_failed");
+            else throw error;
+          }
+        }
+
+        const decision = decideOperationsCardSignal({
+          signalType,
           card,
           listName: list.name,
-          dedupeKey,
+          boardName,
+          boardId,
+          lists: lists as TrelloList[],
+          daysOverdue,
+          hasOwner,
+          escalationLabels,
+          checklistTotal: card.badges.checklistItems,
+          checklistChecked: card.badges.checklistItemsChecked,
+          unresolvedAgeDays,
+          blockerReason,
         });
+
+        // Card-level reactivation: the dedupe key now includes the computed
+        // severity band (and whether the blocker is external), not just the
+        // card+signal pair. A card that already had this exact signal at the
+        // same severity/blocker band is a hard duplicate. If the band changed
+        // (situation worsened, blocker appeared/resolved, owner assigned,
+        // etc.) it is treated as a new, reactivated occurrence - mirroring
+        // Revenue's thread-reactivation pattern. The only thing that still
+        // hard-blocks across bands is an *unresolved* legacy-format approval
+        // for the exact same card+signal (pre-dating this change), so the
+        // pass never double-fires on top of a still-open approval.
+        const legacyDedupeKey = `operations:trello:card:${card.id}:${signalType}`;
+        const dedupeKey = `${legacyDedupeKey}:${decision.severity}:${decision.bestNextAction === "wait_external_dependency" ? "ext" : "std"}`;
+        const legacyReason = handled.get(legacyDedupeKey);
+        const currentReason = handled.get(dedupeKey);
+        if (currentReason) { bump(currentReason); continue; }
+        if (legacyReason === "existing_pending_approval") { bump(legacyReason); continue; }
+        const isReactivation = Boolean(legacyReason);
+
+        flaggedCardIds.add(card.id);
+
+        if (decision.bestNextAction === "observe_low_severity" || decision.bestNextAction === "wait_external_dependency") {
+          // A deliberate, logged "no action" outcome - not a silent drop. No
+          // Trello write and no Slack ping are prepared; the next scan will
+          // re-evaluate this card and only resurface it if the dedupe band
+          // above changes.
+          const completedAt = new Date().toISOString();
+          const noActionInput = {
+            source: "trello_scan",
+            sourceMode,
+            dedupeKey,
+            signalType: decision.signalType,
+            severity: decision.severity,
+            confidence: decision.confidence,
+            bestNextAction: decision.bestNextAction,
+            bestNextActionReason: decision.bestNextActionReason,
+            blockerReason: decision.blockerReason,
+            priorityReasons: decision.priorityReasons,
+            boardId,
+            boardName,
+            listName: list.name,
+            cardId: card.id,
+            cardName: card.name,
+            cardUrl: card.url ?? card.shortUrl ?? null,
+            isReactivation,
+          };
+          const noActionRunId = operatorRuntimeId("oprun-operations-scan");
+          const runInsert = await supabase.from("os_operator_runs").insert({
+            id: noActionRunId,
+            workspace_id: workspaceId,
+            operator_key: "operations",
+            trigger_type: "trello_scan",
+            status: "completed",
+            input: noActionInput,
+            output: { status: "no_action", reason: decision.bestNextActionReason },
+            readiness: {},
+            risk_level: "low",
+            started_at: completedAt,
+            completed_at: completedAt,
+          });
+          if (runInsert.error) throw new Error(runInsert.error.message);
+          await logOperatorEvent({
+            supabase, workspaceId, runId: noActionRunId,
+            eventType: "operations.scan.no_action",
+            message: `No action for "${card.name}": ${decision.bestNextActionReason}`,
+            metadata: noActionInput,
+          });
+          const outputInsert = await supabase.from("os_operator_outputs").insert({
+            id: operatorRuntimeId("opout"),
+            workspace_id: workspaceId,
+            run_id: noActionRunId,
+            operator_key: "operations",
+            output_type: "operations_no_action_summary",
+            title: `No action: ${card.name}`,
+            payload: noActionInput,
+            requires_approval: false,
+          });
+          if (outputInsert.error) throw new Error(outputInsert.error.message);
+          observed.push({
+            cardId: card.id,
+            cardName: card.name,
+            listName: list.name,
+            signalType: decision.signalType,
+            bestNextAction: decision.bestNextAction,
+            reason: decision.bestNextActionReason,
+            dedupeKey,
+            runId: noActionRunId,
+          });
+          handled.set(dedupeKey, "already_handled");
+          bump(decision.bestNextAction);
+          continue;
+        }
+
+        candidates.push({ decision, card, listName: list.name, dedupeKey, isReactivation, ageAtDetectionDays: daysOverdue ?? unresolvedAgeDays });
       }
     }
 
@@ -289,7 +468,7 @@ export async function scanOperationsSignals(input: {
     const created: NonNullable<OperationsScanSummary["signals"]> = [];
 
     for (const candidate of selected) {
-      const { decision, card, listName, dedupeKey } = candidate;
+      const { decision, card, listName, dedupeKey, isReactivation } = candidate;
       const runId = operatorRuntimeId("oprun-operations-scan");
 
       // Prepared actions through the Shared Action Layer. Both stay approval-gated.
@@ -341,6 +520,11 @@ export async function scanOperationsSignals(input: {
         signalType: decision.signalType,
         severity: decision.severity,
         confidence: decision.confidence,
+        priorityScore: decision.score,
+        priorityReasons: decision.priorityReasons,
+        bestNextAction: decision.bestNextAction,
+        blockerReason: decision.blockerReason,
+        isReactivation,
         boardId,
         boardName,
         listName,
@@ -457,12 +641,35 @@ export async function scanOperationsSignals(input: {
         console.warn("[operations-scan] slack approval notification skipped", { workspaceId, approvalId, error: error instanceof Error ? error.message : "Unknown Slack notification error" });
       }
 
-      created.push({ signalType: decision.signalType, severity: decision.severity, cardName: card?.name, listName, runId, approvalId, dedupeKey });
+      created.push({ signalType: decision.signalType, severity: decision.severity, cardName: card?.name, listName, runId, approvalId, dedupeKey, isReactivation });
       handled.set(dedupeKey, "existing_pending_approval");
     }
 
     const completedAt = new Date().toISOString();
     const skipped = Object.entries(skippedCounts).map(([reason, count]) => ({ reason, count }));
+
+    // Outcome tracking (Phase 15): compare this run's flagged card ids against
+    // the previous scan's flagged card ids to derive an honest "recovered"
+    // count - a card that had an open signal last scan and shows none this
+    // scan. No hours-saved/ROI figure is fabricated anywhere here.
+    const previousSummaryRes = await supabase
+      .from("os_operator_outputs")
+      .select("payload,created_at")
+      .eq("workspace_id", workspaceId)
+      .eq("operator_key", "operations")
+      .eq("output_type", "operations_scan_summary")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const previousFlaggedCardIds: string[] = Array.isArray((previousSummaryRes.data?.payload as Record<string, unknown> | undefined)?.flaggedCardIds)
+      ? ((previousSummaryRes.data!.payload as Record<string, unknown>).flaggedCardIds as unknown[]).filter((id): id is string => typeof id === "string")
+      : [];
+    const currentFlaggedCardIds = Array.from(flaggedCardIds);
+    const cardsRecoveredSinceLastScan = previousFlaggedCardIds.filter((id) => !flaggedCardIds.has(id)).length;
+    const ageAtDetectionSamplesDays = candidates
+      .map((c) => c.ageAtDetectionDays)
+      .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+
     const scanSummary = {
       type: "operations_scan_summary",
       status: "completed",
@@ -473,7 +680,13 @@ export async function scanOperationsSignals(input: {
       cardsChecked,
       signalsFound: candidates.length,
       approvalsCreated: created.length,
+      observedCount: observed.filter((o) => o.bestNextAction === "observe_low_severity").length,
+      waitingExternalCount: observed.filter((o) => o.bestNextAction === "wait_external_dependency").length,
+      reactivatedCount: candidates.filter((c) => c.isReactivation).length,
       staleOverdueCount: candidates.filter((c) => ["overdue_card", "stuck_card", "no_recent_activity"].includes(c.decision.signalType)).length,
+      flaggedCardIds: currentFlaggedCardIds,
+      cardsRecoveredSinceLastScan,
+      ageAtDetectionSamplesDays,
       skipped,
       completedAt,
     };
@@ -526,6 +739,13 @@ export async function scanOperationsSignals(input: {
         signalsFound: candidates.length,
         approvalsCreated: created.length,
         signals: created,
+        observed,
+        outcomeMetrics: {
+          flaggedCardCount: currentFlaggedCardIds.length,
+          cardsRecoveredSinceLastScan,
+          observedCount: scanSummary.observedCount,
+          waitingExternalCount: scanSummary.waitingExternalCount,
+        },
         skipped,
         setup,
       },
