@@ -56,8 +56,8 @@ export function OperatorDegradedNotice({
   const isHardRequirement = state.state === "needs_attention";
 
   return (
-    <div className="p" style={{ marginTop: 14, padding: 0 }}>
-      <div className="p-head"><h3>Degraded</h3></div>
+    <div className="p operator-degraded" data-severity={isHardRequirement ? "required" : "optional"}>
+      <div className="p-head"><h3>Connection needs attention</h3></div>
       <div style={{ padding: "14px 18px", display: "grid", gap: 10 }}>
         {isHardRequirement ? (
           <div style={{ fontSize: 12.5, color: "var(--amber)" }}>
@@ -77,7 +77,7 @@ export function OperatorDegradedNotice({
           </>
         )}
         {state.nextAction && (
-          <Link href={state.nextAction.href} className="btn btn-primary btn-sm" style={{ width: "fit-content", textDecoration: "none" }}>{state.nextAction.label}</Link>
+          <Link href={state.nextAction.href} className="btn btn-ghost btn-sm" style={{ width: "fit-content", textDecoration: "none" }}>{state.nextAction.label}</Link>
         )}
       </div>
     </div>

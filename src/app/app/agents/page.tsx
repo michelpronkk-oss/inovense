@@ -2,6 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
+import { StatusBadge } from "@/components/operators/status-badge";
 import { useOS } from "@/lib/os/app-provider";
 import { OPERATOR_REGISTRY } from "@/lib/operators/registry";
 import { GLYPHS, OPERATORS, type Operator } from "@/data/operators";
@@ -124,10 +125,10 @@ function AgentCard({ model }: { model: CardModel }) {
       <div className="ag-card-top">
         <AgAvatar color={op.color} glyph={op.glyph} />
         <div className="ag-id">
-          <div className="ag-name">{op.name}</div>
+          <h3 className="ag-name">{op.name}</h3>
           <div className="ag-tag">{op.tag}</div>
         </div>
-        <span className={`ag-status ${status}`}>{statusLabel}</span>
+        <StatusBadge state={productState?.state ?? status}>{statusLabel}</StatusBadge>
       </div>
 
       <div className="ag-mission">{op.mission}</div>
@@ -138,16 +139,16 @@ function AgentCard({ model }: { model: CardModel }) {
 
       {productState && (
         <div className="ag-operating-context">
-          <div><span>Connected systems</span><strong>{productState.connectedSystems.length ? productState.connectedSystems.join(" · ") : "None yet"}</strong></div>
-          <div><span>Can do now</span><strong>{productState.availableNow.length ? productState.availableNow.join(" · ") : "Nothing yet"}</strong></div>
-          {productState.degraded && <div><span>Degraded</span><strong>Unavailable: {productState.degraded.lostCapabilities.join(", ")}</strong></div>}
+          <div><span>Systems</span><strong>{productState.connectedSystems.length ? productState.connectedSystems.join(" · ") : "None yet"}</strong></div>
+          <div><span>Can do now</span><strong>{productState.availableNow.length ? productState.availableNow.join(" · ") : "Connect a system to get started"}</strong></div>
+          {productState.degraded && <div><span>Needs attention</span><strong>Unavailable: {productState.degraded.lostCapabilities.join(", ")}</strong></div>}
         </div>
       )}
 
       {!productState && status === "configured" && (
         <div className="ag-operating-context">
           <div><span>Now</span><strong>{currentTask || "Monitoring workspace signals"}</strong></div>
-          <div><span>Connected systems</span><strong>{connectedTools?.length ? connectedTools.join(" · ") : "No tools connected"}</strong></div>
+          <div><span>Systems</span><strong>{connectedTools?.length ? connectedTools.join(" · ") : "No tools connected"}</strong></div>
           {outcome && <div><span>Outcome</span><strong>{outcome}</strong></div>}
         </div>
       )}
@@ -235,7 +236,7 @@ export default function AgentsRegistryPage() {
     <div className="os-page agents-page">
       <div className="os-page-head">
         <div>
-          <span className="ag-head-eyebrow">Operator registry</span>
+          <span className="ag-head-eyebrow">Your workforce</span>
           <h1 style={{ marginTop: 10 }}>Operators</h1>
           <div className="os-page-sub">Manage the operators that run your work.</div>
         </div>
@@ -260,7 +261,7 @@ export default function AgentsRegistryPage() {
         </div>
         <div className="ag-filter" style={{ marginLeft: "auto" }}>
           {([["all", "All 15"], ["active", "Configured"], ["expanding", "Expanding"]] as const).map(([k, label]) => (
-            <button key={k} className={filter === k ? "on" : ""} onClick={() => setFilter(k)}>{label}</button>
+            <button key={k} className={filter === k ? "on" : ""} aria-pressed={filter === k} onClick={() => setFilter(k)}>{label}</button>
           ))}
         </div>
       </div>
@@ -268,7 +269,7 @@ export default function AgentsRegistryPage() {
       {showConfigured && configured.length > 0 && (
         <section>
           <div className="ag-sec-head">
-            <h2>Active operators</h2>
+            <h2>Your operators</h2>
             <span className="count"><span className="desktop-only">{configured.length} operator{configured.length === 1 ? "" : "s"} selected for this workspace</span><span className="mobile-only">{configured.length} configured</span></span>
             <span className="rule" />
           </div>
@@ -295,7 +296,7 @@ export default function AgentsRegistryPage() {
         <section>
           <div className="ag-sec-head">
             <h2>More operators</h2>
-            <span className="count">Upgrade or coming later.</span>
+            <span className="count">Additional operators, when you need them.</span>
             <span className="rule" />
           </div>
           <div className="ag-grid">

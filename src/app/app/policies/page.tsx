@@ -96,12 +96,12 @@ export default function PoliciesPage() {
         <div>
           <span className="os-greet">Control center</span>
           <h1>Execution policy</h1>
-          <div className="os-page-sub">Set the operating boundary once. Auterim enforces it when work is prepared and again immediately before it runs.</div>
+          <div className="os-page-sub">Choose how work is reviewed. Rules are checked before every action.</div>
         </div>
         <div className={`policy-live-state ${stop ? "stopped" : ""}`}><i />{stop ? "Execution paused" : "Live enforcement on"}</div>
       </div>
 
-      {error && <div className="policy-alert rose"><i />{error}</div>}
+      {error && <div role="alert" className="policy-alert rose"><i />{error}</div>}
 
       {stop && (
         <div className="policy-alert rose strong">
@@ -122,7 +122,7 @@ export default function PoliciesPage() {
                 type="button"
                 disabled={saving || loading || mode.locked}
                 onClick={() => !mode.locked && patch({ autonomyMode: mode.key })}
-                className={`policy-choice ${active ? "active" : ""} ${mode.locked ? "locked" : ""}`}
+                aria-pressed={active} className={`policy-choice ${active ? "active" : ""} ${mode.locked ? "locked" : ""}`}
               >
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                   <span style={{ fontSize: 13.5, fontWeight: 600 }}>{mode.label}</span>
@@ -141,7 +141,7 @@ export default function PoliciesPage() {
         <div className="policy-stop-body">
           <div>
             <div style={{ fontSize: 13, fontWeight: 600 }}>Block all risky execution</div>
-            <div style={{ marginTop: 2, fontSize: 11.5, color: "var(--text-mute)" }}>Conservative kill switch. Blocks customer emails, CRM, project tool changes and operator Slack messages. Re-checked live at execution.</div>
+            <div style={{ marginTop: 2, fontSize: 11.5, color: "var(--text-mute)" }}>Stops customer emails, CRM updates, project changes and operator Slack messages. Checked before every action.</div>
           </div>
           <button
             type="button"
@@ -160,12 +160,12 @@ export default function PoliciesPage() {
         <div className="policy-email-body">
           <div className="policy-email-options">
             {([
-              { key: "approval_required", label: "Approval required", help: "Operators draft the reply; you approve before Gmail sends." },
+              { key: "approval_required", label: "Approval required", help: "Operators draft replies. You approve before sending." },
               { key: "draft_only", label: "Draft only", help: "Operators prepare the reply but Gmail never sends it." },
             ] as const).map((opt) => {
               const active = policy?.customerEmailMode === opt.key;
               return (
-                <button key={opt.key} type="button" disabled={saving || loading} onClick={() => patch({ customerEmailMode: opt.key })} className={`policy-choice ${active ? "active" : ""}`}>
+                <button key={opt.key} type="button" disabled={saving || loading} onClick={() => patch({ customerEmailMode: opt.key })} aria-pressed={active} className={`policy-choice ${active ? "active" : ""}`}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><span style={{ fontSize: 13, fontWeight: 600 }}>{opt.label}</span>{active && <span className="pill pill-cyan" style={{ fontSize: 10 }}>Active</span>}</div>
                   <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>{opt.help}</div>
                 </button>
@@ -175,9 +175,9 @@ export default function PoliciesPage() {
           <div className="policy-not-available">
             <div>
               <div style={{ fontSize: 12.5, fontWeight: 600 }}>Auto-send low risk</div>
-              <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>Customer emails never auto-send in v1.</div>
+              <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>Customer emails require your review.</div>
             </div>
-            <span className="pill" style={{ fontSize: 10 }}>Not enabled in v1</span>
+            <span className="pill" style={{ fontSize: 10 }}>Not available</span>
           </div>
         </div>
       </div>

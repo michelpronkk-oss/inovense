@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
+import { OSModal } from "@/components/dashboard/modal";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -158,7 +159,7 @@ export function OSSidebar() {
       </button>
 
       {profileOpen && (
-        <div className="os-modal-backdrop" onClick={() => setProfileOpen(false)}>
+        <OSModal label="Profile settings" onClose={() => setProfileOpen(false)}>
           <div className="os-modal os-profile-modal" style={{ maxWidth: 620, width: "92%", paddingBottom: 76 }} onClick={(e) => e.stopPropagation()}>
             <div className="os-modal-head">
               <div>
@@ -268,7 +269,7 @@ export function OSSidebar() {
               </div>
             </div>
           </div>
-        </div>
+        </OSModal>
       )}
     </aside>
   );
@@ -308,16 +309,10 @@ export function OSMobileNav() {
 
   useEffect(() => {
     if (!open) return;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", closeOnEscape);
-    };
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const closeOnDesktop = () => { if (desktop.matches) setOpen(false); };
+    desktop.addEventListener("change", closeOnDesktop);
+    return () => desktop.removeEventListener("change", closeOnDesktop);
   }, [open]);
 
   return (
@@ -331,20 +326,19 @@ export function OSMobileNav() {
           </Link>
         );
       })}
-      <button type="button" className={`os-mobile-nav-link${open ? " active" : ""}`} aria-expanded={open} aria-controls="os-mobile-more-menu" onClick={() => setOpen((value) => !value)}>
+      <button type="button" className={`os-mobile-nav-link${open ? " active" : ""}`} aria-haspopup="dialog" aria-expanded={open} aria-controls="os-mobile-more-menu" onClick={() => setOpen((value) => !value)}>
         <span className="os-mobile-nav-icon"><SettingsIcon size={17} /></span>
         <span>More</span>
       </button>
       {open && (
-        <>
-          <button type="button" className="os-mobile-nav-scrim" aria-label="Close navigation menu" onClick={() => setOpen(false)} />
+        <OSModal id="os-mobile-more-menu" label="More navigation" className="os-mobile-sheet-backdrop" onClose={() => setOpen(false)}>
           <div
-            id="os-mobile-more-menu"
             className="os-mobile-menu"
-            role="dialog"
-            aria-modal="true"
-            aria-label="More navigation"
-            onTouchStart={(event) => { sheetTouchStartY.current = event.touches[0]?.clientY ?? null; }}
+            onTouchStart={(event) => {
+              const target = event.target as HTMLElement;
+              sheetTouchStartY.current = target.closest(".os-mobile-menu-head, .os-mobile-menu-handle")
+                ? event.touches[0]?.clientY ?? null : null;
+            }}
             onTouchEnd={(event) => {
               const startY = sheetTouchStartY.current;
               const endY = event.changedTouches[0]?.clientY;
@@ -368,7 +362,7 @@ export function OSMobileNav() {
               ))}
             </div>
           </div>
-        </>
+        </OSModal>
       )}
     </nav>
   );

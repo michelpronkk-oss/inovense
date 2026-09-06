@@ -391,8 +391,8 @@ export default function ApprovalsPage() {
 
       <div className="approval-stats" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
         {[
-          { label: "Pending", val: String(pending.length), sub: "from database" },
-          { label: "Approved today", val: String(approvedToday), sub: "resolved in DB today" },
+          { label: "Pending", val: String(pending.length), sub: "Waiting for your review" },
+          { label: "Approved today", val: String(approvedToday), sub: "Reviewed today" },
           { label: "Avg. review time", val: "-", sub: "not tracked yet" },
           { label: "Auto-approved (7d)", val: "-", sub: "not enabled" },
         ].map((s) => (
@@ -406,7 +406,7 @@ export default function ApprovalsPage() {
 
       <div className="approval-filters" style={{ display: "flex", gap: 4 }}>
         {FILTER_TABS.map((t) => (
-          <button key={t} onClick={() => setFilter(t)} className={`appr-btn${filter === t ? " approve" : " edit"}`} style={{ fontSize: 11.5, padding: "5px 12px" }}>
+          <button key={t} aria-pressed={filter === t} onClick={() => setFilter(t)} className={`appr-btn${filter === t ? " approve" : " edit"}`} style={{ fontSize: 11.5, padding: "5px 12px" }}>
             {t}
           </button>
         ))}
@@ -849,6 +849,7 @@ export default function ApprovalsPage() {
                   <label className="approval-reject-reason" style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 280 }}>
                     <span style={{ fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.1em", whiteSpace: "nowrap" }}>Reject reason</span>
                     <select
+                      aria-label="Reason for rejection"
                       value={rejectionReason}
                       onChange={(event) => setRejectReasons((current) => ({ ...current, [item.id]: event.target.value }))}
                       style={{ minWidth: 190, background: "rgba(255,255,255,0.045)", color: "var(--text-dim)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "8px 10px", fontSize: 12 }}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import Link from "next/link";
 
 export type ActivationEligibility = {
@@ -46,6 +46,7 @@ export function OperatorActivationToggle({
   /** Capabilities/policies are in place - distinct from the activation flag itself. */
   configured: boolean;
 }) {
+  const descriptionId = useId();
   const [state, setState] = useState<ActivationState>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -101,51 +102,42 @@ export function OperatorActivationToggle({
     ? executionEligibility.status === "plan_required"
       ? "Choose a plan to let this operator run unattended."
       : executionEligibility.status === "billing_attention"
-        ? "Billing needs attention before this operator can run unattended."
+        ? "Update billing to resume scheduled monitoring."
         : executionEligibility.status === "suspended"
-          ? "Billing is suspended. This operator cannot run unattended."
+          ? "Scheduled monitoring is suspended. Review billing to restore access."
           : executionEligibility.reason
     : "";
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "12px 14px", borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+    <div className="operator-activation" aria-busy={loading || saving}>
       <button
         type="button"
         role="switch"
+        className="operator-activation-switch"
+        aria-label="Scheduled operator monitoring"
+        aria-describedby={descriptionId}
         aria-checked={activated}
         onClick={() => void toggle()}
         disabled={loading || saving || !configured || (!activated && !executionEligibility.eligible)}
-        style={{
-          width: 42,
-          height: 24,
-          borderRadius: 999,
-          border: "none",
-          cursor: loading || saving || !configured || (!activated && !executionEligibility.eligible) ? "not-allowed" : "pointer",
-          background: activated ? "var(--green)" : "rgba(255,255,255,0.14)",
-          position: "relative",
-          flexShrink: 0,
-          opacity: loading ? 0.6 : 1,
-          transition: "background 0.15s ease",
-        }}
       >
-        <span style={{ position: "absolute", top: 3, left: activated ? 21 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.15s ease" }} />
+        <span aria-hidden="true" />
       </button>
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ fontSize: 13, fontWeight: 600 }}>
-          {activated ? "Active — running on schedule" : wasEverActivated ? "Paused" : "Not active"}
+          {loading ? "Loading activation..." : error && !state ? "Activation unavailable" : activated ? "Active" : wasEverActivated ? "Paused" : "Not active"}
         </div>
-        <div style={{ marginTop: 2, fontSize: 12, color: "var(--text-mute)" }}>
+        <div id={descriptionId} style={{ marginTop: 2, fontSize: 12, color: "var(--text-mute)" }}>
           {!configured
-            ? "Finish setup above before activating unattended runs."
+            ? "Finish setup to start scheduled monitoring."
             : blockedReason
               ? blockedReason
               : activated
-                ? "This operator runs its scheduled check automatically. Every risky action still waits for approval."
+                ? "Scheduled checks are on. Risky actions still need approval."
                 : wasEverActivated
-                  ? "Auterim will keep your configuration but stop continuous monitoring. Turn back on to resume."
-                  : "Turn on to let this operator run its scheduled check automatically. Manual checks stay available either way."}
+                  ? "Scheduled checks are paused. Your setup is saved."
+                  : "Turn on scheduled checks. Manual checks remain available."}
         </div>
-        {error && <div style={{ marginTop: 4, fontSize: 11.5, color: "#ffaaaa" }}>{error}</div>}
+        {error && <div role="alert" style={{ marginTop: 4, fontSize: 12, color: "var(--rose)" }}>{error} <button type="button" className="btn btn-ghost btn-sm" disabled={loading || saving} onClick={() => void load()}>Retry</button></div>}
       </div>
       {!executionEligibility.eligible && (
         <Link href="/plans" className="btn btn-primary btn-sm" style={{ textDecoration: "none", flexShrink: 0 }}>

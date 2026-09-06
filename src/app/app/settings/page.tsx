@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { OSModal } from "@/components/dashboard/modal";
 import { useSearchParams } from "next/navigation";
 import { LinkIcon, SettingsIcon } from "@/components/dashboard/icons";
 import type { ConnectedAccount } from "@/app/api/connectors/accounts/route";
@@ -84,7 +85,7 @@ export default function SettingsPage() {
   const entitlements = getEntitlements(state.workspace);
   const workspacePlanLabel = entitlements.billingStatus === "preview"
     ? "Preview - no plan activated"
-    : `${entitlements.planTier.charAt(0).toUpperCase()}${entitlements.planTier.slice(1)} - ${entitlements.billingStatus}`;
+    : `${entitlements.planTier === "starter" ? "Foundation" : "Workforce"} - ${{ active: "Active", trialing: "Trial active", past_due: "Billing attention", canceled: "Canceled", preview: "Preview" }[entitlements.billingStatus]}`;
   const showManageBilling = entitlements.billingStatus === "active" || entitlements.billingStatus === "trialing" || entitlements.billingStatus === "past_due";
 
   const [workspaceDraft, setWorkspaceDraft] = useState(state.settings.workspace);
@@ -326,7 +327,7 @@ export default function SettingsPage() {
         <div>
           <span className="os-greet">Workspace control</span>
           <h1>Settings</h1>
-          <div className="os-page-sub">Shape your workspace identity, guardrails and notification routing.</div>
+          <div className="os-page-sub">Manage your workspace, connected accounts and notifications.</div>
         </div>
       </div>
 
@@ -347,7 +348,7 @@ export default function SettingsPage() {
         </div>
         <div style={{ padding: "12px 18px", fontSize: 12.5, color: "var(--text-dim)" }}>
           {showManageBilling
-            ? "Use Dodo Customer Portal to manage subscription, invoices, payment method and cancellation."
+            ? "Manage your subscription, invoices and payment details in the billing portal."
             : "No active billing profile found. Activate a plan first."}
         </div>
       </div>
@@ -444,7 +445,7 @@ export default function SettingsPage() {
               <span>{workspacePlanLabel}</span>
             </div>
           </div>
-          <div className="settings-workspace-foot">Your workspace identity appears in the operating rail and shared workspace context.</div>
+          <div className="settings-workspace-foot">Your workspace name and logo appear across Auterim.</div>
         </section>
 
         <section className="p settings-policy-surface">
@@ -462,7 +463,7 @@ export default function SettingsPage() {
 
         <section className="p settings-notifications-surface">
           <div className="p-head">
-            <h3><SettingsIcon size={13} /> Notification routing</h3>
+            <h3><SettingsIcon size={13} /> Notifications</h3>
             <button className="appr-btn edit" onClick={() => startEdit("notifications")}>Email preferences</button>
           </div>
           <div className="settings-notification-list">
@@ -473,11 +474,11 @@ export default function SettingsPage() {
         </section>
       </div>
 
-      {feedback && <div style={{ color: "#64ffd7", fontSize: 12 }}>{feedback}</div>}
-      {error && <div style={{ color: "#ff8f8f", fontSize: 12 }}>{error}</div>}
+      {feedback && <div role="status" style={{ color: "#64ffd7", fontSize: 12 }}>{feedback}</div>}
+      {error && <div role="alert" style={{ color: "#ff8f8f", fontSize: 12 }}>{error}</div>}
 
       {editing && (
-        <div className="os-modal-backdrop settings-edit-backdrop" onClick={() => setEditing(null)}>
+        <OSModal label={`Edit ${editing === "approvalPolicy" ? "approval policy" : editing}`} className="os-modal-backdrop settings-edit-backdrop" onClose={() => setEditing(null)}>
           <div className="os-modal settings-edit-modal" style={{ maxWidth: 680, width: "92%" }} onClick={(e) => e.stopPropagation()}>
             <div className="os-modal-head">
               <h3>Edit {editing === "approvalPolicy" ? "approval policy" : editing}</h3>
@@ -501,7 +502,7 @@ export default function SettingsPage() {
                     </label>
                   </div>
                 </div>
-                <input value={workspaceDraft.name} onChange={(e) => setWorkspaceDraft((p) => ({ ...p, name: e.target.value }))} className="os-input" placeholder="Workspace name" />
+                <input value={workspaceDraft.name} onChange={(e) => setWorkspaceDraft((p) => ({ ...p, name: e.target.value }))} className="os-input" aria-label="Workspace name" placeholder="Workspace name" />
                 <div className="workspace-plan-note"><span>Workspace access</span><strong>{workspacePlanLabel}</strong><small>{entitlements.billingStatus === "preview" ? "Choose a plan when you are ready. A trial starts only after checkout is completed." : "Billing changes are managed securely in the billing portal."}</small></div>
               </div>
             )}
@@ -510,8 +511,9 @@ export default function SettingsPage() {
               <div style={{ display: "grid", gap: 10 }}>
                 {APPROVAL_EDITABLE_KEYS.map((key) => (
                   <div key={key} style={{ display: "grid", gap: 6 }}>
-                    <label style={{ fontSize: 12, color: "var(--text-dim)" }}>{APPROVAL_LABELS[key]}</label>
+                    <label htmlFor={`approval-policy-${key}`} style={{ fontSize: 12, color: "var(--text-dim)" }}>{APPROVAL_LABELS[key]}</label>
                     <select
+                      id={`approval-policy-${key}`}
                       value={approvalDraft[key]}
                       onChange={(e) => setApprovalDraft((prev) => ({ ...prev, [key]: e.target.value as ApprovalMode }))}
                       className="os-input"
@@ -533,7 +535,7 @@ export default function SettingsPage() {
                   ["alerts", "Control alerts", "When a policy blocks execution or a run needs attention."],
                   ["digest", "Operating digest", "Your saved preference for scheduled workspace summaries."],
                 ] as const).map(([key, label, detail]) => (
-                  <button key={key} type="button" onClick={() => setEmailPreferences((current) => ({ ...current, [key]: !current[key] }))} style={{ textAlign: "left", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, padding: "14px", borderRadius: 12, color: "inherit", background: emailPreferences[key] ? "rgba(77,232,225,0.055)" : "rgba(255,255,255,0.02)", boxShadow: `inset 0 0 0 1px ${emailPreferences[key] ? "rgba(77,232,225,0.28)" : "var(--line)"}`, cursor: "pointer" }}>
+                  <button key={key} type="button" aria-pressed={emailPreferences[key]} onClick={() => setEmailPreferences((current) => ({ ...current, [key]: !current[key] }))} style={{ textAlign: "left", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, padding: "14px", borderRadius: 12, color: "inherit", background: emailPreferences[key] ? "rgba(77,232,225,0.055)" : "rgba(255,255,255,0.02)", boxShadow: `inset 0 0 0 1px ${emailPreferences[key] ? "rgba(77,232,225,0.28)" : "var(--line)"}`, cursor: "pointer" }}>
                     <span><strong style={{ display: "block", fontSize: 13 }}>{label}</strong><small style={{ display: "block", marginTop: 3, color: "var(--text-mute)", fontSize: 11.5 }}>{detail}</small></span>
                     <span className={`pill ${emailPreferences[key] ? "pill-cyan" : ""}`}>{emailPreferences[key] ? "Email on" : "Off"}</span>
                   </button>
@@ -548,7 +550,7 @@ export default function SettingsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </OSModal>
       )}
     </div>
   );

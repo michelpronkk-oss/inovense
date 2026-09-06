@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { StatusBadge } from "@/components/operators/status-badge";
 import { useOS } from "@/lib/os/app-provider";
 import type { DashboardOverview, DashboardOperator } from "@/lib/dashboard/overview";
 import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-grid";
@@ -210,12 +211,10 @@ export function OSOverview() {
   const greet = hh < 5 ? "Good night" : hh < 12 ? "Good morning" : hh < 18 ? "Good afternoon" : "Good evening";
   const firstName = state.currentUser.name?.trim().split(/\s+/)[0] || titleCase((state.currentUser.email?.split("@")[0] || "there").split(/[._-]/)[0]);
   const pending = overview.approvals.pendingCount;
-  const monitoringCount = overview.operators.filter((o) => o.status !== "needs_setup" && o.status !== "disabled").length;
+  const monitoringCount = overview.operatorProductStates.filter((operator) => operator.state === "active" || operator.state === "enhanced").length;
   const healthyConnectors = overview.connectors.filter((c) => c.connected).length;
   const mode = autonomyLabel(overview.policy.autonomyMode);
   const busy = busyScan !== null || busyApproval !== null;
-  const activationSteps = [overview.operators.length > 0, healthyConnectors > 0, overview.today.runsCount > 0];
-  const activationScore = Math.round((activationSteps.filter(Boolean).length / activationSteps.length) * 100);
 
   // State A: zero connected connectors. Never show the KPI row / connector
   // strip / empty activity feed alongside this - it must read as a
@@ -229,7 +228,7 @@ export function OSOverview() {
           <div>
             <span className="os-greet">Auterim workspace</span>
             <h1>{greet}, {firstName}.</h1>
-            <div className="os-page-sub">Connect your business to see what Auterim can do here. Nothing runs until you choose to connect a system.</div>
+            <div className="os-page-sub">Connect your systems to get started. Activate an operator when you are ready.</div>
           </div>
         </div>
 
@@ -239,13 +238,13 @@ export function OSOverview() {
           </div>
         )}
 
-        <div className="p" style={{ padding: "34px 30px", display: "grid", gap: 18, background: "linear-gradient(112deg, rgba(77,232,225,0.08), rgba(255,255,255,0.012) 45%, rgba(255,255,255,0.01))" }}>
+        <div className="p dashboard-lifecycle">
           <div>
             <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.09em", textTransform: "uppercase", color: "#64ffd7" }}>Connect your business</div>
             <h2 style={{ marginTop: 12, fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em", maxWidth: 560 }}>No systems are connected yet.</h2>
             <p style={{ marginTop: 8, maxWidth: 560, color: "var(--text-mute)", fontSize: 13.5, lineHeight: 1.6 }}>
               {onboardingSystems.length
-                ? `You told us your team uses ${recommended.map(systemLabel).join(", ")}. Connect them so Auterim has real context to work from.`
+                ? "Start with a system your team already uses."
                 : "Connect the tools your team already uses so Auterim has real context to work from."}
             </p>
           </div>
@@ -267,8 +266,8 @@ export function OSOverview() {
           </div>
         </div>
 
-        <div className="p" style={{ gap: 0 }}>
-          <div className="p-head"><h3>How this works</h3></div>
+        <details className="p dashboard-how">
+          <summary>How this works</summary>
           <div style={{ padding: "16px 20px", display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 16 }}>
             <div>
               <div style={{ fontSize: 13, fontWeight: 600 }}>1. Connect</div>
@@ -283,7 +282,7 @@ export function OSOverview() {
               <div style={{ marginTop: 4, fontSize: 12.5, color: "var(--text-mute)" }}>Nothing runs unattended until you turn it on.</div>
             </div>
           </div>
-        </div>
+        </details>
       </div>
     );
   }
@@ -322,7 +321,7 @@ export function OSOverview() {
   const showEligibilityBanner = !eligibility.eligible;
 
   const kpis = [
-    { label: "Operating setup", val: `${activationScore}%`, sub: activationScore === 100 ? "Live operating layer" : "Choose plan to unlock live systems", subCls: activationScore === 100 ? "neutral" : "amber", color: "#4DE8E1" },
+    { label: "Checks today", val: overview.today.runsCount, sub: "Scheduled and manual checks", subCls: "neutral", color: "#4DE8E1" },
     { label: "Pending approvals", val: pending, sub: overview.approvals.highRiskCount > 0 ? `${overview.approvals.highRiskCount} high risk` : "Waiting for review", subCls: overview.approvals.highRiskCount > 0 ? "amber" : "neutral", color: "#F5C26B" },
     { label: "Actions today", val: overview.today.actionsExecuted, sub: "After approval", subCls: "neutral", color: "#4DE8E1" },
     { label: "Activity (7d)", val: overview.activity.length, sub: overview.activity.length ? "Recorded operating events" : "Begins with your first live run", subCls: "neutral", color: "#5B8DEF" },
@@ -409,14 +408,14 @@ export function OSOverview() {
       <div className="os-grid-2 dashboard-focus-grid">
         <div className="p dashboard-operators-panel">
           <div className="p-head">
-            <h3>{overview.operators.length === 1 ? "Your first operator" : "Active operators"}</h3>
-            <span className="p-meta"><span className="desktop-only">{overview.operators.length} configured · no actions run without approval</span><span className="mobile-only">{overview.operators.length} active</span></span>
+            <h3>{overview.operators.length === 1 ? "Your first operator" : "Your operators"}</h3>
+            <span className="p-meta"><span className="desktop-only">{overview.operators.length} configured · no actions run without approval</span><span className="mobile-only">{overview.operators.length} operators</span></span>
           </div>
           <div className="ops-grid">
             {overview.operators.map((operator) => {
               const meta = operatorMeta[operator.key];
               const needsSetup = operator.status === "needs_setup";
-              const awaiting = operator.pendingApprovals > 0;
+              const productState = overview.operatorProductStates.find((item) => item.operatorKey === operator.key);
               return (
                 <div className="ops-card" key={operator.key}>
                   <div className="ops-card-head">
@@ -425,15 +424,9 @@ export function OSOverview() {
                       <div className="ops-card-name">{operator.name}</div>
                       <div className="ops-card-tag">{meta.tag}</div>
                     </div>
-                    <div className="ops-card-status">
-                      {needsSetup ? (
-                        <><span className="dot dot-amber" /><span style={{ color: "var(--amber)" }}>Needs setup</span></>
-                      ) : awaiting ? (
-                        <><span className="dot dot-amber pulsing" /><span style={{ color: "var(--amber)" }}>Awaiting</span></>
-                      ) : (
-                        <><span className="dot pulsing" style={{ background: meta.color, boxShadow: `0 0 8px ${meta.color}` }} /><span style={{ color: meta.color }}>Monitoring</span></>
-                      )}
-                    </div>
+                    <StatusBadge state={productState?.state ?? operator.status}>
+                      {productState?.label ?? (needsSetup ? "Needs setup" : "Monitoring")}
+                    </StatusBadge>
                   </div>
                   <div className="ops-task">
                     <span>{operator.pendingApprovals} pending · {operator.signalsToday} signals today · checked {timeAgo(operator.lastRunAt)}</span>
@@ -441,15 +434,15 @@ export function OSOverview() {
                   <div className="ops-foot">
                     <span className="ops-metric"><strong>{operator.actionsToday}</strong> actions today</span>
                     <div className="ops-actions">
-                      <span
+                      <button
+                        type="button"
                         className="lnk cyan"
-                        role="button"
-                        aria-disabled={busy || needsSetup}
+                        disabled={busy || needsSetup}
                         onClick={() => { if (!busy && !needsSetup) void runManualCheck(operator.key); }}
                         style={{ opacity: busy || needsSetup ? 0.45 : 1, cursor: busy || needsSetup ? "default" : "pointer" }}
                       >
                         {busyScan === operator.key ? "Checking..." : "Run check"}
-                      </span>
+                      </button>
                       <Link className="lnk" href={operator.href}>Open</Link>
                     </div>
                   </div>
@@ -591,9 +584,9 @@ function LifecyclePreOperationalState({
   const attentionStates = states.filter((item) => item.state === "needs_attention" || item.degraded);
 
   const copy = {
-    B: { eyebrow: "Understanding your business", title: "Auterim is learning what it can do here.", sub: "Your systems are connected. Connect one more to unlock a ready operator." },
+    B: { eyebrow: "Understanding your business", title: "Finish connecting your systems.", sub: "See what each operator needs to get started." },
     C: { eyebrow: "Setup ready", title: "Your setup is ready.", sub: "One or more operators are ready to turn on." },
-    D: { eyebrow: "Ready to deploy", title: "Your setup is complete.", sub: "Start a plan to begin continuous execution." },
+    D: { eyebrow: "Ready to deploy", title: "Your setup is complete.", sub: "Choose a plan to put your operators to work." },
     F: { eyebrow: "Needs attention", title: "A connected system needs attention.", sub: "Reconnect it to resume full operator coverage." },
   }[lifecycleState];
 
@@ -613,7 +606,7 @@ function LifecyclePreOperationalState({
         </div>
       )}
 
-      <div className="p" style={{ padding: "26px 26px", display: "grid", gap: 16, background: "linear-gradient(112deg, rgba(77,232,225,0.07), rgba(255,255,255,0.012) 45%, rgba(255,255,255,0.01))" }}>
+      <div className="p dashboard-lifecycle" data-state={lifecycleState}>
         <div>
           <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.09em", textTransform: "uppercase", color: lifecycleState === "F" ? "var(--amber)" : "#64ffd7" }}>{copy.eyebrow}</div>
           <h2 style={{ marginTop: 10, fontSize: 20, fontWeight: 600, letterSpacing: "-0.02em", maxWidth: 560 }}>{copy.title}</h2>
@@ -641,7 +634,7 @@ function LifecyclePreOperationalState({
 
         {/* State C: recommended ready operators + why + activate CTA. */}
         {lifecycleState === "C" && readyStates.map((item) => (
-          <div key={item.operatorKey} style={{ display: "flex", justifyContent: "space-between", gap: 14, flexWrap: "wrap", alignItems: "center", padding: "12px 14px", borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+          <div key={item.operatorKey} className="dashboard-lifecycle-row">
             <div>
               <div style={{ fontSize: 13, fontWeight: 600 }}>{item.operatorName}</div>
               <div style={{ marginTop: 3, fontSize: 12, color: "var(--text-mute)" }}>{item.description}</div>
@@ -653,7 +646,7 @@ function LifecyclePreOperationalState({
 
         {/* State D: ready operators blocked purely by plan/billing. */}
         {lifecycleState === "D" && planBlockedStates.map((item) => (
-          <div key={item.operatorKey} style={{ display: "flex", justifyContent: "space-between", gap: 14, flexWrap: "wrap", alignItems: "center", padding: "12px 14px", borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+          <div key={item.operatorKey} className="dashboard-lifecycle-row">
             <div>
               <div style={{ fontSize: 13, fontWeight: 600 }}>{item.operatorName}</div>
               <div style={{ marginTop: 3, fontSize: 12, color: "var(--text-mute)" }}>{item.description}</div>
@@ -665,7 +658,7 @@ function LifecyclePreOperationalState({
 
         {/* State F: which connector needs attention, affected operator(s), lost vs still-available capability. */}
         {lifecycleState === "F" && attentionStates.map((item) => (
-          <div key={item.operatorKey} style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(245,194,107,0.05)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.18)" }}>
+          <div key={item.operatorKey} className="dashboard-lifecycle-impact">
             <div style={{ display: "flex", justifyContent: "space-between", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{item.operatorName}</div>

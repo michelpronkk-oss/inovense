@@ -12,7 +12,7 @@ import { AppLoadingShell } from "@/components/dashboard/loading-state";
 
 function TrialBanner({ trialEndsAt }: { trialEndsAt?: string }) {
   const days = trialDaysRemaining(trialEndsAt);
-  if (days === null || days > 3) return null;
+  if (days === null || days > 1) return null;
 
   const isExpired = days === 0;
   const color = isExpired ? "#F2767C" : days === 1 ? "#F5C26B" : "#4DE8E1";
@@ -51,10 +51,10 @@ function TrialBanner({ trialEndsAt }: { trialEndsAt?: string }) {
           fontWeight: 600,
           letterSpacing: "-0.005em",
           textDecoration: "none",
-          boxShadow: "0 0 0 1px rgba(77,232,225,0.4), 0 4px 14px -4px rgba(77,232,225,0.5)",
+          boxShadow: "none",
         }}
       >
-        Upgrade now
+        Choose a plan
       </Link>
     </div>
   );
@@ -76,7 +76,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname === "/app/auth/callback" || pathname === "/app/invite/accept"
   ));
   const entitlements = getEntitlements(state.workspace);
-  const showManageBilling = entitlements.billingStatus === "active" || entitlements.billingStatus === "trialing" || entitlements.billingStatus === "past_due";
+  const showBillingAttention = entitlements.billingStatus === "past_due";
 
   if (isPublicBareRoute) {
     return (
@@ -116,59 +116,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
       <div className="os">
+        <a className="os-skip-link" href="#workspace-content">Skip to content</a>
         <OSSidebar />
-        <div className="os-main">
-        {entitlements.billingStatus === "preview" && (
-          <div className="os-billing-status os-billing-preview" style={{
-            margin: "8px 18px 0",
-            padding: "8px 12px",
-            borderRadius: 12,
-            background: "rgba(77,232,225,0.06)",
-            boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.18)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-            flexWrap: "wrap",
-          }}>
-            <div>
-              <div style={{ color: "#C9FFFB", fontSize: 12.5, fontWeight: 600 }}>Preview workspace</div>
-              <div style={{ color: "var(--text-dim)", fontSize: 12.5 }}>
-                Configure your operating layer freely. Choose a plan when you are ready to begin its trial and connect live systems.
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <Link className="btn btn-ghost btn-sm" href="/plans">Compare plans</Link>
-              <Link className="btn btn-primary btn-sm" href="/plans">Choose a plan</Link>
-            </div>
+        <main id="workspace-content" className="os-main" tabIndex={-1}>
+        {showBillingAttention && (
+          <div className="os-billing-notice" role="status">
+            <span>Billing needs attention. Review your payment details to keep operators running.</span>
+            <Link className="btn btn-ghost btn-sm" href="/settings?billing=manage">Manage billing</Link>
           </div>
         )}
-        {showManageBilling && (
-          <div className="os-billing-status os-billing-active" style={{
-            margin: "8px 18px 0",
-            padding: "8px 12px",
-            borderRadius: 12,
-            background: "rgba(77,232,225,0.05)",
-            boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.15)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-            flexWrap: "wrap",
-          }}>
-            <div className="os-billing-active-copy">
-              <div style={{ color: "#C9FFFB", fontSize: 12.5, fontWeight: 600 }}>Billing active</div>
-              <div style={{ color: "var(--text-dim)", fontSize: 12.5 }}>Subscription and invoices are managed in the customer portal.</div>
-            </div>
-            <Link className="btn btn-ghost btn-sm" href="/settings?billing=manage">
-              Manage billing
-            </Link>
-          </div>
-        )}
-        <TrialBanner trialEndsAt={state.workspace.trialEndsAt} />
+        {entitlements.billingStatus === "trialing" && <TrialBanner trialEndsAt={state.workspace.trialEndsAt} />}
         <OSTopbar />
           {children}
-        </div>
+        </main>
         <OSMobileNav />
       </div>
   );

@@ -102,7 +102,7 @@ type ChecklistItem = { label: string; ok: boolean; detail: string; recommended?:
 function ChecklistRow({ item }: { item: ChecklistItem }) {
   const showAction = item.action && (!item.ok || item.recommended);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 0" }}>
+    <div className="operator-checklist-row" style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 0" }}>
       <CheckIcon ok={item.ok} />
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -216,7 +216,7 @@ export default function OperationsOperatorPage() {
   const hasRunScan = Boolean(lastCheckAt);
 
   const pill = (() => {
-    if (setupState === "needs_setup") return { label: "Needs setup", color: "var(--rose)", bg: "rgba(242,118,124,0.1)" };
+    if (setupState === "needs_setup") return { label: "Needs setup", color: "var(--text-dim)", bg: "rgba(255,255,255,0.04)" };
     if (setupState === "setup_incomplete") return { label: "Setup incomplete", color: "var(--amber)", bg: "rgba(245,194,107,0.1)" };
     if (monitoring?.status === "monitoring_active") return { label: "Monitoring active", color: "var(--green)", bg: "rgba(81,216,138,0.1)" };
     return { label: "Ready", color: "var(--green)", bg: "rgba(81,216,138,0.1)" };
@@ -268,7 +268,7 @@ export default function OperationsOperatorPage() {
   ];
 
   return (
-    <div className="os-page">
+    <div className="os-page operator-detail-page">
       <div className="os-page-head">
         <div>
           <span className="os-greet"><Link href="/app/agents" style={{ color: "inherit", textDecoration: "none" }}>Operators</Link> / Operations</span>
@@ -284,12 +284,12 @@ export default function OperationsOperatorPage() {
         </div>
       </div>
 
-      {error && <div style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>{error}</div>}
+      {error && <div role="alert" style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>{error}</div>}
 
       <div className="p" style={{ gap: 0, overflow: "hidden" }}>
         <div style={{ padding: "24px 26px", display: "grid", gap: 20 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 20, flexWrap: "wrap" }}>
-            <div style={{ minWidth: 240, flex: 1 }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
               <h2 style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.01em" }}>{loading ? "Loading operator state..." : heroTitle}</h2>
               <div style={{ marginTop: 6, fontSize: 13.5, color: "var(--text-dim)", maxWidth: 560 }}>{heroSub}</div>
             </div>
@@ -370,7 +370,7 @@ export default function OperationsOperatorPage() {
         const eligibility = status?.readiness?.executionEligibility;
         return (
           <div className="p" style={{ gap: 0 }}>
-            <div className="p-head"><h3>Activation</h3></div>
+            <div className="p-head"><h3>Operator activation</h3></div>
             <div style={{ padding: "18px 20px", display: "grid", gap: 16 }}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16 }}>
                 <div>
@@ -380,12 +380,12 @@ export default function OperationsOperatorPage() {
                 </div>
                 <div>
                   <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Available now</div>
-                  <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-mute)" }}>{availableNow.length ? availableNow.join(", ") : "Connect a system to unlock capabilities"}</div>
+                  <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-mute)" }}>{availableNow.length ? availableNow.join(", ") : "Connect a system to get started"}</div>
                 </div>
               </div>
               {upgrades.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Optional upgrades</div>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Optional enhancements</div>
                   <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-mute)" }}>
                     {upgrades.map((c) => c.displayName).join(", ")} could add further context. <Link href="/app/connectors" className="lnk-open">Connect</Link>
                   </div>

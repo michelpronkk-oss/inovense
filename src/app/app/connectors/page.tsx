@@ -770,11 +770,11 @@ export default function ConnectorsPage() {
           <span className="os-greet">Auterim workspace</span>
           <h1>Connect your business</h1>
           <div className="os-page-sub">
-            Connect the tools your team already uses. Auterim will show what becomes possible.
+            Connect your systems. See what your operators can do.
           </div>
           {isPreview && (
             <div style={{ marginTop: 8, color: "#9DEFEA", fontSize: 12.5 }}>
-              Preview mode: connectors run in local mock mode. Choose a plan to connect real accounts.
+              Preview connections use sample data. Choose a plan to connect real accounts.
             </div>
           )}
         </div>
@@ -799,30 +799,30 @@ export default function ConnectorsPage() {
         <UsageBanner used={realConnectedCount} max={connectorLimit} label="connectors" planLabel={planLabel} />
       )}
 
-      {feedback && <div style={{ color: "#64ffd7", fontSize: 12 }}>{feedback}</div>}
+      {feedback && <div role="status" style={{ color: "#64ffd7", fontSize: 12 }}>{feedback}</div>}
 
       {/* Systems this workspace said it already uses during onboarding, not
           yet actually connected. Highlighted first and prioritized over the
           generic catalog, per the onboarding brief - never marked
           "connected" from the onboarding selection alone. */}
       {onboardingHighlightConnectors.length > 0 && (
-        <div className="p" style={{ borderRadius: 16, background: "rgba(77,232,225,0.045)", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.16)" }}>
+        <div className="p connector-priorities">
           <div className="p-head">
             <h3>Systems you already use</h3>
-            <div className="p-meta">From your onboarding answers</div>
+            <div className="p-meta">Selected during setup</div>
           </div>
-          <div style={{ padding: "14px 18px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
+          <div className="connector-priority-grid">
             {onboardingHighlightConnectors.map((c) => (
               <button
                 key={c.id}
                 onClick={() => { setAddOpen(true); setSetupConnectorId(c.id); setSearch(""); }}
-                style={{ textAlign: "left", border: "none", cursor: "pointer", padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.03)", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.22)" }}
+                className="connector-priority-card"
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                   <div className="connector-brand-logo" style={{ width: 28, height: 28, borderRadius: 8 }}>{IntegrationLogos[c.name] ?? <span style={{ color: c.color, fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{c.letter}</span>}</div>
                   <div style={{ fontSize: 13, fontWeight: 500 }}>{c.name}</div>
                 </div>
-                <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>You said your team uses {c.name} — connect it to add real context.</div>
+                <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>Connect it to bring your team’s work into Auterim.</div>
                 <div style={{ marginTop: 8, color: "var(--cyan)", fontSize: 11.5, fontWeight: 600 }}>Connect</div>
               </button>
             ))}
@@ -873,7 +873,7 @@ export default function ConnectorsPage() {
             <h3>What Auterim can do now</h3>
             <div className="p-meta">Based on your connected systems</div>
           </div>
-          <div style={{ padding: "14px 18px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 8 }}>
+          <div className="connector-outcomes">
             {whatAuterimCanDoNow.map((item) => (
               <div key={item} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--text-dim)" }}>
                 <span style={{ color: "var(--cyan)", fontSize: 13 }}>✓</span>
@@ -892,14 +892,14 @@ export default function ConnectorsPage() {
         <div className="p" style={{ borderRadius: 16 }}>
           <div className="p-head">
             <h3>Suggested workflows</h3>
-            <div className="p-meta">Backed by your connected systems</div>
+            <div className="p-meta">Ready to set up</div>
           </div>
-          <div style={{ padding: "14px 18px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 10 }}>
+          <div className="connector-workflows">
             {suggestedWorkflows.map((workflow) => (
-              <div key={workflow.id} style={{ padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 6 }}>
+              <div key={workflow.id} className="connector-workflow">
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{workflow.title}</div>
                 <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>{workflow.description}</div>
-                <div style={{ fontSize: 11, color: "var(--text-mute)" }}>Uses: {workflow.requiredConnectors.map((key) => getConnectorDefinition(key)?.displayName ?? key).join(", ")} · {getOperatorDefinition(workflow.operatorKey)?.name ?? workflow.operatorKey}</div>
+                <div style={{ fontSize: 11, color: "var(--text-mute)" }}>{workflow.requiredConnectors.map((key) => getConnectorDefinition(key)?.displayName ?? key).join(" + ")}<br />{getOperatorDefinition(workflow.operatorKey)?.name ?? workflow.operatorKey}</div>
                 <Link href={workflow.href} className="lnk-open" style={{ marginTop: 4 }}>View setup</Link>
               </div>
             ))}
@@ -916,7 +916,7 @@ export default function ConnectorsPage() {
           </div>
         </div>
         {realConnectedConnectors.length === 0 ? (
-          <div style={{ padding: "44px 18px", textAlign: "center", fontSize: 13, color: "var(--text-faint)" }}>
+          <div className="os-empty-state">
             <div style={{ color: "var(--text)", fontSize: 17, fontWeight: 600, marginBottom: 7 }}>Connect your first business tool</div>
             <div style={{ marginBottom: 18 }}>Add the systems Auterim should understand and work with.</div>
             <button className="btn btn-primary btn-sm" onClick={() => { setAddOpen(true); setSetupConnectorId(null); setSearch(""); }}><PlusIcon size={12} /> Add connector</button>
@@ -943,9 +943,9 @@ export default function ConnectorsPage() {
                 </div>
                 <div className="connector-list-copy">
                   <div style={{ fontSize: 13.5, fontWeight: 500 }}>{c.name}</div>
-                  <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>Adds: {connectorCapabilities(c.id)[0]}{c.operatorsAllowed.length ? ` · Supports: ${shortOperatorLabel(c.operatorsAllowed[0])}${c.operatorsAllowed.length > 1 ? ` +${c.operatorsAllowed.length - 1}` : ""}` : ""}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>{connectorCapabilities(c.id)[0]}</div>
                 </div>
-                <div style={{ justifySelf: "start", fontSize: 11.5, color: "#8df5cf", padding: "5px 8px", borderRadius: 999, background: "rgba(81,216,138,0.08)", boxShadow: "inset 0 0 0 1px rgba(81,216,138,0.2)" }}>Manage</div>
+                <div className="connector-manage">Manage</div>
               </button>
             ))}
           </>
@@ -964,11 +964,11 @@ export default function ConnectorsPage() {
                 </div>
                 <div style={{ color: "var(--text-mute)", fontSize: 12.5, marginBottom: 4 }}>Connect a system only when it gives your operator useful live context.</div>
                 <div style={{ display: "grid", gap: 10 }}>
-                  <input className="os-input" placeholder="Search available integrations..." value={search} onChange={(e) => setSearch(e.target.value)} />
+                  <input className="os-input" placeholder="Search available integrations..." aria-label="Search available integrations" value={search} onChange={(e) => setSearch(e.target.value)} />
                   {groupedAvailable.map(([category, connectors]) => (
                     <div key={category} style={{ display: "grid", gap: 10 }}>
                       <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.08em", color: "var(--text-mute)", textTransform: "uppercase", marginTop: 8 }}>{CONNECTOR_CATEGORY_LABELS[category] ?? category}</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 220px), 1fr))", gap: 10 }}>
                         {connectors.map((c) => (
                           <button key={c.id} onClick={() => { if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); }} style={{ textAlign: "left", border: "none", cursor: "pointer", padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -992,7 +992,7 @@ export default function ConnectorsPage() {
                       </div>
                     </div>
                   ))}
-                  <div style={{ paddingTop: 12, borderTop: "1px solid var(--line)", color: "var(--text-mute)", fontSize: 11.5 }}>More integrations are planned. Auterim adds systems when they support a controlled operating use case—not as a directory of logos.</div>
+                  <div style={{ paddingTop: 12, borderTop: "1px solid var(--line)", color: "var(--text-mute)", fontSize: 11.5 }}>More integrations are planned.</div>
                 </div>
               </>
             ) : (
@@ -1003,10 +1003,10 @@ export default function ConnectorsPage() {
                 </div>
                 <ConnectorSetupView connector={setupConnector} isRealConnected={false} isPreview={isPreview} />
                 {setupConnector.id === "gmail" && (
-                  <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>Secure connection via Google OAuth · Native connector</div>
+                  <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>Connect securely with Google</div>
                 )}
                 {setupConnector.id === "microsoft" && (
-                  <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>Secure connection via Microsoft Entra ID OAuth · Native connector</div>
+                  <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>Connect securely with Microsoft</div>
                 )}
                 {getConnectorDefinition(setupConnector.id)?.authType === "nango" && (
                   <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>

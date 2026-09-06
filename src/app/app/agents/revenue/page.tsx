@@ -321,12 +321,12 @@ export default function RevenueOperatorPage() {
       : "Gmail connection required";
 
     return (
-      <div className="os-page">
+      <div className="os-page operator-detail-page">
         <div className="os-page-head" style={{ marginBottom: 24 }}>
           <div>
             <span className="os-greet"><Link href="/app/agents" style={{ color: "inherit", textDecoration: "none" }}>Operators</Link> / Revenue</span>
             <h1>Revenue Operator</h1>
-            <div className="os-page-sub">Finds high-confidence revenue signals and holds every external action for approval.</div>
+            <div className="os-page-sub">Find opportunities and prepare follow-ups for approval.</div>
           </div>
           <div className="os-page-actions">
             <Link href="/app/approvals" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Approval inbox</Link>
@@ -340,7 +340,7 @@ export default function RevenueOperatorPage() {
             <div style={{ padding: "28px 30px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.09em", textTransform: "uppercase", color: setupTone ? "var(--amber)" : "#64ffd7" }}><span className="d" /> {runtimeLoading ? "Loading operator" : setupTone ? "Setup needed" : "Monitoring"}</div>
               <div style={{ marginTop: 16, fontSize: 22, lineHeight: 1.2, letterSpacing: "-0.025em", fontWeight: 560, maxWidth: 620 }}>
-                {setupTone ? "Connect one system, then let revenue work surface itself." : "Revenue signals are watched quietly. You only step in at the approval gate."}
+                {setupTone ? "Connect a system to get started." : "Review revenue signals. Approve the next step."}
               </div>
               <p style={{ margin: "12px 0 0", maxWidth: 620, color: "var(--text-mute)", fontSize: 13, lineHeight: 1.65 }}>{revenueStatusMessage}</p>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 22 }}>
@@ -361,7 +361,7 @@ export default function RevenueOperatorPage() {
               </div>
             </div>
           </div>
-          <div style={{ borderTop: "1px solid var(--line)", display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+          <div className="operator-metrics" style={{ borderTop: "1px solid var(--line)", display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
             {[
               ["Last check", lastCheckAt ? relativeTime(lastCheckAt) : "Not run"],
               ["Next check", dateTimeLabel(monitoring?.nextRunAt)],
@@ -398,7 +398,7 @@ export default function RevenueOperatorPage() {
           const eligibility = revenueReadiness?.executionEligibility;
           return (
             <section className="p" style={{ marginTop: 14, padding: 0 }}>
-              <div className="p-head"><h3>Activation</h3></div>
+              <div className="p-head"><h3>Operator activation</h3></div>
               <div style={{ padding: "16px 18px", display: "grid", gap: 16 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16 }}>
                   <div>
@@ -408,12 +408,12 @@ export default function RevenueOperatorPage() {
                   </div>
                   <div>
                     <div className="p-meta">Available now</div>
-                    <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-dim)" }}>{availableNow.length ? availableNow.join(", ") : "Connect a system to unlock capabilities"}</div>
+                    <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-dim)" }}>{availableNow.length ? availableNow.join(", ") : "Connect a system to get started"}</div>
                   </div>
                 </div>
                 {upgrades.length > 0 && (
                   <div>
-                    <div className="p-meta">Optional upgrades</div>
+                    <div className="p-meta">Optional enhancements</div>
                     <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-dim)" }}>
                       {upgrades.map((c) => c.displayName).join(", ")} could add further context. <Link href="/app/connectors" className="lnk-open">Connect</Link>
                     </div>
@@ -457,7 +457,7 @@ export default function RevenueOperatorPage() {
   }
 
   return (
-    <div className="os-page">
+    <div className="os-page operator-detail-page">
       <div className="os-page-head">
         <div>
           <span className="os-greet"><Link href="/app/agents" style={{ color: "inherit", textDecoration: "none" }}>Operators</Link> / Revenue</span>

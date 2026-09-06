@@ -20,14 +20,14 @@ const PLANS: PlanCard[] = [
     tier: "starter",
     name: "Foundation",
     price: "$299 / month",
-    summary: "A focused operating layer for one high-value business priority.",
+    summary: "A focused workforce for one business priority.",
     limits: ["Up to 3 active operators", "Up to 3 connected systems", "1,000 controlled runs / month", "Approval-first execution", "Company memory and 30-day history"],
   },
   {
     tier: "growth",
     name: "Workforce",
     price: "$799 / month",
-    summary: "Cross-functional operating capacity for teams running real work.",
+    summary: "A connected workforce across your teams.",
     limits: ["Up to 8 active operators", "Up to 8 connected systems", "5,000 controlled runs / month", "Advanced approval policies", "Company memory and 90-day history"],
     featured: true,
   },
@@ -54,17 +54,17 @@ export default function PlansPage() {
   }
 
   return (
-    <div className="os-page" style={{ maxWidth: 1280 }}>
+    <div className="os-page plans-page" style={{ maxWidth: 1280 }}>
       <div className="os-page-head" style={{ marginBottom: 20 }}>
         <div>
           <span className="os-greet">Workspace access</span>
           <h1>Plans &amp; billing</h1>
-          <div className="os-page-sub">Choose the operating capacity your workspace needs. Every live connector and operator action remains controlled by your approval policy.</div>
+          <div className="os-page-sub">Choose a plan for your workforce. Your approval policies stay in place.</div>
         </div>
       </div>
 
-      {searchParams.get("billing") === "error" && <div style={{ padding: "11px 14px", borderRadius: 10, marginBottom: 18, background: "rgba(242,118,124,.07)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,.18)", color: "#F2B3B7", fontSize: 12.5 }}>Checkout could not be opened. Confirm the Dodo API key, product IDs, and checkout mode are all from the same Dodo environment.</div>}
-      {searchParams.get("billing") === "setup_required" && <div style={{ padding: "11px 14px", borderRadius: 10, marginBottom: 18, background: "rgba(242,118,124,.07)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,.18)", color: "#F2B3B7", fontSize: 12.5 }}>This plan is not configured yet. Add its Dodo product ID to the deployment environment and redeploy.</div>}
+      {searchParams.get("billing") === "error" && <div style={{ padding: "11px 14px", borderRadius: 10, marginBottom: 18, background: "rgba(242,118,124,.07)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,.18)", color: "#F2B3B7", fontSize: 12.5 }}>We could not open checkout. Try again, or contact support if this continues.</div>}
+      {searchParams.get("billing") === "setup_required" && <div style={{ padding: "11px 14px", borderRadius: 10, marginBottom: 18, background: "rgba(242,118,124,.07)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,.18)", color: "#F2B3B7", fontSize: 12.5 }}>This plan is temporarily unavailable. Please contact support for help.</div>}
 
       <section className="plans-current-summary" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 20, alignItems: "center", padding: "18px 20px", borderRadius: 14, background: "linear-gradient(110deg, rgba(77,232,225,.085), rgba(77,232,225,.018) 48%, rgba(255,255,255,.012))", boxShadow: "inset 0 0 0 1px rgba(77,232,225,.18)", marginBottom: 18 }}>
         <div>
