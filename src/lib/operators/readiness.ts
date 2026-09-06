@@ -31,8 +31,10 @@ export type OperatorReadiness = {
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
+const GENERIC_TRUTH_CONNECTORS: ConnectorKey[] = ["gmail", "hubspot", "microsoft", "trello"];
+
 function connectorConnected(connectorKey: ConnectorKey, truth: SafeConnectorTruth[]): boolean {
-  if (connectorKey !== "gmail" && connectorKey !== "hubspot" && connectorKey !== "microsoft") return false;
+  if (!GENERIC_TRUTH_CONNECTORS.includes(connectorKey)) return false;
   return truth.some((connector) =>
     connector.connectorKey === connectorKey
     && (connector.status === "connected" || connector.status === "healthy")
@@ -66,6 +68,7 @@ function getNextConnectorStep(missing: ConnectorKey[]): string {
   if (first === "gmail") return "Connect Gmail with real OAuth.";
   if (first === "microsoft") return "Connect Microsoft 365 with real OAuth.";
   if (first === "hubspot") return "Connect HubSpot through Nango.";
+  if (first === "trello") return "Connect Trello and select a default board.";
   if (first) return `Connect ${first.replace(/_/g, " ")}.`;
   return "No connector setup required.";
 }
@@ -137,22 +140,44 @@ async function getWorkspace(workspaceId: string, supabase: SupabaseAdmin): Promi
 }
 
 async function hasWorkspaceApprovalActivity(workspaceId: string, supabase: SupabaseAdmin): Promise<boolean> {
+  // os_approvals.workspace_id is a real, backfilled column (see
+  // 20260618_os_approvals_workspace_scope.sql) - filter at the DB level
+  // instead of pulling an unscoped page of rows and matching client-side.
   const approvals = await supabase
     .from("os_approvals")
-    .select("id, continuation_payload")
-    .limit(100);
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .limit(1);
 
-  if (approvals.error || !approvals.data?.length) return false;
-  return approvals.data.some((approval) => {
-    const payload = approval.continuation_payload as { workspaceId?: string } | null;
-    return payload?.workspaceId === workspaceId;
-  });
+  if (approvals.error) return false;
+  return Boolean(approvals.data?.length);
+}
+
+async function hasWorkspaceScopedLogs(workspaceId: string, supabase: SupabaseAdmin): Promise<boolean> {
+  // os_operator_run_logs.workspace_id is `not null references os_workspaces`
+  // (see 20260618_os_operator_runtime.sql) and is populated for real by
+  // logOperatorEvent() on every operator run step. This is the actual
+  // workspace-scoped execution log table - unlike the legacy os_execution_logs
+  // table (20260523_os_dashboard_tables.sql), which has no workspace_id column
+  // at all and is not workspace-scoped.
+  const logs = await supabase
+    .from("os_operator_run_logs")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .limit(1);
+
+  if (logs.error) return false;
+  return Boolean(logs.data?.length);
 }
 
 async function getWorkspaceRuntimeSignals(workspaceId: string, supabase: SupabaseAdmin) {
+  const [hasApprovalActivity, workspaceScopedLogs] = await Promise.all([
+    hasWorkspaceApprovalActivity(workspaceId, supabase),
+    hasWorkspaceScopedLogs(workspaceId, supabase),
+  ]);
   return {
-    hasApprovalActivity: await hasWorkspaceApprovalActivity(workspaceId, supabase),
-    hasWorkspaceScopedLogs: false,
+    hasApprovalActivity,
+    hasWorkspaceScopedLogs: workspaceScopedLogs,
   };
 }
 
@@ -268,38 +293,44 @@ function evaluateOperator(input: {
   }
 
   if (operator.key === "operations") {
-    const emailConnectors = connectedConnectorsWithCapability("email.send_after_approval", truth);
-    if (emailConnectors.length === 0) {
+    // Operations reads Trello boards directly (see scanOperationsSignals) -
+    // without a connected Trello workspace the scan cannot check a single
+    // card and returns "setup_incomplete" immediately. Trello is therefore
+    // the real hard requirement, not an email connector (Operations does not
+    // send or draft email today). Slack stays optional: scan.ts degrades
+    // gracefully and only prepares a Trello action when Slack/its channel is
+    // not connected.
+    if (missingRequired.length > 0) {
       return baseResult({
         operator,
         status: "missing_connector",
         connectedRequired,
         missingRequired,
         entitlements,
-        reason: "Operations readiness requires a connected email connector (Gmail or Microsoft 365) plus verifiable approval/log activity.",
-        nextSetupStep: "Connect Gmail or Microsoft 365.",
+        reason: "Operations readiness requires a connected Trello workspace with a selected default board.",
+        nextSetupStep: "Connect Trello and select a default board.",
       });
     }
     if (!runtimeSignals.hasApprovalActivity || !runtimeSignals.hasWorkspaceScopedLogs) {
       return baseResult({
         operator,
         status: "draft_only",
-        connectedRequired: emailConnectors,
+        connectedRequired,
         missingRequired: [],
         entitlements,
-        reason: `${emailConnectors[0] === "microsoft" ? "Microsoft 365" : "Gmail"} is connected, but approval/log activity is not fully workspace-scoped yet.`,
-        nextSetupStep: "Add workspace-scoped approval and execution log tables before marking Operations ready.",
+        reason: "Trello is connected, but this workspace has no recorded approval or operator run-log activity yet, so Operations has not proven it can run end to end.",
+        nextSetupStep: "Run a manual Operations check to generate the first workspace-scoped approval and run log.",
         canRunManual: true,
       });
     }
     return baseResult({
       operator,
       status: "ready",
-      connectedRequired: emailConnectors,
+      connectedRequired,
       missingRequired: [],
       entitlements,
-      reason: "An email connector, approvals, and workspace-scoped logs are available.",
-      nextSetupStep: "Ready for manual preparation once execution is implemented.",
+      reason: "Trello is connected, and this workspace has real approval and workspace-scoped run-log activity.",
+      nextSetupStep: "Ready for approval-gated Slack updates and Trello card changes.",
       canRunManual: true,
     });
   }

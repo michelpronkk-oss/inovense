@@ -30,7 +30,7 @@ export type OperatorCategory =
 
 export type OperatorReleaseStatus = "ready" | "preview" | "coming_next" | "requires_connector";
 export type OperatorMode = "draft" | "approval_gated" | "read_only" | "real_action";
-export type ConnectorKey = "gmail" | "microsoft" | "hubspot" | "google_drive" | "notion" | "slack" | "stripe" | "linear" | "calendar";
+export type ConnectorKey = "gmail" | "microsoft" | "hubspot" | "google_drive" | "notion" | "slack" | "stripe" | "linear" | "calendar" | "trello";
 
 export type OperatorDefinition = {
   key: OperatorKey;
@@ -88,11 +88,11 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     category: "operations",
     businessOutcome: "Turn approvals, logs, and workspace activity into operational follow-through.",
     description: "Monitors project boards, finds stalled work, and prepares approved internal updates.",
-    requiredConnectors: ["gmail"],
+    requiredConnectors: ["trello"],
     optionalConnectors: ["slack", "notion", "linear"],
-    capabilities: ["Internal digest preparation", "Approval queue review", "Execution log summarization"],
-    allowedActions: ["memory.read", "log.write", "gmail.createDraft"],
-    approvalRequiredActions: ["gmail.sendExternal", "slack.postExternalChannel"],
+    capabilities: ["Trello board and card monitoring", "Stalled, overdue, and blocked work detection", "Internal Slack update drafting", "Trello action preparation (move, comment, create)"],
+    allowedActions: ["memory.read", "log.write", "trello.scanBoards", "trello.prepareAction", "slack.prepareMessage"],
+    approvalRequiredActions: ["trello.moveCard", "trello.addComment", "trello.createCard", "slack.postMessage"],
     blockedActions: ["payment.refund", "pricing.change", "destructive.delete"],
     supportedModes: ["draft", "read_only", "approval_gated"],
     planAvailability: ["starter", "growth", "operator", "enterprise"],

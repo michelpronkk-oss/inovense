@@ -143,7 +143,7 @@ assert.match(registry, /microsoft: \{/, "the microsoft connector must exist in t
 assert.match(registry, /authType: "direct_oauth"/);
 assert.doesNotMatch(registry, /outlook: \{/, "the old Nango-based outlook catalog entry must be removed");
 assert.match(truth, /connectorKey: "microsoft"/);
-assert.match(readiness, /connectorKey !== "microsoft"/);
+assert.match(readiness, /GENERIC_TRUTH_CONNECTORS: ConnectorKey\[\] = \[[^\]]*"microsoft"[^\]]*\]/, "microsoft must remain one of the connectors readiness.ts can check truth for (see connectorConnected)");
 
 // ── Env validation / safe failure ─────────────────────────────────────────
 assert.match(microsoftConnector, /export function getMicrosoftConfigStatus/);
