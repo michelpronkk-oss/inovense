@@ -10,7 +10,7 @@
     "test:rebrand": "node tests/auterim-phase4-smoke.mjs",
     "test:auth-security": "node tests/auth-security-smoke.mjs",
     "test:microsoft-connector": "node tests/microsoft-connector-smoke.mjs",
-    "test:salesforce-connector": "node tests/salesforce-connector-smoke.mjs",
+    "test:salesforce-connector": "node tests/salesforce-connector-smoke.mjs && node tests/salesforce-context-runtime-smoke.mjs",
     "test:client-flow-operator": "node tests/client-flow-operator-smoke.mjs && node tests/ai-drafting-runtime-smoke.mjs",
     "test:operations-operator": "node tests/operations-operator-smoke.mjs && node tests/operations-scoring-smoke.mjs",
     "test:revenue-operator": "node tests/revenue-operator-smoke.mjs && node tests/ai-drafting-runtime-smoke.mjs",

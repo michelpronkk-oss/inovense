@@ -2,6 +2,18 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { PreparedGmailFollowUp } from "@/lib/operators/executors/gmail";
 import type { RevenueCompanyGraphContext } from "@/lib/operators/revenue/context";
 import type { Opportunity, RevenueNextAction } from "@/lib/operators/revenue/scan";
+import type { RevenueCrmCompany, RevenueCrmOpportunity, RevenueCrmProvider } from "@/lib/operators/revenue/crm";
+
+/**
+ * Read-only CRM context (Contact/Lead's Account and open Opportunities) fed
+ * into the draft prompt for awareness only. The system prompt already
+ * forbids claiming any CRM write happened - this context never triggers one.
+ */
+export type RevenueCrmDraftContext = {
+  provider: RevenueCrmProvider | null;
+  company: RevenueCrmCompany | null;
+  opportunities: RevenueCrmOpportunity[];
+};
 
 export const REVENUE_DRAFT_PROMPT_VERSION = "revenue-draft-v1.9";
 export const REVENUE_DRAFT_MODEL = process.env.REVENUE_DRAFT_MODEL || "claude-sonnet-4-6";
@@ -53,6 +65,7 @@ function fallbackResult(input: {
   deterministicDraft: PreparedGmailFollowUp;
   context: RevenueCompanyGraphContext;
   nextAction?: RevenueNextAction;
+  crmContext?: RevenueCrmDraftContext | null;
   error?: string;
 }): RevenueAIDraftResult {
   const snippet = input.opportunity.message.snippet || input.opportunity.message.subject || "an inbound revenue signal";
@@ -102,17 +115,35 @@ Important boundaries:
 - Respond with only valid JSON.`;
 }
 
+function buildCrmContextBlock(crmContext: RevenueCrmDraftContext | null | undefined): string {
+  if (!crmContext || (!crmContext.company && crmContext.opportunities.length === 0)) return "None available.";
+  const providerLabel = crmContext.provider === "salesforce" ? "Salesforce" : crmContext.provider === "hubspot" ? "HubSpot" : "CRM";
+  const lines: string[] = [];
+  if (crmContext.company) {
+    lines.push(`- Company (${providerLabel}): ${crmContext.company.name ?? "unknown"}${crmContext.company.industry ? `, industry: ${crmContext.company.industry}` : ""}`);
+  }
+  const openOpportunity = crmContext.opportunities.find((opportunity) => !opportunity.isClosed) ?? null;
+  if (openOpportunity) {
+    lines.push(`- Open opportunity: ${openOpportunity.name ?? "unnamed"}, stage: ${openOpportunity.stage ?? "unknown"}${openOpportunity.ownerName ? `, owner: ${openOpportunity.ownerName}` : ""}`);
+  }
+  return lines.length ? lines.join("\n") : "None available.";
+}
+
 function buildUserPrompt(input: {
   opportunity: Opportunity;
   deterministicDraft: PreparedGmailFollowUp;
   context: RevenueCompanyGraphContext;
   nextAction?: RevenueNextAction;
+  crmContext?: RevenueCrmDraftContext | null;
 }): string {
   const ctx = input.context;
   const draftPurposeLine = input.nextAction === "prepare_qualification_question"
     ? "DRAFT PURPOSE: Ask one short qualification question. Do not pitch or assume the sale yet - the signal is promising but ambiguous."
     : "DRAFT PURPOSE: Prepare a full follow-up reply to a confirmed commercial signal.";
   return `${draftPurposeLine}
+
+EXISTING CRM CONTEXT (read-only awareness; the CRM has NOT been updated by this draft):
+${buildCrmContextBlock(input.crmContext)}
 
 COMPANY GRAPH CONTEXT:
 - Company name: ${ctx.companyName ?? "unknown"}
@@ -174,6 +205,7 @@ export async function draftRevenueFollowUpWithAI(input: {
   deterministicDraft: PreparedGmailFollowUp;
   context: RevenueCompanyGraphContext;
   nextAction?: RevenueNextAction;
+  crmContext?: RevenueCrmDraftContext | null;
 }): Promise<RevenueAIDraftResult> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {

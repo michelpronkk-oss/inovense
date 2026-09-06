@@ -15,7 +15,18 @@ import {
 import { getConnectorTruth } from "@/lib/connectors/truth";
 import { createGmailSendApproval } from "@/lib/operators/executors/gmail";
 import { createMicrosoftSendApproval } from "@/lib/operators/executors/microsoft";
-import { getRevenueCrmAdapter, isRevenueCrmUnsupported, type RevenueCrmAdapter } from "@/lib/operators/revenue/crm";
+import {
+  getRevenueCrmAdapter,
+  isRevenueCrmAmbiguous,
+  isRevenueCrmLookupError,
+  isRevenueCrmUnsupported,
+  type RevenueCrmAdapter,
+  type RevenueCrmCompany,
+  type RevenueCrmMatchStatus,
+  type RevenueCrmOpportunity,
+  type RevenueCrmPerson,
+  type RevenueCrmProvider,
+} from "@/lib/operators/revenue/crm";
 import type { PreparedHubSpotActions } from "@/lib/operators/executors/hubspot";
 import { logOperatorEvent, operatorRuntimeId } from "@/lib/operators/logging";
 import { getOperatorReadiness, type OperatorReadiness } from "@/lib/operators/readiness";
@@ -132,11 +143,144 @@ type Personalization = {
   firstname: string | null;
   lastname: string | null;
   greetingUsed: string;
-  personalizationSource: "hubspot" | "signature" | "from_display" | "email_local" | "fallback";
+  personalizationSource: RevenueCrmProvider | "signature" | "from_display" | "email_local" | "fallback";
   signatureCandidate?: string | null;
   signatureCandidateAccepted?: string | null;
   rejectedNameCandidates?: { candidate: string; reason: string; source: string }[];
 };
+
+/**
+ * Read-only Revenue<->CRM context for a single inbound message: which
+ * provider was used, the person-match outcome, and (when the matched person
+ * resolves to an Account) company + open-opportunity context. Never a write
+ * trigger - purely observability + drafting context.
+ */
+type RevenueCrmScanContext = {
+  provider: RevenueCrmProvider | null;
+  personMatchStatus: "matched_contact" | "matched_lead" | "ambiguous" | "no_match" | "unsupported" | "error" | "not_attempted";
+  person: RevenueCrmPerson | null;
+  companyMatchStatus: RevenueCrmMatchStatus | "not_attempted";
+  company: RevenueCrmCompany | null;
+  opportunityMatchStatus: RevenueCrmMatchStatus | "not_attempted";
+  opportunities: RevenueCrmOpportunity[];
+  lookupDurationMs: number;
+  fallbackReason: string | null;
+};
+
+function emptyRevenueCrmScanContext(provider: RevenueCrmProvider | null, fallbackReason: string | null): RevenueCrmScanContext {
+  return {
+    provider,
+    personMatchStatus: "not_attempted",
+    person: null,
+    companyMatchStatus: "not_attempted",
+    company: null,
+    opportunityMatchStatus: "not_attempted",
+    opportunities: [],
+    lookupDurationMs: 0,
+    fallbackReason,
+  };
+}
+
+/**
+ * Resolves person + company + open-opportunity context from whichever CRM
+ * adapter was selected for this scan (see resolveRevenueCrmProvider below).
+ * Read-only: never writes, never triggers a Salesforce/HubSpot mutation.
+ * Called once per inbound message so both the priority score and the AI
+ * drafting context see the same lookup result.
+ */
+async function resolveRevenueCrmContext(input: {
+  workspaceId: string;
+  email: string;
+  crm: RevenueCrmAdapter | null;
+}): Promise<RevenueCrmScanContext> {
+  if (!input.crm || !input.crm.supports("person.read")) {
+    return emptyRevenueCrmScanContext(input.crm?.provider ?? null, input.crm ? "person_read_unsupported" : "no_crm_connected");
+  }
+
+  const startedAt = Date.now();
+  try {
+    const result = await input.crm.findPersonByEmail(input.workspaceId, input.email);
+    const lookupDurationMs = Date.now() - startedAt;
+
+    if (isRevenueCrmUnsupported(result)) {
+      return { ...emptyRevenueCrmScanContext(input.crm.provider, "person_read_unsupported"), personMatchStatus: "unsupported", lookupDurationMs };
+    }
+    if (isRevenueCrmAmbiguous(result)) {
+      return { ...emptyRevenueCrmScanContext(input.crm.provider, "ambiguous_email_match"), personMatchStatus: "ambiguous", lookupDurationMs };
+    }
+    if (isRevenueCrmLookupError(result)) {
+      return { ...emptyRevenueCrmScanContext(input.crm.provider, result.message), personMatchStatus: "error", lookupDurationMs };
+    }
+    if (!result) {
+      return { ...emptyRevenueCrmScanContext(input.crm.provider, null), personMatchStatus: "no_match", lookupDurationMs };
+    }
+
+    const person = result;
+    const personMatchStatus: RevenueCrmScanContext["personMatchStatus"] = person.matchType === "lead" ? "matched_lead" : "matched_contact";
+    let companyMatchStatus: RevenueCrmMatchStatus | "not_attempted" = "not_attempted";
+    let company: RevenueCrmCompany | null = null;
+    let opportunityMatchStatus: RevenueCrmMatchStatus | "not_attempted" = "not_attempted";
+    let opportunities: RevenueCrmOpportunity[] = [];
+    let fallbackReason: string | null = null;
+
+    if (input.crm.supports("company.read") && input.crm.getOpportunityContext) {
+      const opportunityContext = await input.crm.getOpportunityContext(input.workspaceId, person);
+      if (isRevenueCrmUnsupported(opportunityContext)) {
+        companyMatchStatus = "unsupported";
+        opportunityMatchStatus = "unsupported";
+        fallbackReason = "company_read_unsupported";
+      } else {
+        companyMatchStatus = opportunityContext.companyMatchStatus;
+        company = opportunityContext.company;
+        opportunityMatchStatus = opportunityContext.opportunityMatchStatus;
+        opportunities = opportunityContext.opportunities;
+        fallbackReason = opportunityContext.fallbackReason;
+      }
+    }
+
+    return {
+      provider: input.crm.provider,
+      personMatchStatus,
+      person,
+      companyMatchStatus,
+      company,
+      opportunityMatchStatus,
+      opportunities,
+      lookupDurationMs: Date.now() - startedAt,
+      fallbackReason,
+    };
+  } catch (error) {
+    console.warn("[revenue-scan] crm context lookup failed", {
+      workspaceId: input.workspaceId,
+      provider: input.crm.provider,
+      error: error instanceof Error ? error.message : "Unknown CRM lookup error",
+    });
+    return { ...emptyRevenueCrmScanContext(input.crm.provider, error instanceof Error ? error.message : "crm_lookup_failed"), personMatchStatus: "error", lookupDurationMs: Date.now() - startedAt };
+  }
+}
+
+/**
+ * Chooses exactly one CRM adapter for the whole scan - never both. HubSpot
+ * only -> HubSpot. Salesforce only -> Salesforce. Neither -> null (email-first
+ * Revenue still works unchanged). Both connected -> an explicit workspace
+ * preference if one is configured, otherwise a fixed, documented default:
+ * HubSpot, because it is the only provider that also supports Revenue's
+ * write path (contact/deal/note/task) today. This is a stable rule, not
+ * dependent on object key iteration order.
+ */
+function resolveRevenueCrmProvider(input: {
+  hubspotConnected: boolean;
+  salesforceConnected: boolean;
+  preferredProvider: RevenueCrmProvider | null;
+}): RevenueCrmProvider | null {
+  if (input.hubspotConnected && input.salesforceConnected) {
+    if (input.preferredProvider === "salesforce" || input.preferredProvider === "hubspot") return input.preferredProvider;
+    return "hubspot";
+  }
+  if (input.hubspotConnected) return "hubspot";
+  if (input.salesforceConnected) return "salesforce";
+  return null;
+}
 
 export type RevenueScanSummary = {
   status?: string;
@@ -526,28 +670,18 @@ function nameFromSignatureText(text: string): { name: string | null; candidate?:
 async function buildPersonalization(input: {
   workspaceId: string;
   message: SafeGmailMessage;
-  crm: RevenueCrmAdapter | null;
+  crmContext: RevenueCrmScanContext;
 }): Promise<Personalization> {
   const email = input.message.fromEmail;
   const rejectedNameCandidates: { candidate: string; reason: string; source: string }[] = [];
-  if (input.crm?.supports("person.read")) {
-    try {
-      const contact = await input.crm.findPersonByEmail(input.workspaceId, email);
-      if (!isRevenueCrmUnsupported(contact)) {
-        const first = contact?.firstName?.trim() ?? "";
-        const last = contact?.lastName?.trim() ?? "";
-        const contactName = safeHumanName([first, last].filter(Boolean).join(" ")).name;
-        if (contactName) {
-          const split = splitHumanName(contactName);
-          return { contactEmail: email, contactName, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? contactName},`, personalizationSource: "hubspot", rejectedNameCandidates };
-        }
-      }
-    } catch (error) {
-      console.warn("[revenue-scan] hubspot contact personalization skipped", {
-        workspaceId: input.workspaceId,
-        email,
-        error: error instanceof Error ? error.message : "Unknown HubSpot lookup error",
-      });
+  const person = input.crmContext.person;
+  if (person && input.crmContext.provider) {
+    const first = person.firstName?.trim() ?? "";
+    const last = person.lastName?.trim() ?? "";
+    const contactName = safeHumanName([first, last].filter(Boolean).join(" ")).name;
+    if (contactName) {
+      const split = splitHumanName(contactName);
+      return { contactEmail: email, contactName, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? contactName},`, personalizationSource: input.crmContext.provider, rejectedNameCandidates };
     }
   }
 
@@ -1056,6 +1190,14 @@ export async function scanRevenueOpportunities(input: {
       && connector.providerConfigKey
       && connector.nangoConnectionId
     );
+    // Salesforce is a direct-OAuth (native) connector, not Nango-managed, so
+    // it has no providerConfigKey/nangoConnectionId to check - a "connected"
+    // status on the stored credential row is sufficient, mirroring how
+    // Microsoft 365's native connection is treated elsewhere in this file.
+    const salesforceConnected = connectorTruth.some((connector) =>
+      connector.connectorKey === "salesforce"
+      && connector.status === "connected"
+    );
     const maxResults = Math.min(Math.max(Number(input.maxResults) || 15, 1), 20);
     const listed = emailConnector === "gmail"
       ? await listRecentMessages(accessToken, { maxResults, query: "newer_than:30d" })
@@ -1063,6 +1205,17 @@ export async function scanRevenueOpportunities(input: {
     const handled = await loadRevenueDedupeState({ supabase, workspaceId });
     const companyGraphContext = await loadRevenueCompanyGraphContext({ supabase, workspaceId });
     const workspacePolicy = await loadWorkspacePolicySettings({ supabase, workspaceId });
+    // No workspace-level "preferred CRM provider" setting exists in
+    // os_workspace_settings today - this reads the field honestly (it will
+    // simply be undefined) rather than inventing a settings UI for this pass.
+    // If one is ever added under approval_policy.preferredCrmProvider, it is
+    // honored automatically.
+    const preferredCrmProviderRaw = (workspacePolicy.approvalPolicy as Record<string, unknown>).preferredCrmProvider;
+    const preferredCrmProvider: RevenueCrmProvider | null = preferredCrmProviderRaw === "hubspot" || preferredCrmProviderRaw === "salesforce" ? preferredCrmProviderRaw : null;
+    // Resolved once per scan/workspace - the rest of the scan uses only this
+    // one adapter. Never query both CRMs "just in case" on every message.
+    const revenueCrmProvider = resolveRevenueCrmProvider({ hubspotConnected, salesforceConnected, preferredProvider: preferredCrmProvider });
+    const revenueCrm = getRevenueCrmAdapter(revenueCrmProvider);
     const skipped: NonNullable<RevenueScanSummary["skipped"]> = [];
     const opportunities: Opportunity[] = [];
     const signalCandidates: SignalCandidate[] = [];
@@ -1226,14 +1379,17 @@ export async function scanRevenueOpportunities(input: {
         continue;
       }
 
-      const revenueCrm = getRevenueCrmAdapter(hubspotConnected ? "hubspot" : null);
-      const personalization = await buildPersonalization({ workspaceId, message: opportunity.message, crm: revenueCrm });
-      // A HubSpot contact match is a real relationship signal - boost priority
-      // and record why, without re-deciding a next action that was already
-      // chosen deterministically above.
-      if (personalization.personalizationSource === "hubspot") {
+      const revenueCrmContext = await resolveRevenueCrmContext({ workspaceId, email: opportunity.message.fromEmail, crm: revenueCrm });
+      const personalization = await buildPersonalization({ workspaceId, message: opportunity.message, crmContext: revenueCrmContext });
+      // A real CRM contact/lead match is a real relationship signal - boost
+      // priority and record why, regardless of which CRM provider matched,
+      // without re-deciding a next action that was already chosen
+      // deterministically above.
+      if (revenueCrmContext.personMatchStatus === "matched_contact" || revenueCrmContext.personMatchStatus === "matched_lead") {
+        const providerLabel = revenueCrmContext.provider === "salesforce" ? "Salesforce" : "HubSpot";
+        const kindLabel = revenueCrmContext.personMatchStatus === "matched_lead" ? "Lead" : "Contact";
         opportunity.priorityScore += 1;
-        opportunity.priorityReasons = [...opportunity.priorityReasons, "Contact already exists in HubSpot."];
+        opportunity.priorityReasons = [...opportunity.priorityReasons, `${kindLabel} already exists in ${providerLabel}.`];
       }
       const deterministicDraft = buildDraftFromOpportunity(opportunity, personalization, nextAction);
       const crmPreparation = buildCrmPreparation(opportunity, personalization, emailConnector, nextAction);
@@ -1244,6 +1400,7 @@ export async function scanRevenueOpportunities(input: {
         deterministicDraft,
         context: companyGraphContext,
         nextAction,
+        crmContext: revenueCrmContext.provider ? { provider: revenueCrmContext.provider, company: revenueCrmContext.company, opportunities: revenueCrmContext.opportunities } : null,
       });
       const draft = {
         ...aiDraft.draft,
@@ -1257,6 +1414,19 @@ export async function scanRevenueOpportunities(input: {
       const preparedActions = hubspotConnected
         ? [sendActionKey, "update_hubspot_contact", "add_hubspot_note", "create_hubspot_follow_up_task"]
         : [sendActionKey];
+      // Read-only CRM context observability. Never logs a raw access token or
+      // a full/raw CRM API response - only normalized, minimal fields.
+      const revenueCrmContextMeta = {
+        crmProviderUsed: revenueCrmContext.provider ?? "none",
+        personMatchStatus: revenueCrmContext.personMatchStatus,
+        companyMatchStatus: revenueCrmContext.companyMatchStatus,
+        opportunityMatchStatus: revenueCrmContext.opportunityMatchStatus,
+        opportunityCount: revenueCrmContext.opportunities.length,
+        stage: revenueCrmContext.opportunities[0]?.stage ?? null,
+        owner: revenueCrmContext.opportunities[0]?.ownerName ?? revenueCrmContext.company?.ownerName ?? null,
+        lookupDurationMs: revenueCrmContext.lookupDurationMs,
+        fallbackReason: revenueCrmContext.fallbackReason,
+      };
       const runInput = {
         source: `${emailConnector}_scan`,
         sourceMode,
@@ -1280,6 +1450,7 @@ export async function scanRevenueOpportunities(input: {
         isReactivation: opportunity.isReactivation,
         reactivationReason: opportunity.reactivationReason ?? null,
         personalization,
+        revenueCrmContext: revenueCrmContextMeta,
         crmPreparationStatus,
         crmPreparation,
         preparedHubSpotActions,
@@ -1319,6 +1490,7 @@ export async function scanRevenueOpportunities(input: {
         signatureCandidate: personalization.signatureCandidate ?? null,
         signatureCandidateAccepted: personalization.signatureCandidateAccepted ?? null,
         rejectedNameCandidates: personalization.rejectedNameCandidates ?? [],
+        revenueCrmContext: revenueCrmContextMeta,
         crmPreparationStatus,
         detectedSignalSummary: aiDraft.detectedSignalSummary,
         whyThisMatters: aiDraft.whyThisMatters,

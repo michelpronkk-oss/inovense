@@ -140,19 +140,50 @@ export function toStoredSalesforceCredential(input: { workspaceId: string; token
 
 export class SalesforceReconnectionRequiredError extends Error {}
 
-export async function resolveSalesforceAccessToken(input: { workspaceId: string; credential: StoredSalesforceCredential; supabase?: ReturnType<typeof createSupabaseAdmin> }): Promise<string> {
-  // Salesforce does not return a standard access-token expiry in this flow.
-  // API clients will retry once on auth failure in the implementation pass.
-  if (input.credential.encrypted_access_token) return decryptToken(input.credential.encrypted_access_token);
+/**
+ * Loads the stored Salesforce credential row for a workspace, scoped by
+ * workspace_id. Returns null when Salesforce is not connected. Never trust a
+ * caller-supplied workspaceId that hasn't already gone through
+ * resolveWorkspaceContext - this function only filters, it does not
+ * authorize.
+ */
+export async function getStoredSalesforceCredential(workspaceId: string, supabase: ReturnType<typeof createSupabaseAdmin> = createSupabaseAdmin()): Promise<StoredSalesforceCredential | null> {
+  const res = await supabase
+    .from("os_connector_credentials")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .eq("connector_key", "salesforce")
+    .maybeSingle();
+  if (res.error) throw new Error(res.error.message);
+  return (res.data as StoredSalesforceCredential | null) ?? null;
+}
+
+/**
+ * Unconditionally refreshes the Salesforce access token using the stored
+ * refresh token, persists the new access token, and returns it. Used by API
+ * clients that received a 401/expired-session response and need to retry
+ * exactly once - unlike resolveSalesforceAccessToken (which only refreshes
+ * when there is no access token at all), this always attempts a refresh.
+ * Marks the credential "needs_attention" on genuine refresh failure, mirroring
+ * the same pattern resolveSalesforceAccessToken already uses below.
+ */
+export async function forceRefreshSalesforceAccessToken(input: { workspaceId: string; credential: StoredSalesforceCredential; supabase?: ReturnType<typeof createSupabaseAdmin> }): Promise<string> {
   if (!input.credential.encrypted_refresh_token) throw new SalesforceReconnectionRequiredError("Salesforce requires reconnection.");
+  const supabase = input.supabase ?? createSupabaseAdmin();
   try {
     const refreshed = await refreshSalesforceAccessToken(decryptToken(input.credential.encrypted_refresh_token));
-    const supabase = input.supabase ?? createSupabaseAdmin();
     await supabase.from("os_connector_credentials").update({ encrypted_access_token: encryptToken(refreshed.access_token), encrypted_refresh_token: refreshed.refresh_token ? encryptToken(refreshed.refresh_token) : input.credential.encrypted_refresh_token, status: "connected" }).eq("workspace_id", input.workspaceId).eq("connector_key", "salesforce");
     return refreshed.access_token;
   } catch (error) {
-    const supabase = input.supabase ?? createSupabaseAdmin();
     await supabase.from("os_connector_credentials").update({ status: "needs_attention" }).eq("workspace_id", input.workspaceId).eq("connector_key", "salesforce");
     throw new SalesforceReconnectionRequiredError(error instanceof Error ? "Salesforce refresh failed. Reconnect required." : "Salesforce requires reconnection.");
   }
+}
+
+export async function resolveSalesforceAccessToken(input: { workspaceId: string; credential: StoredSalesforceCredential; supabase?: ReturnType<typeof createSupabaseAdmin> }): Promise<string> {
+  // Salesforce does not return a standard access-token expiry in this flow.
+  // API clients retry once on auth failure via forceRefreshSalesforceAccessToken.
+  if (input.credential.encrypted_access_token) return decryptToken(input.credential.encrypted_access_token);
+  if (!input.credential.encrypted_refresh_token) throw new SalesforceReconnectionRequiredError("Salesforce requires reconnection.");
+  return forceRefreshSalesforceAccessToken(input);
 }

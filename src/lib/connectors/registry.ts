@@ -182,13 +182,14 @@ export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
   },
   salesforce: {
     connectorKey: "salesforce", displayName: "Salesforce", category: "crm", authType: "direct_oauth",
-    letter: "SF", color: "#00A1E0", description: "Securely connect Salesforce for future Revenue CRM context and approved actions.",
-    // OAuth connectivity is available, but no Revenue API capability is
-    // advertised until the Salesforce read/write implementation exists.
-    status: "available", capabilities: [],
-    usedByOperators: ["revenue"], readActions: [], writeActions: [],
+    letter: "SF", color: "#00A1E0", description: "Read Salesforce Contact/Lead, Account, and open Opportunity context for Revenue Operator.",
+    // Read capabilities are real (Contact/Lead, Account, open Opportunity
+    // lookup via SOQL). No write capability is advertised - Salesforce
+    // mutations are intentionally not implemented yet.
+    status: "available", capabilities: ["crm.contacts.read", "crm.deals.read"],
+    usedByOperators: ["revenue"], readActions: ["Read contacts/leads", "Read accounts", "Read open opportunities"], writeActions: [],
     approvalRequiredActions: ["Create task", "Add note/activity", "Update contact or lead", "Update opportunity", "Change opportunity stage"], eventTypes: [], riskLevel: "medium",
-    setupNotes: "Direct Salesforce OAuth. CRM reads and writes are intentionally not enabled yet.",
+    setupNotes: "Direct Salesforce OAuth. CRM reads are enabled for Revenue context; writes are intentionally not enabled yet.",
   },
   stripe: {
     connectorKey: "stripe", displayName: "Stripe", category: "billing", authType: "nango",
