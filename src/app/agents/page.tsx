@@ -15,23 +15,23 @@ import Reveal from "@/components/reveal";
 import { staticOgImage } from "@/lib/static-og";
 
 export const metadata: Metadata = {
-  title: "AI Operators for Business",
-  description: "See how Auterim AI operators use company context, approved tools, and clear boundaries to prepare and run business work.",
+  title: "Business AI Agents: Roles & Control Boundaries",
+  description: "Learn why business AI agents need defined responsibilities, approved context, and visible control boundaries before they take consequential action.",
   alternates: {
     canonical: "https://auterim.com/agents",
   },
   openGraph: {
     url: "https://auterim.com/agents",
-    title: "AI Operators for Business | Auterim",
-    description: "See how Auterim AI operators use company context, approved tools, and clear boundaries to prepare and run business work.",
+    title: "Business AI Agents: Roles & Control Boundaries | Auterim",
+    description: "Learn why business AI agents need defined responsibilities, approved context, and visible control boundaries before they take consequential action.",
     type: "website",
     siteName: "Auterim",
     images: [staticOgImage("/agents")],
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI Operators for Business | Auterim",
-    description: "See how Auterim AI operators use company context, approved tools, and clear boundaries to prepare and run business work.",
+    title: "Business AI Agents: Roles & Control Boundaries | Auterim",
+    description: "Learn why business AI agents need defined responsibilities, approved context, and visible control boundaries before they take consequential action.",
     images: [staticOgImage("/agents")],
   },
 };
@@ -82,7 +82,7 @@ export default function AgentsPage() {
           <Reveal>
             <PageHero
               eyebrow="Platform"
-            heading="Specialized operators for defined business work"
+            heading="Why business AI agents need defined responsibilities"
             description="Operators are not chatbots. They run structured workflows through connectors, policies, approvals, memory, and execution logs. They propose actions first, then execute only when allowed."
             mobileHeading="Operators built for real work"
             mobileDescription="Defined roles that prepare work, follow your policies and execute only within the boundaries you set."

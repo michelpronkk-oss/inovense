@@ -15,23 +15,23 @@ import Reveal from "@/components/reveal";
 import { staticOgImage } from "@/lib/static-og";
 
 export const metadata: Metadata = {
-  title: "Security, Approvals & AI Governance",
-  description: "Define what Auterim operators can do, what needs approval, and what is blocked. Review every run through clear policy boundaries.",
+  title: "AI Agent Security & Policy Controls",
+  description: "See how Auterim protects operator work with scoped connector access, policy checks, execution gates, and reviewable activity records.",
   alternates: {
     canonical: "https://auterim.com/security",
   },
   openGraph: {
     url: "https://auterim.com/security",
-    title: "Security, Approvals & AI Governance | Auterim",
-    description: "Define what Auterim operators can do, what needs approval, and what is blocked. Review every run through clear policy boundaries.",
+    title: "AI Agent Security & Policy Controls | Auterim",
+    description: "See how Auterim protects operator work with scoped connector access, policy checks, execution gates, and reviewable activity records.",
     type: "website",
     siteName: "Auterim",
     images: [staticOgImage("/security")],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Security, Approvals & AI Governance | Auterim",
-    description: "Define what Auterim operators can do, what needs approval, and what is blocked. Review every run through clear policy boundaries.",
+    title: "AI Agent Security & Policy Controls | Auterim",
+    description: "See how Auterim protects operator work with scoped connector access, policy checks, execution gates, and reviewable activity records.",
     images: [staticOgImage("/security")],
   },
 };

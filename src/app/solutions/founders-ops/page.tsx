@@ -14,23 +14,23 @@ import { staticOgImage } from "@/lib/static-og";
 import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-json-ld";
 
 export const metadata: Metadata = {
-  title: "AI Operators for Founders & Operations",
-  description: "Give a lean team an operating rhythm with AI operators that prepare weekly briefs, coordinate follow-up and surface decisions for review.",
+  title: "Founder Operations Direction | Auterim",
+  description: "Explore a future direction for founder operations in Auterim's expanding workforce. There is no current Founder Operations production operator.",
   alternates: {
     canonical: "https://auterim.com/solutions/founders-ops",
   },
   openGraph: {
     url: "https://auterim.com/solutions/founders-ops",
-    title: "AI Operators for Founders & Operations | Auterim",
-    description: "Give a lean team an operating rhythm with AI operators that prepare weekly briefs, coordinate follow-up and surface decisions for review.",
+    title: "Founder Operations Direction | Auterim",
+    description: "Explore a future direction for founder operations in Auterim's expanding workforce. There is no current Founder Operations production operator.",
     type: "website",
     siteName: "Auterim",
     images: [staticOgImage("/solutions/founders-ops")],
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI Operators for Founders & Operations | Auterim",
-    description: "Give a lean team an operating rhythm with AI operators that prepare weekly briefs, coordinate follow-up and surface decisions for review.",
+    title: "Founder Operations Direction | Auterim",
+    description: "Explore a future direction for founder operations in Auterim's expanding workforce. There is no current Founder Operations production operator.",
     images: [staticOgImage("/solutions/founders-ops")],
   },
 };
@@ -38,15 +38,15 @@ export const metadata: Metadata = {
 const useCases = [
   {
     title: "Business intelligence",
-    description: "Operator pulls data from your tools and surfaces a weekly business summary. Revenue, pipeline, and operational signals in one view.",
+    description: "A future direction for joining operating signals into a clearer leadership review without implying a live universal business summary.",
   },
   {
     title: "Email and comms management",
-    description: "Operator triages inbound, drafts responses to common request types, and surfaces what needs your direct attention.",
+    description: "A future direction. Today, Revenue and Client Flow cover narrower, supported communication preparation loops.",
   },
   {
     title: "Hiring workflow",
-    description: "From job post to first interview scheduled. Operator manages candidate communications and surfaces qualified applicants for your review.",
+    description: "A future workforce direction; Auterim does not currently provide a hiring workflow operator.",
   },
   {
     title: "Finance monitoring",
@@ -57,8 +57,8 @@ const useCases = [
 const steps = [
   {
     number: "01",
-    title: "Connect your tools",
-    description: "Link your email, CRM, finance, and data sources. The operator builds a view of your business in hours.",
+    title: "Begin with one supported system",
+    description: "Current roles begin from Gmail, Microsoft 365, HubSpot, Salesforce read context, Trello, or Slack according to the selected operator.",
   },
   {
     number: "02",
@@ -67,8 +67,8 @@ const steps = [
   },
   {
     number: "03",
-    title: "Run lean",
-    description: "Operators handle the coordination work. You focus on the decisions that only you can make.",
+    title: "Expand only when capability is available",
+    description: "Founder Operations is not a current production operator. Future scope stays separate from the roles available today.",
   },
 ];
 
@@ -76,7 +76,7 @@ const blueprint = [
   { label: "Recommended operator", value: "Revenue Operator plus Operations Operator baseline" },
   { label: "Status", value: "Expanding workforce. Start today with Revenue, Client Flow, or Operations based on the work at hand." },
   { label: "Approval rules", value: "External sends, pricing updates, and high-risk actions require approval." },
-  { label: "Expected outcome", value: "One operating layer across leads, clients, approvals, and weekly execution." },
+  { label: "Current starting point", value: "Start with Revenue, Client Flow, or Operations for a supported, controlled business loop." },
 ];
 
 export default function FoundersOpsPage() {
@@ -88,13 +88,13 @@ export default function FoundersOpsPage() {
         <PageShell>
           {/* Hero */}
           <PageHero
-            eyebrow="Solutions"
-            heading="Move faster than a team twice your size."
-            description="A direction for founders who want a clearer operating picture. Today, start with an available operator and a small, controlled business loop."
-            mobileDescription="Deploy operators for the work you would otherwise delegate or do yourself."
+            eyebrow="Expanding workforce"
+            heading="A future direction for founder operating context."
+            description="Founder Operations is part of Auterim's expanding workforce, not a current production operator. Today, start with an available role and a small, controlled business loop."
+            mobileDescription="Founder Operations is future-facing. Start with a supported operator today."
           >
             <Link
-              href="/app/onboarding"
+              href="/operators"
               className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-medium transition-all hover:-translate-y-px"
               style={{
                 background: "#4DE8E1",
@@ -103,10 +103,10 @@ export default function FoundersOpsPage() {
                   "inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(77,232,225,0.45), 0 8px 28px -8px rgba(77,232,225,0.5)",
               }}
             >
-              Get Starter
+              See available operators
             </Link>
             <Link
-              href="/pricing"
+              href="/operators"
               className="inline-flex rounded-xl px-6 py-3 text-sm font-medium transition-colors"
               style={{
                 background: "rgba(255,255,255,0.03)",
@@ -114,7 +114,7 @@ export default function FoundersOpsPage() {
                 boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
               }}
             >
-              See pricing
+              See current roles
             </Link>
           </PageHero>
 
@@ -126,13 +126,13 @@ export default function FoundersOpsPage() {
                 className="font-mono text-[11px] uppercase tracking-[0.14em]"
                 style={{ color: "#4A4F57" }}
               >
-                Where founders use Auterim
+                Planned role scope
               </span>
               <h2
                 className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
                 style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
               >
-                Four functions. One operating layer.
+                Where the workforce can expand, clearly separated from today.
               </h2>
               <div className="grid gap-5 sm:grid-cols-2">
                 {useCases.map((uc) => (
@@ -166,7 +166,7 @@ export default function FoundersOpsPage() {
                 className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
                 style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
               >
-                From setup to full operator coverage in a day.
+                Begin with a current role, then expand deliberately.
               </h2>
               <StepRow steps={steps} />
             </div>
@@ -195,10 +195,10 @@ export default function FoundersOpsPage() {
           </section>
 
           <PageCTA
-            heading="Start running your business on Auterim."
-            sub="Start with one controlled operator, then expand into a full operating layer."
-            primary="Get Starter"
-            primaryHref="/app/onboarding"
+            heading="Start with the operators available today."
+            sub="Revenue, Client Flow, and Operations provide the current, controlled starting points for work that needs attention."
+            primary="See available operators"
+            primaryHref="/operators"
           />
         </PageShell>
       </main>

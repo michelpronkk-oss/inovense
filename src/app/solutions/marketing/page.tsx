@@ -14,23 +14,23 @@ import { staticOgImage } from "@/lib/static-og";
 import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-json-ld";
 
 export const metadata: Metadata = {
-  title: "AI Marketing Operations",
-  description: "Prepare campaign briefs, content drafts and marketing coordination with AI operators that stay within your approved brand and publishing rules.",
+  title: "Marketing Operator Direction | Auterim",
+  description: "Explore the planned marketing direction for Auterim's expanding workforce. Marketing automation is not a current production-ready capability.",
   alternates: {
     canonical: "https://auterim.com/solutions/marketing",
   },
   openGraph: {
     url: "https://auterim.com/solutions/marketing",
-    title: "AI Marketing Operations | Auterim",
-    description: "Prepare campaign briefs, content drafts and marketing coordination with AI operators that stay within your approved brand and publishing rules.",
+    title: "Marketing Operator Direction | Auterim",
+    description: "Explore the planned marketing direction for Auterim's expanding workforce. Marketing automation is not a current production-ready capability.",
     type: "website",
     siteName: "Auterim",
     images: [staticOgImage("/solutions/marketing")],
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI Marketing Operations | Auterim",
-    description: "Prepare campaign briefs, content drafts and marketing coordination with AI operators that stay within your approved brand and publishing rules.",
+    title: "Marketing Operator Direction | Auterim",
+    description: "Explore the planned marketing direction for Auterim's expanding workforce. Marketing automation is not a current production-ready capability.",
     images: [staticOgImage("/solutions/marketing")],
   },
 };
@@ -38,45 +38,44 @@ export const metadata: Metadata = {
 const useCases = [
   {
     title: "Content production",
-    description: "Operator drafts blog posts, newsletters, and social content per your brand guidelines. Review in your inbox before anything publishes.",
+    description: "A future role direction for preparing content from approved brand context, before any future publishing capability is introduced.",
   },
   {
     title: "Campaign tracking",
-    description: "Pulls performance data from your ad platforms and analytics tools. Surfaces what is working and what needs attention without a manual pull.",
+    description: "A future direction for connecting campaign signals to a more useful review and planning loop.",
   },
   {
     title: "SEO workflow",
-    description: "Keyword gap analysis, internal linking, and content brief generation runs on a defined schedule. No coordinator needed.",
+    description: "A future direction for making research and preparation more structured, with a clear human review boundary.",
   },
   {
     title: "Social scheduling",
-    description: "Drafts and queues posts across LinkedIn and email. You approve the calendar. The operator executes it.",
+    description: "A future direction for approval-led publishing work. No social publishing automation is available today.",
   },
 ];
 
 const steps = [
   {
     number: "01",
-    title: "Connect your channels",
-    description: "Link your email platform, social accounts, and analytics tools. The Content Operator reads your brand guidelines from memory.",
+    title: "Start with current business context",
+    description: "Today, begin with Revenue, Client Flow, or Operations where the supported systems and operating loops are explicit.",
   },
   {
     number: "02",
-    title: "Define content policies",
-    description: "Set tone, approval requirements, and publishing rules. Everything runs inside the boundaries you define.",
+    title: "Make future boundaries explicit",
+    description: "The marketing direction is being designed around approved context and visible decisions, rather than broad autonomous publishing.",
   },
   {
     number: "03",
-    title: "Review and publish",
-    description: "Drafts and planning material can be reviewed before any future publishing capability is connected.",
+    title: "Expand when the role is available",
+    description: "Marketing Operator is not a current production-ready automation surface and should not be activated as one.",
   },
 ];
 
 const blueprint = [
-  { label: "Recommended operator", value: "Marketing Operator and Content Operator" },
-  { label: "Status", value: "Expanding workforce. Marketing Operator is not a current production-ready automation surface." },
-  { label: "Approval rules", value: "Customer-facing campaign copy and publish actions require approval." },
-  { label: "Expected outcome", value: "Consistent content velocity with policy-safe review and performance digests." },
+  { label: "Workforce status", value: "Expanding workforce. Marketing Operator is not a current production-ready automation surface." },
+  { label: "Current starting point", value: "Use a current operator for a supported revenue, client-flow, or operations loop." },
+  { label: "Design direction", value: "Future marketing work will keep preparation, approval, and external execution visibly separate." },
 ];
 
 export default function MarketingPage() {
@@ -88,13 +87,13 @@ export default function MarketingPage() {
         <PageShell>
           {/* Hero */}
           <PageHero
-            eyebrow="Solutions"
-            heading="Marketing that executes without a coordinator."
-            description="A view of where the workforce can expand for campaign briefs, content preparation, and controlled publishing. This is not presented as live production automation today."
-            mobileDescription="Operators run content workflows, track campaigns and surface the next opportunity."
+            eyebrow="Expanding workforce"
+            heading="A future direction for controlled marketing work."
+            description="Marketing Operator is part of Auterim's expanding workforce. It is not a current production-ready marketing automation capability; teams should begin with the supported operator that fits the work at hand."
+            mobileDescription="Marketing is an expanding workforce direction, not a live automation surface today."
           >
             <Link
-              href="/app/onboarding"
+              href="/operators"
               className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-medium transition-all hover:-translate-y-px"
               style={{
                 background: "#4DE8E1",
@@ -103,10 +102,10 @@ export default function MarketingPage() {
                   "inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(77,232,225,0.45), 0 8px 28px -8px rgba(77,232,225,0.5)",
               }}
             >
-              Get Starter
+              See available operators
             </Link>
             <Link
-              href="/workflows"
+              href="/operators"
               className="inline-flex rounded-xl px-6 py-3 text-sm font-medium transition-colors"
               style={{
                 background: "rgba(255,255,255,0.03)",
@@ -114,7 +113,7 @@ export default function MarketingPage() {
                 boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
               }}
             >
-              See workflows
+              See current roles
             </Link>
           </PageHero>
 
@@ -126,13 +125,13 @@ export default function MarketingPage() {
                 className="font-mono text-[11px] uppercase tracking-[0.14em]"
                 style={{ color: "#4A4F57" }}
               >
-                Where marketing teams use Auterim
+                Planned role scope
               </span>
               <h2
                 className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
                 style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
               >
-                Four functions. One content operator.
+                The work this future role is being designed to support.
               </h2>
               <div className="grid gap-5 sm:grid-cols-2">
                 {useCases.map((uc) => (
@@ -160,13 +159,13 @@ export default function MarketingPage() {
                 className="font-mono text-[11px] uppercase tracking-[0.14em]"
                 style={{ color: "#4A4F57" }}
               >
-                How it works
+                How the workforce expands
               </span>
               <h2
                 className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
                 style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
               >
-                From brand guidelines to published content.
+                Start with a live role, then expand deliberately.
               </h2>
               <StepRow steps={steps} />
             </div>
@@ -177,10 +176,10 @@ export default function MarketingPage() {
             <SectionDivider />
             <div className="mx-auto max-w-5xl px-6 pt-8 md:pt-16">
               <span className="font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: "#4A4F57" }}>
-                Implementation blueprint
+                Availability boundary
               </span>
               <h2 className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl" style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}>
-                Recommended setup for marketing teams.
+                What is available today and what remains future-facing.
               </h2>
               <div className="grid gap-5 sm:grid-cols-2">
                 {blueprint.map((item) => (
@@ -195,10 +194,10 @@ export default function MarketingPage() {
           </section>
 
           <PageCTA
-            heading="Deploy your Content Operator today."
-            sub="Connect channels, set approval rules, and run marketing workflows with full logs."
-            primary="Get Starter"
-            primaryHref="/app/onboarding"
+            heading="Start with the workforce available today."
+            sub="Revenue, Client Flow, and Operations have defined current systems and approval boundaries. Marketing remains an expanding role direction."
+            primary="See available operators"
+            primaryHref="/operators"
           />
         </PageShell>
       </main>
