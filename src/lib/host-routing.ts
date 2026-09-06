@@ -37,6 +37,15 @@ export function getPublicApexHost(): string {
   return normalizeHost(process.env.NEXT_PUBLIC_PUBLIC_APEX_HOST ?? DEFAULT_PUBLIC_APEX_HOST);
 }
 
+/** Keep www an apex redirect target even when an environment overrides the default host. */
+export function isPublicAliasHost(host: string): boolean {
+  const normalized = normalizeHost(host);
+  return (
+    normalized === AUTERIM_PUBLIC_WWW_HOST ||
+    (normalized === getPublicHost() && normalized !== getPublicApexHost())
+  );
+}
+
 export function getAdminHost(): string {
   return normalizeHost(process.env.NEXT_PUBLIC_ADMIN_HOST ?? DEFAULT_ADMIN_HOST);
 }
@@ -71,7 +80,7 @@ export function resolveHostSurface(host: string): HostSurface {
 
   if (normalized === adminHost) return "admin";
   if (normalized === appHost) return "app";
-  if (normalized === publicHost || normalized === publicApexHost) return "public";
+  if (normalized === publicHost || normalized === publicApexHost || normalized === AUTERIM_PUBLIC_WWW_HOST) return "public";
 
   if (LEGACY_PUBLIC_HOSTS.has(normalized)) return "public";
   if (normalized === LEGACY_SURFACE_HOSTS.admin) return "admin";

@@ -12,7 +12,7 @@ import "@/components/home-v3/auterim-v3-typography.css";
 import "./operators-registry.css";
 
 export const metadata: Metadata = {
-  title: "AI Operator Registry | Auterim",
+  title: "AI Operator Registry",
   description: "Explore Auterim's complete operator registry: defined roles, real context, connected tools and clear execution boundaries.",
   alternates: { canonical: "https://auterim.com/operators" },
   openGraph: {

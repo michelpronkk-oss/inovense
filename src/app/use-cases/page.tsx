@@ -3,7 +3,7 @@ import { appHref } from "@/lib/urls";
 import { StrategicPage } from "@/components/home-v3/strategic-page";
 
 export const metadata: Metadata = {
-  title: "AI Workforce Use Cases | Auterim",
+  title: "AI Workforce Use Cases",
   description: "See how Auterim operators prepare and coordinate revenue, client, operations, marketing and recurring business work.",
   alternates: { canonical: "https://auterim.com/use-cases" },
   openGraph: { url: "https://auterim.com/use-cases", siteName: "Auterim", title: "AI Workforce Use Cases | Auterim", description: "See how Auterim operators prepare and coordinate real business work.", type: "website", images: [{ url: "/og/og-use-cases.png", width: 1200, height: 630, alt: "Auterim AI workforce use cases" }] },

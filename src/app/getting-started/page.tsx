@@ -3,7 +3,7 @@ import { appHref } from "@/lib/urls";
 import { StrategicPage } from "@/components/home-v3/strategic-page";
 
 export const metadata: Metadata = {
-  title: "Getting Started with Auterim | AI Workforce Preview",
+  title: "Getting Started: AI Workforce Preview",
   description: "Start with your company context, preview the right Auterim operators and connect systems when you are ready.",
   alternates: { canonical: "https://auterim.com/getting-started" },
   openGraph: { url: "https://auterim.com/getting-started", siteName: "Auterim", title: "Getting Started with Auterim", description: "Start with company context. Connect systems when you are ready.", type: "website", images: [{ url: "/og/og-getting-started.png", width: 1200, height: 630, alt: "Getting started with Auterim" }] },

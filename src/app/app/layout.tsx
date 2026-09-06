@@ -1,4 +1,5 @@
 ﻿import "./dashboard.css";
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppProvider, type AppInitialContext } from "@/lib/os/app-provider";
@@ -6,9 +7,10 @@ import { AppShell } from "@/app/app/app-shell";
 import { resolveAppGateway } from "@/lib/server/app-gateway";
 import { getVerifiedSupabaseUser } from "@/lib/supabase/server";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Auterim OS",
   description: "AI agents that run your work.",
+  robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
 };
 
 // Paths that never require an authenticated + provisioned session. These

@@ -11,6 +11,7 @@ import {
   StepRow,
 } from "@/components/marketing-ui";
 import { staticOgImage } from "@/lib/static-og";
+import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-json-ld";
 
 export const metadata: Metadata = {
   title: "AI Client Onboarding & Service Operations",
@@ -81,6 +82,7 @@ const blueprint = [
 export default function ClientServicesPage() {
   return (
     <>
+      <BreadcrumbJsonLd items={[{ name: "Home", path: "/" }, { name: "Client services", path: "/solutions/client-services" }]} />
       <Nav />
       <main>
         <PageShell>

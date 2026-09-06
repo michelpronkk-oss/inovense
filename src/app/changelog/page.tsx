@@ -3,7 +3,7 @@ import { changelogReleases } from "@/data/changelog";
 import ChangelogEditorial from "@/components/home-v3/changelog-editorial";
 
 export const metadata: Metadata = {
-  title: "Auterim Changelog | Product Updates",
+  title: "Product Updates",
   description: "Follow new Auterim features, connector improvements, operator capabilities and updates to the AI workforce platform.",
   alternates: { canonical: "https://auterim.com/changelog" },
   openGraph: {

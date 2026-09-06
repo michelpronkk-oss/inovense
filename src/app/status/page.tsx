@@ -25,7 +25,6 @@ export const metadata: Metadata = {
     title: "Status | Auterim",
     description: "Live status for Auterim platform services. Agent runtime, workflow execution, connector APIs, approval queue, and memory layer.",
   },
-  robots: { index: false, follow: true },
 };
 
 const systems = [

@@ -3,12 +3,62 @@ import { PageShell } from "@/components/marketing-ui";
 import V3Header from "@/components/home-v3/v3-header";
 import V3Page from "@/components/home-v3/v3-page";
 import {
+  AUTERIM_DESCRIPTION,
   AUTERIM_HOME_FAQS,
+  AUTERIM_NAME,
   AUTERIM_ORGANIZATION_ID,
   AUTERIM_URL,
   AUTERIM_WEBSITE_ID,
   toJsonLd,
 } from "@/lib/geo";
+
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": AUTERIM_ORGANIZATION_ID,
+  name: AUTERIM_NAME,
+  url: AUTERIM_URL,
+  logo: `${AUTERIM_URL}/logo.png`,
+  description: AUTERIM_DESCRIPTION,
+  email: "hello@auterim.com",
+  contactPoint: [{
+    "@type": "ContactPoint",
+    contactType: "sales",
+    email: "hello@auterim.com",
+    url: `${AUTERIM_URL}/contact`,
+    availableLanguage: ["en", "nl"],
+  }],
+  knowsAbout: [
+    "AI workforce",
+    "AI operators for business",
+    "AI approval workflows",
+    "Business process automation",
+    "Company context and policy controls",
+  ],
+};
+
+const websiteSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": AUTERIM_WEBSITE_ID,
+  name: AUTERIM_NAME,
+  url: AUTERIM_URL,
+  description: AUTERIM_DESCRIPTION,
+  inLanguage: "en",
+  publisher: { "@id": AUTERIM_ORGANIZATION_ID },
+};
+
+const softwareSchema = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "@id": `${AUTERIM_URL}/#software`,
+  name: AUTERIM_NAME,
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  url: AUTERIM_URL,
+  description: AUTERIM_DESCRIPTION,
+  provider: { "@id": AUTERIM_ORGANIZATION_ID },
+};
 
 export const metadata: Metadata = {
   title: {
@@ -87,6 +137,18 @@ const homeFaqSchema = {
 export default function Home() {
   return (
     <div className="font-[family-name:var(--font-geist-sans)]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: toJsonLd(organizationSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: toJsonLd(websiteSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: toJsonLd(softwareSchema) }}
+      />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: toJsonLd(homePageSchema) }}

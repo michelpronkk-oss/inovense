@@ -5,8 +5,8 @@ import {
   getAdminHost,
   getAppHost,
   getCanonicalHostForSurface,
-  getPublicHost,
   getPublicApexHost,
+  isPublicAliasHost,
   isLegacyHost,
   isClientSurfacePath,
   isLikelyTokenPath,
@@ -46,7 +46,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (surface === "public") {
-    if (requestHost === getPublicHost() && requestHost !== getPublicApexHost()) {
+    if (isPublicAliasHost(requestHost)) {
       return redirectToHost(request, getPublicApexHost(), originalPathname);
     }
     if (originalPathname.startsWith("/admin")) {
@@ -96,6 +96,7 @@ export async function middleware(request: NextRequest) {
 
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set("x-pathname", originalPathname);
+    requestHeaders.set("x-auterim-surface", "app");
     if (originalPathname.startsWith("/api")) {
       return NextResponse.next({ request: { headers: requestHeaders } });
     }
@@ -126,6 +127,7 @@ export async function middleware(request: NextRequest) {
   // (e.g. the admin layout) can detect the active route without a client hook.
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", internalPathname);
+  if (surface === "admin") requestHeaders.set("x-auterim-surface", "admin");
 
   // Login page is publicly accessible - no session required
   if (internalPathname === "/admin/login") {
@@ -183,5 +185,5 @@ export async function middleware(request: NextRequest) {
 export const config = {
   // Run on all navigable routes. Static assets, _next internals, and
   // files with extensions are excluded so they bypass the middleware.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|woff2?|ttf)).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|apple-icon.png|robots.txt|sitemap.xml|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|woff2?|ttf)).*)"],
 };

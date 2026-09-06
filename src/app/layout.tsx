@@ -7,13 +7,10 @@ import TrafficAttributionTracker from "@/components/analytics/traffic-attributio
 import CookieConsentBanner from "@/components/cookie-consent-banner";
 import {
   AUTERIM_DESCRIPTION,
-  AUTERIM_NAME,
-  AUTERIM_ORGANIZATION_ID,
   AUTERIM_URL,
-  AUTERIM_WEBSITE_ID,
-  toJsonLd,
 } from "@/lib/geo";
 import { staticOgImage } from "@/lib/static-og";
+import { getAdminHost, getAppHost, normalizeHost } from "@/lib/host-routing";
 
 const geistSans = Geist({
   subsets: ["latin"],
@@ -29,11 +26,34 @@ const geistMono = Geist_Mono({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const pathname = (await headers()).get("x-pathname") ?? "/";
+  const requestHeaders = await headers();
+  const pathname = requestHeaders.get("x-pathname") ?? "/";
+  const host = normalizeHost(
+    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host")
+  );
+  const isPrivateHost =
+    host === getAppHost() ||
+    host === getAdminHost() ||
+    requestHeaders.get("x-auterim-surface") === "app" ||
+    requestHeaders.get("x-auterim-surface") === "admin";
+
+  // Public discovery metadata belongs only to the marketing host. The app and
+  // admin hosts have their own private layouts and must not inherit marketing
+  // sharing metadata, canonical context, or indexability.
+  if (isPrivateHost) {
+    return {
+      title: { default: "Auterim", template: "%s | Auterim" },
+      robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
+    };
+  }
+
   const image = staticOgImage(pathname);
   return {
     metadataBase: new URL(AUTERIM_URL),
-    title: { default: "Auterim | AI workforce for businesses", template: "%s | Auterim" },
+    title: {
+      default: "Auterim — AI Workforce for Business Operations",
+      template: "%s | Auterim",
+    },
     description: AUTERIM_DESCRIPTION,
     icons: { icon: "/favicon.ico", shortcut: "/favicon.ico" },
     openGraph: {
@@ -57,59 +77,6 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /* â”€â”€â”€ JSON-LD: Organization + WebSite â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-const orgSchema = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  "@id": AUTERIM_ORGANIZATION_ID,
-  name: AUTERIM_NAME,
-  url: AUTERIM_URL,
-  logo: `${AUTERIM_URL}/logo.png`,
-  description: AUTERIM_DESCRIPTION,
-  email: "hello@auterim.com",
-  foundingDate: "2024",
-  contactPoint: [
-    {
-      "@type": "ContactPoint",
-      contactType: "sales",
-      email: "hello@auterim.com",
-      url: `${AUTERIM_URL}/contact`,
-      availableLanguage: ["en", "nl"],
-    },
-  ],
-  knowsAbout: [
-    "AI workforce",
-    "AI operators for business",
-    "AI approval workflows",
-    "Business process automation",
-    "Company context and policy controls",
-  ],
-};
-
-const softwareSchema = {
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "@id": `${AUTERIM_URL}/#software`,
-  name: AUTERIM_NAME,
-  applicationCategory: "BusinessApplication",
-  operatingSystem: "Web",
-  url: AUTERIM_URL,
-  description: AUTERIM_DESCRIPTION,
-  provider: { "@id": AUTERIM_ORGANIZATION_ID },
-};
-
-const websiteSchema = {
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  "@id": AUTERIM_WEBSITE_ID,
-  name: "Auterim",
-  url: AUTERIM_URL,
-  description: AUTERIM_DESCRIPTION,
-  inLanguage: "en",
-  publisher: {
-    "@id": AUTERIM_ORGANIZATION_ID,
-  },
-};
-
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -120,12 +87,19 @@ export default async function RootLayout({
   // without a client-side hack.
   const headersList = await headers();
   const pathname = headersList.get("x-pathname") ?? "";
+  const host = normalizeHost(
+    headersList.get("x-forwarded-host") ?? headersList.get("host")
+  );
   const lang = pathname.startsWith("/nl") ? "nl" : "en";
   const isPrivateRoute =
     pathname.startsWith("/admin") ||
     pathname.startsWith("/proposal") ||
     pathname.startsWith("/onboarding") ||
-    pathname.startsWith("/client");
+    pathname.startsWith("/client") ||
+    host === getAppHost() ||
+    host === getAdminHost() ||
+    headersList.get("x-auterim-surface") === "app" ||
+    headersList.get("x-auterim-surface") === "admin";
 
   return (
     <html
@@ -133,20 +107,6 @@ export default async function RootLayout({
       className={`dark h-full antialiased font-sans ${geistSans.variable} ${geistMono.variable}`}
       style={{ "--font-sans": "var(--font-geist-sans)" } as React.CSSProperties}
     >
-      <head>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: toJsonLd(orgSchema) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: toJsonLd(websiteSchema) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: toJsonLd(softwareSchema) }}
-        />
-      </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {!isPrivateRoute && <TrafficAttributionTracker />}
         {children}
