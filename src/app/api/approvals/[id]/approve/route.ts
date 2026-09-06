@@ -1372,8 +1372,8 @@ async function executeMicrosoftApproval(input: {
       hubspotResult = {
         status: "failed",
         error: safeError,
-        note: { status: "prepared_not_enabled", reason: "HubSpot note execution is intentionally not enabled in v1.6." },
-        task: { status: "prepared_not_enabled", reason: "HubSpot task execution is intentionally not enabled in v1.6." },
+        note: { status: "failed", reason: "HubSpot execution failed before note creation was attempted." },
+        task: { status: "failed", reason: "HubSpot execution failed before task creation was attempted." },
       };
       warnings.push("hubspot_execution_failed");
     }
@@ -1987,8 +1987,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       hubspotResult = {
         status: "failed",
         error: safeError,
-        note: { status: "prepared_not_enabled", reason: "HubSpot note execution is intentionally not enabled in v1.6." },
-        task: { status: "prepared_not_enabled", reason: "HubSpot task execution is intentionally not enabled in v1.6." },
+        note: { status: "failed", reason: "HubSpot execution failed before note creation was attempted." },
+        task: { status: "failed", reason: "HubSpot execution failed before task creation was attempted." },
       };
       warnings.push("hubspot_execution_failed");
       console.warn("[approval] hubspot.execution.failed", {

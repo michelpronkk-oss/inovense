@@ -1,9 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { PreparedGmailFollowUp } from "@/lib/operators/executors/gmail";
 import type { RevenueCompanyGraphContext } from "@/lib/operators/revenue/context";
-import type { Opportunity } from "@/lib/operators/revenue/scan";
+import type { Opportunity, RevenueNextAction } from "@/lib/operators/revenue/scan";
 
-export const REVENUE_DRAFT_PROMPT_VERSION = "revenue-draft-v1.8";
+export const REVENUE_DRAFT_PROMPT_VERSION = "revenue-draft-v1.9";
 export const REVENUE_DRAFT_MODEL = process.env.REVENUE_DRAFT_MODEL || "claude-sonnet-4-6";
 
 export type RevenueAIDraftResult = {
@@ -52,6 +52,7 @@ function fallbackResult(input: {
   opportunity: Opportunity;
   deterministicDraft: PreparedGmailFollowUp;
   context: RevenueCompanyGraphContext;
+  nextAction?: RevenueNextAction;
   error?: string;
 }): RevenueAIDraftResult {
   const snippet = input.opportunity.message.snippet || input.opportunity.message.subject || "an inbound revenue signal";
@@ -105,9 +106,15 @@ function buildUserPrompt(input: {
   opportunity: Opportunity;
   deterministicDraft: PreparedGmailFollowUp;
   context: RevenueCompanyGraphContext;
+  nextAction?: RevenueNextAction;
 }): string {
   const ctx = input.context;
-  return `COMPANY GRAPH CONTEXT:
+  const draftPurposeLine = input.nextAction === "prepare_qualification_question"
+    ? "DRAFT PURPOSE: Ask one short qualification question. Do not pitch or assume the sale yet - the signal is promising but ambiguous."
+    : "DRAFT PURPOSE: Prepare a full follow-up reply to a confirmed commercial signal.";
+  return `${draftPurposeLine}
+
+COMPANY GRAPH CONTEXT:
 - Company name: ${ctx.companyName ?? "unknown"}
 - Website: ${ctx.website ?? "unknown"}
 - Offer/products/services: ${ctx.offerSummary ?? "not stored"}
@@ -166,6 +173,7 @@ export async function draftRevenueFollowUpWithAI(input: {
   opportunity: Opportunity;
   deterministicDraft: PreparedGmailFollowUp;
   context: RevenueCompanyGraphContext;
+  nextAction?: RevenueNextAction;
 }): Promise<RevenueAIDraftResult> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {

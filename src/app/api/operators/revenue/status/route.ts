@@ -26,7 +26,10 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function asScanSummary(value: unknown): ScanSummaryOutput | null {
   const record = asRecord(value);
-  if (record.type !== "gmail_scan_summary") return null;
+  // Revenue scans against whichever email connector is active (Gmail or
+  // Microsoft 365 - see resolveRevenueEmailConnector() in scan.ts), so the
+  // summary type is "gmail_scan_summary" or "microsoft_scan_summary".
+  if (record.type !== "gmail_scan_summary" && record.type !== "microsoft_scan_summary") return null;
   return {
     type: typeof record.type === "string" ? record.type : undefined,
     status: typeof record.status === "string" ? record.status : undefined,
@@ -96,7 +99,7 @@ export async function GET(req: NextRequest) {
       .select("id,status,output,created_at,completed_at")
       .eq("workspace_id", context.workspaceId)
       .eq("operator_key", "revenue")
-      .eq("trigger_type", "gmail_scan")
+      .in("trigger_type", ["gmail_scan", "microsoft_scan"])
       .order("created_at", { ascending: false })
       .limit(50),
     supabase

@@ -56,6 +56,13 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     category: "revenue",
     businessOutcome: "Qualify inbound demand, prepare follow-ups, and keep CRM next steps current.",
     description: "Prepares lead follow-up work from workspace context and routes outbound sends through approval.",
+    // Non-load-bearing for Revenue's real gating: readiness.ts's revenue
+    // branch is capability-based (any connector with email.send_after_approval
+    // - Gmail or Microsoft 365 - satisfies readiness) and scan.ts follows the
+    // same connector the readiness result reports. This field is only read
+    // for its .length in readinessPercent()'s scoring math, so it is kept as
+    // a single entry rather than widened to ["gmail","microsoft"], which
+    // would double that denominator and skew the percentage for no reason.
     requiredConnectors: ["gmail"],
     optionalConnectors: ["hubspot", "slack"],
     capabilities: ["Lead triage", "Follow-up drafting", "CRM contact/deal updates", "Approval-gated email send"],

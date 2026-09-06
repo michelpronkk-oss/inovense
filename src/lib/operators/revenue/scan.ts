@@ -1,9 +1,23 @@
 import { GMAIL_SCAN_REQUIRED_SCOPES, GMAIL_SEND_REQUIRED_SCOPES, GmailApiError, getMessageDetails, getMissingGmailScopes, listRecentMessages, resolveAccessTokenFromCredential, type SafeGmailMessage, type StoredConnectorCredential } from "@/lib/connectors/gmail";
+import {
+  MICROSOFT_READ_REQUIRED_SCOPES,
+  MICROSOFT_SEND_REQUIRED_SCOPES,
+  MicrosoftGraphError,
+  MicrosoftReauthRequiredError,
+  getMicrosoftCredential,
+  getMicrosoftMessage,
+  getMissingMicrosoftScopes,
+  listRecentMicrosoftMessages,
+  resolveMicrosoftAccessToken,
+  type SafeMicrosoftMessage,
+  type StoredMicrosoftCredential,
+} from "@/lib/connectors/microsoft";
 import { getConnectorTruth } from "@/lib/connectors/truth";
 import { createGmailSendApproval } from "@/lib/operators/executors/gmail";
+import { createMicrosoftSendApproval } from "@/lib/operators/executors/microsoft";
 import { findContactByEmail, type PreparedHubSpotActions } from "@/lib/operators/executors/hubspot";
 import { logOperatorEvent, operatorRuntimeId } from "@/lib/operators/logging";
-import { getOperatorReadiness } from "@/lib/operators/readiness";
+import { getOperatorReadiness, type OperatorReadiness } from "@/lib/operators/readiness";
 import { draftRevenueFollowUpWithAI } from "@/lib/operators/revenue/ai-drafting";
 import { loadRevenueCompanyGraphContext } from "@/lib/operators/revenue/context";
 import { sendSlackApprovalNotification } from "@/lib/notifications/slack";
@@ -16,11 +30,64 @@ import { getAppUrl } from "@/lib/urls";
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 type RevenueScanSourceMode = "scheduled" | "manual" | "event_ready";
 
+/**
+ * Revenue supports Gmail and Microsoft 365 as interchangeable inbox sources.
+ * This mirrors Client Flow Operator's resolveClientFlowEmailConnector() -
+ * readiness.ts already reports "ready"/"draft_only" for either connector via
+ * its capability-based email check, so the scan itself must be able to run
+ * against whichever one is actually connected instead of assuming Gmail.
+ * Gmail is preferred when both happen to be connected, which keeps existing
+ * Gmail-only workspaces behaving exactly as before.
+ */
+export type RevenueEmailConnector = "gmail" | "microsoft";
+
+function resolveRevenueEmailConnector(readiness: OperatorReadiness): RevenueEmailConnector | null {
+  const connected = readiness.connectedRequiredConnectors;
+  if (connected.includes("gmail")) return "gmail";
+  if (connected.includes("microsoft")) return "microsoft";
+  return null;
+}
+
+/**
+ * Normalizes a Microsoft Graph message into the same safe shape Gmail
+ * messages use, so signal detection, scoring, dedupe, and drafting below can
+ * stay provider-agnostic. Mirrors client-flow/scan.ts's fromMicrosoftMessage
+ * (kept as a separate local copy, matching this codebase's existing
+ * "parallel implementation, not shared" convention for scan.ts modules).
+ */
+function fromMicrosoftMessage(message: SafeMicrosoftMessage): SafeGmailMessage {
+  const fromEmail = (message.from ?? "").toLowerCase();
+  const from = message.fromName ? `${message.fromName} <${fromEmail}>` : fromEmail;
+  return {
+    id: message.id,
+    threadId: message.conversationId ?? undefined,
+    labelIds: [],
+    from,
+    fromEmail,
+    to: "",
+    subject: message.subject ?? "",
+    date: message.receivedAt ?? "",
+    snippet: message.bodyPreview ?? "",
+    bodyText: message.bodyText ?? message.bodyPreview ?? "",
+    internalDate: message.receivedAt ?? undefined,
+  };
+}
+
+export type RevenueConfidence = "high" | "medium" | "low";
+export type RevenueNextAction = "prepare_email_reply" | "prepare_qualification_question" | "defer_low_priority";
+
 export type Opportunity = {
   message: SafeGmailMessage;
   matchedKeywords: string[];
   classification: "revenue_opportunity";
-  confidence: "high";
+  confidence: RevenueConfidence;
+  priorityScore: number;
+  priorityReasons: string[];
+  directSignals: string[];
+  requestSignals: string[];
+  contextSignals: string[];
+  isReactivation: boolean;
+  reactivationReason?: DedupeReason;
 };
 
 type CrmPreparation = {
@@ -29,10 +96,13 @@ type CrmPreparation = {
   firstname?: string | null;
   lastname?: string | null;
   companyName: string | null;
-  source: "gmail";
+  source: RevenueEmailConnector;
   sourceSubject?: string;
   classification: string;
   confidence: string;
+  priorityScore?: number;
+  priorityReasons?: string[];
+  nextAction?: RevenueNextAction;
   gmailMessageId: string;
   gmailThreadId?: string;
   dedupeKey?: string;
@@ -50,7 +120,7 @@ type CrmPreparation = {
   attribution?: {
     leadSource: "Auterim";
     operator: "revenue";
-    signalSource: "gmail";
+    signalSource: RevenueEmailConnector;
     signalType: "revenue_opportunity";
   };
 };
@@ -74,6 +144,7 @@ export type RevenueScanSummary = {
   scanned?: number;
   opportunitiesFound?: number;
   approvalsCreated?: number;
+  deferredCount?: number;
   routedItemCount?: number;
   missingScopes?: string[];
   reconnectRequired?: boolean;
@@ -85,11 +156,23 @@ export type RevenueScanSummary = {
     matchedKeywords: string[];
     classification: string;
     confidence: string;
+    priorityScore?: number;
+    priorityReasons?: string[];
+    nextAction?: RevenueNextAction;
+    isReactivation?: boolean;
     crmPreparationStatus?: string;
     dedupeKey?: string;
     signalCandidate?: SignalCandidate;
     runId: string;
     approvalId: string;
+  }[];
+  deferred?: {
+    messageId: string;
+    subject?: string;
+    from?: string;
+    reason: string;
+    dedupeKey?: string;
+    runId: string;
   }[];
   skipped?: {
     messageId: string;
@@ -133,6 +216,16 @@ const PRODUCT_CONTEXT_SIGNALS = [
   { label: "service", pattern: /\b(?:service|solution|implementation)\b/i },
 ];
 
+// Business email domains vs. personal mail providers is a cheap, honest proxy
+// for "this may be a decision-maker writing from a company inbox" - never
+// used alone, only as one input among several to the priority score below.
+const PERSONAL_EMAIL_DOMAINS = new Set([
+  "gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "live.com",
+  "yahoo.com", "icloud.com", "me.com", "aol.com", "proton.me", "protonmail.com",
+]);
+
+const WARM_REFERRAL_PATTERN = /\b(?:referred by|recommended (?:you|your)|was told to (?:reach out|contact)|suggested i (?:reach out|contact)|a (?:mutual )?friend (?:of ours )?recommended|someone recommended)\b/i;
+
 type DedupeReason =
   | "existing_pending_approval"
   | "already_approved"
@@ -148,7 +241,7 @@ type RevenueDedupeMetadata = {
   gmailThreadId?: string;
   contactEmail: string;
   normalizedSubject: string;
-  sourceProvider: "gmail";
+  sourceProvider: RevenueEmailConnector;
   operatorKey: "revenue";
 };
 
@@ -217,9 +310,92 @@ function skipReason(message: SafeGmailMessage, providerEmail: string): string | 
   return null;
 }
 
-function detectOpportunity(message: SafeGmailMessage, providerEmail: string): Opportunity | { skipped: string } {
+function isBusinessEmailDomain(email: string): boolean {
+  const domain = email.split("@")[1]?.toLowerCase().trim();
+  if (!domain) return false;
+  return !PERSONAL_EMAIL_DOMAINS.has(domain);
+}
+
+function hasWarmReferralLanguage(text: string): boolean {
+  return WARM_REFERRAL_PATTERN.test(text);
+}
+
+/**
+ * Deterministic confidence/priority scoring. Every input is a signal that is
+ * either directly present in the message or trivially derivable from it - no
+ * monetary values, timelines, or CRM facts are invented here. The resulting
+ * `reasons` array is the plain-language explanation surfaced on the
+ * opportunity, run, and approval so a human can see exactly why Revenue rated
+ * something the way it did.
+ */
+function scoreOpportunitySignal(input: {
+  directSignals: string[];
+  requestSignals: string[];
+  contextSignals: string[];
+  matchedKeywords: string[];
+  fromEmail: string;
+  text: string;
+}): { confidence: RevenueConfidence; score: number; reasons: string[] } {
+  let score = 0;
+  const reasons: string[] = [];
+
+  if (input.directSignals.length > 0) {
+    score += 3;
+    reasons.push(`Direct commercial language detected (${input.directSignals.join(", ")}).`);
+  } else if (input.requestSignals.length > 0 && input.contextSignals.length > 0) {
+    score += 2;
+    reasons.push("Qualified request language combined with relevant product context.");
+  }
+  if (input.matchedKeywords.length >= 3) {
+    score += 1;
+    reasons.push("Multiple buying signals matched in a single message.");
+  }
+  if (isBusinessEmailDomain(input.fromEmail)) {
+    score += 1;
+    reasons.push("Sent from a business email domain rather than a personal mail provider.");
+  }
+  if (hasWarmReferralLanguage(input.text)) {
+    score += 1;
+    reasons.push("Message references a referral or recommendation.");
+  }
+
+  const confidence: RevenueConfidence = score >= 4 ? "high" : score >= 2 ? "medium" : "low";
+  return { confidence, score, reasons };
+}
+
+/**
+ * Best-next-action decision. Deterministic and auditable on purpose: the AI
+ * drafting step (when a model key is configured) only ever refines the
+ * phrasing of whichever action is chosen here, it never picks the action.
+ * "defer_low_priority" is a first-class, logged outcome, not a silent drop.
+ */
+function decideNextAction(input: { confidence: RevenueConfidence; directSignals: string[] }): { action: RevenueNextAction; reason: string } {
+  if (input.confidence === "low") {
+    return {
+      action: "defer_low_priority",
+      reason: "Signal strength is low. Deferred with no draft or approval created instead of contacting the sender.",
+    };
+  }
+  if (input.confidence === "medium" && input.directSignals.length === 0) {
+    return {
+      action: "prepare_qualification_question",
+      reason: "Interest is implied but the message has no direct commercial ask. Preparing a short qualification question instead of a full follow-up.",
+    };
+  }
+  return {
+    action: "prepare_email_reply",
+    reason: "A direct or high-confidence commercial signal was detected. Preparing a full follow-up reply.",
+  };
+}
+
+type DetectionOutcome =
+  | { kind: "opportunity"; message: SafeGmailMessage; matchedKeywords: string[]; directSignals: string[]; requestSignals: string[]; contextSignals: string[] }
+  | { kind: "low_signal"; message: SafeGmailMessage; matchedKeywords: string[] }
+  | { kind: "skipped"; reason: string };
+
+function detectOpportunity(message: SafeGmailMessage, providerEmail: string): DetectionOutcome {
   const skipped = skipReason(message, providerEmail);
-  if (skipped) return { skipped };
+  if (skipped) return { kind: "skipped", reason: skipped };
 
   const text = opportunityText(message);
   const directSignals = DIRECT_COMMERCIAL_SIGNALS.filter((signal) => signal.pattern.test(text)).map((signal) => signal.label);
@@ -228,12 +404,19 @@ function detectOpportunity(message: SafeGmailMessage, providerEmail: string): Op
   const matchedKeywords = [...new Set([...directSignals, ...requestSignals, ...contextSignals])];
 
   // A price, quote, proposal or demo is explicit buying intent. Less specific
-  // requests require product context as well; vague messages stay out of the
-  // approval queue and are logged as low-confidence noise instead.
+  // requests require product context as well. Messages that matched at least
+  // one keyword but do not clear this bar are not dropped silently - they
+  // become a "low_signal" outcome that Revenue explicitly defers (see
+  // decideNextAction), so "noise-adjacent but not clearly actionable" is a
+  // real, logged state instead of vanishing. Messages that matched nothing at
+  // all remain pure noise and are skipped without a run record.
   if (directSignals.length > 0 || (requestSignals.length > 0 && contextSignals.length > 0)) {
-    return { message, matchedKeywords, classification: "revenue_opportunity", confidence: "high" };
+    return { kind: "opportunity", message, matchedKeywords, directSignals, requestSignals, contextSignals };
   }
-  return { skipped: matchedKeywords.length > 0 ? "low_confidence" : "noise" };
+  if (matchedKeywords.length > 0) {
+    return { kind: "low_signal", message, matchedKeywords };
+  }
+  return { kind: "skipped", reason: "noise" };
 }
 
 function titleCaseName(value: string): string {
@@ -341,10 +524,10 @@ function nameFromSignatureText(text: string): { name: string | null; candidate?:
 
 async function buildPersonalization(input: {
   workspaceId: string;
-  opportunity: Opportunity;
+  message: SafeGmailMessage;
   hubspotConnected: boolean;
 }): Promise<Personalization> {
-  const email = input.opportunity.message.fromEmail;
+  const email = input.message.fromEmail;
   const rejectedNameCandidates: { candidate: string; reason: string; source: string }[] = [];
   if (input.hubspotConnected) {
     try {
@@ -365,14 +548,14 @@ async function buildPersonalization(input: {
     }
   }
 
-  const signature = nameFromSignatureText([input.opportunity.message.bodyText, input.opportunity.message.snippet].filter(Boolean).join("\n"));
+  const signature = nameFromSignatureText([input.message.bodyText, input.message.snippet].filter(Boolean).join("\n"));
   if (signature.rejected) rejectedNameCandidates.push(signature.rejected);
   if (signature.name) {
     const split = splitHumanName(signature.name);
     return { contactEmail: email, contactName: signature.name, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? signature.name},`, personalizationSource: "signature", signatureCandidate: signature.candidate ?? signature.name, signatureCandidateAccepted: signature.accepted ?? signature.name, rejectedNameCandidates };
   }
 
-  const fromName = displayNameFromHeader(input.opportunity.message.from, email);
+  const fromName = displayNameFromHeader(input.message.from, email);
   if (fromName) {
     const split = splitHumanName(fromName);
     return { contactEmail: email, contactName: fromName, firstname: split.firstname, lastname: split.lastname, greetingUsed: `Hi ${split.firstname ?? fromName},`, personalizationSource: "from_display", signatureCandidate: signature.candidate ?? null, rejectedNameCandidates };
@@ -395,18 +578,37 @@ function applyGreeting(body: string, greeting: string): string {
   return [greeting, "", body.trim()].join("\n");
 }
 
-function buildDraftFromOpportunity(opportunity: Opportunity, personalization: Personalization) {
+function buildDraftFromOpportunity(opportunity: Opportunity, personalization: Personalization, nextAction: RevenueNextAction) {
   const subject = opportunity.message.subject
     ? `Re: ${opportunity.message.subject}`
-    : "Following up on your message";
+    : nextAction === "prepare_qualification_question" ? "Quick question about your message" : "Following up on your message";
   const context = opportunity.message.snippet || "your recent message";
+  const contextLine = `Thanks for reaching out. I saw your note about "${context.slice(0, 180)}${context.length > 180 ? "..." : ""}" and wanted to follow up while it is fresh.`;
+
+  if (nextAction === "prepare_qualification_question") {
+    return {
+      to: opportunity.message.fromEmail,
+      subject,
+      body: [
+        personalization.greetingUsed,
+        "",
+        contextLine,
+        "",
+        "Before I point you in the right direction, could you share a bit more about what you are trying to solve or what prompted the message?",
+        "",
+        "Best,",
+        "Auterim",
+      ].join("\n"),
+    };
+  }
+
   return {
     to: opportunity.message.fromEmail,
     subject,
     body: [
       personalization.greetingUsed,
       "",
-      `Thanks for reaching out. I saw your note about "${context.slice(0, 180)}${context.length > 180 ? "..." : ""}" and wanted to follow up while it is fresh.`,
+      contextLine,
       "",
       "If helpful, I can map the next practical step and keep the path lightweight.",
       "",
@@ -426,7 +628,7 @@ function companyFromEmail(email: string): string | null {
   return root.split(/[-_]/).filter(Boolean).map((part) => `${part[0]?.toUpperCase() ?? ""}${part.slice(1)}`).join(" ");
 }
 
-function buildCrmPreparation(opportunity: Opportunity, personalization: Personalization): CrmPreparation {
+function buildCrmPreparation(opportunity: Opportunity, personalization: Personalization, provider: RevenueEmailConnector, nextAction: RevenueNextAction): CrmPreparation {
   const summary = opportunity.message.snippet
     ? opportunity.message.snippet.slice(0, 280)
     : `Inbound revenue signal from ${opportunity.message.fromEmail}.`;
@@ -436,10 +638,13 @@ function buildCrmPreparation(opportunity: Opportunity, personalization: Personal
     firstname: personalization.firstname,
     lastname: personalization.lastname,
     companyName: companyFromEmail(opportunity.message.fromEmail),
-    source: "gmail",
+    source: provider,
     sourceSubject: opportunity.message.subject,
     classification: opportunity.classification,
     confidence: opportunity.confidence,
+    priorityScore: opportunity.priorityScore,
+    priorityReasons: opportunity.priorityReasons,
+    nextAction,
     gmailMessageId: opportunity.message.id,
     gmailThreadId: opportunity.message.threadId,
     summary,
@@ -457,7 +662,7 @@ function buildCrmPreparation(opportunity: Opportunity, personalization: Personal
     attribution: {
       leadSource: "Auterim",
       operator: "revenue",
-      signalSource: "gmail",
+      signalSource: provider,
       signalType: "revenue_opportunity",
     },
   };
@@ -474,7 +679,7 @@ function buildPreparedHubSpotActions(input: {
       firstname: input.crmPreparation.firstname ?? null,
       lastname: input.crmPreparation.lastname ?? null,
       companyName: input.crmPreparation.companyName,
-      source: "gmail",
+      source: input.crmPreparation.source,
     },
     deal: {
       dealname: `New inbound opportunity: ${contactLabel}`,
@@ -485,14 +690,15 @@ function buildPreparedHubSpotActions(input: {
     note: {
       body: [
         "Prepared by Auterim Revenue Operator.",
-        "Source channel: Gmail/email.",
+        `Source channel: ${input.crmPreparation.source === "microsoft" ? "Microsoft 365/email" : "Gmail/email"}.`,
         `Source subject: ${input.crmPreparation.sourceSubject || "-"}.`,
         `Classification: ${input.crmPreparation.classification}.`,
-        `Confidence: ${input.crmPreparation.confidence}.`,
+        `Confidence: ${input.crmPreparation.confidence}${typeof input.crmPreparation.priorityScore === "number" ? ` (score ${input.crmPreparation.priorityScore})` : ""}.`,
+        input.crmPreparation.priorityReasons?.length ? `Why: ${input.crmPreparation.priorityReasons.join(" ")}` : null,
         `Suggested next step: ${input.crmPreparation.suggestedNextStep}`,
         "",
         input.crmPreparation.summary,
-      ].join("\n"),
+      ].filter((line): line is string => Boolean(line)).join("\n"),
     },
     task: {
       title: input.crmPreparation.suggestedFollowUpTask,
@@ -567,18 +773,18 @@ function normalizeSubjectForDedupe(subject: string | undefined | null): string {
     .slice(0, 180);
 }
 
-function buildDedupeMetadata(message: SafeGmailMessage): RevenueDedupeMetadata {
+function buildDedupeMetadata(message: SafeGmailMessage, provider: RevenueEmailConnector): RevenueDedupeMetadata {
   const gmailMessageId = message.id;
   const gmailThreadId = message.threadId || undefined;
   const contactEmail = normalizeEmail(message.fromEmail || message.from);
   const normalizedSubject = normalizeSubjectForDedupe(message.subject);
-  const messageDedupeKey = gmailMessageId ? `revenue:gmail:message:${gmailMessageId}` : undefined;
-  const threadDedupeKey = gmailThreadId ? `revenue:gmail:thread:${gmailThreadId}` : undefined;
+  const messageDedupeKey = gmailMessageId ? `revenue:${provider}:message:${gmailMessageId}` : undefined;
+  const threadDedupeKey = gmailThreadId ? `revenue:${provider}:thread:${gmailThreadId}` : undefined;
   const contactSubjectDedupeKey = contactEmail && normalizedSubject
     ? `revenue:contact_subject:${contactEmail}:${normalizedSubject}`
     : undefined;
   return {
-    dedupeKey: messageDedupeKey ?? threadDedupeKey ?? contactSubjectDedupeKey ?? `revenue:gmail:message:${Date.now()}`,
+    dedupeKey: messageDedupeKey ?? threadDedupeKey ?? contactSubjectDedupeKey ?? `revenue:${provider}:message:${Date.now()}`,
     messageDedupeKey,
     threadDedupeKey,
     contactSubjectDedupeKey,
@@ -586,7 +792,7 @@ function buildDedupeMetadata(message: SafeGmailMessage): RevenueDedupeMetadata {
     gmailThreadId,
     contactEmail,
     normalizedSubject,
-    sourceProvider: "gmail",
+    sourceProvider: provider,
     operatorKey: "revenue",
   };
 }
@@ -608,6 +814,10 @@ function setDedupeReason(map: Map<string, DedupeReason>, key: string | undefined
 function collectDedupeRefs(value: unknown, refs: Map<string, DedupeReason>, reason: DedupeReason) {
   if (!value || typeof value !== "object") return;
   const record = value as Record<string, unknown>;
+  // Historical records predate Microsoft 365 support and never stored
+  // sourceProvider - they were always Gmail, so default to "gmail" to keep
+  // existing dedupe keys (and therefore existing approval history) intact.
+  const provider: RevenueEmailConnector = record.sourceProvider === "microsoft" ? "microsoft" : "gmail";
   const messageId = typeof record.gmailMessageId === "string"
     ? record.gmailMessageId
     : typeof record.messageId === "string"
@@ -625,8 +835,8 @@ function collectDedupeRefs(value: unknown, refs: Map<string, DedupeReason>, reas
       ? normalizeSubjectForDedupe(record.subject)
       : "";
   setDedupeReason(refs, typeof record.dedupeKey === "string" ? record.dedupeKey : undefined, reason);
-  setDedupeReason(refs, messageId ? `revenue:gmail:message:${messageId}` : undefined, reason);
-  setDedupeReason(refs, threadId ? `revenue:gmail:thread:${threadId}` : undefined, reason);
+  setDedupeReason(refs, messageId ? `revenue:${provider}:message:${messageId}` : undefined, reason);
+  setDedupeReason(refs, threadId ? `revenue:${provider}:thread:${threadId}` : undefined, reason);
   setDedupeReason(refs, contactEmail && normalizedSubject ? `revenue:contact_subject:${contactEmail}:${normalizedSubject}` : undefined, reason);
   Object.values(record).forEach((nested) => collectDedupeRefs(nested, refs, reason));
 }
@@ -658,16 +868,28 @@ async function loadRevenueDedupeState(input: {
   return refs;
 }
 
-function findDuplicateReason(metadata: RevenueDedupeMetadata, refs: Map<string, DedupeReason>): DedupeReason | null {
-  const keys = [
-    metadata.messageDedupeKey,
-    metadata.threadDedupeKey,
-    metadata.dedupeKey,
-    metadata.contactSubjectDedupeKey,
-  ].filter((key): key is string => Boolean(key));
-  for (const key of keys) {
+type DedupeLookup = { reason: DedupeReason; scope: "message" | "thread" };
+
+/**
+ * Message/subject-scoped keys are a hard duplicate: this exact message (or an
+ * equivalent subject from the same contact) was already handled. A
+ * thread-scoped-only match means the thread was acted on before but *this*
+ * message id is new - that is a genuinely new inbound reply, not a duplicate,
+ * so the caller treats it as a reactivation instead of silently dropping it
+ * (closing the "already responded" / "new meaningful reply" gap: previously
+ * a thread that had ever been touched stayed permanently deduped even when
+ * the contact sent a brand new message).
+ */
+function findDuplicateReason(metadata: RevenueDedupeMetadata, refs: Map<string, DedupeReason>): DedupeLookup | null {
+  const messageScopedKeys = [metadata.messageDedupeKey, metadata.contactSubjectDedupeKey, metadata.dedupeKey]
+    .filter((key): key is string => Boolean(key));
+  for (const key of messageScopedKeys) {
     const reason = refs.get(key);
-    if (reason) return reason;
+    if (reason) return { reason, scope: "message" };
+  }
+  if (metadata.threadDedupeKey) {
+    const reason = refs.get(metadata.threadDedupeKey);
+    if (reason) return { reason, scope: "thread" };
   }
   return null;
 }
@@ -684,13 +906,27 @@ function scanFailure(error: unknown): RevenueScanResult {
       },
     };
   }
+  if (error instanceof MicrosoftReauthRequiredError) {
+    return {
+      ok: false,
+      status: 409,
+      body: { error: "microsoft_reconnect_required", message: error.message, reconnectRequired: true },
+    };
+  }
+  if (error instanceof MicrosoftGraphError) {
+    return {
+      ok: false,
+      status: error.details.status || 502,
+      body: { error: "microsoft_scan_failed", message: error.message, details: error.details },
+    };
+  }
 
   return {
     ok: false,
     status: 500,
     body: {
-      error: "gmail_scan_failed",
-      message: error instanceof Error ? error.message : "Gmail scan failed.",
+      error: "revenue_scan_failed",
+      message: error instanceof Error ? error.message : "Revenue scan failed.",
     },
   };
 }
@@ -710,7 +946,7 @@ export async function scanRevenueOpportunities(input: {
     return { ok: false, status: 404, body: { error: "Revenue Operator readiness was not found." } };
   }
   if (readiness.status === "missing_connector") {
-    return { ok: false, status: 409, body: { status: "missing_gmail", message: "Connect Gmail to scan for revenue opportunities.", readiness } };
+    return { ok: false, status: 409, body: { status: "missing_connector", message: "Connect Gmail or Microsoft 365 to scan for revenue opportunities.", readiness } };
   }
   if (readiness.status === "upgrade_required") {
     return { ok: false, status: 402, body: { status: "upgrade_required", message: readiness.reason, readiness } };
@@ -719,52 +955,97 @@ export async function scanRevenueOpportunities(input: {
     return { ok: false, status: 409, body: { status: readiness.status, message: readiness.reason, readiness } };
   }
 
-  const credentialRes = await supabase
-    .from("os_connector_credentials")
-    .select("id,workspace_id,connector_key,provider_account_id,provider_email,encrypted_access_token,encrypted_refresh_token,token_expires_at,scopes,status,metadata")
-    .eq("workspace_id", workspaceId)
-    .eq("connector_key", "gmail")
-    .maybeSingle();
-
-  if (credentialRes.error) {
-    return { ok: false, status: 500, body: { error: credentialRes.error.message } };
-  }
-  if (!credentialRes.data) {
-    return { ok: false, status: 409, body: { status: "missing_gmail", message: "Connect Gmail to scan for revenue opportunities." } };
+  const emailConnector = resolveRevenueEmailConnector(readiness);
+  if (!emailConnector) {
+    return { ok: false, status: 409, body: { status: "missing_connector", message: "Connect Gmail or Microsoft 365 to scan for revenue opportunities.", readiness } };
   }
 
-  const credential = credentialRes.data as StoredConnectorCredential;
-  const missingSendScopes = getMissingGmailScopes(credential.scopes, GMAIL_SEND_REQUIRED_SCOPES);
-  if (missingSendScopes.length > 0) {
-    return {
-      ok: false,
-      status: 409,
-      body: {
-        status: "requires_gmail_send_scope",
-        message: "Reconnect Gmail to enable approval-gated sending.",
-        missingScopes: missingSendScopes,
-        reconnectRequired: true,
-      },
-    };
-  }
+  let gmailCredential: StoredConnectorCredential | null = null;
+  let microsoftCredential: StoredMicrosoftCredential | null = null;
 
-  const missingScanScopes = getMissingGmailScopes(credential.scopes, GMAIL_SCAN_REQUIRED_SCOPES);
-  if (missingScanScopes.length > 0) {
-    return {
-      ok: false,
-      status: 409,
-      body: {
-        status: "requires_gmail_read_scope",
-        message: "Reconnect Gmail to enable opportunity scanning.",
-        missingScopes: missingScanScopes,
-        reconnectRequired: true,
-      },
-    };
+  if (emailConnector === "gmail") {
+    const credentialRes = await supabase
+      .from("os_connector_credentials")
+      .select("id,workspace_id,connector_key,provider_account_id,provider_email,encrypted_access_token,encrypted_refresh_token,token_expires_at,scopes,status,metadata")
+      .eq("workspace_id", workspaceId)
+      .eq("connector_key", "gmail")
+      .maybeSingle();
+
+    if (credentialRes.error) {
+      return { ok: false, status: 500, body: { error: credentialRes.error.message } };
+    }
+    if (!credentialRes.data) {
+      return { ok: false, status: 409, body: { status: "missing_gmail", message: "Connect Gmail to scan for revenue opportunities." } };
+    }
+
+    gmailCredential = credentialRes.data as StoredConnectorCredential;
+    const missingSendScopes = getMissingGmailScopes(gmailCredential.scopes, GMAIL_SEND_REQUIRED_SCOPES);
+    if (missingSendScopes.length > 0) {
+      return {
+        ok: false,
+        status: 409,
+        body: {
+          status: "requires_gmail_send_scope",
+          message: "Reconnect Gmail to enable approval-gated sending.",
+          missingScopes: missingSendScopes,
+          reconnectRequired: true,
+        },
+      };
+    }
+
+    const missingScanScopes = getMissingGmailScopes(gmailCredential.scopes, GMAIL_SCAN_REQUIRED_SCOPES);
+    if (missingScanScopes.length > 0) {
+      return {
+        ok: false,
+        status: 409,
+        body: {
+          status: "requires_gmail_read_scope",
+          message: "Reconnect Gmail to enable opportunity scanning.",
+          missingScopes: missingScanScopes,
+          reconnectRequired: true,
+        },
+      };
+    }
+  } else {
+    microsoftCredential = await getMicrosoftCredential(workspaceId, supabase);
+    if (!microsoftCredential || microsoftCredential.status === "needs_attention") {
+      return { ok: false, status: 409, body: { status: "missing_microsoft", message: "Connect Microsoft 365 to scan for revenue opportunities." } };
+    }
+    const missingSendScopes = getMissingMicrosoftScopes(microsoftCredential.scopes, MICROSOFT_SEND_REQUIRED_SCOPES);
+    if (missingSendScopes.length > 0) {
+      return {
+        ok: false,
+        status: 409,
+        body: {
+          status: "requires_microsoft_send_scope",
+          message: "Reconnect Microsoft 365 to enable approval-gated sending.",
+          missingScopes: missingSendScopes,
+          reconnectRequired: true,
+        },
+      };
+    }
+    const missingScanScopes = getMissingMicrosoftScopes(microsoftCredential.scopes, MICROSOFT_READ_REQUIRED_SCOPES);
+    if (missingScanScopes.length > 0) {
+      return {
+        ok: false,
+        status: 409,
+        body: {
+          status: "requires_microsoft_read_scope",
+          message: "Reconnect Microsoft 365 to enable opportunity scanning.",
+          missingScopes: missingScanScopes,
+          reconnectRequired: true,
+        },
+      };
+    }
   }
 
   try {
-    const accessToken = await resolveAccessTokenFromCredential(credential);
-    const providerEmail = normalizeEmail(credential.provider_email);
+    const accessToken = emailConnector === "gmail"
+      ? await resolveAccessTokenFromCredential(gmailCredential as StoredConnectorCredential)
+      : await resolveMicrosoftAccessToken({ workspaceId, credential: microsoftCredential as StoredMicrosoftCredential, supabase });
+    const providerEmail = emailConnector === "gmail"
+      ? normalizeEmail((gmailCredential as StoredConnectorCredential).provider_email)
+      : normalizeEmail((microsoftCredential as StoredMicrosoftCredential).provider_email);
     const connectorTruth = await getConnectorTruth({ workspaceId, supabase });
     const hubspotConnected = connectorTruth.some((connector) =>
       connector.connectorKey === "hubspot"
@@ -773,7 +1054,9 @@ export async function scanRevenueOpportunities(input: {
       && connector.nangoConnectionId
     );
     const maxResults = Math.min(Math.max(Number(input.maxResults) || 15, 1), 20);
-    const listed = await listRecentMessages(accessToken, { maxResults, query: "newer_than:30d" });
+    const listed = emailConnector === "gmail"
+      ? await listRecentMessages(accessToken, { maxResults, query: "newer_than:30d" })
+      : (await listRecentMicrosoftMessages(accessToken, maxResults)).map((message) => ({ id: message.id }));
     const handled = await loadRevenueDedupeState({ supabase, workspaceId });
     const companyGraphContext = await loadRevenueCompanyGraphContext({ supabase, workspaceId });
     const workspacePolicy = await loadWorkspacePolicySettings({ supabase, workspaceId });
@@ -782,51 +1065,181 @@ export async function scanRevenueOpportunities(input: {
     const signalCandidates: SignalCandidate[] = [];
 
     for (const item of listed) {
-      const message = await getMessageDetails(accessToken, item.id);
-      const dedupe = buildDedupeMetadata(message);
-      const duplicateReason = findDuplicateReason(dedupe, handled);
-      if (duplicateReason) {
-        skipped.push({ messageId: message.id || item.id, subject: message.subject, from: message.from, reason: duplicateReason, dedupeKey: dedupe.dedupeKey });
+      const message = emailConnector === "gmail"
+        ? await getMessageDetails(accessToken, item.id)
+        : fromMicrosoftMessage(await getMicrosoftMessage(accessToken, item.id));
+      const dedupe = buildDedupeMetadata(message, emailConnector);
+      const duplicate = findDuplicateReason(dedupe, handled);
+      const isReactivation = Boolean(duplicate && duplicate.scope === "thread");
+      if (duplicate && duplicate.scope === "message") {
+        skipped.push({ messageId: message.id || item.id, subject: message.subject, from: message.from, reason: duplicate.reason, dedupeKey: dedupe.dedupeKey });
         continue;
       }
+
       const detected = detectOpportunity(message, providerEmail);
-      if ("skipped" in detected) {
-        skipped.push({ messageId: message.id || item.id, subject: message.subject, from: message.from, reason: detected.skipped });
-      } else {
-        const signalEvent = normalizeEmailToSignalEvent({
-          workspaceId,
-          message,
-          rawRef: `gmail:${message.id}`,
-          metadata: {
-            dedupeKey: dedupe.dedupeKey,
-            sourceMode,
-          },
-        });
-        const signalCandidate = routeSignalCandidate(classifySignalCandidateLightweight(signalEvent));
-        signalCandidates.push(signalCandidate);
-        opportunities.push(detected);
+      if (detected.kind === "skipped") {
+        skipped.push({ messageId: message.id || item.id, subject: message.subject, from: message.from, reason: detected.reason });
+        continue;
       }
+
+      const text = opportunityText(message);
+      if (detected.kind === "low_signal") {
+        const score = scoreOpportunitySignal({ directSignals: [], requestSignals: [], contextSignals: [], matchedKeywords: detected.matchedKeywords, fromEmail: message.fromEmail, text });
+        opportunities.push({
+          message,
+          matchedKeywords: detected.matchedKeywords,
+          classification: "revenue_opportunity",
+          confidence: "low",
+          priorityScore: score.score,
+          priorityReasons: ["Message matched limited product-context keywords only, with no clear buying signal or request.", ...score.reasons],
+          directSignals: [],
+          requestSignals: [],
+          contextSignals: [],
+          isReactivation,
+          reactivationReason: isReactivation ? duplicate?.reason : undefined,
+        });
+        continue;
+      }
+
+      const score = scoreOpportunitySignal({
+        directSignals: detected.directSignals,
+        requestSignals: detected.requestSignals,
+        contextSignals: detected.contextSignals,
+        matchedKeywords: detected.matchedKeywords,
+        fromEmail: message.fromEmail,
+        text,
+      });
+      const opportunity: Opportunity = {
+        message,
+        matchedKeywords: detected.matchedKeywords,
+        classification: "revenue_opportunity",
+        confidence: score.confidence,
+        priorityScore: score.score,
+        priorityReasons: score.reasons,
+        directSignals: detected.directSignals,
+        requestSignals: detected.requestSignals,
+        contextSignals: detected.contextSignals,
+        isReactivation,
+        reactivationReason: isReactivation ? duplicate?.reason : undefined,
+      };
+
+      const signalEvent = normalizeEmailToSignalEvent({
+        workspaceId,
+        message,
+        rawRef: `${emailConnector}:${message.id}`,
+        metadata: {
+          dedupeKey: dedupe.dedupeKey,
+          sourceMode,
+        },
+      });
+      const signalCandidate = routeSignalCandidate(classifySignalCandidateLightweight(signalEvent));
+      signalCandidates.push(signalCandidate);
+      opportunities.push(opportunity);
     }
 
     const created: NonNullable<RevenueScanSummary["opportunities"]> = [];
+    const deferred: NonNullable<RevenueScanSummary["deferred"]> = [];
 
     for (const opportunity of opportunities) {
       const runId = operatorRuntimeId("oprun-revenue-scan");
-      const dedupe = buildDedupeMetadata(opportunity.message);
-      const duplicateReason = findDuplicateReason(dedupe, handled);
-      if (duplicateReason) {
-        skipped.push({ messageId: opportunity.message.id, subject: opportunity.message.subject, from: opportunity.message.from, reason: duplicateReason, dedupeKey: dedupe.dedupeKey });
+      const dedupe = buildDedupeMetadata(opportunity.message, emailConnector);
+      // Re-check duplicate state at this point in case an earlier iteration in
+      // this same scan already handled the same contact/subject pair.
+      const duplicate = findDuplicateReason(dedupe, handled);
+      if (duplicate && duplicate.scope === "message") {
+        skipped.push({ messageId: opportunity.message.id, subject: opportunity.message.subject, from: opportunity.message.from, reason: duplicate.reason, dedupeKey: dedupe.dedupeKey });
         continue;
       }
-      const personalization = await buildPersonalization({ workspaceId, opportunity, hubspotConnected });
-      const deterministicDraft = buildDraftFromOpportunity(opportunity, personalization);
-      const crmPreparation = buildCrmPreparation(opportunity, personalization);
+
+      const { action: nextAction, reason: nextActionReason } = decideNextAction({ confidence: opportunity.confidence, directSignals: opportunity.directSignals });
+
+      if (nextAction === "defer_low_priority") {
+        const completedAt = new Date().toISOString();
+        const deferInput = {
+          source: `${emailConnector}_scan`,
+          sourceMode,
+          gmailMessageId: opportunity.message.id,
+          gmailThreadId: opportunity.message.threadId,
+          dedupeKey: dedupe.dedupeKey,
+          normalizedSubject: dedupe.normalizedSubject,
+          sourceProvider: dedupe.sourceProvider,
+          operatorKey: dedupe.operatorKey,
+          from: opportunity.message.from,
+          fromEmail: opportunity.message.fromEmail,
+          subject: opportunity.message.subject,
+          matchedKeywords: opportunity.matchedKeywords,
+          classification: opportunity.classification,
+          confidence: opportunity.confidence,
+          priorityScore: opportunity.priorityScore,
+          priorityReasons: opportunity.priorityReasons,
+          nextAction,
+          nextActionReason,
+          isReactivation: opportunity.isReactivation,
+        };
+        const runInsert = await supabase.from("os_operator_runs").insert({
+          id: runId,
+          workspace_id: workspaceId,
+          operator_key: "revenue",
+          trigger_type: `${emailConnector}_scan`,
+          status: "completed",
+          input: deferInput,
+          output: { status: "no_action_low_priority", reason: nextActionReason },
+          readiness,
+          risk_level: "low",
+          started_at: completedAt,
+          completed_at: completedAt,
+        });
+        if (runInsert.error) throw new Error(runInsert.error.message);
+        await logOperatorEvent({
+          supabase,
+          workspaceId,
+          runId,
+          eventType: "revenue.scan.no_action",
+          message: `No action taken for message from ${opportunity.message.fromEmail}: ${nextActionReason}`,
+          metadata: deferInput,
+        });
+        const outputInsert = await supabase.from("os_operator_outputs").insert({
+          id: operatorRuntimeId("opout"),
+          workspace_id: workspaceId,
+          run_id: runId,
+          operator_key: "revenue",
+          output_type: "revenue_no_action_summary",
+          title: `No action: ${opportunity.message.fromEmail}`,
+          payload: deferInput,
+          requires_approval: false,
+        });
+        if (outputInsert.error) throw new Error(outputInsert.error.message);
+        deferred.push({
+          messageId: opportunity.message.id,
+          subject: opportunity.message.subject,
+          from: opportunity.message.from,
+          reason: nextActionReason,
+          dedupeKey: dedupe.dedupeKey,
+          runId,
+        });
+        [dedupe.dedupeKey, dedupe.messageDedupeKey, dedupe.threadDedupeKey, dedupe.contactSubjectDedupeKey]
+          .filter((key): key is string => Boolean(key))
+          .forEach((key) => setDedupeReason(handled, key, "already_handled"));
+        continue;
+      }
+
+      const personalization = await buildPersonalization({ workspaceId, message: opportunity.message, hubspotConnected });
+      // A HubSpot contact match is a real relationship signal - boost priority
+      // and record why, without re-deciding a next action that was already
+      // chosen deterministically above.
+      if (personalization.personalizationSource === "hubspot") {
+        opportunity.priorityScore += 1;
+        opportunity.priorityReasons = [...opportunity.priorityReasons, "Contact already exists in HubSpot."];
+      }
+      const deterministicDraft = buildDraftFromOpportunity(opportunity, personalization, nextAction);
+      const crmPreparation = buildCrmPreparation(opportunity, personalization, emailConnector, nextAction);
       crmPreparation.dedupeKey = dedupe.dedupeKey;
       crmPreparation.normalizedSubject = dedupe.normalizedSubject;
       const aiDraft = await draftRevenueFollowUpWithAI({
         opportunity,
         deterministicDraft,
         context: companyGraphContext,
+        nextAction,
       });
       const draft = {
         ...aiDraft.draft,
@@ -836,11 +1249,12 @@ export async function scanRevenueOpportunities(input: {
       crmPreparation.suggestedNextStep = aiDraft.suggestedAction || crmPreparation.suggestedNextStep;
       const preparedHubSpotActions = buildPreparedHubSpotActions({ crmPreparation, hubspotConnected });
       const crmPreparationStatus = hubspotConnected ? "hubspot_execution_enabled" : "hubspot_not_connected";
+      const sendActionKey = emailConnector === "microsoft" ? "send_microsoft_follow_up" : "send_gmail_follow_up";
       const preparedActions = hubspotConnected
-        ? ["send_gmail_follow_up", "update_hubspot_contact", "add_hubspot_note", "create_hubspot_follow_up_task"]
-        : ["send_gmail_follow_up"];
+        ? [sendActionKey, "update_hubspot_contact", "add_hubspot_note", "create_hubspot_follow_up_task"]
+        : [sendActionKey];
       const runInput = {
-        source: "gmail_scan",
+        source: `${emailConnector}_scan`,
         sourceMode,
         gmailMessageId: opportunity.message.id,
         gmailThreadId: opportunity.message.threadId,
@@ -855,6 +1269,12 @@ export async function scanRevenueOpportunities(input: {
         matchedKeywords: opportunity.matchedKeywords,
         classification: opportunity.classification,
         confidence: opportunity.confidence,
+        priorityScore: opportunity.priorityScore,
+        priorityReasons: opportunity.priorityReasons,
+        nextAction,
+        nextActionReason,
+        isReactivation: opportunity.isReactivation,
+        reactivationReason: opportunity.reactivationReason ?? null,
         personalization,
         crmPreparationStatus,
         crmPreparation,
@@ -882,6 +1302,11 @@ export async function scanRevenueOpportunities(input: {
         subject: opportunity.message.subject,
         classification: opportunity.classification,
         confidence: opportunity.confidence,
+        priorityScore: opportunity.priorityScore,
+        priorityReasons: opportunity.priorityReasons,
+        nextAction,
+        nextActionReason,
+        isReactivation: opportunity.isReactivation,
         matchedKeywords: opportunity.matchedKeywords,
         contactName: personalization.contactName,
         contactEmail: personalization.contactEmail,
@@ -904,7 +1329,7 @@ export async function scanRevenueOpportunities(input: {
         id: runId,
         workspace_id: workspaceId,
         operator_key: "revenue",
-        trigger_type: "gmail_scan",
+        trigger_type: `${emailConnector}_scan`,
         status: "running",
         input: runInput,
         output: {},
@@ -918,12 +1343,30 @@ export async function scanRevenueOpportunities(input: {
         supabase,
         workspaceId,
         runId,
-        eventType: "gmail.scan.opportunity_detected",
-        message: `Detected revenue opportunity from ${opportunity.message.fromEmail}.`,
+        eventType: opportunity.isReactivation ? "revenue.scan.thread_reactivated" : `${emailConnector}.scan.opportunity_detected`,
+        message: opportunity.isReactivation
+          ? `New reply detected on a previously handled thread from ${opportunity.message.fromEmail}.`
+          : `Detected revenue opportunity from ${opportunity.message.fromEmail}.`,
         metadata: sourceMetadata,
       });
-      await insertStep({ supabase, workspaceId, runId, stepKey: "scan_gmail", title: "Scan recent Gmail messages", output: { messageId: opportunity.message.id } });
+      await insertStep({ supabase, workspaceId, runId, stepKey: "scan_inbox", title: `Scan recent ${emailConnector === "microsoft" ? "Microsoft 365" : "Gmail"} messages`, output: { messageId: opportunity.message.id } });
       await insertStep({ supabase, workspaceId, runId, stepKey: "detect_opportunity", title: "Detect revenue opportunity", output: sourceMetadata });
+      await insertStep({
+        supabase,
+        workspaceId,
+        runId,
+        stepKey: "score_priority",
+        title: "Score confidence and priority",
+        output: { confidence: opportunity.confidence, priorityScore: opportunity.priorityScore, priorityReasons: opportunity.priorityReasons },
+      });
+      await insertStep({
+        supabase,
+        workspaceId,
+        runId,
+        stepKey: "decide_next_action",
+        title: "Decide best next action",
+        output: { nextAction, nextActionReason },
+      });
       await insertStep({
         supabase,
         workspaceId,
@@ -959,32 +1402,53 @@ export async function scanRevenueOpportunities(input: {
       });
       await insertStep({ supabase, workspaceId, runId, stepKey: "prepare_follow_up", title: "Prepare follow-up email", output: draft });
 
-      const approval = await createGmailSendApproval({
-        supabase,
-        workspaceId,
-        runId,
-        to: draft.to,
-        subject: draft.subject,
-        body: draft.body,
-        policyReason: workspacePolicy.customerEmailMode === "draft_only"
-          ? "Customer email policy is draft-only. This email will not be sent automatically."
-          : "External email send requires human approval before Gmail execution.",
-        sourceMetadata,
-        dedupeKey: dedupe.dedupeKey,
-        dedupeMetadata: dedupe,
-        preparedActions,
-        crmPreparation,
-        crmPreparationStatus,
-        preparedHubSpotActions,
-        customerEmailMode: workspacePolicy.customerEmailMode,
-        slackNotificationSettings: workspacePolicy.slack,
-      });
+      const approval = emailConnector === "microsoft"
+        ? await createMicrosoftSendApproval({
+          supabase,
+          workspaceId,
+          runId,
+          to: draft.to,
+          subject: draft.subject,
+          body: draft.body,
+          policyReason: workspacePolicy.customerEmailMode === "draft_only"
+            ? "Customer email policy is draft-only. This email will not be sent automatically."
+            : "External email send requires human approval before Microsoft 365 execution.",
+          sourceMetadata,
+          dedupeKey: dedupe.dedupeKey,
+          dedupeMetadata: dedupe,
+          preparedActions,
+          crmPreparation,
+          crmPreparationStatus,
+          preparedHubSpotActions,
+          customerEmailMode: workspacePolicy.customerEmailMode,
+          slackNotificationSettings: workspacePolicy.slack,
+        })
+        : await createGmailSendApproval({
+          supabase,
+          workspaceId,
+          runId,
+          to: draft.to,
+          subject: draft.subject,
+          body: draft.body,
+          policyReason: workspacePolicy.customerEmailMode === "draft_only"
+            ? "Customer email policy is draft-only. This email will not be sent automatically."
+            : "External email send requires human approval before Gmail execution.",
+          sourceMetadata,
+          dedupeKey: dedupe.dedupeKey,
+          dedupeMetadata: dedupe,
+          preparedActions,
+          crmPreparation,
+          crmPreparationStatus,
+          preparedHubSpotActions,
+          customerEmailMode: workspacePolicy.customerEmailMode,
+          slackNotificationSettings: workspacePolicy.slack,
+        });
 
       await insertStep({ supabase, workspaceId, runId, stepKey: "create_approval", title: "Create approval request", output: { approvalId: approval.approvalId } });
 
       const output = {
-        type: "gmail_follow_up_draft",
-        source: "gmail_scan",
+        type: `${emailConnector}_follow_up_draft`,
+        source: `${emailConnector}_scan`,
         draft,
         approvalId: approval.approvalId,
         opportunity: runInput,
@@ -1010,7 +1474,7 @@ export async function scanRevenueOpportunities(input: {
         workspace_id: workspaceId,
         run_id: runId,
         operator_key: "revenue",
-        output_type: "gmail_follow_up_draft",
+        output_type: `${emailConnector}_follow_up_draft`,
         title: `Follow-up draft for ${opportunity.message.fromEmail}`,
         payload: output,
         requires_approval: true,
@@ -1030,7 +1494,7 @@ export async function scanRevenueOpportunities(input: {
         workspaceId,
         runId,
         eventType: "approval.created",
-        message: `Created Gmail send approval ${approval.approvalId}.`,
+        message: `Created ${emailConnector === "microsoft" ? "Microsoft 365" : "Gmail"} send approval ${approval.approvalId}.`,
         metadata: { approvalId: approval.approvalId, ...dedupe },
       });
       await logOperatorEvent({
@@ -1067,11 +1531,13 @@ export async function scanRevenueOpportunities(input: {
           runId,
           eventType: "revenue_approval_created",
           operatorKey: "revenue",
-          title: `Revenue Operator found a high-intent lead${personalization.firstname ? ` from ${personalization.firstname}` : ""}.`,
+          title: nextAction === "prepare_qualification_question"
+            ? `Revenue Operator found a lead${personalization.firstname ? ` from ${personalization.firstname}` : ""} that needs qualification.`
+            : `Revenue Operator found a high-intent lead${personalization.firstname ? ` from ${personalization.firstname}` : ""}.`,
           summary: aiDraft.detectedSignalSummary,
           confidence: opportunity.confidence,
           risk: "medium",
-          source: "gmail",
+          source: emailConnector,
           actionLabel: hubspotConnected ? "send follow-up email and update HubSpot" : "send follow-up email",
           approvalUrl: `${getAppUrl()}/approvals`,
           metadata: {
@@ -1079,6 +1545,9 @@ export async function scanRevenueOpportunities(input: {
             fromEmail: opportunity.message.fromEmail,
             subject: opportunity.message.subject,
             preparedActions,
+            priorityScore: opportunity.priorityScore,
+            priorityReasons: opportunity.priorityReasons,
+            nextAction,
           },
         });
       } catch (error) {
@@ -1097,6 +1566,10 @@ export async function scanRevenueOpportunities(input: {
         matchedKeywords: opportunity.matchedKeywords,
         classification: opportunity.classification,
         confidence: opportunity.confidence,
+        priorityScore: opportunity.priorityScore,
+        priorityReasons: opportunity.priorityReasons,
+        nextAction,
+        isReactivation: opportunity.isReactivation,
         crmPreparationStatus,
         dedupeKey: dedupe.dedupeKey,
         signalCandidate: signalCandidate ? { ...signalCandidate, status: "approval_created" } : undefined,
@@ -1110,16 +1583,19 @@ export async function scanRevenueOpportunities(input: {
 
     const completedAt = new Date().toISOString();
     const scanSummary = {
-      type: "gmail_scan_summary",
+      type: `${emailConnector}_scan_summary`,
       status: "completed",
       sourceMode,
       monitoringEnabled: true,
       cadence: "daily",
+      emailConnector,
       scanned: listed.length,
       opportunitiesFound: opportunities.length,
       approvalsCreated: created.length,
+      deferredCount: deferred.length,
       skippedCount: skipped.length,
       skipped,
+      deferred,
       routedItemCount: created.length,
       completedAt,
     };
@@ -1128,9 +1604,9 @@ export async function scanRevenueOpportunities(input: {
       id: scanRunId,
       workspace_id: workspaceId,
       operator_key: "revenue",
-      trigger_type: "gmail_scan",
+      trigger_type: `${emailConnector}_scan`,
       status: "completed",
-      input: { source: "gmail_scan_monitor", sourceMode, maxResults },
+      input: { source: `${emailConnector}_scan_monitor`, sourceMode, maxResults },
       output: scanSummary,
       readiness,
       risk_level: "low",
@@ -1143,8 +1619,8 @@ export async function scanRevenueOpportunities(input: {
       supabase,
       workspaceId,
       runId: scanRunId,
-      eventType: "gmail.scan.completed",
-      message: `Revenue Gmail scan completed: ${listed.length} scanned, ${opportunities.length} opportunities, ${created.length} approvals.`,
+      eventType: `${emailConnector}.scan.completed`,
+      message: `Revenue scan completed: ${listed.length} scanned, ${opportunities.length} opportunities, ${created.length} approvals, ${deferred.length} deferred.`,
       metadata: scanSummary,
     });
 
@@ -1153,8 +1629,8 @@ export async function scanRevenueOpportunities(input: {
       workspace_id: workspaceId,
       run_id: scanRunId,
       operator_key: "revenue",
-      output_type: "gmail_scan_summary",
-      title: "Revenue Gmail scan summary",
+      output_type: `${emailConnector}_scan_summary`,
+      title: "Revenue scan summary",
       payload: scanSummary,
       requires_approval: false,
     });
@@ -1183,8 +1659,10 @@ export async function scanRevenueOpportunities(input: {
         scanned: listed.length,
         opportunitiesFound: opportunities.length,
         approvalsCreated: created.length,
+        deferredCount: deferred.length,
         routedItemCount: created.length,
         opportunities: created,
+        deferred,
         skipped,
       },
     };

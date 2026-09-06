@@ -44,6 +44,7 @@ export type HubSpotAttributionInput = {
   gmailThreadId?: string | null;
   contactEmail?: string | null;
   normalizedSubject?: string | null;
+  signalSource?: string | null;
 };
 
 export type PreparedHubSpotActions = {
@@ -67,8 +68,8 @@ export type HubSpotExecutionResult = {
   contact?: Record<string, unknown> | null;
   deal?: Record<string, unknown> | null;
   association?: Record<string, unknown> | null;
-  note?: { status: "prepared_not_enabled"; reason: string };
-  task?: { status: "prepared_not_enabled"; reason: string };
+  note?: { status: "created" | "skipped" | "failed"; id?: string | null; reason?: string; error?: Record<string, unknown> };
+  task?: { status: "created" | "skipped" | "failed"; id?: string | null; reason?: string; error?: Record<string, unknown> };
   error?: Record<string, unknown>;
   attributionWriteStatus?: "standard_only" | "custom_properties_written" | "custom_properties_missing" | "failed";
   propertySetupStatus?: HubSpotPropertySetupStatus;
@@ -243,7 +244,7 @@ function buildCustomAttribution(input: HubSpotAttributionInput | null | undefine
   return {
     inovense_source: "Inovense OS",
     inovense_operator: "revenue",
-    inovense_signal_source: "gmail",
+    inovense_signal_source: input?.signalSource || "gmail",
     inovense_signal_type: "revenue_opportunity",
     inovense_confidence: input?.confidence || "high",
     inovense_original_subject: input?.sourceSubject || "",
@@ -394,7 +395,7 @@ export async function getHubSpotDealPipelineMapping(workspaceId: string): Promis
 function buildDealAttributionDescription(input: HubSpotAttributionInput | null | undefined): string {
   return [
     "Created by Inovense OS Revenue Operator.",
-    "Source channel: Gmail/email.",
+    `Source channel: ${input?.signalSource === "microsoft" ? "Microsoft 365/email" : "Gmail/email"}.`,
     `Source subject: ${input?.sourceSubject || "-"}.`,
     `Classification: ${input?.classification || "revenue_opportunity"}.`,
     `Confidence: ${input?.confidence || "high"}.`,
@@ -604,6 +605,92 @@ export async function createOrUpdateDeal(workspaceId: string, input: HubSpotDeal
   };
 }
 
+/**
+ * Real HubSpot note creation, associated to the contact and (when present)
+ * the deal. Approval/policy gating happens one layer up: this function is
+ * only ever invoked from executeHubSpotRevenueActions, which itself only
+ * runs after a human has approved the outbound email and the approve route
+ * confirmed preparedHubSpotActions.executionStatus === "execution_enabled".
+ * Failures here are non-fatal to the overall approval - they are reported as
+ * a "failed" note status rather than throwing, so a note-creation problem
+ * never blocks the contact/deal write that already succeeded.
+ */
+export async function createHubSpotNote(workspaceId: string, input: {
+  body?: string | null;
+  contactId?: string | null;
+  dealId?: string | null;
+}): Promise<{ status: "created" | "skipped" | "failed"; id?: string | null; reason?: string; error?: Record<string, unknown> }> {
+  const body = cleanString(input.body);
+  if (!body) return { status: "skipped", reason: "missing_note_body" };
+  if (!input.contactId && !input.dealId) return { status: "skipped", reason: "missing_contact_or_deal_id" };
+  try {
+    const created = await hubspotRequest<HubSpotObjectResult>(workspaceId, "POST", "/crm/v3/objects/notes", {
+      properties: {
+        hs_note_body: body,
+        hs_timestamp: String(Date.now()),
+      },
+    });
+    const noteId = cleanString(created.id);
+    if (noteId) {
+      if (input.contactId) {
+        await hubspotRequest(workspaceId, "PUT", `/crm/v4/objects/notes/${noteId}/associations/default/contacts/${input.contactId}`).catch(() => null);
+      }
+      if (input.dealId) {
+        await hubspotRequest(workspaceId, "PUT", `/crm/v4/objects/notes/${noteId}/associations/default/deals/${input.dealId}`).catch(() => null);
+      }
+    }
+    return { status: "created", id: noteId };
+  } catch (error) {
+    return {
+      status: "failed",
+      error: error instanceof HubSpotExecutionError ? error.details : { message: error instanceof Error ? error.message : "HubSpot note creation failed." },
+    };
+  }
+}
+
+/**
+ * Real HubSpot follow-up task creation, associated to the contact. Same
+ * non-fatal failure contract as createHubSpotNote above.
+ */
+export async function createHubSpotTask(workspaceId: string, input: {
+  title?: string | null;
+  body?: string | null;
+  contactId?: string | null;
+  dealId?: string | null;
+  dueAt?: Date | null;
+}): Promise<{ status: "created" | "skipped" | "failed"; id?: string | null; reason?: string; error?: Record<string, unknown> }> {
+  const title = cleanString(input.title);
+  if (!title) return { status: "skipped", reason: "missing_task_title" };
+  if (!input.contactId && !input.dealId) return { status: "skipped", reason: "missing_contact_or_deal_id" };
+  const dueAt = input.dueAt ?? new Date(Date.now() + 24 * 60 * 60 * 1000);
+  try {
+    const created = await hubspotRequest<HubSpotObjectResult>(workspaceId, "POST", "/crm/v3/objects/tasks", {
+      properties: {
+        hs_task_subject: title,
+        hs_task_body: cleanString(input.body) ?? "",
+        hs_task_status: "NOT_STARTED",
+        hs_task_type: "TODO",
+        hs_timestamp: String(dueAt.getTime()),
+      },
+    });
+    const taskId = cleanString(created.id);
+    if (taskId) {
+      if (input.contactId) {
+        await hubspotRequest(workspaceId, "PUT", `/crm/v4/objects/tasks/${taskId}/associations/default/contacts/${input.contactId}`).catch(() => null);
+      }
+      if (input.dealId) {
+        await hubspotRequest(workspaceId, "PUT", `/crm/v4/objects/tasks/${taskId}/associations/default/deals/${input.dealId}`).catch(() => null);
+      }
+    }
+    return { status: "created", id: taskId };
+  } catch (error) {
+    return {
+      status: "failed",
+      error: error instanceof HubSpotExecutionError ? error.details : { message: error instanceof Error ? error.message : "HubSpot task creation failed." },
+    };
+  }
+}
+
 export async function associateContactToDeal(workspaceId: string, contactId: string, dealId: string): Promise<Record<string, unknown>> {
   try {
     await hubspotRequest(workspaceId, "PUT", `/crm/v4/objects/deals/${dealId}/associations/default/contacts/${contactId}`);
@@ -652,6 +739,7 @@ export async function executeHubSpotRevenueActions(workspaceId: string, payload:
     gmailThreadId: cleanString(crm.gmailThreadId),
     contactEmail,
     normalizedSubject: cleanString(crm.normalizedSubject),
+    signalSource: cleanString(crm.source),
   };
   const contact = await createOrUpdateContact(workspaceId, {
     email: contactEmail,
@@ -681,6 +769,18 @@ export async function executeHubSpotRevenueActions(workspaceId: string, payload:
     ? await associateContactToDeal(workspaceId, contactId, dealId)
     : { status: "skipped", reason: "missing_contact_or_deal_id", contactId, dealId };
 
+  const noteResult = await createHubSpotNote(workspaceId, {
+    body: prepared.note?.body ?? null,
+    contactId,
+    dealId,
+  });
+  const taskResult = await createHubSpotTask(workspaceId, {
+    title: prepared.task?.title ?? null,
+    body: attribution.suggestedNextStep,
+    contactId,
+    dealId,
+  });
+
   return {
     status: "completed",
     contactId,
@@ -704,7 +804,7 @@ export async function executeHubSpotRevenueActions(workspaceId: string, payload:
       : propertyReadiness.status === "custom_properties_missing" || propertyReadiness.status === "custom_properties_partial" || contact.attributionWriteStatus === "custom_properties_missing" || deal.attributionWriteStatus === "custom_properties_missing"
         ? "custom_properties_missing"
         : "standard_only",
-    note: { status: "prepared_not_enabled", reason: "HubSpot note execution is intentionally not enabled in v1.6." },
-    task: { status: "prepared_not_enabled", reason: "HubSpot task execution is intentionally not enabled in v1.6." },
+    note: noteResult,
+    task: taskResult,
   };
 }
