@@ -263,8 +263,8 @@ export function buildOperatorProductState(input: {
     state,
     label: STATE_LABEL[state],
     description: describeState({ state, operatorName, nextSetupStep: readiness.nextSetupStep, degraded }),
-    connectedSystems: readiness.connectedRequiredConnectors.map(connectorDisplayName),
-    availableNow: humanizeOperatorActions(readiness.availableActions ?? []),
+    connectedSystems: (readiness.availableConnectorKeys ?? readiness.connectedRequiredConnectors).map(connectorDisplayName),
+    availableNow: readiness.availableBusinessActions ?? humanizeOperatorActions(readiness.availableActions ?? []),
     nextAction: nextActionFor(state, operatorHref(readiness.operatorKey)),
     degraded,
   };

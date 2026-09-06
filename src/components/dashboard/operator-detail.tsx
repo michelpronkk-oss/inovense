@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "r
 import Link from "next/link";
 import { useOS } from "@/lib/os/app-provider";
 import { GLYPHS, OPERATORS } from "@/data/operators";
+import { humanizeOperatorActions } from "@/lib/operators/action-labels";
 
 export type OperatorDetailKey = "revenue" | "client_flow" | "operations";
 
@@ -30,6 +31,7 @@ type OperatorReadiness = {
   missingRequiredConnectors: string[];
   connectedRequiredConnectors: string[];
   availableActions: string[];
+  availableBusinessActions?: string[];
   approvalRequiredActions: string[];
   blockedActions: string[];
   nextSetupStep: string;
@@ -299,9 +301,9 @@ export function OperatorDetail({ operatorKey }: { operatorKey: OperatorDetailKey
           <div className="p-body">
             <div className="od-cap">
               <div className="od-cap-group ok">
-                <div className="gl">Available actions <span className="gc">· run automatically</span></div>
+                <div className="gl">Available now <span className="gc">· from healthy systems</span></div>
                 <div className="od-chiprow">
-                  {(readiness?.availableActions ?? []).map((a) => <span className="od-chip ok" key={a}><span className="cd" />{a}</span>)}
+                  {(readiness?.availableBusinessActions ?? humanizeOperatorActions(readiness?.availableActions ?? [])).map((a) => <span className="od-chip ok" key={a}><span className="cd" />{a}</span>)}
                 </div>
               </div>
               <div className="od-cap-group gate">

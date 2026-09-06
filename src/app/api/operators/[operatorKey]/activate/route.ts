@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { getOperatorDefinition } from "@/lib/operators/registry";
 import { getOperatorActivationState, setOperatorActivationState } from "@/lib/operators/activation";
+import { decideOperatorActivation } from "@/lib/operators/activation-readiness";
+import { getWorkspaceOperatorReadiness } from "@/lib/operators/readiness";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 
 type ActivateBody = {
@@ -40,6 +42,25 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ operatorKe
   const context = await resolveWorkspaceContext({ workspaceId, userId, userEmail, supabase, allowDevFallback: false });
   if (!context.ok) {
     return NextResponse.json({ error: context.error, code: context.code }, { status: context.status });
+  }
+
+  let readiness;
+  try {
+    const workspaceReadiness = await getWorkspaceOperatorReadiness({ workspaceId: context.workspaceId });
+    readiness = workspaceReadiness.find((item) => item.operatorKey === operator.key) ?? null;
+  } catch {
+    return NextResponse.json(
+      { error: "Operator readiness could not be verified.", code: "readiness_unavailable" },
+      { status: 503 },
+    );
+  }
+
+  const activationDecision = decideOperatorActivation(readiness);
+  if (!activationDecision.allowed) {
+    return NextResponse.json(
+      { error: activationDecision.message, code: activationDecision.code },
+      { status: 409 },
+    );
   }
 
   const result = await setOperatorActivationState({

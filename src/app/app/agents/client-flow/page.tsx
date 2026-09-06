@@ -16,6 +16,7 @@ type OperatorReadiness = {
   connectedRequiredConnectors: string[];
   optionalConnectors: string[];
   availableActions: string[];
+  availableBusinessActions?: string[];
   approvalRequiredActions: string[];
   blockedActions: string[];
   nextSetupStep: string;
@@ -526,7 +527,7 @@ export default function ClientFlowOperatorPage() {
           ...(setup?.trelloConnected ? [getConnectorDefinition("trello")?.displayName ?? "Trello"] : []),
           ...(setup?.slackConnected ? [getConnectorDefinition("slack")?.displayName ?? "Slack"] : []),
         ];
-        const availableNow = humanizeOperatorActions(readiness?.availableActions ?? []);
+        const availableNow = readiness?.availableBusinessActions ?? humanizeOperatorActions(readiness?.availableActions ?? []);
         const upgrades = (status?.optionalUpsellConnectors ?? []).filter((c) => c.status === "available");
         const configured = Boolean(readiness?.canRunManual);
         const eligibility = readiness?.executionEligibility;

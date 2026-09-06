@@ -6,6 +6,7 @@ import { getWorkspaceExecutionEligibilityFromWorkspace, type WorkspaceExecutionE
 import type { Workspace } from "@/lib/os/types";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { getOperatorDefinition, OPERATOR_REGISTRY, type ConnectorKey, type OperatorDefinition, type OperatorKey } from "@/lib/operators/registry";
+import { getWorkspaceAvailableBusinessActions, type WorkspaceAvailableBusinessActions } from "@/lib/operators/available-business-actions";
 
 export type OperatorReadinessStatus =
   | "ready"
@@ -23,6 +24,8 @@ export type OperatorReadiness = {
   connectedRequiredConnectors: ConnectorKey[];
   optionalConnectors: ConnectorKey[];
   availableActions: string[];
+  availableBusinessActions: string[];
+  availableConnectorKeys: string[];
   approvalRequiredActions: string[];
   blockedActions: string[];
   nextSetupStep: string;
@@ -118,7 +121,7 @@ function readinessPercent(operator: OperatorDefinition, connectedRequired: Conne
   return connectorScore;
 }
 
-function baseResult(input: {
+type BaseResultInput = {
   operator: OperatorDefinition;
   status: OperatorReadinessStatus;
   connectedRequired: ConnectorKey[];
@@ -128,7 +131,10 @@ function baseResult(input: {
   reason: string;
   nextSetupStep: string;
   canRunManual?: boolean;
-}): OperatorReadiness {
+  availability: WorkspaceAvailableBusinessActions;
+};
+
+function buildBaseResult(input: BaseResultInput): OperatorReadiness {
   const canRunManual = Boolean(input.canRunManual);
   return {
     operatorKey: input.operator.key,
@@ -137,7 +143,9 @@ function baseResult(input: {
     missingRequiredConnectors: input.missingRequired,
     connectedRequiredConnectors: input.connectedRequired,
     optionalConnectors: input.operator.optionalConnectors,
-    availableActions: input.operator.allowedActions,
+    availableActions: canRunManual ? input.availability.actionIds : [],
+    availableBusinessActions: canRunManual ? input.availability.labels : [],
+    availableConnectorKeys: input.availability.relevantConnectorKeys,
     approvalRequiredActions: input.operator.approvalRequiredActions,
     blockedActions: input.operator.blockedActions,
     nextSetupStep: input.nextSetupStep,
@@ -234,6 +242,8 @@ function evaluateOperator(input: {
   // capabilities.ts) every branch below is built on top of - see
   // getWorkspaceCapabilityReadiness's doc comment.
   const capabilityReadiness = getWorkspaceCapabilityReadiness(operator, truth);
+  const availability = getWorkspaceAvailableBusinessActions({ operatorKey: operator.key, connectorTruth: truth });
+  const baseResult = (result: Omit<BaseResultInput, "availability">) => buildBaseResult({ ...result, availability });
 
   if (operator.currentReleaseStatus === "coming_next") {
     return baseResult({

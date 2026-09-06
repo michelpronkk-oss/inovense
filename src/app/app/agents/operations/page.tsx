@@ -13,6 +13,7 @@ type OperatorReadiness = {
   status: string;
   connectedRequiredConnectors: string[];
   availableActions: string[];
+  availableBusinessActions?: string[];
   canRunManual: boolean;
   executionEligibility?: ActivationEligibility;
 };
@@ -364,7 +365,7 @@ export default function OperationsOperatorPage() {
           ...(setup?.trelloConnected ? [getConnectorDefinition("trello")?.displayName ?? "Trello"] : []),
           ...(setup?.slackConnected ? [getConnectorDefinition("slack")?.displayName ?? "Slack"] : []),
         ];
-        const availableNow = humanizeOperatorActions(status?.readiness?.availableActions ?? []);
+        const availableNow = status?.readiness?.availableBusinessActions ?? humanizeOperatorActions(status?.readiness?.availableActions ?? []);
         const upgrades = (status?.optionalUpsellConnectors ?? []).filter((c) => c.status === "available");
         const configured = Boolean(status?.readiness?.canRunManual ?? setup?.canRunManual);
         const eligibility = status?.readiness?.executionEligibility;

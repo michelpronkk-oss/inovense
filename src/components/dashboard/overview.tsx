@@ -238,25 +238,15 @@ function ReadyToDeploy({ overview }: { overview: DashboardOverview }) {
 }
 
 function UnlockMore({ overview }: { overview: DashboardOverview }) {
-  const onboarding = new Set(overview.workspace.onboardingSystems);
-  const missing = overview.connectors
-    .filter((connector) => connector.status === "needs_setup")
-    .sort((a, b) => Number(onboarding.has(b.key)) - Number(onboarding.has(a.key)))
-    .slice(0, 3);
-  if (missing.length === 0) return null;
+  if (!overview.connectors.some((connector) => connector.status === "needs_setup")) return null;
   return (
     <section className="p dashboard-unlock-panel" aria-labelledby="dashboard-unlock-title">
-      <div className="p-head"><h3 id="dashboard-unlock-title">Unlock more</h3><Link className="lnk-open" href="/connectors">All connections</Link></div>
-      <div className="dashboard-unlock-list">
-        {missing.map((connector) => (
-          <div className="dashboard-unlock-row" key={connector.key}>
-            <div>
-              <strong>{connector.name}</strong>
-              <p>{connector.purpose}{connector.usedBy.length > 0 ? ` for ${connector.usedBy.slice(0, 2).join(" and ")}.` : "."}</p>
-            </div>
-            <Link className="btn btn-ghost btn-sm" href={connector.href}>Connect</Link>
-          </div>
-        ))}
+      <div className="dashboard-unlock-copy">
+        <div>
+          <h3 id="dashboard-unlock-title">Unlock more</h3>
+          <p>Connect another system to expand what your operators can understand and do.</p>
+        </div>
+        <Link className="btn btn-ghost btn-sm" href="/connectors?discover=1">Find a connector</Link>
       </div>
     </section>
   );

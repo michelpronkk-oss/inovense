@@ -40,6 +40,24 @@ const HREF_BY_KEY: Record<string, string> = {
   operations: "/agents/operations",
 };
 
+const REAL_OPERATOR_VALUE: Record<string, { owns: string; value: string; enhancement: string }> = {
+  revenue: {
+    owns: "Inbound opportunities and sales follow-up",
+    value: "Keeps qualified interest moving while every external action stays reviewable.",
+    enhancement: "CRM context and approval-gated pipeline updates",
+  },
+  client_flow: {
+    owns: "Client onboarding communication and momentum",
+    value: "Surfaces stalled handoffs and prepares the next client touchpoint.",
+    enhancement: "Project and team context for richer onboarding checks",
+  },
+  operations: {
+    owns: "Internal task flow and delivery follow-through",
+    value: "Finds work that needs attention and prepares controlled task updates.",
+    enhancement: "Team alerts alongside task-board monitoring",
+  },
+};
+
 const LOOP_STEPS = ["Detect", "Prepare", "Approve", "Execute", "Log"];
 
 function Arrow() {
@@ -73,6 +91,7 @@ function AgAvatar({ color, glyph }: { color: string; glyph: string }) {
 }
 
 type CardModel = {
+  key: string;
   op: Operator;
   status: AgentStatus;
   href?: string;
@@ -84,10 +103,11 @@ type CardModel = {
   readyReason?: string;
   /** Real shared product state (product-state.ts) - set only for the three real operators (revenue/client_flow/operations). When present, this is the single source of truth for this card's label/foot/connected-systems/next-action; readyReason/needsSetup above are not used. */
   productState?: ProductState;
+  value?: { owns: string; value: string; enhancement: string };
 };
 
 function AgentCard({ model }: { model: CardModel }) {
-  const { op, status, href, needsSetup, currentTask, connectedTools, outcome, readyReason, productState } = model;
+  const { op, status, href, needsSetup, currentTask, connectedTools, outcome, readyReason, productState, value } = model;
   const dim = status === "upgrade" || status === "coming";
   const running = Boolean(productState && RUNNING_PRODUCT_STATES.has(productState.state));
   const statusLabel = productState
@@ -118,14 +138,14 @@ function AgentCard({ model }: { model: CardModel }) {
     ? <Link className="ag-open" href={productState.nextAction.href}>{productState.nextAction.label} <Arrow /></Link>
     : (status === "configured" || status === "available") && href
     ? <Link className="ag-open" href={href}>Open operator <Arrow /></Link>
-    : <span className="ag-open muted">View details <Arrow /></span>;
+    : <span className="ag-roadmap-state">{status === "upgrade" ? "Available with plan upgrade" : "Planned for a future release"}</span>;
 
   return (
     <div className={`ag-card ${dim ? "dim" : ""}`} style={{ "--c": op.color } as CSSProperties}>
       <div className="ag-card-top">
         <AgAvatar color={op.color} glyph={op.glyph} />
         <div className="ag-id">
-          <h3 className="ag-name">{op.name}</h3>
+          <h3 className="ag-name">{href ? <Link href={href}>{op.name}</Link> : op.name}</h3>
           <div className="ag-tag">{op.tag}</div>
         </div>
         <StatusBadge state={productState?.state ?? status}>{statusLabel}</StatusBadge>
@@ -139,8 +159,13 @@ function AgentCard({ model }: { model: CardModel }) {
 
       {productState && (
         <div className="ag-operating-context">
+          {value && <div><span>Owns</span><strong>{value.owns}</strong></div>}
+          {value && <div><span>Value</span><strong>{value.value}</strong></div>}
           <div><span>Systems</span><strong>{productState.connectedSystems.length ? productState.connectedSystems.join(" · ") : "None yet"}</strong></div>
-          <div><span>Can do now</span><strong>{productState.availableNow.length ? productState.availableNow.join(" · ") : "Connect a system to get started"}</strong></div>
+          {productState.availableNow.length > 0
+            ? <div><span>Can do now</span><strong>{productState.availableNow.join(" · ")}</strong></div>
+            : <div><span>Needs next</span><strong>{productState.nextAction?.label ?? productState.description}</strong></div>}
+          {value && <div><span>{productState.state === "enhanced" ? "Enhanced by" : "Enhance with"}</span><strong>{value.enhancement}</strong></div>}
           {productState.degraded && <div><span>Needs attention</span><strong>Unavailable: {productState.degraded.lostCapabilities.join(", ")}</strong></div>}
         </div>
       )}
@@ -213,6 +238,7 @@ export default function AgentsRegistryPage() {
     const needsSetup = openable && Boolean(r && (r.status === "missing_connector" || r.status === "upgrade_required"));
     const isReadyNow = status === "available" && Boolean(r && (r.status === "ready" || r.status === "draft_only"));
     return {
+      key,
       op,
       status,
       href: HREF_BY_KEY[key],
@@ -222,14 +248,13 @@ export default function AgentsRegistryPage() {
       outcome: configuredAgent ? `${configuredAgent.stats.metricValue} ${configuredAgent.stats.metricLabel}` : undefined,
       readyReason: isReadyNow ? r?.reason : undefined,
       productState,
+      value: REAL_OPERATOR_VALUE[key],
     };
   }), [configuredKeys, productStateByKey, readinessByKey, state.agents]);
 
-  const configured = cards.filter((c) => c.status === "configured");
-  const available = cards.filter((c) => c.status === "available");
+  const current = cards.filter((c) => Boolean(HREF_BY_KEY[c.key]));
   const expanding = cards.filter((c) => c.status === "upgrade" || c.status === "coming");
-  const showConfigured = filter !== "expanding";
-  const showAvailable = filter === "all";
+  const showCurrent = filter !== "expanding";
   const showExpanding = filter !== "active";
 
   return (
@@ -238,7 +263,7 @@ export default function AgentsRegistryPage() {
         <div>
           <span className="ag-head-eyebrow">Your workforce</span>
           <h1 style={{ marginTop: 10 }}>Operators</h1>
-          <div className="os-page-sub">Manage the operators that run your work.</div>
+          <div className="os-page-sub">Deploy focused AI operators that own a business loop, prepare work, and keep consequential actions under approval.</div>
         </div>
         <div className="os-page-actions">
           <Link href="/approvals" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Approval inbox</Link>
@@ -260,34 +285,21 @@ export default function AgentsRegistryPage() {
           ))}
         </div>
         <div className="ag-filter" style={{ marginLeft: "auto" }}>
-          {([["all", "All 15"], ["active", "Configured"], ["expanding", "Expanding"]] as const).map(([k, label]) => (
+          {([["all", "All 15"], ["active", "Current 3"], ["expanding", "Future 12"]] as const).map(([k, label]) => (
             <button key={k} className={filter === k ? "on" : ""} aria-pressed={filter === k} onClick={() => setFilter(k)}>{label}</button>
           ))}
         </div>
       </div>
 
-      {showConfigured && configured.length > 0 && (
+      {showCurrent && current.length > 0 && (
         <section>
           <div className="ag-sec-head">
-            <h2>Your operators</h2>
-            <span className="count"><span className="desktop-only">{configured.length} operator{configured.length === 1 ? "" : "s"} selected for this workspace</span><span className="mobile-only">{configured.length} configured</span></span>
+            <h2>Your available workforce</h2>
+            <span className="count"><span className="desktop-only">Three real operators, each with a focused operating loop.</span><span className="mobile-only">3 real operators</span></span>
             <span className="rule" />
           </div>
           <div className="ag-grid">
-            {configured.map((model) => <AgentCard key={model.op.name} model={model} />)}
-          </div>
-        </section>
-      )}
-
-      {showAvailable && available.length > 0 && (
-        <section>
-          <div className="ag-sec-head">
-            <h2>Available operators</h2>
-            <span className="count">Add when you need them.</span>
-            <span className="rule" />
-          </div>
-          <div className="ag-grid">
-            {available.map((model) => <AgentCard key={model.op.name} model={model} />)}
+            {current.map((model) => <AgentCard key={model.op.name} model={model} />)}
           </div>
         </section>
       )}
@@ -295,8 +307,8 @@ export default function AgentsRegistryPage() {
       {showExpanding && (
         <section>
           <div className="ag-sec-head">
-            <h2>More operators</h2>
-            <span className="count">Additional operators, when you need them.</span>
+            <h2>Expand your workforce</h2>
+            <span className="count">Future roles are shown separately from the operators available today.</span>
             <span className="rule" />
           </div>
           <div className="ag-grid">

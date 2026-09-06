@@ -26,6 +26,11 @@ import { humanizeCapabilities } from "@/lib/operators/capability-labels";
 import { getWorkspaceConnectorImpact } from "@/lib/operators/connector-requirements";
 import { getOperatorDefinition } from "@/lib/operators/registry";
 import { getRealWorkspaceSuggestedWorkflows } from "@/lib/os/workflow-recommendations";
+import {
+  CONNECTOR_DISCOVERY_CATEGORIES,
+  filterConnectorDiscovery,
+  type ConnectorDiscoveryCategory,
+} from "@/lib/connectors/discovery";
 
 type SlackChannel = {
   id: string;
@@ -72,14 +77,24 @@ function normalizeConnectorKey(id: string): string {
 }
 
 function connectorCapabilities(connectorId: string): string[] {
-  if (connectorId === "gmail") return ["Read recent inbox metadata", "Draft customer replies", "Send emails after approval"];
-  if (connectorId === "microsoft") return ["Read recent Outlook mail", "Read Outlook Calendar events", "Send emails after approval", "Create or update calendar events after approval"];
-  if (connectorId === "salesforce") return ["Secure OAuth connection", "Revenue CRM reads and writes are not enabled yet"];
-  if (connectorId === "hubspot") return ["Create or update contacts", "Create or update deals", "Link contacts to deals"];
-  if (connectorId === "slack") return ["Read available channels", "Send internal approval alerts", "Notify the team after important actions"];
-  if (connectorId === "trello") return ["Read boards, lists and cards", "Create cards after approval", "Move cards after approval", "Add comments after approval"];
   const def = getConnectorDefinition(connectorId);
-  return def?.writeActions.length ? def.writeActions : def?.readActions ?? ["Connect account"];
+  return def ? humanizeCapabilities(def.capabilities) : ["Connect account"];
+}
+
+function connectorOperatorNames(connectorId: string): string[] {
+  const realOperatorKeys = new Set(["revenue", "client_flow", "operations"]);
+  return (getConnectorDefinition(connectorId)?.usedByOperators ?? [])
+    .filter((key) => realOperatorKeys.has(key))
+    .map((key) => getOperatorDefinition(key)?.name)
+    .filter((name): name is string => Boolean(name));
+}
+
+function connectorDiscoveryState(connector: Connector): { status: string; action: "Connect" | "Manage" | "Reconnect"; color: string } {
+  const connected = isRealConnectedConnector(connector);
+  const needsReconnect = connector.records.includes("Reconnect required") || (connected && connector.health !== "healthy");
+  if (needsReconnect) return { status: "Needs attention", action: "Reconnect", color: "var(--amber)" };
+  if (connected) return { status: "Connected", action: "Manage", color: "#8df5cf" };
+  return { status: "Not connected", action: "Connect", color: "var(--cyan)" };
 }
 
 function connectorSafetyNotes(connectorId: string): string[] {
@@ -127,6 +142,7 @@ export default function ConnectorsPage() {
 
   const [addOpen, setAddOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [discoveryCategory, setDiscoveryCategory] = useState<ConnectorDiscoveryCategory>("all");
   const [setupConnectorId, setSetupConnectorId] = useState<string | null>(null);
   const [drawerConnectorId, setDrawerConnectorId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("");
@@ -168,7 +184,7 @@ export default function ConnectorsPage() {
     defaultListName: null,
   });
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [operatorReadiness, setOperatorReadiness] = useState<{ operatorKey: string; status: string; canRunManual: boolean; availableActions: string[] }[]>([]);
+  const [operatorReadiness, setOperatorReadiness] = useState<{ operatorKey: string; status: string; canRunManual: boolean; availableActions: string[]; availableBusinessActions?: string[] }[]>([]);
 
   // Real connected = authenticated via native OAuth or managed OAuth integration
   const realConnectedConnectors = useMemo(
@@ -190,12 +206,15 @@ export default function ConnectorsPage() {
   );
 
   const filteredAvailable = useMemo(() => {
-    return availableCatalogConnectors.filter((c) => {
-      const q = search.trim().toLowerCase();
-      const bySearch = !q || c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q);
-      return bySearch;
+    return filterConnectorDiscovery(getAvailableConnectors(), {
+      query: search,
+      category: discoveryCategory,
+      onboardingSystems: state.workspace.onboardingSystems ?? [],
+    }).flatMap((definition) => {
+      const connector = availableCatalogConnectors.find((item) => normalizeConnectorKey(item.id) === definition.connectorKey);
+      return connector ? [connector] : [];
     });
-  }, [availableCatalogConnectors, search]);
+  }, [availableCatalogConnectors, discoveryCategory, search, state.workspace.onboardingSystems]);
 
   // Group the real catalog by its declared category (registry.ts) instead of
   // one flat list, so discovery reflects what each system is actually for.
@@ -348,7 +367,7 @@ export default function ConnectorsPage() {
     const qs = new URLSearchParams({ workspaceId: state.workspace.id, userId: state.currentUser.id, userEmail: state.currentUser.email });
     fetch(`/api/operators/readiness?${qs.toString()}`, { cache: "no-store" })
       .then((res) => res.json().catch(() => ({})))
-      .then((json: { readiness?: { operatorKey: string; status: string; canRunManual: boolean; availableActions: string[] }[] }) => {
+      .then((json: { readiness?: { operatorKey: string; status: string; canRunManual: boolean; availableActions: string[]; availableBusinessActions?: string[] }[] }) => {
         setOperatorReadiness(Array.isArray(json.readiness) ? json.readiness : []);
       })
       .catch(() => undefined);
@@ -359,7 +378,7 @@ export default function ConnectorsPage() {
   const whatAuterimCanDoNow = useMemo(() => {
     const actions = operatorReadiness
       .filter((r) => r.canRunManual && (r.status === "ready" || r.status === "draft_only"))
-      .flatMap((r) => humanizeOperatorActions(r.availableActions ?? []));
+      .flatMap((r) => r.availableBusinessActions ?? humanizeOperatorActions(r.availableActions ?? []));
     return Array.from(new Set(actions));
   }, [operatorReadiness]);
 
@@ -398,6 +417,15 @@ export default function ConnectorsPage() {
     router.replace("/connectors");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get("discover") !== "1") return;
+    setAddOpen(true);
+    setSetupConnectorId(null);
+    setSearch(searchParams.get("q") ?? "");
+    setDiscoveryCategory("all");
+    router.replace("/connectors");
+  }, [router, searchParams]);
 
   useEffect(() => {
     const setup = searchParams.get("setup");
@@ -788,7 +816,7 @@ export default function ConnectorsPage() {
               <PlusIcon size={12} /> Upgrade to add more
             </Link>
           ) : (
-            <button className="btn btn-primary btn-sm" onClick={() => { setAddOpen(true); setSetupConnectorId(null); setSearch(""); }}>
+            <button className="btn btn-primary btn-sm" onClick={() => { setAddOpen(true); setSetupConnectorId(null); setSearch(""); setDiscoveryCategory("all"); }}>
               <PlusIcon size={12} /> Add connector
             </button>
           )}
@@ -919,7 +947,7 @@ export default function ConnectorsPage() {
           <div className="os-empty-state">
             <div style={{ color: "var(--text)", fontSize: 17, fontWeight: 600, marginBottom: 7 }}>Connect your first business tool</div>
             <div style={{ marginBottom: 18 }}>Add the systems Auterim should understand and work with.</div>
-            <button className="btn btn-primary btn-sm" onClick={() => { setAddOpen(true); setSetupConnectorId(null); setSearch(""); }}><PlusIcon size={12} /> Add connector</button>
+            <button className="btn btn-primary btn-sm" onClick={() => { setAddOpen(true); setSetupConnectorId(null); setSearch(""); setDiscoveryCategory("all"); }}><PlusIcon size={12} /> Add connector</button>
           </div>
         ) : (
           <>
@@ -959,21 +987,39 @@ export default function ConnectorsPage() {
             {!setupConnector ? (
               <>
                 <div className="os-modal-head">
-                  <h3>Add connector</h3>
+                  <h3>Find a connector</h3>
                   <button className="appr-btn deny" onClick={() => setAddOpen(false)}>Close</button>
                 </div>
                 <div style={{ color: "var(--text-mute)", fontSize: 12.5, marginBottom: 4 }}>Connect a system only when it gives your operator useful live context.</div>
                 <div style={{ display: "grid", gap: 10 }}>
-                  <input className="os-input" placeholder="Search available integrations..." aria-label="Search available integrations" value={search} onChange={(e) => setSearch(e.target.value)} />
+                  <input className="os-input" placeholder="Search systems..." aria-label="Search connector systems" value={search} onChange={(e) => setSearch(e.target.value)} />
+                  <div className="connector-discovery-filters" aria-label="Connector categories">
+                    {CONNECTOR_DISCOVERY_CATEGORIES.map((category) => (
+                      <button
+                        type="button"
+                        key={category.key}
+                        aria-pressed={discoveryCategory === category.key}
+                        className={discoveryCategory === category.key ? "on" : ""}
+                        onClick={() => setDiscoveryCategory(category.key)}
+                      >
+                        {category.label}
+                      </button>
+                    ))}
+                  </div>
                   {groupedAvailable.map(([category, connectors]) => (
                     <div key={category} style={{ display: "grid", gap: 10 }}>
                       <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.08em", color: "var(--text-mute)", textTransform: "uppercase", marginTop: 8 }}>{CONNECTOR_CATEGORY_LABELS[category] ?? category}</div>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 220px), 1fr))", gap: 10 }}>
-                        {connectors.map((c) => (
+                        {connectors.map((c) => {
+                          const discoveryState = connectorDiscoveryState(c);
+                          return (
                           <button key={c.id} onClick={() => { if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); }} style={{ textAlign: "left", border: "none", cursor: "pointer", padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                               <div className="connector-brand-logo" style={{ width: 28, height: 28, borderRadius: 8 }}>{IntegrationLogos[c.name] ?? <span style={{ color: c.color, fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{c.letter}</span>}</div>
-                              <div style={{ fontSize: 13, fontWeight: 500 }}>{c.name}</div>
+                              <div>
+                                <div style={{ fontSize: 13, fontWeight: 500 }}>{c.name}</div>
+                                <div style={{ fontSize: 10.5, color: "var(--text-mute)", marginTop: 2 }}>{CONNECTOR_CATEGORY_LABELS[getConnectorDefinition(normalizeConnectorKey(c.id))?.category ?? "custom_api"]}</div>
+                              </div>
                             </div>
                             {(c.id === "gmail" || c.id === "microsoft" || getConnectorDefinition(c.id)?.authType === "nango") && (
                               <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--cyan)", marginTop: 2 }}>
@@ -981,17 +1027,26 @@ export default function ConnectorsPage() {
                               </div>
                             )}
                             <div style={{ fontSize: 11.5, color: "var(--text-dim)", marginTop: 6 }}>{c.description}</div>
-                            {!isRealConnectedConnector(c) && (
+                            <div style={{ fontSize: 11, color: "var(--text-mute)", marginTop: 4 }}>
+                              Adds: {connectorCapabilities(normalizeConnectorKey(c.id)).slice(0, 2).join(" · ")}
+                            </div>
+                            {connectorOperatorNames(normalizeConnectorKey(c.id)).length > 0 && (
                               <div style={{ fontSize: 11, color: "var(--text-mute)", marginTop: 4 }}>
-                                Adds: {connectorCapabilities(c.id)[0]}{c.operatorsAllowed.length ? ` · Can improve: ${shortOperatorLabel(c.operatorsAllowed[0])}` : ""}
+                                Useful for: {connectorOperatorNames(normalizeConnectorKey(c.id)).join(" · ")}
                               </div>
                             )}
-                            <div style={{ marginTop: 10, color: isRealConnectedConnector(c) ? "#8df5cf" : c.records.includes("Reconnect required") ? "var(--amber)" : "var(--cyan)", fontSize: 11.5, fontWeight: 600 }}>{isRealConnectedConnector(c) ? "Connected" : c.records.includes("Reconnect required") ? "Reconnect" : "Connect"}</div>
+                            <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, color: discoveryState.color, fontSize: 11.5, fontWeight: 600 }}>
+                              <span>{discoveryState.status}</span><span>{discoveryState.action} →</span>
+                            </div>
                           </button>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   ))}
+                  {groupedAvailable.length === 0 && (
+                    <div className="os-empty-state" style={{ padding: "24px 16px" }}>No live connectors match this search.</div>
+                  )}
                   <div style={{ paddingTop: 12, borderTop: "1px solid var(--line)", color: "var(--text-mute)", fontSize: 11.5 }}>More integrations are planned.</div>
                 </div>
               </>
@@ -1389,7 +1444,7 @@ function ConnectorSetupView({
               <TagList title="Write access" items={connector.writeScopes.length ? connector.writeScopes : ["None"]} />
               <TagList title="Approval required" items={connector.approvalRequiredFor.length ? connector.approvalRequiredFor : ["None"]} />
               <TagList title="Blocked actions" items={connector.blockedActions.length ? connector.blockedActions : ["None"]} />
-              <TagList title="Raw capabilities" items={def?.capabilities ?? ["Not listed"]} />
+              <TagList title="Capabilities" items={humanizeCapabilities(def?.capabilities ?? [])} />
               <TagList title="Recent activity" items={connector.recentSyncEvents.length ? connector.recentSyncEvents : ["No recent activity recorded"]} />
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8 }}>

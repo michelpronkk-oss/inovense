@@ -17,6 +17,7 @@ type OperatorReadiness = {
   connectedRequiredConnectors: string[];
   optionalConnectors: string[];
   availableActions: string[];
+  availableBusinessActions?: string[];
   approvalRequiredActions: string[];
   blockedActions: string[];
   nextSetupStep: string;
@@ -392,7 +393,7 @@ export default function RevenueOperatorPage() {
             ...(revenueReadiness?.connectedRequiredConnectors ?? []).map((key) => getConnectorDefinition(key)?.displayName ?? key),
             ...(revenueStatus?.hubspot?.connected ? ["HubSpot"] : []),
           ];
-          const availableNow = humanizeOperatorActions(revenueReadiness?.availableActions ?? []);
+          const availableNow = revenueReadiness?.availableBusinessActions ?? humanizeOperatorActions(revenueReadiness?.availableActions ?? []);
           const upgrades = (revenueStatus?.capabilityReadiness?.optionalUpsellConnectors ?? []).filter((c) => c.status === "available");
           const configured = Boolean(revenueReadiness?.canRunManual);
           const eligibility = revenueReadiness?.executionEligibility;
@@ -547,7 +548,7 @@ export default function RevenueOperatorPage() {
             <div style={{ fontSize: 12.5, color: "var(--text-dim)" }}>{revenueStatusMessage}</div>
             <TagList title="Connected required connectors" items={revenueReadiness?.connectedRequiredConnectors ?? []} empty="None" />
             <TagList title="Missing required connectors" items={revenueReadiness?.missingRequiredConnectors ?? []} empty="None" />
-            <TagList title="Available actions" items={revenueReadiness?.availableActions ?? []} empty="None" />
+            <TagList title="Available now" items={revenueReadiness?.availableBusinessActions ?? humanizeOperatorActions(revenueReadiness?.availableActions ?? [])} empty="None" />
             <TagList title="Approval required actions" items={revenueReadiness?.approvalRequiredActions ?? []} empty="None" />
             <TagList title="Blocked actions" items={revenueReadiness?.blockedActions ?? []} empty="None" />
           </div>

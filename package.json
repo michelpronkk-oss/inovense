@@ -25,6 +25,7 @@
     "test:connector-impact": "node tests/connector-impact-smoke.mjs",
     "test:workflow-recommendations": "node tests/workflow-recommendations-real-smoke.mjs",
     "test:dashboard-lifecycle": "node tests/dashboard-lifecycle-smoke.mjs",
+    "test:product-truth-discovery": "node tests/product-truth-discovery-smoke.mjs",
     "trigger:dev": "npx trigger.dev@latest dev",
     "trigger:deploy": "npx trigger.dev@latest deploy"
   },

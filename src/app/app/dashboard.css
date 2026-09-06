@@ -1205,6 +1205,8 @@ select.os-input option {
 .ag-badge svg { width: 11px; height: 11px; }
 .ag-id { min-width: 0; flex: 1; }
 .ag-name { font-size: 15.5px; font-weight: 500; letter-spacing: -0.015em; }
+.ag-name a { color: inherit; text-decoration: none; }
+.ag-name a:hover { color: var(--cyan); }
 .ag-tag {
   font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--text-mute); margin-top: 3px;
@@ -1247,6 +1249,7 @@ select.os-input option {
   font-size: 12.5px; font-weight: 500; color: var(--cyan); text-decoration: none;
 }
 .ag-open.muted { color: var(--text-mute); cursor: default; }
+.ag-roadmap-state { color: var(--text-faint); font-size: 11.5px; line-height: 1.4; text-align: right; }
 .ag-open svg { transition: transform .15s ease; }
 .ag-card:hover .ag-open svg { transform: translateX(2px); }
 @media (max-width: 1180px) { .ag-grid { grid-template-columns: repeat(2, 1fr); } }
@@ -1632,6 +1635,10 @@ select.os-input option {
 .connector-list-row { color: inherit; }
 .connector-list-row:hover { background: rgba(255,255,255,.025) !important; }
 .connector-list-copy { min-width: 0; }
+.connector-discovery-filters { display: flex; flex-wrap: wrap; gap: 7px; }
+.connector-discovery-filters button { min-height: 32px; padding: 7px 11px; border: 1px solid var(--line-2); border-radius: 999px; background: transparent; color: var(--text-mute); font: 500 11.5px var(--font-sans); cursor: pointer; }
+.connector-discovery-filters button:hover { color: var(--text); border-color: rgba(255,255,255,.16); }
+.connector-discovery-filters button.on { color: var(--cyan); border-color: rgba(77,232,225,.28); background: var(--cyan-softer); }
 
 /* 1024px landscape has enough room for a calm compact rail. */
 @media (min-width: 1024px) and (max-width: 1180px) {
@@ -2508,6 +2515,11 @@ select.os-input option {
 .os-root .dashboard-capabilities li:nth-child(odd) { margin-right: 16px; }
 .os-root .dashboard-capabilities li span { color: var(--green); font-size: 12px; }
 .os-root .dashboard-compact-empty { padding: 24px 18px; color: var(--text-mute); font-size: 12.5px; }
+.os-root .dashboard-unlock-copy { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 18px; }
+.os-root .dashboard-unlock-copy > div { display: grid; gap: 5px; }
+.os-root .dashboard-unlock-copy h3 { margin: 0; font-size: 14px; font-weight: 620; }
+.os-root .dashboard-unlock-copy p { margin: 0; max-width: 52ch; color: var(--text-mute); font-size: 12.5px; line-height: 1.5; }
+.os-root .dashboard-unlock-copy .btn { flex: none; }
 .os-root :is(.dashboard-ready-list, .dashboard-unlock-list, .dashboard-attention-list) { display: grid; padding: 0 16px; }
 .os-root :is(.dashboard-ready-row, .dashboard-unlock-row, .dashboard-attention-row) { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-width: 0; padding: 14px 2px; border-bottom: 1px solid var(--line); }
 .os-root :is(.dashboard-ready-row, .dashboard-unlock-row, .dashboard-attention-row):last-child { border-bottom: 0; }
@@ -2548,6 +2560,8 @@ select.os-input option {
 
 @media (max-width: 359px) {
   .os-root .dashboard-readiness-actions { grid-template-columns: 1fr; }
+  .os-root .dashboard-unlock-copy { align-items: stretch; flex-direction: column; }
+  .os-root .dashboard-unlock-copy .btn { width: 100%; }
   .os-root :is(.dashboard-ready-row, .dashboard-unlock-row, .dashboard-attention-row) { flex-direction: column; }
   .os-root :is(.dashboard-ready-row, .dashboard-unlock-row, .dashboard-attention-row) .btn { width: 100%; }
 }
