@@ -1639,6 +1639,22 @@ select.os-input option {
 .connector-discovery-filters button { min-height: 32px; padding: 7px 11px; border: 1px solid var(--line-2); border-radius: 999px; background: transparent; color: var(--text-mute); font: 500 11.5px var(--font-sans); cursor: pointer; }
 .connector-discovery-filters button:hover { color: var(--text); border-color: rgba(255,255,255,.16); }
 .connector-discovery-filters button.on { color: var(--cyan); border-color: rgba(77,232,225,.28); background: var(--cyan-softer); }
+.connector-finder-modal { padding: 18px; }
+.connector-finder-modal .os-modal-head { margin-bottom: 6px; }
+.connector-finder-intro { color: var(--text-mute); font-size: 12.5px; line-height: 1.45; }
+.connector-finder-body { display: grid; gap: 10px; margin-top: 14px; }
+.connector-finder-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.connector-finder-card { display: grid; gap: 9px; min-width: 0; min-height: 154px; padding: 13px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.022); color: var(--text); text-align: left; cursor: pointer; transition: border-color .15s ease, background .15s ease; }
+.connector-finder-card:hover { border-color: rgba(77,232,225,.32); background: rgba(77,232,225,.045); }
+.connector-finder-card-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.connector-finder-card-head > div:last-child { display: grid; min-width: 0; gap: 2px; }
+.connector-finder-card-head strong { overflow: hidden; font-size: 12.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.connector-finder-card-head span, .connector-finder-card small { color: var(--text-mute); font-size: 10.5px; line-height: 1.35; }
+.connector-finder-card p { margin: 0; color: var(--text-dim); font-size: 11.5px; line-height: 1.45; }
+.connector-finder-card small { display: block; min-height: 28px; }
+.connector-finder-card-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: auto; font-size: 11px; font-weight: 600; }
+@media (max-width: 700px) { .connector-finder-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .connector-finder-modal { padding: 14px; } .connector-finder-grid { grid-template-columns: 1fr; } .connector-finder-card { min-height: 0; } }
 
 /* 1024px landscape has enough room for a calm compact rail. */
 @media (min-width: 1024px) and (max-width: 1180px) {

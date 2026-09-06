@@ -17,7 +17,7 @@ import {
   getConnectorDefinition,
 } from "@/lib/connectors/registry";
 import { getAvailableConnectors } from "@/lib/connectors/capabilities";
-import { CONNECTOR_CATEGORY_LABELS, type ConnectorCategory } from "@/lib/connectors/registry";
+import { CONNECTOR_CATEGORY_LABELS } from "@/lib/connectors/registry";
 import { connectorDefinitionToSeedConnector } from "@/lib/os/seed";
 import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-grid";
 import { getUnconnectedOnboardingSystems, unlockMessageForConnector } from "@/lib/operators/unlock-copy";
@@ -215,19 +215,6 @@ export default function ConnectorsPage() {
       return connector ? [connector] : [];
     });
   }, [availableCatalogConnectors, discoveryCategory, search, state.workspace.onboardingSystems]);
-
-  // Group the real catalog by its declared category (registry.ts) instead of
-  // one flat list, so discovery reflects what each system is actually for.
-  const groupedAvailable = useMemo(() => {
-    const groups = new Map<ConnectorCategory, Connector[]>();
-    for (const connector of filteredAvailable) {
-      const category = (getConnectorDefinition(normalizeConnectorKey(connector.id))?.category ?? "custom_api") as ConnectorCategory;
-      const list = groups.get(category) ?? [];
-      list.push(connector);
-      groups.set(category, list);
-    }
-    return Array.from(groups.entries());
-  }, [filteredAvailable]);
 
   // What onboarding said this workspace already uses, that is not yet
   // actually connected (real OAuth/Nango truth, never the onboarding
@@ -983,15 +970,15 @@ export default function ConnectorsPage() {
       {/* Add connector modal */}
       {addOpen && (
         <div className="os-modal-backdrop" onClick={() => { setAddOpen(false); setSetupConnectorId(null); }}>
-          <div className="os-modal" style={{ width: "min(980px, 94vw)", maxHeight: "88vh", overflow: "auto" }} onClick={(e) => e.stopPropagation()}>
+          <div className={`os-modal ${!setupConnector ? "connector-finder-modal" : ""}`} style={{ width: "min(760px, 94vw)", maxHeight: "88vh", overflow: "auto" }} onClick={(e) => e.stopPropagation()}>
             {!setupConnector ? (
               <>
                 <div className="os-modal-head">
                   <h3>Find a connector</h3>
                   <button className="appr-btn deny" onClick={() => setAddOpen(false)}>Close</button>
                 </div>
-                <div style={{ color: "var(--text-mute)", fontSize: 12.5, marginBottom: 4 }}>Connect a system only when it gives your operator useful live context.</div>
-                <div style={{ display: "grid", gap: 10 }}>
+                <div className="connector-finder-intro">Choose the systems that give your workforce more context and useful actions.</div>
+                <div className="connector-finder-body">
                   <input className="os-input" placeholder="Search systems..." aria-label="Search connector systems" value={search} onChange={(e) => setSearch(e.target.value)} />
                   <div className="connector-discovery-filters" aria-label="Connector categories">
                     {CONNECTOR_DISCOVERY_CATEGORIES.map((category) => (
@@ -1006,48 +993,29 @@ export default function ConnectorsPage() {
                       </button>
                     ))}
                   </div>
-                  {groupedAvailable.map(([category, connectors]) => (
-                    <div key={category} style={{ display: "grid", gap: 10 }}>
-                      <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.08em", color: "var(--text-mute)", textTransform: "uppercase", marginTop: 8 }}>{CONNECTOR_CATEGORY_LABELS[category] ?? category}</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 220px), 1fr))", gap: 10 }}>
-                        {connectors.map((c) => {
-                          const discoveryState = connectorDiscoveryState(c);
-                          return (
-                          <button key={c.id} onClick={() => { if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); }} style={{ textAlign: "left", border: "none", cursor: "pointer", padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                              <div className="connector-brand-logo" style={{ width: 28, height: 28, borderRadius: 8 }}>{IntegrationLogos[c.name] ?? <span style={{ color: c.color, fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{c.letter}</span>}</div>
-                              <div>
-                                <div style={{ fontSize: 13, fontWeight: 500 }}>{c.name}</div>
-                                <div style={{ fontSize: 10.5, color: "var(--text-mute)", marginTop: 2 }}>{CONNECTOR_CATEGORY_LABELS[getConnectorDefinition(normalizeConnectorKey(c.id))?.category ?? "custom_api"]}</div>
-                              </div>
+                  {filteredAvailable.length > 0 ? (
+                    <div className="connector-finder-grid">
+                      {filteredAvailable.map((c) => {
+                        const connectorKey = normalizeConnectorKey(c.id);
+                        const definition = getConnectorDefinition(connectorKey);
+                        const discoveryState = connectorDiscoveryState(c);
+                        const operators = connectorOperatorNames(connectorKey).map(shortOperatorLabel);
+                        return (
+                          <button className="connector-finder-card" key={c.id} onClick={() => { if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); }}>
+                            <div className="connector-finder-card-head">
+                              <div className="connector-brand-logo" style={{ width: 30, height: 30, borderRadius: 9 }}>{IntegrationLogos[c.name] ?? <span style={{ color: c.color, fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{c.letter}</span>}</div>
+                              <div><strong>{c.name}</strong><span>{CONNECTOR_CATEGORY_LABELS[definition?.category ?? "custom_api"]}</span></div>
                             </div>
-                            {(c.id === "gmail" || c.id === "microsoft" || getConnectorDefinition(c.id)?.authType === "nango") && (
-                              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--cyan)", marginTop: 2 }}>
-                                {c.id === "gmail" || c.id === "microsoft" ? "Secure OAuth" : "Managed OAuth"}
-                              </div>
-                            )}
-                            <div style={{ fontSize: 11.5, color: "var(--text-dim)", marginTop: 6 }}>{c.description}</div>
-                            <div style={{ fontSize: 11, color: "var(--text-mute)", marginTop: 4 }}>
-                              Adds: {connectorCapabilities(normalizeConnectorKey(c.id)).slice(0, 2).join(" · ")}
-                            </div>
-                            {connectorOperatorNames(normalizeConnectorKey(c.id)).length > 0 && (
-                              <div style={{ fontSize: 11, color: "var(--text-mute)", marginTop: 4 }}>
-                                Useful for: {connectorOperatorNames(normalizeConnectorKey(c.id)).join(" · ")}
-                              </div>
-                            )}
-                            <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, color: discoveryState.color, fontSize: 11.5, fontWeight: 600 }}>
-                              <span>{discoveryState.status}</span><span>{discoveryState.action} →</span>
-                            </div>
+                            <p>{connectorCapabilities(connectorKey)[0] ?? "Useful workspace context"}</p>
+                            {operators.length > 0 && <small>For {operators.join(" · ")}</small>}
+                            <div className="connector-finder-card-foot" style={{ color: discoveryState.color }}><span>{discoveryState.status}</span><span>{discoveryState.action} →</span></div>
                           </button>
-                          );
-                        })}
-                      </div>
+                        );
+                      })}
                     </div>
-                  ))}
-                  {groupedAvailable.length === 0 && (
+                  ) : (
                     <div className="os-empty-state" style={{ padding: "24px 16px" }}>No live connectors match this search.</div>
                   )}
-                  <div style={{ paddingTop: 12, borderTop: "1px solid var(--line)", color: "var(--text-mute)", fontSize: 11.5 }}>More integrations are planned.</div>
                 </div>
               </>
             ) : (
