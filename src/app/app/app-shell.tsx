@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { useOS } from "@/lib/os/app-provider";
 import { OSMobileNav, OSSidebar } from "@/components/dashboard/sidebar";
 import { OSTopbar } from "@/components/dashboard/topbar";
+import { FeedbackDialog } from "@/components/dashboard/feedback-dialog";
+import { SupportDialog } from "@/components/dashboard/support-dialog";
 import { trialDaysRemaining } from "@/lib/os/plans";
 import { getEntitlements } from "@/lib/os/entitlements";
 import { appHref } from "@/lib/urls";
@@ -130,6 +132,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
         <OSMobileNav />
+        <FeedbackDialog />
+        <SupportDialog />
       </div>
   );
 }

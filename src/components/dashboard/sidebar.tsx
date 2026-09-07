@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { OSModal } from "@/components/dashboard/modal";
-import { FeedbackDialog, openFeedback } from "@/components/dashboard/feedback-dialog";
-import { SupportDialog, openSupport } from "@/components/dashboard/support-dialog";
+import { openFeedback } from "@/components/dashboard/feedback-dialog";
+import { openSupport } from "@/components/dashboard/support-dialog";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -12,7 +12,7 @@ import { APP_NAVIGATION_SECTIONS, isAppNavigationActive, mobileMoreSections, typ
 import { saveProfileSettings } from "@/app/app/profile/actions";
 import {
   TargetIcon, CpuIcon, FlowIcon, InboxIcon, DatabaseIcon, LinkIcon,
-  DocIcon, ChartIcon, UsersIcon, ShieldIcon, KeyIcon, SettingsIcon, SwapIcon, MessageIcon,
+  DocIcon, ChartIcon, UsersIcon, ShieldIcon, KeyIcon, SettingsIcon, SwapIcon, MessageIcon, XIcon,
 } from "@/components/dashboard/icons";
 
 const NAVIGATION_ICONS: Record<AppNavigationIcon, typeof TargetIcon> = {
@@ -255,8 +255,6 @@ export function OSSidebar() {
           </div>
         </OSModal>
       )}
-      <FeedbackDialog />
-      <SupportDialog />
     </aside>
   );
 }
@@ -321,7 +319,7 @@ export function OSMobileNav() {
             }}
           >
             <div className="os-mobile-menu-handle" aria-hidden="true" />
-            <div className="os-mobile-menu-head"><div><strong>More</strong><span>Workspace navigation</span></div><button type="button" onClick={() => setOpen(false)}>Done</button></div>
+            <div className="os-mobile-menu-head"><div><strong>More</strong><span>Workspace navigation</span></div><button type="button" className="os-iconbtn" aria-label="Close" onClick={() => setOpen(false)}><XIcon size={15} /></button></div>
             <div className="os-mobile-menu-groups">
             {groups.map((group) => (
                 <section key={group.label} className="os-mobile-menu-group" data-nav-section={group.label.toLowerCase()}>
