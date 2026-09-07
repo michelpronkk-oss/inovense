@@ -114,6 +114,7 @@ export default function InsightsPage() {
   const exportVisualPdf = async () => {
     const stamp = new Date();
     const payload = {
+      workspaceId: state.workspace.id,
       workspace: state.workspace.name,
       periodLabel: "Current week",
       generatedAt: stamp.toISOString(),
@@ -146,20 +147,20 @@ export default function InsightsPage() {
     setFeedback("Visual PDF exported.");
   };
 
-  if (entitlements.planTier !== "operator" && entitlements.planTier !== "enterprise") {
+  if (!entitlements.features.insights) {
     return (
       <div className="os-page" style={{ display: "flex", flexDirection: "column" }}>
         <div className="os-page-head">
           <div>
-            <span className="os-greet">Performance layer</span>
+            <span className="os-greet">Workforce feature</span>
             <h1>Insights</h1>
-            <div className="os-page-sub">Operating metrics across all agents.</div>
+            <div className="os-page-sub">Outcome intelligence for your AI workforce.</div>
           </div>
         </div>
         <UpgradePrompt
-          feature="Operating insights"
-          description="Cross-operator performance metrics, trend analysis, and exportable board-ready reports. See exactly where your operators deliver and where to optimize."
-          requiredPlan="operator"
+          feature="Outcome intelligence"
+          description="Understand operator performance, business outcomes, trends, and measurable impact across your AI workforce."
+          requiredPlan="growth"
         />
       </div>
     );
@@ -171,9 +172,9 @@ export default function InsightsPage() {
     <div className="os-page">
       <div className="os-page-head">
         <div>
-          <span className="os-greet">Performance layer - {planLabel}</span>
-          <h1>Insights</h1>
-          <div className="os-page-sub">Operating metrics across all agents. Current week activity.</div>
+            <span className="os-greet">Performance / outcomes · {planLabel}</span>
+            <h1>Insights</h1>
+            <div className="os-page-sub">Understand what your AI workforce is doing, what it changes, and where it creates measurable business value.</div>
         </div>
         <div className="os-page-actions" style={{ position: "relative" }}>
           <button className="btn btn-ghost btn-sm" onClick={() => setExportOpen((v) => !v)}><ChartIcon size={12} /> Export report</button>

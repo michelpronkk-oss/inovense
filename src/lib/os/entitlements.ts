@@ -16,6 +16,11 @@ export interface Entitlements {
   canUseSuggestedWorkflows: boolean;
   canUseAdvancedPolicies: boolean;
   canUseCompanyMemoryGraph: boolean;
+  /** Outcome intelligence is available on Workforce and Scale. */
+  insights: boolean;
+  features: {
+    insights: boolean;
+  };
   supportLevel: "none" | "email" | "priority" | "dedicated" | "enterprise";
 }
 
@@ -31,6 +36,8 @@ const PREVIEW: Entitlements = {
   canUseSuggestedWorkflows: true,
   canUseAdvancedPolicies: false,
   canUseCompanyMemoryGraph: true,
+  insights: false,
+  features: { insights: false },
   supportLevel: "none",
 };
 
@@ -87,6 +94,8 @@ export function getEntitlements(workspace: Workspace): Entitlements {
       canUseSuggestedWorkflows: true,
       canUseAdvancedPolicies: false,
       canUseCompanyMemoryGraph: false,
+      insights: false,
+      features: { insights: false },
       supportLevel: "email",
     };
   }
@@ -105,6 +114,8 @@ export function getEntitlements(workspace: Workspace): Entitlements {
       canUseSuggestedWorkflows: true,
       canUseAdvancedPolicies: true,
       canUseCompanyMemoryGraph: true,
+      insights: true,
+      features: { insights: true },
       supportLevel: "priority",
     };
   }
@@ -123,6 +134,8 @@ export function getEntitlements(workspace: Workspace): Entitlements {
       canUseSuggestedWorkflows: true,
       canUseAdvancedPolicies: true,
       canUseCompanyMemoryGraph: true,
+      insights: true,
+      features: { insights: true },
       supportLevel: "priority",
     };
   }
@@ -141,6 +154,8 @@ export function getEntitlements(workspace: Workspace): Entitlements {
       canUseSuggestedWorkflows: true,
       canUseAdvancedPolicies: true,
       canUseCompanyMemoryGraph: true,
+      insights: true,
+      features: { insights: true },
       supportLevel: "dedicated",
     };
   }
@@ -158,8 +173,15 @@ export function getEntitlements(workspace: Workspace): Entitlements {
     canUseSuggestedWorkflows: true,
     canUseAdvancedPolicies: true,
     canUseCompanyMemoryGraph: true,
+    insights: true,
+    features: { insights: true },
     supportLevel: "enterprise",
   };
+}
+
+/** Authoritative server/client-safe feature check shared by Insights UI and API routes. */
+export function canAccessInsights(workspace: Workspace): boolean {
+  return getEntitlements(workspace).features.insights;
 }
 
 export function isPreviewWorkspace(workspace: Workspace): boolean {

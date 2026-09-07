@@ -7,7 +7,9 @@ export const dynamic = "force-dynamic";
 
 const number = (value: number | null) => value === null ? "Unavailable" : value.toLocaleString("en-US");
 const currency = (value: number | null) => value === null ? "Unavailable" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
-const label = (value: string) => value === "starter" || value === "growth" || value === "scale" ? getPlanLabel(value) : value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+const label = (value: string) => ["starter", "growth", "scale", "operator", "enterprise", "foundation", "workforce"].includes(value.toLowerCase())
+  ? getPlanLabel(value)
+  : value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 function Metric({ label: title, value, note }: { label: string; value: string; note: string }) {
   return <article className="admin-kpi"><div className="admin-eyebrow">{title}</div><div className={`admin-kpi-value${value === "Unavailable" ? " unavailable" : ""}`}>{value}</div><div className="admin-kpi-note">{note}</div></article>;

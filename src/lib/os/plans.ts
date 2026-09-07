@@ -58,7 +58,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     approvals: true,
     executionLogs: true,
     companyMemory: true,
-    insights: false,
+    insights: true,
   },
   scale: {
     name: "Scale",
@@ -72,11 +72,13 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     approvals: true,
     executionLogs: true,
     companyMemory: true,
-    insights: false,
+    insights: true,
   },
   operator: {
-    name: "Operator",
-    price: "$2,500/mo",
+    // Legacy persisted key. Keep its limits, but use the current product
+    // display name anywhere this table is surfaced.
+    name: "Scale",
+    price: "$799/mo",
     maxOperators: 12,
     maxConnectors: -1,
     maxMonthlyRuns: 100000,

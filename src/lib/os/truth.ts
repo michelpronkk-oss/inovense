@@ -45,10 +45,11 @@ export function isDemoLog(log: ExecutionLog): boolean {
 // Capitalised plan label from tier string.
 export function getPlanLabel(planTier: string): string {
   const t = planTier.toLowerCase();
-  if (t === "starter") return "Foundation";
-  if (t === "growth") return "Workforce";
+  if (t === "starter" || t === "foundation") return "Foundation";
+  if (t === "growth" || t === "workforce") return "Workforce";
   if (t === "scale") return "Scale";
-  if (t === "operator") return "Operator";
-  if (t === "enterprise") return "Enterprise";
+  // `operator` and `enterprise` are retained as compatibility keys only.
+  // They must never reappear as customer-facing plan names.
+  if (t === "operator" || t === "enterprise") return "Scale";
   return "Preview";
 }

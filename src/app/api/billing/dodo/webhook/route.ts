@@ -173,7 +173,9 @@ export async function POST(req: NextRequest) {
   const entitlements = getBillingEntitlementsForPlan(plan);
   const billingStatus = mapEventToBillingStatus(eventType, trialEndsAt);
   const updatePayload = {
-    plan: plan === "starter" ? "Foundation" : plan === "growth" ? "Workforce" : plan === "scale" ? "Scale" : "Operator",
+    // `operator` is a legacy persisted key. Keep the key in plan_tier, but
+    // never surface the obsolete billing name in workspace display fields.
+    plan: plan === "starter" ? "Foundation" : plan === "growth" ? "Workforce" : plan === "scale" ? "Scale" : "Scale",
     plan_tier: entitlements.planTier,
     billing_status: billingStatus,
     trial_ends_at: trialEndsAt ?? null,

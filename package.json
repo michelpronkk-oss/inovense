@@ -31,6 +31,7 @@
     "test:notifications": "node tests/notifications-smoke.mjs",
     "test:execution-policy": "node tests/execution-policy-smoke.mjs",
     "test:settings-controls": "node tests/settings-controls-smoke.mjs",
+    "test:insights-entitlement": "node tests/insights-entitlement-smoke.mjs",
     "test:product-truth-discovery": "node tests/product-truth-discovery-smoke.mjs",
     "test:seo-discovery": "node tests/seo-discovery-smoke.mjs",
     "test:public-content-quality": "node tests/public-content-quality-smoke.mjs",

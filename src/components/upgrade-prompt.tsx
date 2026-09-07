@@ -5,12 +5,11 @@ import Link from "next/link";
 interface UpgradePromptProps {
   feature: string;
   description: string;
-  requiredPlan: "growth" | "operator";
+  requiredPlan: "growth";
 }
 
 const PLAN_LABELS = {
-  growth: "Growth",
-  operator: "Operator",
+  growth: "Workforce",
 };
 
 function LockIcon() {
