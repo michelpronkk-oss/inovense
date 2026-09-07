@@ -5,8 +5,13 @@ import type { PreparedAction } from "@/lib/actions/types";
 import { createGmailDraft, GmailApiError, getMissingGmailScopes, hasGmailSendScope, resolveAccessTokenFromCredential, sendGmailDraft, sendGmailMessage, type StoredConnectorCredential } from "@/lib/connectors/gmail";
 import { executeHubSpotRevenueActions, HubSpotExecutionError, type HubSpotExecutionResult, type PreparedHubSpotActions } from "@/lib/operators/executors/hubspot";
 import { getMicrosoftConnection, MicrosoftExecutionError, sendMicrosoftMessageAfterApproval } from "@/lib/operators/executors/microsoft";
+import { MicrosoftTeamsExecutionError, sendTeamsChannelMessageAfterApproval, type PreparedTeamsMessageAction } from "@/lib/operators/executors/microsoft-teams";
 import { sendSlackMessageAfterApproval, SlackExecutionError, type PreparedSlackMessageAction } from "@/lib/operators/executors/slack";
 import { TrelloExecutionError } from "@/lib/operators/executors/trello";
+import { AsanaExecutionError } from "@/lib/connectors/asana";
+import { JiraExecutionError } from "@/lib/connectors/jira";
+import { ZendeskExecutionError } from "@/lib/connectors/zendesk";
+import { IntercomExecutionError } from "@/lib/connectors/intercom";
 import { sendSlackApprovalNotification } from "@/lib/notifications/slack";
 import { evaluateExecutionPolicy } from "@/lib/policies/execution-policy";
 import { buildPolicyInputFromContinuation } from "@/lib/policies/workspace-policy";
@@ -65,6 +70,8 @@ type GmailContinuationPayload = {
 };
 
 type SlackContinuationPayload = PreparedSlackMessageAction;
+
+type TeamsContinuationPayload = PreparedTeamsMessageAction;
 
 type SharedActionContinuationPayload = {
   kind: "shared_action.execute_after_approval";
@@ -255,6 +262,38 @@ function validateSlackPayload(value: unknown): { ok: true; payload: SlackContinu
   };
 }
 
+function validateTeamsPayload(value: unknown): { ok: true; payload: TeamsContinuationPayload } | { ok: false; details: InvalidPayloadDetail[] } {
+  const details: InvalidPayloadDetail[] = [];
+  if (!value || typeof value !== "object") {
+    return { ok: false, details: [{ field: "continuation_payload", issue: "Must be an object." }] };
+  }
+  const rec = value as Record<string, unknown>;
+  if (rec.kind !== "teams.send_after_approval") details.push({ field: "kind", issue: "Must equal teams.send_after_approval." });
+  if (typeof rec.workspaceId !== "string" || !rec.workspaceId.trim()) details.push({ field: "workspaceId", issue: "Required." });
+  if (typeof rec.teamId !== "string" || !rec.teamId.trim()) details.push({ field: "teamId", issue: "Required." });
+  if (typeof rec.channelId !== "string" || !rec.channelId.trim()) details.push({ field: "channelId", issue: "Required." });
+  if (typeof rec.text !== "string" || !rec.text.trim()) details.push({ field: "text", issue: "Required." });
+  if (details.length > 0) return { ok: false, details };
+  return {
+    ok: true,
+    payload: {
+      kind: "teams.send_after_approval",
+      workspaceId: String(rec.workspaceId).trim(),
+      teamId: String(rec.teamId).trim(),
+      teamName: typeof rec.teamName === "string" ? rec.teamName : null,
+      channelId: String(rec.channelId).trim(),
+      channelName: typeof rec.channelName === "string" ? rec.channelName : null,
+      channelMembershipType: typeof rec.channelMembershipType === "string" ? rec.channelMembershipType : null,
+      text: String(rec.text).trim(),
+      operatorRunId: typeof rec.operatorRunId === "string" ? rec.operatorRunId : undefined,
+      operatorKey: typeof rec.operatorKey === "string" ? rec.operatorKey : undefined,
+      dedupeKey: typeof rec.dedupeKey === "string" ? rec.dedupeKey : null,
+      source: typeof rec.source === "string" ? rec.source : null,
+      context: rec.context && typeof rec.context === "object" ? rec.context as Record<string, unknown> : null,
+    },
+  };
+}
+
 function validateSharedActionPayload(value: unknown): { ok: true; payload: SharedActionContinuationPayload } | { ok: false; details: InvalidPayloadDetail[] } {
   const details: InvalidPayloadDetail[] = [];
   if (!value || typeof value !== "object") {
@@ -265,8 +304,8 @@ function validateSharedActionPayload(value: unknown): { ok: true; payload: Share
   if (rec.kind !== "shared_action.execute_after_approval") details.push({ field: "kind", issue: "Must equal shared_action.execute_after_approval." });
   if (typeof rec.workspaceId !== "string" || !rec.workspaceId.trim()) details.push({ field: "workspaceId", issue: "Required." });
   if (!action) details.push({ field: "preparedAction", issue: "Required." });
-  if (action && action.connectorKey !== "trello") details.push({ field: "preparedAction.connectorKey", issue: "Only Trello actions are executable in this pass." });
-  if (action && !["create_task", "move_task", "add_task_comment"].includes(String(action.actionType))) details.push({ field: "preparedAction.actionType", issue: "Unsupported action type." });
+  if (action && !["trello", "asana", "jira", "zendesk", "intercom"].includes(String(action.connectorKey))) details.push({ field: "preparedAction.connectorKey", issue: "Only Trello, Asana, Jira, Zendesk, or Intercom actions are executable." });
+  if (action && !["create_task", "move_task", "add_task_comment", "create_asana_task", "update_asana_task", "add_asana_comment", "create_jira_issue", "update_jira_issue", "add_jira_comment", "reply_zendesk_ticket", "add_zendesk_internal_note", "update_zendesk_ticket", "reply_intercom_conversation", "update_intercom_conversation"].includes(String(action.actionType))) details.push({ field: "preparedAction.actionType", issue: "Unsupported action type." });
   if (details.length > 0) return { ok: false, details };
   return {
     ok: true,
@@ -584,7 +623,25 @@ function slackErrorResponse(error: unknown) {
   }, { status: 502 });
 }
 
+function teamsErrorResponse(error: unknown) {
+  if (error instanceof MicrosoftTeamsExecutionError) {
+    return NextResponse.json({
+      error: error.details.code || "teams_send_failed",
+      message: error.message,
+      details: error.details,
+    }, { status: error.details.status ?? 502 });
+  }
+
+  return NextResponse.json({
+    error: "teams_send_failed",
+    message: error instanceof Error ? error.message : "Microsoft Teams execution failed.",
+  }, { status: 502 });
+}
+
 function sharedActionErrorResponse(error: unknown) {
+  if (error instanceof AsanaExecutionError) {
+    return NextResponse.json({ error: error.code, message: error.message }, { status: error.status });
+  }
   if (error instanceof TrelloExecutionError) {
     return NextResponse.json({
       error: error.details.code || "trello_action_failed",
@@ -592,6 +649,9 @@ function sharedActionErrorResponse(error: unknown) {
       details: error.details,
     }, { status: error.details.status ?? 502 });
   }
+  if (error instanceof JiraExecutionError) return NextResponse.json({ error: error.code, message: error.message }, { status: error.status });
+  if (error instanceof ZendeskExecutionError) return NextResponse.json({ error: error.code, message: error.message }, { status: error.status });
+  if (error instanceof IntercomExecutionError) return NextResponse.json({ error: error.code, message: error.message }, { status: error.status });
   return NextResponse.json({
     error: "shared_action_failed",
     message: error instanceof Error ? error.message : "Shared action execution failed.",
@@ -646,6 +706,7 @@ async function executeSharedActionApproval(input: {
     }, { status: 409 });
   }
 
+  const connectorLabel = input.payload.preparedAction.connectorKey === "asana" ? "Asana" : input.payload.preparedAction.connectorKey === "jira" ? "Jira" : input.payload.preparedAction.connectorKey === "zendesk" ? "Zendesk" : input.payload.preparedAction.connectorKey === "intercom" ? "Intercom" : "Trello";
   try {
     const actionResult = await executePreparedActionAfterApproval({
       action: input.payload.preparedAction,
@@ -666,7 +727,15 @@ async function executeSharedActionApproval(input: {
     if (approvalUpdate.error) return NextResponse.json({ error: "approval_update_failed", message: approvalUpdate.error.message }, { status: 500 });
 
     const actionType = input.payload.preparedAction.actionType;
-    const trelloEvent = actionType === "move_task" ? "trello_card_moved" : actionType === "add_task_comment" ? "trello_comment_added" : "trello_card_created";
+    const trelloEvent = input.payload.preparedAction.connectorKey === "asana"
+      ? actionType === "add_asana_comment" ? "asana_comment_added" : actionType === "update_asana_task" ? "asana_task_updated" : "asana_task_created"
+      : input.payload.preparedAction.connectorKey === "jira"
+        ? actionType === "add_jira_comment" ? "jira_comment_added" : actionType === "update_jira_issue" ? "jira_issue_updated" : "jira_issue_created"
+        : input.payload.preparedAction.connectorKey === "zendesk"
+          ? actionType === "reply_zendesk_ticket" ? "zendesk_reply_sent" : actionType === "add_zendesk_internal_note" ? "zendesk_internal_note_added" : "zendesk_ticket_updated"
+        : input.payload.preparedAction.connectorKey === "intercom"
+          ? actionType === "reply_intercom_conversation" ? "intercom_reply_sent" : "intercom_conversation_updated"
+        : actionType === "move_task" ? "trello_card_moved" : actionType === "add_task_comment" ? "trello_comment_added" : "trello_card_created";
     await optionalStep([], "os_execution_logs.shared_action", () => input.supabase.from("os_execution_logs").insert([
       {
         id: `log-action-executed-${Date.now()}`,
@@ -676,7 +745,7 @@ async function executeSharedActionApproval(input: {
         agent_mark: input.approvalRow.agent_mark || "OP",
         agent_color: input.approvalRow.agent_color || "#51D88A",
         event: "action_executed",
-        message: `Executed ${actionType} through Trello after approval.`,
+        message: `Executed ${actionType} through ${connectorLabel} after approval.`,
         duration: "-",
         status: "ok",
       },
@@ -705,15 +774,23 @@ async function executeSharedActionApproval(input: {
       eventType: "approval_approved",
       operatorKey: input.payload.preparedAction.operatorKey,
       title: "Approval approved.",
-      summary: `Trello action executed: ${input.payload.preparedAction.title}.`,
+      summary: `${connectorLabel} action executed: ${input.payload.preparedAction.title}.`,
       approvalUrl: `${getAppUrl()}/app/approvals`,
-      metadata: { actionType, connectorKey: "trello" },
+      metadata: { actionType, connectorKey: input.payload.preparedAction.connectorKey },
     }));
 
     return NextResponse.json({ ok: true, executionResult });
   } catch (error) {
     const errorPayload = error instanceof TrelloExecutionError
       ? { message: error.message, details: error.details }
+      : error instanceof AsanaExecutionError
+        ? { message: error.message, details: { code: error.code, status: error.status } }
+        : error instanceof JiraExecutionError
+          ? { message: error.message, details: { code: error.code, status: error.status } }
+        : error instanceof ZendeskExecutionError
+          ? { message: error.message, details: { code: error.code, status: error.status } }
+        : error instanceof IntercomExecutionError
+          ? { message: error.message, details: { code: error.code, status: error.status } }
       : { message: error instanceof Error ? error.message : "Shared action execution failed.", details: null };
     await input.supabase.from("os_approvals").update({
       status: "failed",
@@ -732,9 +809,9 @@ async function executeSharedActionApproval(input: {
       eventType: "execution_failed",
       operatorKey: input.payload.preparedAction.operatorKey,
       title: "Execution failed.",
-      summary: "Trello action execution failed. Review the approval logs in Auterim.",
+      summary: `${connectorLabel} action execution failed. Review the approval logs in Auterim.`,
       approvalUrl: `${getAppUrl()}/app/approvals`,
-      metadata: { actionType: input.payload.preparedAction.actionType, connectorKey: "trello" },
+      metadata: { actionType: input.payload.preparedAction.actionType, connectorKey: input.payload.preparedAction.connectorKey },
     }));
     return sharedActionErrorResponse(error);
   }
@@ -1070,6 +1147,131 @@ async function executeSlackApproval(input: {
       },
     }).eq("id", input.approvalId).eq("workspace_id", input.payload.workspaceId);
     return slackErrorResponse(error);
+  }
+}
+
+/**
+ * Microsoft Teams approval execution.
+ *
+ * Structurally identical to executeSlackApproval above, deliberately: the
+ * live execution policy engine is re-run here (never a stored snapshot), the
+ * approval row is claimed with a conditional status update so a double
+ * approve cannot send twice, and only then does the single Teams provider
+ * write run. No Teams message body is written into the execution log.
+ */
+async function executeTeamsApproval(input: {
+  supabase: ReturnType<typeof createSupabaseAdmin>;
+  approvalId: string;
+  approvalRow: Record<string, unknown>;
+  payload: TeamsContinuationPayload;
+  resolvedBy: string;
+}) {
+  const continuation = input.approvalRow.continuation_payload && typeof input.approvalRow.continuation_payload === "object"
+    ? input.approvalRow.continuation_payload as Record<string, unknown>
+    : {};
+  if (continuation.executionResult && typeof continuation.executionResult === "object") {
+    return alreadyResolvedResponse(input.approvalRow);
+  }
+
+  const policyInput = buildPolicyInputFromContinuation({ workspaceId: input.payload.workspaceId, kind: "teams.send_after_approval", continuation });
+  const policyDecision = policyInput ? await evaluateExecutionPolicy({ supabase: input.supabase, policyInput, approvalId: input.approvalId }) : null;
+  if (!policyDecision || !policyInput) {
+    return NextResponse.json({ error: "policy_unavailable", message: "Microsoft Teams execution was blocked because policy could not be evaluated." }, { status: 409 });
+  }
+
+  await logPolicyDecision({
+    supabase: input.supabase,
+    workspaceId: input.payload.workspaceId,
+    runId: input.payload.operatorRunId ?? (typeof input.approvalRow.run_id === "string" ? input.approvalRow.run_id : null),
+    approvalId: input.approvalId,
+    decision: policyDecision,
+    policyInput,
+    live: true,
+  });
+
+  if (policyDecision.decision === "blocked") {
+    const executionResult = { teamsStatus: "blocked_by_policy", policyDecision, blockedReason: policyDecision.reason };
+    await input.supabase.from("os_approvals").update({
+      status: "failed",
+      resolved_at: new Date().toISOString(),
+      resolved_by: input.resolvedBy,
+      continuation_payload: { ...continuation, executionResult },
+    }).eq("id", input.approvalId).eq("workspace_id", input.payload.workspaceId);
+    return NextResponse.json({ ok: false, status: "blocked_by_policy", policyDecision, executionResult }, { status: 200 });
+  }
+
+  const executionClaim = await input.supabase
+    .from("os_approvals")
+    .update({ status: "executing", resolved_by: input.resolvedBy })
+    .eq("id", input.approvalId)
+    .eq("workspace_id", input.payload.workspaceId)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+
+  if (executionClaim.error || !executionClaim.data) {
+    return NextResponse.json({
+      error: "approval_execution_in_progress",
+      message: executionClaim.error?.message || "Could not claim approval for execution.",
+    }, { status: 409 });
+  }
+
+  try {
+    const sent = await sendTeamsChannelMessageAfterApproval({
+      workspaceId: input.payload.workspaceId,
+      teamId: input.payload.teamId,
+      channelId: input.payload.channelId,
+      text: input.payload.text,
+      approvalId: input.approvalId,
+      supabase: input.supabase,
+    });
+    const executionResult = {
+      teamsStatus: "sent",
+      teamId: sent.teamId,
+      channelId: sent.channelId,
+      messageId: sent.messageId,
+      policyDecision,
+    };
+
+    const approvalUpdate = await input.supabase.from("os_approvals").update({
+      status: "approved",
+      resolved_at: new Date().toISOString(),
+      resolved_by: input.resolvedBy,
+      continuation_payload: { ...continuation, executionResult },
+    }).eq("id", input.approvalId).eq("workspace_id", input.payload.workspaceId);
+    if (approvalUpdate.error) {
+      return NextResponse.json({ error: "approval_update_failed", message: approvalUpdate.error.message }, { status: 500 });
+    }
+
+    await optionalStep([], "os_execution_logs.insert", () => input.supabase.from("os_execution_logs").insert({
+      id: `log-teams-send-${Date.now()}`,
+      ts: toTs(),
+      run_id: input.approvalRow.run_id || "manual",
+      agent_id: input.approvalRow.agent_id || "system",
+      agent_mark: input.approvalRow.agent_mark || "OS",
+      agent_color: input.approvalRow.agent_color || "#4DE8E1",
+      event: "teams.message_sent_after_approval",
+      // Provider identifiers only - never the message body.
+      message: `Sent approved Microsoft Teams message to channel ${sent.channelId}`,
+      duration: "-",
+      status: "ok",
+    }).then((res) => {
+      if (res.error) throw new Error(res.error.message);
+      return res;
+    }));
+
+    return NextResponse.json({ ok: true, teamsStatus: "sent", executionResult });
+  } catch (error) {
+    const errorPayload = error instanceof MicrosoftTeamsExecutionError
+      ? { message: error.message, details: error.details }
+      : { message: error instanceof Error ? error.message : "Microsoft Teams execution failed.", details: null };
+    await input.supabase.from("os_approvals").update({
+      status: "failed",
+      resolved_at: new Date().toISOString(),
+      resolved_by: input.resolvedBy,
+      continuation_payload: { ...continuation, executionResult: { teamsStatus: "failed", policyDecision, error: errorPayload } },
+    }).eq("id", input.approvalId).eq("workspace_id", input.payload.workspaceId);
+    return teamsErrorResponse(error);
   }
 }
 
@@ -1741,6 +1943,39 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       approvalId: id,
       approvalRow: approvalRow as Record<string, unknown>,
       payload: slackPayload,
+      resolvedBy: context.userEmail || context.userId || userEmail || userId,
+    });
+  }
+
+  if (continuationKind === "teams.send_after_approval") {
+    const payloadValidation = validateTeamsPayload(continuation);
+    if (!payloadValidation.ok) {
+      return NextResponse.json({
+        error: "invalid_payload",
+        message: "Approval has an invalid Microsoft Teams continuation payload.",
+        details: payloadValidation.details,
+      }, { status: 400 });
+    }
+    const teamsPayload = payloadValidation.payload;
+    if (teamsPayload.workspaceId !== context.workspaceId || approvalRow.workspace_id !== context.workspaceId) {
+      return NextResponse.json({ error: "Workspace mismatch for approval payload." }, { status: 403 });
+    }
+
+    const ws = await supabase
+      .from("os_workspaces")
+      .select("billing_status, can_run_real_actions")
+      .eq("id", context.workspaceId)
+      .single();
+    if (ws.error || !ws.data) return NextResponse.json({ error: "Workspace not found." }, { status: 404 });
+    if (!ws.data.can_run_real_actions || ws.data.billing_status === "preview") {
+      return NextResponse.json({ error: "Real execution requires an active plan." }, { status: 402 });
+    }
+
+    return executeTeamsApproval({
+      supabase,
+      approvalId: id,
+      approvalRow: approvalRow as Record<string, unknown>,
+      payload: teamsPayload,
       resolvedBy: context.userEmail || context.userId || userEmail || userId,
     });
   }

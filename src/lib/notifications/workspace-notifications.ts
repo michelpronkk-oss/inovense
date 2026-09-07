@@ -30,8 +30,23 @@ async function candidatesFor(workspaceId: string): Promise<Candidate[]> {
     output.push({ type: "operator_paused", title: "Operator execution paused", description: `${operator} cannot perform business actions until an owner or admin resumes it.`, severity: "critical", relatedRoute: "/policies", dedupeKey: `operator_pause:${pause.operator_key}`, sourceType: "execution_policy", sourceId: String(pause.operator_key) });
   }
   for (const connector of connectorTruth) {
-    if (connector.status !== "error" && connector.status !== "reconnect_required") continue;
-    output.push({ type: "connector_attention", title: `${connectorName(connector.connectorKey)} needs attention`, description: `Reconnect ${connectorName(connector.connectorKey)} so dependent operators can continue using current context.`, severity: "attention", relatedRoute: "/connectors", dedupeKey: `connector:${connector.connectorKey}`, sourceType: "connector", sourceId: connector.connectorKey });
+    // "permission_required" only ever occurs for a capability a workspace
+    // explicitly enabled (today: Microsoft Teams), so it is high signal and
+    // never nags a workspace that simply chose not to enable that capability.
+    const needsPermission = connector.status === "permission_required";
+    if (connector.status !== "error" && connector.status !== "reconnect_required" && !needsPermission) continue;
+    output.push({
+      type: needsPermission ? "connector_permission_required" : "connector_attention",
+      title: needsPermission ? `${connectorName(connector.connectorKey)} needs permission` : `${connectorName(connector.connectorKey)} needs attention`,
+      description: needsPermission
+        ? `Grant the remaining ${connectorName(connector.connectorKey)} permissions so dependent operators can use it.`
+        : `Reconnect ${connectorName(connector.connectorKey)} so dependent operators can continue using current context.`,
+      severity: "attention",
+      relatedRoute: "/connectors",
+      dedupeKey: `connector:${connector.connectorKey}`,
+      sourceType: "connector",
+      sourceId: connector.connectorKey,
+    });
   }
   const billingStatus = text(workspace.data?.billing_status);
   const trialEnd = text(workspace.data?.trial_ends_at);

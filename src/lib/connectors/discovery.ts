@@ -1,6 +1,6 @@
-import { CONNECTOR_CATEGORY_LABELS, type ConnectorDefinition } from "@/lib/connectors/registry";
+import { connectorCategoryLabel, type ConnectorDefinition } from "@/lib/connectors/registry";
 
-export type ConnectorDiscoveryCategory = "all" | "email_calendar" | "crm" | "project_management" | "communication";
+export type ConnectorDiscoveryCategory = "all" | "email_calendar" | "crm" | "project_management" | "communication" | "customer_support" | "files_knowledge";
 
 export const CONNECTOR_DISCOVERY_CATEGORIES: { key: ConnectorDiscoveryCategory; label: string }[] = [
   { key: "all", label: "All" },
@@ -8,6 +8,8 @@ export const CONNECTOR_DISCOVERY_CATEGORIES: { key: ConnectorDiscoveryCategory; 
   { key: "crm", label: "CRM" },
   { key: "project_management", label: "Project management" },
   { key: "communication", label: "Communication" },
+  { key: "customer_support", label: "Customer support" },
+  { key: "files_knowledge", label: "Files & knowledge" },
 ];
 
 export function connectorDiscoveryCategory(definition: ConnectorDefinition): ConnectorDiscoveryCategory | null {
@@ -15,6 +17,8 @@ export function connectorDiscoveryCategory(definition: ConnectorDefinition): Con
   if (definition.category === "crm") return "crm";
   if (definition.category === "project_management") return "project_management";
   if (definition.category === "team_chat") return "communication";
+  if (definition.category === "support") return "customer_support";
+  if (definition.category === "docs_knowledge") return "files_knowledge";
   return null;
 }
 
@@ -34,7 +38,7 @@ export function filterConnectorDiscovery(
       const haystack = [
         definition.displayName,
         definition.description,
-        CONNECTOR_CATEGORY_LABELS[definition.category],
+        connectorCategoryLabel(definition),
         ...definition.readActions,
         ...definition.writeActions,
       ].join(" ").toLowerCase();

@@ -942,7 +942,7 @@ export function AppProvider({ children, initialContext }: { children: React.Reac
       connectorId,
       patch: {
         records: connector.records,
-        source: connectorId === "gmail" ? "native" : "nango",
+        source: connectorId === "gmail" || connectorId === "google_drive" ? "native" : "nango",
       },
     });
   }, [setConnectorConnected, state.connectors, state.workspace]);

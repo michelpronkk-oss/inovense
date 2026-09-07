@@ -37,6 +37,52 @@ export const MICROSOFT_SEND_REQUIRED_SCOPES = ["Mail.Send"];
 export const MICROSOFT_CALENDAR_REQUIRED_SCOPES = ["Calendars.ReadWrite"];
 export const MICROSOFT_REQUIRED_SCOPES = [...MICROSOFT_READ_REQUIRED_SCOPES, ...MICROSOFT_SEND_REQUIRED_SCOPES, ...MICROSOFT_CALENDAR_REQUIRED_SCOPES];
 
+// ── Microsoft Teams (same Entra app, same Graph resource, extra delegated
+//    scopes granted through incremental consent) ─────────────────────────
+//
+// Teams intentionally reuses this one Microsoft connection instead of
+// creating a second Microsoft account/credential. The scope profile below is
+// only requested when a workspace explicitly asks to enable Teams, so a
+// Microsoft 365 (mail/calendar) connection never silently gains Teams access
+// and never claims Teams capability it was not consented for.
+//
+// Delegated permissions only - no application permissions, so Auterim can
+// only ever see the teams/channels the signing-in user is already a member
+// of. ChannelMessage.Read.All requires Entra admin consent; the other three
+// do not. See getMicrosoftTeamsScopeState() in connectors/microsoft-teams.ts
+// for how granted-vs-missing is turned into truthful health.
+export const MICROSOFT_TEAMS_READ_SCOPES = ["Team.ReadBasic.All", "Channel.ReadBasic.All", "ChannelMessage.Read.All"];
+export const MICROSOFT_TEAMS_SEND_SCOPES = ["ChannelMessage.Send"];
+export const MICROSOFT_TEAMS_GRAPH_SCOPES = [...MICROSOFT_TEAMS_READ_SCOPES, ...MICROSOFT_TEAMS_SEND_SCOPES];
+export const MICROSOFT_TEAMS_OAUTH_SCOPES = [...MICROSOFT_OAUTH_SCOPES, ...MICROSOFT_TEAMS_GRAPH_SCOPES];
+
+/**
+ * Which consent surface an authorization/refresh request is for. "base" is the
+ * original Microsoft 365 mail+calendar profile; "teams" adds the Teams
+ * delegated scopes on top (incremental consent - Microsoft keeps previously
+ * granted consent, so this never downgrades mail/calendar access).
+ */
+export type MicrosoftScopeProfile = "base" | "teams";
+
+export function microsoftScopesForProfile(profile: MicrosoftScopeProfile): string[] {
+  return profile === "teams" ? MICROSOFT_TEAMS_OAUTH_SCOPES : MICROSOFT_OAUTH_SCOPES;
+}
+
+/** True when a stored scope set already contains at least one Teams scope. */
+export function scopesIncludeMicrosoftTeams(scopes: string[] | null | undefined): boolean {
+  const granted = new Set((scopes ?? []).map((scope) => scope.toLowerCase()));
+  return MICROSOFT_TEAMS_GRAPH_SCOPES.some((scope) => granted.has(scope.toLowerCase()));
+}
+
+/**
+ * Scope profile to use when refreshing an existing credential. A workspace
+ * that already consented to Teams must keep asking for the Teams profile, or
+ * the refreshed access token would silently lose Teams access.
+ */
+export function microsoftProfileForStoredScopes(scopes: string[] | null | undefined): MicrosoftScopeProfile {
+  return scopesIncludeMicrosoftTeams(scopes) ? "teams" : "base";
+}
+
 const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
 
 type TokenExchangeResult = {
@@ -116,7 +162,7 @@ export function getMicrosoftRedirectUri(): string {
   }
 }
 
-export function buildMicrosoftAuthUrl(state: string): string {
+export function buildMicrosoftAuthUrl(state: string, profile: MicrosoftScopeProfile = "base"): string {
   const clientId = required("MICROSOFT_CLIENT_ID");
   const redirectUri = getMicrosoftRedirectUri();
   const params = new URLSearchParams({
@@ -124,7 +170,7 @@ export function buildMicrosoftAuthUrl(state: string): string {
     redirect_uri: redirectUri,
     response_type: "code",
     response_mode: "query",
-    scope: MICROSOFT_OAUTH_SCOPES.join(" "),
+    scope: microsoftScopesForProfile(profile).join(" "),
     state,
   });
   return `${authorizeEndpoint()}?${params.toString()}`;
@@ -150,7 +196,7 @@ export class MicrosoftOAuthError extends Error {
   }
 }
 
-export async function exchangeCodeForTokens(code: string): Promise<TokenExchangeResult> {
+export async function exchangeCodeForTokens(code: string, profile: MicrosoftScopeProfile = "base"): Promise<TokenExchangeResult> {
   const clientId = required("MICROSOFT_CLIENT_ID");
   const clientSecret = required("MICROSOFT_CLIENT_SECRET");
   const redirectUri = getMicrosoftRedirectUri();
@@ -163,7 +209,7 @@ export async function exchangeCodeForTokens(code: string): Promise<TokenExchange
       code,
       redirect_uri: redirectUri,
       grant_type: "authorization_code",
-      scope: MICROSOFT_OAUTH_SCOPES.join(" "),
+      scope: microsoftScopesForProfile(profile).join(" "),
     }),
     cache: "no-store",
   });
@@ -174,7 +220,7 @@ export async function exchangeCodeForTokens(code: string): Promise<TokenExchange
   return json;
 }
 
-export async function refreshAccessToken(refreshToken: string): Promise<TokenExchangeResult> {
+export async function refreshAccessToken(refreshToken: string, profile: MicrosoftScopeProfile = "base"): Promise<TokenExchangeResult> {
   const clientId = required("MICROSOFT_CLIENT_ID");
   const clientSecret = required("MICROSOFT_CLIENT_SECRET");
   const res = await fetch(tokenEndpoint(), {
@@ -185,7 +231,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<TokenExc
       client_secret: clientSecret,
       refresh_token: refreshToken,
       grant_type: "refresh_token",
-      scope: MICROSOFT_OAUTH_SCOPES.join(" "),
+      scope: microsoftScopesForProfile(profile).join(" "),
     }),
     cache: "no-store",
   });
@@ -275,6 +321,29 @@ export type StoredMicrosoftCredential = {
   metadata?: Record<string, unknown> | null;
 };
 
+/**
+ * Merge the scopes Microsoft actually returned for this grant with the scopes
+ * already recorded for the workspace.
+ *
+ * Merging (rather than replacing) is what makes incremental consent truthful
+ * here: Microsoft only echoes back the scopes requested for *this* token, so
+ * re-running the base Microsoft 365 flow would otherwise erase a previously
+ * granted Teams consent, and running the Teams flow would otherwise look like
+ * mail access had been lost. Nothing is ever added that Microsoft did not
+ * return or that was not already stored - a denied Teams consent therefore
+ * still leaves the Teams scopes absent, and Teams stays unavailable.
+ */
+export function mergeMicrosoftScopes(granted: string | string[] | null | undefined, existing: string[] | null | undefined): string[] {
+  const grantedList = Array.isArray(granted) ? granted : (granted ?? "").split(" ");
+  const merged = new Map<string, string>();
+  for (const scope of [...(existing ?? []), ...grantedList]) {
+    const trimmed = scope?.trim();
+    if (!trimmed) continue;
+    merged.set(trimmed.toLowerCase(), trimmed);
+  }
+  return Array.from(merged.values());
+}
+
 export function toStoredMicrosoftCredential(input: {
   workspaceId: string;
   accessToken: string;
@@ -284,8 +353,15 @@ export function toStoredMicrosoftCredential(input: {
   providerEmail?: string;
   providerAccountId?: string;
   tenantId?: string;
+  /** Scopes already recorded for this workspace, so consent is never lost on reconnect. */
+  existingScopes?: string[] | null;
+  /** Existing credential metadata (Teams settings/cursors) to preserve across reconnects. */
+  existingMetadata?: Record<string, unknown> | null;
 }): StoredMicrosoftCredential {
   const expiresAt = input.expiresIn ? new Date(Date.now() + input.expiresIn * 1000).toISOString() : null;
+  const scopes = input.scopes || (input.existingScopes?.length ?? 0) > 0
+    ? mergeMicrosoftScopes(input.scopes, input.existingScopes)
+    : MICROSOFT_OAUTH_SCOPES;
   return {
     workspace_id: input.workspaceId,
     connector_key: "microsoft",
@@ -294,9 +370,10 @@ export function toStoredMicrosoftCredential(input: {
     encrypted_access_token: encryptToken(input.accessToken),
     encrypted_refresh_token: input.refreshToken ? encryptToken(input.refreshToken) : null,
     token_expires_at: expiresAt,
-    scopes: input.scopes ? input.scopes.split(" ").filter(Boolean) : MICROSOFT_OAUTH_SCOPES,
+    scopes,
     status: "connected",
     metadata: {
+      ...(input.existingMetadata ?? {}),
       provider: "microsoft",
       kind: "microsoft365",
       tenantId: input.tenantId ?? null,
@@ -362,7 +439,10 @@ export async function resolveMicrosoftAccessToken(input: {
   const refreshPromise = (async () => {
     const refreshToken = decryptToken(credential.encrypted_refresh_token as string);
     try {
-      const refreshed = await refreshAccessToken(refreshToken);
+      // A workspace that already consented to Teams must keep refreshing with
+      // the Teams scope profile, otherwise the new access token would silently
+      // drop Teams access while the stored scopes still claimed it.
+      const refreshed = await refreshAccessToken(refreshToken, microsoftProfileForStoredScopes(credential.scopes));
       const nextExpiresAt = refreshed.expires_in ? new Date(Date.now() + refreshed.expires_in * 1000).toISOString() : null;
       // Microsoft always issues a new refresh token on rotation. If, for any
       // reason, one is not returned, keep the existing (still valid) one

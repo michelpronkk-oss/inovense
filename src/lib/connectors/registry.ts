@@ -7,8 +7,11 @@
 // connectable. Everything else is "coming_soon" / "planned" and must render
 // as visibly disabled. Presence in this catalog never implies a connection.
 //
-// Today gmail (direct OAuth), microsoft (direct OAuth), hubspot (Nango),
-// slack (Nango), and Trello (Nango) are available.
+// Today gmail (direct OAuth), google_drive (direct OAuth, read-only), microsoft (direct OAuth), microsoft_teams
+// (direct OAuth, sharing the Microsoft connection), salesforce (direct OAuth,
+// read-only), hubspot (Nango), slack (Nango), Trello (Nango), Asana and Jira
+// (direct OAuth) are
+// available.
 
 import type { Capability } from "@/lib/connectors/capabilities";
 import type { OperatorKey } from "@/lib/operators/registry";
@@ -38,6 +41,17 @@ export type ConnectorDefinition = {
   connectorKey: string;
   displayName: string;
   category: ConnectorCategory;
+  /**
+   * Customer-facing category override for this specific connector, used in
+   * place of CONNECTOR_CATEGORY_LABELS[category] when a connector's real
+   * capabilities span more than its single filing category communicates
+   * (e.g. Microsoft 365 files under "email" for discovery-filter grouping,
+   * but also reads/writes calendar events). Category itself stays
+   * unchanged so filter/grouping logic is unaffected -- only the label
+   * shown to users differs. Read this via connectorCategoryLabel(), never
+   * CONNECTOR_CATEGORY_LABELS[category] directly.
+   */
+  categoryLabel?: string;
   authType: ConnectorAuthType;
   /** Only set for Nango connectors that are actually wired up. */
   providerConfigKey?: string;
@@ -63,13 +77,22 @@ export const CONNECTOR_CATEGORY_LABELS: Record<ConnectorCategory, string> = {
   project_management: "Project management",
   docs_knowledge: "Docs and knowledge",
   billing: "Billing and finance",
-  support: "Support",
+  support: "Customer support",
   marketing: "Marketing",
   website_ecommerce: "Website and ecommerce",
   analytics: "Analytics",
   automation: "Automation",
   custom_api: "Custom API",
 };
+
+/** Customer-facing category label for a connector -- prefers the
+ * connector's own categoryLabel override (when its real capabilities span
+ * more than its filing category name implies) over the generic per-category
+ * label. Use this everywhere a connector's category is displayed; never
+ * read CONNECTOR_CATEGORY_LABELS[definition.category] directly. */
+export function connectorCategoryLabel(definition: Pick<ConnectorDefinition, "category" | "categoryLabel">): string {
+  return definition.categoryLabel ?? CONNECTOR_CATEGORY_LABELS[definition.category];
+}
 
 const HUBSPOT_PROVIDER_CONFIG_KEY = process.env.NANGO_HUBSPOT_CONFIG_KEY || "hubspot";
 const SLACK_PROVIDER_CONFIG_KEY = process.env.NANGO_SLACK_CONFIG_KEY || "slack";
@@ -116,7 +139,7 @@ export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
   },
 
   microsoft: {
-    connectorKey: "microsoft", displayName: "Microsoft 365", category: "email", authType: "direct_oauth",
+    connectorKey: "microsoft", displayName: "Microsoft 365", category: "email", categoryLabel: "Email & calendar", authType: "direct_oauth",
     letter: "Ms", color: "#0078D4", description: "Outlook Mail context, approval-gated email send, and Outlook Calendar read/write.",
     status: "available",
     capabilities: ["email.read", "email.draft", "email.send_after_approval", "email.thread.read", "calendar.events.read", "calendar.events.write_after_approval"],
@@ -149,12 +172,20 @@ export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
     riskLevel: "medium", setupNotes: "Connect Slack workspace. Select allowed channels later.",
   },
   microsoft_teams: {
-    connectorKey: "microsoft_teams", displayName: "Microsoft Teams", category: "team_chat", authType: "nango",
-    letter: "MT", color: "#6264A7", description: "Read channels and post approval-gated messages.",
-    status: "coming_soon", capabilities: ["chat.channels.read", "chat.messages.send_after_approval"],
-    usedByOperators: ["operations"], readActions: ["Read channels"], writeActions: ["Post message after approval"],
-    approvalRequiredActions: ["External channel post"], eventTypes: ["chat.message.posted"], riskLevel: "medium",
-    setupNotes: "Planned via Microsoft Graph (Nango). Not connectable yet.",
+    connectorKey: "microsoft_teams", displayName: "Microsoft Teams", category: "team_chat", authType: "direct_oauth",
+    letter: "MT", color: "#6264A7", description: "Read joined teams, channels and recent channel messages, and post approval-gated Teams messages.",
+    // Shares the single Microsoft Entra connection with Microsoft 365, but is
+    // a separate capability surface: Teams stays unavailable until its own
+    // delegated Graph scopes are consented to.
+    status: "available",
+    capabilities: ["chat.channels.read", "chat.messages.read", "chat.messages.send_after_approval"],
+    usedByOperators: ["operations", "client_flow"],
+    readActions: ["Read joined teams", "Read channels", "Read recent channel messages"],
+    writeActions: ["Send approved Teams channel message"],
+    approvalRequiredActions: ["send_teams_message"],
+    eventTypes: ["teams.message.received", "teams.message.sent"],
+    riskLevel: "medium",
+    setupNotes: "Connects with the same Microsoft Entra ID OAuth app as Microsoft 365, using incremental consent for delegated Teams permissions (Team.ReadBasic.All, Channel.ReadBasic.All, ChannelMessage.Read.All, ChannelMessage.Send). ChannelMessage.Read.All requires Microsoft tenant administrator consent. Attachments, chats and message edits are not supported.",
   },
   notion: {
     connectorKey: "notion", displayName: "Notion", category: "docs_knowledge", authType: "nango",
@@ -165,12 +196,12 @@ export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
     setupNotes: "Planned via Notion API (Nango). Not connectable yet.",
   },
   google_drive: {
-    connectorKey: "google_drive", displayName: "Google Drive", category: "docs_knowledge", authType: "nango",
-    letter: "GD", color: "#34A853", description: "Read documents for context and prepare approval-gated updates.",
-    status: "coming_soon", capabilities: ["docs.read", "docs.write_after_approval"],
-    usedByOperators: ["client_flow", "marketing", "knowledge_memory"], readActions: ["Read files"], writeActions: ["Write file after approval"],
-    approvalRequiredActions: ["External share"], eventTypes: ["docs.file.updated"], riskLevel: "low",
-    setupNotes: "Planned via Google Drive API (Nango). Not connectable yet.",
+    connectorKey: "google_drive", displayName: "Google Drive", category: "docs_knowledge", categoryLabel: "Files & knowledge", authType: "direct_oauth",
+    letter: "GD", color: "#34A853", description: "Business document context from selected Google Drive folders.",
+    status: "available", capabilities: ["docs.read"],
+    usedByOperators: ["client_flow", "operations"], readActions: ["Search Google Drive files", "Use selected folders as workspace context", "Monitor recent Drive changes"], writeActions: [],
+    approvalRequiredActions: [], eventTypes: ["docs.file.updated"], riskLevel: "low",
+    setupNotes: "Shares the existing Google OAuth connection. Reconnect Google to grant Drive read access, then select one or more folders.",
   },
   pipedrive: {
     connectorKey: "pipedrive", displayName: "Pipedrive", category: "crm", authType: "nango",
@@ -200,20 +231,20 @@ export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
     setupNotes: "Planned read-only via Stripe API (Nango). No money-moving actions.",
   },
   intercom: {
-    connectorKey: "intercom", displayName: "Intercom", category: "support", authType: "nango",
-    letter: "Ic", color: "#1F8DED", description: "Read tickets and prepare approval-gated replies.",
-    status: "coming_soon", capabilities: ["support.tickets.read", "support.replies.send_after_approval"],
-    usedByOperators: ["support"], readActions: ["Read conversations"], writeActions: ["Reply after approval"],
-    approvalRequiredActions: ["Reply send"], eventTypes: ["support.ticket.created"], riskLevel: "medium",
-    setupNotes: "Planned via Intercom API (Nango). Not connectable yet.",
+    connectorKey: "intercom", displayName: "Intercom", category: "support", authType: "direct_oauth",
+    letter: "Ic", color: "#1F8DED", description: "Customer conversation context and approval-gated replies.",
+    status: "internal_only", capabilities: ["support.conversations.read", "support.contacts.read", "support.conversations.reply_after_approval", "support.conversations.assign_after_approval", "support.conversations.update_after_approval"],
+    usedByOperators: ["client_flow", "revenue", "operations"], readActions: ["Read conversations", "Read contacts, companies, and admins"], writeActions: ["Reply after approval", "Assign after approval", "Update conversation after approval"],
+    approvalRequiredActions: ["Public conversation reply", "Conversation assignment", "Close or reopen conversation"], eventTypes: ["support.conversation.updated"], riskLevel: "high",
+    setupNotes: "Direct OAuth is wired for the configured development app and US, EU, and Australia regions. Public installation remains pending Intercom review.",
   },
   zendesk: {
-    connectorKey: "zendesk", displayName: "Zendesk", category: "support", authType: "nango",
-    letter: "Zd", color: "#03363D", description: "Read tickets and prepare approval-gated replies.",
-    status: "coming_soon", capabilities: ["support.tickets.read", "support.replies.send_after_approval"],
-    usedByOperators: ["support"], readActions: ["Read tickets"], writeActions: ["Reply after approval"],
-    approvalRequiredActions: ["Reply send"], eventTypes: ["support.ticket.created"], riskLevel: "medium",
-    setupNotes: "Planned via Zendesk API (Nango). Not connectable yet.",
+    connectorKey: "zendesk", displayName: "Zendesk", category: "support", authType: "direct_oauth",
+    letter: "Zd", color: "#03363D", description: "Ticket and customer support visibility.",
+    status: "available", capabilities: ["support.tickets.read", "support.customers.read", "support.tickets.reply_after_approval", "support.tickets.comment_after_approval", "support.tickets.update_after_approval"],
+    usedByOperators: ["client_flow", "operations"], readActions: ["Read tickets", "Read ticket context", "Read customer context"], writeActions: ["Reply after approval", "Add internal note after approval", "Update ticket after approval"],
+    approvalRequiredActions: ["Public reply", "Internal note", "Status, priority, or assignee update"], eventTypes: ["support.ticket.updated"], riskLevel: "high",
+    setupNotes: "Connects directly with Zendesk OAuth. Enter your Zendesk workspace hostname before authorizing. The OAuth client must be configured for the authorized Zendesk environment; Auterim does not claim a universal Zendesk client.",
   },
   shopify: {
     connectorKey: "shopify", displayName: "Shopify", category: "website_ecommerce", authType: "nango",
@@ -241,11 +272,11 @@ export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
     eventTypes: ["pm.task.updated"], riskLevel: "low", setupNotes: "Planned via ClickUp API (Nango).",
   },
   asana: {
-    connectorKey: "asana", displayName: "Asana", category: "project_management", authType: "nango",
-    letter: "As", color: "#F06A6A", description: "Read tasks and prepare approval-gated task updates.",
-    status: "planned", capabilities: ["pm.tasks.read", "pm.tasks.write_after_approval"], usedByOperators: ["operations"],
-    readActions: ["Read tasks"], writeActions: ["Write task after approval"], approvalRequiredActions: ["Task write"],
-    eventTypes: ["pm.task.updated"], riskLevel: "low", setupNotes: "Planned via Asana API (Nango).",
+    connectorKey: "asana", displayName: "Asana", category: "project_management", authType: "direct_oauth",
+    letter: "As", color: "#F06A6A", description: "Monitor selected Asana work and prepare approval-gated task updates.",
+    status: "available", capabilities: ["pm.projects.read", "pm.tasks.read", "pm.tasks.create_after_approval", "pm.tasks.update_after_approval", "pm.comments.write_after_approval"], usedByOperators: ["operations"],
+    readActions: ["Read workspaces", "Read projects", "Read tasks"], writeActions: ["Create task after approval", "Update task after approval", "Add comment after approval"], approvalRequiredActions: ["Asana task creation", "Asana task updates", "Asana comments"],
+    eventTypes: ["pm.task.updated"], riskLevel: "low", setupNotes: "Connects directly with Asana OAuth. Select a workspace and project after connecting.",
   },
   monday: {
     connectorKey: "monday", displayName: "Monday", category: "project_management", authType: "nango",
@@ -262,11 +293,11 @@ export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
     eventTypes: ["pm.task.updated"], riskLevel: "low", setupNotes: "Planned via Linear API (Nango).",
   },
   jira: {
-    connectorKey: "jira", displayName: "Jira", category: "project_management", authType: "nango",
-    letter: "Ji", color: "#0052CC", description: "Read issues and prepare approval-gated issue updates.",
-    status: "planned", capabilities: ["pm.tasks.read", "pm.tasks.write_after_approval"], usedByOperators: ["operations"],
-    readActions: ["Read issues"], writeActions: ["Write issue after approval"], approvalRequiredActions: ["Issue write"],
-    eventTypes: ["pm.task.updated"], riskLevel: "low", setupNotes: "Planned via Jira API (Nango).",
+    connectorKey: "jira", displayName: "Jira", category: "project_management", authType: "direct_oauth",
+    letter: "Ji", color: "#0052CC", description: "Monitor a selected Jira project and prepare approval-gated issue follow-through.",
+    status: "available", capabilities: ["pm.projects.read", "pm.tasks.read", "pm.tasks.create_after_approval", "pm.tasks.update_after_approval", "pm.comments.write_after_approval"], usedByOperators: ["operations"],
+    readActions: ["Read projects", "Read issues", "Read issue detail"], writeActions: ["Create issue after approval", "Update issue after approval", "Add comment after approval"], approvalRequiredActions: ["Jira issue creation", "Jira issue updates", "Jira comments"],
+    eventTypes: ["pm.task.updated"], riskLevel: "medium", setupNotes: "Connects directly with Atlassian OAuth 2.0. Select one Jira Cloud site project after connecting.",
   },
   google_docs: {
     connectorKey: "google_docs", displayName: "Google Docs", category: "docs_knowledge", authType: "nango",

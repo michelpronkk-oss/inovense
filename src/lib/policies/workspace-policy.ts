@@ -118,7 +118,7 @@ export function buildPolicyInputFromContinuation(input: {
   kind: string;
   continuation: Record<string, unknown>;
   // For operations, the specific prepared action to evaluate.
-  preferred?: "slack" | "trello";
+  preferred?: "slack" | "trello" | "asana";
 }): PolicyInput | null {
   const c = input.continuation;
   const operatorKey = stringValue(c.operatorKey) ?? "unknown";
@@ -158,6 +158,7 @@ export function buildPolicyInputFromContinuation(input: {
       cardId: stringValue(asRecord(action.input).cardId),
       listId: stringValue(asRecord(action.input).listId),
       source: stringValue(action.source) ?? "shared_action",
+      metadata: asRecord(action.metadata),
     };
   }
 
@@ -197,6 +198,29 @@ export function buildPolicyInputFromContinuation(input: {
       };
     }
     return null;
+  }
+
+  if (input.kind === "teams.send_after_approval") {
+    // destinationType is taken from the stored channel membership type, which
+    // the executor recorded from Graph. Anything that is not provably a
+    // standard/private (single-tenant) channel is classified external, which
+    // means the policy engine treats it with the stricter customer/external
+    // rules - ambiguity always fails toward approval, never toward autonomy.
+    const membershipType = stringValue(c.channelMembershipType);
+    const provablyInternal = membershipType === "standard" || membershipType === "private";
+    return {
+      workspaceId: input.workspaceId,
+      operatorKey,
+      actionType: "send_teams_message",
+      connectorKey: "microsoft_teams",
+      capability: "chat.messages.send_after_approval",
+      destinationType: provablyInternal ? "internal" : "external",
+      riskLevel: provablyInternal ? "medium" : "high",
+      teamId: stringValue(c.teamId),
+      channelId: stringValue(c.channelId),
+      source: stringValue(c.source) ?? "teams_action",
+      metadata: { dedupeKey: stringValue(c.dedupeKey) },
+    };
   }
 
   if (input.kind === "slack.send_after_approval") {

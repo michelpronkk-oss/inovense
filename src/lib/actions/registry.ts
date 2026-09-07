@@ -36,6 +36,18 @@ export const ACTION_REGISTRY: Record<ActionType, ActionDefinition> = {
     allowedExecutionAdapters: ["slack"],
     canAutoExecute: false,
   },
+  send_teams_message: {
+    actionType: "send_teams_message",
+    capability: "chat.messages.send_after_approval",
+    connectorCategory: "team_chat",
+    defaultConnectorKey: "microsoft_teams",
+    // Higher baseline risk than Slack: a Teams shared channel can include
+    // federated external tenants, and Graph cannot always prove otherwise.
+    riskLevel: "medium",
+    approvalDefault: true,
+    allowedExecutionAdapters: ["microsoft_teams"],
+    canAutoExecute: false,
+  },
   create_crm_contact: {
     actionType: "create_crm_contact",
     capability: "crm.contacts.write",
@@ -116,6 +128,116 @@ export const ACTION_REGISTRY: Record<ActionType, ActionDefinition> = {
     allowedExecutionAdapters: ["trello"],
     canAutoExecute: true,
   },
+  create_asana_task: {
+    actionType: "create_asana_task",
+    capability: "pm.tasks.create_after_approval",
+    connectorCategory: "project_management",
+    defaultConnectorKey: "asana",
+    riskLevel: "medium",
+    approvalDefault: true,
+    allowedExecutionAdapters: ["asana"],
+    canAutoExecute: false,
+  },
+  update_asana_task: {
+    actionType: "update_asana_task",
+    capability: "pm.tasks.update_after_approval",
+    connectorCategory: "project_management",
+    defaultConnectorKey: "asana",
+    riskLevel: "medium",
+    approvalDefault: true,
+    allowedExecutionAdapters: ["asana"],
+    canAutoExecute: false,
+  },
+  add_asana_comment: {
+    actionType: "add_asana_comment",
+    capability: "pm.comments.write_after_approval",
+    connectorCategory: "project_management",
+    defaultConnectorKey: "asana",
+    riskLevel: "low",
+    approvalDefault: true,
+    allowedExecutionAdapters: ["asana"],
+    canAutoExecute: false,
+  },
+  create_jira_issue: {
+    actionType: "create_jira_issue",
+    capability: "pm.tasks.create_after_approval",
+    connectorCategory: "project_management",
+    defaultConnectorKey: "jira",
+    riskLevel: "medium",
+    approvalDefault: true,
+    allowedExecutionAdapters: ["jira"],
+    canAutoExecute: false,
+  },
+  update_jira_issue: {
+    actionType: "update_jira_issue",
+    capability: "pm.tasks.update_after_approval",
+    connectorCategory: "project_management",
+    defaultConnectorKey: "jira",
+    riskLevel: "medium",
+    approvalDefault: true,
+    allowedExecutionAdapters: ["jira"],
+    canAutoExecute: false,
+  },
+  add_jira_comment: {
+    actionType: "add_jira_comment",
+    capability: "pm.comments.write_after_approval",
+    connectorCategory: "project_management",
+    defaultConnectorKey: "jira",
+    riskLevel: "low",
+    approvalDefault: true,
+    allowedExecutionAdapters: ["jira"],
+    canAutoExecute: false,
+  },
+  reply_zendesk_ticket: {
+    actionType: "reply_zendesk_ticket",
+    capability: "support.tickets.reply_after_approval",
+    connectorCategory: "support",
+    defaultConnectorKey: "zendesk",
+    riskLevel: "high",
+    approvalDefault: true,
+    allowedExecutionAdapters: ["zendesk"],
+    canAutoExecute: false,
+  },
+  add_zendesk_internal_note: {
+    actionType: "add_zendesk_internal_note",
+    capability: "support.tickets.comment_after_approval",
+    connectorCategory: "support",
+    defaultConnectorKey: "zendesk",
+    riskLevel: "medium",
+    approvalDefault: true,
+    allowedExecutionAdapters: ["zendesk"],
+    canAutoExecute: false,
+  },
+  update_zendesk_ticket: {
+    actionType: "update_zendesk_ticket",
+    capability: "support.tickets.update_after_approval",
+    connectorCategory: "support",
+    defaultConnectorKey: "zendesk",
+    riskLevel: "medium",
+    approvalDefault: true,
+    allowedExecutionAdapters: ["zendesk"],
+    canAutoExecute: false,
+  },
+  reply_intercom_conversation: {
+    actionType: "reply_intercom_conversation",
+    capability: "support.conversations.reply_after_approval",
+    connectorCategory: "support",
+    defaultConnectorKey: "intercom",
+    riskLevel: "high",
+    approvalDefault: true,
+    allowedExecutionAdapters: ["intercom"],
+    canAutoExecute: false,
+  },
+  update_intercom_conversation: {
+    actionType: "update_intercom_conversation",
+    capability: "support.conversations.update_after_approval",
+    connectorCategory: "support",
+    defaultConnectorKey: "intercom",
+    riskLevel: "medium",
+    approvalDefault: true,
+    allowedExecutionAdapters: ["intercom"],
+    canAutoExecute: false,
+  },
 };
 
 export function getActionDefinition(actionType: ActionType): ActionDefinition {
@@ -135,6 +257,11 @@ export function requiresApprovalForAction(
   }
   if (action.actionType === "send_slack_message") {
     return !workspacePolicy.internalSlackNotificationsAllowed;
+  }
+  // Teams sends always require approval. There is deliberately no workspace
+  // setting that can turn this off in this pass - see the policy evaluator.
+  if (action.actionType === "send_teams_message") {
+    return true;
   }
   return ACTION_REGISTRY[action.actionType].approvalDefault;
 }

@@ -14,7 +14,23 @@ const ACTION_LABELS: Record<string, string> = {
   "trello.scanBoards": "Read Trello boards",
   "trello.prepareAction": "Prepare Trello card updates",
   "slack.prepareMessage": "Prepare Slack messages",
+  "teams.readChannelMessages": "Monitor Teams channel messages",
+  "teams.prepareMessage": "Send approved Teams messages",
   "calendar.createExternalInvite": "Prepare calendar invites",
+  "google_drive.searchFiles": "Search Google Drive files",
+  "asana.createApprovedTask": "Create approved Asana tasks",
+  "asana.updateApprovedTask": "Update approved Asana tasks",
+  "asana.addApprovedComment": "Add approved Asana comments",
+  "jira.createApprovedIssue": "Create approved Jira issues",
+  "jira.updateApprovedIssue": "Update approved Jira issues",
+  "jira.addApprovedComment": "Add approved Jira comments",
+  "zendesk.readTickets": "Monitor Zendesk tickets",
+  "zendesk.prepareReply": "Send approved Zendesk replies",
+  "zendesk.prepareInternalNote": "Add approved Zendesk internal notes",
+  "zendesk.prepareTicketUpdate": "Update approved Zendesk tickets",
+  "intercom.readConversations": "Monitor Intercom conversations",
+  "intercom.prepareReply": "Send approved Intercom replies",
+  "intercom.prepareConversationUpdate": "Update approved Intercom conversations",
 };
 
 const INTERNAL_ACTIONS = new Set([

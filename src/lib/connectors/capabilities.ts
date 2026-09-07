@@ -42,6 +42,7 @@ export type Capability =
   | "pm.projects.read"
   | "pm.tasks.read"
   | "pm.tasks.write_after_approval"
+  | "pm.tasks.create_after_approval"
   | "pm.tasks.update_after_approval"
   | "pm.comments.write_after_approval"
   // docs and knowledge
@@ -53,6 +54,15 @@ export type Capability =
   // support
   | "support.tickets.read"
   | "support.replies.send_after_approval"
+  | "support.tickets.reply_after_approval"
+  | "support.tickets.comment_after_approval"
+  | "support.tickets.update_after_approval"
+  | "support.customers.read"
+  | "support.conversations.read"
+  | "support.contacts.read"
+  | "support.conversations.reply_after_approval"
+  | "support.conversations.assign_after_approval"
+  | "support.conversations.update_after_approval"
   // website and ecommerce
   | "website.pages.read"
   | "website.pages.write_after_approval"

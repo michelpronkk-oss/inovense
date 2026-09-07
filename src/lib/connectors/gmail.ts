@@ -4,9 +4,10 @@ import { AUTERIM_APP_URL } from "@/lib/brand";
 export const GMAIL_COMPOSE_SCOPE = "https://www.googleapis.com/auth/gmail.compose";
 export const GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
 export const GMAIL_READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
+export const GOOGLE_DRIVE_READONLY_SCOPE = "https://www.googleapis.com/auth/drive.readonly";
 export const GMAIL_SEND_REQUIRED_SCOPES = [GMAIL_COMPOSE_SCOPE, GMAIL_SEND_SCOPE];
 export const GMAIL_SCAN_REQUIRED_SCOPES = [GMAIL_READONLY_SCOPE];
-export const GMAIL_OAUTH_SCOPES = [GMAIL_COMPOSE_SCOPE, GMAIL_SEND_SCOPE, GMAIL_READONLY_SCOPE];
+export const GMAIL_OAUTH_SCOPES = [GMAIL_COMPOSE_SCOPE, GMAIL_SEND_SCOPE, GMAIL_READONLY_SCOPE, GOOGLE_DRIVE_READONLY_SCOPE];
 export const GMAIL_REQUIRED_SCOPES = GMAIL_SEND_REQUIRED_SCOPES;
 
 type TokenExchangeResult = {

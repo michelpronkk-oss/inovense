@@ -126,6 +126,11 @@ export async function GET(req: NextRequest) {
   const microsoft = connectorTruth.find((connector) => connector.connectorKey === "microsoft") ?? null;
   const slack = connectorTruth.find((connector) => connector.connectorKey === "slack") ?? null;
   const trello = connectorTruth.find((connector) => connector.connectorKey === "trello") ?? null;
+  // Microsoft Teams is a native connector sharing the Microsoft connection.
+  // "healthy" already means real Teams consent was granted, not just Microsoft
+  // 365 mail working - so this can never be a fake "Teams connected".
+  const microsoftTeams = connectorTruth.find((connector) => connector.connectorKey === "microsoft_teams") ?? null;
+  const teamsConnected = microsoftTeams?.status === "healthy";
   const slackConnected = Boolean(slack && slack.status === "connected" && slack.providerConfigKey && slack.nangoConnectionId);
   const trelloConnected = Boolean(trello && trello.status === "connected" && trello.providerConfigKey && trello.nangoConnectionId);
   const gmailScopes = gmail?.scopes ?? [];
@@ -178,9 +183,13 @@ export async function GET(req: NextRequest) {
   if (microsoft?.executable) connectedConnectorKeys.push("microsoft");
   if (trelloConnected) connectedConnectorKeys.push("trello");
   if (slackConnected) connectedConnectorKeys.push("slack");
+  if (teamsConnected) connectedConnectorKeys.push("microsoft_teams");
 
   return NextResponse.json({
     readiness,
+    microsoftTeams: microsoftTeams
+      ? { status: microsoftTeams.status, connected: teamsConnected, executable: microsoftTeams.executable === true, statusMessage: microsoftTeams.statusMessage ?? null }
+      : { status: "not_connected", connected: false, executable: false, statusMessage: null },
     optionalUpsellConnectors: getOptionalUpsellConnectors("client_flow", connectedConnectorKeys).map((def) => ({
       connectorKey: def.connectorKey,
       displayName: def.displayName,

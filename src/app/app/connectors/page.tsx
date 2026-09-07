@@ -17,7 +17,7 @@ import {
   getConnectorDefinition,
 } from "@/lib/connectors/registry";
 import { getAvailableConnectors } from "@/lib/connectors/capabilities";
-import { CONNECTOR_CATEGORY_LABELS } from "@/lib/connectors/registry";
+import { CONNECTOR_CATEGORY_LABELS, connectorCategoryLabel } from "@/lib/connectors/registry";
 import { connectorDefinitionToSeedConnector } from "@/lib/os/seed";
 import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-grid";
 import { getUnconnectedOnboardingSystems, unlockMessageForConnector } from "@/lib/operators/unlock-copy";
@@ -69,6 +69,30 @@ type TrelloSettings = {
   defaultListId: string | null;
   defaultListName: string | null;
 };
+type AsanaWorkspace = { gid: string; name: string };
+type AsanaProject = { gid: string; name: string };
+type AsanaSettings = { selectedWorkspaceId: string | null; selectedWorkspaceName: string | null; selectedProjectId: string | null; selectedProjectName: string | null };
+type JiraProject = { id: string; key: string; name: string };
+type JiraSettings = { cloudId: string | null; siteName: string | null; siteUrl: string | null; selectedProjectId: string | null; selectedProjectKey: string | null; selectedProjectName: string | null };
+type ZendeskSettings = { subdomain: string | null; baseUrl: string | null; siteUrl: string | null; syncCursor: string | null };
+type DriveFolder = { folderId: string; folderName: string; driveId: string | null };
+type DriveSettings = { enabled: boolean; folders: DriveFolder[]; driveId: string | null; lastSyncAt: string | null; syncCursor: string | null };
+
+type TeamsSettings = {
+  microsoftConnected: boolean;
+  enabled: boolean;
+  readGranted: boolean;
+  sendGranted: boolean;
+  missingScopes: string[];
+  defaultTeamId: string | null;
+  defaultTeamName: string | null;
+  defaultChannelId: string | null;
+  defaultChannelName: string | null;
+  defaultChannelMembershipType: string | null;
+};
+
+type TeamsTeam = { id: string; displayName: string };
+type TeamsChannel = { id: string; displayName: string; membershipType: string; isPotentiallyExternal: boolean };
 
 // Seed connector ids use hyphens (e.g. "google-calendar"); catalog keys use
 // underscores (e.g. "google_calendar"). Normalize before catalog lookups.
@@ -103,7 +127,16 @@ function connectorSafetyNotes(connectorId: string): string[] {
   if (connectorId === "salesforce") return ["Salesforce CRM actions are not enabled yet.", "Future record changes will require approval."];
   if (connectorId === "hubspot") return ["CRM changes require approval.", "Customer records are updated only through approved actions."];
   if (connectorId === "slack") return ["Slack alerts are internal.", "Customer-facing Slack messages are not sent automatically."];
+  if (connectorId === "microsoft_teams") return [
+    "Microsoft Teams uses the same Microsoft sign-in as Microsoft 365, with separate Teams permissions.",
+    "Auterim reads only the team and channel you select, and never stores full message history.",
+    "Every Teams message requires approval before it is sent, including messages to internal channels.",
+    "Turning Teams off leaves your Microsoft 365 mail and calendar access untouched.",
+  ];
   if (connectorId === "trello") return ["Trello task changes require approval.", "Cards, moves and comments execute only after review."];
+  if (connectorId === "asana") return ["Asana task creation, updates and comments require approval.", "Auterim writes only inside the selected project scope."];
+  if (connectorId === "jira") return ["Jira issue creation, updates and comments require approval.", "Auterim writes only inside the selected Jira project scope."];
+  if (connectorId === "zendesk") return ["Public replies, internal notes, and ticket changes require approval.", "Auterim only accesses the Zendesk workspace you authorize."];
   return ["Approval rules stay enforced for risky actions."];
 }
 
@@ -119,11 +152,15 @@ function connectorStatusLabel(input: {
   isRealConnected: boolean;
   slackReady?: boolean;
   trelloReady?: boolean;
+  asanaReady?: boolean;
+  jiraReady?: boolean;
 }): { label: string; color: string; background: string; border: string } {
   if (!input.isRealConnected && input.connector.records.includes("Reconnect required")) return { label: "Reconnect required", color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
   if (!input.isRealConnected) return { label: "Not connected", color: "#b8c5c8", background: "rgba(255,255,255,0.04)", border: "rgba(255,255,255,0.12)" };
   if (input.connector.id === "slack" && !input.slackReady) return { label: "Setup incomplete", color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
   if (input.connector.id === "trello" && !input.trelloReady) return { label: "Setup incomplete", color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
+  if (input.connector.id === "asana" && !input.asanaReady) return { label: "Select project", color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
+  if (input.connector.id === "jira" && !input.jiraReady) return { label: "Select project", color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
   return { label: "Connected", color: "#8df5cf", background: "rgba(81,216,138,0.08)", border: "rgba(81,216,138,0.24)" };
 }
 
@@ -183,6 +220,31 @@ export default function ConnectorsPage() {
     defaultListId: null,
     defaultListName: null,
   });
+  const [asanaWorkspaces, setAsanaWorkspaces] = useState<AsanaWorkspace[]>([]);
+  const [asanaProjects, setAsanaProjects] = useState<AsanaProject[]>([]);
+  const [asanaLoading, setAsanaLoading] = useState(false);
+  const [asanaSaving, setAsanaSaving] = useState(false);
+  const [asanaSetupError, setAsanaSetupError] = useState("");
+  const [asanaSettings, setAsanaSettings] = useState<AsanaSettings>({ selectedWorkspaceId: null, selectedWorkspaceName: null, selectedProjectId: null, selectedProjectName: null });
+  const [jiraProjects, setJiraProjects] = useState<JiraProject[]>([]);
+  const [jiraLoading, setJiraLoading] = useState(false);
+  const [jiraSaving, setJiraSaving] = useState(false);
+  const [jiraSetupError, setJiraSetupError] = useState("");
+  const [jiraSettings, setJiraSettings] = useState<JiraSettings>({ cloudId: null, siteName: null, siteUrl: null, selectedProjectId: null, selectedProjectKey: null, selectedProjectName: null });
+  const [zendeskSettings, setZendeskSettings] = useState<ZendeskSettings>({ subdomain: null, baseUrl: null, siteUrl: null, syncCursor: null });
+  const [zendeskSubdomain, setZendeskSubdomain] = useState("");
+  const [zendeskSetupError, setZendeskSetupError] = useState("");
+  const [driveFolders, setDriveFolders] = useState<DriveFolder[]>([]);
+  const [driveSettings, setDriveSettings] = useState<DriveSettings>({ enabled: false, folders: [], driveId: null, lastSyncAt: null, syncCursor: null });
+  const [driveLoading, setDriveLoading] = useState(false);
+  const [driveSaving, setDriveSaving] = useState(false);
+  const [driveSetupError, setDriveSetupError] = useState("");
+  const [teamsSettings, setTeamsSettings] = useState<TeamsSettings | null>(null);
+  const [teamsTeams, setTeamsTeams] = useState<TeamsTeam[]>([]);
+  const [teamsChannels, setTeamsChannels] = useState<TeamsChannel[]>([]);
+  const [teamsLoading, setTeamsLoading] = useState(false);
+  const [teamsSaving, setTeamsSaving] = useState(false);
+  const [teamsSetupError, setTeamsSetupError] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [operatorReadiness, setOperatorReadiness] = useState<{ operatorKey: string; status: string; canRunManual: boolean; availableActions: string[]; availableBusinessActions?: string[] }[]>([]);
 
@@ -239,6 +301,8 @@ export default function ConnectorsPage() {
   const drawerConnector = state.connectors.find((c) => c.id === drawerConnectorId) ?? null;
   const drawerSlackReady = Boolean(slackAlertSettings.slackNotificationsEnabled && slackAlertSettings.slackApprovalAlertsEnabled && slackAlertSettings.slackDefaultChannelId);
   const drawerTrelloReady = Boolean(trelloSettings.defaultBoardId && trelloSettings.defaultListId);
+  const drawerAsanaReady = Boolean(asanaSettings.selectedWorkspaceId && asanaSettings.selectedProjectId);
+  const drawerJiraReady = Boolean(jiraSettings.selectedProjectId);
 
   const entitlements = getEntitlements(state.workspace);
   const isPreview = entitlements.billingStatus === "preview";
@@ -256,6 +320,9 @@ export default function ConnectorsPage() {
     });
     window.location.href = `/api/connectors/gmail/auth?${qs.toString()}`;
   };
+  const startGoogleDriveConsent = () => {
+    window.location.href = `/api/connectors/google-drive/auth?workspaceId=${encodeURIComponent(state.workspace.id)}`;
+  };
 
   const startRealMicrosoftOAuth = () => {
     const qs = new URLSearchParams({
@@ -266,9 +333,28 @@ export default function ConnectorsPage() {
     window.location.href = `/api/connectors/microsoft/auth?${qs.toString()}`;
   };
 
+  // Microsoft Teams reuses the same Microsoft OAuth route. "capability=teams"
+  // asks Microsoft for the extra delegated Teams scopes through incremental
+  // consent on the existing connection - it never creates a second Microsoft
+  // account. Access tokens never reach this component.
+  const startMicrosoftTeamsConsent = () => {
+    const qs = new URLSearchParams({ workspaceId: state.workspace.id, capability: "teams" });
+    window.location.href = `/api/connectors/microsoft/auth?${qs.toString()}`;
+  };
+
   const startRealSalesforceOAuth = () => {
     const qs = new URLSearchParams({ workspaceId: state.workspace.id, userEmail: state.currentUser.email, userId: state.currentUser.id });
     window.location.href = `/api/connectors/salesforce/auth?${qs.toString()}`;
+  };
+  const startRealAsanaOAuth = () => {
+    const qs = new URLSearchParams({ workspaceId: state.workspace.id });
+    window.location.href = `/api/connectors/asana/auth?${qs.toString()}`;
+  };
+  const startRealJiraOAuth = () => { window.location.href = `/api/connectors/jira/auth?workspaceId=${encodeURIComponent(state.workspace.id)}`; };
+  const startRealZendeskOAuth = () => {
+    const value = zendeskSubdomain.trim();
+    if (!value) { setZendeskSetupError("Enter your Zendesk workspace hostname, for example yourcompany.zendesk.com."); return; }
+    window.location.href = `/api/connectors/zendesk/auth?workspaceId=${encodeURIComponent(state.workspace.id)}&subdomain=${encodeURIComponent(value)}`;
   };
 
   const disconnectRealConnector = async (connector: Connector) => {
@@ -346,6 +432,14 @@ export default function ConnectorsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.workspace.id]);
 
+  useEffect(() => {
+    if (drawerConnectorId !== "google_drive") return;
+    void fetchDriveSettings();
+    void fetchDriveFolders();
+    // The picker is server-backed and remains bounded to folder metadata.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawerConnectorId, state.workspace.id]);
+
   // Real, server-computed operator readiness (getWorkspaceOperatorReadiness) -
   // never re-derived client-side - powers the "What Auterim can do now"
   // section below.
@@ -406,6 +500,17 @@ export default function ConnectorsPage() {
   }, []);
 
   useEffect(() => {
+    const teamsStatus = searchParams.get("microsoft_teams");
+    if (!teamsStatus) return;
+    setFeedback(teamsStatus === "forbidden"
+      ? "Only a workspace owner or admin can enable Microsoft Teams."
+      : "Microsoft Teams permissions were not granted. Teams stays unavailable until they are approved.");
+    setDrawerConnectorId("microsoft_teams");
+    router.replace("/connectors");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     if (searchParams.get("discover") !== "1") return;
     setAddOpen(true);
     setSetupConnectorId(null);
@@ -422,6 +527,8 @@ export default function ConnectorsPage() {
       gmail: "gmail",
       microsoft: "microsoft",
       hubspot: "hubspot",
+      microsoft_teams: "microsoft_teams",
+      "microsoft-teams": "microsoft_teams",
       slack: "slack",
       trello: "trello",
       "slack-channel": "slack",
@@ -758,6 +865,129 @@ export default function ConnectorsPage() {
     }
   };
 
+  const fetchAsanaSettings = async () => {
+    setAsanaSetupError("");
+    try { const res = await fetch(`/api/connectors/asana/settings?workspaceId=${encodeURIComponent(state.workspace.id)}`, { cache: "no-store" }); const json = await res.json().catch(() => ({})) as AsanaSettings & { error?: string }; if (!res.ok) throw new Error(json.error || "Could not load Asana settings."); setAsanaSettings({ selectedWorkspaceId: json.selectedWorkspaceId ?? null, selectedWorkspaceName: json.selectedWorkspaceName ?? null, selectedProjectId: json.selectedProjectId ?? null, selectedProjectName: json.selectedProjectName ?? null }); } catch (error) { setAsanaSetupError(error instanceof Error ? error.message : "Could not load Asana settings."); }
+  };
+  const fetchAsanaWorkspaces = async () => {
+    setAsanaLoading(true); setAsanaSetupError("");
+    try { const res = await fetch(`/api/connectors/asana/workspaces?workspaceId=${encodeURIComponent(state.workspace.id)}`, { cache: "no-store" }); const json = await res.json().catch(() => ({})) as { workspaces?: AsanaWorkspace[]; error?: string }; if (!res.ok || !Array.isArray(json.workspaces)) throw new Error(json.error || "Could not load Asana workspaces."); setAsanaWorkspaces(json.workspaces); } catch (error) { setAsanaSetupError(error instanceof Error ? error.message : "Could not load Asana workspaces."); } finally { setAsanaLoading(false); }
+  };
+  const fetchAsanaProjects = async (workspaceGid: string) => {
+    if (!workspaceGid) { setAsanaProjects([]); return; } setAsanaLoading(true); setAsanaSetupError("");
+    try { const res = await fetch(`/api/connectors/asana/projects?workspaceId=${encodeURIComponent(state.workspace.id)}&asanaWorkspaceId=${encodeURIComponent(workspaceGid)}`, { cache: "no-store" }); const json = await res.json().catch(() => ({})) as { projects?: AsanaProject[]; error?: string }; if (!res.ok || !Array.isArray(json.projects)) throw new Error(json.error || "Could not load Asana projects."); setAsanaProjects(json.projects); } catch (error) { setAsanaSetupError(error instanceof Error ? error.message : "Could not load Asana projects."); } finally { setAsanaLoading(false); }
+  };
+  const saveAsanaSettings = async (next: Partial<AsanaSettings>) => {
+    setAsanaSaving(true); setAsanaSetupError("");
+    try { const payload = { workspaceId: state.workspace.id, ...asanaSettings, ...next }; const res = await fetch("/api/connectors/asana/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, selectedWorkspaceId: payload.selectedWorkspaceId, selectedWorkspaceName: payload.selectedWorkspaceName, selectedProjectId: payload.selectedProjectId, selectedProjectName: payload.selectedProjectName }) }); const json = await res.json().catch(() => ({})) as AsanaSettings & { error?: string }; if (!res.ok) throw new Error(json.error || "Could not save Asana settings."); setAsanaSettings({ selectedWorkspaceId: json.selectedWorkspaceId ?? null, selectedWorkspaceName: json.selectedWorkspaceName ?? null, selectedProjectId: json.selectedProjectId ?? null, selectedProjectName: json.selectedProjectName ?? null }); setFeedback("Asana settings saved."); } catch (error) { setAsanaSetupError(error instanceof Error ? error.message : "Could not save Asana settings."); } finally { setAsanaSaving(false); }
+  };
+  const fetchJiraSettings = async () => { setJiraSetupError(""); try { const res = await fetch(`/api/connectors/jira/settings?workspaceId=${encodeURIComponent(state.workspace.id)}`, { cache: "no-store" }); const json = await res.json().catch(() => ({})) as JiraSettings & { error?: string }; if (!res.ok) throw new Error(json.error || "Could not load Jira settings."); setJiraSettings({ cloudId: json.cloudId ?? null, siteName: json.siteName ?? null, siteUrl: json.siteUrl ?? null, selectedProjectId: json.selectedProjectId ?? null, selectedProjectKey: json.selectedProjectKey ?? null, selectedProjectName: json.selectedProjectName ?? null }); } catch (error) { setJiraSetupError(error instanceof Error ? error.message : "Could not load Jira settings."); } };
+  const fetchZendeskSettings = async () => { setZendeskSetupError(""); try { const res = await fetch(`/api/connectors/zendesk/settings?workspaceId=${encodeURIComponent(state.workspace.id)}`, { cache: "no-store" }); const json = await res.json().catch(() => ({})) as ZendeskSettings & { error?: string }; if (!res.ok) throw new Error(json.error || "Could not load Zendesk settings."); setZendeskSettings({ subdomain: json.subdomain ?? null, baseUrl: json.baseUrl ?? null, siteUrl: json.siteUrl ?? null, syncCursor: json.syncCursor ?? null }); setZendeskSubdomain(json.subdomain ?? ""); } catch (error) { setZendeskSetupError(error instanceof Error ? error.message : "Could not load Zendesk settings."); } };
+  const fetchDriveSettings = async () => { setDriveSetupError(""); try { const res = await fetch(`/api/connectors/google-drive/settings?workspaceId=${encodeURIComponent(state.workspace.id)}`, { cache: "no-store" }); const json = await res.json().catch(() => ({})) as { settings?: DriveSettings; error?: string }; if (!res.ok || !json.settings) throw new Error(json.error || "Could not load Google Drive settings."); setDriveSettings(json.settings); } catch (error) { setDriveSetupError(error instanceof Error ? error.message : "Could not load Google Drive settings."); } };
+  const fetchDriveFolders = async () => { setDriveLoading(true); setDriveSetupError(""); try { const res = await fetch(`/api/connectors/google-drive/folders?workspaceId=${encodeURIComponent(state.workspace.id)}`, { cache: "no-store" }); const json = await res.json().catch(() => ({})) as { folders?: DriveFolder[]; error?: string }; if (!res.ok || !Array.isArray(json.folders)) throw new Error(json.error || "Could not list Google Drive folders."); setDriveFolders(json.folders); } catch (error) { setDriveSetupError(error instanceof Error ? error.message : "Could not list Google Drive folders."); } finally { setDriveLoading(false); } };
+  const saveDriveSettings = async (folder: DriveFolder | null) => { setDriveSaving(true); setDriveSetupError(""); try { const folders = folder ? [folder] : []; const res = await fetch("/api/connectors/google-drive/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspaceId: state.workspace.id, enabled: Boolean(folder), folders }) }); const json = await res.json().catch(() => ({})) as { settings?: DriveSettings; error?: string }; if (!res.ok || !json.settings) throw new Error(json.error || "Could not save Google Drive settings."); setDriveSettings(json.settings); setFeedback(folder ? "Google Drive folder scope saved." : "Google Drive disabled; Gmail remains connected."); } catch (error) { setDriveSetupError(error instanceof Error ? error.message : "Could not save Google Drive settings."); } finally { setDriveSaving(false); } };
+  const fetchJiraProjects = async () => { setJiraLoading(true); setJiraSetupError(""); try { const res = await fetch(`/api/connectors/jira/projects?workspaceId=${encodeURIComponent(state.workspace.id)}`, { cache: "no-store" }); const json = await res.json().catch(() => ({})) as { projects?: JiraProject[]; error?: string }; if (!res.ok || !Array.isArray(json.projects)) throw new Error(json.error || "Could not load Jira projects."); setJiraProjects(json.projects); } catch (error) { setJiraSetupError(error instanceof Error ? error.message : "Could not load Jira projects."); } finally { setJiraLoading(false); } };
+  const saveJiraSettings = async (project: JiraProject | null) => { setJiraSaving(true); setJiraSetupError(""); try { const res = await fetch("/api/connectors/jira/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspaceId: state.workspace.id, selectedProjectId: project?.id ?? null }) }); const json = await res.json().catch(() => ({})) as JiraSettings & { error?: string }; if (!res.ok) throw new Error(json.error || "Could not save Jira settings."); setJiraSettings((current) => ({ ...current, selectedProjectId: json.selectedProjectId ?? null, selectedProjectKey: json.selectedProjectKey ?? null, selectedProjectName: json.selectedProjectName ?? null })); setFeedback("Jira project scope saved."); } catch (error) { setJiraSetupError(error instanceof Error ? error.message : "Could not save Jira settings."); } finally { setJiraSaving(false); } };
+
+  const fetchTeamsSettings = async () => {
+    setTeamsSetupError("");
+    try {
+      const res = await fetch(`/api/connectors/microsoft/teams/settings?${slackQueryString()}`, { cache: "no-store" });
+      const json = await res.json().catch(() => ({})) as { settings?: TeamsSettings; message?: string; error?: string };
+      if (!res.ok || !json.settings) {
+        setTeamsSetupError(json.message || json.error || "Could not load Microsoft Teams settings.");
+        return null;
+      }
+      setTeamsSettings(json.settings);
+      return json.settings;
+    } catch {
+      setTeamsSetupError("Could not load Microsoft Teams settings.");
+      return null;
+    }
+  };
+
+  const fetchTeamsTeams = async () => {
+    setTeamsLoading(true);
+    setTeamsSetupError("");
+    try {
+      const res = await fetch(`/api/connectors/microsoft/teams/channels?${slackQueryString()}`, { cache: "no-store" });
+      const json = await res.json().catch(() => ({})) as { teams?: TeamsTeam[]; message?: string; error?: string };
+      if (!res.ok || !Array.isArray(json.teams)) {
+        setTeamsTeams([]);
+        setTeamsSetupError(json.message || json.error || "Could not load your Microsoft Teams teams.");
+        return;
+      }
+      setTeamsTeams(json.teams);
+    } catch {
+      setTeamsTeams([]);
+      setTeamsSetupError("Could not load your Microsoft Teams teams.");
+    } finally {
+      setTeamsLoading(false);
+    }
+  };
+
+  const fetchTeamsChannels = async (teamId: string) => {
+    if (!teamId) {
+      setTeamsChannels([]);
+      return;
+    }
+    setTeamsLoading(true);
+    setTeamsSetupError("");
+    try {
+      const qs = new URLSearchParams(slackQueryString());
+      qs.set("teamId", teamId);
+      const res = await fetch(`/api/connectors/microsoft/teams/channels?${qs.toString()}`, { cache: "no-store" });
+      const json = await res.json().catch(() => ({})) as { channels?: TeamsChannel[]; message?: string; error?: string };
+      if (!res.ok || !Array.isArray(json.channels)) {
+        setTeamsChannels([]);
+        setTeamsSetupError(json.message || json.error || "Could not load Microsoft Teams channels.");
+        return;
+      }
+      setTeamsChannels(json.channels);
+    } catch {
+      setTeamsChannels([]);
+      setTeamsSetupError("Could not load Microsoft Teams channels.");
+    } finally {
+      setTeamsLoading(false);
+    }
+  };
+
+  const saveTeamsSettings = async (patch: { enabled?: boolean; defaultTeamId?: string | null; defaultChannelId?: string | null }) => {
+    setTeamsSaving(true);
+    setTeamsSetupError("");
+    try {
+      const res = await fetch("/api/connectors/microsoft/teams/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId: state.workspace.id, ...patch }),
+      });
+      const json = await res.json().catch(() => ({})) as { settings?: TeamsSettings; message?: string; error?: string };
+      if (!res.ok || !json.settings) {
+        setTeamsSetupError(json.message || json.error || "Could not save Microsoft Teams settings.");
+        return;
+      }
+      setTeamsSettings(json.settings);
+      setFeedback("Microsoft Teams settings saved.");
+      router.refresh();
+    } catch {
+      setTeamsSetupError("Could not save Microsoft Teams settings.");
+    } finally {
+      setTeamsSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    if (drawerConnectorId !== "microsoft_teams") return;
+    void (async () => {
+      const settings = await fetchTeamsSettings();
+      if (settings?.enabled && settings.readGranted) {
+        await fetchTeamsTeams();
+        if (settings.defaultTeamId) await fetchTeamsChannels(settings.defaultTeamId);
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawerConnectorId]);
+
   useEffect(() => {
     if (drawerConnectorId !== "slack" || !drawerConnector || !isRealConnectedConnector(drawerConnector)) return;
     void fetchSlackSettings();
@@ -777,6 +1007,31 @@ export default function ConnectorsPage() {
     void fetchTrelloLists(trelloSettings.defaultBoardId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drawerConnectorId, trelloSettings.defaultBoardId]);
+
+  useEffect(() => {
+    if (drawerConnectorId !== "asana" || !drawerConnector || !isRealConnectedConnector(drawerConnector)) return;
+    void fetchAsanaSettings();
+    void fetchAsanaWorkspaces();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawerConnectorId]);
+
+  useEffect(() => {
+    if (drawerConnectorId !== "asana" || !asanaSettings.selectedWorkspaceId) return;
+    void fetchAsanaProjects(asanaSettings.selectedWorkspaceId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawerConnectorId, asanaSettings.selectedWorkspaceId]);
+
+  useEffect(() => {
+    if (drawerConnectorId !== "jira" || !drawerConnector || !isRealConnectedConnector(drawerConnector)) return;
+    void fetchJiraSettings(); void fetchJiraProjects();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawerConnectorId]);
+
+  useEffect(() => {
+    if (drawerConnectorId !== "zendesk" || !drawerConnector || !isRealConnectedConnector(drawerConnector)) return;
+    void fetchZendeskSettings();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawerConnectorId]);
 
   return (
     <div className="os-page connectors-page">
@@ -1004,7 +1259,7 @@ export default function ConnectorsPage() {
                           <button className="connector-finder-card" key={c.id} onClick={() => { if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); }}>
                             <div className="connector-finder-card-head">
                               <div className="connector-brand-logo" style={{ width: 30, height: 30, borderRadius: 9 }}>{IntegrationLogos[c.name] ?? <span style={{ color: c.color, fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{c.letter}</span>}</div>
-                              <div><strong>{c.name}</strong><span>{CONNECTOR_CATEGORY_LABELS[definition?.category ?? "custom_api"]}</span></div>
+                              <div><strong>{c.name}</strong><span>{definition ? connectorCategoryLabel(definition) : CONNECTOR_CATEGORY_LABELS.custom_api}</span></div>
                             </div>
                             <p>{connectorCapabilities(connectorKey)[0] ?? "Useful workspace context"}</p>
                             {operators.length > 0 && <small>For {operators.join(" · ")}</small>}
@@ -1031,6 +1286,19 @@ export default function ConnectorsPage() {
                 {setupConnector.id === "microsoft" && (
                   <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>Connect securely with Microsoft</div>
                 )}
+                {setupConnector.id === "microsoft_teams" && (
+                  <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>
+                    Uses your Microsoft sign-in. Microsoft will ask for the extra Teams permissions. Your Microsoft tenant administrator may need to approve reading channel messages.
+                  </div>
+                )}
+                {setupConnector.id === "zendesk" && (
+                  <div style={{ display: "grid", gap: 7, marginTop: 8 }}>
+                    <label style={{ fontSize: 11.5, color: "var(--text-mute)" }} htmlFor="zendesk-subdomain">Zendesk workspace</label>
+                    <input id="zendesk-subdomain" className="os-input" placeholder="yourcompany.zendesk.com" value={zendeskSubdomain} onChange={(event) => { setZendeskSubdomain(event.target.value); setZendeskSetupError(""); }} />
+                    <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>Use the standard *.zendesk.com workspace hostname. Auterim validates it before redirecting to Zendesk.</div>
+                    {zendeskSetupError && <div style={{ fontSize: 11.5, color: "#ffaaaa" }}>{zendeskSetupError}</div>}
+                  </div>
+                )}
                 {getConnectorDefinition(setupConnector.id)?.authType === "nango" && (
                   <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>
                     Managed OAuth connection{nangoStatuses[setupConnector.id]?.provider_email ? ` - ${nangoStatuses[setupConnector.id].provider_email}` : ""}
@@ -1048,12 +1316,32 @@ export default function ConnectorsPage() {
                         startRealGmailOAuth();
                         return;
                       }
+                      if (setupConnector.id === "google_drive") {
+                        startGoogleDriveConsent();
+                        return;
+                      }
                       if (setupConnector.id === "microsoft") {
                         startRealMicrosoftOAuth();
                         return;
                       }
+                      if (setupConnector.id === "microsoft_teams") {
+                        startMicrosoftTeamsConsent();
+                        return;
+                      }
                       if (setupConnector.id === "salesforce") {
                         startRealSalesforceOAuth();
+                        return;
+                      }
+                      if (setupConnector.id === "asana") {
+                        startRealAsanaOAuth();
+                        return;
+                      }
+                      if (setupConnector.id === "jira") {
+                        startRealJiraOAuth();
+                        return;
+                      }
+                      if (setupConnector.id === "zendesk") {
+                        startRealZendeskOAuth();
                         return;
                       }
                       if (getConnectorDefinition(setupConnector.id)?.authType === "nango") {
@@ -1092,6 +1380,8 @@ export default function ConnectorsPage() {
                 isRealConnected: isRealConnectedConnector(drawerConnector),
                 slackReady: drawerSlackReady,
                 trelloReady: drawerTrelloReady,
+                asanaReady: drawerAsanaReady,
+                jiraReady: drawerJiraReady,
               })}
             />
             {drawerConnector.id === "gmail" && drawerConnector.isConnected && (drawerConnector.health !== "healthy" || drawerConnector.records.includes("Reconnect required")) && (
@@ -1114,6 +1404,21 @@ export default function ConnectorsPage() {
             {getConnectorDefinition(drawerConnector.id)?.authType === "nango" && nangoStatuses[drawerConnector.id]?.status === "reconnect_required" && (
               <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--amber)", padding: "9px 10px", borderRadius: 10, background: "rgba(245,194,107,0.055)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.16)" }}>
                 Connection issue: provider authorization could not be verified. Reconnect required.
+              </div>
+            )}
+            {drawerConnector.id === "google_drive" && (
+              <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 9 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600 }}>Drive folder scope</div>
+                <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>Auterim only reads files inside the selected folder. Google account access remains shared with Gmail.</div>
+                <select className="os-input" value={driveSettings.folders[0]?.folderId ?? ""} disabled={driveLoading || driveSaving} onChange={(event) => { const selected = driveFolders.find((folder) => folder.folderId === event.target.value) ?? null; void saveDriveSettings(selected); }}>
+                  <option value="">{driveLoading ? "Loading folders..." : "Select a folder"}</option>
+                  {driveFolders.map((folder) => <option key={folder.folderId} value={folder.folderId}>{folder.folderName}</option>)}
+                </select>
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <button className="btn btn-ghost btn-sm" onClick={fetchDriveFolders} disabled={driveLoading}>Refresh folders</button>
+                  {driveSettings.enabled && <button className="btn btn-ghost btn-sm" onClick={() => void saveDriveSettings(null)} disabled={driveSaving}>Disable Drive</button>}
+                </div>
+                {driveSetupError && <div style={{ fontSize: 11.5, color: "var(--amber)" }}>{driveSetupError}</div>}
               </div>
             )}
             {drawerConnector.id === "slack" && isRealConnectedConnector(drawerConnector) && (
@@ -1209,6 +1514,81 @@ export default function ConnectorsPage() {
                 )}
               </div>
             )}
+            {drawerConnector.id === "microsoft_teams" && (
+              <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                  <div>
+                    <div style={{ fontSize: 12.5, fontWeight: 600 }}>Microsoft Teams access</div>
+                    <div style={{ fontSize: 11.5, color: "var(--text-mute)", marginTop: 2 }}>
+                      {!teamsSettings?.microsoftConnected
+                        ? "Connect Microsoft first, then grant Teams permissions."
+                        : !teamsSettings.readGranted
+                          ? "Microsoft account connected. Additional Teams permissions are required."
+                          : teamsSettings.enabled
+                            ? "Teams ready."
+                            : "Teams permissions granted. Enable Teams to start using it."}
+                    </div>
+                  </div>
+                  {teamsSettings?.microsoftConnected && !teamsSettings.readGranted && (
+                    <button className="btn btn-primary btn-sm" onClick={startMicrosoftTeamsConsent}>Grant Teams access</button>
+                  )}
+                  {teamsSettings?.readGranted && (
+                    <button
+                      className={`appr-btn ${teamsSettings.enabled ? "approve" : "edit"}`}
+                      disabled={teamsSaving}
+                      onClick={() => void saveTeamsSettings({ enabled: !teamsSettings.enabled })}
+                    >
+                      {teamsSettings.enabled ? "Enabled" : "Disabled"}
+                    </button>
+                  )}
+                </div>
+                {teamsSettings?.enabled && teamsSettings.readGranted && (
+                  <>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      <select
+                        className="os-input"
+                        value={teamsSettings.defaultTeamId ?? ""}
+                        disabled={teamsLoading || teamsSaving}
+                        onChange={(event) => {
+                          setTeamsChannels([]);
+                          const teamId = event.target.value || null;
+                          void saveTeamsSettings({ defaultTeamId: teamId, defaultChannelId: null });
+                          if (teamId) void fetchTeamsChannels(teamId);
+                        }}
+                      >
+                        <option value="">{teamsLoading ? "Loading teams..." : "Select a team"}</option>
+                        {teamsTeams.map((team) => <option key={team.id} value={team.id}>{team.displayName}</option>)}
+                      </select>
+                      <select
+                        className="os-input"
+                        value={teamsSettings.defaultChannelId ?? ""}
+                        disabled={teamsLoading || teamsSaving || !teamsSettings.defaultTeamId}
+                        onChange={(event) => void saveTeamsSettings({ defaultChannelId: event.target.value || null })}
+                      >
+                        <option value="">{teamsSettings.defaultTeamId ? "Select a channel" : "Select a team first"}</option>
+                        {teamsChannels.map((channel) => (
+                          <option key={channel.id} value={channel.id}>
+                            {channel.displayName}{channel.isPotentiallyExternal ? " - shared channel" : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ fontSize: 11.5, color: teamsSettings.defaultChannelId ? "#9DEFEA" : "var(--amber)" }}>
+                      {teamsSettings.defaultChannelId
+                        ? `Approved destination: ${teamsSettings.defaultTeamName ?? "Selected team"} / ${teamsSettings.defaultChannelName ?? "Selected channel"}. Auterim can only post here, and only after approval.`
+                        : "Teams is connected for reading. Select a team and channel before Auterim can prepare Teams messages."}
+                    </div>
+                    {!teamsSettings.sendGranted && (
+                      <div style={{ fontSize: 11.5, color: "var(--amber)" }}>
+                        Message sending permission was not granted. Teams monitoring works, but Auterim cannot prepare Teams messages.
+                      </div>
+                    )}
+                    <button className="btn btn-ghost btn-sm" onClick={() => void fetchTeamsTeams()} disabled={teamsLoading}>Refresh teams</button>
+                  </>
+                )}
+                {teamsSetupError && <div style={{ fontSize: 11.5, color: "#ffaaaa" }}>{teamsSetupError}</div>}
+              </div>
+            )}
             {drawerConnector.id === "trello" && isRealConnectedConnector(drawerConnector) && (
               <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 10 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -1266,6 +1646,33 @@ export default function ConnectorsPage() {
                 {trelloSetupError && <div style={{ fontSize: 11.5, color: "#ffaaaa" }}>{trelloSetupError}</div>}
               </div>
             )}
+            {drawerConnector.id === "asana" && isRealConnectedConnector(drawerConnector) && (
+              <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}><div><div style={{ fontSize: 12.5, fontWeight: 600 }}>Asana project scope</div><div style={{ fontSize: 11.5, color: "var(--text-mute)", marginTop: 2 }}>Choose the project Operations may monitor and update after approval.</div></div><button className="btn btn-ghost btn-sm" onClick={() => { void fetchAsanaWorkspaces(); }}>Refresh workspaces</button></div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <select className="os-input" value={asanaSettings.selectedWorkspaceId ?? ""} disabled={asanaLoading || asanaSaving} onFocus={() => { if (!asanaWorkspaces.length) void fetchAsanaWorkspaces(); }} onChange={(event) => { const selected = asanaWorkspaces.find((item) => item.gid === event.target.value) ?? null; setAsanaProjects([]); setAsanaSettings((current) => ({ ...current, selectedWorkspaceId: selected?.gid ?? null, selectedWorkspaceName: selected?.name ?? null, selectedProjectId: null, selectedProjectName: null })); if (selected) void fetchAsanaProjects(selected.gid); }}><option value="">{asanaLoading ? "Loading workspaces..." : "Select workspace"}</option>{asanaWorkspaces.map((item) => <option key={item.gid} value={item.gid}>{item.name}</option>)}</select>
+                  <select className="os-input" value={asanaSettings.selectedProjectId ?? ""} disabled={asanaLoading || asanaSaving || !asanaSettings.selectedWorkspaceId} onFocus={() => { if (asanaSettings.selectedWorkspaceId && !asanaProjects.length) void fetchAsanaProjects(asanaSettings.selectedWorkspaceId); }} onChange={(event) => { const selected = asanaProjects.find((item) => item.gid === event.target.value) ?? null; void saveAsanaSettings({ selectedProjectId: selected?.gid ?? null, selectedProjectName: selected?.name ?? null }); }}><option value="">{asanaSettings.selectedWorkspaceId ? "Select project" : "Select workspace first"}</option>{asanaProjects.map((item) => <option key={item.gid} value={item.gid}>{item.name}</option>)}</select>
+                </div>
+                <div style={{ fontSize: 11.5, color: drawerAsanaReady ? "#9DEFEA" : "var(--amber)" }}>{drawerAsanaReady ? `Read scope: ${asanaSettings.selectedWorkspaceName} / ${asanaSettings.selectedProjectName}` : "Select a workspace and project to enable Operations reads."}</div>
+                {asanaSetupError && <div style={{ fontSize: 11.5, color: "#ffaaaa" }}>{asanaSetupError}</div>}
+              </div>
+            )}
+            {drawerConnector.id === "jira" && isRealConnectedConnector(drawerConnector) && (
+              <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}><div><div style={{ fontSize: 12.5, fontWeight: 600 }}>Jira project scope</div><div style={{ fontSize: 11.5, color: "var(--text-mute)", marginTop: 2 }}>{jiraSettings.siteName ? `Site: ${jiraSettings.siteName}. ` : ""}Choose the one project Operations may monitor and update after approval.</div></div><button className="btn btn-ghost btn-sm" onClick={() => { void fetchJiraProjects(); }}>Refresh projects</button></div>
+                <select className="os-input" value={jiraSettings.selectedProjectId ?? ""} disabled={jiraLoading || jiraSaving} onChange={(event) => { const selected = jiraProjects.find((project) => project.id === event.target.value) ?? null; void saveJiraSettings(selected); }}><option value="">{jiraLoading ? "Loading projects..." : "Select project"}</option>{jiraProjects.map((project) => <option key={project.id} value={project.id}>{project.key} · {project.name}</option>)}</select>
+                <div style={{ fontSize: 11.5, color: drawerJiraReady ? "#9DEFEA" : "var(--amber)" }}>{drawerJiraReady ? `Read scope: ${jiraSettings.selectedProjectKey} · ${jiraSettings.selectedProjectName}` : "Select a Jira project to enable Operations reads."}</div>
+                {jiraSetupError && <div style={{ fontSize: 11.5, color: "#ffaaaa" }}>{jiraSetupError}</div>}
+              </div>
+            )}
+            {drawerConnector.id === "zendesk" && isRealConnectedConnector(drawerConnector) && (
+              <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 8 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600 }}>Zendesk workspace</div>
+                <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>{zendeskSettings.baseUrl ?? (zendeskSettings.subdomain ? `https://${zendeskSettings.subdomain}.zendesk.com` : "Workspace hostname unavailable")}</div>
+                <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>Ticket monitoring uses bounded incremental polling. Customer replies and ticket changes remain approval-gated.</div>
+                {zendeskSetupError && <div style={{ fontSize: 11.5, color: "#ffaaaa" }}>{zendeskSetupError}</div>}
+              </div>
+            )}
             {!isRealConnectedConnector(drawerConnector) && drawerConnector.source === "preview" && (
               <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "rgba(77,232,225,0.06)", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.18)", fontSize: 12, color: "var(--cyan)" }}>
                 Preview connection only. Connect a real account to sync live data and enable operator actions.
@@ -1279,17 +1686,32 @@ export default function ConnectorsPage() {
                       if (getConnectorDefinition(drawerConnector.id)?.authType === "nango") void testNangoConnection(drawerConnector.id);
                       else { testConnector(drawerConnector.id); setFeedback(`${drawerConnector.name} tested.`); }
                     }}>Test connection</button>
-                    {drawerConnector.id !== "gmail" && drawerConnector.id !== "microsoft" && drawerConnector.id !== "salesforce" && (
+                    {drawerConnector.id !== "gmail" && drawerConnector.id !== "microsoft" && drawerConnector.id !== "microsoft_teams" && drawerConnector.id !== "salesforce" && (
                       <button className="btn btn-ghost btn-sm" onClick={() => { resyncConnector(drawerConnector.id); setFeedback(`${drawerConnector.name} resynced.`); }}>Resync</button>
                     )}
                     {drawerConnector.id === "gmail" && (
                       <button className="btn btn-primary btn-sm" onClick={startRealGmailOAuth}>Reconnect Gmail</button>
                     )}
+                    {drawerConnector.id === "google_drive" && (
+                      <button className="btn btn-primary btn-sm" onClick={startGoogleDriveConsent}>Grant Drive permission</button>
+                    )}
                     {drawerConnector.id === "microsoft" && (
                       <button className="btn btn-primary btn-sm" onClick={startRealMicrosoftOAuth}>Reconnect Microsoft 365</button>
                     )}
+                    {drawerConnector.id === "microsoft_teams" && (
+                      <button className="btn btn-primary btn-sm" onClick={startMicrosoftTeamsConsent}>Reconnect Microsoft Teams</button>
+                    )}
                     {drawerConnector.id === "salesforce" && (
                       <button className="btn btn-primary btn-sm" onClick={startRealSalesforceOAuth}>Reconnect Salesforce</button>
+                    )}
+                    {drawerConnector.id === "asana" && (
+                      <button className="btn btn-primary btn-sm" onClick={startRealAsanaOAuth}>Reconnect Asana</button>
+                    )}
+                    {drawerConnector.id === "jira" && (
+                      <button className="btn btn-primary btn-sm" onClick={startRealJiraOAuth}>Reconnect Jira</button>
+                    )}
+                    {drawerConnector.id === "zendesk" && (
+                      <button className="btn btn-primary btn-sm" onClick={startRealZendeskOAuth}>Reconnect Zendesk</button>
                     )}
                   </>
                 )}

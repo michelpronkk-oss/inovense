@@ -366,39 +366,41 @@ function evaluateOperator(input: {
   }
 
   if (operator.key === "operations") {
-    // Operations reads Trello boards directly (see scanOperationsSignals) -
-    // without a connected Trello workspace the scan cannot check a single
-    // card and returns "setup_incomplete" immediately. Trello is therefore
-    // the real hard requirement, not an email connector (Operations does not
-    // send or draft email today). Slack stays optional: scan.ts degrades
-    // gracefully and only prepares a Trello action when Slack/its channel is
-    // not connected. The generic capability base (required: ["pm.tasks.read"],
-    // see OPERATOR_CONNECTOR_REQUIREMENTS.operations) is ANDed in here as the
-    // shared source of truth - Trello is the only connector today that
-    // satisfies it, so this never changes real-world behavior, only where
-    // the requirement is declared.
+    // Operations can run against any healthy project-management provider with
+    // a selected destination. The legacy operator registry keeps Trello as
+    // its canonical requiredConnectors entry for backwards compatibility,
+    // while the capability graph and provider-specific status checks provide
+    // the real alternative set (Trello, Asana, or Jira).
+    const projectManagementConnectors = truth
+      .filter((connector) => ["trello", "asana", "jira"].includes(connector.connectorKey))
+      .filter((connector) => connector.status === "connected" || connector.status === "healthy")
+      .map((connector) => connector.connectorKey as ConnectorKey);
+    const operationsConnectedRequired = projectManagementConnectors.length > 0
+      ? projectManagementConnectors
+      : connectedRequired;
+    const operationsMissingRequired = projectManagementConnectors.length > 0 ? [] : missingRequired;
     const missingCapability = capabilityReadiness ? !capabilityReadiness.ready : false;
-    if (missingRequired.length > 0 || missingCapability) {
+    if (operationsMissingRequired.length > 0 || missingCapability) {
       return baseResult({
         operator,
         status: "missing_connector",
-        connectedRequired,
-        missingRequired,
+        connectedRequired: operationsConnectedRequired,
+        missingRequired: operationsMissingRequired,
         entitlements,
         executionEligibility,
-        reason: "Operations readiness requires a connected Trello workspace with a selected default board.",
-        nextSetupStep: "Connect Trello and select a default board.",
+        reason: "Operations readiness requires a connected project-management workspace (Trello, Asana, or Jira).",
+        nextSetupStep: "Connect Trello, Asana, or Jira and select a board or project.",
       });
     }
     if (!runtimeSignals.hasApprovalActivity || !runtimeSignals.hasWorkspaceScopedLogs) {
       return baseResult({
         operator,
         status: "draft_only",
-        connectedRequired,
+        connectedRequired: operationsConnectedRequired,
         missingRequired: [],
         entitlements,
         executionEligibility,
-        reason: "Trello is connected, but this workspace has no recorded approval or operator run-log activity yet, so Operations has not proven it can run end to end.",
+        reason: "A project-management connector is connected, but this workspace has no recorded approval or operator run-log activity yet, so Operations has not proven it can run end to end.",
         nextSetupStep: "Run a manual Operations check to generate the first workspace-scoped approval and run log.",
         canRunManual: true,
       });
@@ -406,12 +408,12 @@ function evaluateOperator(input: {
     return baseResult({
       operator,
       status: "ready",
-      connectedRequired,
+      connectedRequired: operationsConnectedRequired,
       missingRequired: [],
       entitlements,
       executionEligibility,
-      reason: "Trello is connected, and this workspace has real approval and workspace-scoped run-log activity.",
-      nextSetupStep: "Ready for approval-gated Slack updates and Trello card changes.",
+      reason: "A project-management connector is connected, and this workspace has real approval and workspace-scoped run-log activity.",
+      nextSetupStep: "Ready for approval-gated internal updates and project-tool follow-through.",
       canRunManual: true,
     });
   }

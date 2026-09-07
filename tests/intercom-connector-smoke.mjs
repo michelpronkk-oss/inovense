@@ -1,0 +1,35 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+
+const read = (path) => fs.readFileSync(path, "utf8");
+const intercom = read("src/lib/connectors/intercom.ts");
+const state = read("src/lib/connectors/oauth-state.ts");
+const auth = read("src/app/api/connectors/intercom/auth/route.ts");
+const callback = read("src/app/api/connectors/intercom/callback/route.ts");
+const conversations = read("src/app/api/connectors/intercom/conversations/route.ts");
+const detail = read("src/app/api/connectors/intercom/conversations/[conversationId]/route.ts");
+const registry = read("src/lib/connectors/registry.ts");
+
+assert.match(intercom, /INTERCOM_REDIRECT_URI = "https:\/\/app\.auterim\.com\/api\/connectors\/intercom\/callback"/);
+for (const region of ["us", "eu", "au"]) assert.match(intercom, new RegExp(`${region}:[\\s\\S]*apiBase`));
+for (const permission of ["users:read", "companies:read", "conversations:read", "conversations:write", "admins:read"]) assert.match(intercom, new RegExp(permission.replace(":", "\\:")));
+assert.match(intercom, /auth\/eagle\/token/);
+assert.match(intercom, /Authorization: `Bearer/);
+assert.doesNotMatch(intercom, /Basic /);
+assert.match(intercom, /listIntercomConversations/);
+assert.match(intercom, /listIntercomContacts/);
+assert.match(intercom, /getIntercomCompany/);
+assert.match(intercom, /listIntercomAdmins/);
+assert.match(intercom, /replyToIntercomConversation/);
+assert.match(intercom, /updateIntercomConversation/);
+assert.match(intercom, /slice\(-50\)/);
+assert.match(state, /createIntercomOAuthState/);
+assert.match(state, /parseIntercomOAuthState/);
+assert.match(auth, /requireWorkspaceAdmin/);
+assert.match(auth, /createIntercomOAuthState/);
+assert.match(callback, /parseIntercomOAuthState/);
+assert.match(callback, /toStoredIntercomCredential/);
+assert.match(conversations, /maxResults/);
+assert.match(detail, /getIntercomConversationDetail/);
+assert.match(registry, /connectorKey: "intercom"[\s\S]*authType: "direct_oauth"[\s\S]*status: "internal_only"/);
+console.log("Intercom connector smoke contracts passed.");

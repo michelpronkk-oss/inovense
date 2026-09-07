@@ -1,5 +1,5 @@
 import {
-  CONNECTOR_CATEGORY_LABELS,
+  connectorCategoryLabel,
   listConnectors,
   type ConnectorDefinition,
 } from "@/lib/connectors/registry";
@@ -156,7 +156,7 @@ export function connectorDefinitionToSeedConnector(def: ConnectorDefinition): Co
     name: def.displayName,
     letter: def.letter,
     color: def.color,
-    category: CONNECTOR_CATEGORY_LABELS[def.category],
+    category: connectorCategoryLabel(def),
     description: def.description,
     status: available ? "available" : "disabled",
     health: "disabled",

@@ -1,4 +1,7 @@
 import { getConnectorTruth } from "@/lib/connectors/truth";
+import { getStoredAsanaCredential, listAsanaTasks, resolveAsanaAccessToken, type AsanaTask } from "@/lib/connectors/asana";
+import { getJiraProject, getStoredJiraCredential, resolveJiraAccessToken, searchJiraIssues } from "@/lib/connectors/jira";
+import { getStoredZendeskCredential, listZendeskTickets, normalizeZendeskTicket, resolveZendeskAccessToken } from "@/lib/connectors/zendesk";
 import {
   listTrelloLists,
   listTrelloCardsDetailed,
@@ -7,6 +10,7 @@ import {
   type TrelloCardDetailed,
   type TrelloList,
 } from "@/lib/operators/executors/trello";
+import { EMPTY_TEAMS_OPERATOR_SIGNALS, getTeamsOperatorSignals, type TeamsOperatorSignals } from "@/lib/operators/executors/microsoft-teams";
 import { prepareAction } from "@/lib/actions/execute";
 import type { PreparedAction } from "@/lib/actions/types";
 import type { Capability } from "@/lib/connectors/capabilities";
@@ -25,6 +29,10 @@ import {
   type OperationsDecision,
   type OperationsSignalType,
 } from "@/lib/operators/operations/ai-drafting";
+import { detectZendeskOperationsSignal } from "@/lib/operators/operations/zendesk-signals";
+import { getStoredIntercomCredential, listIntercomConversations, normalizeIntercomConversation, resolveIntercomAccessToken } from "@/lib/connectors/intercom";
+import { detectIntercomOperationsSignal } from "@/lib/operators/operations/intercom-signals";
+import { loadSelectedGoogleDriveContext } from "@/lib/connectors/google-drive";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 type OperationsScanSourceMode = "scheduled" | "manual" | "event_ready";
@@ -95,6 +103,16 @@ export type OperationsScanSummary = {
     waitingExternalCount?: number;
   };
   skipped?: { reason: string; count: number }[];
+  /**
+   * Microsoft Teams read context for this run. Optional enhancement only:
+   * Operations still runs end to end on Trello alone, and a Teams failure
+   * never fails the scan (see the guarded call in scanOperationsSignals).
+   * Contains counts, provider ids and safe reason codes - never message text.
+   */
+  teams?: TeamsOperatorSignals;
+  zendesk?: { scanned: number; risksFound: number };
+  intercom?: { scanned: number; risksFound: number };
+  googleDrive?: { scanned: number; usable: number; skipped: number };
   setup?: Record<string, unknown>;
   error?: string;
   details?: unknown;
@@ -270,22 +288,113 @@ export async function scanOperationsSignals(input: {
   const policySettings = await loadPolicyWorkspaceSettings({ supabase, workspaceId });
   const isConnected = (key: string) => truth.some((c) => c.connectorKey === key && c.status === "connected" && c.providerConfigKey && c.nangoConnectionId);
   const trelloConnected = isConnected("trello");
+  const asanaTruth = truth.find((c) => c.connectorKey === "asana");
+  const asanaConnected = asanaTruth?.status === "healthy";
+  const asanaExecutable = asanaTruth?.executable === true;
+  const asanaCredential = asanaConnected ? await getStoredAsanaCredential(workspaceId, supabase) : null;
+  const asanaMetadata = (asanaCredential?.metadata ?? {}) as Record<string, unknown>;
+  const asanaProjectId = typeof asanaMetadata.selectedProjectId === "string" ? asanaMetadata.selectedProjectId : null;
+  const jiraTruth = truth.find((c) => c.connectorKey === "jira");
+  const jiraConnected = jiraTruth?.status === "healthy";
+  const jiraExecutable = jiraTruth?.executable === true;
+  const jiraCredential = jiraConnected ? await getStoredJiraCredential(workspaceId, supabase) : null;
+  const jiraMetadata = (jiraCredential?.metadata ?? {}) as Record<string, unknown>;
+  const jiraProjectId = typeof jiraMetadata.selectedProjectId === "string" ? jiraMetadata.selectedProjectId : null;
   const slackConnected = isConnected("slack");
   const boardId = policy.trello.defaultBoardId;
   const boardName = policy.trello.defaultBoardName ?? "Default board";
   const slackChannelId = policy.slack.slackDefaultChannelId;
   const slackChannelName = policy.slack.slackDefaultChannelName;
 
+  // Microsoft Teams is a native (direct-OAuth) connector, so its truth row has
+  // no Nango ids - it is checked on its own healthy/executable truth instead.
+  const teamsTruth = truth.find((c) => c.connectorKey === "microsoft_teams") ?? null;
+  const teamsConnected = teamsTruth?.status === "healthy";
+  const zendeskTruth = truth.find((c) => c.connectorKey === "zendesk");
+  const zendeskConnected = zendeskTruth?.status === "healthy";
+  const intercomTruth = truth.find((c) => c.connectorKey === "intercom");
+  const intercomConnected = intercomTruth?.status === "healthy";
+  let googleDriveContext = { scanned: 0, usable: 0, skipped: 0 };
+  const googleDriveTruth = truth.find((c) => c.connectorKey === "google_drive");
+  if (googleDriveTruth?.status === "healthy") {
+    try { const context = await loadSelectedGoogleDriveContext({ workspaceId, supabase, maxFiles: 5 }); googleDriveContext = { scanned: context.scanned, usable: context.files.length, skipped: context.skipped }; } catch (error) { console.warn("[operations-scan] Drive context skipped", { workspaceId, error: error instanceof Error ? error.message : "Unknown Drive error" }); }
+  }
+
   const setup = {
     trelloConnected,
+    asanaConnected,
+    asanaExecutable,
+    asanaProjectSelected: Boolean(asanaProjectId),
+    jiraConnected,
+    jiraExecutable,
+    jiraProjectSelected: Boolean(jiraProjectId),
     trelloDestinationSet: Boolean(policy.trello.defaultBoardId && policy.trello.defaultListId),
     slackConnected,
     slackChannelSelected: Boolean(slackChannelId),
+    teamsConnected,
+    zendeskConnected,
+    zendeskExecutable: zendeskTruth?.executable === true,
     boardName,
   };
 
   if (!trelloConnected || !boardId) {
-    return { ok: true, status: 200, body: { status: "setup_incomplete", setupComplete: false, message: "Connect Trello and select a default board to run Operations.", sourceMode, setup } };
+    if (asanaConnected && asanaProjectId && asanaCredential) {
+      const eligibility = await getWorkspaceExecutionEligibility(workspaceId, supabase);
+      if (!eligibility.eligible) return { ok: false, status: 402, body: { status: "plan_required", message: eligibility.reason, sourceMode, setup } };
+      try {
+        const token = await resolveAsanaAccessToken({ workspaceId, credential: asanaCredential, supabase });
+        const tasks: AsanaTask[] = await listAsanaTasks(token, asanaProjectId);
+        const overdue = tasks.find((task) => !task.completed && task.due_on && new Date(task.due_on).getTime() < Date.now());
+        const stale = !overdue ? tasks.find((task) => !task.completed && task.modified_at && Date.now() - new Date(task.modified_at).getTime() > STUCK_DAYS * 86400000) : null;
+        const candidate = overdue ?? stale;
+        if (!candidate || !asanaExecutable) {
+          return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: `Read ${tasks.length} Asana tasks for Operations.${asanaExecutable ? " No follow-up signal met the launch threshold." : " Write permissions are not enabled, so no Asana action was proposed."}`, sourceMode, cardsChecked: tasks.length, signalsFound: candidate ? 1 : 0, approvalsCreated: 0, setup, skipped: [{ reason: asanaExecutable ? "no_action_threshold" : "asana_write_scope_missing", count: tasks.length }] } };
+        }
+        const handled = await loadOperationsDedupeState({ supabase, workspaceId });
+        const signalType = overdue ? "overdue_card" : "stuck_card";
+        const dedupeKey = `operations:asana:task:${candidate.gid}:${signalType}:${new Date().toISOString().slice(0, 10)}`;
+        if (handled.has(dedupeKey)) return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: "The Asana signal was already handled for today.", sourceMode, cardsChecked: tasks.length, signalsFound: 1, approvalsCreated: 0, setup, skipped: [{ reason: handled.get(dedupeKey) ?? "already_handled", count: 1 }] } };
+        const preparedAsanaAction = prepareAction({ workspaceId, operatorKey: "operations", actionType: "create_asana_task", connectorKey: "asana", capability: "pm.tasks.create_after_approval", title: "Create an Asana follow-up task", summary: `Prepare a follow-up for ${candidate.name} because it is ${overdue ? "overdue" : "stale"}.`, input: { projectId: asanaProjectId, name: `Follow up: ${candidate.name}`, notes: `Auterim detected ${overdue ? "an overdue" : "a stale"} task during Operations monitoring. Review the source task before execution.`, dueOn: null }, dedupeKey, source: "asana_scan", destinationType: "project_tool", normalizedTarget: candidate.gid, metadata: { asanaProjectId, asanaTaskId: candidate.gid, payloadIdentity: `${candidate.gid}:${signalType}`, signalType } }, { policySettings });
+        const runId = operatorRuntimeId("oprun-operations-asana"); const startedAt = new Date().toISOString();
+        const runInsert = await supabase.from("os_operator_runs").insert({ id: runId, workspace_id: workspaceId, operator_key: "operations", trigger_type: "asana_scan", status: "waiting_for_approval", input: { source: "asana_scan", sourceMode, dedupeKey, signalType, taskId: candidate.gid }, output: {}, readiness: {}, risk_level: "medium", started_at: startedAt });
+        if (runInsert.error) throw new Error(runInsert.error.message);
+        const approvalId = operatorRuntimeId("appr-operations-asana");
+        const approvalInsert = await supabase.from("os_approvals").insert({ id: approvalId, workspace_id: workspaceId, type: "action", title: preparedAsanaAction.title, body: preparedAsanaAction.summary, agent_id: OPERATIONS_AGENT_ID, agent_mark: OPERATIONS_AGENT_MARK, agent_color: OPERATIONS_AGENT_COLOR, run_id: runId, status: "pending", dedupe_key: dedupeKey, created_at: startedAt, continuation_payload: { kind: "shared_action.execute_after_approval", workspaceId, operatorKey: "operations", preparedAction: preparedAsanaAction }, policy_reason: "Asana writes require human approval before execution." });
+        if (approvalInsert.error) throw new Error(approvalInsert.error.message);
+        return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: "Operations prepared an approval-gated Asana follow-up task.", sourceMode, cardsChecked: tasks.length, signalsFound: 1, approvalsCreated: 1, signals: [{ signalType, severity: "medium", cardName: candidate.name, listName: "Asana project", runId, approvalId, dedupeKey }], setup } };
+      } catch { return { ok: false, status: 502, body: { error: "asana_scan_failed", message: "Could not read the selected Asana project.", sourceMode, setup } }; }
+    }
+    if (jiraConnected && jiraProjectId && jiraCredential) {
+      const eligibility = await getWorkspaceExecutionEligibility(workspaceId, supabase);
+      if (!eligibility.eligible) return { ok: false, status: 402, body: { status: "plan_required", message: eligibility.reason, sourceMode, setup } };
+      try {
+        const cloudId = typeof jiraMetadata.cloudId === "string" ? jiraMetadata.cloudId : null;
+        if (!cloudId) throw new Error("Jira site discovery is incomplete.");
+        const token = await resolveJiraAccessToken({ workspaceId, credential: jiraCredential, supabase });
+        const project = await getJiraProject(token, cloudId, jiraProjectId);
+        const issues = await searchJiraIssues(token, cloudId, project, { maxResults: 100 });
+        const terminal = new Set(["done", "closed", "resolved", "cancelled"]);
+        const now = Date.now();
+        const candidate = issues.find((issue) => {
+          const status = issue.status.toLowerCase(); if (terminal.has(status)) return false;
+          const blocker = issue.labels.some((label) => /blocked|blocker|impediment/i.test(label)) || /\b(blocked|blocker|impediment|cannot proceed|can't proceed)\b/i.test(`${issue.summary} ${issue.description}`);
+          const overdue = Boolean(issue.dueAt && new Date(issue.dueAt).getTime() < now);
+          const stale = Boolean(issue.updatedAt && now - new Date(issue.updatedAt).getTime() > STUCK_DAYS * 86400000 && /highest|high|critical|urgent/i.test(issue.priority ?? ""));
+          return blocker || overdue || stale || (!issue.assigneeAccountId && /highest|high|critical|urgent/i.test(issue.priority ?? ""));
+        });
+        if (!candidate || !jiraExecutable) return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: `Read ${issues.length} Jira issues for Operations.${jiraExecutable ? " No follow-up signal met the launch threshold." : " Write permissions are not enabled, so no Jira action was proposed."}`, sourceMode, cardsChecked: issues.length, signalsFound: candidate ? 1 : 0, approvalsCreated: 0, setup, skipped: [{ reason: jiraExecutable ? "no_action_threshold" : "jira_write_scope_missing", count: issues.length }] } };
+        const handled = await loadOperationsDedupeState({ supabase, workspaceId });
+        const explicitBlocked = candidate.labels.some((label) => /blocked|blocker|impediment/i.test(label)) || /\b(blocked|blocker|impediment|cannot proceed|can't proceed)\b/i.test(`${candidate.summary} ${candidate.description}`);
+        const signalType: OperationsSignalType = explicitBlocked ? "blocked_work" : candidate.dueAt && new Date(candidate.dueAt).getTime() < now ? "overdue_card" : "stuck_card";
+        const dedupeKey = `operations:jira:issue:${candidate.issueKey}:${signalType}:${new Date().toISOString().slice(0, 10)}`;
+        if (handled.has(dedupeKey)) return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: "The Jira signal was already handled for today.", sourceMode, cardsChecked: issues.length, signalsFound: 1, approvalsCreated: 0, setup, skipped: [{ reason: handled.get(dedupeKey) ?? "already_handled", count: 1 }] } };
+        const prepared = prepareAction({ workspaceId, operatorKey: "operations", actionType: "add_jira_comment", connectorKey: "jira", capability: "pm.comments.write_after_approval", title: "Add a Jira blocker follow-up comment", summary: `Prepare a follow-up for ${candidate.issueKey} because it is ${signalType.replace("_", " ")}.`, input: { issueKey: candidate.issueKey, text: `Auterim detected ${signalType.replace("_", " ")} during Operations monitoring. Review the issue and confirm the next step.` }, dedupeKey, source: "jira_scan", destinationType: "project_tool", normalizedTarget: candidate.issueKey, metadata: { jiraCloudId: cloudId, jiraProjectId: project.id, jiraIssueKey: candidate.issueKey, payloadIdentity: `${candidate.issueKey}:${signalType}`, signalType } }, { policySettings });
+        const runId = operatorRuntimeId("oprun-operations-jira"); const startedAt = new Date().toISOString(); const runInsert = await supabase.from("os_operator_runs").insert({ id: runId, workspace_id: workspaceId, operator_key: "operations", trigger_type: "jira_scan", status: "waiting_for_approval", input: { source: "jira_scan", sourceMode, dedupeKey, signalType, issueKey: candidate.issueKey }, output: {}, readiness: {}, risk_level: "medium", started_at: startedAt }); if (runInsert.error) throw new Error(runInsert.error.message);
+        const approvalId = operatorRuntimeId("appr-operations-jira"); const approvalInsert = await supabase.from("os_approvals").insert({ id: approvalId, workspace_id: workspaceId, type: "action", title: prepared.title, body: prepared.summary, agent_id: OPERATIONS_AGENT_ID, agent_mark: OPERATIONS_AGENT_MARK, agent_color: OPERATIONS_AGENT_COLOR, run_id: runId, status: "pending", dedupe_key: dedupeKey, created_at: startedAt, continuation_payload: { kind: "shared_action.execute_after_approval", workspaceId, operatorKey: "operations", preparedAction: prepared }, policy_reason: "Jira writes require human approval before execution." }); if (approvalInsert.error) throw new Error(approvalInsert.error.message);
+        return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: "Operations prepared an approval-gated Jira follow-up comment.", sourceMode, cardsChecked: issues.length, signalsFound: 1, approvalsCreated: 1, signals: [{ signalType, severity: explicitBlocked ? "high" : "medium", cardName: candidate.summary, listName: project.name, runId, approvalId, dedupeKey }], setup } };
+      } catch { return { ok: false, status: 502, body: { error: "jira_scan_failed", message: "Could not read the selected Jira project.", sourceMode, setup } }; }
+    }
+    return { ok: true, status: 200, body: { status: "setup_incomplete", setupComplete: false, message: "Connect Trello, Asana, or Jira, then select a project destination to run Operations.", sourceMode, setup } };
   }
 
   // Real billing enforcement - see the matching check in revenue/scan.ts for
@@ -691,10 +800,57 @@ export async function scanOperationsSignals(input: {
       .map((c) => c.ageAtDetectionDays)
       .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
 
+    // Optional Microsoft Teams read context. Guarded so a Teams outage,
+    // revoked consent, or missing scope can never fail an Operations run that
+    // is otherwise healthy on Trello.
+    let teamsSignals: TeamsOperatorSignals = EMPTY_TEAMS_OPERATOR_SIGNALS;
+    if (teamsConnected) {
+      try {
+        teamsSignals = await getTeamsOperatorSignals({ workspaceId, operatorKey: "operations", supabase });
+      } catch (error) {
+        console.warn("[operations-scan] teams context skipped", { workspaceId, error: error instanceof Error ? error.message : "Unknown Teams context error" });
+      }
+    }
+
+    let zendeskSupport = { scanned: 0, risksFound: 0 };
+    if (zendeskConnected) {
+      try {
+        const credential = await getStoredZendeskCredential(workspaceId, supabase);
+        const subdomain = typeof credential?.metadata?.subdomain === "string" ? credential.metadata.subdomain : null;
+        if (credential && subdomain) {
+          const token = await resolveZendeskAccessToken({ workspaceId, credential, supabase });
+          const result = await listZendeskTickets(token, subdomain, { cursor: typeof credential.metadata?.syncCursor === "string" ? credential.metadata.syncCursor : null, updatedSince: typeof credential.metadata?.lastScannedAt === "string" ? credential.metadata.lastScannedAt : null, maxResults: 40 });
+          zendeskSupport = { scanned: result.tickets.length, risksFound: result.tickets.reduce((count, ticket) => count + (detectZendeskOperationsSignal(normalizeZendeskTicket(ticket, subdomain)) ? 1 : 0), 0) };
+          await supabase.from("os_connector_credentials").update({ metadata: { ...(credential.metadata ?? {}), lastScannedAt: new Date().toISOString(), syncCursor: result.nextCursor } }).eq("workspace_id", workspaceId).eq("connector_key", "zendesk");
+        }
+      } catch (error) {
+        console.warn("[operations-scan] Zendesk support context skipped", { workspaceId, error: error instanceof Error ? error.message : "Unknown Zendesk context error" });
+      }
+    }
+    let intercomSupport = { scanned: 0, risksFound: 0 };
+    if (intercomConnected) {
+      try {
+        const credential = await getStoredIntercomCredential(workspaceId, supabase);
+        if (credential) {
+          const token = await resolveIntercomAccessToken({ workspaceId, credential, supabase });
+          const region = typeof credential.metadata?.region === "string" ? credential.metadata.region as "us" | "eu" | "au" : "us";
+          const result = await listIntercomConversations(token, region, { cursor: typeof credential.metadata?.syncCursor === "string" ? credential.metadata.syncCursor : null, updatedSince: typeof credential.metadata?.lastScannedAt === "string" ? credential.metadata.lastScannedAt : null, maxResults: 40 });
+          intercomSupport = { scanned: result.conversations.length, risksFound: result.conversations.reduce((count, conversation) => count + (detectIntercomOperationsSignal(normalizeIntercomConversation(conversation, region)) ? 1 : 0), 0) };
+          await supabase.from("os_connector_credentials").update({ metadata: { ...(credential.metadata ?? {}), lastScannedAt: new Date().toISOString(), syncCursor: result.nextCursor } }).eq("workspace_id", workspaceId).eq("connector_key", "intercom");
+        }
+      } catch (error) {
+        console.warn("[operations-scan] Intercom support context skipped", { workspaceId, error: error instanceof Error ? error.message : "Unknown Intercom context error" });
+      }
+    }
+
     const scanSummary = {
       type: "operations_scan_summary",
       status: "completed",
       sourceMode,
+      teams: teamsSignals,
+      zendesk: zendeskSupport,
+      intercom: intercomSupport,
+      googleDrive: googleDriveContext,
       monitoringEnabled: true,
       cadence: "daily",
       setupComplete: true,

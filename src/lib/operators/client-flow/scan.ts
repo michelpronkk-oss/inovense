@@ -23,6 +23,7 @@ import {
   type StoredMicrosoftCredential,
 } from "@/lib/connectors/microsoft";
 import { getConnectorTruth } from "@/lib/connectors/truth";
+import { EMPTY_TEAMS_OPERATOR_SIGNALS, getTeamsOperatorSignals, type TeamsOperatorSignals } from "@/lib/operators/executors/microsoft-teams";
 import { prepareAction } from "@/lib/actions/execute";
 import type { PreparedAction } from "@/lib/actions/types";
 import { logOperatorEvent, operatorRuntimeId } from "@/lib/operators/logging";
@@ -36,6 +37,9 @@ import { getAppUrl } from "@/lib/urls";
 import { loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
 import type { PolicyWorkspaceSettings } from "@/lib/policies/types";
 import { loadWorkspacePolicySettings, type TrelloProjectSettings } from "@/lib/settings/workspace-policy";
+import { getStoredZendeskCredential, listZendeskTickets, normalizeZendeskTicket, resolveZendeskAccessToken, type NormalizedZendeskTicket } from "@/lib/connectors/zendesk";
+import { getStoredIntercomCredential, listIntercomConversations, normalizeIntercomConversation, resolveIntercomAccessToken, type NormalizedIntercomConversation } from "@/lib/connectors/intercom";
+import { buildUntrustedGoogleDrivePromptContext, loadSelectedGoogleDriveContext } from "@/lib/connectors/google-drive";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 type ClientFlowScanSourceMode = "scheduled" | "manual" | "event_ready";
@@ -99,6 +103,11 @@ export type ClientFlowSignal = {
   confidence: "high" | "medium";
 };
 
+type ZendeskClientFlowSignalType = "urgent_ticket" | "unanswered_request" | "stale_follow_up";
+type ZendeskClientFlowSignal = { ticket: NormalizedZendeskTicket; signalType: ZendeskClientFlowSignalType; confidence: "high" | "medium" };
+type IntercomClientFlowSignalType = "urgent_conversation" | "unanswered_request" | "stale_follow_up";
+type IntercomClientFlowSignal = { conversation: NormalizedIntercomConversation; signalType: IntercomClientFlowSignalType; confidence: "high" | "medium" };
+
 export type ClientFlowScanSummary = {
   status?: string;
   message?: string;
@@ -120,6 +129,8 @@ export type ClientFlowScanSummary = {
     dedupeKey?: string;
     runId: string;
     approvalId: string;
+    sourceProvider?: string;
+    ticketId?: string;
   }[];
   skipped?: {
     messageId: string;
@@ -128,6 +139,15 @@ export type ClientFlowScanSummary = {
     reason: string;
     dedupeKey?: string;
   }[];
+  /**
+   * Microsoft Teams read context for this run. Optional enhancement only:
+   * Client Flow's hard requirement is still a connected email connector, and
+   * a Teams failure never fails the scan. Counts and safe reason codes only.
+   */
+  teams?: TeamsOperatorSignals;
+  zendesk?: { scanned: number; signalsFound: number; approvalsCreated: number; skipped: number };
+  intercom?: { scanned: number; signalsFound: number; approvalsCreated: number; skipped: number };
+  googleDrive?: { scanned: number; usable: number; skipped: number };
   readiness?: unknown;
   error?: string;
   details?: unknown;
@@ -286,6 +306,33 @@ function signalLabel(signalType: ClientFlowSignalType): string {
     next_step_request: "next step request",
     awaiting_delivery: "awaiting delivery",
   }[signalType];
+}
+
+function zendeskSignalLabel(signalType: ZendeskClientFlowSignalType): string {
+  return signalType === "urgent_ticket" ? "urgent support ticket" : signalType === "unanswered_request" ? "unanswered support request" : "stale support follow-up";
+}
+
+function detectZendeskClientFlowSignal(ticket: NormalizedZendeskTicket): ZendeskClientFlowSignal | null {
+  if (["solved", "closed"].includes(ticket.status)) return null;
+  const ageHours = ticket.updatedAt ? Math.max(0, (Date.now() - new Date(ticket.updatedAt).getTime()) / 3_600_000) : 0;
+  if (ticket.priority === "urgent" || ticket.priority === "high") return { ticket, signalType: "urgent_ticket", confidence: "high" };
+  if ((ticket.status === "new" || !ticket.assigneeId) && ageHours >= 12) return { ticket, signalType: "unanswered_request", confidence: "high" };
+  if ((ticket.status === "open" || ticket.status === "pending") && ageHours >= 48) return { ticket, signalType: "stale_follow_up", confidence: "medium" };
+  return null;
+}
+
+function intercomSignalLabel(signalType: IntercomClientFlowSignalType): string {
+  return signalType === "urgent_conversation" ? "urgent customer conversation" : signalType === "unanswered_request" ? "unanswered customer request" : "stale customer follow-up";
+}
+
+function detectIntercomClientFlowSignal(conversation: NormalizedIntercomConversation): IntercomClientFlowSignal | null {
+  if (["closed", "resolved"].includes(conversation.state)) return null;
+  const ageHours = conversation.updatedAt ? Math.max(0, (Date.now() - new Date(conversation.updatedAt).getTime()) / 3_600_000) : 0;
+  const latestText = conversation.parts.at(-1)?.preview?.toLowerCase() ?? conversation.subjectOrPreview?.toLowerCase() ?? "";
+  if (conversation.priority || /urgent|critical|outage|blocked|escalat/.test(latestText)) return { conversation, signalType: "urgent_conversation", confidence: "high" };
+  if (!conversation.assignedAdminId && ageHours >= 12) return { conversation, signalType: "unanswered_request", confidence: "high" };
+  if (ageHours >= 48) return { conversation, signalType: "stale_follow_up", confidence: "medium" };
+  return null;
 }
 
 function approvalTitleFor(signalType: ClientFlowSignalType): string {
@@ -575,6 +622,87 @@ function buildClientFlowTrelloAction(input: {
   }, { policySettings: input.policySettings });
 }
 
+async function createZendeskClientFlowApproval(input: {
+  supabase: SupabaseAdmin;
+  workspaceId: string;
+  readiness: OperatorReadiness;
+  policySettings: PolicyWorkspaceSettings;
+  signal: ZendeskClientFlowSignal;
+  subdomain: string;
+}): Promise<{ runId: string; approvalId: string; action: PreparedAction }> {
+  const { ticket, signalType } = input.signal;
+  const dedupeKey = `client_flow:zendesk:ticket:${ticket.ticketId}:${signalType}`;
+  const body = "Thanks for reaching out. We’re reviewing this request and will follow up with the next update shortly.";
+  const action = prepareAction({
+    workspaceId: input.workspaceId,
+    operatorKey: "client_flow",
+    actionType: "reply_zendesk_ticket",
+    connectorKey: "zendesk",
+    capability: "support.tickets.reply_after_approval",
+    title: `Reply to Zendesk ticket ${ticket.ticketId}`,
+    summary: `Prepare an approval-gated reply for ${zendeskSignalLabel(signalType)}: ${ticket.subject}.`,
+    input: { ticketId: ticket.ticketId, subject: ticket.subject, body },
+    dedupeKey,
+    source: "zendesk_scan",
+    destinationType: "customer",
+    confidence: input.signal.confidence,
+    riskLevel: "high",
+    normalizedTarget: ticket.ticketId,
+    metadata: { operatorKey: "client_flow", zendeskSubdomain: input.subdomain, zendeskTicketId: ticket.ticketId, payloadIdentity: `${ticket.ticketId}:${signalType}`, signalType },
+  }, { policySettings: input.policySettings });
+  const runId = operatorRuntimeId("oprun-client-flow-zendesk");
+  const startedAt = new Date().toISOString();
+  const runInsert = await input.supabase.from("os_operator_runs").insert({ id: runId, workspace_id: input.workspaceId, operator_key: "client_flow", trigger_type: "zendesk_scan", status: "waiting_for_approval", input: { source: "zendesk_scan", ticketId: ticket.ticketId, signalType, dedupeKey }, output: {}, readiness: input.readiness, risk_level: "high", started_at: startedAt });
+  if (runInsert.error) throw new Error(runInsert.error.message);
+  const approvalId = operatorRuntimeId("appr-client-flow-zendesk");
+  const approvalInsert = await input.supabase.from("os_approvals").insert({ id: approvalId, workspace_id: input.workspaceId, type: "action", title: action.title, body: action.summary, agent_id: CLIENT_FLOW_AGENT_ID, agent_mark: CLIENT_FLOW_AGENT_MARK, agent_color: CLIENT_FLOW_AGENT_COLOR, run_id: runId, status: "pending", dedupe_key: dedupeKey, created_at: startedAt, continuation_payload: { kind: "shared_action.execute_after_approval", workspaceId: input.workspaceId, operatorKey: "client_flow", preparedAction: action }, policy_reason: "Zendesk customer replies require human approval before execution." });
+  if (approvalInsert.error) throw new Error(approvalInsert.error.message);
+  const output = { type: "client_flow_zendesk_action", source: "zendesk_scan", ticketId: ticket.ticketId, subject: ticket.subject, signalType, approvalId, preparedAction: action };
+  const outputInsert = await input.supabase.from("os_operator_outputs").insert({ id: operatorRuntimeId("opout"), workspace_id: input.workspaceId, run_id: runId, operator_key: "client_flow", output_type: "client_flow_zendesk_action", title: action.title, payload: output, requires_approval: true, approval_id: approvalId });
+  if (outputInsert.error) throw new Error(outputInsert.error.message);
+  return { runId, approvalId, action };
+}
+
+async function createIntercomClientFlowApproval(input: {
+  supabase: SupabaseAdmin;
+  workspaceId: string;
+  readiness: OperatorReadiness;
+  policySettings: PolicyWorkspaceSettings;
+  signal: IntercomClientFlowSignal;
+}): Promise<{ runId: string; approvalId: string; action: PreparedAction }> {
+  const { conversation, signalType } = input.signal;
+  const dedupeKey = `client_flow:intercom:conversation:${conversation.region}:${conversation.conversationId}:${signalType}`;
+  const body = "Thanks for reaching out. We’re reviewing this request and will follow up with the next update shortly.";
+  const action = prepareAction({
+    workspaceId: input.workspaceId,
+    operatorKey: "client_flow",
+    actionType: "reply_intercom_conversation",
+    connectorKey: "intercom",
+    capability: "support.conversations.reply_after_approval",
+    title: `Reply to Intercom conversation ${conversation.conversationId}`,
+    summary: `Prepare an approval-gated reply for ${intercomSignalLabel(signalType)}${conversation.contactName ? ` from ${conversation.contactName}` : ""}.`,
+    input: { conversationId: conversation.conversationId, body, region: conversation.region },
+    dedupeKey,
+    source: "intercom_scan",
+    destinationType: "customer",
+    confidence: input.signal.confidence,
+    riskLevel: "high",
+    normalizedTarget: conversation.conversationId,
+    metadata: { operatorKey: "client_flow", intercomRegion: conversation.region, intercomConversationId: conversation.conversationId, payloadIdentity: `${conversation.region}:${conversation.conversationId}:${signalType}`, signalType },
+  }, { policySettings: input.policySettings });
+  const runId = operatorRuntimeId("oprun-client-flow-intercom");
+  const startedAt = new Date().toISOString();
+  const runInsert = await input.supabase.from("os_operator_runs").insert({ id: runId, workspace_id: input.workspaceId, operator_key: "client_flow", trigger_type: "intercom_scan", status: "waiting_for_approval", input: { source: "intercom_scan", conversationId: conversation.conversationId, signalType, dedupeKey }, output: {}, readiness: input.readiness, risk_level: "high", started_at: startedAt });
+  if (runInsert.error) throw new Error(runInsert.error.message);
+  const approvalId = operatorRuntimeId("appr-client-flow-intercom");
+  const approvalInsert = await input.supabase.from("os_approvals").insert({ id: approvalId, workspace_id: input.workspaceId, type: "action", title: action.title, body: action.summary, agent_id: CLIENT_FLOW_AGENT_ID, agent_mark: CLIENT_FLOW_AGENT_MARK, agent_color: CLIENT_FLOW_AGENT_COLOR, run_id: runId, status: "pending", dedupe_key: dedupeKey, created_at: startedAt, continuation_payload: { kind: "shared_action.execute_after_approval", workspaceId: input.workspaceId, operatorKey: "client_flow", preparedAction: action }, policy_reason: "Intercom customer replies require human approval before execution." });
+  if (approvalInsert.error) throw new Error(approvalInsert.error.message);
+  const output = { type: "client_flow_intercom_action", source: "intercom_scan", conversationId: conversation.conversationId, signalType, approvalId, preparedAction: action };
+  const outputInsert = await input.supabase.from("os_operator_outputs").insert({ id: operatorRuntimeId("opout"), workspace_id: input.workspaceId, run_id: runId, operator_key: "client_flow", output_type: "client_flow_intercom_action", title: action.title, payload: output, requires_approval: true, approval_id: approvalId });
+  if (outputInsert.error) throw new Error(outputInsert.error.message);
+  return { runId, approvalId, action };
+}
+
 export async function scanClientFlowSignals(input: {
   workspaceId: string;
   maxResults?: number;
@@ -693,6 +821,23 @@ export async function scanClientFlowSignals(input: {
       connector.connectorKey === "hubspot" && connector.status === "connected" && connector.providerConfigKey && connector.nangoConnectionId);
     const trelloConnected = connectorTruth.some((connector) =>
       connector.connectorKey === "trello" && connector.status === "connected" && connector.providerConfigKey && connector.nangoConnectionId);
+    // Microsoft Teams is a native connector, so there are no Nango ids to
+    // check - only its own healthy truth (which already requires real Teams
+    // consent, not just a working Microsoft 365 mail connection).
+    const teamsConnected = connectorTruth.some((connector) =>
+      connector.connectorKey === "microsoft_teams" && connector.status === "healthy");
+    const zendeskTruth = connectorTruth.find((connector) => connector.connectorKey === "zendesk");
+    const zendeskConnected = zendeskTruth?.status === "healthy";
+    const zendeskExecutable = zendeskTruth?.executable === true;
+    const intercomTruth = connectorTruth.find((connector) => connector.connectorKey === "intercom");
+    const intercomConnected = intercomTruth?.status === "healthy";
+    const intercomExecutable = intercomTruth?.executable === true;
+    let driveContextPrompt = "";
+    let driveContextSummary = { scanned: 0, usable: 0, skipped: 0 };
+    const driveTruth = connectorTruth.find((connector) => connector.connectorKey === "google_drive");
+    if (driveTruth?.status === "healthy") {
+      try { const driveContext = await loadSelectedGoogleDriveContext({ workspaceId, supabase, maxFiles: 5 }); driveContextPrompt = buildUntrustedGoogleDrivePromptContext(driveContext.files); driveContextSummary = { scanned: driveContext.scanned, usable: driveContext.files.length, skipped: driveContext.skipped }; } catch (error) { console.warn("[client-flow-scan] Drive context skipped", { workspaceId, error: error instanceof Error ? error.message : "Unknown Drive error" }); }
+    }
 
     const workspacePolicy = await loadWorkspacePolicySettings({ supabase, workspaceId });
     const policySettings = await loadPolicyWorkspaceSettings({ supabase, workspaceId });
@@ -708,6 +853,54 @@ export async function scanClientFlowSignals(input: {
     const skipped: NonNullable<ClientFlowScanSummary["skipped"]> = [];
     const signals: ClientFlowSignal[] = [];
     let routedToRevenueCount = 0;
+    const zendeskSignals: ZendeskClientFlowSignal[] = [];
+    let zendeskScanned = 0;
+    let zendeskSkipped = 0;
+    let zendeskActionCount = 0;
+    const intercomSignals: IntercomClientFlowSignal[] = [];
+    let intercomScanned = 0;
+    let intercomSkipped = 0;
+    let intercomActionCount = 0;
+
+    if (zendeskConnected) {
+      try {
+        const credential = await getStoredZendeskCredential(workspaceId, supabase);
+        const subdomain = typeof credential?.metadata?.subdomain === "string" ? credential.metadata.subdomain : null;
+        if (credential && subdomain) {
+          const token = await resolveZendeskAccessToken({ workspaceId, credential, supabase });
+          const result = await listZendeskTickets(token, subdomain, { cursor: typeof credential.metadata?.syncCursor === "string" ? credential.metadata.syncCursor : null, updatedSince: typeof credential.metadata?.lastScannedAt === "string" ? credential.metadata.lastScannedAt : null, maxResults: Math.min(maxResults, 20) });
+          zendeskScanned = result.tickets.length;
+          for (const ticket of result.tickets) {
+            const normalized = normalizeZendeskTicket(ticket, subdomain);
+            const detected = detectZendeskClientFlowSignal(normalized);
+            if (detected) zendeskSignals.push(detected); else zendeskSkipped += 1;
+          }
+          await supabase.from("os_connector_credentials").update({ metadata: { ...(credential.metadata ?? {}), lastScannedAt: new Date().toISOString(), syncCursor: result.nextCursor } }).eq("workspace_id", workspaceId).eq("connector_key", "zendesk");
+        }
+      } catch (error) {
+        console.warn("[client-flow-scan] Zendesk context skipped", { workspaceId, error: error instanceof Error ? error.message : "Unknown Zendesk error" });
+      }
+    }
+
+    if (intercomConnected) {
+      try {
+        const credential = await getStoredIntercomCredential(workspaceId, supabase);
+        if (credential) {
+          const token = await resolveIntercomAccessToken({ workspaceId, credential, supabase });
+          const region = typeof credential.metadata?.region === "string" ? credential.metadata.region as "us" | "eu" | "au" : "us";
+          const result = await listIntercomConversations(token, region, { cursor: typeof credential.metadata?.syncCursor === "string" ? credential.metadata.syncCursor : null, updatedSince: typeof credential.metadata?.lastScannedAt === "string" ? credential.metadata.lastScannedAt : null, maxResults: Math.min(maxResults, 20) });
+          intercomScanned = result.conversations.length;
+          for (const conversation of result.conversations) {
+            const normalized = normalizeIntercomConversation(conversation, region);
+            const detected = detectIntercomClientFlowSignal(normalized);
+            if (detected) intercomSignals.push(detected); else intercomSkipped += 1;
+          }
+          await supabase.from("os_connector_credentials").update({ metadata: { ...(credential.metadata ?? {}), lastScannedAt: new Date().toISOString(), syncCursor: result.nextCursor } }).eq("workspace_id", workspaceId).eq("connector_key", "intercom");
+        }
+      } catch (error) {
+        console.warn("[client-flow-scan] Intercom context skipped", { workspaceId, error: error instanceof Error ? error.message : "Unknown Intercom error" });
+      }
+    }
 
     for (const item of listed) {
       const message = emailConnector === "gmail"
@@ -758,7 +951,7 @@ export async function scanClientFlowSignals(input: {
         signal.message.snippet ? `Context: ${signal.message.snippet.slice(0, 280)}` : null,
       ].filter(Boolean).join("\n");
 
-      const aiDraft = await draftClientFlowReplyWithAI({ signal, deterministicDraft, defaultTaskTitle, defaultTaskDescription });
+      const aiDraft = await draftClientFlowReplyWithAI({ signal, deterministicDraft, defaultTaskTitle, defaultTaskDescription, driveContext: driveContextPrompt });
       const draft = { ...aiDraft.draft, body: applyGreeting(aiDraft.draft.body, personalization.greetingUsed) };
 
       const clientFlowTrelloAction = trelloConnected
@@ -999,17 +1192,55 @@ export async function scanClientFlowSignals(input: {
         .forEach((key) => setDedupeReason(handled, key, "existing_pending_approval"));
     }
 
+    for (const signal of zendeskSignals) {
+      const dedupeKey = `client_flow:zendesk:ticket:${signal.ticket.ticketId}:${signal.signalType}`;
+      const duplicateReason = findDuplicateReason({ dedupeKey, contactEmail: "", normalizedSubject: signal.ticket.subject, sourceProvider: "gmail", operatorKey: "client_flow", gmailMessageId: "" }, handled);
+      if (duplicateReason) { zendeskSkipped += 1; continue; }
+      if (!zendeskExecutable) { zendeskSkipped += 1; continue; }
+      const credential = await getStoredZendeskCredential(workspaceId, supabase);
+      const subdomain = typeof credential?.metadata?.subdomain === "string" ? credential.metadata.subdomain : null;
+      if (!subdomain) { zendeskSkipped += 1; continue; }
+      const createdZendesk = await createZendeskClientFlowApproval({ supabase, workspaceId, readiness, policySettings, signal, subdomain });
+      zendeskActionCount += 1;
+      setDedupeReason(handled, dedupeKey, "existing_pending_approval");
+      created.push({ messageId: `zendesk-${signal.ticket.ticketId}`, from: signal.ticket.requesterName ?? "Zendesk requester", subject: signal.ticket.subject, signalType: "issue_report", confidence: signal.confidence, trelloPrepared: false, dedupeKey, runId: createdZendesk.runId, approvalId: createdZendesk.approvalId, sourceProvider: "zendesk", ticketId: signal.ticket.ticketId });
+    }
+
+    for (const signal of intercomSignals) {
+      const dedupeKey = `client_flow:intercom:conversation:${signal.conversation.region}:${signal.conversation.conversationId}:${signal.signalType}`;
+      const duplicateReason = findDuplicateReason({ dedupeKey, contactEmail: "", normalizedSubject: signal.conversation.subjectOrPreview ?? signal.conversation.conversationId, sourceProvider: "gmail", operatorKey: "client_flow", gmailMessageId: "" }, handled);
+      if (duplicateReason || !intercomExecutable) { intercomSkipped += 1; continue; }
+      const createdIntercom = await createIntercomClientFlowApproval({ supabase, workspaceId, readiness, policySettings, signal });
+      intercomActionCount += 1;
+      setDedupeReason(handled, dedupeKey, "existing_pending_approval");
+      created.push({ messageId: `intercom-${signal.conversation.conversationId}`, from: signal.conversation.contactName ?? "Intercom customer", subject: signal.conversation.subjectOrPreview ?? "Intercom conversation", signalType: "issue_report", confidence: signal.confidence, trelloPrepared: false, dedupeKey, runId: createdIntercom.runId, approvalId: createdIntercom.approvalId, sourceProvider: "intercom", ticketId: signal.conversation.conversationId });
+    }
+
     const completedAt = new Date().toISOString();
+    // Optional Microsoft Teams read context. Guarded so a Teams outage or
+    // revoked Teams consent can never fail an otherwise healthy email scan.
+    let teamsSignals: TeamsOperatorSignals = EMPTY_TEAMS_OPERATOR_SIGNALS;
+    if (teamsConnected) {
+      try {
+        teamsSignals = await getTeamsOperatorSignals({ workspaceId, operatorKey: "client_flow", supabase });
+      } catch (error) {
+        console.warn("[client-flow-scan] teams context skipped", { workspaceId, error: error instanceof Error ? error.message : "Unknown Teams context error" });
+      }
+    }
     const scanSummary = {
       type: "client_flow_scan_summary",
       status: "completed",
       sourceMode,
+      teams: teamsSignals,
       monitoringEnabled: true,
       cadence: "daily",
       scanned: listed.length,
       signalsFound: signals.length,
       approvalsCreated: created.length,
       skippedCount: skipped.length,
+      zendesk: { scanned: zendeskScanned, signalsFound: zendeskSignals.length, approvalsCreated: zendeskActionCount, skipped: zendeskSkipped },
+      intercom: { scanned: intercomScanned, signalsFound: intercomSignals.length, approvalsCreated: intercomActionCount, skipped: intercomSkipped },
+      googleDrive: driveContextSummary,
       routedToRevenueCount,
       skipped,
       completedAt,
@@ -1021,7 +1252,7 @@ export async function scanClientFlowSignals(input: {
       operator_key: "client_flow",
       trigger_type: "gmail_scan",
       status: "completed",
-      input: { source: "gmail_scan_monitor", sourceMode, maxResults },
+      input: { source: "gmail_scan_monitor", sourceMode, maxResults, zendeskScanned, zendeskActionCount, intercomScanned, intercomActionCount },
       output: scanSummary,
       readiness,
       risk_level: "low",
@@ -1075,6 +1306,9 @@ export async function scanClientFlowSignals(input: {
         routedToRevenueCount,
         signals: created,
         skipped,
+        zendesk: { scanned: zendeskScanned, signalsFound: zendeskSignals.length, approvalsCreated: zendeskActionCount, skipped: zendeskSkipped },
+        intercom: { scanned: intercomScanned, signalsFound: intercomSignals.length, approvalsCreated: intercomActionCount, skipped: intercomSkipped },
+        googleDrive: driveContextSummary,
       },
     };
   } catch (error) {

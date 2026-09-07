@@ -1,0 +1,32 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+
+const read = (path) => fs.readFileSync(path, "utf8");
+const truth = read("src/lib/connectors/truth.ts");
+const clientFlow = read("src/lib/operators/client-flow/scan.ts");
+const clientAi = read("src/lib/operators/client-flow/ai-drafting.ts");
+const operations = read("src/lib/operators/operations/scan.ts");
+const requirements = read("src/lib/operators/connector-requirements.ts");
+const labels = read("src/lib/operators/action-labels.ts");
+const available = read("src/lib/operators/available-business-actions.ts");
+const systemMap = read("src/lib/admin/system-map.ts");
+
+assert.match(truth, /connectorKey: "google_drive"/);
+assert.match(truth, /GOOGLE_DRIVE_READONLY_SCOPE/);
+assert.match(truth, /permission_required/);
+assert.match(truth, /Drive ready/);
+assert.match(clientFlow, /loadSelectedGoogleDriveContext/);
+assert.match(clientFlow, /driveContextPrompt/);
+assert.match(clientAi, /untrusted business content/);
+assert.match(clientAi, /authorize an action/);
+assert.match(operations, /loadSelectedGoogleDriveContext/);
+assert.match(requirements, /docs\.read/);
+assert.match(labels, /Search Google Drive files/);
+assert.match(available, /google_drive\.searchFiles/);
+assert.match(systemMap, /connector-google_drive/);
+const registryText = read("src/lib/connectors/registry.ts");
+const driveStart = registryText.indexOf("google_drive:");
+const driveBlock = driveStart >= 0 ? registryText.slice(driveStart, registryText.indexOf("\n  },", driveStart)) : "";
+assert.ok(driveBlock, "Google Drive registry entry should exist");
+assert.doesNotMatch(driveBlock, /docs\.write/);
+console.log("Google Drive runtime smoke contracts passed.");

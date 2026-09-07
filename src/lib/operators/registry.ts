@@ -30,7 +30,7 @@ export type OperatorCategory =
 
 export type OperatorReleaseStatus = "ready" | "preview" | "coming_next" | "requires_connector";
 export type OperatorMode = "draft" | "approval_gated" | "read_only" | "real_action";
-export type ConnectorKey = "gmail" | "microsoft" | "hubspot" | "google_drive" | "notion" | "slack" | "stripe" | "linear" | "calendar" | "trello";
+export type ConnectorKey = "gmail" | "microsoft" | "hubspot" | "google_drive" | "notion" | "slack" | "stripe" | "linear" | "calendar" | "trello" | "asana" | "jira" | "zendesk" | "intercom";
 
 export type OperatorDefinition = {
   key: OperatorKey;
@@ -64,9 +64,9 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     // a single entry rather than widened to ["gmail","microsoft"], which
     // would double that denominator and skew the percentage for no reason.
     requiredConnectors: ["gmail"],
-    optionalConnectors: ["hubspot", "slack"],
+    optionalConnectors: ["hubspot", "slack", "intercom"],
     capabilities: ["Lead triage", "Follow-up drafting", "CRM contact/deal updates", "Approval-gated email send"],
-    allowedActions: ["gmail.createDraft", "approval.create", "hubspot.createOrUpdateContact", "hubspot.createOrUpdateDeal", "memory.read", "log.write"],
+    allowedActions: ["gmail.createDraft", "approval.create", "hubspot.createOrUpdateContact", "hubspot.createOrUpdateDeal", "intercom.readConversations", "memory.read", "log.write"],
     approvalRequiredActions: ["gmail.sendExternal", "hubspot.updateContact", "hubspot.updateDeal"],
     blockedActions: ["hubspot.deleteRecord", "pricing.change", "payment.refund"],
     supportedModes: ["draft", "approval_gated", "real_action"],
@@ -80,10 +80,10 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     businessOutcome: "Prepare client updates and onboarding messages without losing approval control.",
     description: "Drafts onboarding and client-facing communication with future document context support.",
     requiredConnectors: ["gmail"],
-    optionalConnectors: ["google_drive", "notion", "calendar"],
-    capabilities: ["Client update drafting", "Onboarding checklist preparation", "Handoff summaries"],
-    allowedActions: ["gmail.createDraft", "approval.create", "memory.read", "log.write"],
-    approvalRequiredActions: ["gmail.sendExternal", "calendar.createExternalInvite"],
+    optionalConnectors: ["google_drive", "notion", "calendar", "zendesk", "intercom"],
+    capabilities: ["Client update drafting", "Onboarding checklist preparation", "Handoff summaries", "Google Drive business document context", "Zendesk customer-support context", "Intercom conversation context"],
+    allowedActions: ["gmail.createDraft", "approval.create", "memory.read", "log.write", "google_drive.searchFiles", "teams.readChannelMessages", "teams.prepareMessage", "zendesk.readTickets", "zendesk.prepareReply", "zendesk.prepareInternalNote", "zendesk.prepareTicketUpdate", "intercom.readConversations", "intercom.prepareReply", "intercom.prepareConversationUpdate"],
+    approvalRequiredActions: ["gmail.sendExternal", "calendar.createExternalInvite", "teams.sendChannelMessage", "zendesk.replyTicket", "zendesk.addInternalNote", "zendesk.updateTicket", "intercom.replyConversation", "intercom.updateConversation"],
     blockedActions: ["pricing.change", "contract.changeTerms", "file.shareExternalWithoutApproval"],
     supportedModes: ["draft", "approval_gated"],
     planAvailability: ["starter", "growth", "scale", "operator", "enterprise"],
@@ -96,10 +96,10 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     businessOutcome: "Turn approvals, logs, and workspace activity into operational follow-through.",
     description: "Monitors project boards, finds stalled work, and prepares approved internal updates.",
     requiredConnectors: ["trello"],
-    optionalConnectors: ["slack", "notion", "linear"],
-    capabilities: ["Trello board and card monitoring", "Stalled, overdue, and blocked work detection", "Internal Slack update drafting", "Trello action preparation (move, comment, create)"],
-    allowedActions: ["memory.read", "log.write", "trello.scanBoards", "trello.prepareAction", "slack.prepareMessage"],
-    approvalRequiredActions: ["trello.moveCard", "trello.addComment", "trello.createCard", "slack.postMessage"],
+    optionalConnectors: ["slack", "notion", "linear", "asana", "jira", "zendesk", "intercom", "google_drive"],
+    capabilities: ["Trello board and card monitoring", "Stalled, overdue, and blocked work detection", "Internal Slack update drafting", "Google Drive project document context", "Trello, Asana, Jira, Zendesk, and Intercom follow-through preparation"],
+    allowedActions: ["memory.read", "log.write", "trello.scanBoards", "trello.prepareAction", "google_drive.searchFiles", "asana.createApprovedTask", "asana.updateApprovedTask", "asana.addApprovedComment", "jira.createApprovedIssue", "jira.updateApprovedIssue", "jira.addApprovedComment", "zendesk.readTickets", "zendesk.prepareInternalNote", "zendesk.prepareTicketUpdate", "intercom.readConversations", "slack.prepareMessage", "teams.readChannelMessages", "teams.prepareMessage"],
+    approvalRequiredActions: ["trello.moveCard", "trello.addComment", "trello.createCard", "asana.createTask", "asana.updateTask", "asana.addComment", "jira.createIssue", "jira.updateIssue", "jira.addComment", "zendesk.addInternalNote", "zendesk.updateTicket", "slack.postMessage", "teams.sendChannelMessage"],
     blockedActions: ["payment.refund", "pricing.change", "destructive.delete"],
     supportedModes: ["draft", "read_only", "approval_gated"],
     planAvailability: ["starter", "growth", "scale", "operator", "enterprise"],

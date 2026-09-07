@@ -46,6 +46,7 @@ function build(input: {
  * - never auto-send customer emails
  * - never auto-allow CRM writes
  * - never auto-allow Trello card create/move
+ * - never auto-allow a Microsoft Teams message
  * - never auto-allow unknown actions
  * - destructive actions are always blocked
  * The only business auto-allow path is a low-risk Trello comment within a
@@ -96,6 +97,26 @@ export function evaluatePolicy(
     }
     // Unknown system action: never auto.
     return build({ decision: "approval_required", reason: "Unrecognized system action requires review.", riskLevel: risk, matchedRuleId: "system.unknown", entitlements });
+  }
+
+  // Microsoft Teams message prepared by an operator. Teams is never treated as
+  // "just internal": a Teams shared channel can be extended to a federated
+  // external tenant, and Graph cannot always prove a channel is internal, so
+  // there is no guarded-autonomy path for Teams in this pass at all. Checked
+  // before the customer-email and internal branches so the matched rule id is
+  // explicit in the audit trail regardless of destination classification.
+  if (input.actionType === "send_teams_message" || input.connectorKey === "microsoft_teams") {
+    if (stop) return build({ decision: "blocked", reason: "Emergency stop blocks operator Teams messages.", riskLevel: "medium", matchedRuleId: "emergency.teams_message", entitlements });
+    return build({ decision: "approval_required", reason: "Microsoft Teams messages require human approval before sending.", riskLevel: input.riskLevel === "low" ? "medium" : input.riskLevel, matchedRuleId: "teams_message.approval_required", entitlements });
+  }
+
+  if (input.connectorKey === "zendesk" || input.actionType === "reply_zendesk_ticket" || input.actionType === "add_zendesk_internal_note" || input.actionType === "update_zendesk_ticket") {
+    if (stop) return build({ decision: "blocked", reason: "Emergency stop blocks Zendesk actions.", riskLevel: input.actionType === "reply_zendesk_ticket" ? "high" : risk, matchedRuleId: "emergency.zendesk", entitlements });
+    return build({ decision: "approval_required", reason: input.actionType === "reply_zendesk_ticket" ? "Public Zendesk replies require human approval." : "Zendesk ticket changes require human approval.", riskLevel: input.actionType === "reply_zendesk_ticket" ? "high" : risk, matchedRuleId: input.actionType === "reply_zendesk_ticket" ? "zendesk.reply.approval_required" : "zendesk.ticket_change.approval_required", entitlements });
+  }
+  if (input.connectorKey === "intercom" || input.actionType === "reply_intercom_conversation" || input.actionType === "update_intercom_conversation") {
+    if (stop) return build({ decision: "blocked", reason: "Emergency stop blocks Intercom actions.", riskLevel: input.actionType === "reply_intercom_conversation" ? "high" : risk, matchedRuleId: "emergency.intercom", entitlements });
+    return build({ decision: "approval_required", reason: input.actionType === "reply_intercom_conversation" ? "Public Intercom replies require human approval." : "Intercom conversation changes require human approval.", riskLevel: input.actionType === "reply_intercom_conversation" ? "high" : risk, matchedRuleId: input.actionType === "reply_intercom_conversation" ? "intercom.reply.approval_required" : "intercom.update.approval_required", entitlements });
   }
 
   // Customer email (never auto-sends in v1).

@@ -45,6 +45,11 @@ type OperationsSetup = {
   coreReady?: boolean;
   trelloConnected?: boolean;
   trelloDestinationSet?: boolean;
+  asanaConnected?: boolean;
+  asanaProjectSelected?: boolean;
+  jiraConnected?: boolean;
+  jiraProjectSelected?: boolean;
+  projectManagementReady?: boolean;
   slackConnected?: boolean;
   slackChannelSelected?: boolean;
   slackAlertsReady?: boolean;
@@ -57,6 +62,8 @@ type OperationsStatus = {
   readiness?: OperatorReadiness | null;
   optionalUpsellConnectors?: { connectorKey: string; displayName: string; status: string }[];
   trello?: { status?: string; connected?: boolean; defaultBoardName?: string | null; defaultListName?: string | null } | null;
+  asana?: { status?: string; connected?: boolean; projectSelected?: boolean } | null;
+  jira?: { status?: string; connected?: boolean; projectSelected?: boolean } | null;
   slack?: { status?: string; connected?: boolean; channelSelected?: boolean; defaultChannelName?: string | null } | null;
   setup?: OperationsSetup;
   monitoring?: {
@@ -83,13 +90,6 @@ function relativeTime(iso: string): string {
   if (hours > 0) return `${hours}h ago`;
   const mins = Math.floor(diff / 60000);
   return mins > 0 ? `${mins}m ago` : "just now";
-}
-
-function dateTimeLabel(iso: string | null | undefined): string {
-  if (!iso) return "Not scheduled";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "Unknown";
-  return date.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 function CheckIcon({ ok }: { ok: boolean }) {
@@ -224,35 +224,33 @@ export default function OperationsOperatorPage() {
   })();
 
   const heroTitle = setupState === "needs_setup"
-    ? "Connect Trello to start Operations"
+    ? "Connect a project tool to start Operations"
     : setupState === "setup_incomplete"
       ? "Operations is almost ready"
       : "Operations is monitoring your boards";
   const heroSub = (() => {
-    if (setupState === "needs_setup") return "Operations reads your Trello boards and prepares approved internal updates. Connect Trello to begin.";
-    if (setupState === "setup_incomplete") return "Select a default Trello board and list so Operations can turn stalled work into approved actions.";
-    return "Watching project boards in the background. Approvals appear only when work needs attention.";
+    if (setupState === "needs_setup") return "Operations reads a configured Trello, Asana, or Jira project and prepares approved internal updates.";
+    if (setupState === "setup_incomplete") return "Connect a project tool and select its bounded destination so Operations knows where to look and act.";
+    return "Watching project work in the background. Approvals appear only when work needs attention.";
   })();
 
   const checklist: ChecklistItem[] = [
     {
-      label: "Trello connected",
-      ok: Boolean(setup?.trelloConnected),
-      detail: setup?.trelloConnected ? "Reading project boards and cards." : "Connect Trello to read project boards and cards.",
-      action: { label: "Open Trello settings", href: "/app/connectors" },
+      label: "Project tool connected",
+      ok: Boolean(setup?.projectManagementReady),
+      detail: setup?.projectManagementReady ? "A configured project source is ready for bounded monitoring." : "Connect Trello, Asana, or Jira and select one project destination.",
+      action: { label: "Open connector settings", href: "/app/connectors" },
     },
     {
-      label: "Trello default board and list selected",
-      ok: Boolean(setup?.trelloDestinationSet),
-      detail: setup?.trelloDestinationSet
-        ? `Default board: ${status?.trello?.defaultBoardName || "set"} · list: ${status?.trello?.defaultListName || "set"}.`
-        : "Select a default board and list so Operations knows where to look and act.",
-      action: { label: "Select board/list", href: "/app/connectors" },
+      label: "Project scope selected",
+      ok: Boolean(setup?.projectManagementReady),
+      detail: setup?.projectManagementReady ? "Operations is restricted to the selected project scope." : "Select a project in the connected tool before running a check.",
+      action: { label: "Select project", href: "/app/connectors" },
     },
     {
       label: "Approval flow active",
       ok: Boolean(setup?.approvalFlowActive ?? true),
-      detail: "Every Slack update and Trello change waits for human approval before it runs.",
+      detail: "Every Slack update and project-tool change waits for human approval before it runs.",
       action: { label: "View approvals", href: "/app/approvals" },
     },
     {
@@ -318,7 +316,7 @@ export default function OperationsOperatorPage() {
       <div className="p" style={{ gap: 0 }}>
         <div className="p-head"><h3>Connected tools</h3></div>
         <div style={{ padding: "18px 20px", display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
-          <ToolCard name="Trello" tone="Project / task source" ready={Boolean(setup?.trelloDestinationSet)} headline="Reads project boards and prepares approved task updates." note={setup?.trelloConnected && !setup?.trelloDestinationSet ? "Connected, but no default board/list selected." : undefined} />
+          <ToolCard name="Trello / Asana / Jira" tone="Project / task source" ready={Boolean(setup?.projectManagementReady)} headline="Reads one selected project and prepares approved follow-through." note={!setup?.projectManagementReady ? "Connect a project tool and select its destination." : undefined} />
           <ToolCard name="Slack" tone="Internal updates" ready={Boolean(setup?.slackAlertsReady)} headline="Posts internal operations updates after approval." note={setup?.slackConnected && !setup?.slackAlertsReady ? "Connected, but no channel selected." : undefined} />
         </div>
       </div>

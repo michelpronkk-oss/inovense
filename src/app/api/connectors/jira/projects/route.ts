@@ -1,0 +1,9 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getStoredJiraCredential, listJiraProjects, resolveJiraAccessToken } from "@/lib/connectors/jira";
+import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
+import { resolveWorkspaceContext } from "@/lib/os/workspace";
+export async function GET(req: NextRequest) {
+  if (!hasSupabaseAdminConfig()) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 }); const supabase = createSupabaseAdmin(); const context = await resolveWorkspaceContext({ workspaceId: req.nextUrl.searchParams.get("workspaceId") || undefined, supabase }); if (!context.ok) return NextResponse.json({ error: context.error }, { status: context.status });
+  const credential = await getStoredJiraCredential(context.workspaceId, supabase); if (!credential) return NextResponse.json({ error: "Jira is not connected." }, { status: 404 }); const cloudId = typeof credential.metadata?.cloudId === "string" ? credential.metadata.cloudId : null; if (!cloudId) return NextResponse.json({ error: "Jira site discovery is incomplete. Reconnect Jira." }, { status: 409 });
+  try { const token = await resolveJiraAccessToken({ workspaceId: context.workspaceId, credential, supabase }); return NextResponse.json({ projects: await listJiraProjects(token, cloudId) }); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Could not load Jira projects." }, { status: 502 }); }
+}

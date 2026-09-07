@@ -33,6 +33,8 @@ export type PolicyInput = {
   domain?: string;
   channel?: string;
   channelId?: string;
+  /** Microsoft Teams team id. Part of the allowed-destination identity for Teams writes. */
+  teamId?: string;
   cardId?: string;
   listId?: string;
   source?: string;

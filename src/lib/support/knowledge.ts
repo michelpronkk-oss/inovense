@@ -9,7 +9,7 @@ export type SupportHelpItem = {
 /** Curated, maintained help paths. These intentionally point only to live product surfaces. */
 export const SUPPORT_HELP: SupportHelpItem[] = [
   { id: "get-started", title: "Get started with Auterim", summary: "Connect a system, review the recommended operator, then deploy with approvals in place.", href: "/getting-started", keywords: ["start", "onboarding", "setup", "first steps"] },
-  { id: "connectors", title: "Connect and repair systems", summary: "Connect a supported system or resolve a connection that needs attention.", href: "/connectors", keywords: ["connector", "gmail", "microsoft", "hubspot", "salesforce", "trello", "slack", "reconnect"] },
+  { id: "connectors", title: "Connect and repair systems", summary: "Connect a supported system or resolve a connection that needs attention.", href: "/connectors", keywords: ["connector", "gmail", "google drive", "drive", "microsoft", "microsoft teams", "teams", "hubspot", "salesforce", "trello", "asana", "jira", "zendesk", "intercom", "customer support", "slack", "reconnect", "permissions", "consent"] },
   { id: "operators", title: "Set up operators", summary: "See what each operator needs, what it can prepare, and the next setup step.", href: "/agents", keywords: ["operator", "revenue", "client flow", "operations", "ready", "activate"] },
   { id: "approvals", title: "Review approvals", summary: "Inspect prepared outbound work and keep consequential actions under your control.", href: "/approvals", keywords: ["approval", "approve", "policy", "outbound", "action"] },
   { id: "plans", title: "Plans and billing", summary: "Review your workspace plan, usage and billing status.", href: "/plans", keywords: ["plan", "billing", "invoice", "subscription", "upgrade"] },

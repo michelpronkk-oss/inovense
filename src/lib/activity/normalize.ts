@@ -13,9 +13,9 @@ function actionState(row: Row) {
   const action = asRecord(result.action);
   const prepared = asRecord(payload.preparedAction);
   const connectorKey = text(action.connectorKey) ?? text(prepared.connectorKey);
-  const executed = text(result.gmailStatus) === "sent" || text(result.slackStatus) === "sent" || text(result.trelloStatus) === "executed" || ["completed", "executed", "success"].includes(text(result.hubspotStatus) ?? "") || text(result.status) === "executed";
-  const failed = text(row.status) === "failed" || text(result.status) === "failed";
-  return { executed, failed, connectorKey };
+  const executed = text(result.gmailStatus) === "sent" || text(result.slackStatus) === "sent" || text(result.teamsStatus) === "sent" || text(result.trelloStatus) === "executed" || ["completed", "executed", "success"].includes(text(result.hubspotStatus) ?? "") || text(result.status) === "executed";
+  const failed = text(row.status) === "failed" || text(result.status) === "failed" || text(result.teamsStatus) === "failed" || text(result.teamsStatus) === "blocked_by_policy";
+  return { executed, failed, connectorKey: connectorKey ?? (result.teamsStatus ? "microsoft_teams" : null) };
 }
 
 /** A read-time projection: no payload fields that can contain customer content are serialized. */

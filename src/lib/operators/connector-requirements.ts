@@ -34,7 +34,7 @@ export const OPERATOR_CONNECTOR_REQUIREMENTS: Record<OperatorKey, OperatorConnec
     // (getConnectorImpactForOperators) and optional-upsell suggestions
     // correctly recognize Salesforce as a real Revenue enhancement, not an
     // untracked connector.
-    optional: ["crm.contacts.write", "crm.deals.write", "crm.contacts.read", "crm.deals.read", "calendar.events.read"],
+    optional: ["crm.contacts.write", "crm.deals.write", "crm.contacts.read", "crm.deals.read", "calendar.events.read", "support.conversations.read", "support.contacts.read"],
   },
   client_flow: {
     operatorKey: "client_flow",
@@ -42,17 +42,25 @@ export const OPERATOR_CONNECTOR_REQUIREMENTS: Record<OperatorKey, OperatorConnec
     // read+send email capability pair Revenue needs (see readiness.ts's
     // client_flow branch, which resolves a specific Gmail/Microsoft 365
     // connector via this exact capability pair) - not read-only access.
+    // chat.channels.read / chat.messages.read below are what Microsoft Teams
+    // actually provides today (bounded recent channel context). Declared as
+    // optional enhancements only - Client Flow keeps working end to end with
+    // no team-chat connector at all.
     required: ["email.read", "email.send_after_approval"],
-    optional: ["docs.read", "pm.tasks.write_after_approval", "chat.messages.send_after_approval"],
+    optional: ["docs.read", "pm.tasks.write_after_approval", "chat.channels.read", "chat.messages.read", "chat.messages.send_after_approval", "support.tickets.read", "support.customers.read", "support.tickets.reply_after_approval", "support.tickets.comment_after_approval", "support.tickets.update_after_approval", "support.conversations.read", "support.contacts.read", "support.conversations.reply_after_approval", "support.conversations.update_after_approval"],
   },
   operations: {
     operatorKey: "operations",
-    // Operations reads Trello boards directly and cannot run at all without
-    // one connected (see readiness.ts's operations branch and
-    // scanOperationsSignals()), so pm.tasks.read is a real requirement here,
-    // matching OPERATOR_REGISTRY's requiredConnectors: ["trello"].
+    // Operations reads a selected project-management destination and cannot
+    // run at all without one connected provider (Trello, Asana, or Jira; see
+    // readiness.ts's operations branch and scanOperationsSignals()), so
+    // pm.tasks.read is a real requirement here. The operator registry retains
+    // Trello in requiredConnectors for compatibility, while this capability
+    // declaration represents the provider-neutral alternative set.
     required: ["pm.tasks.read"],
-    optional: ["chat.channels.read", "calendar.events.read", "automation.workflow.trigger_after_approval"],
+    // chat.messages.read is added by Microsoft Teams (Slack provides it too).
+    // Optional only: Operations still runs on Trello alone.
+    optional: ["pm.tasks.create_after_approval", "pm.tasks.update_after_approval", "pm.comments.write_after_approval", "chat.channels.read", "chat.messages.read", "chat.messages.send_after_approval", "calendar.events.read", "automation.workflow.trigger_after_approval", "support.tickets.read", "support.customers.read", "support.tickets.comment_after_approval", "support.tickets.update_after_approval", "support.conversations.read", "support.contacts.read"],
   },
   finance_billing: {
     operatorKey: "finance_billing",

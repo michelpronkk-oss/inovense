@@ -1,0 +1,22 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+
+const jira = fs.readFileSync("src/lib/connectors/jira.ts", "utf8");
+const actions = fs.readFileSync("src/lib/actions/registry.ts", "utf8");
+const execute = fs.readFileSync("src/lib/actions/execute.ts", "utf8");
+const policy = fs.readFileSync("src/lib/policies/execution-policy.ts", "utf8");
+const scan = fs.readFileSync("src/lib/operators/operations/scan.ts", "utf8");
+assert.match(jira, /write:jira-work/);
+assert.match(jira, /target_out_of_scope/);
+assert.match(jira, /invalid_issue_type/);
+assert.match(jira, /validateJiraAssignee/);
+assert.match(jira, /normalizeJiraDocument/);
+assert.match(actions, /create_jira_issue:[\s\S]*approvalDefault: true/);
+assert.match(actions, /update_jira_issue:[\s\S]*approvalDefault: true/);
+assert.match(actions, /add_jira_comment:[\s\S]*approvalDefault: true/);
+assert.match(execute, /action\.connectorKey === "jira"/);
+assert.match(policy, /create_jira_issue/);
+assert.match(policy, /jiraCloudId/);
+assert.match(scan, /jira_scan/);
+assert.match(scan, /operations:jira:issue/);
+console.log("Jira runtime smoke contracts passed.");

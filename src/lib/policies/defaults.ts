@@ -30,6 +30,11 @@ export function destinationTypeForAction(actionType: ActionType | string): Desti
       return "customer";
     case "send_slack_message":
       return "internal";
+    // Default only. Teams callers override this to "external" whenever the
+    // target channel's membership type cannot be proven internal (shared /
+    // federated channels), which forces the approval path.
+    case "send_teams_message":
+      return "internal";
     case "create_crm_contact":
     case "create_crm_deal":
       return "crm";
@@ -40,7 +45,22 @@ export function destinationTypeForAction(actionType: ActionType | string): Desti
     case "create_task":
     case "move_task":
     case "add_task_comment":
+    case "add_asana_comment":
       return "project_tool";
+    case "create_asana_task":
+    case "update_asana_task":
+    case "create_jira_issue":
+    case "update_jira_issue":
+      return "project_tool";
+    case "reply_zendesk_ticket":
+      return "customer";
+    case "add_zendesk_internal_note":
+    case "update_zendesk_ticket":
+      return "internal";
+    case "reply_intercom_conversation":
+      return "customer";
+    case "update_intercom_conversation":
+      return "internal";
     default:
       return "system";
   }
@@ -63,9 +83,26 @@ export function defaultRiskForAction(actionType: ActionType | string): PolicyRis
     case "create_task":
       return "medium";
     case "add_task_comment":
+    case "add_asana_comment":
       return "low";
+    case "create_asana_task":
+    case "update_asana_task":
+    case "create_jira_issue":
+    case "update_jira_issue":
+      return "medium";
+    case "reply_zendesk_ticket":
+      return "high";
+    case "add_zendesk_internal_note":
+    case "update_zendesk_ticket":
+      return "medium";
+    case "reply_intercom_conversation":
+      return "high";
+    case "update_intercom_conversation":
+      return "medium";
     case "send_slack_message":
       return "low";
+    case "send_teams_message":
+      return "medium";
     default:
       return "medium";
   }

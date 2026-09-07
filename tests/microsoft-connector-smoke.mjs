@@ -41,7 +41,14 @@ for (const scope of ["openid", "profile", "offline_access", "User.Read", "Mail.R
 for (const forbidden of ["Mail.ReadWrite.All", "Mail.Send.Shared", "Directory.Read.All", "User.ReadWrite.All"]) {
   assert.doesNotMatch(microsoftConnector, new RegExp(forbidden.replace(/\./g, "\\.")), `must never request ${forbidden}`);
 }
-assert.match(microsoftConnector, /scope: MICROSOFT_OAUTH_SCOPES\.join\(" "\)/, "authorize URL scope param must be built from the scope list, not a literal string");
+// The authorize/exchange scope param is now built from a named scope profile
+// ("base" = Microsoft 365 mail+calendar, "teams" = base + delegated Teams
+// scopes for incremental consent), never a literal string. Both profiles are
+// still derived from the declared scope arrays above.
+assert.match(microsoftConnector, /scope: microsoftScopesForProfile\(profile\)\.join\(" "\)/, "authorize/exchange scope param must be built from the declared scope profile, not a literal string");
+assert.match(microsoftConnector, /export function microsoftScopesForProfile/, "a single scope-profile resolver must exist");
+assert.match(microsoftConnector, /return profile === "teams" \? MICROSOFT_TEAMS_OAUTH_SCOPES : MICROSOFT_OAUTH_SCOPES;/, "the base profile must never include Teams scopes");
+assert.match(microsoftConnector, /MICROSOFT_TEAMS_OAUTH_SCOPES = \[\.\.\.MICROSOFT_OAUTH_SCOPES, \.\.\.MICROSOFT_TEAMS_GRAPH_SCOPES\]/, "the Teams profile must extend, never replace, the base Microsoft scopes");
 assert.match(microsoftConnector, /state,\s*\}\);/, "authorize URL must include the CSRF state parameter");
 
 // ── B. Callback uses the exact same redirect URI as the authorize step ───
@@ -97,7 +104,7 @@ assert.match(microsoftConnector, /class MicrosoftReauthRequiredError extends Err
 assert.doesNotMatch(authRoute, /searchParams\.get\("userEmail"\)/, "the Microsoft auth route must never trust a caller-supplied userEmail");
 assert.doesNotMatch(authRoute, /searchParams\.get\("userId"\)/, "the Microsoft auth route must never trust a caller-supplied userId");
 assert.match(authRoute, /resolveWorkspaceContext/, "the Microsoft auth route must resolve workspace membership from the verified session");
-assert.match(authRoute, /createMicrosoftOAuthState\(workspaceId, userEmail\)/, "state must bind the verified workspace, not a client-supplied one");
+assert.match(authRoute, /createMicrosoftOAuthState\(workspaceId, userEmail, scopeProfile\)/, "state must bind the verified workspace and the server-decided scope profile, not client-supplied values");
 assert.match(approveRoute, /microsoftPayload\.workspaceId !== context\.workspaceId \|\| approvalRow\.workspace_id !== context\.workspaceId/, "cross-workspace approval execution must be rejected");
 
 // ── J/L. Read actions require no approval ─────────────────────────────────
@@ -135,7 +142,7 @@ for (const fn of ["createMicrosoftCalendarEvent", "updateMicrosoftCalendarEvent"
 // ── N. Disconnect/reconnect ────────────────────────────────────────────────
 assert.match(disconnectRoute, /connectorKey === "microsoft"/, "disconnect route must support the microsoft connector key");
 assert.match(disconnectRoute, /\.eq\("connector_key", "microsoft"\)/);
-assert.match(authRoute, /buildMicrosoftAuthUrl\(state\)/, "reconnect re-initiates the same OAuth flow");
+assert.match(authRoute, /buildMicrosoftAuthUrl\(state, scopeProfile\)/, "reconnect re-initiates the same OAuth flow with the same scope profile");
 assert.match(callbackRoute, /onConflict: "workspace_id,connector_key"/, "reconnect must upsert (replace) the existing credential, not duplicate it");
 
 // ── Registry / readiness / truth wiring ───────────────────────────────────

@@ -9,6 +9,10 @@ import {
   createTrelloCardAfterApproval,
   moveTrelloCardAfterApproval,
 } from "@/lib/operators/executors/trello";
+import { addAsanaTaskComment, createAsanaTask, updateAsanaTask } from "@/lib/connectors/asana";
+import { addJiraComment, createJiraIssue, updateJiraIssue } from "@/lib/connectors/jira";
+import { addZendeskInternalNote, replyZendeskTicket, updateZendeskTicket } from "@/lib/connectors/zendesk";
+import { replyToIntercomConversation, updateIntercomConversation } from "@/lib/connectors/intercom";
 import { operatorRuntimeId } from "@/lib/operators/logging";
 
 function buildPolicyInput(intent: ActionIntent, prepared: Omit<PreparedAction, "policyInput" | "policyDecision">): PolicyInput {
@@ -88,6 +92,62 @@ export async function executePreparedActionAfterApproval(input: {
   approvalId: string;
 }): Promise<ActionExecutionResult> {
   const action = input.action;
+  if (action.connectorKey === "asana") {
+    if (action.actionType === "create_asana_task") {
+      const result = await createAsanaTask({ workspaceId: action.workspaceId, projectId: stringInput(action, "projectId") || undefined, name: stringInput(action, "name"), notes: stringInput(action, "notes") || null, dueOn: stringInput(action, "dueOn") || null, assigneeGid: stringInput(action, "assigneeGid") || null });
+      return { status: "executed", actionId: action.id, actionType: action.actionType, connectorKey: action.connectorKey, result };
+    }
+    if (action.actionType === "update_asana_task") {
+      const result = await updateAsanaTask({ workspaceId: action.workspaceId, taskId: stringInput(action, "taskId"), name: Object.prototype.hasOwnProperty.call(action.input, "name") ? stringInput(action, "name") : undefined, dueOn: Object.prototype.hasOwnProperty.call(action.input, "dueOn") ? stringInput(action, "dueOn") || null : undefined, assigneeGid: Object.prototype.hasOwnProperty.call(action.input, "assigneeGid") ? stringInput(action, "assigneeGid") || null : undefined, completed: typeof action.input.completed === "boolean" ? action.input.completed : undefined });
+      return { status: "executed", actionId: action.id, actionType: action.actionType, connectorKey: action.connectorKey, result };
+    }
+    if (action.actionType === "add_asana_comment") {
+      const result = await addAsanaTaskComment({ workspaceId: action.workspaceId, taskId: stringInput(action, "taskId"), text: stringInput(action, "text") });
+      return { status: "executed", actionId: action.id, actionType: action.actionType, connectorKey: action.connectorKey, result };
+    }
+    throw new Error(`Unsupported prepared action for Asana: ${action.actionType}.`);
+  }
+  if (action.connectorKey === "jira") {
+    if (action.actionType === "create_jira_issue") {
+      const result = await createJiraIssue({ workspaceId: action.workspaceId, projectId: stringInput(action, "projectId") || undefined, summary: stringInput(action, "summary"), description: stringInput(action, "description") || null, issueTypeId: stringInput(action, "issueTypeId"), assigneeAccountId: stringInput(action, "assigneeAccountId") || null, priorityId: stringInput(action, "priorityId") || null, dueDate: stringInput(action, "dueDate") || null });
+      return { status: "executed", actionId: action.id, actionType: action.actionType, connectorKey: action.connectorKey, result };
+    }
+    if (action.actionType === "update_jira_issue") {
+      const result = await updateJiraIssue({ workspaceId: action.workspaceId, issueKey: stringInput(action, "issueKey"), summary: Object.prototype.hasOwnProperty.call(action.input, "summary") ? stringInput(action, "summary") : undefined, assigneeAccountId: Object.prototype.hasOwnProperty.call(action.input, "assigneeAccountId") ? stringInput(action, "assigneeAccountId") || null : undefined, priorityId: Object.prototype.hasOwnProperty.call(action.input, "priorityId") ? stringInput(action, "priorityId") || null : undefined, dueDate: Object.prototype.hasOwnProperty.call(action.input, "dueDate") ? stringInput(action, "dueDate") || null : undefined });
+      return { status: "executed", actionId: action.id, actionType: action.actionType, connectorKey: action.connectorKey, result };
+    }
+    if (action.actionType === "add_jira_comment") {
+      const result = await addJiraComment({ workspaceId: action.workspaceId, issueKey: stringInput(action, "issueKey"), text: stringInput(action, "text") });
+      return { status: "executed", actionId: action.id, actionType: action.actionType, connectorKey: action.connectorKey, result };
+    }
+    throw new Error(`Unsupported prepared action for Jira: ${action.actionType}.`);
+  }
+  if (action.connectorKey === "zendesk") {
+    if (action.actionType === "reply_zendesk_ticket") {
+      const result = await replyZendeskTicket({ workspaceId: action.workspaceId, ticketId: stringInput(action, "ticketId"), body: stringInput(action, "body") });
+      return { status: "executed", actionId: action.id, actionType: action.actionType, connectorKey: action.connectorKey, result };
+    }
+    if (action.actionType === "add_zendesk_internal_note") {
+      const result = await addZendeskInternalNote({ workspaceId: action.workspaceId, ticketId: stringInput(action, "ticketId"), body: stringInput(action, "body") });
+      return { status: "executed", actionId: action.id, actionType: action.actionType, connectorKey: action.connectorKey, result };
+    }
+    if (action.actionType === "update_zendesk_ticket") {
+      const result = await updateZendeskTicket({ workspaceId: action.workspaceId, ticketId: stringInput(action, "ticketId"), status: Object.prototype.hasOwnProperty.call(action.input, "status") ? stringInput(action, "status") || null : undefined, priority: Object.prototype.hasOwnProperty.call(action.input, "priority") ? stringInput(action, "priority") || null : undefined, assigneeId: Object.prototype.hasOwnProperty.call(action.input, "assigneeId") ? stringInput(action, "assigneeId") || null : undefined });
+      return { status: "executed", actionId: action.id, actionType: action.actionType, connectorKey: action.connectorKey, result };
+    }
+    throw new Error(`Unsupported prepared action for Zendesk: ${action.actionType}.`);
+  }
+  if (action.connectorKey === "intercom") {
+    if (action.actionType === "reply_intercom_conversation") {
+      const result = await replyToIntercomConversation({ workspaceId: action.workspaceId, conversationId: stringInput(action, "conversationId"), body: stringInput(action, "body") });
+      return { status: "executed", actionId: action.id, actionType: action.actionType, connectorKey: action.connectorKey, result };
+    }
+    if (action.actionType === "update_intercom_conversation") {
+      const result = await updateIntercomConversation({ workspaceId: action.workspaceId, conversationId: stringInput(action, "conversationId"), status: (stringInput(action, "status") || undefined) as "open" | "closed" | undefined, adminId: Object.prototype.hasOwnProperty.call(action.input, "adminId") ? stringInput(action, "adminId") || null : undefined });
+      return { status: "executed", actionId: action.id, actionType: action.actionType, connectorKey: action.connectorKey, result };
+    }
+    throw new Error(`Unsupported prepared action for Intercom: ${action.actionType}.`);
+  }
   if (action.connectorKey !== "trello") {
     throw new Error(`No execution adapter enabled for ${action.connectorKey}/${action.actionType}.`);
   }

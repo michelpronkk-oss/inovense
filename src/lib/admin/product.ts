@@ -1,6 +1,11 @@
 import "server-only";
 
 import { requireInternalAdmin } from "@/lib/admin/auth";
+import {
+  MICROSOFT_TEAMS_CONNECTOR_KEY,
+  getMicrosoftTeamsScopeState,
+  readMicrosoftTeamsSettings,
+} from "@/lib/connectors/microsoft-teams";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 
 type Row = Record<string, unknown>;
@@ -46,6 +51,35 @@ function tally(rows: Row[], field: string) {
   return [...values.entries()].sort((a, b) => b[1] - a[1]);
 }
 
+/**
+ * Project direct-OAuth credential rows into the connector-state shape, and
+ * derive a truthful per-workspace Microsoft Teams row from the shared
+ * Microsoft credential. No credential values are read here - only the
+ * connector key, coarse status, workspace id, granted scope names, and the
+ * Teams enabled flag.
+ */
+function nativeConnectorRows(rows: Row[]): Row[] {
+  const output: Row[] = [];
+  for (const row of rows) {
+    const key = String(row.connector_key ?? "connector");
+    const status = String(row.status ?? "unknown");
+    output.push({ connector_key: key, status, workspace_id: row.workspace_id });
+    if (key !== "microsoft") continue;
+
+    const teams = readMicrosoftTeamsSettings((row.metadata ?? null) as Record<string, unknown> | null);
+    if (!teams.enabled) continue;
+    const scopeState = getMicrosoftTeamsScopeState(
+      Array.isArray(row.scopes) ? row.scopes.filter((item): item is string => typeof item === "string") : [],
+    );
+    output.push({
+      connector_key: MICROSOFT_TEAMS_CONNECTOR_KEY,
+      status: !scopeState.readGranted ? "permission_required" : status === "needs_attention" ? "needs_attention" : "connected",
+      workspace_id: row.workspace_id,
+    });
+  }
+  return output;
+}
+
 function unavailable(message: string): ProductData {
   return {
     sourceStatus: "unavailable", runs: { total: null, completed: null, running: null, failed: null },
@@ -59,11 +93,24 @@ export async function getProductData(): Promise<ProductData> {
   if (!hasSupabaseAdminConfig()) return unavailable("Supabase is not configured.");
 
   const db = createSupabaseAdmin();
-  const [runResult, approvalResult, connectorResult] = await Promise.all([
+  const [runResult, approvalResult, managedConnectorResult, nativeCredentialResult] = await Promise.all([
     safely(() => db.from("os_operator_runs").select("operator_key,status,workspace_id,created_at").order("created_at", { ascending: false }).limit(500)),
     safely(() => db.from("os_approvals").select("status,workspace_id,created_at").order("created_at", { ascending: false }).limit(500)),
     safely(() => db.from("os_connectors").select("connector_key,status,workspace_id,connected_at").limit(500)),
+    // Direct-OAuth connectors (Gmail, Microsoft 365, Microsoft Teams,
+    // Salesforce) live in os_connector_credentials, not os_connectors.
+    // Only non-secret columns are selected here - never any token column.
+    safely(() => db.from("os_connector_credentials").select("connector_key,status,workspace_id,scopes,metadata").limit(500)),
   ]);
+  // Native credential rows are projected into the same {connector_key,status,
+  // workspace_id} shape the aggregation below already understands. Microsoft
+  // Teams is derived from the shared Microsoft row so internal connector
+  // intelligence shows its real per-workspace state (enabled, permission
+  // required, needs attention) rather than hiding inside "microsoft".
+  const connectorResult = {
+    available: managedConnectorResult.available,
+    rows: [...managedConnectorResult.rows, ...nativeConnectorRows(nativeCredentialResult.rows)],
+  };
   const flags = [runResult.available, approvalResult.available, connectorResult.available];
   const sourceStatus: Availability = flags.every(Boolean) ? "connected" : flags.some(Boolean) ? "partial" : "unavailable";
   if (sourceStatus === "unavailable") return unavailable("Product operation sources are unavailable in the current database.");
@@ -71,7 +118,7 @@ export async function getProductData(): Promise<ProductData> {
   const countRuns = (state: RunState) => runResult.rows.filter((row) => runState(row.status) === state).length;
   const countApprovals = (states: string[]) => approvalResult.rows.filter((row) => states.includes(String(row.status).toLowerCase())).length;
   const connected = connectorResult.rows.filter((row) => String(row.status).toLowerCase() === "connected");
-  const attentionStates = new Set(["error", "needs_attention", "reconnect_required"]);
+  const attentionStates = new Set(["error", "needs_attention", "reconnect_required", "permission_required"]);
   const operators = new Map<string, { total: number; completed: number; running: number; failed: number }>();
   for (const row of runResult.rows) {
     const key = String(row.operator_key ?? "unknown");

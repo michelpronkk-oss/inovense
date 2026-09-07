@@ -159,6 +159,7 @@ export default function ActivationPage() {
   const hubspotConnected = boolValue(status?.hubspot, "connected");
   const trelloConnected = boolValue(setup, "trelloConnected");
   const trelloDestinationSet = boolValue(setup, "trelloDestinationSet");
+  const projectManagementReady = boolValue(setup, "projectManagementReady") ?? (trelloConnected && trelloDestinationSet);
   const coreReady = path === "revenue" ? gmailReady : boolValue(setup, "coreReady");
   const safeMode = (state.settings.approvalPolicy.customerEmailMode ?? "approval_required") === "approval_required";
   const pendingApprovals = Array.isArray(status?.monitoring?.recentPendingApprovals) ? status.monitoring.recentPendingApprovals.length : 0;
@@ -166,22 +167,22 @@ export default function ActivationPage() {
   const firstApprovalCreated = Boolean(state.settings.activation?.firstApprovalCreatedAt || pendingApprovals > 0);
 
   const steps = useMemo(() => {
-    const connectReady = path === "operations" ? trelloConnected : path === "client_flow" ? gmailReady && trelloConnected : gmailReady;
+    const connectReady = path === "operations" ? projectManagementReady : path === "client_flow" ? gmailReady && trelloConnected : gmailReady;
     const connectCta = path === "operations"
-      ? { label: "Connect Trello", href: "/connectors?setup=trello" }
+      ? { label: "Connect project tool", href: "/connectors?discover=1" }
       : path === "client_flow"
         ? (!gmailReady ? { label: "Connect Gmail", href: "/connectors?setup=gmail" } : { label: "Connect Trello", href: "/connectors?setup=trello" })
         : { label: "Connect Gmail", href: "/connectors?setup=gmail" };
-    const configureReady = path === "operations" || path === "client_flow" ? trelloDestinationSet : safeMode;
+    const configureReady = path === "operations" ? projectManagementReady : path === "client_flow" ? trelloDestinationSet : safeMode;
     return [
       { key: "path" as StepKey, title: "Choose path", short: meta.label, description: "Choose the operating lane Auterim should prepare first.", state: "complete" as StepState },
-      { key: "connect" as StepKey, title: "Connect tools", short: connectReady ? "Ready" : "Required", description: path === "revenue" ? "Connect Gmail for inbox context and approval-gated follow-up." : path === "client_flow" ? "Connect Gmail and Trello for client context and approved task updates." : "Connect Trello before inspecting real project cards.", state: connectReady ? "complete" as StepState : "needs_setup" as StepState, cta: connectReady ? undefined : connectCta },
-      { key: "configure" as StepKey, title: "Configure tools", short: configureReady ? "Ready" : "Required", description: path === "revenue" ? "Confirm approval-first controls before running the first check." : "Choose where approved task updates should land.", state: configureReady ? "complete" as StepState : "needs_setup" as StepState, cta: configureReady ? undefined : path === "revenue" ? { label: "Open policies", href: "/policies" } : { label: "Select Trello board/list", href: "/connectors?setup=trello-project" } },
+      { key: "connect" as StepKey, title: "Connect tools", short: connectReady ? "Ready" : "Required", description: path === "revenue" ? "Connect Gmail for inbox context and approval-gated follow-up." : path === "client_flow" ? "Connect Gmail and Trello for client context and approved task updates." : "Connect Trello, Asana, or Jira before inspecting real project work.", state: connectReady ? "complete" as StepState : "needs_setup" as StepState, cta: connectReady ? undefined : connectCta },
+      { key: "configure" as StepKey, title: "Configure tools", short: configureReady ? "Ready" : "Required", description: path === "revenue" ? "Confirm approval-first controls before running the first check." : "Choose the bounded project scope where approved follow-through may land.", state: configureReady ? "complete" as StepState : "needs_setup" as StepState, cta: configureReady ? undefined : path === "revenue" ? { label: "Open policies", href: "/policies" } : { label: "Select project", href: "/connectors?discover=1" } },
       { key: "run" as StepKey, title: "Run first check", short: hasFirstRun ? "Complete" : coreReady ? "Ready" : "Blocked", description: coreReady ? `Run ${meta.operator} against connected tools.` : "Finish required setup before running a real operator check.", state: hasFirstRun ? "complete" as StepState : coreReady ? "ready" as StepState : "needs_setup" as StepState, cta: { label: scanBusy ? "Checking..." : `Run ${meta.label} check`, onClick: () => void runScan(), disabled: !coreReady || scanBusy } },
       { key: "review" as StepKey, title: "Review first approval", short: firstApprovalCreated ? "Ready" : "Pending", description: firstApprovalCreated ? "Review the prepared action before anything executes." : "Your first approval will appear here after a signal is found.", state: firstApprovalCreated ? "ready" as StepState : "needs_setup" as StepState, cta: { label: "Open approvals", href: "/approvals" } },
     ];
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coreReady, firstApprovalCreated, gmailReady, hasFirstRun, meta.label, meta.operator, path, safeMode, scanBusy, trelloConnected, trelloDestinationSet]);
+  }, [coreReady, firstApprovalCreated, gmailReady, hasFirstRun, meta.label, meta.operator, path, projectManagementReady, safeMode, scanBusy, trelloConnected, trelloDestinationSet]);
 
   const completedCount = steps.filter((step) => step.state === "complete").length;
   const progress = Math.round((completedCount / steps.length) * 100);

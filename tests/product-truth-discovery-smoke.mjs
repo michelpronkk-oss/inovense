@@ -95,8 +95,8 @@ async function main() {
     const availability = actions.getWorkspaceAvailableBusinessActions;
     const decision = (await loadModule("src/lib/operators/activation-readiness.ts")).decideOperatorActivation;
     const discovery = await loadModule("src/lib/connectors/discovery.ts", [[
-      'import { CONNECTOR_CATEGORY_LABELS, type ConnectorDefinition } from "@/lib/connectors/registry";',
-      'const { CONNECTOR_CATEGORY_LABELS } = globalThis.__truthRegistry;',
+      'import { connectorCategoryLabel, type ConnectorDefinition } from "@/lib/connectors/registry";',
+      'const { connectorCategoryLabel } = globalThis.__truthRegistry;',
     ]]);
     const live = capabilities.getAvailableConnectors();
 
@@ -166,13 +166,25 @@ async function main() {
     });
 
     await check(19, "Search finds every real provider", () => {
-      for (const [query, expected] of [["gma", "Gmail"], ["micro", "Microsoft 365"], ["hub", "HubSpot"], ["sales", "Salesforce"], ["tre", "Trello"], ["sla", "Slack"]]) {
-        assert.deepEqual(discovery.filterConnectorDiscovery(live, { query }).map((item) => item.displayName), [expected]);
+      for (const [query, expected] of [
+        ["gma", ["Gmail"]],
+        // Both Microsoft connectors are real and separately connectable, so a
+        // "micro" search must surface both without collapsing them into one.
+        ["micro", ["Microsoft 365", "Microsoft Teams"]],
+        ["microsoft teams", ["Microsoft Teams"]],
+        ["hub", ["HubSpot"]],
+        ["sales", ["Salesforce"]],
+        ["tre", ["Trello"]],
+        ["sla", ["Slack"]],
+        ["zen", ["Zendesk"]],
+      ]) {
+        assert.deepEqual(discovery.filterConnectorDiscovery(live, { query }).map((item) => item.displayName), expected);
       }
     });
     await check(20, "Categories filter the real catalog", () => {
       assert.deepEqual(discovery.filterConnectorDiscovery(live, { category: "crm" }).map((item) => item.displayName).sort(), ["HubSpot", "Salesforce"]);
-      assert.deepEqual(discovery.filterConnectorDiscovery(live, { category: "communication" }).map((item) => item.displayName), ["Slack"]);
+      assert.deepEqual(discovery.filterConnectorDiscovery(live, { category: "communication" }).map((item) => item.displayName), ["Microsoft Teams", "Slack"]);
+      assert.deepEqual(discovery.filterConnectorDiscovery(live, { category: "customer_support" }).map((item) => item.displayName), ["Zendesk"]);
     });
     await check(21, "Discovery cards use real connection-state truth", () => {
       const source = read("src/app/app/connectors/page.tsx");
@@ -186,7 +198,7 @@ async function main() {
       assert.equal(result[0].connectorKey, "salesforce");
       assert.equal(result[0].status, "available");
     });
-    await check(23, "Finder contains exactly the six live providers", () => assert.deepEqual(live.map((item) => item.displayName).sort(), ["Gmail", "HubSpot", "Microsoft 365", "Salesforce", "Slack", "Trello"]));
+    await check(23, "Finder contains exactly the eleven live providers", () => assert.deepEqual(live.map((item) => item.displayName).sort(), ["Asana", "Gmail", "Google Drive", "HubSpot", "Jira", "Microsoft 365", "Microsoft Teams", "Salesforce", "Slack", "Trello", "Zendesk"]));
     await check(24, "Dashboard uses one finder action instead of provider shortlist", () => {
       const source = read("src/components/dashboard/overview.tsx");
       const unlock = source.slice(source.indexOf("function UnlockMore"), source.indexOf("export function OSOverview"));

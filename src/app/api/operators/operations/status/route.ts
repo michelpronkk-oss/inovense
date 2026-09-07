@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: context.error, code: context.code }, { status: context.status });
   }
 
-  const [readiness, connectorTruth, policy, runs, pendingApprovals, triggerConfig] = await Promise.all([
+  const [readiness, connectorTruth, policy, runs, pendingApprovals, triggerConfig, projectCredentials] = await Promise.all([
     getOperatorReadiness({ workspaceId: context.workspaceId, operatorKey: "operations" }),
     getConnectorTruth({ workspaceId: context.workspaceId, supabase }),
     loadWorkspacePolicySettings({ supabase, workspaceId: context.workspaceId }),
@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
       .select("id,status,output,created_at,completed_at")
       .eq("workspace_id", context.workspaceId)
       .eq("operator_key", "operations")
-      .eq("trigger_type", "trello_scan")
+      .in("trigger_type", ["trello_scan", "asana_scan", "jira_scan"])
       .order("created_at", { ascending: false })
       .limit(50),
     supabase
@@ -115,6 +115,7 @@ export async function GET(req: NextRequest) {
       .eq("operator_key", "operations")
       .eq("trigger_type", "scheduled_monitoring")
       .maybeSingle(),
+    supabase.from("os_connector_credentials").select("connector_key,metadata,status").eq("workspace_id", context.workspaceId).in("connector_key", ["asana", "jira"]),
   ]);
 
   if (runs.error) return NextResponse.json({ error: runs.error.message }, { status: 500 });
@@ -126,14 +127,30 @@ export async function GET(req: NextRequest) {
   const slackConnected = Boolean(slack && slack.status === "connected" && slack.providerConfigKey && slack.nangoConnectionId);
   const trelloConnected = Boolean(trello && trello.status === "connected" && trello.providerConfigKey && trello.nangoConnectionId);
   const trelloDestinationSet = Boolean(policy.trello.defaultBoardId && policy.trello.defaultListId);
+  const asana = connectorTruth.find((c) => c.connectorKey === "asana") ?? null;
+  const jira = connectorTruth.find((c) => c.connectorKey === "jira") ?? null;
+  const asanaCredential = (projectCredentials.data ?? []).find((row) => row.connector_key === "asana");
+  const jiraCredential = (projectCredentials.data ?? []).find((row) => row.connector_key === "jira");
+  const asanaProjectSelected = Boolean(asRecord(asanaCredential?.metadata).selectedProjectId);
+  const jiraProjectSelected = Boolean(asRecord(jiraCredential?.metadata).selectedProjectId);
+  const asanaConnected = asana?.status === "healthy";
+  const jiraConnected = jira?.status === "healthy";
+  const asanaReady = asanaConnected && asanaProjectSelected;
+  const jiraReady = jiraConnected && jiraProjectSelected;
+  // Microsoft Teams is a native (direct-OAuth) connector sharing the Microsoft
+  // connection, so it has no Nango ids. Its truth row is already scope-aware:
+  // "healthy" requires real Teams consent, not just working Microsoft mail.
+  const teams = connectorTruth.find((c) => c.connectorKey === "microsoft_teams") ?? null;
+  const teamsConnected = teams?.status === "healthy";
   const slackChannelSelected = Boolean(policy.slack.slackDefaultChannelId);
   const slackAlertsReady = slackConnected && slackChannelSelected;
 
   const approvalFlowActive = true;
-  const coreReady = trelloConnected && trelloDestinationSet && approvalFlowActive;
-  const requiredChecks = [trelloConnected, trelloDestinationSet, approvalFlowActive];
+  const projectManagementReady = (trelloConnected && trelloDestinationSet) || asanaReady || jiraReady;
+  const coreReady = projectManagementReady && approvalFlowActive;
+  const requiredChecks = [projectManagementReady, approvalFlowActive];
   const readinessPercent = Math.round((requiredChecks.filter(Boolean).length / requiredChecks.length) * 100);
-  const setupState = !trelloConnected ? "needs_setup" : coreReady ? "ready" : "setup_incomplete";
+  const setupState = !projectManagementReady ? "needs_setup" : coreReady ? "ready" : "setup_incomplete";
 
   const latestScanRow = (runs.data ?? []).find((run) => asScanSummary(run.output));
   const latestScan = latestScanRow ? asScanSummary(latestScanRow.output) : null;
@@ -155,7 +172,10 @@ export async function GET(req: NextRequest) {
   // copy. Never invents a connector Operations does not really support.
   const connectedConnectorKeys: string[] = [];
   if (trelloConnected) connectedConnectorKeys.push("trello");
+  if (asanaConnected) connectedConnectorKeys.push("asana");
+  if (jiraConnected) connectedConnectorKeys.push("jira");
   if (slackConnected) connectedConnectorKeys.push("slack");
+  if (teamsConnected) connectedConnectorKeys.push("microsoft_teams");
 
   return NextResponse.json({
     readiness,
@@ -165,13 +185,26 @@ export async function GET(req: NextRequest) {
       status: def.status,
     })),
     trello: trello ? { status: trello.status, connected: trelloConnected, defaultBoardName: policy.trello.defaultBoardName, defaultListName: policy.trello.defaultListName } : { status: "not_connected", connected: false, defaultBoardName: policy.trello.defaultBoardName, defaultListName: policy.trello.defaultListName },
+    asana: asana ? { status: asana.status, connected: asanaConnected, executable: asana.executable === true, projectSelected: asanaProjectSelected } : { status: "not_connected", connected: false, executable: false, projectSelected: false },
+    jira: jira ? { status: jira.status, connected: jiraConnected, executable: jira.executable === true, projectSelected: jiraProjectSelected } : { status: "not_connected", connected: false, executable: false, projectSelected: false },
     slack: slack ? { status: slack.status, connected: slackConnected, channelSelected: slackChannelSelected, defaultChannelName: policy.slack.slackDefaultChannelName } : { status: "not_connected", connected: false, channelSelected: slackChannelSelected, defaultChannelName: policy.slack.slackDefaultChannelName },
+    microsoftTeams: teams
+      ? { status: teams.status, connected: teamsConnected, executable: teams.executable === true, statusMessage: teams.statusMessage ?? null }
+      : { status: "not_connected", connected: false, executable: false, statusMessage: null },
     setup: {
       state: setupState,
       readinessPercent,
       coreReady,
       trelloConnected,
       trelloDestinationSet,
+      asanaConnected,
+      asanaProjectSelected,
+      asanaReady,
+      jiraConnected,
+      jiraProjectSelected,
+      jiraReady,
+      projectManagementReady,
+      teamsConnected,
       slackConnected,
       slackChannelSelected,
       slackAlertsReady,

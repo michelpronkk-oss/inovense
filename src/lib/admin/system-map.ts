@@ -100,8 +100,8 @@ const LIVE_OPERATOR_KEYS: OperatorKey[] = ["revenue", "client_flow", "operations
 
 const OPERATOR_ADMIN_NOTES: Record<string, string> = {
   revenue: "Qualifies inbound demand, drafts follow-ups, and keeps CRM next steps current across Gmail/Microsoft 365, HubSpot, and Salesforce context.",
-  client_flow: "Drafts client updates and onboarding messages without losing approval control, using Gmail/Microsoft 365 and Trello context.",
-  operations: "Monitors Trello boards and Slack for stalled or blocked work and prepares approval-gated follow-through.",
+  client_flow: "Drafts client updates and onboarding messages without losing approval control, using Gmail/Microsoft 365, Trello, and Microsoft Teams channel context.",
+  operations: "Monitors Trello boards, Slack, and Microsoft Teams channels for stalled or blocked work and prepares approval-gated follow-through.",
 };
 
 function toTitle(kebab: string): string {
@@ -216,10 +216,11 @@ function buildOperatorNodes(): SystemMapNode[] {
 
 // ── Connectors branch (real registry) ───────────────────────────────────
 
-const REPRESENTED_CONNECTOR_KEYS = ["gmail", "microsoft", "hubspot", "salesforce", "slack", "trello"];
+const REPRESENTED_CONNECTOR_KEYS = ["gmail", "google_drive", "microsoft", "microsoft_teams", "hubspot", "salesforce", "slack", "trello", "asana", "jira", "zendesk", "intercom"];
 
-function deriveConnectorStatus(status: string, writeActionsCount: number): SystemMapStatus {
+function deriveConnectorStatus(connectorKey: string, status: string, writeActionsCount: number): SystemMapStatus {
   if (status !== "available") return "planned";
+  if (connectorKey === "google_drive") return "live";
   if (writeActionsCount === 0) return "partial";
   return "live";
 }
@@ -238,7 +239,7 @@ function buildConnectorNodes(): SystemMapNode[] {
     kind: "connector",
     label: def.displayName,
     subtitle: def.category.replace("_", " "),
-    status: deriveConnectorStatus(def.status, def.writeActions.length),
+    status: deriveConnectorStatus(def.connectorKey, def.status, def.writeActions.length),
     description: def.description,
     responsibility: def.writeActions.length === 0 ? "Read-only context, no write actions are enabled." : "Read context, act only after approval.",
     dependencies: def.usedByOperators.filter((op) => LIVE_OPERATOR_KEYS.includes(op)).map(toTitle),
@@ -255,7 +256,7 @@ function buildConnectorNodes(): SystemMapNode[] {
     label: "Next connectors",
     subtitle: `${plannedCount} planned or coming soon`,
     status: "planned",
-    description: "The rest of the connector catalog (Notion, Stripe, Google Drive, Zendesk, and more) is planned or coming soon, none are connectable yet.",
+    description: "The rest of the connector catalog (Notion, Stripe, and more) is planned or coming soon, none are connectable yet.",
     responsibility: "Roadmap surface for connectors not yet live.",
     relatedRoute: "/connectors",
     branch: "connectors",
@@ -359,11 +360,17 @@ const DEPENDENCY_EDGE_PAIRS: Array<[string, string]> = [
   ["operator-revenue", "connector-microsoft"],
   ["operator-revenue", "connector-hubspot"],
   ["operator-revenue", "connector-salesforce"],
+  ["operator-client_flow", "connector-google_drive"],
   ["operator-client_flow", "connector-gmail"],
   ["operator-client_flow", "connector-microsoft"],
   ["operator-client_flow", "connector-trello"],
+  ["operator-client_flow", "connector-microsoft_teams"],
   ["operator-operations", "connector-trello"],
+  ["operator-operations", "connector-asana"],
+  ["operator-operations", "connector-jira"],
   ["operator-operations", "connector-slack"],
+  ["operator-operations", "connector-microsoft_teams"],
+  ["operator-operations", "connector-google_drive"],
   ["operator-revenue", "gov-execution-eligibility"],
   ["operator-revenue", "gov-approvals"],
   ["operator-revenue", "gov-policies"],

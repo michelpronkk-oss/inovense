@@ -27,8 +27,19 @@ function hashAction(input: PolicyInput): string {
   const canonical = JSON.stringify({
     workspaceId: input.workspaceId, operatorKey: input.operatorKey, actionType: input.actionType,
     connectorKey: input.connectorKey, capability: input.capability ?? null, destinationType: input.destinationType,
-    recipient: input.recipient ?? null, channelId: input.channelId ?? null, cardId: input.cardId ?? null,
+    recipient: input.recipient ?? null, channelId: input.channelId ?? null, teamId: input.teamId ?? null,
+    cardId: input.cardId ?? null,
     listId: input.listId ?? null, metadata: input.metadata?.dedupeKey ?? null,
+    asanaProjectId: input.metadata?.asanaProjectId ?? null,
+    asanaTaskId: input.metadata?.asanaTaskId ?? null,
+    jiraCloudId: input.metadata?.jiraCloudId ?? null,
+    jiraProjectId: input.metadata?.jiraProjectId ?? null,
+    jiraIssueKey: input.metadata?.jiraIssueKey ?? null,
+    zendeskSubdomain: input.metadata?.zendeskSubdomain ?? null,
+    zendeskTicketId: input.metadata?.zendeskTicketId ?? null,
+    intercomRegion: input.metadata?.intercomRegion ?? null,
+    intercomConversationId: input.metadata?.intercomConversationId ?? null,
+    payloadIdentity: input.metadata?.payloadIdentity ?? null,
   });
   return crypto.createHash("sha256").update(canonical).digest("hex");
 }
@@ -47,8 +58,8 @@ function operatorSupportsAction(operatorKey: string, actionType: string): boolea
   if (!operator) return false;
   const support: Record<string, string[]> = {
     revenue: ["send_email", "create_crm_contact", "create_crm_deal", "create_crm_note", "create_crm_task", "update_crm_record"],
-    client_flow: ["send_email", "create_task"],
-    operations: ["send_slack_message", "create_task", "move_task", "add_task_comment"],
+    client_flow: ["send_email", "create_task", "send_teams_message", "reply_zendesk_ticket", "add_zendesk_internal_note", "update_zendesk_ticket", "reply_intercom_conversation", "update_intercom_conversation"],
+    operations: ["send_slack_message", "send_teams_message", "create_task", "move_task", "add_task_comment", "create_asana_task", "update_asana_task", "add_asana_comment", "create_jira_issue", "update_jira_issue", "add_jira_comment", "add_zendesk_internal_note", "update_zendesk_ticket"],
   };
   return support[operator.key]?.includes(actionType) ?? false;
 }

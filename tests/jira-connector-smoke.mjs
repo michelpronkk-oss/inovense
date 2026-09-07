@@ -1,0 +1,31 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+
+const read = (path) => fs.readFileSync(path, "utf8");
+const jira = read("src/lib/connectors/jira.ts");
+const auth = read("src/app/api/connectors/jira/auth/route.ts");
+const callback = read("src/app/api/connectors/jira/callback/route.ts");
+const settings = read("src/app/api/connectors/jira/settings/route.ts");
+const truth = read("src/lib/connectors/truth.ts");
+const registry = read("src/lib/connectors/registry.ts");
+const oauthState = read("src/lib/connectors/oauth-state.ts");
+
+assert.match(jira, /JIRA_REDIRECT_URI = "https:\/\/app\.auterim\.com\/api\/connectors\/jira\/callback"/);
+assert.match(jira, /audience: "api\.atlassian\.com"/);
+assert.match(jira, /accessible-resources/);
+assert.match(jira, /offline_access/);
+assert.match(jira, /export function normalizeJiraDocument/);
+assert.match(jira, /project = /);
+assert.match(jira, /maxResults/);
+assert.match(jira, /createJiraIssue/);
+assert.match(jira, /updateJiraIssue/);
+assert.match(jira, /addJiraComment/);
+assert.match(jira, /selectedProjectId/);
+assert.match(auth, /requireWorkspaceAdmin/);
+assert.match(callback, /parseProviderOAuthState\("jira"/);
+assert.match(callback, /getAccessibleJiraResources/);
+assert.match(settings, /requireWorkspaceAdmin/);
+assert.match(truth, /connectorKey: "jira"/);
+assert.match(registry, /connectorKey: "jira"[\s\S]*authType: "direct_oauth"[\s\S]*status: "available"/);
+assert.match(oauthState, /"asana" \| "jira"/);
+console.log("Jira connector smoke contracts passed.");

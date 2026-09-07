@@ -3,9 +3,16 @@
    and status tones (.admin-status-pill/.admin-status-dot) rather than
    inventing a parallel color language. */
 
-.sysmap-shell { display: grid; gap: 14px; }
+/* Break out of the shared .admin-content 1320px reading-width container
+   (src/app/admin/admin.css) for this page only, so the graph can use the
+   full available width next to the sidebar instead of sitting in a boxed
+   column with a large unused margin. Scoped via :has() so no other admin
+   page is affected. */
+.admin-content:has(.admin-system-map-page) { width: 100%; max-width: none; padding-right: clamp(14px, 1.6vw, 24px); }
 
-.sysmap-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; border: 1px solid rgba(148,163,184,.13); border-radius: 10px; background: rgba(16,21,28,.55); padding: 10px 12px; }
+.sysmap-shell { display: grid; gap: 16px; }
+
+.sysmap-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; border: 1px solid rgba(148,163,184,.13); border-radius: 12px; background: linear-gradient(180deg, rgba(21,27,36,.6), rgba(13,17,23,.5)); backdrop-filter: blur(6px); padding: 11px 14px; }
 .sysmap-toolbar-group { display: inline-flex; gap: 6px; }
 .sysmap-btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(148,163,184,.18); border-radius: 7px; background: rgba(255,255,255,.02); padding: 7px 11px; color: #b6c1cf; font-size: 11px; font-weight: 600; cursor: pointer; transition: background .15s ease, color .15s ease, border-color .15s ease; }
 .sysmap-btn:hover { background: rgba(77,231,223,.08); color: #e6fffd; border-color: rgba(77,231,223,.25); }
@@ -15,29 +22,79 @@
 .sysmap-search input:focus { outline: none; }
 .sysmap-search svg { flex: none; color: #647286; }
 
-.sysmap-canvas-wrap { position: relative; width: 100%; height: min(74vh, 780px); min-height: 480px; border: 1px solid rgba(148,163,184,.13); border-radius: 12px; overflow: hidden; background: radial-gradient(circle at 20% 0%, rgba(45,212,204,.05), transparent 55%), #0b0e13; }
+/* A tall, immersive canvas rather than a small boxed panel. */
+.sysmap-canvas-wrap {
+  position: relative;
+  width: 100%;
+  height: min(82vh, 920px);
+  min-height: 560px;
+  border: 1px solid rgba(148,163,184,.14);
+  border-radius: 16px;
+  overflow: hidden;
+  background:
+    radial-gradient(900px 520px at 12% -8%, rgba(77,231,223,.09), transparent 55%),
+    radial-gradient(700px 460px at 88% 108%, rgba(94,120,255,.06), transparent 55%),
+    #090c11;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.02), 0 30px 80px rgba(0,0,0,.35);
+}
 
 .sysmap-canvas-wrap .react-flow__attribution { display: none; }
-.sysmap-canvas-wrap .react-flow__edge-path { stroke: rgba(148,163,184,.35); stroke-width: 1.4; }
-.sysmap-canvas-wrap .react-flow__edge.sysmap-edge-dependency .react-flow__edge-path { stroke: rgba(77,231,223,.35); stroke-dasharray: 4 3; }
+.sysmap-canvas-wrap .react-flow__pane { cursor: grab; }
+
+/* ── Edges: visible, layered, and directional ───────────────────────── */
+.sysmap-canvas-wrap .react-flow__edge-path {
+  stroke: rgba(160,174,196,.55);
+  stroke-width: 1.6;
+  transition: stroke .15s ease, filter .15s ease;
+}
+.sysmap-canvas-wrap .react-flow__edge:hover .react-flow__edge-path,
+.sysmap-canvas-wrap .react-flow__edge.selected .react-flow__edge-path {
+  stroke: #7ff2ec;
+  filter: drop-shadow(0 0 6px rgba(77,231,223,.6));
+}
+.sysmap-canvas-wrap .react-flow__edge.sysmap-edge-dependency .react-flow__edge-path {
+  stroke: rgba(77,231,223,.7);
+  stroke-width: 1.8;
+  stroke-dasharray: 5 4;
+  filter: drop-shadow(0 0 4px rgba(77,231,223,.35));
+  animation: sysmap-dash-flow 1.4s linear infinite;
+}
+@keyframes sysmap-dash-flow { to { stroke-dashoffset: -18; } }
+.sysmap-canvas-wrap .react-flow__arrowhead polyline,
+.sysmap-canvas-wrap .react-flow__arrowhead path { opacity: .85; }
 .sysmap-canvas-wrap .react-flow__handle { opacity: 0; width: 1px; height: 1px; }
 
-.sysmap-node { position: relative; min-width: 176px; max-width: 208px; border: 1px solid rgba(148,163,184,.18); border-radius: 10px; background: linear-gradient(160deg, rgba(23,29,38,.92), rgba(13,17,23,.94)); padding: 10px 12px; color: #dce4ee; font-size: 11px; line-height: 1.4; cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
+/* xyflow's built-in zoom/fit/lock control cluster, restyled to match. */
+.sysmap-controls.react-flow__controls { display: flex; flex-direction: row; gap: 4px; border: 1px solid rgba(148,163,184,.16); border-radius: 10px; background: rgba(13,17,23,.75); backdrop-filter: blur(6px); box-shadow: 0 12px 28px rgba(0,0,0,.35); overflow: hidden; }
+.sysmap-controls.react-flow__controls button { border: 0; border-right: 1px solid rgba(148,163,184,.12); background: transparent; width: 30px; height: 30px; }
+.sysmap-controls.react-flow__controls button:last-child { border-right: 0; }
+.sysmap-controls.react-flow__controls button svg { fill: #9aa6b8; }
+.sysmap-controls.react-flow__controls button:hover { background: rgba(77,231,223,.1); }
+.sysmap-controls.react-flow__controls button:hover svg { fill: #e6fffd; }
+
+.sysmap-node { position: relative; min-width: 176px; max-width: 208px; border: 1px solid rgba(148,163,184,.18); border-radius: 10px; background: linear-gradient(160deg, rgba(23,29,38,.92), rgba(13,17,23,.94)); padding: 10px 12px; color: #dce4ee; font-size: 11px; line-height: 1.4; cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+.sysmap-node:hover { transform: translateY(-1px); border-color: rgba(148,163,184,.32); box-shadow: 0 10px 24px rgba(0,0,0,.35); }
 .sysmap-node:focus-visible { outline: 2px solid #52e6df; outline-offset: 2px; }
-.sysmap-node.is-selected { border-color: rgba(77,231,223,.55); box-shadow: 0 0 0 3px rgba(77,231,223,.12); }
+.sysmap-node.is-selected { border-color: rgba(77,231,223,.6); box-shadow: 0 0 0 3px rgba(77,231,223,.14), 0 12px 30px rgba(0,0,0,.4); }
 .sysmap-node-check { position: absolute; top: -7px; right: -7px; display: grid; place-items: center; width: 16px; height: 16px; border-radius: 999px; background: #45ddd7; color: #062525; }
 .sysmap-node-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .sysmap-node-label { color: #f0f4f9; font-size: 12px; font-weight: 600; letter-spacing: -.01em; }
 .sysmap-node-subtitle { display: block; margin-top: 2px; color: #7d8aa0; font-size: 10px; }
 .sysmap-node.kind-human .sysmap-node-label,.sysmap-node.kind-platform .sysmap-node-label { font-size: 13px; }
 .sysmap-node.kind-human { border-color: rgba(77,231,223,.4); background: linear-gradient(160deg, rgba(35,55,54,.9), rgba(13,17,23,.95)); }
-.sysmap-node.kind-category { text-align: center; border-style: dashed; }
+.sysmap-node.kind-platform { border-color: rgba(77,231,223,.28); box-shadow: 0 0 0 1px rgba(77,231,223,.08), 0 16px 40px rgba(0,0,0,.35); }
+.sysmap-node.kind-category { text-align: center; border-style: dashed; background: linear-gradient(160deg, rgba(28,35,45,.85), rgba(11,14,19,.92)); }
 .sysmap-node.kind-category .sysmap-node-label { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
 .sysmap-node-toggle { border: 0; background: transparent; color: #647286; padding: 0; cursor: pointer; }
 .sysmap-node-toggle:hover { color: #cfd8e5; }
 .sysmap-node-toggle:focus-visible { outline: 2px solid #52e6df; outline-offset: 1px; }
 
-.sysmap-panel { position: absolute; top: 12px; right: 12px; bottom: 12px; width: min(320px, 88vw); display: grid; grid-template-rows: auto 1fr; border: 1px solid rgba(148,163,184,.18); border-radius: 12px; background: linear-gradient(165deg, rgba(19,24,32,.97), rgba(10,13,18,.98)); box-shadow: 0 20px 60px rgba(0,0,0,.4); overflow: hidden; }
+/* Live status dot gets a soft pulse — a small, deliberate signal of "this
+   is a real, currently-running thing", not decoration for its own sake. */
+.sysmap-node .admin-status-dot.live { animation: sysmap-pulse 2.6s ease-in-out infinite; }
+@keyframes sysmap-pulse { 0%, 100% { box-shadow: 0 0 0 rgba(77,231,223,.5); } 50% { box-shadow: 0 0 9px rgba(77,231,223,.85); } }
+
+.sysmap-panel { position: absolute; top: 12px; right: 12px; bottom: 12px; width: min(320px, 88vw); display: grid; grid-template-rows: auto 1fr; border: 1px solid rgba(148,163,184,.18); border-radius: 14px; background: linear-gradient(165deg, rgba(19,24,32,.97), rgba(10,13,18,.98)); backdrop-filter: blur(10px); box-shadow: 0 24px 70px rgba(0,0,0,.45); overflow: hidden; }
 .sysmap-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 16px 16px 12px; border-bottom: 1px solid rgba(148,163,184,.1); }
 .sysmap-panel-head h3 { margin: 6px 0 0; color: #f2f5f9; font-size: 15px; font-weight: 600; letter-spacing: -.02em; }
 .sysmap-panel-close { border: 1px solid rgba(148,163,184,.2); border-radius: 7px; background: transparent; color: #9aa6b8; padding: 5px 7px; cursor: pointer; }
@@ -52,7 +109,9 @@
 .sysmap-panel-empty { display: grid; place-items: center; height: 100%; color: #647286; font-size: 12px; text-align: center; padding: 24px; }
 
 @media (max-width: 820px) {
-  .sysmap-canvas-wrap { height: 62vh; }
+  .admin-content:has(.admin-system-map-page) { padding-right: 0; }
+  .sysmap-canvas-wrap { height: 62vh; border-radius: 0; }
   .sysmap-panel { position: fixed; inset: auto 10px 10px 10px; top: auto; height: min(66vh, 520px); }
   .sysmap-search { min-width: 0; flex: 1 1 160px; }
+  .sysmap-controls.react-flow__controls { flex-direction: row; }
 }

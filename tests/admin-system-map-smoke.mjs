@@ -163,21 +163,35 @@ async function testRuntimeShape() {
   assert.ok(futureOperatorNode, "a future-operators rollup node must exist");
   assert.equal(futureOperatorNode.status, "planned", "future operators must be marked Planned, never Live");
 
-  // All 6 real connectors represented with truthful status.
+  // All real connectors represented with truthful status.
   const connectorNodes = systemMapNodes.filter((n) => n.kind === "connector");
-  assert.equal(connectorNodes.length, 6, "exactly 6 real connector nodes must be represented");
+  assert.equal(connectorNodes.length, 12, "exactly 12 real connector nodes must be represented");
   const byId = Object.fromEntries(connectorNodes.map((n) => [n.id, n]));
-  for (const id of ["connector-gmail", "connector-microsoft", "connector-hubspot", "connector-salesforce", "connector-slack", "connector-trello"]) {
+  for (const id of ["connector-gmail", "connector-google_drive", "connector-microsoft", "connector-microsoft_teams", "connector-hubspot", "connector-salesforce", "connector-slack", "connector-trello", "connector-asana", "connector-jira", "connector-zendesk", "connector-intercom"]) {
     assert.ok(byId[id], `connector node ${id} must exist`);
   }
+  assert.equal(byId["connector-intercom"].status, "planned", "Intercom must remain planned internally until provider review is complete");
+  assert.equal(byId["connector-google_drive"].status, "live", "Google Drive is implemented read-only context and must be Live without advertising writes");
   assert.equal(byId["connector-salesforce"].status, "partial", "Salesforce must be Partial (read-only context), never Live");
   assert.match(byId["connector-salesforce"].responsibility, /read-only/i, "Salesforce's node must explicitly describe itself as read-only");
   const salesforceDefinition = connectorsRegistryModule.CONNECTOR_CATALOG.salesforce;
   assert.equal(salesforceDefinition.writeActions.length, 0, "the real connector registry must show zero Salesforce write actions - this is what the Partial status is derived from");
   assert.doesNotMatch(JSON.stringify(salesforceDefinition.capabilities), /\.write\b/, "Salesforce's real capabilities must never include a write capability");
-  for (const id of ["connector-gmail", "connector-microsoft", "connector-hubspot", "connector-slack", "connector-trello"]) {
+  for (const id of ["connector-gmail", "connector-microsoft", "connector-microsoft_teams", "connector-hubspot", "connector-slack", "connector-trello", "connector-asana", "connector-jira", "connector-zendesk"]) {
     assert.equal(byId[id].status, "live", `${id} must be Live`);
   }
+  // Microsoft Teams is a real, shipped connector: it must be Live (not
+  // planned) and must declare a real approval-gated write action.
+  const teamsDefinition = connectorsRegistryModule.CONNECTOR_CATALOG.microsoft_teams;
+  assert.equal(teamsDefinition.status, "available", "Microsoft Teams must be an available connector in the real registry");
+  assert.equal(teamsDefinition.authType, "direct_oauth", "Microsoft Teams must use the direct Microsoft OAuth flow, not a broker");
+  assert.equal(teamsDefinition.writeActions.length, 1, "Microsoft Teams must advertise exactly its one implemented write action");
+  assert.doesNotMatch(
+    JSON.stringify([teamsDefinition.capabilities, teamsDefinition.readActions, teamsDefinition.writeActions, teamsDefinition.approvalRequiredActions]),
+    /attachment|upload|download|direct message|1:1/i,
+    "Microsoft Teams must not claim attachment, file transfer or direct-message capabilities it does not implement",
+  );
+  assert.doesNotMatch(JSON.stringify(teamsDefinition.capabilities), /chat\.alerts/, "Microsoft Teams must not claim capabilities it does not implement");
   const nextConnectorNode = systemMapNodes.find((n) => n.id === "connector-next");
   assert.ok(nextConnectorNode, "a next-connectors rollup node must exist");
   assert.equal(nextConnectorNode.status, "planned", "future connectors must be marked Planned, never Live");
@@ -190,7 +204,7 @@ async function testRuntimeShape() {
   // Counts are derived, not hardcoded, and self-consistent with the nodes.
   const counts = getSystemMapCounts();
   assert.equal(counts.liveOperators, 3);
-  assert.equal(counts.liveConnectors, 5);
+  assert.equal(counts.liveConnectors, 10);
   assert.equal(counts.partialConnectors, 1);
   assert.ok(counts.plannedConnectors > 10, "plannedConnectors must reflect the real, larger catalog");
   assert.equal(counts.infrastructureServices, systemMapNodes.filter((n) => n.kind === "infrastructure").length);
@@ -220,6 +234,14 @@ async function testRuntimeShape() {
   assert.ok(
     dependencyEdges.some((e) => e.source === "operator-operations" && e.target === "connector-slack"),
     "Operations -> Slack dependency edge must exist",
+  );
+  assert.ok(
+    dependencyEdges.some((e) => e.source === "operator-operations" && e.target === "connector-microsoft_teams"),
+    "Operations -> Microsoft Teams dependency edge must exist",
+  );
+  assert.ok(
+    dependencyEdges.some((e) => e.source === "operator-client_flow" && e.target === "connector-microsoft_teams"),
+    "Client Flow -> Microsoft Teams dependency edge must exist",
   );
   assert.ok(
     dependencyEdges.some((e) => e.source === "biz-billing" && e.target === "biz-dodo"),

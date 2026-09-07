@@ -5,6 +5,11 @@ import {
   fetchMicrosoftProfile,
   toStoredMicrosoftCredential,
 } from "@/lib/connectors/microsoft";
+import {
+  getMicrosoftTeamsScopeState,
+  readMicrosoftTeamsSettings,
+  writeMicrosoftTeamsSettings,
+} from "@/lib/connectors/microsoft-teams";
 import { parseMicrosoftOAuthState } from "@/lib/connectors/oauth-state";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { getAppUrl } from "@/lib/urls";
@@ -32,10 +37,27 @@ export async function GET(req: NextRequest) {
     // Validate the CSRF state before doing anything else, including before
     // trusting that this callback belongs to a real, verified workspace.
     const state = parseMicrosoftOAuthState(stateRaw);
+    const scopeProfile = state.scopeProfile === "teams" ? "teams" : "base";
 
-    const tokenData = await exchangeCodeForTokens(code);
+    const tokenData = await exchangeCodeForTokens(code, scopeProfile);
     const profile = await fetchMicrosoftProfile(tokenData.access_token);
     const idClaims = decodeIdTokenClaims(tokenData.id_token);
+
+    const supabase = createSupabaseAdmin();
+
+    // Read the existing row first so an incremental-consent run keeps the
+    // scopes and Teams settings already recorded for this workspace instead
+    // of overwriting them (upsert replaces the whole row).
+    const existing = await supabase
+      .from("os_connector_credentials")
+      .select("scopes, metadata")
+      .eq("workspace_id", state.workspaceId)
+      .eq("connector_key", "microsoft")
+      .maybeSingle();
+    const existingScopes = Array.isArray(existing.data?.scopes)
+      ? (existing.data?.scopes as unknown[]).filter((item): item is string => typeof item === "string")
+      : [];
+    const existingMetadata = (existing.data?.metadata ?? null) as Record<string, unknown> | null;
 
     const credential = toStoredMicrosoftCredential({
       workspaceId: state.workspaceId,
@@ -46,9 +68,19 @@ export async function GET(req: NextRequest) {
       providerEmail: profile.email ?? idClaims.preferred_username ?? idClaims.email,
       providerAccountId: profile.id ?? idClaims.oid,
       tenantId: idClaims.tid,
+      existingScopes,
+      existingMetadata,
     });
 
-    const supabase = createSupabaseAdmin();
+    // Teams is only ever marked enabled when this run explicitly asked for
+    // Teams consent AND Microsoft actually granted the Teams read scopes.
+    // A denied or partial consent leaves Teams unavailable and truthful.
+    const teamsScopeState = getMicrosoftTeamsScopeState(credential.scopes);
+    const teamsGranted = scopeProfile === "teams" && teamsScopeState.readGranted;
+    if (teamsGranted) {
+      credential.metadata = writeMicrosoftTeamsSettings(credential.metadata, { enabled: true });
+    }
+
     await supabase.from("os_connector_credentials").upsert(credential, { onConflict: "workspace_id,connector_key" });
 
     await supabase
@@ -60,12 +92,20 @@ export async function GET(req: NextRequest) {
         agent_id: "system",
         agent_mark: "OS",
         agent_color: "#4DE8E1",
-        event: "connector.microsoft.connected",
-        message: `Connected Microsoft 365 real account${credential.provider_email ? ` (${credential.provider_email})` : ""}`,
+        event: teamsGranted ? "connector.microsoft_teams.connected" : "connector.microsoft.connected",
+        message: teamsGranted
+          ? `Connected Microsoft Teams${credential.provider_email ? ` (${credential.provider_email})` : ""}`
+          : `Connected Microsoft 365 real account${credential.provider_email ? ` (${credential.provider_email})` : ""}`,
         duration: "-",
         status: "ok",
       });
 
+    if (scopeProfile === "teams") {
+      const teamsAlreadyEnabled = readMicrosoftTeamsSettings(credential.metadata).enabled;
+      return NextResponse.redirect(teamsAlreadyEnabled
+        ? `${appBase()}/app/connectors?connected=microsoft_teams`
+        : `${appBase()}/app/connectors?microsoft_teams=permission_required`);
+    }
     return NextResponse.redirect(`${appBase()}/app/connectors?connected=microsoft`);
   } catch (err) {
     const reason = err instanceof Error ? err.message : "oauth_failed";

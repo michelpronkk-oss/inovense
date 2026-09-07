@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
+  Background,
+  BackgroundVariant,
+  Controls,
+  MarkerType,
   ReactFlow,
   ReactFlowProvider,
   applyNodeChanges,
@@ -106,8 +110,9 @@ function toFlowEdges(edges: SystemMapEdge[]): Edge[] {
     source: edge.source,
     target: edge.target,
     type: "smoothstep",
-    className: edge.kind === "dependency" ? "sysmap-edge-dependency" : undefined,
+    className: edge.kind === "dependency" ? "sysmap-edge-dependency" : "sysmap-edge-hierarchy",
     animated: false,
+    markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: edge.kind === "dependency" ? "#4de7df" : "#94a3b8" },
   }));
 }
 
@@ -360,7 +365,10 @@ function SystemMapInner({
           proOptions={{ hideAttribution: true }}
           nodesFocusable
           elementsSelectable
-        />
+        >
+          <Background variant={BackgroundVariant.Dots} gap={26} size={1.4} color="rgba(148,163,184,0.16)" />
+          <Controls position="bottom-left" showInteractive={false} className="sysmap-controls" />
+        </ReactFlow>
         <DetailsPanel node={selectedNode} branchLabel={selectedBranchLabel} onClose={() => setSelectedId(null)} />
       </div>
     </div>
