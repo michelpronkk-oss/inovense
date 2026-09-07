@@ -28,6 +28,8 @@
     "test:product-truth-discovery": "node tests/product-truth-discovery-smoke.mjs",
     "test:seo-discovery": "node tests/seo-discovery-smoke.mjs",
     "test:public-content-quality": "node tests/public-content-quality-smoke.mjs",
+    "test:feedback-roadmap": "node tests/feedback-roadmap-smoke.mjs",
+    "test:support": "node tests/support-smoke.mjs",
     "trigger:dev": "npx trigger.dev@latest dev",
     "trigger:deploy": "npx trigger.dev@latest deploy"
   },

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { OSModal } from "@/components/dashboard/modal";
+import { FeedbackDialog, openFeedback } from "@/components/dashboard/feedback-dialog";
+import { SupportDialog, openSupport } from "@/components/dashboard/support-dialog";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -9,7 +11,7 @@ import { useOS } from "@/lib/os/app-provider";
 import { saveProfileSettings } from "@/app/app/profile/actions";
 import {
   TargetIcon, CpuIcon, FlowIcon, InboxIcon, DatabaseIcon, LinkIcon,
-  DocIcon, ChartIcon, UsersIcon, ShieldIcon, KeyIcon, SettingsIcon, SwapIcon,
+  DocIcon, ChartIcon, UsersIcon, ShieldIcon, KeyIcon, SettingsIcon, SwapIcon, MessageIcon,
 } from "@/components/dashboard/icons";
 
 const ADMIN_NAV = [
@@ -136,6 +138,10 @@ export function OSSidebar() {
           </Link>
         );
       })}
+      <div className="os-side-label">Support</div>
+      <button type="button" className="os-nav" onClick={() => openSupport()}><span className="ico"><MessageIcon size={14} /></span><span>Support</span></button>
+      <button type="button" className="os-nav" onClick={() => openFeedback()}><span className="ico"><MessageIcon size={14} /></span><span>Feedback</span></button>
+      <Link href="/roadmap" className={`os-nav${isActive("/roadmap") ? " active" : ""}`} aria-current={isActive("/roadmap") ? "page" : undefined}><span className="ico"><DocIcon size={14} /></span><span>Roadmap</span></Link>
       </div>
 
       <button className="os-side-bottom" style={{ border: "none", width: "100%", background: "transparent", cursor: "pointer", textAlign: "left" }} onClick={() => {
@@ -271,6 +277,8 @@ export function OSSidebar() {
           </div>
         </OSModal>
       )}
+      <FeedbackDialog />
+      <SupportDialog />
     </aside>
   );
 }
@@ -349,7 +357,7 @@ export function OSMobileNav() {
             <div className="os-mobile-menu-handle" aria-hidden="true" />
             <div className="os-mobile-menu-head"><div><strong>More</strong><span>Workspace navigation</span></div><button type="button" onClick={() => setOpen(false)}>Done</button></div>
             <div className="os-mobile-menu-groups">
-              {groups.map((group) => (
+            {groups.map((group) => (
                 <section key={group.label} className="os-mobile-menu-group">
                   <h2>{group.label}</h2>
                   <div>
@@ -359,7 +367,8 @@ export function OSMobileNav() {
                     })}
                   </div>
                 </section>
-              ))}
+            ))}
+            <div className="os-mobile-menu-group"><h2>Support</h2><div><button type="button" className="os-mobile-menu-feedback" onClick={() => { setOpen(false); openSupport(); }}><span><MessageIcon size={15} /></span><strong>Support</strong><i aria-hidden="true">›</i></button><Link href="/roadmap" className={isActive("/roadmap") ? "active" : ""} aria-current={isActive("/roadmap") ? "page" : undefined} onClick={() => setOpen(false)}><span><DocIcon size={17} /></span><strong>Roadmap</strong><i aria-hidden="true">›</i></Link><button type="button" className="os-mobile-menu-feedback" onClick={() => { setOpen(false); openFeedback(); }}><span><MessageIcon size={15} /></span><strong>Feedback</strong><i aria-hidden="true">›</i></button></div></div>
             </div>
           </div>
         </OSModal>
