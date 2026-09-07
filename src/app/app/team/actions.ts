@@ -362,6 +362,19 @@ export async function resendWorkspaceInvite(input: ResendInviteInput): Promise<I
     token,
   });
 
+  await supabase.from("os_execution_logs").insert({
+    id: `log-invite-resent-${Date.now()}`,
+    ts: new Date().toISOString(),
+    run_id: "team",
+    agent_id: "system",
+    agent_mark: "OS",
+    agent_color: "#4DE8E1",
+    event: "invite_resent",
+    message: `Invitation for ${email} resent by ${verifiedUser.email ?? "workspace admin"}`,
+    duration: "-",
+    status: "ok",
+  });
+
   if (process.env.RESEND_API_KEY && !sent) {
     return { success: false, error: "Invitation refreshed, but the email could not be delivered. You can retry sending it." };
   }
@@ -517,4 +530,77 @@ export async function updateWorkspaceMember(input: UpdateMemberInput): Promise<I
   });
 
   return { success: true, status: "sent", message: "Member access updated." };
+}
+
+type RemoveMemberInput = { workspaceId: string; memberId: string };
+
+/**
+ * Fully removes an accepted workspace member -- distinct from disabling
+ * access, which only suspends it. Membership is deleted outright, so the
+ * member no longer appears in the workspace at all. Pending invites are
+ * out of scope here (use revokeWorkspaceInvite): removal is only for
+ * members who already accepted an invite. The workspace owner can never be
+ * removed (there is exactly one owner per workspace and the row-level
+ * `owner_protected` trigger enforces this at the database layer too), and a
+ * caller can never remove themselves.
+ */
+export async function removeWorkspaceMember(input: RemoveMemberInput): Promise<InviteResult> {
+  const user = await getVerifiedSupabaseUser();
+  if (!user) return { success: false, error: "Sign in to manage team members." };
+  if (!input.workspaceId || !input.memberId) return { success: false, error: "A workspace member is required." };
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return { success: false, error: "Supabase service role config is missing." };
+
+  let actor;
+  try {
+    actor = await requireWorkspaceAdmin(user.id, input.workspaceId);
+  } catch (error) {
+    if (error instanceof AuthorizationError) return { success: false, error: "You do not have permission to manage members in this workspace." };
+    return { success: false, error: "Could not verify your workspace permissions." };
+  }
+
+  const supabase = createClient(url, key, { auth: { persistSession: false } });
+  const targetResult = await supabase
+    .from("os_workspace_members")
+    .select("id,user_id,email,role,role_key,status")
+    .eq("id", input.memberId)
+    .eq("workspace_id", input.workspaceId)
+    .maybeSingle();
+  if (targetResult.error || !targetResult.data) return { success: false, error: "Workspace member not found." };
+
+  if (targetResult.data.status === "pending") {
+    return { success: false, error: "This is a pending invite -- use Revoke invitation instead." };
+  }
+  const targetRole = normalizeWorkspaceRole(targetResult.data.role_key, targetResult.data.role);
+  if (targetRole === "owner") return { success: false, error: "The workspace owner cannot be removed." };
+  if (targetResult.data.user_id === user.id || targetResult.data.email?.toLowerCase() === user.email?.toLowerCase()) {
+    return { success: false, error: "You cannot remove yourself from this workspace." };
+  }
+  if (!canManageTarget(actor.role_key, targetRole)) {
+    return { success: false, error: "You do not have permission to remove this member." };
+  }
+
+  const remove = await supabase
+    .from("os_workspace_members")
+    .delete()
+    .eq("id", input.memberId)
+    .eq("workspace_id", input.workspaceId);
+  if (remove.error) return { success: false, error: "Could not remove this member." };
+
+  await supabase.from("os_execution_logs").insert({
+    id: `log-member-removed-${Date.now()}`,
+    ts: new Date().toISOString(),
+    run_id: "team",
+    agent_id: "system",
+    agent_mark: "OS",
+    agent_color: "#4DE8E1",
+    event: "member_removed",
+    message: `Member ${targetResult.data.email} removed from the workspace by ${user.email ?? "workspace admin"}`,
+    duration: "-",
+    status: "ok",
+  });
+
+  return { success: true, status: "sent", message: "Member removed." };
 }

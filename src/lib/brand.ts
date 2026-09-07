@@ -13,7 +13,7 @@ export const AUTERIM_ADMIN_URL = `https://${AUTERIM_ADMIN_HOST}`;
 export const AUTERIM_EMAILS = {
   hello: "hello@auterim.com",
   support: "support@auterim.com",
-  noreply: "noreply@auterim.com",
+  notifications: "notifications@auterim.com",
 } as const;
 
 export const AUTERIM_POSITIONING = "Auterim is the AI workforce built around your business.";

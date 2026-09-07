@@ -64,6 +64,7 @@ type OSAction =
   | { type: "SET_POLICY_ACTIVE"; policyId: string; active: boolean; log: ExecutionLog }
   | { type: "INVITE_MEMBER"; member: TeamMember; log: ExecutionLog }
   | { type: "UPDATE_MEMBER"; memberId: string; patch: Partial<TeamMember>; log: ExecutionLog }
+  | { type: "REMOVE_MEMBER"; memberId: string; log: ExecutionLog }
   | { type: "SET_SETTINGS_SECTION"; section: keyof OSSettings; value: OSSettings[keyof OSSettings]; log: ExecutionLog }
   | { type: "SET_CURRENT_USER"; value: CurrentUser; log: ExecutionLog }
   | { type: "SET_DASHBOARD"; value: DashboardState }
@@ -290,6 +291,12 @@ function reducer(state: OSState, action: OSAction): OSState {
         teamMembers: state.teamMembers.map((m) => (m.id === action.memberId ? { ...m, ...action.patch } : m)),
         logs: [action.log, ...state.logs].slice(0, 300),
       };
+    case "REMOVE_MEMBER":
+      return {
+        ...state,
+        teamMembers: state.teamMembers.filter((m) => m.id !== action.memberId),
+        logs: [action.log, ...state.logs].slice(0, 300),
+      };
     case "SET_SETTINGS_SECTION":
       return {
         ...state,
@@ -405,6 +412,7 @@ interface OSContextValue {
   setPolicyActive: (policyId: string, active: boolean) => void;
   inviteMember: (input: { name?: string; email: string; role: string; permissions: string[] }) => void;
   updateMember: (memberId: string, patch: Partial<TeamMember>) => void;
+  removeMember: (memberId: string) => void;
   updateSettingsSection: <K extends keyof OSSettings>(section: K, value: OSSettings[K]) => void;
   updateActivation: (patch: Partial<NonNullable<OSSettings["activation"]>>) => void;
   updateCurrentUser: (patch: Partial<CurrentUser>) => void;
@@ -1028,6 +1036,12 @@ export function AppProvider({ children, initialContext }: { children: React.Reac
     dispatch({ type: "UPDATE_MEMBER", memberId, patch, log: logEntry(`Updated member ${existing.email}`, "team_member_updated") });
   }, [state.teamMembers]);
 
+  const removeMember = useCallback((memberId: string) => {
+    const existing = state.teamMembers.find((m) => m.id === memberId);
+    if (!existing) return;
+    dispatch({ type: "REMOVE_MEMBER", memberId, log: logEntry(`Removed member ${existing.email}`, "member_removed") });
+  }, [state.teamMembers]);
+
   const updateSettingsSection = useCallback(<K extends keyof OSSettings>(section: K, value: OSSettings[K]) => {
     dispatch({ type: "SET_SETTINGS_SECTION", section, value, log: logEntry(`Updated ${String(section)} settings`, "settings_updated") });
   }, []);
@@ -1094,6 +1108,7 @@ export function AppProvider({ children, initialContext }: { children: React.Reac
         setPolicyActive,
         inviteMember,
         updateMember,
+        removeMember,
         updateSettingsSection,
         updateActivation,
         updateCurrentUser,

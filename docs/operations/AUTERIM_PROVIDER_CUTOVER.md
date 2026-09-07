@@ -13,7 +13,7 @@ This is a manual checklist. No provider dashboard changes were performed.
 | Nango | Existing webhook/config — VERIFY IN DASHBOARD | `https://app.auterim.com/api/connectors/nango/webhook` | Update webhook and any callback configured in Nango. Preserve IDs. | Send signed test webhook. | Restore old webhook URL. |
 | Slack | Existing callback — VERIFY IN DASHBOARD | Auterim app callback if configured; otherwise no code change | Update only if Slack is configured directly. | OAuth/install and notification test. | Restore old callback. |
 | Dodo | Existing webhook/return URLs — VERIFY IN DASHBOARD | Webhook `https://app.auterim.com/api/billing/dodo/webhook`; success/cancel URLs on Auterim hosts | Update URLs only. Do not change product IDs. | Test checkout, cancellation, webhook replay. | Restore old URLs and previous deployment. |
-| Resend | Existing domain/senders — VERIFY IN DASHBOARD | Verify `auterim.com`; `hello@`, `support@`, `noreply@auterim.com` | Configure SPF, DKIM, DMARC and sender identities. | Send test emails and inspect delivery logs. | Restore verified sender only while DNS is repaired. |
+| Resend | Existing domain/senders — VERIFY IN DASHBOARD | Verify `auterim.com`; `hello@`, `support@`, `notifications@auterim.com` | Configure SPF, DKIM, DMARC and sender identities. | Send test emails and inspect delivery logs. | Restore verified sender only while DNS is repaired. |
 | Trigger | Existing project/env — VERIFY IN DASHBOARD | Auterim public URL and production env values | Update notification/callback URLs where configured. | Run a test job. | Restore old env values. |
 
 Do not place credentials in this document. Unknown targets must be verified in the relevant dashboard before change.

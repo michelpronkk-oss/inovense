@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { AUTERIM_EMAILS } from "@/lib/brand";
-import { TRANSACTIONAL_FROM } from "@/lib/email/config";
+import { SUPPORT_FROM } from "@/lib/email/config";
 import { getWorkspaceOperatorProductStates } from "@/lib/operators/product-state";
 import { getConnectorTruth } from "@/lib/connectors/truth";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) throw new Error("resend_not_configured");
     const details = [`Topic: ${topic}`, `Message: ${message}`, `User: ${context.userEmail ?? "Unavailable"}`, `Workspace: ${workspace.data?.name ?? context.workspaceId}`, `Page: ${pagePath}`, `Connector summary: ${metadata.connectors.map((row) => `${row.key} (${row.status})`).join(", ") || "None"}`, `Operator summary: ${metadata.operators.map((row) => `${row.key} (${row.state})`).join(", ") || "None"}`].join("\n");
-    const sent = await new Resend(apiKey).emails.send({ from: TRANSACTIONAL_FROM, to: AUTERIM_EMAILS.support, subject: `[Auterim Support] ${topic}`, text: details });
+    const sent = await new Resend(apiKey).emails.send({ from: SUPPORT_FROM, to: AUTERIM_EMAILS.support, subject: `[Auterim Support] ${topic}`, text: details });
     if (sent.error) throw new Error(sent.error.message || "resend_failed");
   } catch (error) {
     console.error("[support.notification_failed]", { requestId: inserted.data.id, reason: error instanceof Error ? error.message : "unknown" });

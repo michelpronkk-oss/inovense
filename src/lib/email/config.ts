@@ -10,5 +10,5 @@
  */
 import { AUTERIM_EMAILS, AUTERIM_NAME } from "@/lib/brand";
 
-export const TRANSACTIONAL_FROM = `${AUTERIM_NAME} <${AUTERIM_EMAILS.noreply}>`;
+export const TRANSACTIONAL_FROM = `${AUTERIM_NAME} <${AUTERIM_EMAILS.notifications}>`;
 export const SUPPORT_FROM = `${AUTERIM_NAME} Support <${AUTERIM_EMAILS.support}>`;

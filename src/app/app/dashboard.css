@@ -380,6 +380,43 @@ select.os-input option {
 .team-invite-summary p { max-width: 175px; margin: 0; color: var(--text-mute); font-size: 10.5px; line-height: 1.4; text-align: right; }
 .team-invite-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
+/* Member detail modal: structured sections (Role / Access / Status / Danger
+   zone) with clear hierarchy -- role is the primary control, access reads
+   as quiet reference information, and destructive actions stay visually
+   isolated from normal settings and out of the save footer entirely. */
+.team-detail-section { padding: 15px 0; }
+.team-detail-section:first-child { padding-top: 0; }
+.team-detail-section + .team-detail-section { border-top: 1px solid var(--line); }
+.team-detail-label { display: block; margin-bottom: 9px; color: var(--text-faint); font: 10px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
+.team-detail-helper { margin: 7px 0 0; color: var(--text-mute); font-size: 11.5px; line-height: 1.5; }
+.team-access-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.team-access-chips .p-chip { text-transform: none; letter-spacing: 0.02em; }
+.team-status-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.team-status-value { font-size: 13px; color: var(--text-dim); font-weight: 500; }
+
+.team-danger-zone .team-detail-label { color: var(--rose); }
+.team-danger-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.team-danger-btn {
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 7px 13px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-dim);
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition: opacity 0.15s;
+}
+.team-danger-btn:hover { opacity: 0.85; }
+.team-danger-btn:disabled { opacity: 0.5; cursor: default; }
+.team-danger-btn.severe { background: var(--rose-soft); color: var(--rose); box-shadow: inset 0 0 0 1px rgba(242, 118, 124, 0.3); }
+
+.team-remove-confirm { display: grid; gap: 4px; }
+.team-remove-confirm p { margin: 0; color: var(--text-dim); font-size: 13px; line-height: 1.55; }
+.team-remove-confirm .team-remove-email { color: var(--text-mute); font-size: 12px; font-family: var(--font-mono); }
+
 .os-menu-pop {
   position: absolute;
   right: 0;
@@ -1084,7 +1121,7 @@ select.os-input option {
   .settings-workspace-meta { margin-left: 0; justify-content: flex-start; }
   .team-member-row { flex-wrap: wrap; gap: 10px !important; padding: 13px 14px !important; }
   .team-member-row > div:nth-child(2) { min-width: calc(100% - 50px); }
-  .team-member-row > div:nth-child(3) { width: 100%; justify-content: flex-start !important; }
+  .team-member-row > .team-member-meta { width: 100%; justify-content: flex-start !important; padding-left: 50px; }
   .team-access-modal { padding: 16px; }
   .team-invite-fields { grid-template-columns: 1fr; }
   .team-role-row { padding: 10px 12px; }
@@ -1092,6 +1129,9 @@ select.os-input option {
   .team-invite-summary p { max-width: none; text-align: left; }
   .team-invite-actions { justify-content: stretch; }
   .team-invite-actions .btn { flex: 1; justify-content: center; }
+  .team-danger-actions { flex-direction: column; }
+  .team-danger-btn { width: 100%; justify-content: center; }
+  .team-status-row { flex-direction: column; align-items: flex-start; }
   .plans-current-summary { grid-template-columns: 1fr !important; gap: 12px !important; padding: 16px !important; }
   .plans-current-summary > div:last-child { text-align: left !important; }
   .plans-grid { grid-template-columns: 1fr !important; }

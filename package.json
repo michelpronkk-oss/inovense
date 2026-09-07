@@ -34,6 +34,7 @@
     "test:settings-controls": "node tests/settings-controls-smoke.mjs",
     "test:team-roles": "node tests/team-roles-smoke.mjs",
     "test:team-invite-email": "node tests/team-invite-email-smoke.mjs",
+    "test:team-remove-member": "node tests/team-remove-member-smoke.mjs",
     "test:insights-entitlement": "node tests/insights-entitlement-smoke.mjs",
     "test:product-truth-discovery": "node tests/product-truth-discovery-smoke.mjs",
     "test:seo-discovery": "node tests/seo-discovery-smoke.mjs",

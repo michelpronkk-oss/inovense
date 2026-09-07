@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { AUTERIM_EMAILS } from "@/lib/brand";
-import { TRANSACTIONAL_FROM } from "@/lib/email/config";
+import { SUPPORT_FROM } from "@/lib/email/config";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
       `Page: ${pagePath}`,
       `Submitted: ${submittedAt}`,
     ].filter(Boolean).join("\n");
-    const sent = await new Resend(key).emails.send({ from: TRANSACTIONAL_FROM, to: AUTERIM_EMAILS.support, subject, text: details });
+    const sent = await new Resend(key).emails.send({ from: SUPPORT_FROM, to: AUTERIM_EMAILS.support, subject, text: details });
     if (sent.error) throw new Error(sent.error.message || "resend_failed");
   } catch (error) {
     console.error("[feedback.notification_failed]", { feedbackId: insert.data.id, reason: error instanceof Error ? error.message : "unknown" });

@@ -51,8 +51,10 @@ for (const [file, content] of Object.entries(ACTIVE_SENDER_FILES)) {
 assert.doesNotMatch(envExample, /RESEND_FROM_EMAIL/, ".env.example must not document the removed RESEND_FROM_EMAIL var");
 
 // ── 2. Canonical sender identities are hardcoded constants, not env-driven ─
-assert.match(emailConfig, /export const TRANSACTIONAL_FROM = `\$\{AUTERIM_NAME\} <\$\{AUTERIM_EMAILS\.noreply\}>`;/);
+assert.match(emailConfig, /export const TRANSACTIONAL_FROM = `\$\{AUTERIM_NAME\} <\$\{AUTERIM_EMAILS\.notifications\}>`;/);
 assert.match(emailConfig, /export const SUPPORT_FROM = `\$\{AUTERIM_NAME\} Support <\$\{AUTERIM_EMAILS\.support\}>`;/);
+assert.match(supportRoute, /from: SUPPORT_FROM/);
+assert.match(feedbackRoute, /from: SUPPORT_FROM/);
 
 // ── 3. Team invite email uses the centralized Auterim sender ─────────────
 assert.match(teamActions, /import \{ TRANSACTIONAL_FROM \} from "@\/lib\/email\/config";/);
