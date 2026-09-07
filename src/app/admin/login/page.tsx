@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { verifySessionToken, SESSION_COOKIE, LEGACY_SESSION_COOKIE } from "@/lib/session";
+import { getInternalAdmin } from "@/lib/admin/auth";
 import LoginForm from "./login-form";
 
 export const metadata: Metadata = {
@@ -15,17 +14,12 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  // Already authenticated - redirect to the admin host root.
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value ?? cookieStore.get(LEGACY_SESSION_COOKIE)?.value;
-  if (token && (await verifySessionToken(token))) {
-    redirect("/");
-  }
+  if (await getInternalAdmin()) redirect("/");
 
   const { from } = await searchParams;
   const safeDest =
-    from?.startsWith("/admin") && from !== "/admin/login"
-      ? from.slice("/admin".length) || "/"
+    from?.startsWith("/") && !from.startsWith("//") && from !== "/login"
+      ? from
       : "/";
 
   return (
@@ -52,14 +46,14 @@ export default async function LoginPage({
             <div className="mb-8">
               <Image
                 src="/logo.png"
-                alt="Inovense"
+                alt="Auterim"
                 width={100}
                 height={23}
                 className="block h-[23px] w-auto"
                 priority
               />
               <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-600">
-                CRM
+                Command center
               </p>
             </div>
 
@@ -69,7 +63,7 @@ export default async function LoginPage({
                 Sign in
               </h1>
               <p className="mt-1 text-xs text-zinc-600">
-                Internal access only.
+                Internal access requires an authorized Auterim account.
               </p>
             </div>
 

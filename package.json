@@ -31,6 +31,7 @@
     "test:feedback-roadmap": "node tests/feedback-roadmap-smoke.mjs",
     "test:support": "node tests/support-smoke.mjs",
     "test:sidebar-navigation": "node tests/sidebar-navigation-smoke.mjs",
+    "test:admin-command-center": "node tests/admin-command-center-smoke.mjs",
     "trigger:dev": "npx trigger.dev@latest dev",
     "trigger:deploy": "npx trigger.dev@latest deploy"
   },

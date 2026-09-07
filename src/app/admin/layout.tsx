@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { type ReactNode } from "react";
 import type { Metadata } from "next";
 import { AdminNav } from "./_nav";
+import { requireInternalAdmin } from "@/lib/admin/auth";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -15,6 +16,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   if (pathname === "/admin/login") {
     return <>{children}</>;
   }
+  const admin = await requireInternalAdmin();
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -32,7 +34,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         />
 
         <div className="mx-auto max-w-7xl">
-          <AdminNav />
+          <AdminNav admin={admin} />
         </div>
       </header>
 

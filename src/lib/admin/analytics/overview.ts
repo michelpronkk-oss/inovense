@@ -1,4 +1,5 @@
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
+import { requireInternalAdmin } from "@/lib/admin/auth";
 
 export type AdminRange = "today" | "7d" | "30d" | "90d" | "ytd";
 
@@ -64,6 +65,7 @@ async function safeRows(client: ReturnType<typeof createSupabaseAdmin>, table: s
 }
 
 export async function getAdminOverview(range: AdminRange = "30d"): Promise<AdminOverview> {
+  await requireInternalAdmin();
   if (!hasSupabaseAdminConfig()) {
     return unavailableOverview(range);
   }

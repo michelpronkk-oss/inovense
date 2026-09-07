@@ -1,21 +1,24 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { getAdminSectionData } from "@/lib/admin/sections";
 
-export const metadata: Metadata = { title: "Admin intelligence | Auterim", robots: { index: false, follow: false } };
-
-const pageCopy: Record<string, { label: string; title: string; body: string; source: string }> = {
-  growth: { label: "Growth", title: "Acquisition intelligence.", body: "Traffic, preview starts and conversion will appear here as provider-backed analytics are connected.", source: "Traffic analytics source" },
-  revenue: { label: "Revenue", title: "Revenue intelligence.", body: "Dodo subscription state is present in workspace records. Amount history is not yet normalized for reporting.", source: "Dodo Payments" },
-  customers: { label: "Customers", title: "Customer intelligence.", body: "Workspace-level customer records will appear here without exposing credentials or session data.", source: "Supabase workspace tables" },
-  sales: { label: "Sales", title: "Sales intelligence.", body: "The current CRM is available through leads and prospects. A HubSpot pipeline source is not yet connected.", source: "HubSpot / CRM" },
-  usage: { label: "Product usage", title: "Usage intelligence.", body: "Operator runs and approvals are read from the execution tables. Deeper trend series will appear as usage aggregation is added.", source: "Auterim execution logs" },
-  operators: { label: "Operators", title: "Operator intelligence.", body: "Operator analytics use the canonical operator registry and execution records. No second catalog is created here.", source: "Canonical operator registry" },
-  connectors: { label: "Connectors", title: "Connector intelligence.", body: "Connection state will be shown from workspace connector records and the shared connector registry.", source: "Connector registry + Supabase" },
-  health: { label: "System health", title: "System health.", body: "Failures and incidents will appear here from execution logs, webhook records and Trigger.dev observability.", source: "Execution logs + Trigger.dev" },
+export const metadata: Metadata = { title: "Command center | Auterim", robots: { index: false, follow: false } };
+export const dynamic = "force-dynamic";
+const copy: Record<string, { label: string; title: string; body: string }> = {
+  growth: { label: "Growth", title: "Activation intelligence.", body: "Traffic remains unavailable until a privacy-safe analytics source is connected. Product activation is shown from workspace records where available." },
+  revenue: { label: "Revenue", title: "Current-state revenue.", body: "Billing events are preserved, but recurring amounts and intervals are not normalized. MRR and ARR remain unavailable rather than estimated." },
+  customers: { label: "Customers", title: "Customer workspaces.", body: "Read-only workspace identity and billing state. Credentials and customer content are never shown." },
+  product: { label: "Product", title: "Product adoption.", body: "Connector and operator activity are shown from the current operational records." },
+  connectors: { label: "Connectors", title: "Connector intelligence.", body: "Connection state is aggregated from workspace connector records." },
+  operators: { label: "Operators", title: "Operator intelligence.", body: "Run volume and failure state are derived from the operator runtime." },
+  support: { label: "Support", title: "Support queue.", body: "Read-only support requests, ordered by most recent submission." },
+  feedback: { label: "Feedback", title: "Product demand.", body: "Feedback and connector demand are read directly from customer submissions." },
+  "system-health": { label: "System health", title: "Runtime health.", body: "Operator failures are shown where runtime records exist. Provider checks without stored results remain unavailable." },
 };
 
+function cells(row: Record<string, unknown>) {
+  return Object.entries(row).filter(([key]) => !["id", "workspace_id"].includes(key)).slice(0, 4).map(([key, value]) => <span key={key}><small>{key.replace(/_/g, " ")}</small>{String(value ?? "—")}</span>);
+}
 export default async function AdminSectionPage({ params }: { params: Promise<{ section: string }> }) {
-  const { section } = await params;
-  const copy = pageCopy[section] ?? { label: "Internal", title: "Intelligence workspace.", body: "This internal surface is reserved for provider-backed business signal.", source: "Auterim data layer" };
-  return <div className="admin-command-center"><div className="admin-page-intro"><div><div className="admin-kicker"><span className="admin-status-dot partial" /> Auterim / internal intelligence</div><h1>{copy.title}</h1><p>{copy.body}</p></div><div className="admin-intro-meta"><span className="admin-status-pill partial">Source pending</span><span>{copy.source}</span></div></div><div className="admin-grid-main" style={{ marginTop: 28 }}><section className="admin-panel"><div className="admin-panel-head"><div className="admin-eyebrow">{copy.label}</div><h2>Waiting for source-backed signal</h2></div><div className="admin-empty"><span className="admin-empty-mark">/</span><div><strong>No placeholder numbers are shown.</strong><p>Connect or normalize the source above and this view will populate with real records, definitions and period-aware comparisons.</p></div><Link href="/">Back to command center →</Link></div></section><section className="admin-panel"><div className="admin-panel-head"><div className="admin-eyebrow">Data discipline</div><h2>Read-only by default</h2></div><div className="admin-empty-compact">Every metric must name its provider and remain unavailable until that provider can support it.</div></section></div></div>;
+  const { section } = await params; const page = copy[section] ?? { label: "Internal", title: "Command center.", body: "This route has no internal intelligence view." }; const data = await getAdminSectionData(section);
+  return <div className="admin-command-center"><div className="admin-page-intro"><div><div className="admin-kicker"><span className={`admin-status-dot ${data.unavailable ? "partial" : "live"}`} /> Auterim / internal intelligence</div><h1>{page.title}</h1><p>{page.body}</p></div><div className="admin-intro-meta"><span className={`admin-status-pill ${data.unavailable ? "partial" : "live"}`}>{data.unavailable ? "Source unavailable" : "Read-only live source"}</span><span>{data.source}</span></div></div><div className="admin-kpi-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", marginTop: 22 }}>{data.counts.map((item) => <article className="admin-kpi" key={item.label}><div className="admin-eyebrow">{item.label}</div><div className="admin-kpi-value">{item.value.toLocaleString()}</div><div className="admin-kpi-note">{data.source}</div></article>)}</div>{data.unavailable ? <div className="admin-empty-compact">{data.unavailable}</div> : <section className="admin-panel" style={{ marginTop: 12 }}><div className="admin-panel-head"><div className="admin-eyebrow">Latest records</div><h2>Operational detail</h2></div><div className="admin-record-list">{data.rows.length ? data.rows.map((row, index) => <div key={String(row.id ?? index)}>{cells(row)}</div>) : <div className="admin-empty-compact">No records available.</div>}</div></section>}</div>;
 }

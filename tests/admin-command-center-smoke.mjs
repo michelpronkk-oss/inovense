@@ -1,0 +1,34 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
+const auth = read("src/lib/admin/auth.ts");
+const migration = read("supabase/migrations/20260907_os_internal_admins.sql");
+const middleware = read("src/middleware.ts");
+const layout = read("src/app/admin/layout.tsx");
+const nav = read("src/app/admin/_nav.tsx");
+const sections = read("src/lib/admin/sections.ts");
+const robots = read("src/app/robots.ts");
+const sitemap = read("src/app/sitemap.ts");
+
+assert.match(auth, /getVerifiedSupabaseUser/);
+assert.match(auth, /os_internal_admins/);
+assert.match(auth, /is_active/);
+assert.match(auth, /requireInternalAdmin/);
+assert.doesNotMatch(auth, /os_workspace_members|localStorage|ADMIN_USERS/);
+assert.match(migration, /enable row level security/);
+assert.match(migration, /role in \('super_admin', 'ops', 'support', 'finance', 'viewer'\)/);
+assert.doesNotMatch(migration, /create policy/i);
+assert.match(layout, /requireInternalAdmin/);
+assert.doesNotMatch(middleware, /verifySessionToken/);
+assert.match(middleware, /INTERNAL_COMMAND_PATHS/);
+assert.match(middleware, /Retire the legacy CRM paths/);
+for (const label of ["Overview", "Growth", "Customers", "Revenue", "Product", "Connectors", "Operators", "Support", "Feedback", "System health"]) assert.match(nav, new RegExp(`label: "${label}"`));
+for (const route of ["customers", "support", "feedback", "connectors", "operators", "system-health"]) assert.match(sections, new RegExp(`${route}`));
+assert.doesNotMatch(sections, /raw_payload|access_token|refresh_token|provider_config_key|nango_connection_id/);
+assert.match(robots, /host === getAppHost\(\) \|\| host === getAdminHost\(\)/);
+assert.match(sitemap, /host === getAppHost\(\) \|\| host === getAdminHost\(\)/);
+console.log("admin command center security contracts passed");

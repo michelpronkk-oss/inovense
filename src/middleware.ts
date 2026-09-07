@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { reportLegacyMigrationEvent } from "@/lib/migration-telemetry";
-import { verifySessionToken, SESSION_COOKIE, LEGACY_SESSION_COOKIE } from "@/lib/session";
 import {
   getAdminHost,
   getAppHost,
@@ -31,6 +30,8 @@ function redirectToHost(
   url.pathname = targetPathname;
   return NextResponse.redirect(url, { status: 308 });
 }
+
+const INTERNAL_COMMAND_PATHS = new Set(["/", "/login", "/growth", "/customers", "/revenue", "/product", "/connectors", "/operators", "/support", "/feedback", "/system-health"]);
 
 export async function middleware(request: NextRequest) {
   const originalPathname = request.nextUrl.pathname;
@@ -75,6 +76,13 @@ export async function middleware(request: NextRequest) {
     // implementation detail and never expose them in the browser address bar.
     if (originalPathname.startsWith("/admin")) {
       return redirectToHost(request, getAdminHost(), stripAdminPrefix(originalPathname));
+    }
+
+    // Retire the legacy CRM paths from the internal host. This also prevents
+    // their historical server actions from remaining reachable through a
+    // command-center session.
+    if (!originalPathname.startsWith("/api") && !INTERNAL_COMMAND_PATHS.has(originalPathname)) {
+      return redirectToHost(request, getAdminHost(), "/");
     }
 
     if (!originalPathname.startsWith("/api")) {
@@ -139,39 +147,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  if (internalPathname.startsWith("/admin")) {
-    const canonicalToken = request.cookies.get(SESSION_COOKIE)?.value;
-    const legacyToken = request.cookies.get(LEGACY_SESSION_COOKIE)?.value;
-    const token = canonicalToken ?? legacyToken;
-    const valid = token ? await verifySessionToken(token) : false;
-
-    if (!valid) {
-      if (legacyToken) reportLegacyMigrationEvent("migration_fallback_failed");
-      const loginPath = surface === "admin" ? "/login" : "/admin/login";
-      const loginUrl = new URL(loginPath, request.url);
-      loginUrl.searchParams.set("from", internalPathname);
-      return NextResponse.redirect(loginUrl);
-    }
-
-    if (!canonicalToken && legacyToken) {
-      reportLegacyMigrationEvent("legacy_admin_cookie_used");
-      const response = internalPathname !== originalPathname
-        ? (() => {
-          const rewriteUrl = request.nextUrl.clone();
-          rewriteUrl.pathname = internalPathname;
-          return NextResponse.rewrite(rewriteUrl, { request: { headers: requestHeaders } });
-        })()
-        : NextResponse.next({ request: { headers: requestHeaders } });
-      response.cookies.set(SESSION_COOKIE, legacyToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 7,
-        path: "/",
-      });
-      return response;
-    }
-  }
+  // Internal-admin authorization is deliberately performed in the server data
+  // layer with Supabase `auth.getUser()` and `os_internal_admins`. Edge
+  // middleware cannot safely replace that database check; legacy HMAC admin
+  // cookies never grant access to this surface.
 
   if (internalPathname !== originalPathname) {
     const rewriteUrl = request.nextUrl.clone();
