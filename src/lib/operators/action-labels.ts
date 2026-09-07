@@ -26,10 +26,11 @@ const INTERNAL_ACTIONS = new Set([
 ]);
 
 function fallbackLabel(action: string): string {
-  return action
+  const label = action
     .replace(/\./g, " ")
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .toLowerCase();
+  return label ? `${label.charAt(0).toUpperCase()}${label.slice(1)}` : label;
 }
 
 /** Filters out internal bookkeeping actions and translates the rest into short customer-facing copy. */

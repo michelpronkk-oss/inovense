@@ -5,6 +5,7 @@ import { intakeSchema, type IntakeFormData } from "./schema";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { getLeadMarketSeedFromLeadSource } from "@/lib/market";
 import type { AttributionSnapshot } from "@/lib/attribution";
+import { TRANSACTIONAL_FROM } from "@/lib/email/config";
 
 /* ─── Email formatters ──────────────────────────────────────────────────── */
 
@@ -16,7 +17,7 @@ We've received your brief for ${data.company}. Someone on the team will review i
 
 If there's a fit, the next step is usually a short proposal or a scoping call. If anything changes before then, just reply here.
 
-Inovense
+Auterim
 hello@auterim.com
   `.trim();
 }
@@ -51,7 +52,7 @@ function formatConfirmationHtml(data: IntakeFormData): string {
 
               <!-- Logo -->
               <div style="margin:0 0 32px 0;">
-                <img src="https://auterim.com/logo.png" alt="Inovense" width="110" height="26" border="0" style="display:block;width:110px;height:26px;border:0;outline:none;text-decoration:none;" />
+                <img src="https://auterim.com/logo.png" alt="Auterim" width="110" height="26" border="0" style="display:block;width:110px;height:26px;border:0;outline:none;text-decoration:none;" />
               </div>
 
               <!-- Eyebrow -->
@@ -122,7 +123,7 @@ function formatConfirmationHtml(data: IntakeFormData): string {
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
                   <td>
-                    <p style="margin:0;font-size:11px;color:#3f3f46;">Inovense &nbsp;&middot;&nbsp; <a href="mailto:hello@auterim.com" style="color:#52525b;text-decoration:none;">hello@auterim.com</a></p>
+                    <p style="margin:0;font-size:11px;color:#3f3f46;">Auterim &nbsp;&middot;&nbsp; <a href="mailto:hello@auterim.com" style="color:#52525b;text-decoration:none;">hello@auterim.com</a></p>
                   </td>
                   <td align="right">
                     <p style="margin:0;font-size:11px;color:#3f3f46;">US &amp; UK</p>
@@ -146,8 +147,8 @@ function formatConfirmationHtml(data: IntakeFormData): string {
 
 function formatEmailText(data: IntakeFormData): string {
   return `
-New Inovense Intake Submission
-==============================
+New Auterim Intake Submission
+=============================
 
 FROM
 Name:     ${data.fullName}
@@ -194,8 +195,7 @@ export async function submitIntake(
   }
 
   const resend = new Resend(apiKey);
-  const from =
-    process.env.RESEND_FROM_EMAIL ?? "Inovense Intake <onboarding@resend.dev>";
+  const from = TRANSACTIONAL_FROM;
   const to = process.env.INTAKE_TO_EMAIL ?? "hello@auterim.com";
 
   try {

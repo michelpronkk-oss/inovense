@@ -1,4 +1,5 @@
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { normalizeWorkspaceRole, type WorkspaceRole } from "@/lib/workspace-permissions";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
@@ -9,7 +10,7 @@ type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
  * existing UI copy, but `role_key` is now the authoritative value used for
  * all server-side authorization decisions.
  */
-export type RoleKey = "owner" | "admin" | "reviewer" | "member" | "viewer";
+export type RoleKey = WorkspaceRole;
 
 export type WorkspaceMembershipRow = {
   workspace_id: string;
@@ -32,11 +33,7 @@ export class AuthorizationError extends Error {
 }
 
 function normalizeRoleKey(roleKey: string | null | undefined, legacyRole: string | null | undefined): RoleKey {
-  if (roleKey === "owner" || roleKey === "admin" || roleKey === "reviewer" || roleKey === "member" || roleKey === "viewer") return roleKey;
-  if (legacyRole === "Operator - Admin") return "admin";
-  if (legacyRole === "Operator - Reviewer") return "reviewer";
-  if (legacyRole === "Operator - Viewer") return "viewer";
-  return "member";
+  return normalizeWorkspaceRole(roleKey, legacyRole);
 }
 
 /**

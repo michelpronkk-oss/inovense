@@ -5,52 +5,44 @@ import Link from "next/link";
 import { UsersIcon, PlusIcon } from "@/components/dashboard/icons";
 import { useOS } from "@/lib/os/app-provider";
 import type { TeamMember } from "@/lib/os/types";
-import { inviteWorkspaceMember, updateWorkspaceMember } from "./actions";
+import { inviteWorkspaceMember, resendWorkspaceInvite, revokeWorkspaceInvite, updateWorkspaceMember } from "./actions";
 import { getPlanLimits, isAtMemberLimit } from "@/lib/os/plans";
 import { UsageBanner } from "@/components/upgrade-prompt";
-
-const rolePerms: Record<string, string[]> = {
-  "Operator - Admin": ["All operators", "Approvals", "Settings"],
-  "Operator - Reviewer": ["Approvals", "Outputs"],
-  "Operator - Viewer": ["Insights", "Outputs"],
-};
-
-const roleDescriptions: Record<WorkspaceRole, string> = {
-  "Operator - Viewer": "Can view operator outputs, insights, and workspace context.",
-  "Operator - Reviewer": "Can review and decide on approval-gated work, without changing workspace controls.",
-  "Operator - Admin": "Can manage members, workspace settings, operators, and approval controls.",
-};
-
-const roleOptions = ["Operator - Viewer", "Operator - Reviewer", "Operator - Admin"] as const;
-type WorkspaceRole = (typeof roleOptions)[number];
-
-function roleFromLabel(role: string): WorkspaceRole {
-  return role === "Admin" ? "Operator - Admin" : role === "Reviewer" ? "Operator - Reviewer" : "Operator - Viewer";
-}
+import {
+  INVITABLE_WORKSPACE_ROLES,
+  WORKSPACE_ROLE_CAPABILITIES,
+  WORKSPACE_ROLE_DESCRIPTIONS,
+  WORKSPACE_ROLE_LABELS,
+  canManageMembers,
+  canManageTarget,
+  normalizeWorkspaceRole,
+  type WorkspaceRole,
+} from "@/lib/workspace-permissions";
 
 export default function TeamPage() {
   const { state, inviteMember, updateMember } = useOS();
   const limits = getPlanLimits(state.workspace.plan);
-  const atMemberLimit = isAtMemberLimit(state.workspace.plan, state.teamMembers.length);
+  const activeMemberCount = state.teamMembers.filter((member) => member.active && member.status !== "pending").length;
+  const atMemberLimit = isAtMemberLimit(state.workspace.plan, activeMemberCount);
   const [showInvite, setShowInvite] = useState(false);
   const [editing, setEditing] = useState<TeamMember | null>(null);
   const [inviteName, setInviteName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<WorkspaceRole>("Operator - Viewer");
+  const [role, setRole] = useState<WorkspaceRole>("viewer");
   const [inviting, setInviting] = useState(false);
   const [inviteFeedback, setInviteFeedback] = useState<string>("");
   const [savingMember, setSavingMember] = useState(false);
-  const canManage = state.currentUser.roleLabel === "Owner" || state.currentUser.roleLabel === "Admin";
-  const isOwner = state.currentUser.roleLabel === "Owner";
+  const currentRole = normalizeWorkspaceRole(undefined, state.currentUser.roleLabel);
+  const canManage = canManageMembers(currentRole);
+  const isOwner = currentRole === "owner";
 
-  const countLabel = useMemo(() => `${state.teamMembers.length} members`, [state.teamMembers.length]);
+  const countLabel = useMemo(() => `${activeMemberCount} members`, [activeMemberCount]);
 
   const submitInvite = async () => {
     if (!email.trim() || !email.includes("@")) return;
     setInviting(true);
     setInviteFeedback("");
     const normalizedEmail = email.trim().toLowerCase();
-    const permissions = rolePerms[role] ?? ["Outputs"];
     const result = await inviteWorkspaceMember({
       workspaceId: state.workspace.id,
       workspaceName: state.workspace.name,
@@ -59,31 +51,29 @@ export default function TeamPage() {
       name: inviteName.trim(),
       email: normalizedEmail,
       role,
-      permissions,
     });
     if (!result.success) {
       setInviteFeedback(result.error);
       setInviting(false);
       return;
     }
-    inviteMember({ name: inviteName.trim(), email: normalizedEmail, role, permissions });
+    inviteMember({ name: inviteName.trim(), email: normalizedEmail, role, permissions: WORKSPACE_ROLE_CAPABILITIES[role] });
     setInviteFeedback(result.message);
     setInviteName("");
     setEmail("");
-    setRole("Operator - Viewer");
+    setRole("viewer");
     setInviting(false);
     setShowInvite(false);
   };
 
   const saveMember = async () => {
     if (!editing) return;
-    const memberRole = roleFromLabel(editing.role);
+    const memberRole = normalizeWorkspaceRole(undefined, editing.role);
     setSavingMember(true);
     const result = await updateWorkspaceMember({
       workspaceId: state.workspace.id,
       memberId: editing.id,
       role: memberRole,
-      permissions: editing.access,
       active: editing.active,
     });
     setSavingMember(false);
@@ -91,26 +81,30 @@ export default function TeamPage() {
       setInviteFeedback(result.error);
       return;
     }
-    updateMember(editing.id, { role: memberRole.replace("Operator - ", ""), access: editing.access, active: editing.active, status: editing.active ? "online" : "offline" });
+    updateMember(editing.id, { role: WORKSPACE_ROLE_LABELS[memberRole], access: WORKSPACE_ROLE_CAPABILITIES[memberRole], active: editing.active, status: editing.active ? editing.status === "pending" ? "pending" : "online" : "offline" });
     setInviteFeedback("");
     setEditing(null);
   };
 
-  const toggleMember = async (member: TeamMember) => {
+  const resendInvite = async () => {
+    if (!editing || editing.status !== "pending") return;
     setSavingMember(true);
-    const result = await updateWorkspaceMember({
-      workspaceId: state.workspace.id,
-      memberId: member.id,
-      role: roleFromLabel(member.role),
-      permissions: member.access,
-      active: !member.active,
-    });
+    const result = await resendWorkspaceInvite({ workspaceId: state.workspace.id, email: editing.email });
+    setSavingMember(false);
+    setInviteFeedback(result.success ? result.message : result.error);
+  };
+
+  const revokeInvite = async () => {
+    if (!editing || editing.status !== "pending") return;
+    setSavingMember(true);
+    const result = await revokeWorkspaceInvite({ workspaceId: state.workspace.id, email: editing.email });
     setSavingMember(false);
     if (!result.success) {
       setInviteFeedback(result.error);
       return;
     }
-    updateMember(member.id, { active: !member.active, status: member.active ? "offline" : "online" });
+    updateMember(editing.id, { active: false, status: "offline" });
+    setEditing(null);
   };
 
   return (
@@ -137,13 +131,13 @@ export default function TeamPage() {
       </div>
 
       {limits.maxTeamMembers !== -1 && (
-        <UsageBanner used={state.teamMembers.length} max={limits.maxTeamMembers} label="team members" planLabel={limits.name} />
+        <UsageBanner used={activeMemberCount} max={limits.maxTeamMembers} label="team members" planLabel={limits.name} />
       )}
 
       <div className="p">
         <div className="p-head">
           <h3><UsersIcon size={13} /> Workspace members</h3>
-          <div className="p-meta">{state.teamMembers.length} total</div>
+          <div className="p-meta">{activeMemberCount} active</div>
         </div>
         {state.teamMembers.map((m) => (
           <div className="team-member-row" key={m.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", borderBottom: "1px solid var(--line)", opacity: m.active ? 1 : 0.65 }}>
@@ -151,19 +145,14 @@ export default function TeamPage() {
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
                 <span style={{ fontSize: 13.5, fontWeight: 500 }}>{m.name}</span>
-                <span className={`dot${m.status === "online" ? " dot-green" : ""}`} style={{ background: m.status === "online" ? "var(--green)" : "var(--text-faint)" }} />
               </div>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)" }}>{m.role}</div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)" }}>{WORKSPACE_ROLE_LABELS[normalizeWorkspaceRole(undefined, m.role)]}</div>
             </div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-              {m.access.map((a) => <span key={a} style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, padding: "2px 7px", borderRadius: 4, background: "rgba(255,255,255,0.04)", color: "var(--text-dim)", boxShadow: "inset 0 0 0 1px var(--line)" }}>{a}</span>)}
+              {WORKSPACE_ROLE_CAPABILITIES[normalizeWorkspaceRole(undefined, m.role)].map((a) => <span key={a} style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, padding: "2px 7px", borderRadius: 4, background: "rgba(255,255,255,0.04)", color: "var(--text-dim)", boxShadow: "inset 0 0 0 1px var(--line)" }}>{a}</span>)}
             </div>
-            {canManage && m.role !== "Owner" && (
-              <>
-                <button className="appr-btn edit" onClick={() => { setInviteFeedback(""); setEditing({ ...m, role: roleFromLabel(m.role) }); }}>Edit</button>
-                <button className="appr-btn deny" disabled={savingMember} onClick={() => void toggleMember(m)}>{m.active ? "Disable" : "Enable"}</button>
-              </>
-            )}
+            <div style={{ minWidth: 84, textAlign: "right", color: m.active ? "var(--text-mute)" : "#F5C26B", fontSize: 11 }}>{m.active ? m.status === "pending" ? "Pending invite" : "Active" : "Disabled"}</div>
+            {canManage && canManageTarget(currentRole, normalizeWorkspaceRole(undefined, m.role)) && <button className="appr-btn edit" onClick={() => { setInviteFeedback(""); setEditing({ ...m, role: WORKSPACE_ROLE_LABELS[normalizeWorkspaceRole(undefined, m.role)] }); }}>Manage</button>}
           </div>
         ))}
       </div>
@@ -176,14 +165,17 @@ export default function TeamPage() {
               <button className="appr-btn deny" onClick={() => { setShowInvite(false); setEditing(null); }}>Close</button>
             </div>
             {editing ? (
-              <div style={{ display: "grid", gap: 10 }}>
-                <select value={editing.role} onChange={(e) => setEditing({ ...editing, role: e.target.value })} className="os-input" disabled={!isOwner && editing.role === "Operator - Admin"}>
-                  {roleOptions.filter((option) => isOwner || option !== "Operator - Admin").map((option) => <option key={option}>{option}</option>)}
-                </select>
-                <input value={editing.access.join(", ")} onChange={(e) => setEditing({ ...editing, access: e.target.value.split(",").map((x) => x.trim()).filter(Boolean) })} className="os-input" />
+              <div style={{ display: "grid", gap: 14 }}>
+                <div><div className="lab">{editing.name}</div><div style={{ color: "var(--text-mute)", fontSize: 12 }}>{editing.email}</div></div>
+                <label className="os-profile-field"><span>Role</span><select value={normalizeWorkspaceRole(undefined, editing.role)} onChange={(e) => setEditing({ ...editing, role: WORKSPACE_ROLE_LABELS[e.target.value as WorkspaceRole] })} className="os-input">
+                  {INVITABLE_WORKSPACE_ROLES.filter((option) => canManageTarget(currentRole, option) || option === normalizeWorkspaceRole(undefined, editing.role)).map((option) => <option key={option} value={option}>{WORKSPACE_ROLE_LABELS[option]}</option>)}
+                </select></label>
+                <div><div className="lab">Access</div><div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>{WORKSPACE_ROLE_CAPABILITIES[normalizeWorkspaceRole(undefined, editing.role)].map((item) => <span key={item} className="appr-btn edit" style={{ cursor: "default" }}>{item}</span>)}</div><div style={{ color: "var(--text-mute)", fontSize: 11.5, marginTop: 7 }}>{WORKSPACE_ROLE_DESCRIPTIONS[normalizeWorkspaceRole(undefined, editing.role)]}</div></div>
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                  {editing.status === "pending" && <><button className="btn btn-ghost btn-sm" disabled={savingMember} onClick={() => void resendInvite()}>Resend invitation</button><button className="appr-btn deny" disabled={savingMember} onClick={() => void revokeInvite()}>Revoke invitation</button></>}
+                  <button className={editing.active ? "appr-btn deny" : "btn btn-ghost btn-sm"} onClick={() => setEditing({ ...editing, active: !editing.active })}>{editing.active ? "Disable access" : "Re-enable access"}</button>
                   <button className="btn btn-ghost btn-sm" onClick={() => setEditing(null)}>Cancel</button>
-                  <button className="btn btn-primary btn-sm" disabled={savingMember} onClick={() => void saveMember()}>{savingMember ? "Saving..." : "Save access"}</button>
+                  <button className="btn btn-primary btn-sm" disabled={savingMember} onClick={() => void saveMember()}>{savingMember ? "Saving..." : "Save changes"}</button>
                 </div>
                 {inviteFeedback && <div style={{ fontSize: 12, color: "#ff8f8f" }}>{inviteFeedback}</div>}
               </div>
@@ -206,19 +198,19 @@ export default function TeamPage() {
                 <fieldset className="team-role-picker">
                   <legend>Choose access level</legend>
                   <div className="team-role-list">
-                    {roleOptions.filter((option) => isOwner || option !== "Operator - Admin").map((option) => (
+                    {INVITABLE_WORKSPACE_ROLES.filter((option) => isOwner || option !== "admin").map((option) => (
                       <button key={option} type="button" className={`team-role-row${role === option ? " active" : ""}`} onClick={() => setRole(option)}>
                         <span className="trr-dot" aria-hidden="true" />
                         <span className="trr-copy">
-                          <strong>{option.replace("Operator - ", "")}</strong>
-                          <small>{roleDescriptions[option]}</small>
+                          <strong>{WORKSPACE_ROLE_LABELS[option]}</strong>
+                          <small>{WORKSPACE_ROLE_DESCRIPTIONS[option]}</small>
                         </span>
                       </button>
                     ))}
                   </div>
                 </fieldset>
                 <div className="team-invite-summary">
-                  <div><span>ACCESS INCLUDED</span><strong>{rolePerms[role].join(" · ")}</strong></div>
+                  <div><span>ACCESS INCLUDED</span><strong>{WORKSPACE_ROLE_CAPABILITIES[role].join(" · ")}</strong></div>
                   <p>Access can be changed or revoked at any time.</p>
                 </div>
                 <div className="team-invite-actions">

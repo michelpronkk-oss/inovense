@@ -14,6 +14,7 @@ import {
 } from "@/lib/email-templates";
 import { parseCountryCodeInput } from "@/lib/market";
 import { logActivityEventSafe } from "@/lib/activity-events";
+import { TRANSACTIONAL_FROM } from "@/lib/email/config";
 
 const DEPOSIT_PAID_CONFIRMATION_EMAIL_TYPE = "deposit_paid_confirmation";
 const FINAL_PAYMENT_RECEIVED_EMAIL_TYPE = "final_payment_received_confirmation";
@@ -117,15 +118,14 @@ export async function sendDepositPaidConfirmationEmail(
       `${cta.text}:`,
       cta.href,
       "",
-      "Inovense",
+      "Auterim",
       "hello@auterim.com",
     ]
       .join("\n")
       .trim();
 
     const resend = new Resend(apiKey);
-    const from =
-      process.env.RESEND_FROM_EMAIL ?? "Inovense <onboarding@resend.dev>";
+    const from = TRANSACTIONAL_FROM;
     const replyTo = process.env.INTAKE_TO_EMAIL ?? "hello@auterim.com";
 
     const { error: sendError } = await resend.emails.send({
@@ -246,15 +246,14 @@ export async function sendFinalPaymentReceivedEmail(
       "",
       body,
       "",
-      "Inovense",
+      "Auterim",
       "hello@auterim.com",
     ]
       .join("\n")
       .trim();
 
     const resend = new Resend(apiKey);
-    const from =
-      process.env.RESEND_FROM_EMAIL ?? "Inovense <onboarding@resend.dev>";
+    const from = TRANSACTIONAL_FROM;
     const replyTo = process.env.INTAKE_TO_EMAIL ?? "hello@auterim.com";
 
     const { error: sendError } = await resend.emails.send({
@@ -458,7 +457,7 @@ export async function sendLeadEmail(
       resolvedBody,
       cta ? `\n${cta.text}:\n${cta.href}` : "",
       ``,
-      `Inovense`,
+      `Auterim`,
       `hello@auterim.com`,
     ]
       .join("\n")
@@ -466,8 +465,7 @@ export async function sendLeadEmail(
 
     // Send via Resend
     const resend = new Resend(apiKey);
-    const from =
-      process.env.RESEND_FROM_EMAIL ?? "Inovense <onboarding@resend.dev>";
+    const from = TRANSACTIONAL_FROM;
     const replyTo =
       process.env.INTAKE_TO_EMAIL ?? "hello@auterim.com";
 

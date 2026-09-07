@@ -5,6 +5,7 @@ import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 import { Resend } from "resend";
 import { renderAuterimEmailHtml, renderAuterimEmailText } from "@/lib/email/auterim-email-layout";
 import { getAppUrl } from "@/lib/urls";
+import { TRANSACTIONAL_FROM } from "@/lib/email/config";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
@@ -341,7 +342,7 @@ async function sendEmailApprovalNotification(input: SendSlackApprovalNotificatio
       logoUrl: `${getAppUrl()}/brand/auterim-icon-32.png`,
     };
     const sent = await new Resend(process.env.RESEND_API_KEY).emails.send({
-      from: process.env.RESEND_FROM_EMAIL ?? "Auterim <onboarding@resend.dev>",
+      from: TRANSACTIONAL_FROM,
       to: recipients,
       subject,
       html: renderAuterimEmailHtml(content),

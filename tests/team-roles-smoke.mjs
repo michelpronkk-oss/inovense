@@ -1,0 +1,41 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+
+const read = (file) => fs.readFileSync(file, "utf8");
+const roles = read("src/lib/workspace-permissions.ts");
+const team = read("src/app/app/team/page.tsx");
+const actions = read("src/app/app/team/actions.ts");
+const state = read("src/app/api/os/state/route.ts");
+const sidebar = read("src/lib/app-navigation.ts");
+const guard = read("supabase/migrations/20260907_workspace_member_role_guards.sql");
+const approvals = read("src/app/api/approvals/[id]/reject/route.ts");
+const policies = read("src/app/api/policies/route.ts");
+const operators = read("src/app/api/operators/[operatorKey]/activate/route.ts");
+const connectors = read("src/app/api/connectors/disconnect/route.ts");
+const billing = read("src/app/api/billing/dodo/portal/route.ts");
+
+for (const role of ["owner", "admin", "reviewer", "member", "viewer"]) assert.match(roles, new RegExp(`\\b${role}\\b`));
+assert.match(roles, /canManageTarget/);
+assert.match(roles, /WORKSPACE_ROLE_CAPABILITIES/);
+assert.match(team, /Manage/);
+assert.doesNotMatch(team, /Operator - Reviewer|Operator - Admin|Operator - Viewer/);
+assert.match(team, /Pending invite/);
+assert.doesNotMatch(team, /className=\{`dot/);
+assert.match(actions, /getVerifiedSupabaseUser/);
+assert.match(actions, /canManageTarget/);
+assert.match(actions, /targetRole === "owner"/);
+assert.match(actions, /You cannot change your own workspace access/);
+assert.match(actions, /event: "member_invited"/);
+assert.match(actions, /event: "invite_revoked"/);
+assert.match(team, /activeMemberCount/);
+assert.match(state, /roleLabel\(roleKey, legacyRole\)/);
+assert.match(sidebar, /visibleNavigationSections/);
+assert.match(guard, /owner_protected/);
+assert.match(guard, /self_membership_protected/);
+assert.match(approvals, /\["owner", "admin", "reviewer"\]/);
+assert.match(policies, /\["owner", "admin"\]/);
+assert.match(operators, /\["owner", "admin"\]/);
+assert.match(connectors, /requireWorkspaceAdmin/);
+assert.match(billing, /requireWorkspaceAdmin/);
+
+console.log("Team role checks passed: canonical role display, server-side target protection, truthful status/capabilities, role-aware navigation, and direct-update guard.");

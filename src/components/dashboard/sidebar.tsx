@@ -8,7 +8,8 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useOS } from "@/lib/os/app-provider";
-import { APP_NAVIGATION_SECTIONS, isAppNavigationActive, mobileMoreSections, type AppNavigationAction, type AppNavigationIcon } from "@/lib/app-navigation";
+import { visibleNavigationSections, isAppNavigationActive, mobileMoreSections, type AppNavigationAction, type AppNavigationIcon } from "@/lib/app-navigation";
+import { normalizeWorkspaceRole } from "@/lib/workspace-permissions";
 import { saveProfileSettings } from "@/app/app/profile/actions";
 import {
   TargetIcon, CpuIcon, FlowIcon, InboxIcon, DatabaseIcon, LinkIcon,
@@ -34,6 +35,8 @@ function ToggleRow({ label, detail, checked, onChange }: { label: string; detail
 export function OSSidebar() {
   const pathname = usePathname();
   const { state, pendingApprovals, updateCurrentUser, setDashboardPrefs } = useOS();
+  const currentRole = normalizeWorkspaceRole(undefined, state.currentUser.roleLabel);
+  const navigationSections = visibleNavigationSections(currentRole);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileTab, setProfileTab] = useState<"profile" | "notifications" | "experience">("profile");
   const [savingProfile, setSavingProfile] = useState(false);
@@ -106,7 +109,7 @@ export function OSSidebar() {
       </div>
 
       <nav className="os-side-nav" aria-label="App navigation">
-        {APP_NAVIGATION_SECTIONS.map((section) => (
+        {navigationSections.map((section) => (
           <section className="os-side-section" data-nav-section={section.label.toLowerCase()} key={section.label}>
             <div className="os-side-label">{section.label}</div>
             {section.items.map((item) => {
@@ -266,11 +269,13 @@ export function OSSidebar() {
  */
 export function OSMobileNav() {
   const pathname = usePathname();
-  const { pendingApprovals } = useOS();
+  const { state, pendingApprovals } = useOS();
+  const currentRole = normalizeWorkspaceRole(undefined, state.currentUser.roleLabel);
+  const navigationSections = visibleNavigationSections(currentRole);
   const [open, setOpen] = useState(false);
   const sheetTouchStartY = useRef<number | null>(null);
-  const primary = APP_NAVIGATION_SECTIONS[0].items.filter((item) => item.mobilePrimary);
-  const groups = mobileMoreSections();
+  const primary = navigationSections[0]?.items.filter((item) => item.mobilePrimary) ?? [];
+  const groups = mobileMoreSections(currentRole);
   const runNavigationAction = (action: AppNavigationAction) => {
     setOpen(false);
     if (action === "support") openSupport();

@@ -1,3 +1,5 @@
+import { canManageBilling, canManageMembers, canManagePolicies, type WorkspaceRole } from "@/lib/workspace-permissions";
+
 export type AppNavigationAction = "support" | "feedback";
 export type AppNavigationIcon = "dashboard" | "operators" | "workflows" | "approvals" | "connectors" | "memory" | "activity" | "logs" | "insights" | "team" | "policies" | "apiKeys" | "plans" | "settings" | "support" | "roadmap";
 
@@ -57,8 +59,21 @@ export function isAppNavigationActive(pathname: string | null, href: string): bo
   return current === href || current.startsWith(`${href}/`);
 }
 
-export function mobileMoreSections() {
+export function visibleNavigationSections(role: WorkspaceRole) {
   return APP_NAVIGATION_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => {
+      if (item.id === "team") return canManageMembers(role);
+      if (item.id === "policies") return canManagePolicies(role);
+      if (item.id === "api-keys") return role === "owner" || role === "admin";
+      if (item.id === "plans") return canManageBilling(role);
+      return true;
+    }),
+  }));
+}
+
+export function mobileMoreSections(role: WorkspaceRole = "owner") {
+  return visibleNavigationSections(role).map((section) => ({
     ...section,
     items: section.label === "Operations" ? section.items.filter((item) => !item.mobilePrimary) : section.items,
   }));

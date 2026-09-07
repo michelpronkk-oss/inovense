@@ -4,6 +4,7 @@ import { Resend } from "resend";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getPlanByTier, type CheckoutPlanTier } from "@/lib/pricing";
 import { appHref } from "@/lib/urls";
+import { TRANSACTIONAL_FROM } from "@/lib/email/config";
 
 export type TrialNotificationType = "trial_started" | "trial_ending" | "trial_expired" | "trial_converted" | "payment_failed" | "subscription_canceled";
 
@@ -55,7 +56,7 @@ export async function sendTrialLifecycleEmail(input: { supabase: Supabase; works
     return { sent: false, reason: !apiKey ? "resend_unconfigured" : "recipient_unavailable" };
   }
   try {
-    await new Resend(apiKey).emails.send({ from: process.env.RESEND_FROM_EMAIL ?? "Auterim <onboarding@resend.dev>", to: recipient, subject: subjectFor(input.type), text: textFor(input) });
+    await new Resend(apiKey).emails.send({ from: TRANSACTIONAL_FROM, to: recipient, subject: subjectFor(input.type), text: textFor(input) });
     await input.supabase.from("os_billing_notifications").update({ delivery_status: "sent", sent_at: new Date().toISOString() }).eq("id", reserved.data.id);
     return { sent: true };
   } catch (error) {

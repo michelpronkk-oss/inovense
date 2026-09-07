@@ -6,6 +6,7 @@ import type { OSState } from "@/lib/os/types";
 import { resolveWorkspaceContext, type WorkspaceContext } from "@/lib/os/workspace";
 import { APP_SESSION_COOKIE, createSessionToken, SESSION_MAX_AGE_SEC } from "@/lib/session";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
+import { roleLabel } from "@/lib/workspace-permissions";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -92,9 +93,7 @@ function isLegacySeedIdentity(value: string | null | undefined) {
 }
 
 function roleLabelFor(roleKey: string | null | undefined, legacyRole: string | null | undefined) {
-  if (roleKey === "owner") return "Owner";
-  if (roleKey === "admin") return "Admin";
-  return legacyRole || "Member";
+  return roleLabel(roleKey, legacyRole);
 }
 
 async function buildStateFromDatabase(workspaceId: string, supabase: ReturnType<typeof createSupabaseAdmin>): Promise<OSState> {

@@ -35,8 +35,8 @@ for (const group of [operations, administration, support]) {
 assert.match(navigation, /return current === href \|\| current\.startsWith\(`\$\{href\}\/`\);/);
 assert.match(navigation, /rawPath\.startsWith\("\/app\/"\)/);
 assert.match(navigation, /mobileMoreSections/);
-assert.match(sidebar, /APP_NAVIGATION_SECTIONS/);
-assert.match(sidebar, /mobileMoreSections\(\)/);
+assert.match(sidebar, /visibleNavigationSections/);
+assert.match(sidebar, /mobileMoreSections\(currentRole\)/);
 assert.match(sidebar, /aria-current/);
 assert.match(styles, /\.os-nav:focus-visible/);
 assert.match(styles, /\.os-mobile-menu-feedback:focus-visible/);

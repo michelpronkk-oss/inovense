@@ -3,6 +3,7 @@ import { APP_SESSION_COOKIE, getSessionUsername, LEGACY_APP_SESSION_COOKIE, LEGA
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { reportLegacyMigrationEvent } from "@/lib/migration-telemetry";
 import { getVerifiedSupabaseUser } from "@/lib/supabase/server";
+import { WORKSPACE_ROLE_CAPABILITIES, legacyRoleLabel } from "@/lib/workspace-permissions";
 
 function isUuid(v: string | null | undefined): v is string {
   if (!v) return false;
@@ -201,8 +202,9 @@ async function ensureDevWorkspace(input: {
       user_id: isUuid(input.userId) ? input.userId : null,
       email: input.userEmail,
       full_name: input.userName || input.userEmail.split("@")[0],
-      role: "Operator - Admin",
-      access: ["All operators", "Approvals", "Settings"],
+      role: legacyRoleLabel("admin"),
+      role_key: "admin",
+      access: WORKSPACE_ROLE_CAPABILITIES.admin,
       status: "online",
       active: true,
     }, { onConflict: "workspace_id,email" });
