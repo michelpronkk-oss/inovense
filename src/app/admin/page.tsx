@@ -4,20 +4,49 @@ import { getAdminOverview, type AdminRange } from "@/lib/admin/analytics/overvie
 
 export const metadata: Metadata = { title: "Command center | Auterim Admin", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
-const ranges: Array<{ key: AdminRange; label: string }> = [{ key: "today", label: "Today" }, { key: "7d", label: "7D" }, { key: "30d", label: "30D" }, { key: "90d", label: "90D" }, { key: "ytd", label: "YTD" }];
 
-function display(value: number | null, kind: "number" | "currency" | "percent" = "number") { if (value === null || kind === "currency") return "—"; return kind === "percent" ? `${(value * 100).toFixed(1)}%` : value.toLocaleString("en-US"); }
-function Kpi({ label, value, note, kind }: { label: string; value: number | null; note: string; kind?: "number" | "currency" | "percent" }) { return <article className="admin-kpi"><div className="admin-eyebrow">{label}</div><div className="admin-kpi-value">{display(value, kind)}</div><div className="admin-kpi-note">{value === null ? "Source unavailable" : note}</div></article>; }
-function Panel({ title, eyebrow, children, className = "" }: { title: string; eyebrow?: string; children: React.ReactNode; className?: string }) { return <section className={`admin-panel ${className}`}><div className="admin-panel-head"><div>{eyebrow && <div className="admin-eyebrow">{eyebrow}</div>}<h2>{title}</h2></div></div>{children}</section>; }
+const ranges: Array<{ key: AdminRange; label: string }> = [
+  { key: "today", label: "Today" }, { key: "7d", label: "7D" }, { key: "30d", label: "30D" }, { key: "90d", label: "90D" }, { key: "ytd", label: "YTD" },
+];
+
+function display(value: number | null, kind: "number" | "currency" | "percent" = "number") {
+  if (value === null) return "—";
+  if (kind === "currency") return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
+  return kind === "percent" ? `${(value * 100).toFixed(1)}%` : value.toLocaleString("en-US");
+}
+
+function Kpi({ label, value, note, kind }: { label: string; value: number | null; note: string; kind?: "number" | "currency" | "percent" }) {
+  return <article className="admin-kpi"><div className="admin-eyebrow">{label}</div><div className="admin-kpi-value">{display(value, kind)}</div><div className="admin-kpi-note">{value === null ? "Source unavailable" : note}</div></article>;
+}
+
+function Panel({ title, eyebrow, children }: { title: string; eyebrow?: string; children: React.ReactNode }) {
+  return <section className="admin-panel"><div className="admin-panel-head"><div>{eyebrow && <div className="admin-eyebrow">{eyebrow}</div>}<h2>{title}</h2></div></div>{children}</section>;
+}
 
 export default async function AdminOverviewPage({ searchParams }: { searchParams: Promise<{ range?: string }> }) {
-  const params = await searchParams; const range = ranges.some((item) => item.key === params.range) ? params.range as AdminRange : "30d"; const data = await getAdminOverview(range); const tone = data.sourceStatus === "connected" ? "live" : data.sourceStatus === "partial" ? "partial" : "offline";
+  const params = await searchParams;
+  const range = ranges.some((item) => item.key === params.range) ? params.range as AdminRange : "30d";
+  const data = await getAdminOverview(range);
+  const tone = data.sourceStatus === "connected" ? "live" : data.sourceStatus === "partial" ? "partial" : "offline";
+
   return <div className="admin-command-center">
-    <div className="admin-page-intro"><div><div className="admin-kicker"><span className={`admin-status-dot ${tone}`} /> Auterim / internal intelligence</div><h1>Business command center.</h1><p>Revenue, growth, product usage and operational signal in one place.</p></div><div className="admin-intro-meta"><span className={`admin-status-pill ${tone}`}>{data.sourceStatus === "connected" ? "Sources live" : data.sourceStatus === "partial" ? "Partial sources" : "Connect sources"}</span><span>Updated {new Date(data.generatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</span></div></div>
+    <div className="admin-page-intro">
+      <div><div className="admin-kicker"><span className={`admin-status-dot ${tone}`} />Auterim / internal intelligence</div><h1>Business command center.</h1><p>Revenue, growth, product usage and operational signal in one place.</p></div>
+      <div className="admin-intro-meta"><span className={`admin-status-pill ${tone}`}>{data.sourceStatus === "connected" ? "Sources live" : data.sourceStatus === "partial" ? "Partial sources" : "Connect sources"}</span><span>Updated {new Date(data.generatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</span></div>
+    </div>
     <div className="admin-toolbar"><div className="admin-eyebrow">Reporting window</div><div className="admin-range-group">{ranges.map((item) => <Link key={item.key} href={`/?range=${item.key}`} className={item.key === range ? "active" : ""}>{item.label}</Link>)}</div><span className="admin-toolbar-source">Read-only · provider truth only</span></div>
     <div className="admin-kpi-grid"><Kpi label="MRR" value={data.kpis.mrr.value} note={data.kpis.mrr.label} kind="currency" /><Kpi label="Active subscriptions" value={data.kpis.activeSubscriptions.value} note={data.kpis.activeSubscriptions.label} /><Kpi label="Active workspaces" value={data.kpis.activeWorkspaces.value} note={data.kpis.activeWorkspaces.label} /><Kpi label="New customers" value={data.kpis.newCustomers.value} note={data.kpis.newCustomers.label} /><Kpi label="Preview conversion" value={data.kpis.previewConversion.value} note={data.kpis.previewConversion.label} kind="percent" /><Kpi label="Runs" value={data.kpis.runs.value} note={data.kpis.runs.label} /></div>
-    <div className="admin-grid-main"><Panel eyebrow="Revenue" title="Revenue signal"><div className="admin-empty"><span className="admin-empty-mark">/</span><div><strong>Revenue reporting is waiting for normalized Dodo data.</strong><p>{data.revenue.reason}</p></div><Link href="/revenue">Review revenue →</Link></div></Panel><Panel eyebrow="Acquisition" title="Growth funnel"><div className="admin-funnel">{[["Visits", data.growth.visits], ["Preview", data.growth.previews], ["Signup", data.growth.signups], ["Paid", data.growth.paid]].map(([label, value], index) => <div className="admin-funnel-step" key={String(label)}><div className="admin-funnel-index">0{index + 1}</div><div className="admin-funnel-label">{label}</div><div className="admin-funnel-value">{display(value as number | null)}</div>{index < 3 && <div className="admin-funnel-line" />}</div>)}</div>{!data.growth.funnelAvailable && <p className="admin-muted">Traffic analytics not connected.</p>}</Panel></div>
-    <div className="admin-grid-main"><Panel eyebrow="Product usage" title="Execution pulse"><div className="admin-signal-list"><div><span>Operator runs</span><strong>{display(data.usage.runs)}</strong></div><div><span>Approvals created</span><strong>{display(data.usage.approvals)}</strong></div><div><span>Failed runs</span><strong className={data.usage.failedRuns ? "warning" : ""}>{display(data.usage.failedRuns)}</strong></div></div><Link className="admin-panel-link" href="/usage">Open product usage →</Link></Panel><Panel eyebrow="Runtime" title="Most used operators">{data.operators.length ? <div className="admin-rank-list">{data.operators.map((item, index) => <div key={item.key}><span className="admin-rank">0{index + 1}</span><span>{item.label}</span><strong>{item.runs.toLocaleString()} runs</strong></div>)}</div> : <div className="admin-empty-compact">No operator run data available yet.</div>}<Link className="admin-panel-link" href="/operators">Operator analytics →</Link></Panel></div>
-    <div className="admin-grid-bottom"><Panel eyebrow="Connectors" title="Connection state">{data.connectors.length ? <div className="admin-connector-list">{data.connectors.map((item) => <div key={item.name}><span className={`admin-status-dot ${item.connected ? "live" : ""}`} />{item.name}<small>{item.connected ? "Connected" : item.status}</small></div>)}</div> : <div className="admin-empty-compact">No connector records available.</div>}</Panel><Panel eyebrow="Activity" title="Latest signal">{data.activity.length ? <div className="admin-activity-list">{data.activity.slice(0, 5).map((item) => <div key={item.id}><span className="admin-status-dot live" /><div><strong>{item.type.replace(/[._]/g, " ")}</strong><small>{item.entity} · {new Date(item.createdAt).toLocaleDateString("en-GB")}</small></div></div>)}</div> : <div className="admin-empty-compact">No event stream available yet.</div>}</Panel></div>
+    <div className="admin-grid-main">
+      <Panel eyebrow="Revenue" title="Revenue signal"><div className="admin-empty"><span className="admin-empty-mark">/</span><div><strong>Revenue reporting is waiting for normalized Dodo data.</strong><p>{data.revenue.reason}</p></div><Link href="/revenue">Review revenue →</Link></div></Panel>
+      <Panel eyebrow="Acquisition" title="Growth funnel"><div className="admin-funnel">{[["Visits", data.growth.visits], ["Preview", data.growth.previews], ["Signup", data.growth.signups], ["Paid", data.growth.paid]].map(([label, value], index) => <div className="admin-funnel-step" key={String(label)}><div className="admin-funnel-index">0{index + 1}</div><div className="admin-funnel-label">{label}</div><div className="admin-funnel-value">{display(value as number | null)}</div>{index < 3 && <div className="admin-funnel-line" />}</div>)}</div>{!data.growth.funnelAvailable && <p className="admin-muted">Traffic analytics not connected.</p>}</Panel>
+    </div>
+    <div className="admin-grid-main">
+      <Panel eyebrow="Product usage" title="Execution pulse"><div className="admin-signal-list"><div><span>Operator runs</span><strong>{display(data.usage.runs)}</strong></div><div><span>Approvals created</span><strong>{display(data.usage.approvals)}</strong></div><div><span>Failed runs</span><strong className={data.usage.failedRuns ? "warning" : ""}>{display(data.usage.failedRuns)}</strong></div></div><Link className="admin-panel-link" href="/product">Open product usage →</Link></Panel>
+      <Panel eyebrow="Runtime" title="Most used operators">{data.operators.length ? <div className="admin-rank-list">{data.operators.map((item, index) => <div key={item.key}><span className="admin-rank">0{index + 1}</span><span>{item.label}</span><strong>{item.runs.toLocaleString()} runs</strong></div>)}</div> : <div className="admin-empty-compact">No operator run data available yet.</div>}<Link className="admin-panel-link" href="/operators">Operator analytics →</Link></Panel>
+    </div>
+    <div className="admin-grid-bottom">
+      <Panel eyebrow="Connectors" title="Connection state">{data.connectors.length ? <div className="admin-connector-list">{data.connectors.map((item) => <div key={item.name}><span className={`admin-status-dot ${item.connected ? "live" : ""}`} />{item.name}<small>{item.connected ? "Connected" : item.status}</small></div>)}</div> : <div className="admin-empty-compact">No connector records available.</div>}</Panel>
+      <Panel eyebrow="Activity" title="Latest signal">{data.activity.length ? <div className="admin-activity-list">{data.activity.slice(0, 5).map((item) => <div key={item.id}><span className="admin-status-dot live" /><div><strong>{item.type.replace(/[._]/g, " ")}</strong><small>{item.entity} · {new Date(item.createdAt).toLocaleDateString("en-GB")}</small></div></div>)}</div> : <div className="admin-empty-compact">No event stream available yet.</div>}</Panel>
+    </div>
   </div>;
 }
