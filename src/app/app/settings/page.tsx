@@ -7,68 +7,16 @@ import { useSearchParams } from "next/navigation";
 import { LinkIcon, SettingsIcon } from "@/components/dashboard/icons";
 import type { ConnectedAccount } from "@/app/api/connectors/accounts/route";
 import { useOS } from "@/lib/os/app-provider";
-import type { OSSettings } from "@/lib/os/types";
 import { saveWorkspaceSettings } from "./actions";
 import { saveProfileSettings } from "@/app/app/profile/actions";
 import { getEntitlements } from "@/lib/os/entitlements";
 import { getPlanLabel } from "@/lib/os/truth";
 import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-grid";
 
-type SectionKey = keyof OSSettings;
-type ApprovalPolicyEditableKey = "outboundComms" | "proposals" | "internalReports" | "crmWrites";
-type ApprovalMode = "Always require approval" | "Auto-approve within policy" | "Auto-approve" | "Blocked";
-type NotifyChannel = "Email" | "Slack" | "Slack + email" | "Off";
-
-type NotificationDraftRow = {
-  channel: NotifyChannel;
-  target: string;
-};
-
-const APPROVAL_OPTIONS: ApprovalMode[] = [
-  "Always require approval",
-  "Auto-approve within policy",
-  "Auto-approve",
-  "Blocked",
-];
-const APPROVAL_EDITABLE_KEYS: ApprovalPolicyEditableKey[] = ["outboundComms", "proposals", "internalReports", "crmWrites"];
-
-const NOTIFICATION_LABELS: Record<keyof OSSettings["notifications"], string> = {
-  approvalInbox: "Approval inbox",
-  weeklyDigest: "Weekly digest",
-  errorAlerts: "Error alerts",
-  newAgentDeployed: "New agent deployed",
-};
-
-const APPROVAL_LABELS: Record<ApprovalPolicyEditableKey, string> = {
-  outboundComms: "Outbound comms",
-  proposals: "Proposals",
-  internalReports: "Internal reports",
-  crmWrites: "CRM writes",
-};
-
-function parseNotificationValue(value: string): NotificationDraftRow {
-  if (value.toLowerCase() === "off") return { channel: "Off", target: "" };
-  if (value.toLowerCase().includes("slack") && value.toLowerCase().includes("email")) {
-    const parts = value.split(" - ");
-    return { channel: "Slack + email", target: parts[1] ?? "" };
-  }
-  if (value.toLowerCase().includes("slack")) {
-    const parts = value.split(" - ");
-    return { channel: "Slack", target: parts[1] ?? "" };
-  }
-  const parts = value.split(" - ");
-  return { channel: "Email", target: parts[1] ?? value };
-}
-
-function serializeNotificationValue(row: NotificationDraftRow): string {
-  if (row.channel === "Off") return "Off";
-  if (row.channel === "Slack + email") return `Slack + email - ${row.target || "default channels"}`;
-  if (row.channel === "Slack") return `Slack - ${row.target || "#ops-alerts"}`;
-  return `Email - ${row.target || "all admins"}`;
-}
+type SectionKey = "workspace" | "notifications";
 
 export default function SettingsPage() {
-  const { state, updateSettingsSection, updateWorkspace, updateCurrentUser, disconnectConnector } = useOS();
+  const { state, updateWorkspace, updateCurrentUser, disconnectConnector } = useOS();
   const searchParams = useSearchParams();
   const [editing, setEditing] = useState<SectionKey | null>(null);
   const [feedback, setFeedback] = useState("");
@@ -88,15 +36,9 @@ export default function SettingsPage() {
     ? "Preview - no plan activated"
     : `${getPlanLabel(entitlements.planTier)} - ${{ active: "Active", trialing: "Trial active", past_due: "Billing attention", canceled: "Canceled", preview: "Preview" }[entitlements.billingStatus]}`;
   const showManageBilling = entitlements.billingStatus === "active" || entitlements.billingStatus === "trialing" || entitlements.billingStatus === "past_due";
+  const canManageWorkspace = state.currentUser.roleLabel === "Owner" || state.currentUser.roleLabel === "Admin";
 
   const [workspaceDraft, setWorkspaceDraft] = useState(state.settings.workspace);
-  const [approvalDraft, setApprovalDraft] = useState(state.settings.approvalPolicy);
-  const [notificationDraft, setNotificationDraft] = useState<Record<keyof OSSettings["notifications"], NotificationDraftRow>>({
-    approvalInbox: parseNotificationValue(state.settings.notifications.approvalInbox),
-    weeklyDigest: parseNotificationValue(state.settings.notifications.weeklyDigest),
-    errorAlerts: parseNotificationValue(state.settings.notifications.errorAlerts),
-    newAgentDeployed: parseNotificationValue(state.settings.notifications.newAgentDeployed),
-  });
   const [emailPreferences, setEmailPreferences] = useState({ ...state.currentUser.notifications });
 
   useEffect(() => {
@@ -131,13 +73,6 @@ export default function SettingsPage() {
     setWorkspaceDraft(state.settings.workspace);
     setWorkspaceLogoFile(null);
     setWorkspaceLogoPreview(state.settings.workspace.logoUrl ?? "");
-    setApprovalDraft(state.settings.approvalPolicy);
-    setNotificationDraft({
-      approvalInbox: parseNotificationValue(state.settings.notifications.approvalInbox),
-      weeklyDigest: parseNotificationValue(state.settings.notifications.weeklyDigest),
-      errorAlerts: parseNotificationValue(state.settings.notifications.errorAlerts),
-      newAgentDeployed: parseNotificationValue(state.settings.notifications.newAgentDeployed),
-    });
     setEmailPreferences({ ...state.currentUser.notifications });
   };
 
@@ -189,25 +124,10 @@ export default function SettingsPage() {
       setWorkspaceLogoPreview(logoUrl);
     }
 
-    if (editing === "workspace") {
-      updateWorkspace(workspaceToSave);
-      updateSettingsSection("workspace", workspaceToSave);
-    }
-
-    if (editing === "approvalPolicy") {
-      updateSettingsSection("approvalPolicy", approvalDraft);
-    }
-
-    const nextSettings: OSSettings = {
-      workspace: editing === "workspace" ? workspaceToSave : state.settings.workspace,
-      approvalPolicy: editing === "approvalPolicy" ? approvalDraft : state.settings.approvalPolicy,
-      notifications: state.settings.notifications,
-      activation: state.settings.activation,
-    };
+    if (editing === "workspace") updateWorkspace(workspaceToSave);
 
     const saveResult = await saveWorkspaceSettings({
       workspace: editing === "workspace" ? workspaceToSave : state.workspace,
-      settings: nextSettings,
     });
 
     if (!saveResult.success) {
@@ -339,16 +259,20 @@ export default function SettingsPage() {
       <div className="p">
         <div className="p-head">
           <h3><SettingsIcon size={13} /> Billing</h3>
-          {showManageBilling ? (
+          {showManageBilling && canManageWorkspace ? (
             <button className="btn btn-ghost btn-sm" onClick={openBillingPortal} disabled={billingBusy} style={{ opacity: billingBusy ? 0.7 : 1 }}>
               {billingBusy ? "Opening..." : "Manage billing"}
             </button>
-          ) : (
+          ) : canManageWorkspace ? (
             <a className="btn btn-primary btn-sm" href="/plans">Choose a plan</a>
+          ) : (
+            <span className="p-meta">Owner or admin access required</span>
           )}
         </div>
         <div style={{ padding: "12px 18px", fontSize: 12.5, color: "var(--text-dim)" }}>
-          {showManageBilling
+          {!canManageWorkspace
+            ? "Only the workspace owner or an admin can manage billing."
+            : showManageBilling
             ? "Manage your subscription, invoices and payment details in the billing portal."
             : "No active billing profile found. Activate a plan first."}
         </div>
@@ -406,21 +330,21 @@ export default function SettingsPage() {
                 </div>
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: statusColor, marginRight: 4 }}>{statusLabel}</span>
-                  <button
+                  {canManageWorkspace && <button
                     className="appr-btn edit"
                     style={{ fontSize: 11 }}
                     onClick={() => reconnectAccount(acct.connectorKey)}
                   >
                     {isConnected ? "Reconnect" : "Connect"}
-                  </button>
-                  <button
+                  </button>}
+                  {canManageWorkspace && <button
                     className="appr-btn deny"
                     style={{ fontSize: 11, opacity: disconnectingAccount === acct.connectorKey ? 0.6 : 1 }}
                     disabled={!isConnected || disconnectingAccount === acct.connectorKey}
                     onClick={() => void disconnectAccount(acct.connectorKey)}
                   >
                     {disconnectingAccount === acct.connectorKey ? "Disconnecting..." : "Disconnect"}
-                  </button>
+                  </button>}
                 </div>
               </div>
             );
@@ -432,7 +356,7 @@ export default function SettingsPage() {
         <section className="p settings-workspace-surface">
           <div className="p-head">
             <h3><SettingsIcon size={13} /> Workspace identity</h3>
-            <button className="appr-btn edit" onClick={() => startEdit("workspace")}>Edit workspace</button>
+            {canManageWorkspace ? <button className="appr-btn edit" onClick={() => startEdit("workspace")}>Edit workspace</button> : <span className="p-meta">Owner or admin access required</span>}
           </div>
           <div className="settings-workspace-body">
             <div className="settings-workspace-mark" style={state.workspace.logoUrl ? { backgroundImage: `url(${state.workspace.logoUrl})` } : undefined}>
@@ -456,21 +380,19 @@ export default function SettingsPage() {
           </div>
           <div className="settings-boundary-lead"><span className="dot dot-cyan" /> Live enforcement, checked again at execution</div>
           <div className="settings-policy-list">
-            <div><span>Customer email</span><strong>{state.settings.approvalPolicy.customerEmailMode === "draft_only" ? "Draft only — Gmail will not send" : "Human approval required"}</strong></div>
-            <div><span>CRM and project changes</span><strong>Human approval required</strong></div>
-            <div><span>Automatic work</span><strong>{state.settings.approvalPolicy.autonomyMode === "assisted" ? "Low-risk internal comments only" : "System checks and summaries only"}</strong></div>
+            <div><span>Execution policy</span><strong>Open policy controls for the current live boundary.</strong></div>
+            <div><span>Safety check</span><strong>Each action is re-evaluated immediately before execution.</strong></div>
           </div>
         </section>
 
         <section className="p settings-notifications-surface">
           <div className="p-head">
             <h3><SettingsIcon size={13} /> Notifications</h3>
-            <button className="appr-btn edit" onClick={() => startEdit("notifications")}>Email preferences</button>
+            <button className="appr-btn edit" onClick={() => startEdit("notifications")}>Email delivery</button>
           </div>
           <div className="settings-notification-list">
             <div><span>Approval requests</span><strong>{state.currentUser.notifications.approvals ? `Email on — ${state.currentUser.email}` : "Email off"}</strong></div>
             <div><span>Control alerts</span><strong>{state.currentUser.notifications.alerts ? `Email on — ${state.currentUser.email}` : "Email off"}</strong></div>
-            <div><span>Operating digest</span><strong>{state.currentUser.notifications.digest ? "Email preference saved" : "Email off"}</strong></div>
           </div>
         </section>
       </div>
@@ -479,10 +401,10 @@ export default function SettingsPage() {
       {error && <div role="alert" style={{ color: "#ff8f8f", fontSize: 12 }}>{error}</div>}
 
       {editing && (
-        <OSModal label={`Edit ${editing === "approvalPolicy" ? "approval policy" : editing}`} className="os-modal-backdrop settings-edit-backdrop" onClose={() => setEditing(null)}>
+        <OSModal label={`Edit ${editing}`} className="os-modal-backdrop settings-edit-backdrop" onClose={() => setEditing(null)}>
           <div className="os-modal settings-edit-modal" style={{ maxWidth: 680, width: "92%" }} onClick={(e) => e.stopPropagation()}>
             <div className="os-modal-head">
-              <h3>Edit {editing === "approvalPolicy" ? "approval policy" : editing}</h3>
+              <h3>Edit {editing}</h3>
               <button className="appr-btn deny" onClick={() => setEditing(null)}>Close</button>
             </div>
 
@@ -508,33 +430,14 @@ export default function SettingsPage() {
               </div>
             )}
 
-            {editing === "approvalPolicy" && (
-              <div style={{ display: "grid", gap: 10 }}>
-                {APPROVAL_EDITABLE_KEYS.map((key) => (
-                  <div key={key} style={{ display: "grid", gap: 6 }}>
-                    <label htmlFor={`approval-policy-${key}`} style={{ fontSize: 12, color: "var(--text-dim)" }}>{APPROVAL_LABELS[key]}</label>
-                    <select
-                      id={`approval-policy-${key}`}
-                      value={approvalDraft[key]}
-                      onChange={(e) => setApprovalDraft((prev) => ({ ...prev, [key]: e.target.value as ApprovalMode }))}
-                      className="os-input"
-                    >
-                      {APPROVAL_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-                    </select>
-                  </div>
-                ))}
-              </div>
-            )}
-
             {editing === "notifications" && (
               <div style={{ display: "grid", gap: 10 }}>
                 <div style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(77,232,225,0.06)", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.2)", fontSize: 12.5, color: "var(--text-dim)", lineHeight: 1.55 }}>
-                  Email is the dependable default. Notifications are sent to <strong style={{ color: "var(--text)" }}>{state.currentUser.email}</strong>; Slack is optional and never required for an approval to reach you.
+                  Optional email delivery is sent to <strong style={{ color: "var(--text)" }}>{state.currentUser.email}</strong>. Billing, security and legal messages remain required when applicable.
                 </div>
                 {([
                   ["approvals", "Approval requests", "When work is ready for your decision."],
-                  ["alerts", "Control alerts", "When a policy blocks execution or a run needs attention."],
-                  ["digest", "Operating digest", "Your saved preference for scheduled workspace summaries."],
+                  ["alerts", "Control alerts", "When execution needs attention."],
                 ] as const).map(([key, label, detail]) => (
                   <button key={key} type="button" aria-pressed={emailPreferences[key]} onClick={() => setEmailPreferences((current) => ({ ...current, [key]: !current[key] }))} style={{ textAlign: "left", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, padding: "14px", borderRadius: 12, color: "inherit", background: emailPreferences[key] ? "rgba(77,232,225,0.055)" : "rgba(255,255,255,0.02)", boxShadow: `inset 0 0 0 1px ${emailPreferences[key] ? "rgba(77,232,225,0.28)" : "var(--line)"}`, cursor: "pointer" }}>
                     <span><strong style={{ display: "block", fontSize: 13 }}>{label}</strong><small style={{ display: "block", marginTop: 3, color: "var(--text-mute)", fontSize: 11.5 }}>{detail}</small></span>

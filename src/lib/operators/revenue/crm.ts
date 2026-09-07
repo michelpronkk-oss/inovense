@@ -6,7 +6,7 @@
  * is READ-ONLY (person/company/opportunity lookup) - no Salesforce mutation
  * of any kind exists here or anywhere else in the codebase today.
  */
-import { executeHubSpotRevenueActions, findContactByEmail, type PreparedHubSpotActions } from "@/lib/operators/executors/hubspot";
+import { findContactByEmail } from "@/lib/operators/executors/hubspot";
 import { getStoredSalesforceCredential } from "@/lib/connectors/salesforce";
 import {
   findSalesforcePersonByEmail,
@@ -81,8 +81,6 @@ export interface RevenueCrmAdapter {
    * implements company/opportunity read today.
    */
   getOpportunityContext?(workspaceId: string, person: RevenueCrmPerson): Promise<RevenueCrmOpportunityContext | RevenueCrmUnsupported>;
-  /** Approval is enforced by the caller before an adapter performs a write. */
-  executeApprovedRevenueActions?(workspaceId: string, payload: { to?: string; subject?: string; crmPreparation?: Record<string, unknown> | null; preparedActions?: PreparedHubSpotActions | null }): Promise<unknown | RevenueCrmUnsupported>;
 }
 
 const hubspotAdapter: RevenueCrmAdapter = {
@@ -93,9 +91,6 @@ const hubspotAdapter: RevenueCrmAdapter = {
     if (!contact) return null;
     const properties = contact.properties ?? {};
     return { id: contact.id ?? "", email: typeof properties.email === "string" ? properties.email : null, firstName: typeof properties.firstname === "string" ? properties.firstname : null, lastName: typeof properties.lastname === "string" ? properties.lastname : null, companyName: typeof properties.company === "string" ? properties.company : null };
-  },
-  executeApprovedRevenueActions(workspaceId, payload) {
-    return executeHubSpotRevenueActions(workspaceId, { ...payload, preparedHubSpotActions: payload.preparedActions });
   },
 };
 
@@ -193,7 +188,6 @@ const salesforceAdapter: RevenueCrmAdapter = {
 
     return { companyMatchStatus: "no_match", company: null, opportunityMatchStatus: "no_match", opportunities: [], fallbackReason: null };
   },
-  async executeApprovedRevenueActions() { return { status: "unsupported", provider: "salesforce", capability: "contact.write" }; },
 };
 
 export function getRevenueCrmAdapter(provider: RevenueCrmProvider | null): RevenueCrmAdapter | null {

@@ -1,7 +1,7 @@
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 import { DEFAULT_POLICY_WORKSPACE_SETTINGS, destinationTypeForAction, defaultRiskForAction } from "@/lib/policies/defaults";
-import type { DestinationType, PolicyConfidence, PolicyInput, PolicyRiskLevel, PolicyWorkspaceSettings, WorkspaceAutonomyMode } from "@/lib/policies/types";
+import type { PolicyConfidence, PolicyInput, PolicyRiskLevel, PolicyWorkspaceSettings, WorkspaceAutonomyMode } from "@/lib/policies/types";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
@@ -10,7 +10,12 @@ function asRecord(value: unknown): Record<string, unknown> {
 }
 
 function autonomyMode(value: unknown): WorkspaceAutonomyMode {
-  return value === "assisted" || value === "managed" || value === "safe" ? value : "safe";
+  if (value === "manual" || value === "approval_first" || value === "guarded" || value === "autonomous") return value;
+  // Existing rows used these labels. Keep every existing workspace at the
+  // equivalent-or-stricter setting until an owner/admin deliberately changes it.
+  if (value === "assisted") return "guarded";
+  if (value === "managed") return "autonomous";
+  return "approval_first";
 }
 
 /**
@@ -38,16 +43,19 @@ export async function loadPolicyWorkspaceSettings(input: {
     internalSlackNotificationsAllowed,
     dailyBriefAllowed,
     connectorHealthChecksAllowed: DEFAULT_POLICY_WORKSPACE_SETTINGS.connectorHealthChecksAllowed,
-    lowRiskProjectToolCommentsAllowed: mode === "assisted",
+  lowRiskProjectToolCommentsAllowed: mode === "guarded" || mode === "autonomous",
     crmWritesRequireApproval: true,
     projectToolWritesRequireApproval: true,
     customerFacingActionsRequireApproval: true,
+    maxAutonomousActionsPerHour: DEFAULT_POLICY_WORKSPACE_SETTINGS.maxAutonomousActionsPerHour,
+    maxAutonomousActionsPerDay: DEFAULT_POLICY_WORKSPACE_SETTINGS.maxAutonomousActionsPerDay,
   };
 }
 
 export async function savePolicyWorkspaceSettings(input: {
   supabase?: SupabaseAdmin;
   workspaceId: string;
+  actor?: string | null;
   patch: Partial<Pick<PolicyWorkspaceSettings, "autonomyMode" | "emergencyStopEnabled" | "customerEmailMode" | "dailyBriefAllowed">>;
 }): Promise<PolicyWorkspaceSettings> {
   const supabase = input.supabase ?? createSupabaseAdmin();
@@ -68,6 +76,22 @@ export async function savePolicyWorkspaceSettings(input: {
     notifications: base.notifications,
   }, { onConflict: "workspace_id" });
   if (update.error) throw new Error(update.error.message);
+
+  // Keep policy changes in the existing immutable operational audit stream.
+  // The record contains settings only, never connector credentials or action payloads.
+  const audit = await supabase.from("os_execution_logs").insert({
+    id: `policy-change-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    ts: new Date().toISOString(),
+    run_id: "policy",
+    agent_id: "policy",
+    agent_mark: "PL",
+    agent_color: "#4DE8E1",
+    event: "execution_policy_changed",
+    message: `Workspace execution policy changed by ${input.actor || "an authorized administrator"}.`,
+    duration: "-",
+    status: "ok",
+  });
+  if (audit.error) throw new Error(`Policy saved but its audit record could not be written: ${audit.error.message}`);
 
   return loadPolicyWorkspaceSettings({ supabase, workspaceId: input.workspaceId });
 }

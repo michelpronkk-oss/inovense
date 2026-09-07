@@ -7,7 +7,7 @@ export type PolicyConfidence = "low" | "medium" | "high";
 
 export type DestinationType = "internal" | "external" | "customer" | "crm" | "project_tool" | "system";
 
-export type WorkspaceAutonomyMode = "safe" | "assisted" | "managed";
+export type WorkspaceAutonomyMode = "manual" | "approval_first" | "guarded" | "autonomous";
 
 export type PolicyDecision = {
   decision: PolicyDecisionKind;
@@ -52,6 +52,8 @@ export type PolicyWorkspaceSettings = {
   crmWritesRequireApproval: boolean;
   projectToolWritesRequireApproval: boolean;
   customerFacingActionsRequireApproval: boolean;
+  maxAutonomousActionsPerHour: number;
+  maxAutonomousActionsPerDay: number;
 };
 
 export type PolicyEvaluationEntitlements = {

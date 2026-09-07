@@ -7,11 +7,14 @@ export type ActionType =
   | "send_slack_message"
   | "create_crm_contact"
   | "create_crm_deal"
+  | "create_crm_note"
+  | "create_crm_task"
+  | "update_crm_record"
   | "create_task"
   | "move_task"
   | "add_task_comment";
 
-export type ActionStatus = "prepared" | "approval_required" | "executing" | "executed" | "failed" | "skipped";
+export type ActionStatus = "prepared" | "approval_required" | "executing" | "executed" | "failed" | "skipped" | "denied";
 
 export type ActionDestinationType = "internal" | "external" | "customer" | "crm" | "project_tool" | "system";
 export type ActionConfidence = "low" | "medium" | "high";

@@ -428,6 +428,7 @@ export default function RevenueOperatorPage() {
                     userEmail={state.currentUser.email}
                     executionEligibility={eligibility}
                     configured={configured}
+                    canManage={state.currentUser.roleLabel === "Owner" || state.currentUser.roleLabel === "Admin"}
                   />
                 )}
               </div>

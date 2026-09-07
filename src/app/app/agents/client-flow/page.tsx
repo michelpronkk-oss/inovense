@@ -569,6 +569,7 @@ export default function ClientFlowOperatorPage() {
                   userEmail={state.currentUser.email}
                   executionEligibility={eligibility}
                   configured={configured}
+                  canManage={state.currentUser.roleLabel === "Owner" || state.currentUser.roleLabel === "Admin"}
                 />
               )}
             </div>

@@ -1,13 +1,12 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
-import type { OSSettings, Workspace } from "@/lib/os/types";
+import type { Workspace } from "@/lib/os/types";
 import { getVerifiedSupabaseUser } from "@/lib/supabase/server";
 import { requireWorkspaceAdmin, AuthorizationError } from "@/lib/server/workspace-access";
 
 type SaveSettingsInput = {
   workspace: Workspace;
-  settings: OSSettings;
 };
 
 export async function saveWorkspaceSettings(input: SaveSettingsInput): Promise<{ success: boolean; error?: string }> {
@@ -43,13 +42,6 @@ export async function saveWorkspaceSettings(input: SaveSettingsInput): Promise<{
     logo_url: input.workspace.logoUrl ?? null,
   }).eq("id", input.workspace.id);
   if (wsResult.error) return { success: false, error: wsResult.error.message };
-
-  const settingsResult = await supabase.from("os_workspace_settings").upsert({
-    workspace_id: input.workspace.id,
-    approval_policy: input.settings.approvalPolicy,
-    notifications: input.settings.notifications,
-  });
-  if (settingsResult.error) return { success: false, error: settingsResult.error.message };
 
   await supabase.from("os_execution_logs").insert({
     id: `log-settings-${Date.now()}`,

@@ -55,9 +55,10 @@ function clockTime(value: string | null | undefined): string {
 }
 
 function autonomyLabel(mode: DashboardOverview["policy"]["autonomyMode"]): string {
-  if (mode === "assisted") return "Assisted autopilot";
-  if (mode === "managed") return "Managed custom";
-  return "Safe mode";
+  if (mode === "manual") return "Manual";
+  if (mode === "guarded") return "Guarded";
+  if (mode === "autonomous") return "Autonomous";
+  return "Approval first";
 }
 
 function customerEmailLabel(mode: DashboardOverview["policy"]["customerEmailMode"]): string {
@@ -111,56 +112,38 @@ function DashboardMetrics({ overview }: { overview: DashboardOverview }) {
   );
 }
 
-function WorkforceActivity({ overview, now }: { overview: DashboardOverview; now: number }) {
-  const windowStart = now - 7 * 86400000;
-  const events = overview.activity.flatMap((item) => {
-    const time = item.time ? new Date(item.time).getTime() : Number.NaN;
-    if (!Number.isFinite(time) || time < windowStart || time > now) return [];
-    const lane = item.type.startsWith("run.")
-      ? 0
-      : item.type.startsWith("approval.")
-        ? 1
-        : item.type.includes("executed") || item.type.includes("sent") || item.type.includes("completed")
-          ? 2
-          : 3;
-    const x = 66 + ((time - windowStart) / (now - windowStart)) * 618;
-    return [{ ...item, lane, x }];
-  });
-  const lanes = ["Runs", "Approvals", "Actions", "Other"];
+function WorkforceActivity({ overview }: { overview: DashboardOverview }) {
+  const summary = overview.activitySummary;
+  const max = Math.max(...summary.daily.map((item) => item.count), 1);
+  const hasActivity = summary.total > 0;
+  const points = summary.daily.map((item, index) => {
+    const x = 40 + index * (640 / Math.max(summary.daily.length - 1, 1));
+    const y = 150 - (item.count / max) * 112;
+    return `${x},${y}`;
+  }).join(" ");
 
   return (
     <section className="p dashboard-workforce-activity" aria-labelledby="workforce-activity-title">
       <div className="p-head">
         <div>
           <h3 id="workforce-activity-title">Workforce activity</h3>
-          <span>Latest recorded events across the last 7 days</span>
+          <span>Recorded work across the last 7 days</span>
         </div>
-        {events.length > 0 && <Link className="lnk-open" href="/logs">Open logs</Link>}
+        <Link className="lnk-open" href="/activity">View activity</Link>
+      </div>
+      <div className="dashboard-activity-counts" aria-label={`${summary.runs} runs, ${summary.approvals} approvals, ${summary.actions} actions, ${summary.issues} issues`}>
+        <span><b>{summary.runs}</b> Runs</span><span><b>{summary.approvals}</b> Approvals</span><span><b>{summary.actions}</b> Actions</span><span data-attention={summary.issues > 0 || undefined}><b>{summary.issues}</b> Issues</span>
       </div>
       <div className="dashboard-telemetry-frame">
-        <svg viewBox="0 0 720 154" role="img" aria-label={events.length > 0 ? `${events.length} recent workforce events shown across the last seven days` : "No workforce activity recorded yet"}>
-          {lanes.map((lane, index) => (
-            <g key={lane}>
-              <text x="0" y={31 + index * 28}>{lane}</text>
-              <line x1="66" x2="704" y1={27 + index * 28} y2={27 + index * 28} />
-            </g>
-          ))}
-          {[0, 1, 2, 3, 4, 5, 6, 7].map((day) => {
-            const x = 66 + day * (618 / 7);
-            return <line className="dashboard-telemetry-day" x1={x} x2={x} y1="12" y2="125" key={day} />;
-          })}
-          {events.map((event) => (
-            <circle cx={event.x} cy={27 + event.lane * 28} r="4" fill={activityColor(event.severity)} key={event.id}>
-              <title>{event.title}: {event.description}</title>
-            </circle>
-          ))}
-          <text className="dashboard-telemetry-axis" x="66" y="148">7 days ago</text>
-          <text className="dashboard-telemetry-axis" x="704" y="148" textAnchor="end">Now</text>
+        <svg viewBox="0 0 720 190" role="img" aria-label={hasActivity ? `${summary.total} workforce events across seven days. ${summary.runs} runs, ${summary.approvals} approvals, ${summary.actions} actions, and ${summary.issues} issues.` : "No workforce activity recorded yet"}>
+          {[38, 76, 114, 152].map((y) => <line key={y} x1="40" x2="680" y1={y} y2={y} />)}
+          {summary.daily.map((item, index) => { const x = 40 + index * (640 / Math.max(summary.daily.length - 1, 1)); return <g key={item.day}><line className="dashboard-telemetry-day" x1={x} x2={x} y1="28" y2="152" /><text className="dashboard-telemetry-axis" x={x} y="178" textAnchor={index === 0 ? "start" : index === summary.daily.length - 1 ? "end" : "middle"}>{new Date(`${item.day}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "short" })}</text></g>; })}
+          {hasActivity && <><polyline points={points} fill="none" stroke="#4DE8E1" strokeWidth="2" /><polygon points={`40,152 ${points} 680,152`} fill="rgba(77,232,225,.10)" />{summary.daily.map((item, index) => { const x = 40 + index * (640 / Math.max(summary.daily.length - 1, 1)); const y = 150 - (item.count / max) * 112; return <circle key={item.day} cx={x} cy={y} r="4" fill="#4DE8E1"><title>{`${item.day}: ${item.count} activity event${item.count === 1 ? "" : "s"}`}</title></circle>; })}</>}
         </svg>
-        {events.length === 0 && (
+        {!hasActivity && (
           <div className="dashboard-telemetry-empty">
-            <strong>Activity begins when your first operator is activated.</strong>
-            <span>The timeline will show real runs, approvals, actions, and other recorded work.</span>
+            <strong>Activity is still building.</strong>
+            <span>Activate an operator to start seeing workforce activity here.</span>
           </div>
         )}
       </div>
@@ -391,7 +374,7 @@ export function OSOverview() {
 
         <DashboardReadinessSummary overview={overview} />
         <DashboardMetrics overview={overview} />
-        <WorkforceActivity overview={overview} now={Date.parse(overview.lastUpdatedAt)} />
+        <WorkforceActivity overview={overview} />
         <div className="dashboard-value-grid" data-onboarding-priorities={hasOnboardingPriorities || undefined}>
           <WhatAuterimCanDo overview={overview} />
           <div className="dashboard-value-stack">
@@ -458,7 +441,7 @@ export function OSOverview() {
       <DashboardReadinessSummary overview={overview} />
       {/* KPI row (real metrics, no fabricated trends) */}
       <DashboardMetrics overview={overview} />
-      <WorkforceActivity overview={overview} now={Date.parse(overview.lastUpdatedAt)} />
+      <WorkforceActivity overview={overview} />
 
       <div className="dashboard-value-grid">
         <WhatAuterimCanDo overview={overview} />
@@ -593,7 +576,7 @@ export function OSOverview() {
         <div className="p">
           <div className="p-head">
             <h3>Activity</h3>
-            <Link className="lnk-open" href="/logs">Open logs</Link>
+            <Link className="lnk-open" href="/activity">View activity</Link>
           </div>
           <div>
             {overview.activity.length === 0 ? (
@@ -697,7 +680,7 @@ function LifecyclePreOperationalState({
 
       <DashboardReadinessSummary overview={overview} />
       <DashboardMetrics overview={overview} />
-      <WorkforceActivity overview={overview} now={Date.parse(overview.lastUpdatedAt)} />
+      <WorkforceActivity overview={overview} />
 
       {lifecycleState === "F" && attentionStates.length > 0 && (
         <section className="p dashboard-attention-panel" aria-labelledby="dashboard-attention-title">

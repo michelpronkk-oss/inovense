@@ -1,6 +1,6 @@
 import { getActionDefinition } from "@/lib/actions/registry";
 import { renderActionPreview } from "@/lib/actions/preview";
-import type { ActionExecutionResult, ActionIntent, ActionType, PreparedAction, WorkspaceActionPolicy } from "@/lib/actions/types";
+import type { ActionExecutionResult, ActionIntent, PreparedAction, WorkspaceActionPolicy } from "@/lib/actions/types";
 import { DEFAULT_POLICY_WORKSPACE_SETTINGS, defaultRiskForAction, destinationTypeForAction } from "@/lib/policies/defaults";
 import { evaluatePolicy } from "@/lib/policies/evaluate";
 import type { DestinationType, PolicyInput } from "@/lib/policies/types";

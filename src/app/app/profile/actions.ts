@@ -37,7 +37,7 @@ export async function saveProfileSettings(input: SaveProfileInput): Promise<{ su
   // from overwriting another user's profile by guessing their id.
   const verifiedUser = await getVerifiedSupabaseUser();
   if (!verifiedUser) {
-    return { success: true, message: "Saved locally. Sign in to sync your profile." };
+    return { success: false, message: "Sign in to update your profile preferences." };
   }
 
   try {

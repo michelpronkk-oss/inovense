@@ -12,12 +12,12 @@ import { APP_NAVIGATION_SECTIONS, isAppNavigationActive, mobileMoreSections, typ
 import { saveProfileSettings } from "@/app/app/profile/actions";
 import {
   TargetIcon, CpuIcon, FlowIcon, InboxIcon, DatabaseIcon, LinkIcon,
-  DocIcon, ChartIcon, UsersIcon, ShieldIcon, KeyIcon, SettingsIcon, SwapIcon, MessageIcon, XIcon,
+  DocIcon, ChartIcon, ClockIcon, UsersIcon, ShieldIcon, KeyIcon, SettingsIcon, SwapIcon, MessageIcon, XIcon,
 } from "@/components/dashboard/icons";
 
 const NAVIGATION_ICONS: Record<AppNavigationIcon, typeof TargetIcon> = {
   dashboard: TargetIcon, operators: CpuIcon, workflows: FlowIcon, approvals: InboxIcon,
-  connectors: LinkIcon, memory: DatabaseIcon, logs: DocIcon, insights: ChartIcon,
+  connectors: LinkIcon, memory: DatabaseIcon, activity: ClockIcon, logs: DocIcon, insights: ChartIcon,
   team: UsersIcon, policies: ShieldIcon, apiKeys: KeyIcon, plans: SettingsIcon,
   settings: SettingsIcon, support: MessageIcon, roadmap: DocIcon,
 };

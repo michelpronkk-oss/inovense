@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ShieldIcon } from "@/components/dashboard/icons";
 import { useOS } from "@/lib/os/app-provider";
 
-type AutonomyMode = "safe" | "assisted" | "managed";
+type AutonomyMode = "manual" | "approval_first" | "guarded" | "autonomous";
 
 type PolicySettings = {
   autonomyMode: AutonomyMode;
@@ -20,9 +20,10 @@ type PolicySettings = {
 };
 
 const MODES: { key: AutonomyMode; label: string; help: string; locked?: boolean }[] = [
-  { key: "safe", label: "Safe mode", help: "Approval-first. Only system notifications, daily brief and health checks run automatically." },
-  { key: "assisted", label: "Assisted autopilot", help: "Adds auto-apply for low-risk Trello comments with high confidence. Email, CRM, card create/move still require approval." },
-  { key: "managed", label: "Managed custom", help: "Custom rules. Coming soon.", locked: true },
+  { key: "manual", label: "Manual", help: "Operators prepare recommendations and drafts. No business writes execute." },
+  { key: "approval_first", label: "Approval first", help: "Every business write waits for a human decision." },
+  { key: "guarded", label: "Guarded", help: "High-confidence, low-risk Trello comments may run inside enforced limits. Everything else is reviewed." },
+  { key: "autonomous", label: "Autonomous", help: "Uses the same hard safety rules and volume limits. External messages, CRM writes and task moves still need approval." },
 ];
 
 function Row({ label, value, tone, help }: { label: string; value: string; tone: "green" | "amber" | "rose" | "neutral"; help?: string }) {
@@ -87,7 +88,7 @@ export default function PoliciesPage() {
     }
   };
 
-  const assisted = policy?.autonomyMode === "assisted";
+  const autonomousComments = policy?.autonomyMode === "guarded" || policy?.autonomyMode === "autonomous";
   const stop = Boolean(policy?.emergencyStopEnabled);
 
   return (
@@ -112,7 +113,7 @@ export default function PoliciesPage() {
 
       {/* Autonomy mode */}
       <div className="p policy-mode-card" style={{ gap: 0 }}>
-        <div className="p-head"><h3><ShieldIcon size={13} /> Operating posture</h3><span className="p-meta">{loading ? "Loading" : `Now: ${policy?.autonomyMode ?? "safe"}`}</span></div>
+        <div className="p-head"><h3><ShieldIcon size={13} /> Operating posture</h3><span className="p-meta">{loading ? "Loading" : `Now: ${policy?.autonomyMode ?? "approval_first"}`}</span></div>
         <div className="policy-mode-grid">
           {MODES.map((mode) => {
             const active = policy?.autonomyMode === mode.key;
@@ -190,7 +191,7 @@ export default function PoliciesPage() {
             <Row label="Connector health checks" value={policy?.connectorHealthChecksAllowed ? "Auto" : "Off"} tone={policy?.connectorHealthChecksAllowed ? "green" : "neutral"} help="System checks, internal only." />
             <Row label="Internal Slack notifications" value={policy?.internalSlackNotificationsAllowed ? "Auto (enabled)" : "Off"} tone={policy?.internalSlackNotificationsAllowed ? "green" : "neutral"} help="Controlled in Slack connector settings." />
             <Row label="Daily brief" value={stop ? "Blocked (stop)" : policy?.dailyBriefAllowed ? "Auto" : "Off"} tone={stop ? "rose" : policy?.dailyBriefAllowed ? "green" : "neutral"} help="Internal summary to the default Slack channel." />
-            <Row label="Low-risk Trello comments" value={stop ? "Blocked (stop)" : assisted ? "Auto if confidence high" : "Approval required"} tone={stop ? "rose" : assisted ? "green" : "amber"} help="Only in Assisted autopilot, low risk and high confidence." />
+            <Row label="Low-risk Trello comments" value={stop ? "Blocked (stop)" : autonomousComments ? "Auto within limits" : "Approval required"} tone={stop ? "rose" : autonomousComments ? "green" : "amber"} help="Requires high confidence, connector health and hourly/daily safety limits." />
           </div>
         </div>
 

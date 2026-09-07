@@ -37,6 +37,7 @@ export function OperatorActivationToggle({
   userEmail,
   executionEligibility,
   configured,
+  canManage,
 }: {
   operatorKey: string;
   workspaceId: string;
@@ -45,6 +46,8 @@ export function OperatorActivationToggle({
   executionEligibility: ActivationEligibility;
   /** Capabilities/policies are in place - distinct from the activation flag itself. */
   configured: boolean;
+  /** Owner/admin capability mirrored by the server route. */
+  canManage: boolean;
 }) {
   const descriptionId = useId();
   const [state, setState] = useState<ActivationState>(null);
@@ -98,7 +101,9 @@ export function OperatorActivationToggle({
   // turned off after being set up" (paused) - same distinction as
   // OperatorProductState's "paused" vs "ready_to_activate" (product-state.ts).
   const wasEverActivated = Boolean(state?.activatedAt || state?.deactivatedAt);
-  const blockedReason = !executionEligibility.eligible
+  const blockedReason = !canManage
+    ? "Only the workspace owner or an admin can change scheduled monitoring."
+    : !executionEligibility.eligible
     ? executionEligibility.status === "plan_required"
       ? "Choose a plan to let this operator run unattended."
       : executionEligibility.status === "billing_attention"
@@ -118,7 +123,7 @@ export function OperatorActivationToggle({
         aria-describedby={descriptionId}
         aria-checked={activated}
         onClick={() => void toggle()}
-        disabled={loading || saving || !configured || (!activated && !executionEligibility.eligible)}
+        disabled={loading || saving || !canManage || !configured || (!activated && !executionEligibility.eligible)}
       >
         <span aria-hidden="true" />
       </button>

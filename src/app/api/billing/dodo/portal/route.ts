@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createDodoCustomerPortalSession } from "@/lib/billing/dodo";
 import { getAppUrl } from "@/lib/urls";
+import { getVerifiedSupabaseUser } from "@/lib/supabase/server";
+import { requireWorkspaceAdmin, AuthorizationError } from "@/lib/server/workspace-access";
 
 function createSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -14,8 +16,6 @@ function createSupabaseAdmin() {
 
 type PortalBody = {
   workspaceId?: string;
-  userId?: string;
-  userEmail?: string;
 };
 
 function resolveReturnUrl(): string {
@@ -27,22 +27,13 @@ async function resolveWorkspaceCustomerId(input: PortalBody): Promise<{ customer
   if (!input.workspaceId) {
     return { error: "workspaceId is required." };
   }
-  if (!input.userId && !input.userEmail) {
-    return { error: "User identity is required." };
-  }
-
   const supabase = createSupabaseAdmin();
-
-  const membership = await supabase
-    .from("os_workspace_members")
-    .select("id")
-    .eq("workspace_id", input.workspaceId)
-    .or(input.userId ? `user_id.eq.${input.userId},email.eq.${input.userEmail ?? ""}` : `email.eq.${input.userEmail ?? ""}`)
-    .limit(1)
-    .maybeSingle();
-
-  if (membership.error || !membership.data) {
-    return { error: "Workspace membership not found." };
+  const user = await getVerifiedSupabaseUser();
+  if (!user) return { error: "Sign in to manage billing." };
+  try {
+    await requireWorkspaceAdmin(user.id, input.workspaceId, supabase);
+  } catch (error) {
+    return { error: error instanceof AuthorizationError ? error.message : "Could not verify workspace membership." };
   }
 
   const workspace = await supabase
@@ -80,9 +71,7 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   const workspaceId = req.nextUrl.searchParams.get("workspaceId") ?? undefined;
-  const userId = req.nextUrl.searchParams.get("userId") ?? undefined;
-  const userEmail = req.nextUrl.searchParams.get("userEmail") ?? undefined;
-  const result = await resolveWorkspaceCustomerId({ workspaceId, userId, userEmail });
+  const result = await resolveWorkspaceCustomerId({ workspaceId });
   if (result.error) {
     const status = result.error === "No active billing profile found. Activate a plan first." ? 400 : 403;
     return NextResponse.json({ error: result.error }, { status });

@@ -42,14 +42,14 @@ function build(input: {
 /**
  * Pure, deterministic policy evaluator. No DB writes, no connector calls.
  *
- * v1 invariants (hard):
+ * Invariants (hard):
  * - never auto-send customer emails
  * - never auto-allow CRM writes
  * - never auto-allow Trello card create/move
  * - never auto-allow unknown actions
  * - destructive actions are always blocked
- * The only auto-allow paths are: system notifications/daily brief/health checks
- * when enabled, and low-risk Trello comments in Assisted mode with high confidence.
+ * The only business auto-allow path is a low-risk Trello comment within a
+ * configured guarded/autonomous boundary and a real execution limit.
  */
 export function evaluatePolicy(
   input: PolicyInput,
@@ -59,6 +59,10 @@ export function evaluatePolicy(
   const risk = input.riskLevel;
   const stop = policy.emergencyStopEnabled;
   const isSystemNotification = Boolean(input.systemNotification);
+
+  if (policy.autonomyMode === "manual" && !isSystemNotification && input.destinationType !== "system") {
+    return build({ decision: "blocked", reason: "Manual mode allows recommendations and drafts only.", riskLevel: risk, matchedRuleId: "autonomy.manual", entitlements });
+  }
 
   // Destructive actions are never automatic, in any mode.
   if (input.destructive) {
@@ -121,9 +125,9 @@ export function evaluatePolicy(
       return build({ decision: "approval_required", reason: "Trello card creation and moves require approval.", riskLevel: risk, matchedRuleId: "project_tool.write.approval_required", entitlements });
     }
 
-    // Comments: auto only in Assisted mode, low risk, high confidence.
+    // Comments: auto only within a constrained guarded/autonomous boundary.
     if (input.actionType === "add_task_comment") {
-      const eligible = policy.autonomyMode === "assisted"
+      const eligible = (policy.autonomyMode === "guarded" || policy.autonomyMode === "autonomous")
         && policy.lowRiskProjectToolCommentsAllowed
         && input.riskLevel === "low"
         && input.confidence === "high"

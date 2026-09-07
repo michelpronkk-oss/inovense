@@ -7,6 +7,7 @@ import { TEMPLATE_LIST } from "@/lib/os/templates";
 import { getEntitlements } from "@/lib/os/entitlements";
 import type { DeployConfig } from "@/lib/os/types";
 import { SearchIcon, SparkIcon, BellIcon, MessageIcon, PlusIcon, XIcon, ArrowIcon, CpuIcon, FlowIcon, DocIcon, DatabaseIcon } from "@/components/dashboard/icons";
+import { NotificationCenter } from "@/components/dashboard/notification-center";
 
 const PAGE_LABELS: Record<string, string> = {
   "/": "Dashboard",
@@ -561,7 +562,7 @@ function WhatsNewPanel({ onClose }: { onClose: () => void }) {
 
 // â”€â”€ Notifications panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function NotificationsPanel({ onClose }: { onClose: () => void }) {
+export function NotificationsPanel({ onClose }: { onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const { state, approveItem, skipItem } = useOS();
   useClickOutside(ref, onClose);
@@ -741,11 +742,12 @@ function HelpPanel({ onClose }: { onClose: () => void }) {
 
 export function OSTopbar() {
   const pathname = usePathname();
-  const { pendingApprovals, state } = useOS();
+  const { state } = useOS();
   const [deployOpen, setDeployOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [helpOpen, setHelpOpen] = useState(false);
 
   const pageName = PAGE_LABELS[pathname] ?? "Overview";
@@ -761,6 +763,18 @@ export function OSTopbar() {
     };
     window.addEventListener("keydown", handle);
     return () => window.removeEventListener("keydown", handle);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const refresh = async () => {
+      const response = await fetch("/api/notifications", { cache: "no-store" }).catch(() => null);
+      const data = response ? await response.json().catch(() => null) as { unreadCount?: number } | null : null;
+      if (active && response?.ok && typeof data?.unreadCount === "number") setUnreadNotifications(data.unreadCount);
+    };
+    void refresh();
+    const interval = window.setInterval(() => void refresh(), 60000);
+    return () => { active = false; window.clearInterval(interval); };
   }, []);
 
   useEffect(() => {
@@ -830,15 +844,15 @@ export function OSTopbar() {
           <div style={{ position: "relative" }}>
             <button
               className="os-iconbtn"
-              title={`${pendingApprovals} pending`}
-              aria-label="Open notifications"
+              title={unreadNotifications ? `${unreadNotifications} unread notifications` : "Notifications"}
+              aria-label={unreadNotifications ? `Open notifications, ${unreadNotifications} unread` : "Open notifications"}
               onClick={() => toggle("notif")}
               style={{ position: "relative", background: notifOpen ? "rgba(255,255,255,0.08)" : undefined }}
             >
               <BellIcon size={14} />
-              {pendingApprovals > 0 && <span className="ping" />}
+              {unreadNotifications > 0 && <span className="ping" />}
             </button>
-            {notifOpen && <NotificationsPanel onClose={() => setNotifOpen(false)} />}
+            {notifOpen && <NotificationCenter onClose={() => setNotifOpen(false)} onUnreadChange={setUnreadNotifications} />}
           </div>
 
           {/* Help */}

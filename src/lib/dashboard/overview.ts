@@ -8,6 +8,8 @@ import { getWorkspaceExecutionEligibilityFromWorkspace, type WorkspaceExecutionE
 import type { Workspace } from "@/lib/os/types";
 import { getWorkspaceOperatorProductStates, type OperatorProductStateResult } from "@/lib/operators/product-state";
 import { selectDashboardLifecycleState, type DashboardLifecycleState } from "@/lib/dashboard/lifecycle";
+import { normalizeWorkforceActivity } from "@/lib/activity/normalize";
+import type { WorkforceActivitySummary } from "@/lib/activity/types";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
@@ -45,7 +47,7 @@ export type DashboardOverview = {
     description: string;
   };
   policy: {
-    autonomyMode: "safe" | "assisted" | "managed";
+    autonomyMode: "manual" | "approval_first" | "guarded" | "autonomous";
     emergencyStopEnabled: boolean;
     customerEmailMode: "approval_required" | "draft_only" | "auto_send_low_risk";
     safeSummary: string;
@@ -74,6 +76,7 @@ export type DashboardOverview = {
   operators: DashboardOperator[];
   connectors: DashboardConnector[];
   activity: DashboardActivity[];
+  activitySummary: WorkforceActivitySummary;
   nextBestActions: DashboardNextAction[];
   /**
    * Real, shared product state per real operator (revenue/client_flow/operations)
@@ -516,6 +519,13 @@ export async function getDashboardOverview(input: {
     connectors,
     operators,
   });
+  const activityProjection = normalizeWorkforceActivity({
+    approvals,
+    runs,
+    logs,
+    rangeStart: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    limit: 80,
+  });
   const approvalActivities = approvals.slice(0, 20).map(mapApprovalToActivity);
   const logActivities = logs.slice(0, 30).map(mapRunLogToActivity);
   const runActivities = runs.slice(0, 20).map((row): DashboardActivity => ({
@@ -553,10 +563,10 @@ export async function getDashboardOverview(input: {
       autonomyMode: policy.autonomyMode,
       emergencyStopEnabled: policy.emergencyStopEnabled,
       customerEmailMode: policy.customerEmailMode,
-      safeSummary: "Approval-first where risk matters. Health checks and daily brief can run automatically.",
-      assistedSummary: policy.autonomyMode === "assisted"
-        ? "Low-risk high-confidence Trello comments may auto-run; email, CRM, Slack sends and task create/move still require approval."
-        : "Assisted autopilot is off. Low-risk project comments still route through review.",
+      safeSummary: "Approval-first is the default. Health checks and daily brief can run automatically.",
+      assistedSummary: policy.autonomyMode === "guarded" || policy.autonomyMode === "autonomous"
+        ? "Low-risk high-confidence Trello comments may auto-run within enforced limits; email, CRM, Slack sends and task create/move still require approval."
+        : "Guarded autonomy is off. Low-risk project comments still route through review.",
     },
     approvals: {
       pendingCount: pendingApprovals.length,
@@ -580,6 +590,7 @@ export async function getDashboardOverview(input: {
     operators,
     connectors,
     activity,
+    activitySummary: activityProjection.summary,
     operatorProductStates,
     lifecycleState,
     nextBestActions: deriveNextBestActions({

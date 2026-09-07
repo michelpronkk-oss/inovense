@@ -1,5 +1,5 @@
 export type AppNavigationAction = "support" | "feedback";
-export type AppNavigationIcon = "dashboard" | "operators" | "workflows" | "approvals" | "connectors" | "memory" | "logs" | "insights" | "team" | "policies" | "apiKeys" | "plans" | "settings" | "support" | "roadmap";
+export type AppNavigationIcon = "dashboard" | "operators" | "workflows" | "approvals" | "connectors" | "memory" | "activity" | "logs" | "insights" | "team" | "policies" | "apiKeys" | "plans" | "settings" | "support" | "roadmap";
 
 export type AppNavigationItem = {
   id: string;
@@ -24,6 +24,7 @@ export const APP_NAVIGATION_SECTIONS: readonly AppNavigationSection[] = [
       { id: "approvals", label: "Approvals", icon: "approvals", href: "/approvals", mobilePrimary: true, badge: "pendingApprovals" },
       { id: "connectors", label: "Connectors", icon: "connectors", href: "/connectors", mobilePrimary: true },
       { id: "memory", label: "Memory", icon: "memory", href: "/memory" },
+      { id: "activity", label: "Activity", icon: "activity", href: "/activity" },
       { id: "logs", label: "Execution logs", icon: "logs", href: "/logs" },
       { id: "insights", label: "Insights", icon: "insights", href: "/insights" },
     ],

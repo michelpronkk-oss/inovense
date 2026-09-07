@@ -16,7 +16,7 @@ type PatchBody = {
 };
 
 function autonomyMode(value: unknown): WorkspaceAutonomyMode | undefined {
-  return value === "safe" || value === "assisted" || value === "managed" ? value : undefined;
+  return value === "manual" || value === "approval_first" || value === "guarded" || value === "autonomous" ? value : undefined;
 }
 
 function customerEmailMode(value: unknown): "approval_required" | "draft_only" | "auto_send_low_risk" | undefined {
@@ -82,6 +82,6 @@ export async function PATCH(req: NextRequest) {
   if (email) patch.customerEmailMode = email;
   if (typeof body.dailyBriefAllowed === "boolean") patch.dailyBriefAllowed = body.dailyBriefAllowed;
 
-  const policy = await savePolicyWorkspaceSettings({ supabase, workspaceId: context.workspaceId, patch });
+  const policy = await savePolicyWorkspaceSettings({ supabase, workspaceId: context.workspaceId, patch, actor: context.userEmail || context.userId || null });
   return NextResponse.json({ policy });
 }

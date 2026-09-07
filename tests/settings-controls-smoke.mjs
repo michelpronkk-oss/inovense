@@ -1,0 +1,38 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+
+const root = process.cwd();
+const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
+const settings = read("src/app/app/settings/page.tsx");
+const settingsAction = read("src/app/app/settings/actions.ts");
+const profileAction = read("src/app/app/profile/actions.ts");
+const policyRoute = read("src/app/api/policies/route.ts");
+const policyEngine = read("src/lib/policies/execution-policy.ts");
+const portal = read("src/app/api/billing/dodo/portal/route.ts");
+const disconnect = read("src/app/api/connectors/disconnect/route.ts");
+const activate = read("src/app/api/operators/[operatorKey]/activate/route.ts");
+const deactivate = read("src/app/api/operators/[operatorKey]/deactivate/route.ts");
+const notifications = read("src/lib/notifications/slack.ts");
+const apiKeys = read("src/app/app/api-keys/page.tsx");
+
+assert.doesNotMatch(settingsAction, /approval_policy:\s*input\.settings/, "workspace identity saves cannot overwrite policy truth from a stale client snapshot");
+assert.doesNotMatch(settings, /Operating digest/, "a persisted-but-unconsumed digest preference is not presented as an email control");
+assert.match(settings, /Optional email delivery/, "optional email preferences state their actual delivery semantics");
+assert.match(profileAction, /notification_approvals/);
+assert.match(profileAction, /notification_alerts/);
+assert.match(notifications, /notification_approvals/);
+assert.match(notifications, /notification_alerts/);
+assert.match(policyRoute, /\["owner", "admin"\]/, "only owner/admin can mutate policies");
+assert.match(policyEngine, /getConnectorTruth/);
+assert.match(policyEngine, /getWorkspaceExecutionEligibility/);
+assert.match(portal, /getVerifiedSupabaseUser/);
+assert.match(portal, /requireWorkspaceAdmin/, "billing portal verifies the session and admin role server-side");
+assert.doesNotMatch(portal, /userId\?:|userEmail\?:/, "billing portal does not authorize with client-provided identity");
+assert.match(disconnect, /requireWorkspaceAdmin/);
+assert.match(disconnect, /\.delete\(\)/, "disconnect removes usable workspace credentials");
+assert.match(activate, /\["owner", "admin"\]/);
+assert.match(deactivate, /\["owner", "admin"\]/);
+assert.match(apiKeys, /not enabled/);
+assert.doesNotMatch(apiKeys, /INITIAL_KEYS|Create key|setKeys/, "API keys has no simulated create/revoke state");
+console.log("Settings controls, role gates, notification delivery, billing, connector, operator, and API-key truth contracts passed.");

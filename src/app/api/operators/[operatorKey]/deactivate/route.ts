@@ -3,6 +3,7 @@ import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { getOperatorDefinition } from "@/lib/operators/registry";
 import { setOperatorActivationState } from "@/lib/operators/activation";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
+import { requireWorkspaceRoleForIdentity, AuthorizationError } from "@/lib/server/workspace-access";
 
 type DeactivateBody = {
   workspaceId?: string;
@@ -38,6 +39,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ operatorKe
   const context = await resolveWorkspaceContext({ workspaceId, userId, userEmail, supabase, allowDevFallback: false });
   if (!context.ok) {
     return NextResponse.json({ error: context.error, code: context.code }, { status: context.status });
+  }
+  try {
+    await requireWorkspaceRoleForIdentity(context, context.workspaceId, ["owner", "admin"], supabase);
+  } catch (error) {
+    const message = error instanceof AuthorizationError ? error.message : "Could not verify workspace permissions.";
+    return NextResponse.json({ error: message }, { status: error instanceof AuthorizationError ? error.status : 500 });
   }
 
   const result = await setOperatorActivationState({

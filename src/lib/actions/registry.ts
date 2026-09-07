@@ -11,6 +11,8 @@ export type ActionDefinition = {
   riskLevel: ConnectorRiskLevel;
   approvalDefault: boolean;
   allowedExecutionAdapters: string[];
+  canAutoExecute: boolean;
+  permanentlyBlocked?: boolean;
 };
 
 export const ACTION_REGISTRY: Record<ActionType, ActionDefinition> = {
@@ -22,6 +24,7 @@ export const ACTION_REGISTRY: Record<ActionType, ActionDefinition> = {
     riskLevel: "high",
     approvalDefault: true,
     allowedExecutionAdapters: ["gmail", "microsoft"],
+    canAutoExecute: false,
   },
   send_slack_message: {
     actionType: "send_slack_message",
@@ -30,7 +33,8 @@ export const ACTION_REGISTRY: Record<ActionType, ActionDefinition> = {
     defaultConnectorKey: "slack",
     riskLevel: "low",
     approvalDefault: true,
-    allowedExecutionAdapters: ["slack", "microsoft_teams"],
+    allowedExecutionAdapters: ["slack"],
+    canAutoExecute: false,
   },
   create_crm_contact: {
     actionType: "create_crm_contact",
@@ -39,7 +43,8 @@ export const ACTION_REGISTRY: Record<ActionType, ActionDefinition> = {
     defaultConnectorKey: "hubspot",
     riskLevel: "high",
     approvalDefault: true,
-    allowedExecutionAdapters: ["hubspot", "pipedrive", "salesforce"],
+    allowedExecutionAdapters: ["hubspot"],
+    canAutoExecute: false,
   },
   create_crm_deal: {
     actionType: "create_crm_deal",
@@ -48,7 +53,38 @@ export const ACTION_REGISTRY: Record<ActionType, ActionDefinition> = {
     defaultConnectorKey: "hubspot",
     riskLevel: "high",
     approvalDefault: true,
-    allowedExecutionAdapters: ["hubspot", "pipedrive", "salesforce"],
+    allowedExecutionAdapters: ["hubspot"],
+    canAutoExecute: false,
+  },
+  create_crm_note: {
+    actionType: "create_crm_note",
+    capability: "crm.contacts.write",
+    connectorCategory: "crm",
+    defaultConnectorKey: "hubspot",
+    riskLevel: "low",
+    approvalDefault: true,
+    allowedExecutionAdapters: ["hubspot"],
+    canAutoExecute: false,
+  },
+  create_crm_task: {
+    actionType: "create_crm_task",
+    capability: "crm.contacts.write",
+    connectorCategory: "crm",
+    defaultConnectorKey: "hubspot",
+    riskLevel: "medium",
+    approvalDefault: true,
+    allowedExecutionAdapters: ["hubspot"],
+    canAutoExecute: false,
+  },
+  update_crm_record: {
+    actionType: "update_crm_record",
+    capability: "crm.contacts.write",
+    connectorCategory: "crm",
+    defaultConnectorKey: "hubspot",
+    riskLevel: "medium",
+    approvalDefault: true,
+    allowedExecutionAdapters: ["hubspot"],
+    canAutoExecute: false,
   },
   create_task: {
     actionType: "create_task",
@@ -58,6 +94,7 @@ export const ACTION_REGISTRY: Record<ActionType, ActionDefinition> = {
     riskLevel: "medium",
     approvalDefault: true,
     allowedExecutionAdapters: ["trello"],
+    canAutoExecute: false,
   },
   move_task: {
     actionType: "move_task",
@@ -67,6 +104,7 @@ export const ACTION_REGISTRY: Record<ActionType, ActionDefinition> = {
     riskLevel: "medium",
     approvalDefault: true,
     allowedExecutionAdapters: ["trello"],
+    canAutoExecute: false,
   },
   add_task_comment: {
     actionType: "add_task_comment",
@@ -76,6 +114,7 @@ export const ACTION_REGISTRY: Record<ActionType, ActionDefinition> = {
     riskLevel: "low",
     approvalDefault: true,
     allowedExecutionAdapters: ["trello"],
+    canAutoExecute: true,
   },
 };
 

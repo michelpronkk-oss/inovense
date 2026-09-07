@@ -5,6 +5,7 @@ import { getOperatorActivationState, setOperatorActivationState } from "@/lib/op
 import { decideOperatorActivation } from "@/lib/operators/activation-readiness";
 import { getWorkspaceOperatorReadiness } from "@/lib/operators/readiness";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
+import { requireWorkspaceRoleForIdentity, AuthorizationError } from "@/lib/server/workspace-access";
 
 type ActivateBody = {
   workspaceId?: string;
@@ -42,6 +43,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ operatorKe
   const context = await resolveWorkspaceContext({ workspaceId, userId, userEmail, supabase, allowDevFallback: false });
   if (!context.ok) {
     return NextResponse.json({ error: context.error, code: context.code }, { status: context.status });
+  }
+  try {
+    await requireWorkspaceRoleForIdentity(context, context.workspaceId, ["owner", "admin"], supabase);
+  } catch (error) {
+    const message = error instanceof AuthorizationError ? error.message : "Could not verify workspace permissions.";
+    return NextResponse.json({ error: message }, { status: error instanceof AuthorizationError ? error.status : 500 });
   }
 
   let readiness;

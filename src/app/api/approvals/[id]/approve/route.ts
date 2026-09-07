@@ -8,10 +8,10 @@ import { getMicrosoftConnection, MicrosoftExecutionError, sendMicrosoftMessageAf
 import { sendSlackMessageAfterApproval, SlackExecutionError, type PreparedSlackMessageAction } from "@/lib/operators/executors/slack";
 import { TrelloExecutionError } from "@/lib/operators/executors/trello";
 import { sendSlackApprovalNotification } from "@/lib/notifications/slack";
-import { evaluatePolicy } from "@/lib/policies/evaluate";
-import { buildPolicyInputFromContinuation, loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
+import { evaluateExecutionPolicy } from "@/lib/policies/execution-policy";
+import { buildPolicyInputFromContinuation } from "@/lib/policies/workspace-policy";
 import { logPolicyDecision } from "@/lib/policies/audit";
-import type { PolicyDecision, PolicyEvaluationEntitlements } from "@/lib/policies/types";
+import type { PolicyDecision } from "@/lib/policies/types";
 import { logOperatorEvent, recordOperatorUsage } from "@/lib/operators/logging";
 import { createOperatorMemory } from "@/lib/operators/memory";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
@@ -200,6 +200,7 @@ function validateGmailPayload(value: unknown): { ok: true; payload: GmailContinu
  * approvals are never affected.
  */
 async function executeClientFlowTrelloAction(input: {
+  supabase: ReturnType<typeof createSupabaseAdmin>;
   payload: GmailContinuationPayload;
   approvalId: string;
   canRunRealActions: boolean;
@@ -209,6 +210,14 @@ async function executeClientFlowTrelloAction(input: {
   if (!action || action.connectorKey !== "trello") return null;
   if (!input.canRunRealActions) {
     return { status: "skipped", reason: "real_execution_requires_active_plan", actionType: action.actionType };
+  }
+  if (!action.policyInput) {
+    return { status: "skipped", reason: "policy_input_missing", actionType: action.actionType };
+  }
+  const policyDecision = await evaluateExecutionPolicy({ supabase: input.supabase, policyInput: action.policyInput, approvalId: input.approvalId });
+  if (policyDecision.executionDecision === "deny" || policyDecision.executionDecision === "pause_operator") {
+    await logPolicyDecision({ supabase: input.supabase, workspaceId: input.payload.workspaceId, approvalId: input.approvalId, decision: policyDecision, policyInput: action.policyInput, live: true });
+    return { status: "skipped", reason: policyDecision.reasonCode, actionType: action.actionType };
   }
   try {
     const result = await executePreparedActionAfterApproval({ action, approvalId: input.approvalId });
@@ -394,6 +403,7 @@ async function markDraftOnlyReviewed(input: {
   // Trello task is independent of the email send policy. It stays approval-gated
   // and runs even when the customer email is draft-only.
   const clientFlowTrello = await executeClientFlowTrelloAction({
+    supabase: input.supabase,
     payload: input.payload,
     approvalId: input.approvalId,
     canRunRealActions: input.canRunRealActions,
@@ -603,9 +613,8 @@ async function executeSharedActionApproval(input: {
   }
 
   // LIVE policy re-evaluation (emergency stop / tightened policy can block).
-  const livePolicy = await loadPolicyWorkspaceSettings({ supabase: input.supabase, workspaceId: input.payload.workspaceId });
   const policyInput = buildPolicyInputFromContinuation({ workspaceId: input.payload.workspaceId, kind: "shared_action.execute_after_approval", continuation });
-  const policyDecision = policyInput ? evaluatePolicy(policyInput, livePolicy) : null;
+  const policyDecision = policyInput ? await evaluateExecutionPolicy({ supabase: input.supabase, policyInput, approvalId: input.approvalId }) : null;
   if (policyInput) {
     const decision = policyDecision!;
     if (decision.decision === "blocked") {
@@ -811,15 +820,14 @@ async function executeOperationsApproval(input: {
   let trelloError: Record<string, unknown> | null = null;
 
   // LIVE policy re-evaluation per action (emergency stop / tightened policy can block).
-  const livePolicy = await loadPolicyWorkspaceSettings({ supabase: input.supabase, workspaceId: input.payload.workspaceId });
   const slackPolicyInput = input.payload.preparedSlackAction
     ? buildPolicyInputFromContinuation({ workspaceId: input.payload.workspaceId, kind: "operations.execute_after_approval", continuation, preferred: "slack" })
     : null;
   const trelloPolicyInput = input.payload.preparedTrelloAction
     ? buildPolicyInputFromContinuation({ workspaceId: input.payload.workspaceId, kind: "operations.execute_after_approval", continuation, preferred: "trello" })
     : null;
-  const slackPolicyDecision = slackPolicyInput ? evaluatePolicy(slackPolicyInput, livePolicy) : null;
-  const trelloPolicyDecision = trelloPolicyInput ? evaluatePolicy(trelloPolicyInput, livePolicy) : null;
+  const slackPolicyDecision = slackPolicyInput ? await evaluateExecutionPolicy({ supabase: input.supabase, policyInput: slackPolicyInput, approvalId: input.approvalId }) : null;
+  const trelloPolicyDecision = trelloPolicyInput ? await evaluateExecutionPolicy({ supabase: input.supabase, policyInput: trelloPolicyInput, approvalId: input.approvalId }) : null;
   const slackBlocked = slackPolicyDecision?.decision === "blocked";
   const trelloBlocked = trelloPolicyDecision?.decision === "blocked";
 
@@ -952,9 +960,8 @@ async function executeSlackApproval(input: {
     return alreadyResolvedResponse(input.approvalRow);
   }
 
-  const livePolicy = await loadPolicyWorkspaceSettings({ supabase: input.supabase, workspaceId: input.payload.workspaceId });
   const policyInput = buildPolicyInputFromContinuation({ workspaceId: input.payload.workspaceId, kind: "slack.send_after_approval", continuation });
-  const policyDecision = policyInput ? evaluatePolicy(policyInput, livePolicy) : null;
+  const policyDecision = policyInput ? await evaluateExecutionPolicy({ supabase: input.supabase, policyInput, approvalId: input.approvalId }) : null;
   if (policyDecision && policyInput) {
     await logPolicyDecision({
       supabase: input.supabase,
@@ -1181,10 +1188,8 @@ async function executeMicrosoftApproval(input: {
     .single();
   if (ws.error || !ws.data) return NextResponse.json({ error: "Workspace not found." }, { status: 404 });
 
-  const livePolicy = await loadPolicyWorkspaceSettings({ supabase, workspaceId: payload.workspaceId });
-  const liveEntitlements: PolicyEvaluationEntitlements = { canRunRealActions: Boolean(ws.data.can_run_real_actions), billingStatus: String(ws.data.billing_status) };
   const policyInput = buildPolicyInputFromContinuation({ workspaceId: payload.workspaceId, kind: "microsoft.send_after_approval", continuation });
-  const policyDecision = policyInput ? evaluatePolicy(policyInput, livePolicy, liveEntitlements) : null;
+  const policyDecision = policyInput ? await evaluateExecutionPolicy({ supabase, policyInput, approvalId }) : null;
   const runId = payload.operatorRunId || (typeof approvalRow.run_id === "string" ? approvalRow.run_id : "");
 
   if (policyDecision && policyInput) {
@@ -1213,6 +1218,7 @@ async function executeMicrosoftApproval(input: {
       // path's markDraftOnlyReviewed(). It stays approval-gated and runs even
       // when the customer email itself is draft-only.
       const clientFlowTrello = await executeClientFlowTrelloAction({
+        supabase,
         payload,
         approvalId,
         canRunRealActions: Boolean(ws.data.can_run_real_actions) && ws.data.billing_status !== "preview",
@@ -1360,7 +1366,16 @@ async function executeMicrosoftApproval(input: {
   const warnings: string[] = [];
   let hubspotResult: HubSpotExecutionResult | null = null;
   if (shouldExecuteHubSpotForMicrosoft(payload)) {
-    try {
+    const hubspotPolicy = await evaluateExecutionPolicy({
+      supabase,
+      approvalId,
+      policyInput: { workspaceId: payload.workspaceId, operatorKey: payload.operatorKey || "revenue", actionType: "update_crm_record", connectorKey: "hubspot", capability: "crm.contacts.write", destinationType: "crm", riskLevel: "medium", source: "microsoft_approval" },
+    });
+    if (hubspotPolicy.executionDecision === "deny" || hubspotPolicy.executionDecision === "pause_operator") {
+      hubspotResult = { status: "skipped", error: { code: hubspotPolicy.reasonCode, message: hubspotPolicy.reason } };
+      warnings.push("hubspot_blocked_by_policy");
+      await logPolicyDecision({ supabase, workspaceId: payload.workspaceId, runId: runId || null, approvalId, decision: hubspotPolicy, policyInput: { workspaceId: payload.workspaceId, operatorKey: payload.operatorKey || "revenue", actionType: "update_crm_record", connectorKey: "hubspot", capability: "crm.contacts.write", destinationType: "crm", riskLevel: "medium", source: "microsoft_approval" }, live: true });
+    } else try {
       hubspotResult = await executeHubSpotRevenueActions(payload.workspaceId, {
         to: payload.to,
         subject: finalDraft.subject,
@@ -1388,6 +1403,7 @@ async function executeMicrosoftApproval(input: {
   // Client Flow can bundle a prepared Trello task. Reaching here means billing
   // already allows real execution, matching the Gmail path's equivalent call.
   const clientFlowTrello = await executeClientFlowTrelloAction({
+    supabase,
     payload,
     approvalId,
     canRunRealActions: true,
@@ -1776,10 +1792,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   // LIVE policy re-evaluation (never trusts the payload snapshot). This is the
   // enforcement point: if an admin tightened the policy after the approval was
   // created, the live decision wins.
-  const livePolicy = await loadPolicyWorkspaceSettings({ supabase, workspaceId: context.workspaceId });
-  const liveEntitlements: PolicyEvaluationEntitlements = { canRunRealActions: Boolean(ws.data.can_run_real_actions), billingStatus: String(ws.data.billing_status) };
   const gmailPolicyInput = buildPolicyInputFromContinuation({ workspaceId: context.workspaceId, kind: "gmail.send_after_approval", continuation: continuation as Record<string, unknown> });
-  const gmailPolicyDecision = gmailPolicyInput ? evaluatePolicy(gmailPolicyInput, livePolicy, liveEntitlements) : null;
+  const gmailPolicyDecision = gmailPolicyInput ? await evaluateExecutionPolicy({ supabase, policyInput: gmailPolicyInput, approvalId: id }) : null;
 
   if (gmailPolicyDecision && gmailPolicyInput) {
     if (gmailPolicyDecision.decision === "blocked") {
@@ -1963,7 +1977,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const warnings: string[] = [];
   let hubspotResult: HubSpotExecutionResult | null = null;
   if (shouldExecuteHubSpot(gmailPayload)) {
-    try {
+    const hubspotPolicy = await evaluateExecutionPolicy({
+      supabase,
+      approvalId: id,
+      policyInput: { workspaceId: context.workspaceId, operatorKey: gmailPayload.operatorKey || "revenue", actionType: "update_crm_record", connectorKey: "hubspot", capability: "crm.contacts.write", destinationType: "crm", riskLevel: "medium", source: "gmail_approval" },
+    });
+    if (hubspotPolicy.executionDecision === "deny" || hubspotPolicy.executionDecision === "pause_operator") {
+      hubspotResult = { status: "skipped", error: { code: hubspotPolicy.reasonCode, message: hubspotPolicy.reason } };
+      warnings.push("hubspot_blocked_by_policy");
+      await logPolicyDecision({ supabase, workspaceId: context.workspaceId, runId: gmailPayload.operatorRunId ?? (typeof approvalRow.run_id === "string" ? approvalRow.run_id : null), approvalId: id, decision: hubspotPolicy, policyInput: { workspaceId: context.workspaceId, operatorKey: gmailPayload.operatorKey || "revenue", actionType: "update_crm_record", connectorKey: "hubspot", capability: "crm.contacts.write", destinationType: "crm", riskLevel: "medium", source: "gmail_approval" }, live: true });
+    } else try {
       console.info("[approval] hubspot.execution.starting", {
         approvalId: id,
         workspaceId: context.workspaceId,
@@ -2011,6 +2034,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   // already allows real execution. The task stays approval-gated and failures
   // are non-fatal to the completed email send.
   const clientFlowTrello = await executeClientFlowTrelloAction({
+    supabase,
     payload: gmailPayload,
     approvalId: id,
     canRunRealActions: true,
