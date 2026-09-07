@@ -2424,6 +2424,28 @@ select.os-input option {
 .os-feedback-success { display: grid; gap: 10px; padding: 12px 0 4px; }.os-feedback-success p { margin: 0; color: var(--text); font-size: 15px; font-weight: 600; }.os-feedback-success span { color: var(--text-mute); font-size: 12px; line-height: 1.5; }.os-feedback-success .btn { justify-self: start; margin-top: 8px; }
 .roadmap-page { gap: 30px; max-width: 1120px; }.roadmap-section { display: grid; gap: 14px; }.roadmap-section-head span, .roadmap-feedback > div > span { color: var(--cyan); font: 10px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }.roadmap-section h2, .roadmap-feedback h2 { margin: 7px 0 0; color: var(--text); font-size: 20px; letter-spacing: -.025em; }.roadmap-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }.roadmap-item { position: relative; min-height: 148px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.018); }.roadmap-item > div { display: flex; justify-content: space-between; gap: 10px; }.roadmap-item strong { color: var(--text); font-size: 14px; }.roadmap-item span, .roadmap-item em { color: var(--text-faint); font: 9px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; font-style: normal; }.roadmap-item p { margin: 12px 0 0; color: var(--text-mute); font-size: 12px; line-height: 1.48; }.roadmap-item em { position: absolute; right: 16px; bottom: 14px; color: var(--cyan); }.roadmap-feedback { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 24px; border: 1px solid rgba(77,232,225,.2); border-radius: 14px; background: linear-gradient(110deg, rgba(77,232,225,.08), rgba(255,255,255,.015)); }.roadmap-feedback p { margin: 7px 0 0; color: var(--text-mute); font-size: 12px; }
 .os-mobile-menu-feedback { width: 100%; display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 8px; min-height: 44px; padding: 7px 8px; border: 0; border-radius: 9px; background: transparent; color: var(--text-dim); text-align: left; cursor: pointer; font: inherit; }.os-mobile-menu-feedback > span { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 8px; color: var(--text-mute); background: rgba(255,255,255,.025); }.os-mobile-menu-feedback strong { font-size: 12.5px; font-weight: 500; }.os-mobile-menu-feedback i { color: var(--text-faint); font: 18px/1 var(--font-sans); font-style: normal; }
+
+/* Final navigation polish: hierarchy is carried by order and breathing room,
+   while selection stays restrained and dependable at every viewport. */
+.os-side-nav { padding: 0 2px 8px 0; scrollbar-gutter: stable; }
+.os-side-section + .os-side-section { margin-top: 4px; }
+.os-side-label { padding: 15px 12px 7px; font-family: var(--font-sans); font-size: 9px; font-weight: 650; letter-spacing: .11em; }
+.os-side-section:first-child .os-side-label { padding-top: 5px; }
+.os-nav { min-height: 40px; padding: 8px 10px; font-weight: 470; line-height: 1.2; }
+.os-nav .ico { flex: 0 0 18px; color: var(--text-mute); }
+.os-nav:hover { background: rgba(255,255,255,.035); color: var(--text); }
+.os-nav.active { background: rgba(77,232,225,.055); color: var(--text); box-shadow: inset 2px 0 0 var(--cyan), inset 0 0 0 1px rgba(77,232,225,.12); }
+.os-nav.active .ico { color: var(--cyan); }
+.os-nav:focus-visible, .os-mobile-menu-feedback:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.os-side-section [data-nav-item="logs"] { margin-top: 6px; }
+.os-side-section[data-nav-section="support"] .os-nav-utility:not(.is-primary-utility), .os-side-section[data-nav-section="support"] [data-nav-item="roadmap"] { color: var(--text-mute); }
+.os-side-section[data-nav-section="support"] .os-nav:hover { color: var(--text); }
+.os-side-ws-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.os-side-ws-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: .02em; }
+.os-mobile-menu-group a, .os-mobile-menu-feedback { transition: color .16s ease, background-color .16s ease, box-shadow .16s ease; }
+.os-mobile-menu-group a:hover, .os-mobile-menu-feedback:hover { background: rgba(255,255,255,.035); color: var(--text); }
+.os-mobile-menu-group a.active { background: rgba(77,232,225,.05); color: var(--text); box-shadow: inset 2px 0 0 var(--cyan); }
+.os-mobile-menu-group a.active > span { color: var(--cyan); }
 @media (max-width: 800px) { .roadmap-list { grid-template-columns: 1fr; }.roadmap-item { min-height: 124px; }.roadmap-feedback { align-items: flex-start; flex-direction: column; }.roadmap-feedback .btn { width: 100%; justify-content: center; } }
 
 /* Support is a focused side sheet: clear next steps and one contained place

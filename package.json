@@ -30,6 +30,7 @@
     "test:public-content-quality": "node tests/public-content-quality-smoke.mjs",
     "test:feedback-roadmap": "node tests/feedback-roadmap-smoke.mjs",
     "test:support": "node tests/support-smoke.mjs",
+    "test:sidebar-navigation": "node tests/sidebar-navigation-smoke.mjs",
     "trigger:dev": "npx trigger.dev@latest dev",
     "trigger:deploy": "npx trigger.dev@latest deploy"
   },

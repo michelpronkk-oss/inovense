@@ -8,19 +8,19 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useOS } from "@/lib/os/app-provider";
+import { APP_NAVIGATION_SECTIONS, isAppNavigationActive, mobileMoreSections, type AppNavigationAction, type AppNavigationIcon } from "@/lib/app-navigation";
 import { saveProfileSettings } from "@/app/app/profile/actions";
 import {
   TargetIcon, CpuIcon, FlowIcon, InboxIcon, DatabaseIcon, LinkIcon,
   DocIcon, ChartIcon, UsersIcon, ShieldIcon, KeyIcon, SettingsIcon, SwapIcon, MessageIcon,
 } from "@/components/dashboard/icons";
 
-const ADMIN_NAV = [
-  { icon: UsersIcon, label: "Team", href: "/team" },
-  { icon: ShieldIcon, label: "Policies", href: "/policies" },
-  { icon: KeyIcon, label: "API keys", href: "/api-keys" },
-  { icon: SettingsIcon, label: "Plans & billing", href: "/plans" },
-  { icon: SettingsIcon, label: "Settings", href: "/settings" },
-];
+const NAVIGATION_ICONS: Record<AppNavigationIcon, typeof TargetIcon> = {
+  dashboard: TargetIcon, operators: CpuIcon, workflows: FlowIcon, approvals: InboxIcon,
+  connectors: LinkIcon, memory: DatabaseIcon, logs: DocIcon, insights: ChartIcon,
+  team: UsersIcon, policies: ShieldIcon, apiKeys: KeyIcon, plans: SettingsIcon,
+  settings: SettingsIcon, support: MessageIcon, roadmap: DocIcon,
+};
 
 function ToggleRow({ label, detail, checked, onChange }: { label: string; detail: string; checked: boolean; onChange: (checked: boolean) => void }) {
   return (
@@ -57,18 +57,10 @@ export function OSSidebar() {
     || draft.dashboard.viewMode !== state.dashboard.viewMode
   ), [draft, state]);
 
-  const OPS_NAV = [
-    { icon: TargetIcon, label: "Dashboard", href: "/" },
-    { icon: CpuIcon, label: "Operators", href: "/agents" },
-    { icon: FlowIcon, label: "Workflows", href: "/workflows" },
-    { icon: InboxIcon, label: "Approvals", href: "/approvals", badge: pendingApprovals > 0 ? String(pendingApprovals) : undefined },
-    { icon: DatabaseIcon, label: "Memory", href: "/memory" },
-    { icon: LinkIcon, label: "Connectors", href: "/connectors" },
-    { icon: DocIcon, label: "Execution logs", href: "/logs" },
-    { icon: ChartIcon, label: "Insights", href: "/insights" },
-  ];
-
-  const isActive = (href: string) => (href === "/" ? pathname === "/" || pathname === "/app" : pathname.startsWith(href));
+  const runNavigationAction = (action: AppNavigationAction) => {
+    if (action === "support") openSupport();
+    if (action === "feedback") openFeedback();
+  };
   const avatarStyle = state.currentUser.avatarUrl ? { backgroundImage: `url(${state.currentUser.avatarUrl})`, backgroundSize: "cover", backgroundPosition: "center", color: "transparent" } : undefined;
 
   const uploadAvatar = async (file: File | undefined) => {
@@ -113,36 +105,22 @@ export function OSSidebar() {
         <SwapIcon size={12} style={{ color: "var(--text-mute)" }} />
       </div>
 
-      <div className="os-side-nav">
-      <div className="os-side-label">Operations</div>
-      {OPS_NAV.map((it) => {
-        const Icon = it.icon;
-        const active = isActive(it.href);
-        return (
-          <Link key={it.label} href={it.href} className={`os-nav${active ? " active" : ""}`} aria-current={active ? "page" : undefined}>
-            <span className="ico"><Icon size={14} /></span>
-            <span>{it.label}</span>
-            {it.badge && <span className="badge">{it.badge}</span>}
-          </Link>
-        );
-      })}
-
-      <div className="os-side-label">Administration</div>
-      {ADMIN_NAV.map((it) => {
-        const Icon = it.icon;
-        const active = isActive(it.href);
-        return (
-          <Link key={it.label} href={it.href} className={`os-nav${active ? " active" : ""}`} aria-current={active ? "page" : undefined}>
-            <span className="ico"><Icon size={14} /></span>
-            <span>{it.label}</span>
-          </Link>
-        );
-      })}
-      <div className="os-side-label">Support</div>
-      <button type="button" className="os-nav" onClick={() => openSupport()}><span className="ico"><MessageIcon size={14} /></span><span>Support</span></button>
-      <button type="button" className="os-nav" onClick={() => openFeedback()}><span className="ico"><MessageIcon size={14} /></span><span>Feedback</span></button>
-      <Link href="/roadmap" className={`os-nav${isActive("/roadmap") ? " active" : ""}`} aria-current={isActive("/roadmap") ? "page" : undefined}><span className="ico"><DocIcon size={14} /></span><span>Roadmap</span></Link>
-      </div>
+      <nav className="os-side-nav" aria-label="App navigation">
+        {APP_NAVIGATION_SECTIONS.map((section) => (
+          <section className="os-side-section" data-nav-section={section.label.toLowerCase()} key={section.label}>
+            <div className="os-side-label">{section.label}</div>
+            {section.items.map((item) => {
+              const Icon = NAVIGATION_ICONS[item.icon];
+              const active = Boolean(item.href && isAppNavigationActive(pathname, item.href));
+              const badge = item.badge === "pendingApprovals" && pendingApprovals > 0 ? String(pendingApprovals) : undefined;
+              const content = <><span className="ico"><Icon size={14} /></span><span>{item.label}</span>{badge && <span className="badge">{badge}</span>}</>;
+              return item.href
+                ? <Link key={item.id} href={item.href} data-nav-item={item.id} className={`os-nav${active ? " active" : ""}`} aria-current={active ? "page" : undefined}>{content}</Link>
+                : <button key={item.id} type="button" data-nav-item={item.id} className={`os-nav os-nav-utility${item.id === "support" ? " is-primary-utility" : ""}`} onClick={() => runNavigationAction(item.action!)}>{content}</button>;
+            })}
+          </section>
+        ))}
+      </nav>
 
       <button className="os-side-bottom" style={{ border: "none", width: "100%", background: "transparent", cursor: "pointer", textAlign: "left" }} onClick={() => {
         setDraft({
@@ -293,27 +271,13 @@ export function OSMobileNav() {
   const { pendingApprovals } = useOS();
   const [open, setOpen] = useState(false);
   const sheetTouchStartY = useRef<number | null>(null);
-  const primary = [
-    { icon: TargetIcon, label: "Dashboard", href: "/" },
-    { icon: CpuIcon, label: "Operators", href: "/agents" },
-    { icon: InboxIcon, label: "Approvals", href: "/approvals", badge: pendingApprovals },
-    { icon: LinkIcon, label: "Connectors", href: "/connectors" },
-  ];
-  const groups = [
-    { label: "Workspace", items: [
-      { icon: FlowIcon, label: "Workflows", href: "/workflows" },
-      { icon: DatabaseIcon, label: "Memory", href: "/memory" },
-      { icon: DocIcon, label: "Execution logs", href: "/logs" },
-      { icon: ChartIcon, label: "Insights", href: "/insights" },
-    ] },
-    { label: "Administration", items: [
-      { icon: UsersIcon, label: "Team", href: "/team" },
-      { icon: ShieldIcon, label: "Policies", href: "/policies" },
-      { icon: SettingsIcon, label: "Plans & billing", href: "/plans" },
-      { icon: SettingsIcon, label: "Settings", href: "/settings" },
-    ] },
-  ];
-  const isActive = (href: string) => href === "/" ? pathname === "/" || pathname === "/app" : pathname.startsWith(href);
+  const primary = APP_NAVIGATION_SECTIONS[0].items.filter((item) => item.mobilePrimary);
+  const groups = mobileMoreSections();
+  const runNavigationAction = (action: AppNavigationAction) => {
+    setOpen(false);
+    if (action === "support") openSupport();
+    if (action === "feedback") openFeedback();
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -326,10 +290,12 @@ export function OSMobileNav() {
   return (
     <nav className={`os-mobile-nav${open ? " is-menu-open" : ""}`} aria-label="Primary navigation">
       {primary.map((item) => {
-        const Icon = item.icon;
+        const Icon = NAVIGATION_ICONS[item.icon];
+        const active = Boolean(item.href && isAppNavigationActive(pathname, item.href));
+        const badge = item.badge === "pendingApprovals" ? pendingApprovals : 0;
         return (
-          <Link key={item.href} href={item.href} className={`os-mobile-nav-link${isActive(item.href) ? " active" : ""}`} aria-current={isActive(item.href) ? "page" : undefined}>
-            <span className="os-mobile-nav-icon"><Icon size={17} />{item.badge ? <i>{item.badge}</i> : null}</span>
+          <Link key={item.id} href={item.href!} className={`os-mobile-nav-link${active ? " active" : ""}`} aria-current={active ? "page" : undefined}>
+            <span className="os-mobile-nav-icon"><Icon size={17} />{badge ? <i>{badge}</i> : null}</span>
             <span>{item.label}</span>
           </Link>
         );
@@ -358,17 +324,20 @@ export function OSMobileNav() {
             <div className="os-mobile-menu-head"><div><strong>More</strong><span>Workspace navigation</span></div><button type="button" onClick={() => setOpen(false)}>Done</button></div>
             <div className="os-mobile-menu-groups">
             {groups.map((group) => (
-                <section key={group.label} className="os-mobile-menu-group">
+                <section key={group.label} className="os-mobile-menu-group" data-nav-section={group.label.toLowerCase()}>
                   <h2>{group.label}</h2>
                   <div>
                     {group.items.map((item) => {
-                      const Icon = item.icon;
-                      return <Link key={item.href} href={item.href} className={isActive(item.href) ? "active" : ""} aria-current={isActive(item.href) ? "page" : undefined} onClick={() => setOpen(false)}><span><Icon size={17} /></span><strong>{item.label}</strong><i aria-hidden="true">›</i></Link>;
+                      const Icon = NAVIGATION_ICONS[item.icon];
+                      const active = Boolean(item.href && isAppNavigationActive(pathname, item.href));
+                      const content = <><span><Icon size={17} /></span><strong>{item.label}</strong><i aria-hidden="true">›</i></>;
+                      return item.href
+                        ? <Link key={item.id} href={item.href} data-nav-item={item.id} className={active ? "active" : ""} aria-current={active ? "page" : undefined} onClick={() => setOpen(false)}>{content}</Link>
+                        : <button key={item.id} type="button" data-nav-item={item.id} className="os-mobile-menu-feedback" onClick={() => runNavigationAction(item.action!)}>{content}</button>;
                     })}
                   </div>
                 </section>
             ))}
-            <div className="os-mobile-menu-group"><h2>Support</h2><div><button type="button" className="os-mobile-menu-feedback" onClick={() => { setOpen(false); openSupport(); }}><span><MessageIcon size={15} /></span><strong>Support</strong><i aria-hidden="true">›</i></button><Link href="/roadmap" className={isActive("/roadmap") ? "active" : ""} aria-current={isActive("/roadmap") ? "page" : undefined} onClick={() => setOpen(false)}><span><DocIcon size={17} /></span><strong>Roadmap</strong><i aria-hidden="true">›</i></Link><button type="button" className="os-mobile-menu-feedback" onClick={() => { setOpen(false); openFeedback(); }}><span><MessageIcon size={15} /></span><strong>Feedback</strong><i aria-hidden="true">›</i></button></div></div>
             </div>
           </div>
         </OSModal>
