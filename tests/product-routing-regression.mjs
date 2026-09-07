@@ -25,8 +25,13 @@ assert.match(layout, /redirect\("\/"\)/, "completed onboarding must return to th
 
 assert.doesNotMatch(shell, /router\.replace\(/, "client shell must not compete with the server routing authority");
 assert.match(urls, /if \(normalized === "\/app"\) return "\/"/, "production helpers must remove legacy prefix");
-assert.match(callback, /\? next : "\/onboarding"/, "verified signup must land on onboarding by default");
-assert.match(team, /\$\{appUrl\}\/auth\/callback/, "invite email callback cannot retain /app prefix");
+assert.match(callback, /\? next : "\/"/, "verified auth links must default into the app gateway, which alone decides onboarding vs. product");
+// Invite emails link straight to /invite/accept?token=... (no /auth/callback
+// hop, no /app prefix) -- workspace invites are never routed through a
+// Supabase-generated auth link, so existing users are never forced through
+// a signup-only flow. See getAppUrl() usage in deliverInviteEmail().
+assert.match(team, /\$\{getAppUrl\(\)\}\/invite\/accept\?token=/, "invite email must link directly to the invite accept page, not through /auth/callback");
+assert.doesNotMatch(team, /auth\.admin\.generateLink/, "invite delivery must not depend on Supabase Auth user creation");
 assert.match(onboarding, /router\.replace\("\/"\)/, "onboarding completion must return to the overview");
 
 console.log("Product routing regression contracts passed.");

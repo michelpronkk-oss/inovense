@@ -35,6 +35,7 @@
     "test:team-roles": "node tests/team-roles-smoke.mjs",
     "test:team-invite-email": "node tests/team-invite-email-smoke.mjs",
     "test:team-remove-member": "node tests/team-remove-member-smoke.mjs",
+    "test:invite-acceptance-flow": "node tests/invite-acceptance-flow-smoke.mjs",
     "test:insights-entitlement": "node tests/insights-entitlement-smoke.mjs",
     "test:product-truth-discovery": "node tests/product-truth-discovery-smoke.mjs",
     "test:seo-discovery": "node tests/seo-discovery-smoke.mjs",

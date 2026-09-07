@@ -36,7 +36,9 @@ export default function InviteAcceptPage() {
     };
   }, [token, router]);
 
-  const loginHref = `/login?from=${encodeURIComponent(`/invite/accept?token=${token}`)}`;
+  const returnPath = `/invite/accept?token=${token}`;
+  const loginHref = `/login?from=${encodeURIComponent(returnPath)}`;
+  const registerHref = `/register?from=${encodeURIComponent(returnPath)}`;
 
   return (
     <div className="auth-shell">
@@ -50,10 +52,13 @@ export default function InviteAcceptPage() {
 
         {status === "needs_login" && (
           <>
-            <p className="auth-sub">Sign in (or create an account) with the email this invite was sent to, then we&apos;ll add you to the workspace automatically.</p>
+            <p className="auth-sub">Sign in with the email this invite was sent to, or create an account if you&apos;re new to Auterim -- either way, we&apos;ll add you to the workspace automatically.</p>
             <Link className="auth-submit" style={{ display: "block", textAlign: "center", textDecoration: "none" }} href={loginHref}>
               Sign in to accept
             </Link>
+            <div className="auth-foot">
+              New to Auterim? <Link href={registerHref}>Create an account to accept</Link>
+            </div>
           </>
         )}
 

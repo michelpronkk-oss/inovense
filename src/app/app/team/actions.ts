@@ -30,6 +30,17 @@ function allowedResendAttempt(key: string) {
  * Resend, logging the attempt to os_email_outbox either way. Delivery
  * failure is reported back as { sent: false } -- it never throws and never
  * deletes/duplicates the invite record itself.
+ *
+ * The acceptance link is always the plain Auterim `/invite/accept?token=...`
+ * URL, never a Supabase-generated auth link. Workspace membership and
+ * authentication are separate concerns: the workspace invite token (in our
+ * own os_member_invites table) is the sole authority for workspace access,
+ * and the accept page itself prompts an unauthenticated visitor to sign in
+ * or create an account before it re-checks the token. Generating a
+ * Supabase `type: "invite"` link here would have required the recipient's
+ * email to NOT already have an Auterim account -- "A user with this email
+ * address has already been registered" for anyone invited to a second
+ * workspace -- which is exactly the auth/membership coupling this avoids.
  */
 async function deliverInviteEmail(input: {
   supabase: SupabaseClient;
@@ -41,32 +52,7 @@ async function deliverInviteEmail(input: {
   role: WorkspaceRole;
   token: string;
 }): Promise<{ sent: boolean }> {
-  const appUrl = getAppUrl();
-  const acceptPath = `/invite/accept?token=${input.token}`;
-  const directAcceptUrl = `${appUrl}${acceptPath}`;
-
-  // Route the invite through the auth callback first so the invite token is
-  // exchanged for a real session cookie before the accept page (a Server
-  // Action) tries to read the verified user. `generateLink` creates the
-  // underlying Supabase auth user for brand-new invitees WITHOUT sending
-  // Supabase's own built-in "Invite User" email -- we send exactly one
-  // branded email ourselves, below.
-  const supabaseInviteRedirect = `${appUrl}/auth/callback?next=${encodeURIComponent(acceptPath)}`;
-  const generated = await input.supabase.auth.admin.generateLink({
-    type: "invite",
-    email: input.email,
-    options: { redirectTo: supabaseInviteRedirect },
-  });
-
-  // `generateLink({ type: "invite" })` errors if the invitee already has an
-  // Auterim account (Supabase only allows "invite" to create brand-new
-  // users). That's expected -- e.g. an existing user invited to a second
-  // workspace -- not a delivery failure. Fall back to the direct accept
-  // link; the accept page already prompts "sign in to accept" for a visitor
-  // with no session, which covers existing users correctly.
-  const actionLink = generated.data?.properties?.action_link;
-  const acceptUrl = actionLink ?? directAcceptUrl;
-  const generateLinkError = actionLink ? null : (generated.error?.message ?? null);
+  const acceptUrl = `${getAppUrl()}/invite/accept?token=${input.token}`;
 
   const { subject, html: htmlBody, text: textBody } = renderTeamInviteEmail({
     workspaceName: input.workspaceName,
@@ -95,18 +81,17 @@ async function deliverInviteEmail(input: {
     text_body: textBody,
     provider: "resend",
     status: sent ? "sent" : "queued",
-    error_message: providerError || generateLinkError,
+    error_message: providerError || null,
     sent_at: sent ? new Date().toISOString() : null,
   });
 
-  if (!sent && (providerError || generateLinkError)) {
+  if (!sent && providerError) {
     // Full provider detail is logged server-side only -- never surfaced to
     // the client (see the generic messages returned by callers below).
     console.error("[team.invite_email_failed]", {
       workspaceId: input.workspaceId,
       email: input.email,
-      providerError: providerError || null,
-      generateLinkError,
+      providerError,
     });
   }
 

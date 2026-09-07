@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { authErrorDiagnostics, authErrorMessage } from "@/lib/supabase/auth-errors";
 import { appHref } from "@/lib/urls";
@@ -14,8 +14,18 @@ function passwordIssue(password: string): string | null {
   return null;
 }
 
+// Only ever redirect to a same-origin app path -- never an external URL.
+function safeAppPath(value: string | null): string | null {
+  return value && value.startsWith("/") && !value.startsWith("//") ? value : null;
+}
+
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Preserves e.g. /invite/accept?token=... through signup so a brand-new
+  // invitee lands back on their invite (not their own workspace) once their
+  // account exists -- workspace membership is granted there, never here.
+  const from = safeAppPath(searchParams.get("from"));
   const [fullName, setFullName] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [email, setEmail] = useState("");
@@ -66,7 +76,7 @@ export default function RegisterPage() {
         password,
         options: {
           data: { full_name: trimmedName, company_name: companyName.trim() || undefined },
-          emailRedirectTo: appHref("/auth/callback"),
+          emailRedirectTo: appHref(`/auth/callback${from ? `?next=${encodeURIComponent(from)}` : ""}`),
         },
       });
 
@@ -79,10 +89,11 @@ export default function RegisterPage() {
       }
 
       // If email confirmation is disabled in the Supabase project, signUp
-      // already returns an active session - go straight into the app,
-      // where the layout gateway provisions the workspace automatically.
+      // already returns an active session - go straight to `from` (e.g. the
+      // invite accept page) when present, otherwise into the app, where the
+      // layout gateway provisions an owner workspace automatically.
       if (data.session) {
-        router.replace("/");
+        router.replace(from || "/");
         router.refresh();
         return;
       }
@@ -106,7 +117,7 @@ export default function RegisterPage() {
       const { error: resendError } = await createSupabaseBrowserClient().auth.resend({
         type: "signup",
         email: email.trim().toLowerCase(),
-        options: { emailRedirectTo: appHref("/auth/callback") },
+        options: { emailRedirectTo: appHref(`/auth/callback${from ? `?next=${encodeURIComponent(from)}` : ""}`) },
       });
       if (resendError) {
         console.warn("[auth.signup.resend] failed", authErrorDiagnostics(resendError));
@@ -146,7 +157,7 @@ export default function RegisterPage() {
                 : "Resend verification email"}
           </button>
           <div className="auth-foot">
-            Already verified? <Link href="/login">Sign in</Link>
+            Already verified? <Link href={from ? `/login?from=${encodeURIComponent(from)}` : "/login"}>Sign in</Link>
           </div>
         </div>
       </div>
@@ -187,7 +198,7 @@ export default function RegisterPage() {
         </form>
 
         <div className="auth-foot">
-          Already have an account? <Link href="/login">Sign in</Link>
+          Already have an account? <Link href={from ? `/login?from=${encodeURIComponent(from)}` : "/login"}>Sign in</Link>
         </div>
       </div>
     </div>

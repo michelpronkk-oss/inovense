@@ -99,7 +99,7 @@ export default function LoginPage() {
           <Link href="/forgot-password">Forgot password?</Link>
         </div>
         <div className="auth-foot">
-          Don&apos;t have an account? <Link href="/register">Create one</Link>
+          Don&apos;t have an account? <Link href={from ? `/register?from=${encodeURIComponent(from)}` : "/register"}>Create one</Link>
         </div>
       </div>
     </div>
