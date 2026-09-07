@@ -45,7 +45,7 @@ export type PricingPlan = {
 export const dodoProductEnvKeys = {
   starter: "DODO_PRODUCT_STARTER",
   growth: "DODO_PRODUCT_GROWTH",
-  scale: "DODO_PRODUCT_SCALE",
+  scale: "DODO_SCALE_PRICE_ID",
   operator: "DODO_PRODUCT_OPERATOR",
 } as const satisfies Record<BillingPlanTier, string>;
 
@@ -57,7 +57,7 @@ export const pricingPlans: PricingPlan[] = [
     price: "$99",
     period: "/mo",
     tagline: "Deploy your first controlled AI operators.",
-    billingLabel: "3-day trial included",
+    billingLabel: "3 days free for first-time workspaces",
     cta: "Choose Foundation",
     ctaHref: appHref("/api/billing/dodo/checkout?plan=starter"),
     features: [
@@ -66,7 +66,7 @@ export const pricingPlans: PricingPlan[] = [
       "1,000 controlled runs per month",
       "Approval-first execution",
       "Company memory and audit history",
-      "3-day trial included",
+      "3 days free for first-time workspaces",
     ],
     metadata: {
       billing_interval: "month",
@@ -85,7 +85,7 @@ export const pricingPlans: PricingPlan[] = [
     price: "$299",
     period: "/mo",
     tagline: "Run essential work across teams with control.",
-    billingLabel: "3-day trial included",
+    billingLabel: "3 days free for first-time workspaces",
     badge: "Recommended",
     featured: true,
     cta: "Choose Workforce",
@@ -96,7 +96,9 @@ export const pricingPlans: PricingPlan[] = [
       "5,000 controlled runs per month",
       "Advanced approval policies",
       "Company memory and audit history",
-      "3-day trial included",
+      "Slack and email approvals",
+      "Priority support",
+      "3 days free for first-time workspaces",
     ],
     metadata: {
       billing_interval: "month",
@@ -114,9 +116,9 @@ export const pricingPlans: PricingPlan[] = [
     plan_name: "Scale",
     price: "$799",
     period: "/mo",
-    tagline: "Scale AI operations across more systems and workflows.",
-    billingLabel: "3-day trial included",
-    cta: "Choose Scale",
+    tagline: "Scale AI operations across more teams, systems, and workflows with higher execution capacity and deeper governance.",
+    billingLabel: "3 days free for first-time workspaces",
+    cta: "Start Scale trial",
     ctaHref: appHref("/api/billing/dodo/checkout?plan=scale"),
     features: [
       "Up to 20 active operators",
@@ -124,8 +126,9 @@ export const pricingPlans: PricingPlan[] = [
       "20,000 controlled runs per month",
       "Advanced approval policies",
       "Company memory and audit history",
+      "Slack and email approvals",
       "Priority support",
-      "3-day trial included",
+      "3 days free for first-time workspaces",
     ],
     metadata: {
       billing_interval: "month",

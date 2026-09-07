@@ -3,6 +3,8 @@ import crypto from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { getBillingEntitlementsForPlan, type BillingPlanTier } from "@/lib/pricing";
 import { verifyDodoWebhookSignature } from "@/lib/billing/dodo";
+import { getWorkspaceTrialEntitlement, recordTrialStarted, updateTrialStatus } from "@/lib/billing/trials";
+import { sendTrialLifecycleEmail } from "@/lib/billing/trial-notifications";
 
 type BillingStatus = "preview" | "trialing" | "active" | "past_due" | "canceled";
 
@@ -19,7 +21,7 @@ function mapProductToPlan(productId: string | undefined): BillingPlanTier | null
   if (!productId) return null;
   if (productId === process.env.DODO_PRODUCT_STARTER) return "starter";
   if (productId === process.env.DODO_PRODUCT_GROWTH) return "growth";
-  if (productId === process.env.DODO_PRODUCT_SCALE) return "scale";
+  if (productId === process.env.DODO_SCALE_PRICE_ID) return "scale";
   if (productId === process.env.DODO_PRODUCT_OPERATOR) return "operator";
   return null;
 }
@@ -28,7 +30,8 @@ function mapEventToBillingStatus(eventType: string, trialEndsAt?: string): Billi
   if (eventType === "subscription.cancelled") return "canceled";
   if (eventType === "subscription.failed" || eventType === "payment.failed") return "past_due";
   if (eventType === "subscription.expired") return "canceled";
-  if (eventType === "payment.succeeded" && trialEndsAt) return "trialing";
+  const trialEvents = new Set(["subscription.created", "subscription.active", "payment.succeeded"]);
+  if (trialEndsAt && trialEvents.has(eventType) && new Date(trialEndsAt).getTime() > Date.now()) return "trialing";
   if (
     eventType === "subscription.active"
     || eventType === "subscription.updated"
@@ -126,7 +129,10 @@ export async function POST(req: NextRequest) {
     data.user_id,
     subscription.user_id,
   );
-  const trialEndsAt = firstString(subscription.trial_ends_at, data.trial_ends_at);
+  const providerTrialEndsAt = firstString(subscription.trial_ends_at, data.trial_ends_at);
+  const nextBillingAt = firstString(subscription.next_billing_date, data.next_billing_date);
+  const trialPeriodDays = positiveInteger(subscription.trial_period_days ?? data.trial_period_days);
+  const trialEndsAt = providerTrialEndsAt ?? (trialPeriodDays && trialPeriodDays > 0 ? nextBillingAt : undefined);
   const recurringAmount = positiveInteger(subscription.recurring_pre_tax_amount ?? data.recurring_pre_tax_amount);
   const currency = firstString(subscription.currency, data.currency)?.toUpperCase();
   const frequencyCount = positiveInteger(subscription.payment_frequency_count ?? data.payment_frequency_count) || 1;
@@ -211,12 +217,53 @@ export async function POST(req: NextRequest) {
       recurring_amount_minor: recurringAmount,
       frequency_count: frequencyCount,
       frequency_interval: frequencyInterval,
-      next_billing_at: firstString(subscription.next_billing_date, data.next_billing_date) ?? null,
+      next_billing_at: nextBillingAt ?? null,
       cancelled_at: firstString(subscription.cancelled_at, data.cancelled_at) ?? null,
       source_event_id: eventId,
     }, { onConflict: "dodo_subscription_id" });
     if (normalizedSubscription.error) {
       await supabase.from("os_billing_events").update({ processing_status: "warning_subscription_normalization", warning_message: normalizedSubscription.error.message }).eq("event_id", eventId);
+    }
+  }
+
+  // Dodo remains the billing source of truth. This separate, append-only
+  // entitlement record only makes a first-time trial impossible to repeat.
+  // Lifecycle messaging is deliberately best-effort: provider billing and
+  // workspace access must still be committed if mail delivery is unavailable.
+  if (plan !== "operator") {
+    try {
+      const checkoutPlan = plan;
+      const isActiveTrial = billingStatus === "trialing" && Boolean(trialEndsAt);
+      if (isActiveTrial) {
+        const trial = await recordTrialStarted({
+          supabase,
+          workspaceId,
+          ownerUserId: userId,
+          billingCustomerId: customerId,
+          plan: checkoutPlan,
+          trialEndsAt,
+        });
+        if (trial.created) {
+          await sendTrialLifecycleEmail({ supabase, workspaceId, eventKey: `trial-started:${eventId}`, type: "trial_started", plan: checkoutPlan, trialEndsAt });
+        }
+      } else {
+        const existing = await getWorkspaceTrialEntitlement(supabase, workspaceId);
+        if (existing.data?.trialStatus === "active" && billingStatus === "active") {
+          await updateTrialStatus({ supabase, workspaceId, status: "converted", convertedPlan: checkoutPlan, convertedAt: new Date().toISOString() });
+          await sendTrialLifecycleEmail({ supabase, workspaceId, eventKey: `trial-converted:${existing.data.id}`, type: "trial_converted", plan: checkoutPlan });
+        } else if (existing.data?.trialStatus === "active" && eventType === "subscription.expired") {
+          await updateTrialStatus({ supabase, workspaceId, status: "expired" });
+          await sendTrialLifecycleEmail({ supabase, workspaceId, eventKey: `trial-expired:${existing.data.id}`, type: "trial_expired", plan: checkoutPlan });
+        }
+        if (billingStatus === "past_due") {
+          await sendTrialLifecycleEmail({ supabase, workspaceId, eventKey: `payment-failed:${eventId}`, type: "payment_failed", plan: checkoutPlan });
+        }
+        if (eventType === "subscription.cancelled") {
+          await sendTrialLifecycleEmail({ supabase, workspaceId, eventKey: `subscription-canceled:${eventId}`, type: "subscription_canceled", plan: checkoutPlan });
+        }
+      }
+    } catch (error) {
+      console.error("[dodo.webhook] trial lifecycle update failed", { workspaceId, eventId, message: error instanceof Error ? error.message : "unknown" });
     }
   }
 

@@ -16,6 +16,8 @@ const publicHome = read("src/components/home-v3/v3-page.tsx");
 const appPricing = read("src/app/app/plans/page.tsx");
 const planLimits = read("src/lib/os/plans.ts");
 const operatorRegistry = read("src/lib/operators/registry.ts");
+const adminSection = read("src/app/admin/[section]/page.tsx");
+const adminRevenue = read("src/app/admin/revenue/page.tsx");
 const migration = read("supabase/migrations/20260907_add_scale_plan_tier.sql");
 const envExample = read(".env.example");
 
@@ -55,11 +57,17 @@ try {
   assert.equal(workforce.metadata.connectors_limit, 8);
   assert.equal(workforce.metadata.actions_limit, 5000);
   assert.equal(scale.plan_name, "Scale");
+  assert.equal(scale.cta, "Start Scale trial");
   assert.equal(scale.price, "$799");
   assert.equal(scale.metadata.operators_limit, 20);
   assert.equal(scale.metadata.connectors_limit, 20);
   assert.equal(scale.metadata.actions_limit, 20000);
   assert.equal(scale.metadata.support_level, "priority");
+  assert.ok(workforce.features.includes("Slack and email approvals"));
+  assert.ok(scale.features.includes("Slack and email approvals"));
+  assert.ok(scale.features.includes("Priority support"));
+  assert.equal(pricing.getBillingEntitlementsForPlan("starter").supportLevel, "email");
+  assert.equal(pricing.getBillingEntitlementsForPlan("growth").supportLevel, "priority");
   assert.ok(!pricing.pricingPlans.some((plan) => plan.plan_name === "Enterprise"), "Enterprise must not be a public self-serve plan");
   assert.equal(pricing.resolvePublicPlanCta(scale, "signed_in").href, "/api/billing/dodo/checkout?plan=scale", "Scale must have a live checkout CTA");
 
@@ -78,16 +86,21 @@ try {
   assert.equal(entitlements.resolveWorkspacePlanTier({ id: "legacy", name: "Legacy", environment: "production", region: "eu", plan: "Workforce", planTier: "growth" }), "growth", "existing Workforce workspace values must remain valid");
 
   assert.match(checkout, /value === "scale"/, "checkout must accept Scale");
-  assert.match(checkout, /DODO_PRODUCT_SCALE/, "Scale checkout must fail closed when its Dodo product is missing");
-  assert.match(webhook, /DODO_PRODUCT_SCALE/, "Scale Dodo events must map to Scale");
+  assert.match(checkout, /DODO_SCALE_PRICE_ID/, "Scale checkout must fail closed when its Dodo price is missing");
+  assert.match(webhook, /DODO_SCALE_PRICE_ID/, "Scale Dodo events must map to Scale");
   assert.match(webhook, /explicitPlan === "scale"/, "Scale webhook metadata must be accepted");
   assert.match(webhook, /plan === "scale" \? "Scale"/, "webhook must persist a truthful Scale display plan");
-  assert.match(envExample, /DODO_PRODUCT_SCALE=/, "Scale requires an explicit server-side Dodo product configuration");
+  assert.match(webhook, /trial_period_days/, "webhook must read Dodo trial facts");
+  assert.match(webhook, /subscription\.active/, "initial active subscriptions with a future trial end must remain trialing");
+  assert.match(envExample, /DODO_SCALE_PRICE_ID=/, "Scale requires an explicit server-side Dodo price configuration");
+  assert.match(read("src/lib/billing/dodo.ts"), /trial_period_days: input\.trialDays/, "Dodo checkout must use the server-authorized trial duration");
   assert.match(migration, /'scale'/, "database constraint must allow Scale");
   assert.match(migration, /'starter', 'growth', 'scale', 'operator', 'enterprise'/, "migration must retain all existing values");
   assert.match(planLimits, /scale:/, "central plan-limit configuration must include Scale");
   assert.match(planLimits, /maxMonthlyRuns: 20000/);
   assert.match(operatorRegistry, /\["starter", "growth", "scale", "operator", "enterprise"\]/, "Scale must be eligible for active operator execution");
+  assert.match(adminSection, /getPlanLabel/, "Admin customer records must render canonical plan names");
+  assert.match(adminRevenue, /getPlanLabel/, "Admin revenue rows must render canonical plan names");
   assert.match(publicPricing, /xl:grid-cols-3/, "public pricing cards must support three columns on desktop");
   assert.match(publicHome, /pricingPlans\.map/, "home pricing must draw from the central catalog");
   assert.match(appPricing, /pricingPlans\.map/, "in-app billing cards must draw from the central catalog");

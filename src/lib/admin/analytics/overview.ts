@@ -23,6 +23,7 @@ export type AdminOverview = {
     funnelAvailable: boolean;
   };
   revenue: { available: boolean; reason: string };
+  trials: { available: boolean; active: number | null; endingSoon: number | null; converted: number | null; expired: number | null };
   usage: { runs: number | null; approvals: number | null; failedRuns: number | null };
   operators: Array<{ key: string; runs: number; label: string }>;
   connectors: Array<{ name: string; connected: number; status: string }>;
@@ -81,7 +82,7 @@ export async function getAdminOverview(range: AdminRange = "30d"): Promise<Admin
 
   const client = createSupabaseAdmin();
   const start = dateStart(range);
-  const [workspaces, traffic, runs, approvals, connectors, activity, subscriptions] = await Promise.all([
+  const [workspaces, traffic, runs, approvals, connectors, activity, subscriptions, trials] = await Promise.all([
     safeRows(client, "os_workspaces", "id,name,billing_status,created_at,updated_at"),
     safeRows(client, "traffic_sessions", "session_key,first_seen_at", start, "first_seen_at"),
     safeRows(client, "os_operator_runs", "id,operator_key,status,created_at", start),
@@ -89,6 +90,7 @@ export async function getAdminOverview(range: AdminRange = "30d"): Promise<Admin
     safeRows(client, "os_connectors", "id,name,connected,status"),
     safeRows(client, "activity_events", "id,event_type,entity_type,created_at", start),
     safeRows(client, "os_billing_subscriptions", "status,currency,recurring_amount_minor,frequency_count,frequency_interval"),
+    safeRows(client, "os_trial_entitlements", "trial_status,trial_ends_at"),
   ]);
 
   const workspaceRows = workspaces.rows;
@@ -106,7 +108,7 @@ export async function getAdminOverview(range: AdminRange = "30d"): Promise<Admin
   const hasOnlyUsdSubscriptions = normalizedSubscriptions.every((row) => String(row.currency).toUpperCase() === "USD");
   const normalizedMrrMinor = hasOnlyUsdSubscriptions ? normalizedSubscriptions.reduce((total, row) => total + (monthlyAmount(Number(row.recurring_amount_minor), Number(row.frequency_count), String(row.frequency_interval)) ?? 0), 0) : null;
   const mrrReady = subscriptions.available && hasOnlyUsdSubscriptions && (normalizedSubscriptions.length > 0 || activeSubscriptionCount === 0);
-  const sourceFlags = [workspaces.available, traffic.available, runs.available, approvals.available, connectors.available, activity.available, subscriptions.available];
+  const sourceFlags = [workspaces.available, traffic.available, runs.available, approvals.available, connectors.available, activity.available, subscriptions.available, trials.available];
   const sourceStatus = sourceFlags.every(Boolean) ? "connected" : sourceFlags.some(Boolean) ? "partial" : "unavailable";
 
   const operatorCounts = new Map<string, number>();
@@ -129,6 +131,13 @@ export async function getAdminOverview(range: AdminRange = "30d"): Promise<Admin
     },
     growth: { visits: traffic.available ? traffic.rows.length : null, previews: traffic.available ? previews : null, workspaces: workspaces.available ? newWorkspaceCount : null, paid: workspaces.available ? activeSubscriptionCount : null, funnelAvailable: traffic.available && workspaces.available },
     revenue: { available: mrrReady, reason: mrrReady ? "Recurring amount, currency, and billing interval are normalized from active Dodo subscriptions." : "Dodo webhooks are stored, but active subscription events need to populate recurring amount, currency, and billing interval." },
+    trials: {
+      available: trials.available,
+      active: trials.available ? trials.rows.filter((row) => String(row.trial_status) === "active").length : null,
+      endingSoon: trials.available ? trials.rows.filter((row) => String(row.trial_status) === "active" && typeof row.trial_ends_at === "string" && new Date(row.trial_ends_at).getTime() - Date.now() <= 25 * 60 * 60 * 1000 && new Date(row.trial_ends_at).getTime() > Date.now()).length : null,
+      converted: trials.available ? trials.rows.filter((row) => String(row.trial_status) === "converted").length : null,
+      expired: trials.available ? trials.rows.filter((row) => String(row.trial_status) === "expired").length : null,
+    },
     usage: { runs: runs.available ? runRows.length : null, approvals: approvals.available ? approvals.rows.length : null, failedRuns: runs.available ? failedRuns : null },
     operators: [...operatorCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([key, count]) => ({ key, runs: count, label: operatorLabel(key) })),
     connectors: connectors.rows.slice(0, 8).map((row) => ({ name: String(row.name ?? "Connector"), connected: row.connected === true ? 1 : 0, status: String(row.status ?? "unknown") })),
@@ -143,6 +152,7 @@ function unavailableOverview(range: AdminRange): AdminOverview {
     kpis: { mrr: unavailable("Billing source not connected"), activeSubscriptions: unavailable("Workspace source not connected"), activeWorkspaces: unavailable("Workspace source not connected"), newCustomers: unavailable("Workspace source not connected"), previewConversion: unavailable("Traffic source not connected"), runs: unavailable("Usage source not connected") },
     growth: { visits: null, previews: null, workspaces: null, paid: null, funnelAvailable: false },
     revenue: { available: false, reason: "Supabase is not configured in this environment." },
+    trials: { available: false, active: null, endingSoon: null, converted: null, expired: null },
     usage: { runs: null, approvals: null, failedRuns: null }, operators: [], connectors: [], activity: [],
   };
 }

@@ -17,6 +17,7 @@ export default async function GrowthPage({ searchParams }: { searchParams: Promi
   const stages = [
     { label: "Visitors", value: data.visitors, note: "Captured marketing sessions" },
     { label: "Workspaces created", value: data.workspacesCreated, note: "New self-serve workspaces" },
+    ...(data.trialsStarted === null ? [] : [{ label: "Trials started", value: data.trialsStarted, note: "First-time trials started in this window" }]),
     { label: "Running workspaces", value: data.workspacesRunning, note: "New workspaces with an operator run" },
     { label: "Paid workspaces", value: data.paidWorkspaces, note: "New workspaces currently active" },
   ];

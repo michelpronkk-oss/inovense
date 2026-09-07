@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getAdminSectionData } from "@/lib/admin/sections";
+import { getPlanLabel } from "@/lib/os/truth";
 
 export const metadata: Metadata = { title: "Command center | Auterim", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -17,6 +18,7 @@ const copy: Record<string, { label: string; title: string; body: string }> = {
 };
 
 function cells(row: Record<string, unknown>) {
+  row = Object.fromEntries(Object.entries(row).map(([key, value]) => [key, key === "plan_tier" || key === "plan" ? getPlanLabel(String(value ?? "preview")) : value]));
   return Object.entries(row).filter(([key]) => !["id", "workspace_id"].includes(key)).slice(0, 4).map(([key, value]) => <span key={key}><small>{key.replace(/_/g, " ")}</small>{String(value ?? "—")}</span>);
 }
 

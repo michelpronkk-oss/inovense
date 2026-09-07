@@ -9,10 +9,11 @@ import { FeedbackDialog } from "@/components/dashboard/feedback-dialog";
 import { SupportDialog } from "@/components/dashboard/support-dialog";
 import { trialDaysRemaining } from "@/lib/os/plans";
 import { getEntitlements } from "@/lib/os/entitlements";
+import { getPlanLabel } from "@/lib/os/truth";
 import { appHref } from "@/lib/urls";
 import { AppLoadingShell } from "@/components/dashboard/loading-state";
 
-function TrialBanner({ trialEndsAt }: { trialEndsAt?: string }) {
+function TrialBanner({ trialEndsAt, planTier }: { trialEndsAt?: string; planTier: string }) {
   const days = trialDaysRemaining(trialEndsAt);
   if (days === null || days > 1) return null;
 
@@ -37,10 +38,10 @@ function TrialBanner({ trialEndsAt }: { trialEndsAt?: string }) {
           ? "Your 3-day trial has ended."
           : days === 1
             ? "Last day of your trial."
-            : `${days} days left in your Foundation trial.`}
+            : `${days} days left in your ${getPlanLabel(planTier)} trial.`}
       </span>
       <Link
-        href={appHref("/api/billing/dodo/checkout?plan=starter")}
+        href={appHref("/plans")}
         className="os-trial-cta"
         style={{
           display: "inline-flex",
@@ -56,7 +57,7 @@ function TrialBanner({ trialEndsAt }: { trialEndsAt?: string }) {
           boxShadow: "none",
         }}
       >
-        Choose a plan
+        View plans
       </Link>
     </div>
   );
@@ -127,7 +128,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Link className="btn btn-ghost btn-sm" href="/settings?billing=manage">Manage billing</Link>
           </div>
         )}
-        {entitlements.billingStatus === "trialing" && <TrialBanner trialEndsAt={state.workspace.trialEndsAt} />}
+        {entitlements.billingStatus === "trialing" && <TrialBanner trialEndsAt={state.workspace.trialEndsAt} planTier={entitlements.planTier} />}
         <OSTopbar />
           {children}
         </main>

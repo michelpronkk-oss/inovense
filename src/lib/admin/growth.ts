@@ -12,6 +12,7 @@ export type GrowthData = {
   workspacesCreated: number | null;
   workspacesRunning: number | null;
   paidWorkspaces: number | null;
+  trialsStarted: number | null;
   visitorToWorkspaceRate: number | null;
   workspaceActivationRate: number | null;
   paidWorkspaceRate: number | null;
@@ -49,10 +50,11 @@ export async function getGrowthData(range: GrowthRange): Promise<GrowthData> {
 
   const client = createSupabaseAdmin();
   const start = startFor(range);
-  const [trafficResult, workspaceResult, runResult] = await Promise.all([
+  const [trafficResult, workspaceResult, runResult, trialResult] = await Promise.all([
     client.from("traffic_sessions").select("session_key,first_seen_at,first_touch_source,utm_source,landing_path").gte("first_seen_at", start),
     client.from("os_workspaces").select("id,name,created_at,billing_status").gte("created_at", start).order("created_at", { ascending: false }).limit(100),
     client.from("os_operator_runs").select("workspace_id,created_at").limit(500),
+    client.from("os_trial_entitlements").select("id,trial_started_at").gte("trial_started_at", start),
   ]);
 
   const traffic = asRows(trafficResult.data);
@@ -61,7 +63,8 @@ export async function getGrowthData(range: GrowthRange): Promise<GrowthData> {
   const trafficAvailable = !trafficResult.error;
   const workspaceAvailable = !workspaceResult.error;
   const runsAvailable = !runResult.error;
-  const sources = [trafficAvailable, workspaceAvailable, runsAvailable];
+  const trialsAvailable = !trialResult.error;
+  const sources = [trafficAvailable, workspaceAvailable, runsAvailable, trialsAvailable];
   const sourceStatus = sources.every(Boolean) ? "connected" : sources.some(Boolean) ? "partial" : "unavailable";
   if (sourceStatus === "unavailable") return unavailable(range, "The product growth sources are unavailable.");
 
@@ -80,6 +83,7 @@ export async function getGrowthData(range: GrowthRange): Promise<GrowthData> {
     workspacesCreated: workspaceCount,
     workspacesRunning: runningCount,
     paidWorkspaces: paidCount,
+    trialsStarted: trialsAvailable ? asRows(trialResult.data).length : null,
     visitorToWorkspaceRate: visitors && workspaceCount !== null ? workspaceCount / visitors : null,
     workspaceActivationRate: workspaceCount ? (runningCount ?? 0) / workspaceCount : null,
     paidWorkspaceRate: workspaceCount ? (paidCount ?? 0) / workspaceCount : null,
@@ -90,5 +94,5 @@ export async function getGrowthData(range: GrowthRange): Promise<GrowthData> {
 }
 
 function unavailable(range: GrowthRange, message: string): GrowthData {
-  return { range, sourceStatus: "unavailable", visitors: null, workspacesCreated: null, workspacesRunning: null, paidWorkspaces: null, visitorToWorkspaceRate: null, workspaceActivationRate: null, paidWorkspaceRate: null, sources: [], landingPaths: [], recentWorkspaces: [], unavailable: message };
+  return { range, sourceStatus: "unavailable", visitors: null, workspacesCreated: null, workspacesRunning: null, paidWorkspaces: null, trialsStarted: null, visitorToWorkspaceRate: null, workspaceActivationRate: null, paidWorkspaceRate: null, sources: [], landingPaths: [], recentWorkspaces: [], unavailable: message };
 }

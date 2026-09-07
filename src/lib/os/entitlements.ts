@@ -46,6 +46,12 @@ export function resolveWorkspacePlanTier(workspace: Workspace): PlanTier {
 }
 
 export function resolveWorkspaceBillingStatus(workspace: Workspace): BillingStatus {
+  // Webhook or scheduler delivery can be delayed. A stored `trialing` value
+  // must never retain real execution after the provider-supplied end time.
+  if (workspace.billingStatus === "trialing" && workspace.trialEndsAt) {
+    const trialEnd = new Date(workspace.trialEndsAt).getTime();
+    if (Number.isFinite(trialEnd) && trialEnd <= Date.now()) return "canceled";
+  }
   if (workspace.billingStatus) return workspace.billingStatus;
   if (workspace.trialEndsAt) {
     return new Date(workspace.trialEndsAt).getTime() > Date.now() ? "trialing" : "canceled";
@@ -99,7 +105,7 @@ export function getEntitlements(workspace: Workspace): Entitlements {
       canUseSuggestedWorkflows: true,
       canUseAdvancedPolicies: true,
       canUseCompanyMemoryGraph: true,
-      supportLevel: "email",
+      supportLevel: "priority",
     };
   }
 

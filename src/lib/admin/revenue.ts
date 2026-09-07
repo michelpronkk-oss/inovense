@@ -11,6 +11,7 @@ export type RevenueData = {
   mrr: number | null;
   mrrNote: string;
   subscriptionStates: { active: number | null; trialing: number | null; pastDue: number | null };
+  trials: { started: number | null; active: number | null; converted: number | null; expired: number | null; conversionRate: number | null; available: boolean };
   billingEvents: { received: number | null; processed: number | null; needsReview: number | null; failed: number | null };
   workspaces: Array<{ id: string; name: string; plan: string; billingStatus: string; updatedAt: string | null }>;
   subscriptionsAvailable: boolean;
@@ -41,6 +42,7 @@ function unavailable(message: string): RevenueData {
   return {
     sourceStatus: "unavailable", mrr: null, mrrNote: message,
     subscriptionStates: { active: null, trialing: null, pastDue: null },
+    trials: { started: null, active: null, converted: null, expired: null, conversionRate: null, available: false },
     billingEvents: { received: null, processed: null, needsReview: null, failed: null },
     workspaces: [], subscriptionsAvailable: false, unavailable: message,
   };
@@ -51,13 +53,14 @@ export async function getRevenueData(): Promise<RevenueData> {
   if (!hasSupabaseAdminConfig()) return unavailable("Supabase is not configured.");
 
   const db = createSupabaseAdmin();
-  const [workspaceResult, eventResult, subscriptionResult] = await Promise.all([
+  const [workspaceResult, eventResult, subscriptionResult, trialResult] = await Promise.all([
     safely(() => db.from("os_workspaces").select("id,name,plan_tier,billing_status,billing_updated_at").order("billing_updated_at", { ascending: false }).limit(100)),
     safely(() => db.from("os_billing_events").select("event_type,processing_status,created_at").order("created_at", { ascending: false }).limit(250)),
     safely(() => db.from("os_billing_subscriptions").select("status,currency,recurring_amount_minor,frequency_count,frequency_interval")),
+    safely(() => db.from("os_trial_entitlements").select("trial_status,trial_started_at")),
   ]);
 
-  const sourceFlags = [workspaceResult.available, eventResult.available, subscriptionResult.available];
+  const sourceFlags = [workspaceResult.available, eventResult.available, subscriptionResult.available, trialResult.available];
   const sourceStatus: Availability = sourceFlags.every(Boolean) ? "connected" : sourceFlags.some(Boolean) ? "partial" : "unavailable";
   if (sourceStatus === "unavailable") return unavailable("Billing sources are unavailable in the current database.");
 
@@ -69,6 +72,7 @@ export async function getRevenueData(): Promise<RevenueData> {
   const mrrAvailable = subscriptionResult.available && onlyUsd && mrrHasCompleteFacts && (activeSubscriptions.length > 0 || states("active") === 0);
   const mrr = mrrAvailable ? amounts.reduce<number>((total, amount) => total + (amount ?? 0), 0) / 100 : null;
   const events = eventResult.rows;
+  const trialStates = (status: string) => trialResult.rows.filter((row) => String(row.trial_status) === status).length;
   const statusContains = (text: string) => (row: Row) => String(row.processing_status).toLowerCase().includes(text);
 
   return {
@@ -85,6 +89,14 @@ export async function getRevenueData(): Promise<RevenueData> {
       active: workspaceResult.available ? states("active") : null,
       trialing: workspaceResult.available ? states("trialing") : null,
       pastDue: workspaceResult.available ? states("past_due") : null,
+    },
+    trials: {
+      started: trialResult.available ? trialResult.rows.length : null,
+      active: trialResult.available ? trialStates("active") : null,
+      converted: trialResult.available ? trialStates("converted") : null,
+      expired: trialResult.available ? trialStates("expired") : null,
+      conversionRate: trialResult.available && trialResult.rows.length ? trialStates("converted") / trialResult.rows.length : trialResult.available ? 0 : null,
+      available: trialResult.available,
     },
     billingEvents: {
       received: eventResult.available ? events.length : null,

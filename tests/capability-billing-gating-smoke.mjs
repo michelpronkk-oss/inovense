@@ -196,6 +196,14 @@ async function testExecutionEligibilityRuntime() {
     assert.equal(result.status, "eligible");
   }
 
+  // 5b. Scale is a paid self-serve tier and uses the same shared eligibility gate.
+  {
+    const result = getWorkspaceExecutionEligibilityFromWorkspace(baseWorkspace({ planTier: "scale", billingStatus: "active" }));
+    assert.equal(result.eligible, true, "Scale must be execution-eligible when active");
+    assert.equal(result.status, "eligible");
+    assert.equal(result.planTier, "scale");
+  }
+
   // 6. getWorkspaceExecutionEligibility never trusts a client-supplied value - it always loads
   // the real workspace row through the supabase client it is given, and two different DB rows
   // for the same workspaceId produce two different, correctly-derived results.

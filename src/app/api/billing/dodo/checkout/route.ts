@@ -4,6 +4,8 @@ import type { CheckoutPlanTier } from "@/lib/pricing";
 import { getAppUrl } from "@/lib/urls";
 import { getVerifiedSupabaseUser } from "@/lib/supabase/server";
 import { requireWorkspaceAdmin, resolveActiveWorkspaceId } from "@/lib/server/workspace-access";
+import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { getTrialEligibility } from "@/lib/billing/trials";
 
 function parsePlan(value: string | null): CheckoutPlanTier | null {
   if (value === "starter" || value === "growth" || value === "scale") return value;
@@ -13,7 +15,7 @@ function parsePlan(value: string | null): CheckoutPlanTier | null {
 function isPlanConfigured(plan: CheckoutPlanTier): boolean {
   if (plan === "starter") return Boolean(process.env.DODO_PRODUCT_STARTER);
   if (plan === "growth") return Boolean(process.env.DODO_PRODUCT_GROWTH);
-  return Boolean(process.env.DODO_PRODUCT_SCALE);
+  return Boolean(process.env.DODO_SCALE_PRICE_ID);
 }
 
 function resolveSiteUrl(): string {
@@ -39,9 +41,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/settings?billing=permission_required", getAppUrl()));
   }
 
+  const trial = await getTrialEligibility({ supabase: createSupabaseAdmin(), workspaceId, ownerUserId: user.id });
+  if (trial.reason === "history_unavailable") {
+    return NextResponse.redirect(new URL(`/plans?billing=trial_state_unavailable&plan=${plan}`, getAppUrl()));
+  }
+  // Dodo's current checkout integration cannot safely replace a subscription
+  // in the middle of a live trial without risking a second billing flow. Keep
+  // the original trial clock intact and require conversion or its end first.
+  if (trial.entitlement?.trialStatus === "active") {
+    return NextResponse.redirect(new URL(`/plans?billing=active_trial&plan=${plan}`, getAppUrl()));
+  }
+
   try {
     const { checkoutUrl } = await createDodoCheckoutSession({
       plan,
+      trialDays: trial.eligible ? 3 : 0,
       siteUrl: resolveSiteUrl(),
       workspaceId,
       userId: user.id,

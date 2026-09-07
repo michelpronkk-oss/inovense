@@ -3,6 +3,7 @@ import { dodoProductEnvKeys, type CheckoutPlanTier } from "@/lib/pricing";
 
 export type DodoCheckoutSessionInput = {
   plan: CheckoutPlanTier;
+  trialDays: number;
   siteUrl: string;
   workspaceId?: string;
   userId?: string;
@@ -39,12 +40,16 @@ export async function createDodoCheckoutSession(input: DodoCheckoutSessionInput)
 
   const payload: JsonObject = {
     product_cart: [{ product_id: productId, quantity: 1 }],
+    // A server-authorized value: 3 for the first Auterim trial, 0 after the
+    // permanent entitlement has been consumed. Never derive this in the UI.
+    subscription_data: { trial_period_days: input.trialDays },
     // Dodo Checkout Sessions use one return_url. Send a completed checkout to
     // the next meaningful action: connect the systems for the first operator.
     return_url: `${input.siteUrl}/connectors?billing=success&plan=${input.plan}`,
     metadata: {
       plan: input.plan,
       plan_tier: input.plan,
+      trial_eligible: input.trialDays > 0 ? "true" : "false",
       workspace_id: input.workspaceId || null,
       user_id: input.userId || null,
     },
