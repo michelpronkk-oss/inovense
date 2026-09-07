@@ -1,8 +1,21 @@
 import { getPublicSignInHref, getPublicWorkspaceCta, type PublicUserState } from "@/lib/public-user-state";
 import { appHref } from "@/lib/urls";
 
-export type PublicPlanTier = "starter" | "growth" | "operator" | "enterprise";
-export type CheckoutPlanTier = Exclude<PublicPlanTier, "enterprise">;
+// `starter` and `growth` are persisted legacy keys for Foundation and
+// Workforce. Keep them stable so current workspaces and Dodo subscriptions
+// continue to resolve. `operator` remains a legacy billed tier; it is not a
+// self-serve offer.
+export type PublicPlanTier = "starter" | "growth" | "scale";
+export type LegacyBillingPlanTier = "operator";
+export type BillingPlanTier = PublicPlanTier | LegacyBillingPlanTier;
+export type CheckoutPlanTier = PublicPlanTier;
+
+// Explicit commercial ordering. Do not infer upgrade paths alphabetically.
+export const SELF_SERVE_PLAN_ORDER: readonly CheckoutPlanTier[] = ["starter", "growth", "scale"];
+
+export function getSelfServePlanRank(plan: CheckoutPlanTier): number {
+  return SELF_SERVE_PLAN_ORDER.indexOf(plan);
+}
 
 export type PricingPlan = {
   plan: PublicPlanTier;
@@ -20,11 +33,11 @@ export type PricingPlan = {
   metadata: {
     billing_interval: "month";
     trial_days: number;
-    operators_limit: number | "unlimited";
-    connectors_limit: number | "standard_all" | "custom";
-    actions_limit: number | "custom";
-    log_retention_days: number | "custom";
-    support_level: "email" | "priority" | "dedicated" | "enterprise";
+  operators_limit: number;
+  connectors_limit: number;
+  actions_limit: number;
+  log_retention_days: number;
+  support_level: "email" | "priority";
     setup_support?: "included";
   };
 };
@@ -32,15 +45,16 @@ export type PricingPlan = {
 export const dodoProductEnvKeys = {
   starter: "DODO_PRODUCT_STARTER",
   growth: "DODO_PRODUCT_GROWTH",
+  scale: "DODO_PRODUCT_SCALE",
   operator: "DODO_PRODUCT_OPERATOR",
-} as const;
+} as const satisfies Record<BillingPlanTier, string>;
 
 export const pricingPlans: PricingPlan[] = [
   {
     plan: "starter",
     plan_tier: "starter",
     plan_name: "Foundation",
-    price: "$299",
+    price: "$99",
     period: "/mo",
     tagline: "Deploy your first controlled AI operators.",
     billingLabel: "3-day trial included",
@@ -52,8 +66,6 @@ export const pricingPlans: PricingPlan[] = [
       "1,000 controlled runs per month",
       "Approval-first execution",
       "Company memory and audit history",
-      "30-day execution logs",
-      "Email support",
       "3-day trial included",
     ],
     metadata: {
@@ -70,11 +82,11 @@ export const pricingPlans: PricingPlan[] = [
     plan: "growth",
     plan_tier: "growth",
     plan_name: "Workforce",
-    price: "$799",
+    price: "$299",
     period: "/mo",
     tagline: "Run essential work across teams with control.",
     billingLabel: "3-day trial included",
-    badge: "Most chosen",
+    badge: "Recommended",
     featured: true,
     cta: "Choose Workforce",
     ctaHref: appHref("/api/billing/dodo/checkout?plan=growth"),
@@ -84,9 +96,6 @@ export const pricingPlans: PricingPlan[] = [
       "5,000 controlled runs per month",
       "Advanced approval policies",
       "Company memory and audit history",
-      "90-day execution logs",
-      "Slack and email approvals",
-      "Priority support",
       "3-day trial included",
     ],
     metadata: {
@@ -96,6 +105,35 @@ export const pricingPlans: PricingPlan[] = [
       connectors_limit: 8,
       actions_limit: 5000,
       log_retention_days: 90,
+      support_level: "email",
+    },
+  },
+  {
+    plan: "scale",
+    plan_tier: "scale",
+    plan_name: "Scale",
+    price: "$799",
+    period: "/mo",
+    tagline: "Scale AI operations across more systems and workflows.",
+    billingLabel: "3-day trial included",
+    cta: "Choose Scale",
+    ctaHref: appHref("/api/billing/dodo/checkout?plan=scale"),
+    features: [
+      "Up to 20 active operators",
+      "Up to 20 connected systems",
+      "20,000 controlled runs per month",
+      "Advanced approval policies",
+      "Company memory and audit history",
+      "Priority support",
+      "3-day trial included",
+    ],
+    metadata: {
+      billing_interval: "month",
+      trial_days: 3,
+      operators_limit: 20,
+      connectors_limit: 20,
+      actions_limit: 20000,
+      log_retention_days: 180,
       support_level: "priority",
     },
   },
@@ -115,9 +153,6 @@ export function resolvePublicPlanCta(
   plan: PricingPlan,
   userState: PublicUserState,
 ): { label: string; href: string } {
-  if (plan.plan_tier === "enterprise") {
-    return { label: plan.cta, href: plan.ctaHref };
-  }
   if (userState !== "signed_in") {
     if (userState === "guest" || userState === "registered" || userState === "loading") {
       return { label: "Sign in to choose", href: getPublicSignInHref() };
@@ -129,7 +164,7 @@ export function resolvePublicPlanCta(
 }
 
 export type BillingEntitlementSnapshot = {
-  planTier: CheckoutPlanTier;
+  planTier: BillingPlanTier;
   operatorsLimit: number;
   connectorsLimit: number | "standard_all";
   actionsLimit: number;
@@ -139,7 +174,7 @@ export type BillingEntitlementSnapshot = {
   supportLevel: "email" | "priority" | "dedicated";
 };
 
-export function getBillingEntitlementsForPlan(plan: CheckoutPlanTier): BillingEntitlementSnapshot {
+export function getBillingEntitlementsForPlan(plan: BillingPlanTier): BillingEntitlementSnapshot {
   if (plan === "starter") {
     return {
       planTier: "starter",
@@ -159,6 +194,18 @@ export function getBillingEntitlementsForPlan(plan: CheckoutPlanTier): BillingEn
       connectorsLimit: 8,
       actionsLimit: 5000,
       logRetentionDays: 90,
+      canUseRealConnectors: true,
+      canRunRealActions: true,
+      supportLevel: "priority",
+    };
+  }
+  if (plan === "scale") {
+    return {
+      planTier: "scale",
+      operatorsLimit: 20,
+      connectorsLimit: 20,
+      actionsLimit: 20000,
+      logRetentionDays: 180,
       canUseRealConnectors: true,
       canRunRealActions: true,
       supportLevel: "priority",

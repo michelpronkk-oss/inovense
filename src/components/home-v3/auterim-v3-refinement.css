@@ -2381,6 +2381,32 @@
   }
 }
 
+/* Mobile only: same typing reveal, tuned to feel more fluid on a phone.
+   Desktop keeps the exact 8-step/640ms rhythm above untouched. Two changes,
+   both scoped to width and to `prefers-reduced-motion: no-preference` (so
+   reduced-motion users on mobile still get the static, unclipped fallback
+   from `.hero-editorial-forward` below, never this animation):
+   1) The text reveal steps up from 8 to 14 increments over a slightly
+      longer 680ms, so each jump is smaller and quicker — still a discrete
+      "typing" cadence (not a smooth wipe), just less chunky on a narrower
+      column where the word occupies more of the line's relative width.
+   2) The caret switches from the same stepped motion to a continuous
+      `linear` glide across the same 680ms. The letters still type in
+      beats; the caret tracking them now moves fluidly instead of
+      hopping in lockstep, which reads as noticeably smoother without
+      turning the effect into something else. Caret blink timing is
+      unchanged — only its horizontal travel is smoothed. */
+@media (prefers-reduced-motion: no-preference) and (max-width: 767px) {
+  .auterim-v3-page .hero-editorial-forward {
+    animation: hero-editorial-forward-type 680ms steps(14, end) 620ms forwards;
+  }
+  .auterim-v3-page .hero-editorial-forward::after {
+    animation:
+      hero-editorial-forward-caret-move 680ms linear 620ms forwards,
+      hero-editorial-forward-caret-blink 460ms linear 620ms 5 forwards;
+  }
+}
+
 @keyframes auterim-hero-copy-in {
   to { opacity: 1; transform: none; }
 }
@@ -2838,7 +2864,15 @@
   .auterim-v3-page .head h2 { max-width: 18ch; font-size: clamp(30px, 7.6vw, 42px); }
   .auterim-v3-page .head .say { max-width: 54ch; margin-top: 15px; font-size: 16px; }
   .auterim-v3-page .body { margin-top: 52px; }
-  .auterim-v3-page .hero-editorial { min-height: auto; padding: 106px 0 64px; }
+  /* Viewport-aware, not a fixed content-plus-padding guess: on phones this
+     sizes the hero to the visible fold (svh tracks the real mobile viewport,
+     dvh unsupported browsers fall back to vh) and centers the copy/artifact
+     stack inside it, so leftover space reads as balanced breathing room
+     instead of a dead gap dropped below the content before the next
+     section. Content taller than the fold still simply grows the section
+     (min-height never clips). See the dedicated 767px pass below for the
+     phone-width refinement of this same rule. */
+  .auterim-v3-page .hero-editorial { min-height: 100vh; min-height: 100svh; padding: 106px 0 64px; display: flex; flex-direction: column; justify-content: center; }
   .auterim-v3-page .hero-editorial-in { grid-template-columns: 1fr; gap: 42px; }
   .auterim-v3-page .hero-editorial-copy { padding-left: 24px; }
   .auterim-v3-page .hero-editorial h1 { max-width: 12ch; font-size: clamp(38px, 10.8vw, 54px); }
@@ -3879,7 +3913,15 @@
   .auterim-v3-page .head h2 { max-width: 18ch; font-size: clamp(30px, 7.6vw, 42px); }
   .auterim-v3-page .head .say { margin-top: 15px; font-size: 16px; }
   .auterim-v3-page .body { margin-top: 52px; }
-  .auterim-v3-page .hero-editorial { min-height: auto; padding: 106px 0 64px; }
+  /* Viewport-aware, not a fixed content-plus-padding guess: on phones this
+     sizes the hero to the visible fold (svh tracks the real mobile viewport,
+     dvh unsupported browsers fall back to vh) and centers the copy/artifact
+     stack inside it, so leftover space reads as balanced breathing room
+     instead of a dead gap dropped below the content before the next
+     section. Content taller than the fold still simply grows the section
+     (min-height never clips). See the dedicated 767px pass below for the
+     phone-width refinement of this same rule. */
+  .auterim-v3-page .hero-editorial { min-height: 100vh; min-height: 100svh; padding: 106px 0 64px; display: flex; flex-direction: column; justify-content: center; }
   .auterim-v3-page .hero-editorial-in { grid-template-columns: 1fr; gap: 42px; }
   .auterim-v3-page .hero-editorial h1 { max-width: 12ch; font-size: clamp(38px, 10.8vw, 54px); }
   .auterim-v3-page .hero-editorial .say { font-size: 16px; }
@@ -4553,14 +4595,23 @@
     margin-bottom: 2px;
   }
 
-  /* Stretch the hero to fill the fold instead of ending ~200px short of it
-     with a flat, atmosphere-free gap before the next section. `100svh`
-     (falls back to `100vh` where unsupported) tracks the real visible
-     viewport on mobile browsers, so this holds across 360-430px-wide
-     phones at their differing heights rather than a fixed px guess. */
+  /* Stretch the hero to fill the fold instead of ending short of it with a
+     flat, atmosphere-free gap before the next section. `100svh` (falls back
+     to `100vh` where unsupported) tracks the real visible viewport on
+     mobile browsers, so this holds across 360-430px-wide phones at their
+     differing heights rather than a fixed px guess. Centering the copy
+     inside that viewport-height box (rather than leaving it top-anchored)
+     is what actually removes the dead gap: on shorter content the leftover
+     space now splits evenly above and below instead of collecting as one
+     large block beneath the CTA. Taller content (small phones, larger text
+     settings) simply grows the section past 100svh — min-height never
+     clips the CTA or headline. */
   .auterim-v3-page .hero-editorial {
     min-height: 100vh;
     min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 
   /* The grid's radial mask is tuned for a wide, short desktop hero — on a

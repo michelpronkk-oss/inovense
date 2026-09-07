@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
-import { getBillingEntitlementsForPlan, type CheckoutPlanTier } from "@/lib/pricing";
+import { getBillingEntitlementsForPlan, type BillingPlanTier } from "@/lib/pricing";
 import { verifyDodoWebhookSignature } from "@/lib/billing/dodo";
 
 type BillingStatus = "preview" | "trialing" | "active" | "past_due" | "canceled";
@@ -15,10 +15,11 @@ function createSupabaseAdmin() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-function mapProductToPlan(productId: string | undefined): CheckoutPlanTier | null {
+function mapProductToPlan(productId: string | undefined): BillingPlanTier | null {
   if (!productId) return null;
   if (productId === process.env.DODO_PRODUCT_STARTER) return "starter";
   if (productId === process.env.DODO_PRODUCT_GROWTH) return "growth";
+  if (productId === process.env.DODO_PRODUCT_SCALE) return "scale";
   if (productId === process.env.DODO_PRODUCT_OPERATOR) return "operator";
   return null;
 }
@@ -52,6 +53,21 @@ function fromPath(obj: Record<string, unknown>, path: string): unknown {
     if (!acc || typeof acc !== "object") return undefined;
     return (acc as Record<string, unknown>)[key];
   }, obj);
+}
+
+function positiveInteger(value: unknown): number | null {
+  const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function dodoSubscriptionStatus(value: unknown): "pending" | "active" | "on_hold" | "cancelled" | "failed" | "expired" | null {
+  const status = String(value ?? "").toLowerCase();
+  return ["pending", "active", "on_hold", "cancelled", "failed", "expired"].includes(status) ? status as "pending" | "active" | "on_hold" | "cancelled" | "failed" | "expired" : null;
+}
+
+function dodoInterval(value: unknown): "day" | "week" | "month" | "year" | null {
+  const interval = String(value ?? "").toLowerCase();
+  return ["day", "week", "month", "year"].includes(interval) ? interval as "day" | "week" | "month" | "year" : null;
 }
 
 export async function POST(req: NextRequest) {
@@ -96,7 +112,7 @@ export async function POST(req: NextRequest) {
     payload.product_id,
     fromPath(payload, "data.product.id"),
   );
-  const plan = (explicitPlan === "starter" || explicitPlan === "growth" || explicitPlan === "operator")
+  const plan = (explicitPlan === "starter" || explicitPlan === "growth" || explicitPlan === "scale" || explicitPlan === "operator")
     ? explicitPlan
     : mapProductToPlan(resolvedProductId);
 
@@ -111,6 +127,11 @@ export async function POST(req: NextRequest) {
     subscription.user_id,
   );
   const trialEndsAt = firstString(subscription.trial_ends_at, data.trial_ends_at);
+  const recurringAmount = positiveInteger(subscription.recurring_pre_tax_amount ?? data.recurring_pre_tax_amount);
+  const currency = firstString(subscription.currency, data.currency)?.toUpperCase();
+  const frequencyCount = positiveInteger(subscription.payment_frequency_count ?? data.payment_frequency_count) || 1;
+  const frequencyInterval = dodoInterval(subscription.payment_frequency_interval ?? data.payment_frequency_interval);
+  const subscriptionStatus = dodoSubscriptionStatus(subscription.status ?? data.status);
 
   const supabase = createSupabaseAdmin();
 
@@ -146,7 +167,7 @@ export async function POST(req: NextRequest) {
   const entitlements = getBillingEntitlementsForPlan(plan);
   const billingStatus = mapEventToBillingStatus(eventType, trialEndsAt);
   const updatePayload = {
-    plan: plan === "starter" ? "Foundation" : plan === "growth" ? "Workforce" : "Operator",
+    plan: plan === "starter" ? "Foundation" : plan === "growth" ? "Workforce" : plan === "scale" ? "Scale" : "Operator",
     plan_tier: entitlements.planTier,
     billing_status: billingStatus,
     trial_ends_at: trialEndsAt ?? null,
@@ -177,6 +198,26 @@ export async function POST(req: NextRequest) {
       })
       .eq("event_id", eventId);
     return NextResponse.json({ error: `Failed to update workspace entitlements: ${wsUpdate.error.message}` }, { status: 500 });
+  }
+
+  if (subscriptionId && recurringAmount !== null && currency && frequencyInterval && subscriptionStatus) {
+    const normalizedSubscription = await supabase.from("os_billing_subscriptions").upsert({
+      dodo_subscription_id: subscriptionId,
+      workspace_id: workspaceId,
+      dodo_customer_id: customerId ?? null,
+      dodo_product_id: resolvedProductId ?? null,
+      status: subscriptionStatus,
+      currency,
+      recurring_amount_minor: recurringAmount,
+      frequency_count: frequencyCount,
+      frequency_interval: frequencyInterval,
+      next_billing_at: firstString(subscription.next_billing_date, data.next_billing_date) ?? null,
+      cancelled_at: firstString(subscription.cancelled_at, data.cancelled_at) ?? null,
+      source_event_id: eventId,
+    }, { onConflict: "dodo_subscription_id" });
+    if (normalizedSubscription.error) {
+      await supabase.from("os_billing_events").update({ processing_status: "warning_subscription_normalization", warning_message: normalizedSubscription.error.message }).eq("event_id", eventId);
+    }
   }
 
   await supabase.from("os_execution_logs").insert({

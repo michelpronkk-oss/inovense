@@ -18,11 +18,11 @@ export type AdminOverview = {
   growth: {
     visits: number | null;
     previews: number | null;
-    signups: number | null;
+    workspaces: number | null;
     paid: number | null;
     funnelAvailable: boolean;
   };
-  revenue: { available: false; reason: string };
+  revenue: { available: boolean; reason: string };
   usage: { runs: number | null; approvals: number | null; failedRuns: number | null };
   operators: Array<{ key: string; runs: number; label: string }>;
   connectors: Array<{ name: string; connected: number; status: string }>;
@@ -49,6 +49,15 @@ function metric(value: number | null, label: string): Metric {
   return { value, label, state: value === null ? "unavailable" : "live" };
 }
 
+function monthlyAmount(minor: number, count: number, interval: string): number | null {
+  if (!Number.isFinite(minor) || !Number.isFinite(count) || count <= 0) return null;
+  if (interval === "month") return minor / count;
+  if (interval === "year") return minor / (count * 12);
+  if (interval === "week") return (minor * 52) / (count * 12);
+  if (interval === "day") return (minor * 365) / (count * 12);
+  return null;
+}
+
 function operatorLabel(key: string): string {
   return key.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
@@ -72,28 +81,32 @@ export async function getAdminOverview(range: AdminRange = "30d"): Promise<Admin
 
   const client = createSupabaseAdmin();
   const start = dateStart(range);
-  const [workspaces, traffic, leads, runs, approvals, connectors, activity] = await Promise.all([
+  const [workspaces, traffic, runs, approvals, connectors, activity, subscriptions] = await Promise.all([
     safeRows(client, "os_workspaces", "id,name,billing_status,created_at,updated_at"),
     safeRows(client, "traffic_sessions", "session_key,first_seen_at", start, "first_seen_at"),
-    safeRows(client, "leads", "id,created_at,status", start),
     safeRows(client, "os_operator_runs", "id,operator_key,status,created_at", start),
     safeRows(client, "os_approvals", "id,status,created_at", start),
     safeRows(client, "os_connectors", "id,name,connected,status"),
     safeRows(client, "activity_events", "id,event_type,entity_type,created_at", start),
+    safeRows(client, "os_billing_subscriptions", "status,currency,recurring_amount_minor,frequency_count,frequency_interval"),
   ]);
 
   const workspaceRows = workspaces.rows;
   const paidStatuses = new Set(["active", "trialing", "past_due"]);
-  const activeSubscriptions = workspaceRows.filter((row) => paidStatuses.has(String(row.billing_status))).length;
+  const activeSubscriptionCount = workspaceRows.filter((row) => paidStatuses.has(String(row.billing_status))).length;
   const activeWorkspaceCount = workspaceRows.filter((row) => {
     const updated = typeof row.updated_at === "string" ? row.updated_at : "";
     return updated >= start;
   }).length;
   const previews = traffic.rows.length;
-  const signupCount = leads.rows.length;
+  const newWorkspaceCount = workspaceRows.filter((row) => String(row.created_at) >= start).length;
   const runRows = runs.rows;
   const failedRuns = runRows.filter((row) => ["failed", "error", "canceled"].includes(String(row.status))).length;
-  const sourceFlags = [workspaces.available, traffic.available, leads.available, runs.available, approvals.available, connectors.available, activity.available];
+  const normalizedSubscriptions = subscriptions.rows.filter((row) => String(row.status) === "active");
+  const hasOnlyUsdSubscriptions = normalizedSubscriptions.every((row) => String(row.currency).toUpperCase() === "USD");
+  const normalizedMrrMinor = hasOnlyUsdSubscriptions ? normalizedSubscriptions.reduce((total, row) => total + (monthlyAmount(Number(row.recurring_amount_minor), Number(row.frequency_count), String(row.frequency_interval)) ?? 0), 0) : null;
+  const mrrReady = subscriptions.available && hasOnlyUsdSubscriptions && (normalizedSubscriptions.length > 0 || activeSubscriptionCount === 0);
+  const sourceFlags = [workspaces.available, traffic.available, runs.available, approvals.available, connectors.available, activity.available, subscriptions.available];
   const sourceStatus = sourceFlags.every(Boolean) ? "connected" : sourceFlags.some(Boolean) ? "partial" : "unavailable";
 
   const operatorCounts = new Map<string, number>();
@@ -107,15 +120,15 @@ export async function getAdminOverview(range: AdminRange = "30d"): Promise<Admin
     generatedAt: new Date().toISOString(),
     sourceStatus,
     kpis: {
-      mrr: metric(null, "Dodo amount history is not normalized yet"),
-      activeSubscriptions: metric(workspaces.available ? activeSubscriptions : null, "Workspace billing status"),
+      mrr: metric(mrrReady && normalizedMrrMinor !== null ? normalizedMrrMinor / 100 : null, mrrReady ? "Normalized active Dodo subscriptions" : subscriptions.available && !hasOnlyUsdSubscriptions ? "Multiple currencies require a reporting currency" : "Replay active Dodo subscription events after migration"),
+      activeSubscriptions: metric(workspaces.available ? activeSubscriptionCount : null, "Workspace billing status"),
       activeWorkspaces: metric(workspaces.available ? activeWorkspaceCount : null, "Updated in selected range"),
-      newCustomers: metric(leads.available ? signupCount : null, "CRM leads in selected range"),
-      previewConversion: metric(traffic.available && leads.available && previews > 0 ? signupCount / previews : null, "Leads / captured sessions"),
+      newCustomers: metric(workspaces.available ? newWorkspaceCount : null, "Workspaces created in selected range"),
+      previewConversion: metric(traffic.available && workspaces.available && previews > 0 ? newWorkspaceCount / previews : null, "Workspaces / captured sessions"),
       runs: metric(runs.available ? runRows.length : null, "Operator runs in selected range"),
     },
-    growth: { visits: traffic.available ? traffic.rows.length : null, previews: traffic.available ? previews : null, signups: leads.available ? signupCount : null, paid: workspaces.available ? activeSubscriptions : null, funnelAvailable: traffic.available && leads.available },
-    revenue: { available: false, reason: "Dodo webhooks are stored, but recurring amount fields are not yet normalized for reporting." },
+    growth: { visits: traffic.available ? traffic.rows.length : null, previews: traffic.available ? previews : null, workspaces: workspaces.available ? newWorkspaceCount : null, paid: workspaces.available ? activeSubscriptionCount : null, funnelAvailable: traffic.available && workspaces.available },
+    revenue: { available: mrrReady, reason: mrrReady ? "Recurring amount, currency, and billing interval are normalized from active Dodo subscriptions." : "Dodo webhooks are stored, but active subscription events need to populate recurring amount, currency, and billing interval." },
     usage: { runs: runs.available ? runRows.length : null, approvals: approvals.available ? approvals.rows.length : null, failedRuns: runs.available ? failedRuns : null },
     operators: [...operatorCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([key, count]) => ({ key, runs: count, label: operatorLabel(key) })),
     connectors: connectors.rows.slice(0, 8).map((row) => ({ name: String(row.name ?? "Connector"), connected: row.connected === true ? 1 : 0, status: String(row.status ?? "unknown") })),
@@ -127,8 +140,8 @@ function unavailableOverview(range: AdminRange): AdminOverview {
   const unavailable = (label: string): Metric => metric(null, label);
   return {
     range, generatedAt: new Date().toISOString(), sourceStatus: "unavailable",
-    kpis: { mrr: unavailable("Billing source not connected"), activeSubscriptions: unavailable("Workspace source not connected"), activeWorkspaces: unavailable("Workspace source not connected"), newCustomers: unavailable("CRM source not connected"), previewConversion: unavailable("Traffic source not connected"), runs: unavailable("Usage source not connected") },
-    growth: { visits: null, previews: null, signups: null, paid: null, funnelAvailable: false },
+    kpis: { mrr: unavailable("Billing source not connected"), activeSubscriptions: unavailable("Workspace source not connected"), activeWorkspaces: unavailable("Workspace source not connected"), newCustomers: unavailable("Workspace source not connected"), previewConversion: unavailable("Traffic source not connected"), runs: unavailable("Usage source not connected") },
+    growth: { visits: null, previews: null, workspaces: null, paid: null, funnelAvailable: false },
     revenue: { available: false, reason: "Supabase is not configured in this environment." },
     usage: { runs: null, approvals: null, failedRuns: null }, operators: [], connectors: [], activity: [],
   };

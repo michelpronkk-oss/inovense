@@ -24,8 +24,22 @@
 @media (max-width:820px) { .auterim-v3-page .connect-editorial-grid::before,.auterim-v3-page .steps::before { display:none; } .auterim-v3-page .connect-editorial-grid article::before { display:none; } .auterim-v3-page .steps .step::before { display:none; } }
 @media (prefers-reduced-motion:reduce) { .auterim-v3-page .steps.sequence-in .step::before { animation:none; } .auterim-v3-page .steps.sequence-in .step:first-child::before { border-color:var(--acc); background:var(--acc); box-shadow:none; } }
 
-/* Public pricing retains the homepage's editorial divider language. */
-.auterim-v3-page #pricing .plans { grid-template-columns:repeat(2,minmax(0,1fr)); max-width:900px; margin:0 auto; }
+/* Public pricing retains the homepage's editorial divider language.
+   `margin:0 auto` here only exists to horizontally center the grid once it
+   hits its max-width — but because this selector carries an ID (#pricing),
+   it silently wins over every `.auterim-v3-page .body { margin-top: ... }`
+   rule in auterim-v3-refinement.css regardless of source order, zeroing the
+   vertical gap above the plans grid at every desktop width. That gap is
+   exactly what the absolutely positioned `.pl-badge` ("Most popular", see
+   auterim-v3-refinement.css) relies on for clearance above the grid, so with
+   it zeroed the badge sits directly on top of the intro paragraph, which
+   wraps to two lines at this column width. Restore the standard desktop
+   section gap here, at the same specificity, so the badge always has real
+   clearance. Mobile (<=820px) is untouched: `.pl-badge` switches to
+   `position: static` there and never depended on this margin. */
+.auterim-v3-page #pricing .plans { grid-template-columns:repeat(3,minmax(0,1fr)); max-width:1180px; margin:0 auto; }
+@media (min-width:821px) { .auterim-v3-page #pricing .plans { margin-top:68px; } }
 .auterim-v3-page #pricing .plans .pl { min-width:0; }
 .auterim-v3-page #pricing .plans .pl.now { border-top-color:var(--acc); }
+@media (min-width:821px) and (max-width:1100px) { .auterim-v3-page #pricing .plans { grid-template-columns:repeat(2,minmax(0,1fr)); max-width:780px; } }
 @media (max-width:820px) { .auterim-v3-page #pricing .plans { grid-template-columns:minmax(0,1fr); max-width:none; } .auterim-v3-page #pricing .plans .pl, .auterim-v3-page #pricing .plans .pl.now { min-height:0; margin:0; padding:29px 0 31px; border:0; border-top:1px solid rgba(148,164,180,.18); background:transparent; } .auterim-v3-page #pricing .plans .pl:first-child { border-top-color:var(--acc); } .auterim-v3-page #pricing .plans .pl.now { background:linear-gradient(90deg,rgba(55,230,212,.055),transparent 76%); } .auterim-v3-page #pricing .plans .pl-badge { position:static; display:inline-flex; align-self:flex-start; margin:0 0 3px; color:var(--acc); } .auterim-v3-page #pricing .plans .pl-fit { min-height:0; } .auterim-v3-page #pricing .plans .pl ul { display:grid; gap:10px; margin:1px 0 2px; } .auterim-v3-page #pricing .plans .pl .go { min-height:44px; margin-top:6px; padding:0; } }

@@ -15,7 +15,7 @@ export function PricingPlans({ plans }: { plans: PricingPlan[] }) {
   };
 
   return (
-    <div className="grid gap-5 md:grid-cols-2">
+    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
       {plans.map((plan) => {
         const cta = resolvePublicPlanCta(plan, userState);
         return (
@@ -52,7 +52,7 @@ export function PricingPlans({ plans }: { plans: PricingPlan[] }) {
                 </li>
               ))}
             </ul>
-            {plan.plan_tier === "enterprise" || userState !== "signed_in" ? (
+            {userState !== "signed_in" ? (
               <Link
                 href={cta.href}
                 className="block w-full rounded-xl py-2.5 text-center text-sm font-medium transition-all hover:-translate-y-px"
@@ -73,7 +73,7 @@ export function PricingPlans({ plans }: { plans: PricingPlan[] }) {
             ) : (
               <button
                 type="button"
-                onClick={() => startCheckout(plan.plan_tier as CheckoutPlanTier)}
+                onClick={() => startCheckout(plan.plan_tier)}
                 className="block w-full rounded-xl py-2.5 text-center text-sm font-medium transition-all hover:-translate-y-px"
                 style={plan.featured
                   ? {

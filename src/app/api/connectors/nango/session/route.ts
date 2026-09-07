@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     const entitlements = getEntitlements(workspace);
     if (!entitlements.canUseRealConnectors) {
       return NextResponse.json({
-        error: "Activate Starter to connect real accounts.",
+        error: "Activate a paid plan to connect real accounts.",
         code: "billing_required",
       }, { status: 402 });
     }

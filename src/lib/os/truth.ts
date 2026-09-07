@@ -47,6 +47,7 @@ export function getPlanLabel(planTier: string): string {
   const t = planTier.toLowerCase();
   if (t === "starter") return "Foundation";
   if (t === "growth") return "Workforce";
+  if (t === "scale") return "Scale";
   if (t === "operator") return "Operator";
   if (t === "enterprise") return "Enterprise";
   return "Preview";

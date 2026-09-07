@@ -22,6 +22,7 @@
     "test:capability-billing-gating": "node tests/capability-billing-gating-smoke.mjs",
     "test:product-journey": "node tests/product-journey-pass2-smoke.mjs",
     "test:operator-product-state": "node tests/operator-product-state-smoke.mjs",
+    "test:pricing-scale": "node tests/pricing-scale-smoke.mjs",
     "test:connector-impact": "node tests/connector-impact-smoke.mjs",
     "test:workflow-recommendations": "node tests/workflow-recommendations-real-smoke.mjs",
     "test:dashboard-lifecycle": "node tests/dashboard-lifecycle-smoke.mjs",
@@ -32,6 +33,7 @@
     "test:support": "node tests/support-smoke.mjs",
     "test:sidebar-navigation": "node tests/sidebar-navigation-smoke.mjs",
     "test:admin-command-center": "node tests/admin-command-center-smoke.mjs",
+    "test:admin-system-map": "node tests/admin-system-map-smoke.mjs",
     "trigger:dev": "npx trigger.dev@latest dev",
     "trigger:deploy": "npx trigger.dev@latest deploy"
   },
@@ -48,6 +50,7 @@
     "@supabase/ssr": "^0.12.6",
     "@supabase/supabase-js": "^2.115.0",
     "@trigger.dev/sdk": "4.5.16",
+    "@xyflow/react": "^12.11.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

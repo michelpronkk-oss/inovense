@@ -1,6 +1,6 @@
 // Inovense OS — Plan definitions and limit enforcement
 
-export type PlanId = "preview" | "starter" | "growth" | "operator" | "enterprise";
+export type PlanId = "preview" | "starter" | "growth" | "scale" | "operator" | "enterprise";
 
 export interface PlanLimits {
   name: string;
@@ -34,7 +34,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
   },
   starter: {
     name: "Foundation",
-    price: "$299/mo",
+    price: "$99/mo",
     maxOperators: 3,
     maxConnectors: 3,
     maxMonthlyRuns: 1000,
@@ -48,12 +48,26 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
   },
   growth: {
     name: "Workforce",
-    price: "$799/mo",
+    price: "$299/mo",
     maxOperators: 8,
     maxConnectors: 8,
     maxMonthlyRuns: 5000,
     maxTeamMembers: 8,
     logRetentionDays: 90,
+    policies: true,
+    approvals: true,
+    executionLogs: true,
+    companyMemory: true,
+    insights: false,
+  },
+  scale: {
+    name: "Scale",
+    price: "$799/mo",
+    maxOperators: 20,
+    maxConnectors: 20,
+    maxMonthlyRuns: 20000,
+    maxTeamMembers: 20,
+    logRetentionDays: 180,
     policies: true,
     approvals: true,
     executionLogs: true,
@@ -96,6 +110,7 @@ export function resolvePlanId(raw: string): PlanId {
   if (s.includes("preview")) return "preview";
   if (s.includes("enterprise")) return "enterprise";
   if (s.includes("operator")) return "operator";
+  if (s.includes("scale")) return "scale";
   if (s.includes("growth") || s.includes("workforce")) return "growth";
   return "starter";
 }

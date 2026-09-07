@@ -11,6 +11,7 @@ import type { OSSettings } from "@/lib/os/types";
 import { saveWorkspaceSettings } from "./actions";
 import { saveProfileSettings } from "@/app/app/profile/actions";
 import { getEntitlements } from "@/lib/os/entitlements";
+import { getPlanLabel } from "@/lib/os/truth";
 import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-grid";
 
 type SectionKey = keyof OSSettings;
@@ -85,7 +86,7 @@ export default function SettingsPage() {
   const entitlements = getEntitlements(state.workspace);
   const workspacePlanLabel = entitlements.billingStatus === "preview"
     ? "Preview - no plan activated"
-    : `${entitlements.planTier === "starter" ? "Foundation" : "Workforce"} - ${{ active: "Active", trialing: "Trial active", past_due: "Billing attention", canceled: "Canceled", preview: "Preview" }[entitlements.billingStatus]}`;
+    : `${getPlanLabel(entitlements.planTier)} - ${{ active: "Active", trialing: "Trial active", past_due: "Billing attention", canceled: "Canceled", preview: "Preview" }[entitlements.billingStatus]}`;
   const showManageBilling = entitlements.billingStatus === "active" || entitlements.billingStatus === "trialing" || entitlements.billingStatus === "past_due";
 
   const [workspaceDraft, setWorkspaceDraft] = useState(state.settings.workspace);

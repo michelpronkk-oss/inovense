@@ -70,7 +70,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["gmail.sendExternal", "hubspot.updateContact", "hubspot.updateDeal"],
     blockedActions: ["hubspot.deleteRecord", "pricing.change", "payment.refund"],
     supportedModes: ["draft", "approval_gated", "real_action"],
-    planAvailability: ["starter", "growth", "operator", "enterprise"],
+    planAvailability: ["starter", "growth", "scale", "operator", "enterprise"],
     currentReleaseStatus: "requires_connector",
   },
   {
@@ -86,7 +86,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["gmail.sendExternal", "calendar.createExternalInvite"],
     blockedActions: ["pricing.change", "contract.changeTerms", "file.shareExternalWithoutApproval"],
     supportedModes: ["draft", "approval_gated"],
-    planAvailability: ["starter", "growth", "operator", "enterprise"],
+    planAvailability: ["starter", "growth", "scale", "operator", "enterprise"],
     currentReleaseStatus: "requires_connector",
   },
   {
@@ -102,7 +102,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["trello.moveCard", "trello.addComment", "trello.createCard", "slack.postMessage"],
     blockedActions: ["payment.refund", "pricing.change", "destructive.delete"],
     supportedModes: ["draft", "read_only", "approval_gated"],
-    planAvailability: ["starter", "growth", "operator", "enterprise"],
+    planAvailability: ["starter", "growth", "scale", "operator", "enterprise"],
     currentReleaseStatus: "requires_connector",
   },
   {
@@ -118,7 +118,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["publish.external", "gmail.sendExternal"],
     blockedActions: ["adSpend.changeBudget", "pricing.change"],
     supportedModes: ["draft", "read_only"],
-    planAvailability: ["growth", "operator", "enterprise"],
+    planAvailability: ["growth", "scale", "operator", "enterprise"],
     currentReleaseStatus: "preview",
   },
   {
@@ -134,7 +134,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["website.publishChange"],
     blockedActions: ["dns.change", "production.deployWithoutApproval"],
     supportedModes: ["draft"],
-    planAvailability: ["growth", "operator", "enterprise"],
+    planAvailability: ["growth", "scale", "operator", "enterprise"],
     currentReleaseStatus: "coming_next",
   },
   {
@@ -150,7 +150,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["gmail.sendExternal", "quote.send", "contract.changeTerms"],
     blockedActions: ["pricing.change", "discount.applyWithoutApproval"],
     supportedModes: ["draft", "approval_gated"],
-    planAvailability: ["growth", "operator", "enterprise"],
+    planAvailability: ["growth", "scale", "operator", "enterprise"],
     currentReleaseStatus: "preview",
   },
   {
@@ -166,7 +166,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["clientFacing.approve"],
     blockedActions: ["publish.externalWithoutApproval"],
     supportedModes: ["read_only", "draft"],
-    planAvailability: ["growth", "operator", "enterprise"],
+    planAvailability: ["growth", "scale", "operator", "enterprise"],
     currentReleaseStatus: "coming_next",
   },
   {
@@ -182,7 +182,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["memory.write", "file.shareExternal"],
     blockedActions: ["memory.deleteWithoutApproval"],
     supportedModes: ["draft", "read_only"],
-    planAvailability: ["growth", "operator", "enterprise"],
+    planAvailability: ["growth", "scale", "operator", "enterprise"],
     currentReleaseStatus: "preview",
   },
   {
@@ -198,7 +198,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["policy.change", "approval.autoApproveRule"],
     blockedActions: ["approval.bypass", "auditLog.delete"],
     supportedModes: ["read_only", "draft"],
-    planAvailability: ["growth", "operator", "enterprise"],
+    planAvailability: ["growth", "scale", "operator", "enterprise"],
     currentReleaseStatus: "preview",
   },
   {
@@ -214,7 +214,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["gmail.sendExternal", "invoice.send"],
     blockedActions: ["payment.refund", "price.change", "subscription.cancel"],
     supportedModes: ["draft", "read_only"],
-    planAvailability: ["operator", "enterprise"],
+    planAvailability: ["scale", "operator", "enterprise"],
     currentReleaseStatus: "coming_next",
   },
   {
@@ -230,7 +230,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["gmail.sendExternal", "refund.request"],
     blockedActions: ["payment.refund", "account.delete"],
     supportedModes: ["draft", "approval_gated"],
-    planAvailability: ["growth", "operator", "enterprise"],
+    planAvailability: ["growth", "scale", "operator", "enterprise"],
     currentReleaseStatus: "coming_next",
   },
   {
@@ -246,7 +246,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["gmail.sendExternal", "calendar.createExternalInvite"],
     blockedActions: ["offer.changeCompensation", "candidate.rejectWithoutApproval"],
     supportedModes: ["draft"],
-    planAvailability: ["operator", "enterprise"],
+    planAvailability: ["scale", "operator", "enterprise"],
     currentReleaseStatus: "coming_next",
   },
   {
@@ -262,7 +262,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["social.publish", "gmail.sendExternal"],
     blockedActions: ["adSpend.changeBudget", "delete.publicPost"],
     supportedModes: ["draft"],
-    planAvailability: ["growth", "operator", "enterprise"],
+    planAvailability: ["growth", "scale", "operator", "enterprise"],
     currentReleaseStatus: "coming_next",
   },
   {
@@ -278,7 +278,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["website.publishChange", "analytics.changeGoal"],
     blockedActions: ["production.deployWithoutApproval", "tracking.delete"],
     supportedModes: ["draft", "read_only"],
-    planAvailability: ["growth", "operator", "enterprise"],
+    planAvailability: ["growth", "scale", "operator", "enterprise"],
     currentReleaseStatus: "coming_next",
   },
   {
@@ -294,7 +294,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["workflow.enable", "webhook.sendExternal"],
     blockedActions: ["secret.expose", "destructive.bulkDelete"],
     supportedModes: ["draft", "read_only"],
-    planAvailability: ["operator", "enterprise"],
+    planAvailability: ["scale", "operator", "enterprise"],
     currentReleaseStatus: "coming_next",
   },
 ];

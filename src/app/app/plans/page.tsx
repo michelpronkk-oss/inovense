@@ -4,10 +4,12 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useOS } from "@/lib/os/app-provider";
 import { getEntitlements } from "@/lib/os/entitlements";
+import { getPlanLabel } from "@/lib/os/truth";
 import { appHref } from "@/lib/urls";
+import { pricingPlans, type CheckoutPlanTier } from "@/lib/pricing";
 
 type PlanCard = {
-  tier: "starter" | "growth";
+  tier: CheckoutPlanTier;
   name: string;
   price: string;
   summary: string;
@@ -15,23 +17,14 @@ type PlanCard = {
   featured?: boolean;
 };
 
-const PLANS: PlanCard[] = [
-  {
-    tier: "starter",
-    name: "Foundation",
-    price: "$299 / month",
-    summary: "A focused workforce for one business priority.",
-    limits: ["Up to 3 active operators", "Up to 3 connected systems", "1,000 controlled runs / month", "Approval-first execution", "Company memory and 30-day history"],
-  },
-  {
-    tier: "growth",
-    name: "Workforce",
-    price: "$799 / month",
-    summary: "A connected workforce across your teams.",
-    limits: ["Up to 8 active operators", "Up to 8 connected systems", "5,000 controlled runs / month", "Advanced approval policies", "Company memory and 90-day history"],
-    featured: true,
-  },
-];
+const PLANS: PlanCard[] = pricingPlans.map((plan) => ({
+  tier: plan.plan_tier,
+  name: plan.plan_name,
+  price: `${plan.price} / month`,
+  summary: plan.tagline,
+  limits: plan.features.filter((feature) => feature !== "3-day trial included"),
+  featured: plan.featured,
+}));
 
 function displayDate(value?: string): string | null {
   if (!value) return null;
@@ -43,11 +36,11 @@ export default function PlansPage() {
   const { state } = useOS();
   const searchParams = useSearchParams();
   const entitlements = getEntitlements(state.workspace);
-  const [submitting, setSubmitting] = useState<"starter" | "growth" | null>(null);
+  const [submitting, setSubmitting] = useState<CheckoutPlanTier | null>(null);
   const canManageBilling = state.currentUser.roleLabel === "Owner" || state.currentUser.roleLabel === "Admin";
   const trialEnd = displayDate(entitlements.trialEndsAt);
 
-  function beginCheckout(tier: "starter" | "growth") {
+  function beginCheckout(tier: CheckoutPlanTier) {
     if (!canManageBilling) return;
     setSubmitting(tier);
     window.location.assign(appHref(`/api/billing/dodo/checkout?plan=${tier}`));
@@ -70,7 +63,7 @@ export default function PlansPage() {
         <div>
           <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: ".1em", textTransform: "uppercase", color: "#76EEE6", marginBottom: 7 }}>Current workspace</div>
           <div style={{ fontSize: 18, fontWeight: 560, letterSpacing: "-.02em", color: "var(--text)" }}>
-            {entitlements.billingStatus === "preview" ? "Preview — live systems are locked" : `${entitlements.planTier === "starter" ? "Foundation" : "Workforce"} is ${entitlements.billingStatus}`}
+            {entitlements.billingStatus === "preview" ? "Preview — live systems are locked" : `${getPlanLabel(entitlements.planTier)} is ${entitlements.billingStatus}`}
           </div>
           <div style={{ fontSize: 12.5, color: "var(--text-dim)", marginTop: 5 }}>{trialEnd ? `Trial access ends ${trialEnd}.` : entitlements.billingStatus === "preview" ? "Start a three-day trial to connect real systems." : "Billing and cancellation are managed in the customer portal."}</div>
         </div>
@@ -82,7 +75,7 @@ export default function PlansPage() {
 
       {!canManageBilling && <div style={{ padding: "11px 14px", borderRadius: 10, marginBottom: 18, background: "rgba(245,194,107,.07)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,.18)", color: "#E8C67E", fontSize: 12.5 }}>Only the workspace owner or an admin can change billing. Ask an owner to choose a plan.</div>}
 
-      <div className="plans-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 14 }}>
+      <div className="plans-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14 }}>
         {PLANS.map((plan) => {
           const current = entitlements.planTier === plan.tier && entitlements.billingStatus !== "preview";
           return (

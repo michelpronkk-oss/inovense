@@ -1,6 +1,6 @@
 import type { Workspace } from "@/lib/os/types";
 
-export type PlanTier = "preview" | "starter" | "growth" | "operator" | "enterprise";
+export type PlanTier = "preview" | "starter" | "growth" | "scale" | "operator" | "enterprise";
 export type BillingStatus = "preview" | "trialing" | "active" | "past_due" | "canceled";
 
 export interface Entitlements {
@@ -39,6 +39,7 @@ export function resolveWorkspacePlanTier(workspace: Workspace): PlanTier {
   const raw = (workspace.plan || "").toLowerCase();
   if (raw.includes("enterprise")) return "enterprise";
   if (raw.includes("operator")) return "operator";
+  if (raw.includes("scale")) return "scale";
   if (raw.includes("growth") || raw.includes("workforce")) return "growth";
   if (raw.includes("starter") || raw.includes("foundation")) return "starter";
   return "preview";
@@ -93,6 +94,24 @@ export function getEntitlements(workspace: Workspace): Entitlements {
       connectorsLimit: 8,
       actionsLimit: 5000,
       logRetentionDays: 90,
+      canUseRealConnectors: true,
+      canRunRealActions: true,
+      canUseSuggestedWorkflows: true,
+      canUseAdvancedPolicies: true,
+      canUseCompanyMemoryGraph: true,
+      supportLevel: "email",
+    };
+  }
+
+  if (planTier === "scale") {
+    return {
+      planTier,
+      billingStatus,
+      trialEndsAt: workspace.trialEndsAt,
+      operatorsLimit: 20,
+      connectorsLimit: 20,
+      actionsLimit: 20000,
+      logRetentionDays: 180,
       canUseRealConnectors: true,
       canRunRealActions: true,
       canUseSuggestedWorkflows: true,

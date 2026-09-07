@@ -65,7 +65,7 @@ export default function TermsPage() {
 
             <h2>Subscriptions and payment</h2>
             <p>
-              Preview is free and does not require a connected system. Paid plans (Foundation, Workforce, and Enterprise) are billed on the cycle shown at checkout through our payment processor, Dodo Payments. Fees are non-refundable except where required by law. You can cancel a paid plan at any time; access continues until the end of the billing period already paid for.
+              Preview is free and does not require a connected system. Paid plans (Foundation, Workforce, and Scale) are billed on the cycle shown at checkout through our payment processor, Dodo Payments. Fees are non-refundable except where required by law. You can cancel a paid plan at any time; access continues until the end of the billing period already paid for.
             </p>
 
             <h2>Acceptable use</h2>

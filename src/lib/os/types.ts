@@ -318,7 +318,7 @@ export interface Workspace {
   environment: string;
   region: string;
   plan: string;
-  planTier?: "preview" | "starter" | "growth" | "operator" | "enterprise";
+  planTier?: "preview" | "starter" | "growth" | "scale" | "operator" | "enterprise";
   billingStatus?: "preview" | "trialing" | "active" | "past_due" | "canceled";
   trialEndsAt?: string;
   dodoCustomerId?: string;

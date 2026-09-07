@@ -31,7 +31,8 @@ function redirectToHost(
   return NextResponse.redirect(url, { status: 308 });
 }
 
-const INTERNAL_COMMAND_PATHS = new Set(["/", "/login", "/growth", "/customers", "/revenue", "/product", "/connectors", "/operators", "/support", "/feedback", "/system-health"]);
+const INTERNAL_COMMAND_PATHS = new Set(["/", "/login", "/growth", "/customers", "/revenue", "/product", "/system-map", "/connectors", "/operators", "/support", "/feedback", "/system-health"]);
+const RETIRED_PUBLIC_PATHS = ["/customers", "/growth"] as const;
 
 export async function middleware(request: NextRequest) {
   const originalPathname = request.nextUrl.pathname;
@@ -52,6 +53,9 @@ export async function middleware(request: NextRequest) {
     }
     if (originalPathname.startsWith("/admin")) {
       return redirectToHost(request, getAdminHost(), stripAdminPrefix(originalPathname));
+    }
+    if (RETIRED_PUBLIC_PATHS.some((path) => originalPathname === path || originalPathname.startsWith(`${path}/`))) {
+      return redirectToHost(request, getPublicApexHost(), "/");
     }
     // Historical product links occasionally used the marketing host plus the
     // internal segment. Move them straight to the canonical product origin.

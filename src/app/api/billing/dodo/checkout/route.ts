@@ -6,14 +6,14 @@ import { getVerifiedSupabaseUser } from "@/lib/supabase/server";
 import { requireWorkspaceAdmin, resolveActiveWorkspaceId } from "@/lib/server/workspace-access";
 
 function parsePlan(value: string | null): CheckoutPlanTier | null {
-  if (value === "starter" || value === "growth" || value === "operator") return value;
+  if (value === "starter" || value === "growth" || value === "scale") return value;
   return null;
 }
 
 function isPlanConfigured(plan: CheckoutPlanTier): boolean {
   if (plan === "starter") return Boolean(process.env.DODO_PRODUCT_STARTER);
   if (plan === "growth") return Boolean(process.env.DODO_PRODUCT_GROWTH);
-  return Boolean(process.env.DODO_PRODUCT_OPERATOR);
+  return Boolean(process.env.DODO_PRODUCT_SCALE);
 }
 
 function resolveSiteUrl(): string {

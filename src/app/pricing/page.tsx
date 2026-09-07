@@ -30,10 +30,10 @@ export const metadata: Metadata = {
 };
 
 const capacityRows = [
-  { label: "Active operators", values: ["Foundation · up to 3", "Workforce · up to 8"] },
-  { label: "Connected systems", values: ["Foundation · up to 3", "Workforce · up to 8"] },
-  { label: "Controlled runs", values: ["Foundation · 1,000 / month", "Workforce · 5,000 / month"] },
-  { label: "Execution history", values: ["Foundation · 30 days", "Workforce · 90 days"] },
+  { label: "Active operators", values: ["Foundation · up to 3", "Workforce · up to 8", "Scale · up to 20"] },
+  { label: "Connected systems", values: ["Foundation · up to 3", "Workforce · up to 8", "Scale · up to 20"] },
+  { label: "Controlled runs", values: ["Foundation · 1,000 / month", "Workforce · 5,000 / month", "Scale · 20,000 / month"] },
+  { label: "Approval policies", values: ["Foundation · approval-first", "Workforce · advanced", "Scale · advanced"] },
 ];
 
 export default async function PricingPage({ searchParams }: PageProps<"/pricing">) {
@@ -80,7 +80,7 @@ export default async function PricingPage({ searchParams }: PageProps<"/pricing"
                   subtitle="operators / actions / logs / approvals"
                   rows={[
                     { label: "3 active operators", meta: "Revenue, Marketing, Operations", status: "live" },
-                    { label: "11,840 actions executed", meta: "47.3% of Growth capacity", status: "ok" },
+                    { label: "11,840 actions executed", meta: "47.3% of Workforce capacity", status: "ok" },
                     { label: "291 approvals reviewed", meta: "median review time 4m 12s", status: "ok" },
                     { label: "Audit logs retention", meta: "90 days active", status: "live" },
                   ]}
@@ -94,7 +94,7 @@ export default async function PricingPage({ searchParams }: PageProps<"/pricing"
             <div className="mx-auto max-w-6xl px-6 pt-8 md:pt-16">
               <PricingPlans plans={pricingPlans} />
               <p className="mt-8 text-center font-mono text-[11px]" style={{ color: "#4A4F57" }}>
-                Start self-serve. Upgrade when your operators need higher volume, custom workflows or private connector setup.
+                Start self-serve. Upgrade when your operators need higher volume, more connected systems, or more controlled runs.
               </p>
             </div>
           </section>
@@ -111,7 +111,7 @@ export default async function PricingPage({ searchParams }: PageProps<"/pricing"
               <div className="grid gap-4">
                 {capacityRows.map((row) => (
                   <MktCard key={row.label} className="p-0">
-                    <div className="grid grid-cols-1 gap-3 p-5 md:grid-cols-3 md:items-center">
+                    <div className="grid grid-cols-1 gap-3 p-5 md:grid-cols-4 md:items-center">
                       <p className="font-mono text-[11px] uppercase tracking-[0.12em]" style={{ color: "#4A4F57" }}>
                         {row.label}
                       </p>
