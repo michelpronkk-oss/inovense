@@ -9,6 +9,7 @@ import { getVerifiedSupabaseUser } from "@/lib/supabase/server";
 import { requireWorkspaceAdmin, AuthorizationError } from "@/lib/server/workspace-access";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { writeGoogleDriveSettings } from "@/lib/connectors/google-drive";
+import { reconcileConnectorState } from "@/lib/connectors/reconciliation";
 
 type DisconnectBody = {
   workspaceId?: string;
@@ -201,6 +202,8 @@ export async function POST(req: NextRequest) {
     duration: "-",
     status: "ok",
   });
+
+  await reconcileConnectorState({ workspaceId, connectorKey, supabase }).catch(() => undefined);
 
   return NextResponse.json({ ok: true });
 }

@@ -444,8 +444,8 @@ function evaluateOperator(input: {
   });
 }
 
-export async function getWorkspaceOperatorReadiness(input: { workspaceId: string }): Promise<OperatorReadiness[]> {
-  const supabase = createSupabaseAdmin();
+export async function getWorkspaceOperatorReadiness(input: { workspaceId: string; supabase?: SupabaseAdmin }): Promise<OperatorReadiness[]> {
+  const supabase = input.supabase ?? createSupabaseAdmin();
   const workspace = await getWorkspace(input.workspaceId, supabase);
   const entitlements = getEntitlements(workspace);
   // Same real os_workspaces row already loaded above - no duplicate query.

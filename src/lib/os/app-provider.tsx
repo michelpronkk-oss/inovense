@@ -408,7 +408,6 @@ interface OSContextValue {
   disconnectConnector: (connectorId: string) => void;
   testConnector: (connectorId: string) => void;
   resyncConnector: (connectorId: string) => void;
-  updateConnectorPermissions: (connectorId: string, operatorsAllowed: string[]) => void;
   upsertPolicy: (policy: Policy) => void;
   setPolicyActive: (policyId: string, active: boolean) => void;
   inviteMember: (input: { name?: string; email: string; role: string; permissions: string[] }) => void;
@@ -987,17 +986,6 @@ export function AppProvider({ children, initialContext }: { children: React.Reac
     });
   }, [state.connectors]);
 
-  const updateConnectorPermissions = useCallback((connectorId: string, operatorsAllowed: string[]) => {
-    const connector = state.connectors.find((c) => c.id === connectorId);
-    if (!connector) return;
-    dispatch({
-      type: "UPDATE_CONNECTOR",
-      connectorId,
-      patch: { operatorsAllowed },
-      log: logEntry(`Updated ${connector.name} operator permissions`, "connector.permissions_updated", "ok"),
-    });
-  }, [state.connectors]);
-
   const upsertPolicy = useCallback((policy: Policy) => {
     dispatch({ type: "UPSERT_POLICY", policy, log: logEntry(`Policy ${policy.name} updated`, "policy_updated") });
   }, []);
@@ -1104,7 +1092,6 @@ export function AppProvider({ children, initialContext }: { children: React.Reac
         disconnectConnector,
         testConnector,
         resyncConnector,
-        updateConnectorPermissions,
         upsertPolicy,
         setPolicyActive,
         inviteMember,

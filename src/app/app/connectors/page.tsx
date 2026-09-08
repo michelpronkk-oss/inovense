@@ -175,7 +175,6 @@ export default function ConnectorsPage() {
     disconnectConnector,
     testConnector,
     resyncConnector,
-    updateConnectorPermissions,
   } = useOS();
 
   const router = useRouter();
@@ -374,6 +373,7 @@ export default function ConnectorsPage() {
       disconnectConnector(connector.id);
       setDrawerConnectorId(null);
       setFeedback(`${connector.name} disconnected. Auterim no longer has access to this account.`);
+      void refreshOperatorReadiness();
       router.refresh();
     } catch {
       setFeedback(`Could not disconnect ${connector.name}. Check your connection and try again.`);
@@ -394,14 +394,10 @@ export default function ConnectorsPage() {
   // never re-derived client-side - powers the "What Auterim can do now"
   // section below.
   useEffect(() => {
-    if (!state.workspace.id) return;
-    const qs = new URLSearchParams({ workspaceId: state.workspace.id, userId: state.currentUser.id, userEmail: state.currentUser.email });
-    fetch(`/api/operators/readiness?${qs.toString()}`, { cache: "no-store" })
-      .then((res) => res.json().catch(() => ({})))
-      .then((json: { readiness?: { operatorKey: string; status: string; canRunManual: boolean; availableActions: string[]; availableBusinessActions?: string[] }[] }) => {
-        setOperatorReadiness(Array.isArray(json.readiness) ? json.readiness : []);
-      })
-      .catch(() => undefined);
+    void refreshOperatorReadiness();
+    // The readiness helper is intentionally stable in behavior but recreated
+    // with the workspace session; avoid refetching on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.workspace.id, state.currentUser.id, state.currentUser.email]);
 
   // Only real capabilities from operators that can actually run today
@@ -557,6 +553,18 @@ export default function ConnectorsPage() {
     userEmail: state.currentUser.email,
   }).toString();
 
+  const refreshOperatorReadiness = async () => {
+    if (!state.workspace.id) return;
+    const qs = new URLSearchParams({ workspaceId: state.workspace.id, userId: state.currentUser.id, userEmail: state.currentUser.email });
+    try {
+      const res = await fetch(`/api/operators/readiness?${qs.toString()}`, { cache: "no-store" });
+      const json = await res.json().catch(() => ({})) as { readiness?: { operatorKey: string; status: string; canRunManual: boolean; availableActions: string[]; availableBusinessActions?: string[] }[] };
+      setOperatorReadiness(Array.isArray(json.readiness) ? json.readiness : []);
+    } catch {
+      // Keep the existing readiness projection visible if a background refresh fails.
+    }
+  };
+
   const fetchSlackSettings = async () => {
     setSlackSettingsLoading(true);
     setSlackSetupError("");
@@ -620,6 +628,7 @@ export default function ConnectorsPage() {
       setSlackAlertSettings(json.settings);
       if (touchesChannel) setSlackChannelStatus(json.channelStatus || "");
       setFeedback("Slack alert settings saved.");
+      void refreshOperatorReadiness();
     } catch {
       setSlackSetupError("Could not save Slack alert settings.");
     } finally {
@@ -709,6 +718,7 @@ export default function ConnectorsPage() {
       }
       setTrelloSettings(json.settings);
       setFeedback("Trello settings saved.");
+      void refreshOperatorReadiness();
     } catch {
       setTrelloSetupError("Could not save Trello settings.");
     } finally {
@@ -730,16 +740,16 @@ export default function ConnectorsPage() {
   };
   const saveAsanaSettings = async (next: Partial<AsanaSettings>) => {
     setAsanaSaving(true); setAsanaSetupError("");
-    try { const payload = { workspaceId: state.workspace.id, ...asanaSettings, ...next }; const res = await fetch("/api/connectors/asana/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, selectedWorkspaceId: payload.selectedWorkspaceId, selectedWorkspaceName: payload.selectedWorkspaceName, selectedProjectId: payload.selectedProjectId, selectedProjectName: payload.selectedProjectName }) }); const json = await res.json().catch(() => ({})) as AsanaSettings & { error?: string }; if (!res.ok) throw new Error(json.error || "Could not save Asana settings."); setAsanaSettings({ selectedWorkspaceId: json.selectedWorkspaceId ?? null, selectedWorkspaceName: json.selectedWorkspaceName ?? null, selectedProjectId: json.selectedProjectId ?? null, selectedProjectName: json.selectedProjectName ?? null }); setFeedback("Asana settings saved."); } catch (error) { setAsanaSetupError(error instanceof Error ? error.message : "Could not save Asana settings."); } finally { setAsanaSaving(false); }
+    try { const payload = { workspaceId: state.workspace.id, ...asanaSettings, ...next }; const res = await fetch("/api/connectors/asana/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, selectedWorkspaceId: payload.selectedWorkspaceId, selectedWorkspaceName: payload.selectedWorkspaceName, selectedProjectId: payload.selectedProjectId, selectedProjectName: payload.selectedProjectName }) }); const json = await res.json().catch(() => ({})) as AsanaSettings & { error?: string }; if (!res.ok) throw new Error(json.error || "Could not save Asana settings."); setAsanaSettings({ selectedWorkspaceId: json.selectedWorkspaceId ?? null, selectedWorkspaceName: json.selectedWorkspaceName ?? null, selectedProjectId: json.selectedProjectId ?? null, selectedProjectName: json.selectedProjectName ?? null }); setFeedback("Asana settings saved."); void refreshOperatorReadiness(); } catch (error) { setAsanaSetupError(error instanceof Error ? error.message : "Could not save Asana settings."); } finally { setAsanaSaving(false); }
   };
   const fetchJiraSettings = async () => { setJiraSetupError(""); try { const res = await fetch(`/api/connectors/jira/settings?workspaceId=${encodeURIComponent(state.workspace.id)}`, { cache: "no-store" }); const json = await res.json().catch(() => ({})) as JiraSettings & { error?: string }; if (!res.ok) throw new Error(json.error || "Could not load Jira settings."); setJiraSettings({ cloudId: json.cloudId ?? null, siteName: json.siteName ?? null, siteUrl: json.siteUrl ?? null, selectedProjectId: json.selectedProjectId ?? null, selectedProjectKey: json.selectedProjectKey ?? null, selectedProjectName: json.selectedProjectName ?? null, selectedIssueTypeId: json.selectedIssueTypeId ?? null, selectedIssueTypeName: json.selectedIssueTypeName ?? null }); } catch (error) { setJiraSetupError(error instanceof Error ? error.message : "Could not load Jira settings."); } };
   const fetchZendeskSettings = async () => { setZendeskSetupError(""); try { const res = await fetch(`/api/connectors/zendesk/settings?workspaceId=${encodeURIComponent(state.workspace.id)}`, { cache: "no-store" }); const json = await res.json().catch(() => ({})) as ZendeskSettings & { error?: string }; if (!res.ok) throw new Error(json.error || "Could not load Zendesk settings."); setZendeskSettings({ subdomain: json.subdomain ?? null, baseUrl: json.baseUrl ?? null, siteUrl: json.siteUrl ?? null, syncCursor: json.syncCursor ?? null }); setZendeskSubdomain(json.subdomain ?? ""); } catch (error) { setZendeskSetupError(error instanceof Error ? error.message : "Could not load Zendesk settings."); } };
   const fetchDriveSettings = async () => { setDriveSetupError(""); try { const res = await fetch(`/api/connectors/google-drive/settings?workspaceId=${encodeURIComponent(state.workspace.id)}`, { cache: "no-store" }); const json = await res.json().catch(() => ({})) as { settings?: DriveSettings; error?: string }; if (!res.ok || !json.settings) throw new Error(json.error || "Could not load Google Drive settings."); setDriveSettings(json.settings); } catch (error) { setDriveSetupError(error instanceof Error ? error.message : "Could not load Google Drive settings."); } };
   const fetchDriveFolders = async () => { setDriveLoading(true); setDriveSetupError(""); try { const res = await fetch(`/api/connectors/google-drive/folders?workspaceId=${encodeURIComponent(state.workspace.id)}`, { cache: "no-store" }); const json = await res.json().catch(() => ({})) as { folders?: DriveFolder[]; error?: string }; if (!res.ok || !Array.isArray(json.folders)) throw new Error(json.error || "Could not list Google Drive folders."); setDriveFolders(json.folders); } catch (error) { setDriveSetupError(error instanceof Error ? error.message : "Could not list Google Drive folders."); } finally { setDriveLoading(false); } };
-  const saveDriveSettings = async (folder: DriveFolder | null) => { setDriveSaving(true); setDriveSetupError(""); try { const folders = folder ? [folder] : []; const res = await fetch("/api/connectors/google-drive/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspaceId: state.workspace.id, enabled: Boolean(folder), folders }) }); const json = await res.json().catch(() => ({})) as { settings?: DriveSettings; error?: string }; if (!res.ok || !json.settings) throw new Error(json.error || "Could not save Google Drive settings."); setDriveSettings(json.settings); setFeedback(folder ? "Google Drive folder scope saved." : "Google Drive disabled; Gmail remains connected."); } catch (error) { setDriveSetupError(error instanceof Error ? error.message : "Could not save Google Drive settings."); } finally { setDriveSaving(false); } };
+  const saveDriveSettings = async (folder: DriveFolder | null) => { setDriveSaving(true); setDriveSetupError(""); try { const folders = folder ? [folder] : []; const res = await fetch("/api/connectors/google-drive/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspaceId: state.workspace.id, enabled: Boolean(folder), folders }) }); const json = await res.json().catch(() => ({})) as { settings?: DriveSettings; error?: string }; if (!res.ok || !json.settings) throw new Error(json.error || "Could not save Google Drive settings."); setDriveSettings(json.settings); setFeedback(folder ? "Google Drive folder scope saved." : "Google Drive disabled; Gmail remains connected."); void refreshOperatorReadiness(); } catch (error) { setDriveSetupError(error instanceof Error ? error.message : "Could not save Google Drive settings."); } finally { setDriveSaving(false); } };
   const fetchJiraProjects = async () => { setJiraLoading(true); setJiraSetupError(""); try { const res = await fetch(`/api/connectors/jira/projects?workspaceId=${encodeURIComponent(state.workspace.id)}`, { cache: "no-store" }); const json = await res.json().catch(() => ({})) as { projects?: JiraProject[]; error?: string }; if (!res.ok || !Array.isArray(json.projects)) throw new Error(json.error || "Could not load Jira projects."); setJiraProjects(json.projects); } catch (error) { setJiraSetupError(error instanceof Error ? error.message : "Could not load Jira projects."); } finally { setJiraLoading(false); } };
   const fetchJiraIssueTypes = async (projectId: string) => { if (!projectId) { setJiraIssueTypes([]); return; } setJiraLoading(true); setJiraSetupError(""); try { const res = await fetch(`/api/connectors/jira/metadata?workspaceId=${encodeURIComponent(state.workspace.id)}`, { cache: "no-store" }); const json = await res.json().catch(() => ({})) as { issueTypes?: JiraIssueType[]; error?: string }; if (!res.ok || !Array.isArray(json.issueTypes)) throw new Error(json.error || "Could not load Jira issue types."); setJiraIssueTypes(json.issueTypes.filter((item) => item.subtask !== true && item.createable !== false)); } catch (error) { setJiraSetupError(error instanceof Error ? error.message : "Could not load Jira issue types."); } finally { setJiraLoading(false); } };
-  const saveJiraSettings = async (project: JiraProject | null, issueType?: JiraIssueType | null) => { setJiraSaving(true); setJiraSetupError(""); try { const res = await fetch("/api/connectors/jira/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspaceId: state.workspace.id, selectedProjectId: project ? project.id : jiraSettings.selectedProjectId, selectedIssueTypeId: issueType === undefined ? jiraSettings.selectedIssueTypeId : issueType?.id ?? null }) }); const json = await res.json().catch(() => ({})) as JiraSettings & { error?: string }; if (!res.ok) throw new Error(json.error || "Could not save Jira settings."); setJiraSettings((current) => ({ ...current, selectedProjectId: json.selectedProjectId ?? null, selectedProjectKey: json.selectedProjectKey ?? null, selectedProjectName: json.selectedProjectName ?? null, selectedIssueTypeId: json.selectedIssueTypeId ?? null, selectedIssueTypeName: json.selectedIssueTypeName ?? null })); setFeedback(issueType === undefined ? "Jira project scope saved." : "Jira issue type saved."); } catch (error) { setJiraSetupError(error instanceof Error ? error.message : "Could not save Jira settings."); } finally { setJiraSaving(false); } };
+  const saveJiraSettings = async (project: JiraProject | null, issueType?: JiraIssueType | null) => { setJiraSaving(true); setJiraSetupError(""); try { const res = await fetch("/api/connectors/jira/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspaceId: state.workspace.id, selectedProjectId: project ? project.id : jiraSettings.selectedProjectId, selectedIssueTypeId: issueType === undefined ? jiraSettings.selectedIssueTypeId : issueType?.id ?? null }) }); const json = await res.json().catch(() => ({})) as JiraSettings & { error?: string }; if (!res.ok) throw new Error(json.error || "Could not save Jira settings."); setJiraSettings((current) => ({ ...current, selectedProjectId: json.selectedProjectId ?? null, selectedProjectKey: json.selectedProjectKey ?? null, selectedProjectName: json.selectedProjectName ?? null, selectedIssueTypeId: json.selectedIssueTypeId ?? null, selectedIssueTypeName: json.selectedIssueTypeName ?? null })); setFeedback(issueType === undefined ? "Jira project scope saved." : "Jira issue type saved."); void refreshOperatorReadiness(); } catch (error) { setJiraSetupError(error instanceof Error ? error.message : "Could not save Jira settings."); } finally { setJiraSaving(false); } };
 
   const fetchTeamsSettings = async () => {
     setTeamsSetupError("");
@@ -820,6 +830,7 @@ export default function ConnectorsPage() {
       }
       setTeamsSettings(json.settings);
       setFeedback("Microsoft Teams settings saved.");
+      void refreshOperatorReadiness();
       router.refresh();
     } catch {
       setTeamsSetupError("Could not save Microsoft Teams settings.");
@@ -1528,7 +1539,7 @@ export default function ConnectorsPage() {
             )}
             <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
               <div style={{ display: "flex", gap: 8 }}>
-                {isRealConnectedConnector(drawerConnector) && (
+                {advancedOpen && isRealConnectedConnector(drawerConnector) && (
                   <>
                     <button className="btn btn-ghost btn-sm" onClick={() => {
                       testConnector(drawerConnector.id); setFeedback(`${drawerConnector.name} tested.`);
@@ -1536,10 +1547,14 @@ export default function ConnectorsPage() {
                     {drawerConnector.id !== "gmail" && drawerConnector.id !== "microsoft" && drawerConnector.id !== "microsoft_teams" && drawerConnector.id !== "salesforce" && (
                       <button className="btn btn-ghost btn-sm" onClick={() => { resyncConnector(drawerConnector.id); setFeedback(`${drawerConnector.name} resynced.`); }}>Resync</button>
                     )}
+                  </>
+                )}
+                {isRealConnectedConnector(drawerConnector) && drawerConnector.health !== "healthy" && (
+                  <>
                     {drawerConnector.id === "gmail" && (
                       <button className="btn btn-primary btn-sm" onClick={startRealGmailOAuth}>Reconnect Gmail</button>
                     )}
-                    {drawerConnector.id === "google_drive" && (
+                    {drawerConnector.id === "google_drive" && drawerConnector.records.includes("Grant Drive access") && (
                       <button className="btn btn-primary btn-sm" onClick={startGoogleDriveConsent}>Grant Drive access</button>
                     )}
                     {drawerConnector.id === "microsoft" && (
@@ -1568,11 +1583,6 @@ export default function ConnectorsPage() {
                     )}
                   </>
                 )}
-                <button className="btn btn-ghost btn-sm" onClick={() => {
-                  const liveNames = connectorOperatorNames(drawerConnector.id);
-                  updateConnectorPermissions(drawerConnector.id, liveNames);
-                  setFeedback(`${drawerConnector.name} operator access refreshed.`);
-                }}>Refresh operator access</button>
               </div>
               <button className="btn btn-ghost btn-sm" disabled={disconnectingConnectorId === drawerConnector.id} onClick={() => void disconnectRealConnector(drawerConnector)}>
                 {disconnectingConnectorId === drawerConnector.id ? "Disconnecting..." : "Disconnect"}
@@ -1634,8 +1644,8 @@ function ConnectorSetupView({
           </span>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, color: "var(--text-mute)", fontSize: 12 }}>
-          <div><div className="lab">Account</div><div style={{ marginTop: 5, color: "var(--text-dim)" }}>{connector.records.startsWith("Real account connected:") ? connector.records.replace("Real account connected: ", "") : "Not verified"}</div></div>
-          <div><div className="lab">Last checked</div><div style={{ marginTop: 5, color: "var(--text-dim)" }}>{lastChecked}</div></div>
+          <div><div className="lab">Account</div><div style={{ marginTop: 5, color: "var(--text-dim)" }}>{connector.accountEmail ?? (connector.records.startsWith("Real account connected:") ? connector.records.replace("Real account connected: ", "") : isRealConnected ? (connector.id === "google_drive" ? "Google account connected" : "Account connected") : "Not connected")}</div></div>
+          <div><div className="lab">Connected since</div><div style={{ marginTop: 5, color: "var(--text-dim)" }}>{lastChecked}</div></div>
         </div>
         {!isRealConnected && <div style={{ fontSize: 12, color: "#9DEFEA" }}>{setupMessage}</div>}
       </div>
@@ -1690,7 +1700,7 @@ function ConnectorSetupView({
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8 }}>
               <Stat label="Health" value={isRealConnected ? connector.health : "Not connected"} />
-              <Stat label="Last checked" value={lastChecked} />
+              <Stat label="Connected since" value={lastChecked} />
               <Stat label="Events synced" value={isRealConnected ? String(connector.eventsSynced) : "-"} />
               <Stat label="Auth errors" value={isRealConnected ? String(connector.authErrors) : "-"} />
             </div>

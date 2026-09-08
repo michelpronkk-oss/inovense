@@ -3,6 +3,7 @@ import { defaultGoogleDriveSettings, getGoogleDriveFileMetadata, getStoredGoogle
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { AuthorizationError, requireWorkspaceAdmin } from "@/lib/server/workspace-access";
+import { reconcileConnectorState } from "@/lib/connectors/reconciliation";
 
 async function contextFor(req: NextRequest) {
   const supabase = createSupabaseAdmin(); const context = await resolveWorkspaceContext({ workspaceId: req.nextUrl.searchParams.get("workspaceId") || undefined, supabase });
@@ -31,5 +32,6 @@ export async function PATCH(req: NextRequest) {
     driveId: body.driveId !== undefined ? body.driveId : verifiedFolders ? verifiedFolders[0]?.driveId ?? null : undefined,
   });
   const updated = await supabase.from("os_connector_credentials").update({ metadata }).eq("workspace_id", context.workspaceId).eq("connector_key", "gmail"); if (updated.error) return NextResponse.json({ error: "Could not save Drive settings." }, { status: 500 });
+  await reconcileConnectorState({ workspaceId: context.workspaceId, connectorKey: "google_drive", supabase }).catch(() => undefined);
   return NextResponse.json({ settings: defaultGoogleDriveSettings(metadata) });
 }

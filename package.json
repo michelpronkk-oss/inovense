@@ -40,6 +40,7 @@
     "test:pricing-scale": "node tests/pricing-scale-smoke.mjs",
     "test:trial-lifecycle": "node tests/trial-lifecycle-smoke.mjs",
     "test:connector-impact": "node tests/connector-impact-smoke.mjs",
+    "test:connector-readiness-reconciliation": "node tests/connector-readiness-reconciliation-smoke.mjs",
     "test:workflow-recommendations": "node tests/workflow-recommendations-real-smoke.mjs",
     "test:dashboard-lifecycle": "node tests/dashboard-lifecycle-smoke.mjs",
     "test:activity": "node tests/activity-smoke.mjs",

@@ -3,6 +3,7 @@ import { exchangeCodeForTokens, fetchGmailProfile, toStoredCredential } from "@/
 import { parseOAuthState } from "@/lib/connectors/oauth-state";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { getAppUrl } from "@/lib/urls";
+import { reconcileConnectorState } from "@/lib/connectors/reconciliation";
 
 function appBase(): string {
   return getAppUrl();
@@ -73,6 +74,14 @@ export async function GET(req: NextRequest) {
       ...(credential.metadata ?? {}),
     };
     await supabase.from("os_connector_credentials").upsert(credential, { onConflict: "workspace_id,connector_key" });
+
+    // Read verified connector truth and derived live-operator readiness after
+    // OAuth. Readiness remains a projection, not a second access store.
+    await reconcileConnectorState({
+      workspaceId: state.workspaceId,
+      connectorKey: state.surface === "google_drive" ? "google_drive" : "gmail",
+      supabase,
+    }).catch(() => undefined);
 
     await supabase
       .from("os_execution_logs")

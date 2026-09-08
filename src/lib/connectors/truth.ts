@@ -916,6 +916,7 @@ function applyTruth(connector: Connector, truth: SafeConnectorTruth): Connector 
     return {
       ...connector,
       isConnected: truth.status === "healthy" || truth.status === "configuration_required" || truth.status === "not_connected",
+      accountEmail: truth.accountEmail,
       status: connected ? "connected" : truth.status === "error" ? "error" : "available",
       health: truth.status === "healthy" ? "healthy" : "disabled",
       lastSync: "-",
