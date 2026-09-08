@@ -154,18 +154,36 @@ function connectorStatusLabel(input: {
   asanaReady?: boolean;
   jiraReady?: boolean;
 }): { label: string; color: string; background: string; border: string } {
-  if (input.connector.id === "google_drive" && input.connector.health !== "healthy") {
-    if (input.connector.records.includes("Grant Drive access")) return { label: "Drive access needed", color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
-    if (input.connector.records.includes("Select a folder") || input.connector.records.includes("Select folders")) return { label: "Choose folders", color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
-    if (input.connector.records.includes("Reconnect")) return { label: "Reconnect required", color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
-  }
-  if (!input.isRealConnected && input.connector.records.includes("Reconnect required")) return { label: "Reconnect required", color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
   if (!input.isRealConnected) return { label: "Not connected", color: "#b8c5c8", background: "rgba(255,255,255,0.04)", border: "rgba(255,255,255,0.12)" };
-  if (input.connector.id === "slack" && !input.slackReady) return { label: "Setup incomplete", color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
-  if (input.connector.id === "trello" && !input.trelloReady) return { label: "Setup incomplete", color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
-  if (input.connector.id === "asana" && !input.asanaReady) return { label: "Select project", color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
-  if (input.connector.id === "jira" && !input.jiraReady) return { label: "Configure project & issue type", color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
-  return { label: "Connected", color: "#8df5cf", background: "rgba(81,216,138,0.08)", border: "rgba(81,216,138,0.24)" };
+  const warning = { color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
+  if (input.connector.id === "google_drive" && input.connector.records.includes("Grant Drive access")) return { label: "Permission required", ...warning };
+  if (input.connector.id === "google_drive" && (input.connector.records.includes("Select a folder") || input.connector.records.includes("Select folders"))) return { label: "Needs setup", ...warning };
+  if (input.connector.id === "slack" && !input.slackReady) return { label: "Needs setup", ...warning };
+  if (input.connector.id === "trello" && !input.trelloReady) return { label: "Needs setup", ...warning };
+  if (input.connector.id === "asana" && !input.asanaReady) return { label: "Needs setup", ...warning };
+  if (input.connector.id === "jira" && !input.jiraReady) return { label: "Needs setup", ...warning };
+  if (input.connector.records.toLowerCase().includes("permission") || input.connector.records.toLowerCase().includes("grant access")) return { label: "Permission required", ...warning };
+  if (input.connector.records.includes("Reconnect required") || input.connector.records.includes("Reconnect Google")) return { label: "Reconnect required", ...warning };
+  if (input.connector.status === "error" || input.connector.records.toLowerCase().includes("needs attention")) return { label: "Needs attention", ...warning };
+  if (input.connector.health === "disabled") return { label: "Disabled", ...warning };
+  if (input.connector.health !== "healthy") return { label: "Needs attention", ...warning };
+  return { label: "Ready", color: "#8df5cf", background: "rgba(81,216,138,0.08)", border: "rgba(81,216,138,0.24)" };
+}
+
+function connectorCapabilityItems(connectorId: string): string[] {
+  if (connectorId === "google_drive") return ["Read selected Drive documents", "Use document context in operator reasoning"];
+  return connectorCapabilities(connectorId);
+}
+
+function connectorTrustCopy(connectorId: string): { title: string; lines: string[] } {
+  if (connectorId === "google_drive") return {
+    title: "Read-only access",
+    lines: ["Auterim can read files inside the selected folder.", "It cannot edit, move, delete, or share Drive files."],
+  };
+  if (connectorId === "slack") return { title: "Channel access", lines: ["Internal messages remain approval-gated before sending."] };
+  if (connectorId === "jira") return { title: "Project access", lines: ["Issue actions remain approval-gated within the selected project."] };
+  if (connectorId === "gmail") return { title: "Inbox access", lines: ["Inbox monitoring is read-only; outbound email remains approval-gated."] };
+  return { title: "Access & safety", lines: connectorSafetyNotes(connectorId) };
 }
 
 export default function ConnectorsPage() {
@@ -1265,16 +1283,19 @@ export default function ConnectorsPage() {
               </div>
             )}
             {drawerConnector.id === "google_drive" && (
-              <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 9 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 600 }}>Drive folder scope</div>
-                <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>Auterim only reads files inside the selected folder. Google account access remains shared with Gmail.</div>
-                <select className="os-input" value={driveSettings.folders[0]?.folderId ?? ""} disabled={driveLoading || driveSaving} onChange={(event) => { const selected = driveFolders.find((folder) => folder.folderId === event.target.value) ?? null; void saveDriveSettings(selected); }}>
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.07)", display: "grid", gap: 9 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 650 }}>Document scope</div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-mute)", marginTop: 3 }}>Auterim only uses files inside this folder.</div>
+                </div>
+                <label className="lab" htmlFor="drive-folder-select">Selected folder</label>
+                <select id="drive-folder-select" className="os-input" value={driveSettings.folders[0]?.folderId ?? ""} disabled={driveLoading || driveSaving} onChange={(event) => { const selected = driveFolders.find((folder) => folder.folderId === event.target.value) ?? null; void saveDriveSettings(selected); }}>
                   <option value="">{driveLoading ? "Loading folders..." : "Select a folder"}</option>
                   {driveFolders.map((folder) => <option key={folder.folderId} value={folder.folderId}>{folder.folderName}</option>)}
                 </select>
-                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                  <button className="btn btn-ghost btn-sm" onClick={fetchDriveFolders} disabled={driveLoading}>Refresh folders</button>
-                  {driveSettings.enabled && <button className="btn btn-ghost btn-sm" onClick={() => void saveDriveSettings(null)} disabled={driveSaving}>Disable Drive</button>}
+                <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>Google account access is shared with Gmail. Disabling Drive does not disconnect Gmail.</div>
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  {advancedOpen && <button className="btn btn-ghost btn-sm" style={{ color: "var(--text-mute)", fontSize: 11 }} onClick={fetchDriveFolders} disabled={driveLoading}>Refresh folders</button>}
                 </div>
                 {driveSetupError && <div style={{ fontSize: 11.5, color: "var(--amber)" }}>{driveSetupError}</div>}
               </div>
@@ -1537,8 +1558,13 @@ export default function ConnectorsPage() {
                 Preview connection only. Connect a real account to sync live data and enable operator actions.
               </div>
             )}
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-              <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+              <div className="lab" style={{ marginBottom: 8 }}>Connection</div>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                {drawerConnector.id === "google_drive" && driveSettings.enabled && (
+                  <button className="btn btn-ghost btn-sm" onClick={() => void saveDriveSettings(null)} disabled={driveSaving}>Disable Drive</button>
+                )}
                 {advancedOpen && isRealConnectedConnector(drawerConnector) && (
                   <>
                     <button className="btn btn-ghost btn-sm" onClick={() => {
@@ -1584,9 +1610,13 @@ export default function ConnectorsPage() {
                   </>
                 )}
               </div>
-              <button className="btn btn-ghost btn-sm" disabled={disconnectingConnectorId === drawerConnector.id} onClick={() => void disconnectRealConnector(drawerConnector)}>
-                {disconnectingConnectorId === drawerConnector.id ? "Disconnecting..." : "Disconnect"}
-              </button>
+              {drawerConnector.id !== "google_drive" && isRealConnectedConnector(drawerConnector) && (
+                <button className="btn btn-ghost btn-sm" style={{ color: "#f0a5a5", borderColor: "rgba(240,165,165,0.24)" }} disabled={disconnectingConnectorId === drawerConnector.id} onClick={() => void disconnectRealConnector(drawerConnector)}>
+                  {disconnectingConnectorId === drawerConnector.id ? "Disconnecting..." : "Disconnect"}
+                </button>
+              )}
+              </div>
+              {drawerConnector.id === "google_drive" && <div style={{ fontSize: 11.5, color: "var(--text-mute)", marginTop: 8 }}>Google account connection remains available to Gmail.</div>}
             </div>
           </div>
         </div>
@@ -1630,29 +1660,30 @@ function ConnectorSetupView({
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
-      <div style={{ display: "grid", gap: 15, paddingBottom: 18, borderBottom: "1px solid rgba(255,255,255,0.09)" }}>
+      <div style={{ display: "grid", gap: 16, paddingBottom: 18, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 42, height: 42, borderRadius: 12, background: `${connector.color}18`, boxShadow: `inset 0 0 0 1px ${connector.color}45`, display: "grid", placeItems: "center", color: connector.color, fontSize: 12, fontFamily: "var(--font-mono)", fontWeight: 800 }}>{connector.letter}</div>
+            <div style={{ width: 44, height: 44, borderRadius: 13, background: `${connector.color}18`, boxShadow: `inset 0 0 0 1px ${connector.color}45`, display: "grid", placeItems: "center", color: connector.color, fontSize: 12, fontFamily: "var(--font-mono)", fontWeight: 800 }}>{connector.letter}</div>
             <div>
               <div style={{ fontSize: 18, fontWeight: 700 }}>{connector.name}</div>
-              <div style={{ fontSize: 12, color: "var(--text-mute)", marginTop: 2 }}>{connector.category}</div>
+              <div style={{ fontSize: 12, color: "var(--text-mute)", marginTop: 3 }}>{connector.category}</div>
+              <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 5 }}>{connector.id === "google_drive" ? "Document context available" : connectorCapabilities(connector.id)[0]}</div>
             </div>
           </div>
           <span style={{ color: status.color, background: status.background, boxShadow: `inset 0 0 0 1px ${status.border}`, borderRadius: 999, padding: "6px 10px", fontSize: 11.5, fontWeight: 650 }}>
-            {status.label === "Connected" ? "Connected · Healthy" : status.label}
+            {status.label}
           </span>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, color: "var(--text-mute)", fontSize: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, color: "var(--text-mute)", fontSize: 12 }}>
           <div><div className="lab">Account</div><div style={{ marginTop: 5, color: "var(--text-dim)" }}>{connector.accountEmail ?? (connector.records.startsWith("Real account connected:") ? connector.records.replace("Real account connected: ", "") : isRealConnected ? (connector.id === "google_drive" ? "Google account connected" : "Account connected") : "Not connected")}</div></div>
           <div><div className="lab">Connected since</div><div style={{ marginTop: 5, color: "var(--text-dim)" }}>{lastChecked}</div></div>
         </div>
         {!isRealConnected && <div style={{ fontSize: 12, color: "#9DEFEA" }}>{setupMessage}</div>}
       </div>
 
-      <SectionBlock title="Auterim can">
+      <SectionBlock title="Available to Auterim">
         <div style={{ display: "grid", gap: 8 }}>
-          {connectorCapabilities(connector.id).map((item) => (
+          {connectorCapabilityItems(connector.id).map((item) => (
             <div key={item} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--text-dim)" }}>
               <span style={{ color: "var(--cyan)", fontSize: 13 }}>✓</span>
               <span>{item}</span>
@@ -1661,15 +1692,11 @@ function ConnectorSetupView({
         </div>
       </SectionBlock>
 
-      <SectionBlock title="Access & control">
-        {connector.id === "hubspot" ? (
-          <div style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.5 }}>Auterim can prepare CRM updates, but customer records are only modified through approved actions.</div>
-        ) : (
-          connectorSafetyNotes(connector.id).map((item) => <div key={item} style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.45 }}>{item}</div>)
-        )}
+      <SectionBlock title={connectorTrustCopy(connector.id).title}>
+        {connectorTrustCopy(connector.id).lines.map((item) => <div key={item} style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.5 }}>{item}</div>)}
       </SectionBlock>
 
-      <SectionBlock title="Used by operators">
+      <SectionBlock title="Used by">
         <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
           {(connectorOperatorNames(connector.id).length ? connectorOperatorNames(connector.id) : ["Live operators pending"]).map((item) => (
             <span key={item} style={{ fontSize: 11.5, color: "var(--text-dim)", padding: "6px 9px", borderRadius: 999, background: "rgba(255,255,255,0.04)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}>
@@ -1679,13 +1706,13 @@ function ConnectorSetupView({
         </div>
       </SectionBlock>
 
-      <div style={{ borderTop: "1px solid rgba(255,255,255,0.09)" }}>
+      <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", marginTop: 2 }}>
         <button
           type="button"
           onClick={onToggleAdvanced}
           style={{ width: "100%", border: "none", background: "transparent", color: "var(--text)", padding: "14px 0", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: onToggleAdvanced ? "pointer" : "default" }}
         >
-          <span style={{ fontSize: 12.5, fontWeight: 650 }}>Advanced details</span>
+          <span style={{ display: "grid", gap: 2, textAlign: "left" }}><span style={{ fontSize: 12.5, fontWeight: 650 }}>Advanced</span><span style={{ fontSize: 11, color: "var(--text-mute)", fontWeight: 400 }}>Technical connection details</span></span>
           <span style={{ fontSize: 12, color: "var(--text-mute)" }}>{advancedOpen ? "Hide" : "Show"}</span>
         </button>
         {advancedOpen && (
