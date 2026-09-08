@@ -1,4 +1,5 @@
 import type { SignalCandidate, SignalCategory, SignalEvent, SignalPriority } from "@/lib/signals/types";
+import { classifyInboundSignalEvent, type InboundActionability, type InboundClassification, type InboundOperatorKey } from "@/lib/signals/inbound";
 
 export const SIGNAL_ENGINE_VERSION = "2026-09-08";
 
@@ -16,6 +17,17 @@ export type SignalDecision = {
   urgency: "low" | "medium" | "high" | "critical";
   reasonCodes: string[];
   suppressed: boolean;
+  primaryIntent?: string;
+  secondaryIntents?: string[];
+  actionability?: InboundActionability;
+  primaryOperator?: InboundOperatorKey | null;
+  supportingOperators?: InboundOperatorKey[];
+  customerFacing?: boolean;
+  commercialSignal?: boolean;
+  supportSignal?: boolean;
+  operationsSignal?: boolean;
+  evidenceRefs?: string[];
+  classificationFailed?: boolean;
 };
 
 export type RoutedSignal = {
@@ -151,8 +163,8 @@ export function classifySignalEvent(event: SignalEvent, now = new Date()): Signa
   return { category, confidence, priority, priorityLevel: priorityLevel(priority), urgency: urgencyFor(priority), reasonCodes, suppressed: priority < 30 && category === "internal_coordination" };
 }
 
-function candidateFor(event: SignalEvent, decision: SignalDecision, operatorKey: string): SignalCandidate {
-  const dedupeKey = bounded([event.workspaceId, operatorKey, event.connectorKey || event.source, event.sourceId, decision.category].join(":"), 480);
+function candidateFor(event: SignalEvent, decision: SignalDecision, operatorKey: string, inbound?: InboundClassification, inboundDedupeKey?: string): SignalCandidate {
+  const dedupeKey = inboundDedupeKey || bounded([event.workspaceId, operatorKey, event.connectorKey || event.source, event.sourceId, decision.category].join(":"), 480);
   return {
     id: `candidate_${bounded(dedupeKey, 170)}`,
     signalId: event.id,
@@ -165,7 +177,22 @@ function candidateFor(event: SignalEvent, decision: SignalDecision, operatorKey:
     priorityLevel: decision.priorityLevel,
     urgency: decision.urgency,
     reasonCodes: decision.reasonCodes,
-    evidence: { sourceId: event.sourceId, sourceType: event.sourceType, sourceParentId: event.sourceParentId ?? null },
+    evidence: {
+      provider: event.provider || event.source,
+      messageId: event.sourceId,
+      threadId: event.threadId ?? event.sourceParentId ?? null,
+      sourceId: event.sourceId,
+      sourceType: event.sourceType,
+      sourceParentId: event.sourceParentId ?? null,
+      ...(inbound ? {
+        primaryIntent: inbound.primaryIntent,
+        secondaryIntents: inbound.secondaryIntents,
+        reason: inbound.reason,
+        evidenceRefs: inbound.evidenceRefs,
+        actionability: inbound.actionability,
+        supportingOperators: inbound.supportingOperators,
+      } : {}),
+    },
     recommendedActionTypes: decision.priority >= 65 ? ["review", "prepare_recommendation"] : ["observe"],
     source: event.source,
     sourceId: event.sourceId,
@@ -173,12 +200,83 @@ function candidateFor(event: SignalEvent, decision: SignalDecision, operatorKey:
     status: "candidate",
     createdAt: event.observedAt ?? undefined,
     metadata: { category: decision.category, connectorKey: event.connectorKey, trustLevel: event.trustLevel },
+    actionability: decision.actionability,
+    primaryIntent: decision.primaryIntent,
+    supportingOperators: decision.supportingOperators,
+  };
+}
+
+function categoryForInbound(classification: InboundClassification): SignalCategory {
+  if (classification.primaryIntent === "COMPLAINT" || classification.primaryIntent === "ESCALATION") return "escalation";
+  if (classification.operationsSignal) {
+    if (["DELIVERY_RISK", "INTERNAL_BLOCKER"].includes(classification.primaryIntent)) return "delivery_risk";
+    return "internal_coordination";
+  }
+  if (classification.commercialSignal) return "sales_opportunity";
+  if (classification.supportSignal || classification.primaryOperator === "client_flow") return "customer_request";
+  return "internal_coordination";
+}
+
+function decisionFromInbound(classification: InboundClassification): SignalDecision {
+  const category = categoryForInbound(classification);
+  const priority = classification.priority === "HIGH" ? 75 : classification.priority === "MEDIUM" ? 45 : 20;
+  return {
+    category,
+    confidence: classification.confidence,
+    priority,
+    priorityLevel: priorityLevel(priority),
+    urgency: urgencyFor(priority),
+    reasonCodes: classification.evidenceRefs,
+    suppressed: ["IGNORE", "OBSERVE"].includes(classification.actionability) || !classification.primaryOperator,
+    primaryIntent: classification.primaryIntent,
+    secondaryIntents: classification.secondaryIntents,
+    actionability: classification.actionability,
+    primaryOperator: classification.primaryOperator,
+    supportingOperators: classification.supportingOperators,
+    customerFacing: classification.customerFacing,
+    commercialSignal: classification.commercialSignal,
+    supportSignal: classification.supportSignal,
+    operationsSignal: classification.operationsSignal,
+    evidenceRefs: classification.evidenceRefs,
   };
 }
 
 /** Route only meaningful candidates. This never invokes an operator or action. */
 export function routeSignalEvent(input: SignalEvent, now = new Date()): RoutedSignal {
   const event = normalizeSignalEvent(input);
+  if (event.sourceType === "email") {
+    let inbound: ReturnType<typeof classifyInboundSignalEvent>;
+    try {
+      inbound = classifyInboundSignalEvent(event);
+    } catch {
+      return {
+        event,
+        decision: {
+          category: "internal_coordination",
+          confidence: "low",
+          priority: 0,
+          priorityLevel: "low",
+          urgency: "low",
+          reasonCodes: ["classification_failed"],
+          suppressed: true,
+          primaryIntent: "UNKNOWN",
+          secondaryIntents: [],
+          actionability: "OBSERVE",
+          primaryOperator: null,
+          supportingOperators: [],
+          classificationFailed: true,
+        },
+        candidates: [],
+      };
+    }
+    const decision = decisionFromInbound(inbound.classification);
+    if (decision.suppressed || !decision.primaryOperator) return { event, decision, candidates: [] };
+    return {
+      event,
+      decision,
+      candidates: [candidateFor(event, decision, decision.primaryOperator, inbound.classification, inbound.dedupeKey)],
+    };
+  }
   const decision = classifySignalEvent(event, now);
   if (decision.suppressed) return { event, decision, candidates: [] };
   const operatorKeys: string[] = [];

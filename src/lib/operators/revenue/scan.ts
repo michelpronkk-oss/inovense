@@ -34,7 +34,8 @@ import { getWorkspaceExecutionEligibility } from "@/lib/os/execution-eligibility
 import { draftRevenueFollowUpWithAI } from "@/lib/operators/revenue/ai-drafting";
 import { loadRevenueCompanyGraphContext } from "@/lib/operators/revenue/context";
 import { sendSlackApprovalNotification } from "@/lib/notifications/slack";
-import { normalizeEmailToSignalEvent, routeSignalCandidate, classifySignalCandidateLightweight } from "@/lib/signals/intake";
+import { normalizeEmailToSignalEvent } from "@/lib/signals/intake";
+import { routeSignalEvent } from "@/lib/signals/engine";
 import type { SignalCandidate } from "@/lib/signals/types";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
@@ -1284,6 +1285,24 @@ export async function scanRevenueOpportunities(input: {
         fromEmail: message.fromEmail,
         text,
       });
+      const signalEvent = normalizeEmailToSignalEvent({
+        workspaceId,
+        message,
+        provider: emailConnector,
+        rawRef: `${emailConnector}:${message.id}`,
+        metadata: {
+          dedupeKey: dedupe.dedupeKey,
+          sourceMode,
+          senderName: message.from,
+          threadMessageCount: message.threadId ? 2 : 1,
+        },
+      });
+      const routedSignal = routeSignalEvent(signalEvent);
+      const signalCandidate = routedSignal.candidates.find((candidate) => candidate.operatorKey === "revenue") ?? null;
+      if (!signalCandidate) {
+        skipped.push({ messageId: message.id, subject: message.subject, from: message.from, reason: "inbound_intent_not_revenue" });
+        continue;
+      }
       const opportunity: Opportunity = {
         message,
         matchedKeywords: detected.matchedKeywords,
@@ -1298,16 +1317,6 @@ export async function scanRevenueOpportunities(input: {
         reactivationReason: isReactivation ? duplicate?.reason : undefined,
       };
 
-      const signalEvent = normalizeEmailToSignalEvent({
-        workspaceId,
-        message,
-        rawRef: `${emailConnector}:${message.id}`,
-        metadata: {
-          dedupeKey: dedupe.dedupeKey,
-          sourceMode,
-        },
-      });
-      const signalCandidate = routeSignalCandidate(classifySignalCandidateLightweight(signalEvent));
       signalCandidates.push(signalCandidate);
       opportunities.push(opportunity);
     }

@@ -81,4 +81,7 @@ export type SignalCandidate = {
   evidence?: Record<string, unknown>;
   recommendedActionTypes?: string[];
   createdAt?: string;
+  actionability?: "OBSERVE" | "RECOMMEND" | "WORKFLOW_CANDIDATE" | "IGNORE";
+  primaryIntent?: string;
+  supportingOperators?: string[];
 };

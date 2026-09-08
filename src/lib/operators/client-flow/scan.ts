@@ -40,6 +40,8 @@ import { loadWorkspacePolicySettings, type TrelloProjectSettings } from "@/lib/s
 import { getStoredZendeskCredential, listZendeskTickets, normalizeZendeskTicket, resolveZendeskAccessToken, type NormalizedZendeskTicket } from "@/lib/connectors/zendesk";
 import { getStoredIntercomCredential, listIntercomConversations, normalizeIntercomConversation, resolveIntercomAccessToken, type NormalizedIntercomConversation } from "@/lib/connectors/intercom";
 import { buildUntrustedGoogleDrivePromptContext, loadSelectedGoogleDriveContext } from "@/lib/connectors/google-drive";
+import { normalizeEmailToSignalEvent } from "@/lib/signals/intake";
+import { routeSignalEvent } from "@/lib/signals/engine";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 type ClientFlowScanSourceMode = "scheduled" | "manual" | "event_ready";
@@ -910,6 +912,29 @@ export async function scanClientFlowSignals(input: {
       const duplicateReason = findDuplicateReason(dedupe, handled);
       if (duplicateReason) {
         skipped.push({ messageId: message.id || item.id, subject: message.subject, from: message.from, reason: duplicateReason, dedupeKey: dedupe.dedupeKey });
+        continue;
+      }
+      const inboundEvent = normalizeEmailToSignalEvent({
+        workspaceId,
+        message,
+        provider: emailConnector,
+        rawRef: `${emailConnector}:${message.id}`,
+        metadata: {
+          dedupeKey: dedupe.dedupeKey,
+          sourceMode,
+          senderName: message.from,
+          threadMessageCount: message.threadId ? 2 : 1,
+        },
+      });
+      const routedInbound = routeSignalEvent(inboundEvent);
+      const clientFlowCandidate = routedInbound.candidates.find((candidate) => candidate.operatorKey === "client_flow") ?? null;
+      if (!clientFlowCandidate) {
+        if (routedInbound.decision.primaryOperator === "revenue") {
+          routedToRevenueCount += 1;
+          skipped.push({ messageId: message.id || item.id, subject: message.subject, from: message.from, reason: "routed_to_revenue" });
+        } else {
+          skipped.push({ messageId: message.id || item.id, subject: message.subject, from: message.from, reason: `inbound_${(routedInbound.decision.primaryIntent || "unknown").toLowerCase()}` });
+        }
         continue;
       }
       const detected = detectClientFlowSignal(message, providerEmail);

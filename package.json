@@ -73,6 +73,8 @@
     "test:operational-incidents": "node tests/operational-incidents-smoke.mjs",
     "test:task-heartbeats": "node tests/task-heartbeats-smoke.mjs",
     "test:signal-engine": "node tests/signal-engine-smoke.mjs",
+    "test:inbound-intent-routing": "node tests/inbound-intent-routing-smoke.mjs",
+    "test:inbound-email-classification": "node tests/inbound-intent-routing-smoke.mjs",
     "test:signal-routing": "node tests/signal-routing-smoke.mjs",
     "test:signal-runtime": "node tests/signal-runtime-smoke.mjs",
     "test:workflow-engine": "node tests/workflow-engine-smoke.mjs",

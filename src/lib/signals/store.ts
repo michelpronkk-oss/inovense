@@ -13,10 +13,16 @@ type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
 export type SignalIngestionResult = {
   received: number;
+  classified: number;
+  ignored: number;
+  unknown: number;
   eventsPersisted: number;
   candidatesProduced: number;
+  workflowCandidates: number;
   candidatesRouted: number;
   candidatesSuppressed: number;
+  routedByOperator: Record<string, number>;
+  classificationFailures: number;
 };
 
 function eventRow(event: SignalEvent, category: string) {
@@ -108,6 +114,10 @@ export async function ingestSignalBatch(input: {
   }
 
   const candidates = routed.flatMap((item) => item.candidates);
+  const routedByOperator = candidates.reduce<Record<string, number>>((counts, candidate) => {
+    counts[candidate.operatorKey] = (counts[candidate.operatorKey] ?? 0) + 1;
+    return counts;
+  }, {});
   const eligibility = await Promise.all(candidates.map(async (candidate) => ({
     candidate,
     eligible: await isAutomaticallyEligible({ workspaceId: input.workspaceId, operatorKey: candidate.operatorKey, supabase }),
@@ -120,20 +130,32 @@ export async function ingestSignalBatch(input: {
   // A workflow is a durable, bounded response proposal. Its creation is
   // intentionally best-effort here: ingestion remains safe even if the
   // workflow migration has not reached a deployment yet. No step executes.
-  await Promise.all(eligibility.filter((item) => item.eligible && (item.candidate.priority ?? 0) >= 65).map(async ({ candidate }) => {
+  await Promise.all(eligibility.filter((item) => item.eligible && candidateCanProposeWorkflow(item.candidate) && (item.candidate.priority ?? 0) >= 65).map(async ({ candidate }) => {
     try {
       await createWorkflowFromSignalCandidate({ workspaceId: input.workspaceId, signalId: candidate.signalId || "", candidate, supabase });
     } catch (error) {
       console.warn("[signal-engine] workflow planning skipped", { workspaceId: input.workspaceId, signalId: candidate.signalId, error: error instanceof Error ? error.message : "Unknown workflow planning error" });
     }
   }));
+  const workflowCandidates = eligibility.filter((item) => item.eligible && candidateCanProposeWorkflow(item.candidate) && (item.candidate.priority ?? 0) >= 65).length;
   return {
     received: input.events.length,
+    classified: routed.length,
+    ignored: routed.filter((item) => item.decision.actionability === "IGNORE" || item.decision.suppressed).length,
+    unknown: routed.filter((item) => item.decision.primaryIntent === "UNKNOWN").length,
     eventsPersisted: events.length,
     candidatesProduced: candidates.length,
+    workflowCandidates,
     candidatesRouted: eligibility.filter((item) => item.eligible).length,
     candidatesSuppressed: eligibility.filter((item) => !item.eligible).length,
+    routedByOperator,
+    classificationFailures: routed.filter((item) => item.decision.classificationFailed === true).length,
   };
+}
+
+function candidateCanProposeWorkflow(candidate: SignalCandidate): boolean {
+  if (candidate.confidence === "low") return false;
+  return candidate.actionability === undefined || candidate.actionability === "WORKFLOW_CANDIDATE";
 }
 
 export async function claimSignalSyncLease(input: {

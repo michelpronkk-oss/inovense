@@ -52,12 +52,16 @@ function stableSignalId(input: { workspaceId: string; source: string; sourceId: 
 export function normalizeEmailToSignalEvent(input: {
   workspaceId: string;
   message: SafeGmailMessage;
+  provider?: "gmail" | "microsoft";
   rawRef?: string | null;
   metadata?: Record<string, unknown>;
 }): SignalEvent {
+  const provider = input.provider ?? "gmail";
   return {
     workspaceId: input.workspaceId,
-    source: "gmail",
+    connectorKey: provider,
+    provider,
+    source: provider,
     sourceType: "email",
     eventType: "email.received",
     sourceId: input.message.id,
