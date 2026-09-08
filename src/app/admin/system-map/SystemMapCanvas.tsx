@@ -411,7 +411,7 @@ function SystemMapInner({
             onNodeClick={handleNodeClick}
             onSelectionChange={handleSelectionChange}
             fitView
-            fitViewOptions={{ padding: 0.14, maxZoom: 1 }}
+            fitViewOptions={{ padding: 0.06, maxZoom: 1.15 }}
             minZoom={0.35}
             maxZoom={1.5}
             proOptions={{ hideAttribution: true }}

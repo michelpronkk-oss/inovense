@@ -33,6 +33,9 @@ function testSourceContracts() {
 
   const layout = read("src/app/admin/layout.tsx");
   assert.match(layout, /requireInternalAdmin/, "the shared admin layout must still call requireInternalAdmin");
+  assert.match(layout, /isSystemMapWorkspace/, "the admin layout must explicitly identify the System Map route");
+  assert.match(layout, /admin-shell-main-workspace/, "the System Map must receive a route-scoped shell variant");
+  assert.match(layout, /admin-content-workspace/, "the System Map must receive a route-scoped content variant");
 
   assert.ok(fs.existsSync(path.join(root, "src/app/admin/system-map/page.tsx")), "route file must exist as a normal child of src/app/admin");
   const page = read("src/app/admin/system-map/page.tsx");
@@ -43,8 +46,10 @@ function testSourceContracts() {
   assert.match(page, /SystemMapCanvas/, "page must render the client canvas component");
 
   const styles = read("src/app/admin/system-map/system-map.css");
-  assert.match(styles, /\.admin-system-map-page\s*\{[\s\S]*position:\s*fixed/, "System Map must bypass the shared content column on desktop");
-  assert.match(styles, /left:\s*248px/, "full-screen System Map must start at the sidebar edge");
+  const adminStyles = read("src/app/admin/admin.css");
+  assert.match(adminStyles, /\.admin-shell-main-workspace\s*\{[\s\S]*grid-template-rows:\s*58px minmax\(0,1fr\)/, "System Map shell must reserve the viewport below the utility bar");
+  assert.match(adminStyles, /\.admin-content-workspace\s*\{[\s\S]*max-width:\s*none/, "System Map must remove the shared 1320px max-width on the actual content ancestor");
+  assert.doesNotMatch(adminStyles, /:has\(\.admin-system-map-page\)/, "System Map width must not depend on an inner-child :has override");
   assert.match(styles, /grid-template-rows:\s*auto minmax\(0, 1fr\)/, "System Map must reserve all remaining viewport height for its workspace");
   assert.match(styles, /grid-template-columns:\s*minmax\(0, 1fr\) 348px/, "System Map must keep a dedicated inspector without constraining the graph");
 
@@ -60,6 +65,7 @@ function testSourceContracts() {
   assert.match(canvas, /sysmap-panel/, "a details-panel render path must exist");
   assert.match(canvas, /sysmap-workspace/, "canvas and inspector must use the dedicated workspace layout");
   assert.match(canvas, /Architecture inspector/, "the inspector must remain available before a node is selected");
+  assert.match(canvas, /fitViewOptions=\{\{ padding: 0\.06, maxZoom: 1\.15 \}\}/, "initial map fit must prioritize readable architecture over excess padding");
   assert.match(canvas, /Escape/, "details panel must be closable with Escape");
 
   // Regression guard: custom @xyflow/react node types get NO default

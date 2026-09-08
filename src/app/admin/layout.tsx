@@ -11,14 +11,15 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const headersList = await headers();
   const pathname = headersList.get("x-pathname") ?? "";
   if (pathname === "/admin/login") return <>{children}</>;
+  const isSystemMapWorkspace = pathname === "/system-map" || pathname === "/admin/system-map";
 
   const admin = await requireInternalAdmin();
   return (
     <div className="admin-shell">
       <AdminSidebar admin={admin} />
-      <div className="admin-shell-main">
+      <div className={`admin-shell-main${isSystemMapWorkspace ? " admin-shell-main-workspace" : ""}`}>
         <header className="admin-utility-bar"><span>Internal intelligence</span><span>Verified staff access</span></header>
-        <main className="admin-content">{children}</main>
+        <main className={`admin-content${isSystemMapWorkspace ? " admin-content-workspace" : ""}`}>{children}</main>
       </div>
     </div>
   );

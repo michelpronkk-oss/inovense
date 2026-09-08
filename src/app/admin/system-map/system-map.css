@@ -3,9 +3,8 @@
    and status tones (.admin-status-pill/.admin-status-dot) rather than
    inventing a parallel color language. */
 
-/* The .admin-content full-bleed override for this page lives in
-   src/app/admin/admin.css, right next to the base rule it overrides --
-   see the comment there for why. */
+/* The admin layout marks this route's real content ancestor as a workspace;
+   these rules only define the map surface within that already-full region. */
 
 .sysmap-shell { display: grid; gap: 10px; min-height: calc(100dvh - 154px); }
 
@@ -36,18 +35,14 @@
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.02), 0 30px 80px rgba(0,0,0,.35);
 }
 
-/* The System Map is deliberately the only admin route that becomes a true
-   viewport surface. Keeping this on the map page itself avoids changing the
-   shared reading width used by every other command-centre page. The fixed
-   bounds begin exactly at the desktop sidebar and below the utility bar. */
+/* The parent main is route-scoped to the available viewport region by
+   admin.css. This component fills that region without fixed viewport offsets. */
 @media (min-width: 821px) {
   .admin-system-map-page {
-    position: fixed;
-    z-index: 1;
-    top: 58px;
-    right: 0;
-    bottom: 0;
-    left: 248px;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
     display: block;
   }
   .admin-system-map-page .admin-page-intro { display: none; }
