@@ -42,6 +42,11 @@ function testSourceContracts() {
   assert.match(page, /admin-command-center/, "page must use the shared admin visual shell classes");
   assert.match(page, /SystemMapCanvas/, "page must render the client canvas component");
 
+  const styles = read("src/app/admin/system-map/system-map.css");
+  assert.match(styles, /\.admin-system-map-page\s*\{[\s\S]*position:\s*fixed/, "System Map must bypass the shared content column on desktop");
+  assert.match(styles, /left:\s*248px/, "full-screen System Map must start at the sidebar edge");
+  assert.match(styles, /\.admin-system-map-page \.sysmap-canvas-wrap\s*\{[\s\S]*height:\s*100%/, "System Map canvas must fill the viewport surface");
+
   const canvas = read("src/app/admin/system-map/SystemMapCanvas.tsx");
   assert.match(canvas, /^"use client";/, "the interactive canvas must be a client component");
   assert.match(canvas, /@xyflow\/react/, "must use @xyflow/react, not a hand-rolled canvas");
