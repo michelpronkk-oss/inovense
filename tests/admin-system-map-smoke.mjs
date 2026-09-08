@@ -34,9 +34,7 @@ function testSourceContracts() {
   const layout = read("src/app/admin/layout.tsx");
   assert.match(layout, /requireInternalAdmin/, "the shared admin layout must still call requireInternalAdmin");
   assert.match(layout, /isSystemMapWorkspace/, "the admin layout must explicitly identify the System Map route");
-  assert.match(layout, /admin-shell-main-workspace/, "the System Map must receive a route-scoped shell variant");
-  assert.match(layout, /admin-workspace/, "the System Map must render outside the normal admin-content wrapper");
-  assert.match(layout, /\?\s*\(\s*<main className="admin-workspace"/, "System Map must have a dedicated main branch");
+  assert.match(layout, /\?\s*\(\s*<main className="admin-system-workspace"/, "System Map must be the shell's direct workspace branch");
   assert.match(layout, /<main className="admin-content">\{children\}<\/main>/, "normal admin routes must retain their constrained content branch");
 
   assert.ok(fs.existsSync(path.join(root, "src/app/admin/system-map/page.tsx")), "route file must exist as a normal child of src/app/admin");
@@ -44,17 +42,19 @@ function testSourceContracts() {
   assert.match(page, /export const metadata/, "page must export metadata");
   assert.match(page, /robots:\s*{\s*index:\s*false,\s*follow:\s*false\s*}/, "page must be noindex like other admin pages");
   assert.doesNotMatch(page, /requireInternalAdmin/, "the page itself must not duplicate auth - it inherits the layout's gate");
-  assert.match(page, /admin-command-center/, "page must use the shared admin visual shell classes");
+  assert.doesNotMatch(page, /admin-command-center|admin-page-intro/, "System Map must not reintroduce normal page framing");
   assert.match(page, /SystemMapCanvas/, "page must render the client canvas component");
+  assert.match(page, /return <SystemMapCanvas[^;]+\/>;/, "System Map page must return the canvas directly without another DOM wrapper");
 
   const styles = read("src/app/admin/system-map/system-map.css");
   const adminStyles = read("src/app/admin/admin.css");
-  assert.match(adminStyles, /\.admin-shell-main-workspace\s*\{[\s\S]*grid-template-rows:\s*58px minmax\(0,1fr\)/, "System Map shell must reserve the viewport below the utility bar");
-  assert.match(adminStyles, /\.admin-workspace\s*\{[\s\S]*width:\s*100%/, "System Map must use a direct full-width workspace ancestor");
-  assert.doesNotMatch(adminStyles, /\.admin-workspace\s*\{[^}]*max-width/, "System Map workspace must not introduce another max-width");
+  assert.match(adminStyles, /\.admin-system-workspace\s*\{[^}]*width:\s*100%;[^}]*height:\s*100dvh/, "System Map must directly own the shell's full viewport column");
+  assert.doesNotMatch(adminStyles, /\.admin-system-workspace\s*\{[^}]*max-width/, "System Map workspace must not introduce another max-width");
   assert.doesNotMatch(adminStyles, /:has\(\.admin-system-map-page\)/, "System Map width must not depend on an inner-child :has override");
-  assert.match(styles, /grid-template-rows:\s*auto minmax\(0, 1fr\)/, "System Map must reserve all remaining viewport height for its workspace");
+  assert.doesNotMatch(styles, /admin-system-map-page/, "System Map CSS must not retain the previous inner-page escape selector");
   assert.match(styles, /grid-template-columns:\s*minmax\(0, 1fr\) 348px/, "System Map must keep a dedicated inspector without constraining the graph");
+  assert.match(styles, /\.sysmap-shell\s*\{[^}]*width:\s*100%;[^}]*height:\s*100%/, "canvas shell must directly fill the full-screen workspace");
+  assert.doesNotMatch(styles, /100dvh\s*-\s*220px|min-height:\s*640px/, "desktop canvas must not retain arbitrary legacy viewport deductions");
 
   const canvas = read("src/app/admin/system-map/SystemMapCanvas.tsx");
   assert.match(canvas, /^"use client";/, "the interactive canvas must be a client component");

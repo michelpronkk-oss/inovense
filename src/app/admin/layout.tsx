@@ -17,14 +17,14 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   return (
     <div className="admin-shell">
       <AdminSidebar admin={admin} />
-      <div className={`admin-shell-main${isSystemMapWorkspace ? " admin-shell-main-workspace" : ""}`}>
-        <header className="admin-utility-bar"><span>Internal intelligence</span><span>Verified staff access</span></header>
-        {isSystemMapWorkspace ? (
-          <main className="admin-workspace" aria-label="System Map workspace">{children}</main>
-        ) : (
+      {isSystemMapWorkspace ? (
+        <main className="admin-system-workspace" aria-label="System Map workspace">{children}</main>
+      ) : (
+        <div className="admin-shell-main">
+          <header className="admin-utility-bar"><span>Internal intelligence</span><span>Verified staff access</span></header>
           <main className="admin-content">{children}</main>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
