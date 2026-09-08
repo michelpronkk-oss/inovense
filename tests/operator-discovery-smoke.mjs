@@ -3,6 +3,8 @@ import fs from "node:fs";
 
 const list = fs.readFileSync("src/app/app/agents/page.tsx", "utf8");
 const briefing = fs.readFileSync("src/components/operators/workforce-briefing.tsx", "utf8");
+const client = fs.readFileSync("src/app/app/agents/client-flow/page.tsx", "utf8");
+const operations = fs.readFileSync("src/app/app/agents/operations/page.tsx", "utf8");
 const capabilityPresentation = fs.readFileSync("src/lib/operators/capability-presentation.ts", "utf8");
 const readiness = fs.readFileSync("src/lib/operators/readiness.ts", "utf8");
 const activation = fs.readFileSync("src/components/operators/activation-toggle.tsx", "utf8");
@@ -12,7 +14,8 @@ assert.match(list, /Available to unlock/);
 assert.match(list, /View operator/);
 assert.match(briefing, /capabilityCopy\.required/);
 assert.match(briefing, /Optional context/);
-assert.match(briefing, /No issues need attention right now/);
+assert.match(client, /No issues need attention right now/);
+assert.match(operations, /No issues need attention right now/);
 assert.doesNotMatch(briefing, /readinessPercent/);
 assert.match(list, /getOperatorCapabilityCopy/);
 assert.match(briefing, /getOperatorCapabilityCopy/);

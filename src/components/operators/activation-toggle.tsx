@@ -38,6 +38,7 @@ export function OperatorActivationToggle({
   executionEligibility,
   configured,
   canManage,
+  runtimeControl = false,
 }: {
   operatorKey: string;
   workspaceId: string;
@@ -48,6 +49,8 @@ export function OperatorActivationToggle({
   configured: boolean;
   /** Owner/admin capability mirrored by the server route. */
   canManage: boolean;
+  /** Presents activation as a workforce control instead of a status summary. */
+  runtimeControl?: boolean;
 }) {
   const descriptionId = useId();
   const [state, setState] = useState<ActivationState>(null);
@@ -132,7 +135,7 @@ export function OperatorActivationToggle({
       </button>
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ fontSize: 13, fontWeight: 600 }}>
-          {loading ? "Loading activation..." : error && !state ? "Activation unavailable" : activated ? "Active" : wasEverActivated ? "Paused" : "Ready to activate"}
+          {loading ? "Loading control..." : error && !state ? "Control unavailable" : activated && runtimeControl ? "Pause operator" : !activated && runtimeControl ? "Activate operator" : activated ? "Active" : wasEverActivated ? "Paused" : "Ready to activate"}
         </div>
         <div id={descriptionId} style={{ marginTop: 2, fontSize: 12, color: "var(--text-mute)" }}>
           {!configured
@@ -140,7 +143,7 @@ export function OperatorActivationToggle({
             : blockedReason
               ? blockedReason
               : activated
-                ? "Scheduled checks are on. Risky actions still need approval."
+                ? runtimeControl ? "Scheduled checks are running. Pause when you want this operator to stop monitoring." : "Scheduled checks are on. Risky actions still need approval."
                 : wasEverActivated
                   ? "Scheduled checks are paused. Your setup is saved."
                   : "Turn on scheduled checks. Manual checks remain available."}

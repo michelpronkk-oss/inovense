@@ -123,12 +123,14 @@ async function loadComputeOperatorProductState() {
     [
       `import {
   getOperatorConnectorReadiness,
+  getConnectedRequiredConnectorKeys,
   getWorkspaceConnectorImpact,
   getRequiredConnectorHealth,
   type RequiredCapabilityHealth,
 } from "@/lib/operators/connector-requirements";`,
       [
         throwingReplacement("getOperatorConnectorReadiness"),
+        throwingReplacement("getConnectedRequiredConnectorKeys"),
         throwingReplacement("getWorkspaceConnectorImpact"),
         throwingReplacement("getRequiredConnectorHealth"),
       ].join("\n"),

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useOS } from "@/lib/os/app-provider";
 import { OperatorActivationToggle, type ActivationEligibility } from "@/components/operators/activation-toggle";
 import { OperatorWorkforceBriefing, type OperatorBriefingState } from "@/components/operators/workforce-briefing";
+import { getOperatorCapabilityCopy } from "@/lib/operators/capability-presentation";
 
 type OperatorReadiness = {
   operatorKey: string;
@@ -108,76 +109,6 @@ function relativeTime(iso: string): string {
   return mins > 0 ? `${mins}m ago` : "just now";
 }
 
-function CheckIcon({ ok }: { ok: boolean }) {
-  return (
-    <span
-      aria-hidden
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: 22,
-        height: 22,
-        borderRadius: 999,
-        flexShrink: 0,
-        color: ok ? "var(--green)" : "var(--amber)",
-        background: ok ? "rgba(81,216,138,0.12)" : "rgba(245,194,107,0.12)",
-        boxShadow: `inset 0 0 0 1px ${ok ? "rgba(81,216,138,0.4)" : "rgba(245,194,107,0.4)"}`,
-        fontSize: 12,
-      }}
-    >
-      {ok ? "✓" : "!"}
-    </span>
-  );
-}
-
-type ChecklistItem = {
-  label: string;
-  ok: boolean;
-  detail: string;
-  recommended?: boolean;
-  action?: { label: string; href: string };
-};
-
-function ChecklistRow({ item }: { item: ChecklistItem }) {
-  const showAction = item.action && (!item.ok || item.recommended);
-  return (
-    <div className="operator-checklist-row" style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 0" }}>
-      <CheckIcon ok={item.ok} />
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 13.5, fontWeight: 600 }}>{item.label}</span>
-          {item.recommended && !item.ok && (
-            <span style={{ fontSize: 10.5, fontWeight: 600, color: "var(--blue)", background: "rgba(91,141,239,0.12)", padding: "2px 7px", borderRadius: 999 }}>Recommended</span>
-          )}
-        </div>
-        <div style={{ marginTop: 3, fontSize: 12.5, color: "var(--text-mute)" }}>{item.detail}</div>
-      </div>
-      {showAction && item.action ? (
-        <Link href={item.action.href} className="btn btn-ghost btn-sm" style={{ textDecoration: "none", flexShrink: 0 }}>{item.action.label}</Link>
-      ) : (
-        <span style={{ fontSize: 12, fontWeight: 600, color: item.ok ? "var(--green)" : "var(--amber)", flexShrink: 0 }}>{item.ok ? "Ready" : "Needs setup"}</span>
-      )}
-    </div>
-  );
-}
-
-function ToolCard({ name, tone, ready, headline, note }: { name: string; tone: string; ready: boolean; headline: string; note?: string }) {
-  return (
-    <div style={{ padding: "16px 18px", borderRadius: 14, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 8 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-          <span style={{ width: 8, height: 8, borderRadius: 999, background: ready ? "var(--green)" : "var(--amber)", boxShadow: `0 0 8px ${ready ? "rgba(81,216,138,0.6)" : "rgba(245,194,107,0.5)"}` }} />
-          <span style={{ fontSize: 13.5, fontWeight: 600 }}>{name}</span>
-        </div>
-        <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{tone}</span>
-      </div>
-      <div style={{ fontSize: 12.8, color: "var(--text-dim)" }}>{headline}</div>
-      {note && <div style={{ fontSize: 12, color: "var(--amber)" }}>{note}</div>}
-    </div>
-  );
-}
-
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ padding: "16px 16px", borderRadius: 14, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
@@ -248,11 +179,6 @@ export default function ClientFlowOperatorPage() {
 
   useEffect(() => { void loadRuntime(); }, [loadRuntime]);
 
-  const startEmailReconnect = (provider: "gmail" | "microsoft") => {
-    const params = new URLSearchParams({ workspaceId: state.workspace.id, userEmail: state.currentUser.email });
-    window.location.href = `/api/connectors/${provider}/auth?${params.toString()}`;
-  };
-
   const submitScan = async () => {
     setScanSubmitting(true);
     setError("");
@@ -293,6 +219,10 @@ export default function ClientFlowOperatorPage() {
   const hasRunScan = Boolean(lastCheckAt);
   const monitoringActive = monitoring?.status === "monitoring_active";
   const emailMode = status?.customerEmailMode === "draft_only" ? "Draft only" : "Approval required";
+  const pendingApprovals = monitoring?.recentPendingApprovals?.length ?? 0;
+  const optionalContext = getOperatorCapabilityCopy("client_flow").optional;
+  const showRuntime = presentationState?.lifecycle === "active";
+  const showControls = Boolean(presentationState && presentationState.lifecycle !== "available_to_unlock");
 
   return (
     <div className="os-page operator-detail-page">
@@ -305,23 +235,32 @@ export default function ClientFlowOperatorPage() {
         {presentationState && <span className="os-status" data-state={presentationState.state}>{presentationState.label}</span>}
       </div>
 
-      <OperatorWorkforceBriefing operatorKey="client_flow" onStateChange={setPresentationState} />
+      <OperatorWorkforceBriefing
+        operatorKey="client_flow"
+        onStateChange={setPresentationState}
+        runtime={{
+          pendingApprovals,
+          monitoringLabel: monitoringActive ? "Active" : "Scheduled",
+          nextCheckLabel: monitoring?.nextScanLabel ?? "Daily",
+        }}
+      />
 
       {error && <div role="alert" style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>{error}</div>}
 
+      {showRuntime && (<>
       {/* Monitoring summary + policy */}
       <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 14 }}>
         <div className="p" style={{ gap: 0 }}>
           <div className="p-head">
             <div>
               <h3>Monitoring</h3>
-              <div className="p-meta" style={{ marginTop: 4 }}>{loading ? "Loading..." : monitoring?.nextScanLabel ?? "Daily scan ready"}{lastCheckAt ? ` · Last check ${relativeTime(lastCheckAt)}` : ""}</div>
+              <div className="p-meta" style={{ marginTop: 4 }}>{loading ? "Loading..." : monitoringActive ? "Daily monitoring active" : "Scheduled monitoring"}{lastCheckAt ? ` · Last check ${relativeTime(lastCheckAt)}` : ""}</div>
             </div>
           </div>
           <div style={{ padding: "18px 20px" }}>
             {!hasRunScan ? (
               <div style={{ display: "grid", gap: 12, justifyItems: "start" }}>
-                <div style={{ fontSize: 13, color: "var(--text-dim)" }}>No client check has run yet. Run a manual check to test the operator.</div>
+                <div style={{ fontSize: 13, color: "var(--text-dim)" }}>Monitoring is active. The first scheduled check has not run yet.</div>
                 <button className="btn btn-ghost btn-sm" type="button" onClick={submitScan} disabled={!canRun || scanSubmitting} style={{ opacity: !canRun || scanSubmitting ? 0.45 : 1 }}>{scanSubmitting ? "Checking..." : "Run manual check"}</button>
               </div>
             ) : (
@@ -329,9 +268,6 @@ export default function ClientFlowOperatorPage() {
                 <Stat label="Emails checked" value={String(monitoring?.emailsChecked ?? 0)} />
                 <Stat label="Client requests" value={String(monitoring?.signalsFound ?? 0)} />
                 <Stat label="Approvals created" value={String(monitoring?.approvalsCreated ?? 0)} />
-                <Stat label="Routed to Revenue" value={String(monitoring?.routedToRevenueCount ?? 0)} />
-                <Stat label="Skipped noise" value={String(monitoring?.skippedSafelyCount ?? 0)} />
-                <Stat label="Last check" value={lastCheckAt ? relativeTime(lastCheckAt) : "-"} />
               </div>
             )}
             {scanResult && (
@@ -347,11 +283,11 @@ export default function ClientFlowOperatorPage() {
         <div className="p" style={{ gap: 0 }}>
           <div className="p-head"><h3>Policy</h3></div>
           <div style={{ padding: "8px 20px 16px" }}>
-            <PolicyRow label="Customer email" value={emailMode} tone="amber" />
+            <PolicyRow label="Customer-facing messages" value={emailMode} tone="amber" />
             <div style={{ borderTop: "1px solid var(--line)" }} />
-            <PolicyRow label="Project task changes" value="Approval required" tone="amber" />
+            <PolicyRow label="Project updates" value="Approval required" tone="amber" />
             <div style={{ borderTop: "1px solid var(--line)" }} />
-            <PolicyRow label="Slack alerts" value={setup?.slackAlertsReady ? "Enabled" : "Disabled"} tone={setup?.slackAlertsReady ? "green" : "neutral"} />
+            <PolicyRow label="Internal alerts" value={setup?.slackAlertsReady ? "Enabled" : "Disabled"} tone={setup?.slackAlertsReady ? "green" : "neutral"} />
             <div style={{ borderTop: "1px solid var(--line)" }} />
             <PolicyRow label="Human review" value="Required" tone="green" />
           </div>
@@ -359,14 +295,16 @@ export default function ClientFlowOperatorPage() {
       </div>
 
       {/* Current work */}
-      <div className="p" style={{ gap: 0 }}>
+      <div className="p operator-current-work" style={{ gap: 0 }}>
         <div className="p-head">
           <h3>Current work</h3>
           {(monitoring?.recentPendingApprovals?.length ?? 0) > 0
-            ? <Link href="/app/approvals" className="btn btn-primary btn-sm">{monitoring?.recentPendingApprovals?.length} awaiting review</Link>
+            ? <Link href="/app/approvals" className="btn btn-primary btn-sm">{pendingApprovals} awaiting review</Link>
             : <Link href="/app/approvals" className="lnk-open">Approval inbox</Link>}
         </div>
-        <div style={{ padding: "18px 20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        {pendingApprovals === 0 && runs.length === 0 ? (
+          <div className="operator-compact-empty">No issues need attention right now. Next scheduled check: {monitoring?.nextScanLabel ?? "daily"}.</div>
+        ) : <div style={{ padding: "14px 20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
             <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Pending approvals</div>
             {(monitoring?.recentPendingApprovals?.length ?? 0) === 0 ? <div style={{ color: "var(--text-mute)", fontSize: 12.5 }}>No pending Client Flow approvals.</div> : monitoring?.recentPendingApprovals.map((approval) => (
@@ -385,23 +323,24 @@ export default function ClientFlowOperatorPage() {
               </div>
             ))}
           </div>
-        </div>
+        </div>}
       </div>
+      </>)}
 
       {/* Activation */}
-      {(() => {
+      {showControls && (() => {
         const upgrades = (status?.optionalUpsellConnectors ?? []).filter((c) => c.status === "available");
         const configured = Boolean(readiness?.canRunManual);
         const eligibility = readiness?.executionEligibility;
         return (
-          <section className="p" style={{ gap: 0 }}>
-            <div className="p-head"><h3>Controls & configuration</h3><Link href="/app/connectors" className="lnk-open">Manage context</Link></div>
-            <div style={{ padding: "16px 20px", display: "grid", gap: 16 }}>
-              {upgrades.length > 0 && (
+          <section className="p operator-context-section" style={{ gap: 0 }}>
+            <div className="p-head"><h3>Context & controls</h3><Link href="/app/connectors" className="lnk-open">Manage context</Link></div>
+            <div className="operator-context-controls" style={{ padding: "14px 20px", display: "grid", gap: 14 }}>
+              {showRuntime && upgrades.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Optional context</div>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Add more context</div>
                   <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-mute)" }}>
-                    {upgrades.map((c) => c.displayName).join(", ")} could add further context. <Link href="/app/connectors" className="lnk-open">Connect</Link>
+                    {optionalContext.join(" · ")}
                   </div>
                 </div>
               )}
@@ -414,6 +353,7 @@ export default function ClientFlowOperatorPage() {
                   executionEligibility={eligibility}
                   configured={configured}
                   canManage={state.currentUser.roleLabel === "Owner" || state.currentUser.roleLabel === "Admin"}
+                  runtimeControl
                 />
               )}
             </div>
@@ -422,7 +362,7 @@ export default function ClientFlowOperatorPage() {
       })()}
 
       {/* Advanced details */}
-      <details className="p" style={{ gap: 0 }}>
+      {showRuntime && <details className="p operator-advanced" style={{ gap: 0 }}>
         <summary style={{ listStyle: "none", cursor: "pointer", padding: "14px 20px", fontSize: 13, fontWeight: 600, color: "var(--text-dim)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           Advanced details
           <span style={{ fontSize: 11, color: "var(--text-faint)" }}>readiness, schedule, skipped reasons, connector ids</span>
@@ -463,7 +403,7 @@ export default function ClientFlowOperatorPage() {
             </div>
           )}
         </div>
-      </details>
+      </details>}
     </div>
   );
 }

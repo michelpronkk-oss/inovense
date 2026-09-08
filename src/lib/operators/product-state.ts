@@ -21,6 +21,7 @@ import { getWorkspaceOperatorReadiness, type OperatorReadiness } from "@/lib/ope
 import { getConnectorTruth, type SafeConnectorTruth } from "@/lib/connectors/truth";
 import {
   getOperatorConnectorReadiness,
+  getConnectedRequiredConnectorKeys,
   getWorkspaceConnectorImpact,
   getRequiredConnectorHealth,
   type RequiredCapabilityHealth,
@@ -77,6 +78,7 @@ export type OperatorProductStateResult = {
   label: string;
   description: string;
   connectedSystems: string[];
+  connectedCoreSystems: string[];
   availableNow: string[];
   nextAction: { label: string; href: string } | null;
   lifecycle: "available_to_unlock" | "ready_to_activate" | "active" | "paused";
@@ -371,6 +373,7 @@ export function buildOperatorProductState(input: {
     label: STATE_LABEL[state],
     description: describeState({ state, operatorName, operatorKey: readiness.operatorKey, nextSetupStep: readiness.nextSetupStep, degraded }),
     connectedSystems: (readiness.availableConnectorKeys ?? readiness.connectedRequiredConnectors).map(connectorDisplayName),
+    connectedCoreSystems: getConnectedRequiredConnectorKeys(readiness.operatorKey, input.truth).map(connectorDisplayName),
     availableNow: readiness.availableBusinessActions ?? humanizeOperatorActions(readiness.availableActions ?? []),
     nextAction: nextActionFor(state, operatorHref(readiness.operatorKey), requiredActions[0] ?? null, readiness.operatorKey),
     lifecycle,

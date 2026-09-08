@@ -4,10 +4,10 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useOS } from "@/lib/os/app-provider";
 import { getEntitlements } from "@/lib/os/entitlements";
-import { getConnectorDefinition } from "@/lib/connectors/registry";
 import { humanizeOperatorActions } from "@/lib/operators/action-labels";
 import { OperatorActivationToggle, type ActivationEligibility } from "@/components/operators/activation-toggle";
 import { OperatorWorkforceBriefing, type OperatorBriefingState } from "@/components/operators/workforce-briefing";
+import { getOperatorCapabilityCopy } from "@/lib/operators/capability-presentation";
 
 type OperatorReadiness = {
   operatorKey: string;
@@ -304,19 +304,12 @@ export default function RevenueOperatorPage() {
   })();
   const v1Checks = revenueStatus?.v1Readiness?.checks;
   const showLegacyDiagnostics = false;
+  const pendingApprovals = monitoring?.recentPendingApprovals?.length ?? 0;
+  const optionalContext = getOperatorCapabilityCopy("revenue").optional;
+  const showRuntime = presentationState?.lifecycle === "active";
+  const showControls = Boolean(presentationState && presentationState.lifecycle !== "available_to_unlock");
 
   if (!showLegacyDiagnostics) {
-    const setupTone = gmailReconnectRequired || revenueReadiness?.status === "missing_connector" || revenueReadiness?.status === "upgrade_required";
-    const nextAction = !entitlements.canUseRealConnectors
-      ? { label: "Choose plan & start trial", onClick: () => window.location.assign("/plans?source=revenue") }
-      : gmailReconnectRequired || revenueReadiness?.status === "missing_connector"
-      // Route through the central Connectors hub rather than launching a
-      // single provider's OAuth inline from the operator page - Connectors
-      // is where reconnect/connect always happens now (see /app/connectors).
-      ? { label: "Connect required system", onClick: () => window.location.assign("/connectors") }
-      : revenueReadiness?.status === "upgrade_required"
-        ? null
-        : { label: scanSubmitting ? "Checking..." : "Run a check", onClick: submitRevenueScan };
     const connectionLabel = !entitlements.canUseRealConnectors
       ? "Available after trial activation"
       : revenueStatus?.gmail?.accountEmail
@@ -338,91 +331,56 @@ export default function RevenueOperatorPage() {
 
         {runtimeError && <div style={{ marginBottom: 14, padding: "10px 12px", borderRadius: 10, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>{runtimeError}</div>}
 
-        <OperatorWorkforceBriefing operatorKey="revenue" onStateChange={setPresentationState} />
+        <OperatorWorkforceBriefing
+          operatorKey="revenue"
+          onStateChange={setPresentationState}
+          runtime={{
+            pendingApprovals,
+            monitoringLabel: monitoring?.status === "monitoring_active" ? "Active" : "Scheduled",
+            nextCheckLabel: dateTimeLabel(monitoring?.nextRunAt),
+          }}
+        />
 
-        {!presentationState && (
-        <section className="p" style={{ overflow: "hidden", padding: 0, background: "linear-gradient(112deg, rgba(77,232,225,0.08), rgba(255,255,255,0.012) 43%, rgba(255,255,255,0.01))" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.35fr) minmax(300px, 0.65fr)" }}>
-            <div style={{ padding: "28px 30px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.09em", textTransform: "uppercase", color: setupTone ? "var(--amber)" : "#64ffd7" }}><span className="d" /> {runtimeLoading ? "Loading operator" : setupTone ? "Setup needed" : "Monitoring"}</div>
-              <div style={{ marginTop: 16, fontSize: 22, lineHeight: 1.2, letterSpacing: "-0.025em", fontWeight: 560, maxWidth: 620 }}>
-                {setupTone ? "Connect a system to get started." : "Review revenue signals. Approve the next step."}
-              </div>
-              <p style={{ margin: "12px 0 0", maxWidth: 620, color: "var(--text-mute)", fontSize: 13, lineHeight: 1.65 }}>{revenueStatusMessage}</p>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 22 }}>
-                {nextAction ? <button className="btn btn-primary btn-sm" type="button" onClick={nextAction.onClick} disabled={scanSubmitting || (!gmailReconnectRequired && !canRunRevenue)}>{nextAction.label}</button> : <Link href="/plans" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>View plans</Link>}
-                <Link href="/connectors" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Manage connections</Link>
-              </div>
-            </div>
-            <div style={{ borderLeft: "1px solid var(--line)", padding: "24px 26px", display: "grid", alignContent: "center", gap: 15, background: "rgba(0,0,0,0.12)" }}>
-              <div>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, letterSpacing: "0.09em", textTransform: "uppercase", color: "var(--text-faint)" }}>Primary connection</div>
-                <div style={{ marginTop: 6, fontSize: 13.5, fontWeight: 520 }}>{connectionLabel}</div>
-              </div>
-              <div style={{ height: 1, background: "var(--line)" }} />
-              <div>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, letterSpacing: "0.09em", textTransform: "uppercase", color: "var(--text-faint)" }}>Operating mode</div>
-                <div style={{ marginTop: 6, fontSize: 13.5, fontWeight: 520 }}>{modeLabel}</div>
-                <div style={{ marginTop: 4, fontSize: 11.5, color: "var(--text-mute)", lineHeight: 1.5 }}>{modeHelp}</div>
-              </div>
-            </div>
+        {showRuntime && <section className="p operator-current-work" style={{ marginTop: 14, padding: 0 }}>
+          <div className="p-head"><h3>Monitoring & current work</h3><div style={{ display: "flex", gap: 8 }}>{pendingApprovals > 0 ? <Link href="/app/approvals" className="btn btn-primary btn-sm">{pendingApprovals} awaiting review</Link> : null}<button className="btn btn-ghost btn-sm" type="button" onClick={submitRevenueScan} disabled={!canRunRevenue || scanSubmitting}>{scanSubmitting ? "Checking..." : "Run manual check"}</button></div></div>
+          <div style={{ padding: "8px 18px 16px" }}>
+            {pendingApprovals > 0 ? monitoring?.recentPendingApprovals.map((approval) => <div key={approval.id} style={{ padding: "12px 0", borderBottom: "1px solid var(--line)", display: "flex", justifyContent: "space-between", gap: 20 }}><div><div style={{ fontSize: 13, fontWeight: 520 }}>{approval.subject || approval.title}</div><div style={{ marginTop: 3, fontSize: 11.5, color: "var(--text-mute)" }}>{approval.to || "Unknown recipient"}</div></div><div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--amber)" }}>Approval needed</div></div>) : <div style={{ padding: "12px 0 4px", color: "var(--text-mute)", fontSize: 12.5 }}>{revenueRuns.length ? `${revenueRuns.length} recent check${revenueRuns.length === 1 ? "" : "s"} recorded. Next scheduled check: ${dateTimeLabel(monitoring?.nextRunAt)}.` : `No issues need attention right now. Next scheduled check: ${dateTimeLabel(monitoring?.nextRunAt)}.`}</div>}
           </div>
-          <div className="operator-metrics" style={{ borderTop: "1px solid var(--line)", display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
-            {[
-              ["Last check", lastCheckAt ? relativeTime(lastCheckAt) : "Not run"],
-              ["Next check", dateTimeLabel(monitoring?.nextRunAt)],
-              ["Signals found", String(monitoring?.opportunitiesFound ?? 0)],
-              ["Waiting approval", String(monitoring?.approvalsCreated ?? 0)],
-            ].map(([label, value]) => <div key={label} style={{ padding: "13px 18px", borderRight: "1px solid var(--line)" }}><div style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-faint)" }}>{label}</div><div style={{ marginTop: 5, fontSize: 13, fontWeight: 550 }}>{value}</div></div>)}
-          </div>
-        </section>
+        </section>}
+
+        {showRuntime && (
+          <section className="p operator-policy-strip">
+            <div className="p-head"><h3>Policy</h3></div>
+            <div>
+              <span><small>Customer-facing messages</small><strong>Approval required</strong></span>
+              <span><small>CRM updates</small><strong>Approval required</strong></span>
+              <span><small>Human review</small><strong>Required</strong></span>
+            </div>
+          </section>
         )}
 
-        <section className="p" style={{ marginTop: 14, padding: 0 }}>
-          <div className="p-head"><h3>Current work</h3><div style={{ display: "flex", gap: 8 }}>{(monitoring?.recentPendingApprovals?.length ?? 0) > 0 ? <Link href="/app/approvals" className="btn btn-primary btn-sm">{monitoring?.recentPendingApprovals?.length} awaiting review</Link> : <Link href="/app/approvals" className="lnk-open">Approval inbox</Link>}<button className="btn btn-ghost btn-sm" type="button" onClick={submitRevenueScan} disabled={!canRunRevenue || scanSubmitting}>{scanSubmitting ? "Checking..." : "Run manual check"}</button></div></div>
-          <div style={{ padding: "8px 18px 16px" }}>
-            {(monitoring?.recentPendingApprovals?.length ?? 0) > 0 ? monitoring?.recentPendingApprovals.map((approval) => <div key={approval.id} style={{ padding: "12px 0", borderBottom: "1px solid var(--line)", display: "flex", justifyContent: "space-between", gap: 20 }}><div><div style={{ fontSize: 13, fontWeight: 520 }}>{approval.subject || approval.title}</div><div style={{ marginTop: 3, fontSize: 11.5, color: "var(--text-mute)" }}>{approval.to || "Unknown recipient"}</div></div><div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--amber)" }}>Approval needed</div></div>) : <div style={{ padding: "14px 0 6px", color: "var(--text-mute)", fontSize: 12.5 }}>{revenueRuns.length ? `${revenueRuns.length} recorded run${revenueRuns.length === 1 ? "" : "s"}.` : "No signals or approvals yet. The first meaningful action will appear here."}</div>}
-          </div>
-        </section>
-
-        <details className="p" style={{ marginTop: 14, padding: 0 }}>
+        {showRuntime && <details className="p operator-advanced" style={{ marginTop: 14, padding: 0 }}>
           <summary style={{ cursor: "pointer", listStyle: "none", padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontSize: 13, fontWeight: 540 }}>Connection and policy details</span><span style={{ color: "var(--text-faint)", fontFamily: "var(--font-mono)", fontSize: 10 }}>Show</span></summary>
           <div style={{ borderTop: "1px solid var(--line)", padding: "16px 18px", display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 18 }}>
             <div><div className="p-meta">Gmail</div><div style={{ marginTop: 6, fontSize: 12.5 }}>{connectionLabel}</div><div style={{ marginTop: 4, color: "var(--text-mute)", fontSize: 11.5 }}>Inbox monitoring {revenueStatus?.gmail?.permissions?.readonly ? "granted" : "not granted"}</div></div>
             <div><div className="p-meta">CRM</div><div style={{ marginTop: 6, fontSize: 12.5 }}>{revenueStatus?.hubspot?.connected ? "HubSpot connected" : "Optional - not connected"}</div><div style={{ marginTop: 4, color: "var(--text-mute)", fontSize: 11.5 }}>{revenueStatus?.hubspot?.accountEmail || "Email follow-ups remain approval-gated."}</div></div>
             <div><div className="p-meta">Control boundary</div><div style={{ marginTop: 6, fontSize: 12.5 }}>External sends require approval</div><div style={{ marginTop: 4, color: "var(--text-mute)", fontSize: 11.5 }}>{v1Checks?.pipelineMapping ? `Pipeline mapping: ${v1Checks.pipelineMapping}` : "No uncontrolled actions."}</div></div>
           </div>
-        </details>
+        </details>}
 
-        {(() => {
-          const systemsInUse = [
-            ...(revenueReadiness?.connectedRequiredConnectors ?? []).map((key) => getConnectorDefinition(key)?.displayName ?? key),
-            ...(revenueStatus?.hubspot?.connected ? ["HubSpot"] : []),
-          ];
-          const availableNow = revenueReadiness?.availableBusinessActions ?? humanizeOperatorActions(revenueReadiness?.availableActions ?? []);
+        {showControls && (() => {
           const upgrades = (revenueStatus?.capabilityReadiness?.optionalUpsellConnectors ?? []).filter((c) => c.status === "available");
           const configured = Boolean(revenueReadiness?.canRunManual);
           const eligibility = revenueReadiness?.executionEligibility;
           return (
-            <section className="p" style={{ marginTop: 14, padding: 0 }}>
-              <div className="p-head"><h3>Operator activation</h3></div>
-              <div style={{ padding: "16px 18px", display: "grid", gap: 16 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16 }}>
+            <section className="p operator-context-section" style={{ marginTop: 14, padding: 0 }}>
+              <div className="p-head"><h3>Context & controls</h3><Link href="/app/connectors" className="lnk-open">Manage context</Link></div>
+              <div className="operator-context-controls" style={{ padding: "14px 18px", display: "grid", gap: 14 }}>
+                {showRuntime && upgrades.length > 0 && (
                   <div>
-                    <div className="p-meta">Systems in use</div>
-                    <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-dim)" }}>{systemsInUse.length ? systemsInUse.join(", ") : "None connected yet"}</div>
-                    <Link href="/app/connectors" className="lnk-open" style={{ marginTop: 6, display: "inline-block" }}>Manage connections</Link>
-                  </div>
-                  <div>
-                    <div className="p-meta">Available now</div>
-                    <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-dim)" }}>{availableNow.length ? availableNow.join(", ") : "Connect a system to get started"}</div>
-                  </div>
-                </div>
-                {upgrades.length > 0 && (
-                  <div>
-                    <div className="p-meta">Optional enhancements</div>
+                    <div className="p-meta">Add more context</div>
                     <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-dim)" }}>
-                      {upgrades.map((c) => c.displayName).join(", ")} could add further context. <Link href="/app/connectors" className="lnk-open">Connect</Link>
+                      {optionalContext.join(" · ")}
                     </div>
                   </div>
                 )}
@@ -435,6 +393,7 @@ export default function RevenueOperatorPage() {
                     executionEligibility={eligibility}
                     configured={configured}
                     canManage={state.currentUser.roleLabel === "Owner" || state.currentUser.roleLabel === "Admin"}
+                    runtimeControl
                   />
                 )}
               </div>
@@ -442,7 +401,7 @@ export default function RevenueOperatorPage() {
           );
         })()}
 
-        <details className="p" style={{ marginTop: 14, padding: 0 }} open={advancedOpen} onToggle={(event) => setAdvancedOpen((event.currentTarget as HTMLDetailsElement).open)}>
+        {showRuntime && <details className="p operator-advanced" style={{ marginTop: 14, padding: 0 }} open={advancedOpen} onToggle={(event) => setAdvancedOpen((event.currentTarget as HTMLDetailsElement).open)}>
           <summary style={{ cursor: "pointer", listStyle: "none", padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontSize: 13, fontWeight: 540 }}>Prepare a one-off follow-up</span><span style={{ color: "var(--text-faint)", fontFamily: "var(--font-mono)", fontSize: 10 }}>Advanced</span></summary>
           <form onSubmit={submitRevenueRun} style={{ borderTop: "1px solid var(--line)", padding: "16px 18px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <input className="os-input" value={leadName} onChange={(e) => setLeadName(e.target.value)} placeholder="Lead name" required />
@@ -450,7 +409,7 @@ export default function RevenueOperatorPage() {
             <textarea className="os-input" value={context} onChange={(e) => setContext(e.target.value)} placeholder="Context for the follow-up" rows={3} required style={{ gridColumn: "1 / -1" }} />
             <button className="btn btn-primary btn-sm" type="submit" disabled={!canRunRevenue || runSubmitting} style={{ width: "fit-content" }}>{runSubmitting ? "Preparing..." : "Prepare for approval"}</button>
           </form>
-        </details>
+        </details>}
       </div>
     );
   }

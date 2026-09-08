@@ -141,6 +141,19 @@ function normalizeConnectedKeys(truth: WorkspaceConnectorTruthInput): string[] {
     .filter(Boolean);
 }
 
+/** Connected providers that satisfy at least one hard-required capability for this operator. */
+export function getConnectedRequiredConnectorKeys(
+  operatorKey: string,
+  workspaceConnectorTruth: WorkspaceConnectorTruthInput,
+): string[] {
+  const requirement = getOperatorConnectorRequirement(operatorKey);
+  if (!requirement) return [];
+  const requiredProviderKeys = new Set(
+    requirement.required.flatMap((capability) => getConnectorsForCapability(capability).map((definition) => definition.connectorKey)),
+  );
+  return normalizeConnectedKeys(workspaceConnectorTruth).filter((connectorKey) => requiredProviderKeys.has(connectorKey));
+}
+
 export function getOperatorConnectorRequirement(operatorKey: string): OperatorConnectorRequirement | null {
   return (OPERATOR_CONNECTOR_REQUIREMENTS as Record<string, OperatorConnectorRequirement>)[operatorKey] ?? null;
 }
