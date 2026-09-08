@@ -54,6 +54,17 @@ function testSourceContracts() {
   assert.match(canvas, /sysmap-panel/, "a details-panel render path must exist");
   assert.match(canvas, /Escape/, "details panel must be closable with Escape");
 
+  // Regression guard: custom @xyflow/react node types get NO default
+  // connection points. Without an explicit <Handle> in the custom node
+  // component, edges have nowhere to anchor and silently never render --
+  // no matter how the edge itself is styled. This exact bug shipped once
+  // (edges present in data, styled, but invisible in every screenshot)
+  // because system-map.css already had a rule hiding ".react-flow__handle"
+  // while no <Handle> was ever rendered to produce one.
+  assert.match(canvas, /import\s*\{[^}]*\bHandle\b[^}]*\}\s*from\s*"@xyflow\/react"/, "must import Handle from @xyflow/react");
+  assert.match(canvas, /<Handle\s+type="target"/, "the custom node must render a target Handle or edges cannot anchor to it");
+  assert.match(canvas, /<Handle\s+type="source"/, "the custom node must render a source Handle or edges cannot anchor to it");
+
   const packageJson = JSON.parse(read("package.json"));
   assert.ok(packageJson.dependencies["@xyflow/react"], "@xyflow/react must be a real dependency");
   assert.ok(!packageJson.dependencies.reactflow && !packageJson.devDependencies?.reactflow, "the deprecated 'reactflow' package must not be installed");

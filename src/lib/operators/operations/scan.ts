@@ -33,6 +33,9 @@ import { detectZendeskOperationsSignal } from "@/lib/operators/operations/zendes
 import { getStoredIntercomCredential, listIntercomConversations, normalizeIntercomConversation, resolveIntercomAccessToken } from "@/lib/connectors/intercom";
 import { detectIntercomOperationsSignal } from "@/lib/operators/operations/intercom-signals";
 import { loadSelectedGoogleDriveContext } from "@/lib/connectors/google-drive";
+import { normalizeDriveSignal, normalizeProjectTaskSignal, normalizeZendeskSignal } from "@/lib/signals/adapters";
+import { ingestSignalBatch } from "@/lib/signals/store";
+import type { SignalEvent } from "@/lib/signals/types";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 type OperationsScanSourceMode = "scheduled" | "manual" | "event_ready";
@@ -317,7 +320,13 @@ export async function scanOperationsSignals(input: {
   let googleDriveContext = { scanned: 0, usable: 0, skipped: 0 };
   const googleDriveTruth = truth.find((c) => c.connectorKey === "google_drive");
   if (googleDriveTruth?.status === "healthy") {
-    try { const context = await loadSelectedGoogleDriveContext({ workspaceId, supabase, maxFiles: 5 }); googleDriveContext = { scanned: context.scanned, usable: context.files.length, skipped: context.skipped }; } catch (error) { console.warn("[operations-scan] Drive context skipped", { workspaceId, error: error instanceof Error ? error.message : "Unknown Drive error" }); }
+    try {
+      const context = await loadSelectedGoogleDriveContext({ workspaceId, supabase, maxFiles: 5 });
+      googleDriveContext = { scanned: context.scanned, usable: context.files.length, skipped: context.skipped };
+      // Drive changes are awareness events only. The central engine stores a
+      // bounded reference and never lets document text create work by itself.
+      await ingestSignalBatch({ workspaceId, events: context.files.map((file) => normalizeDriveSignal({ workspaceId, file })), supabase });
+    } catch (error) { console.warn("[operations-scan] Drive context skipped", { workspaceId, error: error instanceof Error ? error.message : "Unknown Drive error" }); }
   }
 
   const setup = {
@@ -422,6 +431,7 @@ export async function scanOperationsSignals(input: {
     const handled = await loadOperationsDedupeState({ supabase, workspaceId });
 
     const candidates: { decision: OperationsDecision; card?: TrelloCardDetailed; listName: string; dedupeKey: string; isReactivation: boolean; ageAtDetectionDays: number | null }[] = [];
+    const centralProjectEvents: SignalEvent[] = [];
     const observed: NonNullable<OperationsScanSummary["observed"]> = [];
     const flaggedCardIds = new Set<string>();
     let cardsChecked = 0;
@@ -453,6 +463,21 @@ export async function scanOperationsSignals(input: {
 
       for (const card of cards) {
         cardsChecked += 1;
+        if (centralProjectEvents.length < 100) {
+          centralProjectEvents.push(normalizeProjectTaskSignal({
+            workspaceId,
+            task: {
+              connectorKey: "trello",
+              id: card.id,
+              title: card.name,
+              status: kind === "done" || card.closed ? "completed" : "open",
+              dueAt: card.due,
+              updatedAt: card.dateLastActivity,
+              url: card.url,
+              isBlocked: /\b(blocked|blocker|stuck|waiting|on hold)\b/i.test(`${card.name} ${card.desc}`),
+            },
+          }));
+        }
         const signalType = detectCardSignal(card, kind);
         if (!signalType) { bump(kind === "done" ? "completed_card" : "no_operational_signals"); continue; }
 
@@ -778,6 +803,15 @@ export async function scanOperationsSignals(input: {
     const completedAt = new Date().toISOString();
     const skipped = Object.entries(skippedCounts).map(([reason, count]) => ({ reason, count }));
 
+    // Staged migration: the legacy scan still owns Trello UX and approval
+    // preparation, while its bounded provider observations also feed the
+    // central engine. Ingestion failures never block the established scan.
+    try {
+      await ingestSignalBatch({ workspaceId, events: centralProjectEvents, supabase });
+    } catch (error) {
+      console.warn("[operations-scan] central Trello signal ingestion skipped", { workspaceId, error: error instanceof Error ? error.message : "Unknown signal ingestion error" });
+    }
+
     // Outcome tracking (Phase 15): compare this run's flagged card ids against
     // the previous scan's flagged card ids to derive an honest "recovered"
     // count - a card that had an open signal last scan and shows none this
@@ -820,7 +854,9 @@ export async function scanOperationsSignals(input: {
         if (credential && subdomain) {
           const token = await resolveZendeskAccessToken({ workspaceId, credential, supabase });
           const result = await listZendeskTickets(token, subdomain, { cursor: typeof credential.metadata?.syncCursor === "string" ? credential.metadata.syncCursor : null, updatedSince: typeof credential.metadata?.lastScannedAt === "string" ? credential.metadata.lastScannedAt : null, maxResults: 40 });
+          const normalizedTickets = result.tickets.map((ticket) => normalizeZendeskTicket(ticket, subdomain));
           zendeskSupport = { scanned: result.tickets.length, risksFound: result.tickets.reduce((count, ticket) => count + (detectZendeskOperationsSignal(normalizeZendeskTicket(ticket, subdomain)) ? 1 : 0), 0) };
+          await ingestSignalBatch({ workspaceId, events: normalizedTickets.map((ticket) => normalizeZendeskSignal({ workspaceId, ticket })), supabase });
           await supabase.from("os_connector_credentials").update({ metadata: { ...(credential.metadata ?? {}), lastScannedAt: new Date().toISOString(), syncCursor: result.nextCursor } }).eq("workspace_id", workspaceId).eq("connector_key", "zendesk");
         }
       } catch (error) {

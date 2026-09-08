@@ -5,7 +5,9 @@ import {
   Background,
   BackgroundVariant,
   Controls,
+  Handle,
   MarkerType,
+  Position,
   ReactFlow,
   ReactFlowProvider,
   applyNodeChanges,
@@ -72,6 +74,12 @@ function SystemMapNodeCard({ data, selected }: NodeProps<FlowNode>) {
       aria-pressed={selected}
       aria-label={`${data.label}${data.status ? `, ${statusLabel(data.status)}` : ""}`}
     >
+      {/* Custom node types get no default connection points in @xyflow/react --
+          without these, edges have nowhere to anchor and silently never
+          render, no matter how the edge itself is styled. Visually hidden
+          via .react-flow__handle in system-map.css; only the anchor matters. */}
+      <Handle type="target" position={Position.Top} />
+      <Handle type="source" position={Position.Bottom} />
       {selected && (
         <span className="sysmap-node-check" aria-hidden>
           <CheckIcon size={10} stroke={2.4} />
@@ -132,13 +140,11 @@ function DetailsPanel({ node, branchLabel, onClose }: { node: SystemMapNodeData 
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [node, onClose]);
 
-  if (!node) {
-    return (
-      <aside className="sysmap-panel" aria-label="Node details">
-        <div className="sysmap-panel-empty">Select a node to see its details.</div>
-      </aside>
-    );
-  }
+  // No overlay at all when nothing is selected -- the graph should get the
+  // full canvas by default, not a permanently-reserved empty panel hiding
+  // whatever nodes happen to sit under it (previously the Infrastructure
+  // column was invisible behind an idle "Select a node..." placeholder).
+  if (!node) return null;
 
   return (
     <aside className="sysmap-panel" aria-label={`Details for ${node.label}`} role="dialog" aria-modal="false">

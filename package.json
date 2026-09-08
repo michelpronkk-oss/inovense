@@ -54,6 +54,13 @@
     "test:sidebar-navigation": "node tests/sidebar-navigation-smoke.mjs",
     "test:admin-command-center": "node tests/admin-command-center-smoke.mjs",
     "test:admin-system-map": "node tests/admin-system-map-smoke.mjs",
+    "test:signal-engine": "node tests/signal-engine-smoke.mjs",
+    "test:signal-routing": "node tests/signal-routing-smoke.mjs",
+    "test:signal-runtime": "node tests/signal-runtime-smoke.mjs",
+    "test:workflow-engine": "node tests/workflow-engine-smoke.mjs",
+    "test:workflow-runtime": "node tests/workflow-runtime-smoke.mjs",
+    "test:outcome-attribution": "node tests/outcome-attribution-smoke.mjs",
+    "test:cross-connector-workflows": "node tests/cross-connector-workflows-smoke.mjs",
     "trigger:dev": "npx trigger.dev@latest dev",
     "trigger:deploy": "npx trigger.dev@latest deploy"
   },

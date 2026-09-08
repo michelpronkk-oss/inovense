@@ -1,0 +1,12 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+const engine = fs.readFileSync("src/lib/workflows/engine.ts", "utf8");
+const store = fs.readFileSync("src/lib/workflows/store.ts", "utf8");
+const migration = fs.readFileSync("supabase/migrations/20260908_cross_connector_workflows.sql", "utf8");
+assert.match(engine, /validateWorkflowPlan/); assert.match(engine, /dependency_cycle/); assert.match(engine, /connectorHasCapability/);
+assert.match(store, /Rejected cross-workspace workflow candidate/); assert.match(store, /getOperatorActivationState/); assert.match(store, /getWorkspaceExecutionEligibility/);
+assert.match(store, /Outcome persistence requires later provider-state evidence/); assert.match(store, /Outcome evidence is required/);
+for (const name of ["os_workflow_runs", "os_workflow_steps", "os_workflow_outcomes"]) assert.match(migration, new RegExp(`create table if not exists public\\.${name}`));
+assert.match(migration, /enable row level security/); assert.match(migration, /execution_intent_id/);
+assert.doesNotMatch(store, /executePreparedActionAfterApproval|createApproval/);
+console.log("Workflow runtime smoke: workspace guards, policy prerequisites, durable steps, RLS, outcome evidence, and no direct execution verified.");
