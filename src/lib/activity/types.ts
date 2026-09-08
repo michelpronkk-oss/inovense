@@ -1,4 +1,4 @@
-export type WorkforceActivityCategory = "operator_run" | "approval" | "execution" | "connector" | "failure" | "system";
+export type WorkforceActivityCategory = "operator_run" | "workflow" | "approval" | "execution" | "connector" | "failure" | "system";
 export type WorkforceActivitySeverity = "info" | "success" | "attention" | "failure";
 
 export type WorkforceActivityItem = {
@@ -11,7 +11,7 @@ export type WorkforceActivityItem = {
   connectorKey: string | null;
   severity: WorkforceActivitySeverity;
   status: string;
-  relatedRoute: "/agents" | "/approvals" | "/connectors" | "/logs" | "/policies" | null;
+  relatedRoute: string | null;
   technicalEventId: string | null;
 };
 

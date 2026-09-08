@@ -8,6 +8,7 @@ import { getConnectorDefinition } from "@/lib/connectors/registry";
 import { humanizeOperatorActions } from "@/lib/operators/action-labels";
 import { OperatorActivationToggle, type ActivationEligibility } from "@/components/operators/activation-toggle";
 import { OperatorDegradedNotice } from "@/components/operators/degraded-notice";
+import { OperatorWorkforceBriefing } from "@/components/operators/workforce-briefing";
 
 type OperatorReadiness = {
   operatorKey: string;
@@ -474,6 +475,8 @@ export default function RevenueOperatorPage() {
           </button>
         </div>
       </div>
+
+      <OperatorWorkforceBriefing operatorKey="revenue" />
 
       {runtimeError && <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>{runtimeError}</div>}
 

@@ -5,12 +5,12 @@ import Link from "next/link";
 import type { WorkforceActivityItem, WorkforceActivityPage } from "@/lib/activity/types";
 
 type Range = "24h" | "7d" | "30d";
-type Filter = "all" | "operator_run" | "approval" | "execution" | "attention" | "failure";
-const filters: Array<{ key: Filter; label: string }> = [{ key: "all", label: "All" }, { key: "operator_run", label: "Runs" }, { key: "approval", label: "Approvals" }, { key: "execution", label: "Actions" }, { key: "attention", label: "Needs attention" }, { key: "failure", label: "Failures" }];
+type Filter = "all" | "workflow" | "operator_run" | "approval" | "execution" | "attention" | "failure";
+const filters: Array<{ key: Filter; label: string }> = [{ key: "all", label: "All" }, { key: "workflow", label: "Workflows" }, { key: "operator_run", label: "Runs" }, { key: "approval", label: "Approvals" }, { key: "execution", label: "Actions" }, { key: "attention", label: "Needs attention" }, { key: "failure", label: "Failures" }];
 const ranges: Array<{ key: Range; label: string }> = [{ key: "24h", label: "24H" }, { key: "7d", label: "7D" }, { key: "30d", label: "30D" }];
 
 function timeLabel(value: string) { return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(value)); }
-function routeLabel(item: WorkforceActivityItem) { return item.relatedRoute === "/approvals" ? "View approval" : item.relatedRoute === "/agents" ? "View operator" : item.relatedRoute === "/connectors" ? "View connector" : item.relatedRoute === "/logs" ? "Technical details" : null; }
+function routeLabel(item: WorkforceActivityItem) { return item.relatedRoute === "/approvals" ? "View approval" : item.relatedRoute === "/agents" ? "View operator" : item.relatedRoute?.startsWith("/workflows") ? "View workflow" : item.relatedRoute === "/connectors" ? "View connector" : item.relatedRoute === "/logs" ? "Technical details" : null; }
 
 export default function ActivityPage() {
   const [range, setRange] = useState<Range>("7d");

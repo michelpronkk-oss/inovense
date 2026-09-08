@@ -7,6 +7,7 @@ import { getConnectorDefinition } from "@/lib/connectors/registry";
 import { humanizeOperatorActions } from "@/lib/operators/action-labels";
 import { OperatorActivationToggle, type ActivationEligibility } from "@/components/operators/activation-toggle";
 import { OperatorDegradedNotice } from "@/components/operators/degraded-notice";
+import { OperatorWorkforceBriefing } from "@/components/operators/workforce-briefing";
 
 type OperatorReadiness = {
   operatorKey: string;
@@ -282,6 +283,8 @@ export default function OperationsOperatorPage() {
           </button>
         </div>
       </div>
+
+      <OperatorWorkforceBriefing operatorKey="operations" />
 
       {error && <div role="alert" style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>{error}</div>}
 

@@ -187,7 +187,7 @@ function OperatorDetails({ model, onClose }: { model: CardModel; onClose: () => 
         <div className="agent-details-grid">
           <div className="agent-details-area"><span>Owns</span><strong>{sentenceCase(value.owns)}</strong></div>
           <div className="agent-details-area"><span>Your systems</span><strong>{productState.connectedSystems.length ? productState.connectedSystems.map(sentenceCase).join(" · ") : "None connected yet"}</strong></div>
-          <div className="agent-details-area agent-details-capabilities"><span>{available.length ? "Can do now" : "Needs next"}</span>{available.length ? <ul>{available.map((item) => <li key={item}>{sentenceCase(item)}</li>)}</ul> : <strong>{sentenceCase(next?.label ?? productState.description)}</strong>}</div>
+          <div className="agent-details-area agent-details-capabilities"><span>{available.length ? "What it can do today" : "Next step"}</span>{available.length ? <ul>{available.map((item) => <li key={item}>{sentenceCase(item)}</li>)}</ul> : <strong>{sentenceCase(next?.label ?? productState.description)}</strong>}</div>
           <div className="agent-details-area"><span>{productState.state === "enhanced" ? "Enhanced by" : "Enhance with"}</span><strong>{sentenceCase(value.enhancement)}</strong></div>
         </div>
         {productState.degraded && <div className="agent-details-alert">Unavailable while a connection needs attention: {productState.degraded.lostCapabilities.join(", ")}</div>}

@@ -1,0 +1,37 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+
+const read = (file) => fs.readFileSync(file, "utf8");
+const api = read("src/app/api/workflows/route.ts");
+const presentation = read("src/lib/workflows/presentation.ts");
+const workflows = read("src/app/app/workflows/page.tsx");
+const insights = read("src/app/app/insights/page.tsx");
+const activity = read("src/lib/activity/normalize.ts");
+const briefing = read("src/components/operators/workforce-briefing.tsx");
+const activation = read("src/components/operators/activation-toggle.tsx");
+
+assert.match(api, /getVerifiedSupabaseUser/);
+assert.match(api, /requireWorkspaceMember/);
+assert.match(api, /resolveActiveWorkspaceId/);
+assert.match(presentation, /eq\("workspace_id", input\.workspaceId\)/);
+assert.match(presentation, /os_workflow_runs/);
+assert.match(presentation, /os_workflow_steps/);
+assert.match(presentation, /os_workflow_outcomes/);
+assert.match(presentation, /os_signal_events/);
+assert.match(presentation, /Outcome evidence is shown below when observed/);
+assert.match(workflows, /Coordinated work/);
+assert.match(workflows, /real plan assembled from a connected-system signal/);
+assert.match(workflows, /No coordinated work yet/);
+assert.doesNotMatch(workflows, /Run demo|Run live|Suggested workflows|Workflow engine/);
+assert.match(insights, /Outcome intelligence/);
+assert.match(insights, /connected system provides evidence/);
+assert.doesNotMatch(insights, /Actions this week|Outputs created|Approval rate/);
+assert.match(activity, /category: failed \? "failure" : "workflow"/);
+assert.match(activity, /relatedRoute: `\/workflows\?workflow=\$\{encodeURIComponent/);
+assert.match(briefing, /Operator briefing/);
+assert.match(briefing, /Your control/);
+assert.match(briefing, /consequential actions/);
+assert.match(activation, /workflow history, and recorded outcomes stay available/);
+assert.match(activation, /Ready to activate/);
+
+console.log("Workflow product experience smoke: workspace-scoped real plans, evidence-only insights, clear operator control, and workflow milestones verified.");

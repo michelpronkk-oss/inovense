@@ -54,6 +54,7 @@ export function OperatorActivationToggle({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [confirmPause, setConfirmPause] = useState(false);
 
   const load = useCallback(async () => {
     if (!workspaceId) return;
@@ -78,6 +79,7 @@ export function OperatorActivationToggle({
     if (saving || loading) return;
     const nextActivated = !(state?.activated ?? false);
     if (nextActivated && !executionEligibility.eligible) return;
+    if (!nextActivated && !confirmPause) { setConfirmPause(true); return; }
     setSaving(true);
     setError("");
     try {
@@ -89,6 +91,7 @@ export function OperatorActivationToggle({
       const json = await res.json().catch(() => ({})) as { state?: ActivationState; error?: string };
       if (!res.ok) throw new Error(json.error || "Could not update activation.");
       setState(json.state ?? { activated: nextActivated, activatedAt: null, updatedAt: null });
+      setConfirmPause(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update activation.");
     } finally {
@@ -129,7 +132,7 @@ export function OperatorActivationToggle({
       </button>
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ fontSize: 13, fontWeight: 600 }}>
-          {loading ? "Loading activation..." : error && !state ? "Activation unavailable" : activated ? "Active" : wasEverActivated ? "Paused" : "Not active"}
+          {loading ? "Loading activation..." : error && !state ? "Activation unavailable" : activated ? "Active" : wasEverActivated ? "Paused" : "Ready to activate"}
         </div>
         <div id={descriptionId} style={{ marginTop: 2, fontSize: 12, color: "var(--text-mute)" }}>
           {!configured
@@ -142,6 +145,7 @@ export function OperatorActivationToggle({
                   ? "Scheduled checks are paused. Your setup is saved."
                   : "Turn on scheduled checks. Manual checks remain available."}
         </div>
+        {confirmPause && activated && <div style={{ marginTop: 7, display: "grid", gap: 6, fontSize: 12, color: "var(--text-dim)" }}><span>Pausing stops scheduled monitoring. Your configuration, approvals, workflow history, and recorded outcomes stay available.</span><span style={{ display: "flex", gap: 6 }}><button type="button" className="appr-btn deny" disabled={saving} onClick={() => void toggle()}>Pause monitoring</button><button type="button" className="appr-btn edit" disabled={saving} onClick={() => setConfirmPause(false)}>Keep active</button></span></div>}
         {error && <div role="alert" style={{ marginTop: 4, fontSize: 12, color: "var(--rose)" }}>{error} <button type="button" className="btn btn-ghost btn-sm" disabled={loading || saving} onClick={() => void load()}>Retry</button></div>}
       </div>
       {!executionEligibility.eligible && (
