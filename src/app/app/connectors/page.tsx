@@ -186,6 +186,24 @@ function connectorTrustCopy(connectorId: string): { title: string; lines: string
   return { title: "Access & safety", lines: connectorSafetyNotes(connectorId) };
 }
 
+const CAPABILITY_PRIORITY = [
+  "Inbound email monitoring",
+  "Approval-gated email sending",
+  "Follow-up drafting",
+  "Document context",
+  "Search Google Drive files",
+  "Team channel visibility",
+  "Approval-gated team messages",
+];
+
+function orderCapabilitySummary(items: string[]): string[] {
+  return Array.from(new Set(items)).sort((a, b) => {
+    const aIndex = CAPABILITY_PRIORITY.indexOf(a);
+    const bIndex = CAPABILITY_PRIORITY.indexOf(b);
+    return (aIndex === -1 ? CAPABILITY_PRIORITY.length : aIndex) - (bIndex === -1 ? CAPABILITY_PRIORITY.length : bIndex) || a.localeCompare(b);
+  });
+}
+
 export default function ConnectorsPage() {
   const {
     state,
@@ -260,6 +278,7 @@ export default function ConnectorsPage() {
   const [teamsSaving, setTeamsSaving] = useState(false);
   const [teamsSetupError, setTeamsSetupError] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [capabilitiesExpanded, setCapabilitiesExpanded] = useState(false);
   const [operatorReadiness, setOperatorReadiness] = useState<{ operatorKey: string; status: string; canRunManual: boolean; availableActions: string[]; availableBusinessActions?: string[] }[]>([]);
 
   // Real connected means authenticated through a provider's direct OAuth flow.
@@ -424,8 +443,9 @@ export default function ConnectorsPage() {
     const actions = operatorReadiness
       .filter((r) => r.canRunManual && (r.status === "ready" || r.status === "draft_only"))
       .flatMap((r) => r.availableBusinessActions ?? humanizeOperatorActions(r.availableActions ?? []));
-    return Array.from(new Set(actions));
+    return orderCapabilitySummary(actions);
   }, [operatorReadiness]);
+  const visibleCapabilitySummary = capabilitiesExpanded ? whatAuterimCanDoNow : whatAuterimCanDoNow.slice(0, 5);
 
   // Real-connector-only workflow suggestions (see getRealWorkspaceSuggestedWorkflows,
   // src/lib/os/workflow-recommendations.ts) - never the mock/demo engine.
@@ -1025,19 +1045,26 @@ export default function ConnectorsPage() {
       {/* Real, capability-derived business outcomes - only ever populated from
           operators that can actually run today (see whatAuterimCanDoNow). */}
       {whatAuterimCanDoNow.length > 0 && (
-        <div className="p" style={{ borderRadius: 16 }}>
-          <div className="p-head">
+        <div className="p" style={{ borderRadius: 16, background: "linear-gradient(145deg, rgba(77,232,225,0.045), rgba(255,255,255,0.012))" }}>
+          <div className="p-head" style={{ alignItems: "flex-start" }}>
             <h3>What Auterim can do now</h3>
-            <div className="p-meta">Based on your connected systems</div>
+            <div className="p-meta">{whatAuterimCanDoNow.length} live {whatAuterimCanDoNow.length === 1 ? "capability" : "capabilities"}</div>
           </div>
-          <div className="connector-outcomes">
-            {whatAuterimCanDoNow.map((item) => (
-              <div key={item} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--text-dim)" }}>
-                <span style={{ color: "var(--cyan)", fontSize: 13 }}>✓</span>
-                <span style={{ textTransform: "capitalize" }}>{item}</span>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 8, padding: "14px 18px 16px" }}>
+            {visibleCapabilitySummary.map((item) => (
+              <div key={item} style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0, padding: "9px 10px", borderRadius: 9, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)", fontSize: 12, color: "var(--text-dim)" }}>
+                <span style={{ width: 18, height: 18, flex: "0 0 auto", borderRadius: 999, display: "grid", placeItems: "center", color: "var(--cyan)", background: "rgba(77,232,225,0.08)", fontSize: 11 }}>✓</span>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{item}</span>
               </div>
             ))}
           </div>
+          {whatAuterimCanDoNow.length > 5 && (
+            <div style={{ padding: "0 18px 14px" }}>
+              <button type="button" className="btn btn-ghost btn-sm" style={{ color: "var(--text-mute)", fontSize: 11 }} onClick={() => setCapabilitiesExpanded((expanded) => !expanded)}>
+                {capabilitiesExpanded ? "Show fewer" : `+${whatAuterimCanDoNow.length - 5} more`}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

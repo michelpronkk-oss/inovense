@@ -149,6 +149,10 @@ export async function POST(req: NextRequest) {
     if (credential.data?.encrypted_access_token) { try { await revokeJiraToken(decryptToken(credential.data.encrypted_access_token)); } catch { /* local deletion still blocks access */ } }
     const removed = await supabase.from("os_connector_credentials").delete().eq("workspace_id", workspaceId).eq("connector_key", "jira");
     if (removed.error) return NextResponse.json({ error: removed.error.message }, { status: 500 });
+    // The reporting ledger is a required compliance index, not connector
+    // runtime state. Remove it with the credential so a disconnected Jira
+    // accountId is not retained until the next scheduled sweep.
+    await supabase.from("os_jira_personal_data_reports").delete().eq("workspace_id", workspaceId);
   } else if (connectorKey === "zendesk") {
     const credential = await supabase.from("os_connector_credentials").select("encrypted_access_token,metadata").eq("workspace_id", workspaceId).eq("connector_key", "zendesk").maybeSingle();
     if (credential.error) return NextResponse.json({ error: credential.error.message }, { status: 500 });

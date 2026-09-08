@@ -22,7 +22,7 @@ export type JiraIdentity = { accountId?: string; displayName?: string; emailAddr
 export type JiraProject = { id: string; key: string; name: string; projectTypeKey?: string; simplified?: boolean; style?: string; self?: string };
 export type JiraIssue = {
   id: string; key: string; self?: string;
-  fields?: { summary?: string; description?: unknown; status?: { name?: string; statusCategory?: { key?: string } }; priority?: { id?: string; name?: string }; assignee?: { accountId?: string; displayName?: string } | null; reporter?: { accountId?: string; displayName?: string } | null; duedate?: string | null; created?: string; updated?: string; labels?: string[]; issuetype?: { id?: string; name?: string }; parent?: { key?: string }; comment?: { comments?: Array<{ id?: string; body?: unknown; author?: { displayName?: string } }> } };
+  fields?: { summary?: string; description?: unknown; status?: { name?: string; statusCategory?: { key?: string } }; priority?: { id?: string; name?: string }; assignee?: { accountId?: string } | null; duedate?: string | null; created?: string; updated?: string; labels?: string[]; issuetype?: { id?: string; name?: string }; parent?: { key?: string }; comment?: { comments?: Array<{ id?: string; body?: unknown; author?: { displayName?: string } }> } };
 };
 export type JiraIssueType = { id: string; name: string; subtask?: boolean; hierarchyLevel?: number; createable?: boolean };
 export type JiraPriority = { id: string; name: string };
@@ -94,7 +94,10 @@ export function toStoredJiraCredential(input: { workspaceId: string; token: Jira
   const expiresAt = input.token.expires_in ? new Date(Date.now() + input.token.expires_in * 1000).toISOString() : null;
   const scopes = input.resource.scopes?.length ? input.resource.scopes : input.token.scope?.split(/[ ,]+/).filter(Boolean) ?? [];
   return {
-    workspace_id: input.workspaceId, connector_key: "jira", provider_account_id: input.identity?.accountId ?? null, provider_email: input.identity?.emailAddress?.toLowerCase() ?? null,
+    // Atlassian's accountId is retained only because it is the identifier the
+    // Personal Data Reporting API requires. Email/profile fields are not used
+    // by Jira execution and are intentionally not persisted.
+    workspace_id: input.workspaceId, connector_key: "jira", provider_account_id: input.identity?.accountId ?? null, provider_email: null,
     encrypted_access_token: encryptToken(input.token.access_token), encrypted_refresh_token: input.token.refresh_token ? encryptToken(input.token.refresh_token) : null, token_expires_at: expiresAt, scopes, status: "connected",
     metadata: { provider: "jira", cloudId: input.resource.id, siteUrl: input.resource.url ?? null, siteName: input.resource.name ?? null, selectedProjectId: null, selectedProjectKey: null, selectedProjectName: null, selectedIssueTypeId: null, selectedIssueTypeName: null, syncCursor: null, connectedAt: new Date().toISOString() },
   };
@@ -242,7 +245,7 @@ export async function listJiraIssueTypes(token: string, cloudId: string, project
 }
 export async function listJiraPriorities(token: string, cloudId: string): Promise<JiraPriority[]> { return jiraFetch<JiraPriority[]>(token, cloudId, "/priority"); }
 
-export type NormalizedJiraIssue = { provider: "jira"; cloudId: string; projectId: string; projectKey: string; issueId: string; issueKey: string; summary: string; description: string; status: string; priority: string | null; assigneeName: string | null; assigneeAccountId: string | null; dueAt: string | null; createdAt: string | null; updatedAt: string | null; labels: string[]; issueType: string | null; parentKey?: string; webUrl?: string };
+export type NormalizedJiraIssue = { provider: "jira"; cloudId: string; projectId: string; projectKey: string; issueId: string; issueKey: string; summary: string; description: string; status: string; priority: string | null; assigneeAccountId: string | null; dueAt: string | null; createdAt: string | null; updatedAt: string | null; labels: string[]; issueType: string | null; parentKey?: string; webUrl?: string };
 
 export function normalizeJiraDocument(value: unknown, max = 8000): string {
   const chunks: string[] = [];
@@ -253,17 +256,17 @@ export function normalizeJiraDocument(value: unknown, max = 8000): string {
 
 export function normalizeJiraIssue(issue: JiraIssue, cloudId: string, project: JiraProject): NormalizedJiraIssue {
   const fields = issue.fields ?? {};
-  return { provider: "jira", cloudId, projectId: project.id, projectKey: project.key, issueId: issue.id, issueKey: issue.key, summary: String(fields.summary ?? "").slice(0, 500), description: normalizeJiraDocument(fields.description), status: String(fields.status?.name ?? "").slice(0, 120), priority: fields.priority?.name ? String(fields.priority.name).slice(0, 120) : null, assigneeName: fields.assignee?.displayName ? String(fields.assignee.displayName).slice(0, 200) : null, assigneeAccountId: fields.assignee?.accountId ?? null, dueAt: fields.duedate ?? null, createdAt: fields.created ?? null, updatedAt: fields.updated ?? null, labels: Array.isArray(fields.labels) ? fields.labels.filter((item): item is string => typeof item === "string").slice(0, 30) : [], issueType: fields.issuetype?.name ? String(fields.issuetype.name).slice(0, 120) : null, parentKey: fields.parent?.key, webUrl: issue.key ? `${String((project as JiraProject & { self?: string }).self ?? "").replace(/\/rest\/api\/3\/project\/.*$/, "")}/browse/${encodeURIComponent(issue.key)}` : undefined };
+  return { provider: "jira", cloudId, projectId: project.id, projectKey: project.key, issueId: issue.id, issueKey: issue.key, summary: String(fields.summary ?? "").slice(0, 500), description: normalizeJiraDocument(fields.description), status: String(fields.status?.name ?? "").slice(0, 120), priority: fields.priority?.name ? String(fields.priority.name).slice(0, 120) : null, assigneeAccountId: fields.assignee?.accountId ?? null, dueAt: fields.duedate ?? null, createdAt: fields.created ?? null, updatedAt: fields.updated ?? null, labels: Array.isArray(fields.labels) ? fields.labels.filter((item): item is string => typeof item === "string").slice(0, 30) : [], issueType: fields.issuetype?.name ? String(fields.issuetype.name).slice(0, 120) : null, parentKey: fields.parent?.key, webUrl: issue.key ? `${String((project as JiraProject & { self?: string }).self ?? "").replace(/\/rest\/api\/3\/project\/.*$/, "")}/browse/${encodeURIComponent(issue.key)}` : undefined };
 }
 
 export async function searchJiraIssues(token: string, cloudId: string, project: JiraProject, input: { updatedSince?: string | null; maxResults?: number } = {}): Promise<NormalizedJiraIssue[]> {
   const bounded = Math.max(1, Math.min(input.maxResults ?? 100, 100));
   const updated = input.updatedSince && /^\d{4}-\d{2}-\d{2}T/.test(input.updatedSince) ? ` AND updated >= "${input.updatedSince.replace(/["\\]/g, "")}"` : "";
   const jql = `project = "${project.key.replace(/[^A-Za-z0-9_\-]/g, "")}"${updated} ORDER BY updated DESC`;
-  const body = await jiraFetch<{ issues?: JiraIssue[] }>(token, cloudId, "/search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jql, startAt: 0, maxResults: bounded, fields: ["summary", "description", "status", "priority", "assignee", "reporter", "duedate", "created", "updated", "labels", "issuetype", "parent"] }) });
+  const body = await jiraFetch<{ issues?: JiraIssue[] }>(token, cloudId, "/search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jql, startAt: 0, maxResults: bounded, fields: ["summary", "description", "status", "priority", "assignee", "duedate", "created", "updated", "labels", "issuetype", "parent"] }) });
   return (body.issues ?? []).map((issue) => normalizeJiraIssue(issue, cloudId, project));
 }
-export async function getJiraIssue(token: string, cloudId: string, issueKey: string, project: JiraProject): Promise<NormalizedJiraIssue> { if (!/^[A-Z][A-Z0-9_]{1,20}-\d+$/.test(issueKey)) throw new JiraExecutionError("Invalid Jira issue key.", "invalid_target", 400); const issue = await jiraFetch<JiraIssue>(token, cloudId, `/issue/${encodeURIComponent(issueKey)}?fields=summary,description,status,priority,assignee,reporter,duedate,created,updated,labels,issuetype,parent`); if (!issue.key || !issue.key.startsWith(`${project.key}-`)) throw new JiraExecutionError("The Jira issue is outside the configured project scope.", "target_out_of_scope", 403); return normalizeJiraIssue(issue, cloudId, project); }
+export async function getJiraIssue(token: string, cloudId: string, issueKey: string, project: JiraProject): Promise<NormalizedJiraIssue> { if (!/^[A-Z][A-Z0-9_]{1,20}-\d+$/.test(issueKey)) throw new JiraExecutionError("Invalid Jira issue key.", "invalid_target", 400); const issue = await jiraFetch<JiraIssue>(token, cloudId, `/issue/${encodeURIComponent(issueKey)}?fields=summary,description,status,priority,assignee,duedate,created,updated,labels,issuetype,parent`); if (!issue.key || !issue.key.startsWith(`${project.key}-`)) throw new JiraExecutionError("The Jira issue is outside the configured project scope.", "target_out_of_scope", 403); return normalizeJiraIssue(issue, cloudId, project); }
 
 async function configuredScope(input: { workspaceId: string; projectId?: string; issueKey?: string; supabase?: ReturnType<typeof createSupabaseAdmin> }): Promise<{ token: string; credential: StoredJiraCredential; cloudId: string; project: JiraProject }> {
   const supabase = input.supabase ?? createSupabaseAdmin(); const credential = await getStoredJiraCredential(input.workspaceId, supabase); if (!credential) throw new JiraExecutionError("Jira is not connected.", "connector_not_connected", 409);

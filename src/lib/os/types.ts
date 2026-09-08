@@ -225,6 +225,11 @@ export interface ExecutionLog {
   message: string;
   duration: string;
   status: LogEventStatus;
+  /** Optional structured attribution. Older records intentionally fall back to system/operator labels. */
+  actorType?: "user" | "system" | "operator";
+  actorUserId?: string | null;
+  actorDisplayName?: string | null;
+  actorEmail?: string | null;
 }
 
 // ── Policy ─────────────────────────────────────────────────

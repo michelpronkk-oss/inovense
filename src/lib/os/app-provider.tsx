@@ -444,6 +444,7 @@ function logEntry(message: string, event: string, status: ExecutionLog["status"]
     message,
     duration: "-",
     status,
+    actorType: "system",
   };
 }
 
@@ -914,9 +915,15 @@ export function AppProvider({ children, initialContext }: { children: React.Reac
         lastSync: connected ? "just now" : "-",
         lastSynced: connected ? new Date().toISOString() : "",
       },
-      log: logEntry(`${connector.name} ${connected ? "connected" : "disconnected"} by operator`, connected ? "connector.connected" : "connector.disconnected", connected ? "ok" : "warn"),
+      log: {
+        ...logEntry(`${connector.name} ${connected ? "connected" : "disconnected"}`, connected ? "connector.connected" : "connector.disconnected", connected ? "ok" : "warn"),
+        actorType: "user",
+        actorUserId: state.currentUser.id,
+        actorDisplayName: state.currentUser.name,
+        actorEmail: state.currentUser.email,
+      },
     });
-  }, [state.connectors]);
+  }, [state.connectors, state.currentUser.email, state.currentUser.id, state.currentUser.name]);
 
   const connectConnector = useCallback((connectorId: string, mode: "preview" | "real" = "preview") => {
     const entitlement = getEntitlements(state.workspace);
@@ -1060,8 +1067,8 @@ export function AppProvider({ children, initialContext }: { children: React.Reac
   }, [state.workspace]);
 
   const appendExecutionLog = useCallback((event: string, message: string, status: ExecutionLog["status"] = "ok") => {
-    dispatch({ type: "APPEND_LOG", log: logEntry(message, event, status) });
-  }, []);
+    dispatch({ type: "APPEND_LOG", log: { ...logEntry(message, event, status), actorType: "user", actorUserId: state.currentUser.id, actorDisplayName: state.currentUser.name, actorEmail: state.currentUser.email } });
+  }, [state.currentUser.email, state.currentUser.id, state.currentUser.name]);
 
   const installSuggestedWorkflow = useCallback((suggestion: SuggestedWorkflow) => {
     const workflow = installWorkflowFromSuggestion(state, suggestion);
