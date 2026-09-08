@@ -37,13 +37,13 @@ export function selectDashboardLifecycleState(input: {
   operatorStates: LifecycleOperatorState[];
   anyDegraded?: boolean;
 }): DashboardLifecycleState {
-  if (input.healthyConnectorCount === 0) return "A";
-
-  const active = input.operatorStates.some((item) => item.state === "active" || item.state === "enhanced");
+  const active = input.operatorStates.some((item) => item.state === "active" || item.state === "active_limited" || item.state === "enhanced");
   if (active) return "E";
 
-  const attention = input.operatorStates.some((item) => item.state === "needs_attention" || Boolean(item.degraded)) || Boolean(input.anyDegraded);
+  const attention = input.operatorStates.some((item) => item.state === "needs_attention" || item.state === "active_limited") || Boolean(input.anyDegraded);
   if (attention) return "F";
+
+  if (input.healthyConnectorCount === 0) return "A";
 
   const planBlocked = input.operatorStates.some((item) => item.state === "plan_required" || item.state === "billing_attention" || item.state === "suspended");
   if (planBlocked) return "D";

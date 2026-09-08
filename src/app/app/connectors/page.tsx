@@ -542,8 +542,17 @@ export default function ConnectorsPage() {
       "microsoft-teams": "microsoft_teams",
       slack: "slack",
       trello: "trello",
+      asana: "asana",
+      jira: "jira",
+      google_drive: "google_drive",
+      "google-drive": "google_drive",
+      zendesk: "zendesk",
+      intercom: "intercom",
       "slack-channel": "slack",
       "trello-project": "trello",
+      "asana-project": "asana",
+      "jira-project": "jira",
+      "drive-folders": "google_drive",
     };
     const connectorId = setupMap[setup];
     if (!connectorId) return;
@@ -556,6 +565,9 @@ export default function ConnectorsPage() {
       setDrawerConnectorId(existing.id);
       if (setup === "slack-channel") setFeedback("Choose the Slack channel for internal approval alerts.");
       if (setup === "trello-project") setFeedback("Choose the Trello board and list for approved task updates.");
+      if (setup === "asana-project") setFeedback("Choose the Asana project for approved task updates.");
+      if (setup === "jira-project") setFeedback("Choose the Jira project for approved issue updates.");
+      if (setup === "drive-folders") setFeedback("Choose the Google Drive folders available for document context.");
       return;
     }
 

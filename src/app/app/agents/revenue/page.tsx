@@ -7,8 +7,7 @@ import { getEntitlements } from "@/lib/os/entitlements";
 import { getConnectorDefinition } from "@/lib/connectors/registry";
 import { humanizeOperatorActions } from "@/lib/operators/action-labels";
 import { OperatorActivationToggle, type ActivationEligibility } from "@/components/operators/activation-toggle";
-import { OperatorDegradedNotice } from "@/components/operators/degraded-notice";
-import { OperatorWorkforceBriefing } from "@/components/operators/workforce-briefing";
+import { OperatorWorkforceBriefing, type OperatorBriefingState } from "@/components/operators/workforce-briefing";
 
 type OperatorReadiness = {
   operatorKey: string;
@@ -171,6 +170,7 @@ export default function RevenueOperatorPage() {
   const entitlements = getEntitlements(state.workspace);
   const [revenueReadiness, setRevenueReadiness] = useState<OperatorReadiness | null>(null);
   const [revenueStatus, setRevenueStatus] = useState<RevenueStatus | null>(null);
+  const [presentationState, setPresentationState] = useState<OperatorBriefingState | null>(null);
   const [revenueRuns, setRevenueRuns] = useState<RevenueRun[]>([]);
   const [runtimeLoading, setRuntimeLoading] = useState(true);
   const [runtimeError, setRuntimeError] = useState("");
@@ -332,12 +332,15 @@ export default function RevenueOperatorPage() {
             <div className="os-page-sub">Find opportunities and prepare follow-ups for approval.</div>
           </div>
           <div className="os-page-actions">
-            <Link href="/app/approvals" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Approval inbox</Link>
+            {presentationState && <span className="os-status" data-state={presentationState.state}>{presentationState.label}</span>}
           </div>
         </div>
 
         {runtimeError && <div style={{ marginBottom: 14, padding: "10px 12px", borderRadius: 10, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>{runtimeError}</div>}
 
+        <OperatorWorkforceBriefing operatorKey="revenue" onStateChange={setPresentationState} />
+
+        {!presentationState && (
         <section className="p" style={{ overflow: "hidden", padding: 0, background: "linear-gradient(112deg, rgba(77,232,225,0.08), rgba(255,255,255,0.012) 43%, rgba(255,255,255,0.01))" }}>
           <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.35fr) minmax(300px, 0.65fr)" }}>
             <div style={{ padding: "28px 30px" }}>
@@ -373,9 +376,10 @@ export default function RevenueOperatorPage() {
             ].map(([label, value]) => <div key={label} style={{ padding: "13px 18px", borderRight: "1px solid var(--line)" }}><div style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-faint)" }}>{label}</div><div style={{ marginTop: 5, fontSize: 13, fontWeight: 550 }}>{value}</div></div>)}
           </div>
         </section>
+        )}
 
         <section className="p" style={{ marginTop: 14, padding: 0 }}>
-          <div className="p-head"><h3>Activity</h3><Link href="/app/approvals" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>View approvals</Link></div>
+          <div className="p-head"><h3>Current work</h3><div style={{ display: "flex", gap: 8 }}>{(monitoring?.recentPendingApprovals?.length ?? 0) > 0 ? <Link href="/app/approvals" className="btn btn-primary btn-sm">{monitoring?.recentPendingApprovals?.length} awaiting review</Link> : <Link href="/app/approvals" className="lnk-open">Approval inbox</Link>}<button className="btn btn-ghost btn-sm" type="button" onClick={submitRevenueScan} disabled={!canRunRevenue || scanSubmitting}>{scanSubmitting ? "Checking..." : "Run manual check"}</button></div></div>
           <div style={{ padding: "8px 18px 16px" }}>
             {(monitoring?.recentPendingApprovals?.length ?? 0) > 0 ? monitoring?.recentPendingApprovals.map((approval) => <div key={approval.id} style={{ padding: "12px 0", borderBottom: "1px solid var(--line)", display: "flex", justifyContent: "space-between", gap: 20 }}><div><div style={{ fontSize: 13, fontWeight: 520 }}>{approval.subject || approval.title}</div><div style={{ marginTop: 3, fontSize: 11.5, color: "var(--text-mute)" }}>{approval.to || "Unknown recipient"}</div></div><div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--amber)" }}>Approval needed</div></div>) : <div style={{ padding: "14px 0 6px", color: "var(--text-mute)", fontSize: 12.5 }}>{revenueRuns.length ? `${revenueRuns.length} recorded run${revenueRuns.length === 1 ? "" : "s"}.` : "No signals or approvals yet. The first meaningful action will appear here."}</div>}
           </div>
@@ -437,15 +441,6 @@ export default function RevenueOperatorPage() {
             </section>
           );
         })()}
-
-        {state.workspace.id && (
-          <OperatorDegradedNotice
-            operatorKey="revenue"
-            workspaceId={state.workspace.id}
-            userId={state.currentUser.id}
-            userEmail={state.currentUser.email}
-          />
-        )}
 
         <details className="p" style={{ marginTop: 14, padding: 0 }} open={advancedOpen} onToggle={(event) => setAdvancedOpen((event.currentTarget as HTMLDetailsElement).open)}>
           <summary style={{ cursor: "pointer", listStyle: "none", padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontSize: 13, fontWeight: 540 }}>Prepare a one-off follow-up</span><span style={{ color: "var(--text-faint)", fontFamily: "var(--font-mono)", fontSize: 10 }}>Advanced</span></summary>

@@ -32,8 +32,7 @@ async function loadLifecycleModule() {
 
 function testSourceContracts() {
   const overview = read("src/components/dashboard/overview.tsx");
-  // The existing, already-tested State A literal contract must remain untouched.
-  assert.match(overview, /if \(healthyConnectors === 0\) \{/, "State A literal branch must remain");
+  assert.match(overview, /if \(overview\.lifecycleState === "A"\) \{/, "State A must consume the shared lifecycle result");
   assert.match(overview, /overview\.lifecycleState/, "dashboard overview component must consume the server-computed lifecycleState (from the shared lifecycle selector), not re-derive its own precedence");
   assert.match(overview, /overview\.lifecycleState === "B"/, "State B branch must exist and be driven by the real, server-computed lifecycleState");
   assert.match(overview, /overview\.lifecycleState === "C"/, "State C branch must exist");
@@ -54,6 +53,7 @@ async function testRuntimePrecedence() {
 
   // Zero connectors -> A.
   assert.equal(select({ healthyConnectorCount: 0, operatorStates: [] }), "A");
+  assert.equal(select({ healthyConnectorCount: 0, operatorStates: [{ state: "needs_attention" }] }), "F");
 
   // Connectors present, no operator ready at all -> B.
   assert.equal(select({
@@ -94,8 +94,8 @@ async function testRuntimePrecedence() {
   }), "F");
   assert.equal(select({
     healthyConnectorCount: 2,
-    operatorStates: [{ state: "ready_to_activate", degraded: { unhealthyConnectors: ["Salesforce"] } }],
-  }), "F");
+    operatorStates: [{ state: "active_limited" }],
+  }), "E");
 
   // Precedence proof: active always wins over a simultaneous attention situation
   // elsewhere in the workspace - E must still surface the attention section

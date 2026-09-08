@@ -30,6 +30,7 @@ import { getConnectorDefinition } from "@/lib/connectors/registry";
 import { humanizeOperatorActions } from "@/lib/operators/action-labels";
 import { humanizeCapabilities } from "@/lib/operators/capability-labels";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
@@ -45,13 +46,28 @@ export type OperatorProductState =
   | "suspended"
   | "paused"
   | "active"
+  | "active_limited"
   | "enhanced";
+
+export type OperatorAttentionSeverity = "informational" | "attention" | "blocking";
+
+export type OperatorRemediation = {
+  connectorKey: string;
+  connectorName: string;
+  severity: OperatorAttentionSeverity;
+  label: string;
+  href: string;
+  reason: string;
+  impact: string;
+};
 
 export type OperatorDegradedInfo = {
   /** Display names, not raw connector keys. */
   unhealthyConnectors: string[];
   lostCapabilities: string[];
   stillAvailableCapabilities: string[];
+  impact: "required" | "optional";
+  issues: OperatorRemediation[];
 };
 
 export type OperatorProductStateResult = {
@@ -63,8 +79,19 @@ export type OperatorProductStateResult = {
   connectedSystems: string[];
   availableNow: string[];
   nextAction: { label: string; href: string } | null;
+  lifecycle: "available_to_unlock" | "ready_to_activate" | "active" | "paused";
+  health: "healthy" | "limited_context" | "needs_attention" | "billing_attention";
+  impact: string;
+  missingCoreCapabilities: string[];
+  missingOptionalCapabilities: string[];
+  requiredActions: OperatorRemediation[];
   /** Non-null only when an optional (enhancement) or required connector for this operator is currently unhealthy. Independent of `state` - an operator can be `active` and still carry a `degraded` (enhancement-only) entry. */
   degraded: OperatorDegradedInfo | null;
+};
+
+type OperatorCoreConfiguration = {
+  ready: boolean;
+  connectorKey: string | null;
 };
 
 /**
@@ -85,15 +112,24 @@ export function computeOperatorProductState(input: {
   activation: Pick<OperatorActivationState, "activated" | "activatedAt" | "deactivatedAt"> | null;
   requiredConnectorHealth: RequiredCapabilityHealth;
   hasHealthyOptionalCapability: boolean;
+  hasOptionalDegradation?: boolean;
 }): OperatorProductState {
-  const { readiness, activation, requiredConnectorHealth, hasHealthyOptionalCapability } = input;
+  const { readiness, activation, requiredConnectorHealth, hasOptionalDegradation = false } = input;
 
-  // 1. Hard requirements missing or not built yet - outranks everything else.
+  const activated = Boolean(activation?.activated);
+  const everActivated = Boolean(activation?.activatedAt || activation?.deactivatedAt);
+
+  // Planned operators are not runnable regardless of saved activation state.
   if (readiness.status === "coming_next") return "needs_setup";
-  if (requiredConnectorHealth === "missing" || readiness.status === "missing_connector") return "needs_setup";
+
+  // Once legitimately activated, missing or unhealthy core capability is an
+  // operational failure, not onboarding. Inactive operators remain unlockable.
+  if (requiredConnectorHealth === "missing" || readiness.status === "missing_connector") {
+    return activated ? "needs_attention" : "needs_setup";
+  }
 
   // 2. Required connector present but currently unhealthy (it was set up, then broke).
-  if (requiredConnectorHealth === "unhealthy") return "needs_attention";
+  if (requiredConnectorHealth === "unhealthy") return activated ? "needs_attention" : "needs_setup";
 
   // 3. Billing/plan ineligibility - checked before activation, since real
   // execution cannot happen either way once hard requirements are met.
@@ -108,21 +144,19 @@ export function computeOperatorProductState(input: {
     return "plan_required";
   }
 
-  const activated = Boolean(activation?.activated);
-  const everActivated = Boolean(activation?.activatedAt || activation?.deactivatedAt);
-
   // 4. Explicitly turned off after being set up (distinct from never having been turned on).
   if (!activated && everActivated) return "paused";
 
   // 5. Ready and eligible, but never activated.
   if (!activated) return "ready_to_activate";
 
-  // 6/7. Running - "enhanced" only when a real optional capability is also live, never forced.
-  return hasHealthyOptionalCapability ? "enhanced" : "active";
+  // Running operators stay active. Optional connector degradation is exposed
+  // as limited context while their core responsibility continues normally.
+  return hasOptionalDegradation ? "active_limited" : "active";
 }
 
 const STATE_LABEL: Record<OperatorProductState, string> = {
-  needs_setup: "Needs setup",
+  needs_setup: "Available to unlock",
   needs_attention: "Needs attention",
   ready_to_activate: "Ready to activate",
   plan_required: "Plan required",
@@ -130,24 +164,30 @@ const STATE_LABEL: Record<OperatorProductState, string> = {
   suspended: "Billing suspended",
   paused: "Paused",
   active: "Active",
+  active_limited: "Active · Limited context",
   enhanced: "Active",
 };
+
+function coreResponsibility(operatorKey: OperatorKey): string {
+  if (operatorKey === "revenue") return "Revenue monitoring and approval-gated follow-up";
+  if (operatorKey === "client_flow") return "Customer email monitoring and approval-gated replies";
+  return "Project monitoring and approval-gated operational updates";
+}
 
 /** Copy translation only - never exposes capability ids, "execution eligibility", or raw billing enum values to customers. */
 function describeState(input: {
   state: OperatorProductState;
   operatorName: string;
+  operatorKey: OperatorKey;
   nextSetupStep: string;
   degraded: OperatorDegradedInfo | null;
 }): string {
-  const { state, operatorName, nextSetupStep, degraded } = input;
+  const { state, operatorName, operatorKey, nextSetupStep, degraded } = input;
   switch (state) {
     case "needs_setup":
       return nextSetupStep || `Connect a required system to set up ${operatorName}.`;
     case "needs_attention":
-      return degraded?.unhealthyConnectors.length
-        ? `Reconnect ${degraded.unhealthyConnectors.join(", ")} to resume ${operatorName}.`
-        : `Reconnect the affected system to resume ${operatorName}.`;
+      return degraded?.issues[0]?.impact ?? `${coreResponsibility(operatorKey)} is unavailable until its required connection is restored.`;
     case "plan_required":
       return "Your setup is complete. Start a plan to begin continuous execution.";
     case "billing_attention":
@@ -160,18 +200,23 @@ function describeState(input: {
       return `Your setup is ready. Turn on ${operatorName} to start continuous monitoring.`;
     case "enhanced":
       return `${operatorName} is monitoring with added context from connected systems.`;
+    case "active_limited":
+      return degraded?.issues[0]?.impact ?? `${operatorName} is active with temporarily limited optional context.`;
     case "active":
     default:
       return `${operatorName} is monitoring and holding risky actions for approval.`;
   }
 }
 
-function nextActionFor(state: OperatorProductState, operatorHref: string): { label: string; href: string } | null {
+function nextActionFor(state: OperatorProductState, operatorHref: string, remediation: OperatorRemediation | null, operatorKey: OperatorKey): { label: string; href: string } | null {
   switch (state) {
     case "needs_setup":
-      return { label: "Connect required system", href: "/connectors" };
+      return operatorKey === "operations"
+        ? { label: "Add project management", href: "/connectors?discover=1&category=project_management" }
+        : { label: "Add customer communication", href: "/connectors?discover=1&category=email_calendar" };
     case "needs_attention":
-      return { label: "Reconnect system", href: "/connectors" };
+    case "active_limited":
+      return remediation ? { label: remediation.label, href: remediation.href } : { label: "Review connections", href: "/connectors" };
     case "ready_to_activate":
       return { label: "Activate", href: operatorHref };
     case "plan_required":
@@ -200,12 +245,29 @@ function connectorDisplayName(connectorKey: string): string {
   return getConnectorDefinition(connectorKey)?.displayName ?? connectorKey;
 }
 
+function connectorRemediationHref(connectorKey: string): string {
+  return `/connectors?setup=${encodeURIComponent(connectorKey)}`;
+}
+
+function remediationImpact(input: { operatorKey: OperatorKey; connectorName: string; impact: "required" | "optional"; lostCapabilities: string[] }): string {
+  const lost = input.lostCapabilities.join(", ").toLowerCase();
+  if (input.impact === "required") {
+    if (input.operatorKey === "client_flow") return `Customer communication is unavailable because ${input.connectorName} needs attention. Client Flow cannot monitor new customer messages until this is fixed.`;
+    if (input.operatorKey === "revenue") return `Revenue monitoring is unavailable because ${input.connectorName} needs attention. New opportunities cannot be monitored until this is fixed.`;
+    return `Project monitoring is unavailable because ${input.connectorName} needs attention. Operations cannot monitor project work until this is fixed.`;
+  }
+  if (input.operatorKey === "client_flow") return `${input.connectorName} is unavailable, so ${lost || "optional context"} is temporarily limited. Customer email monitoring and approval-gated replies continue normally.`;
+  if (input.operatorKey === "revenue") return `${input.connectorName} is unavailable, so ${lost || "optional context"} is temporarily limited. Revenue monitoring and approval-gated follow-up continue normally.`;
+  return `${input.connectorName} is unavailable, so ${lost || "optional context"} is temporarily limited. Core project monitoring continues normally.`;
+}
+
 /** Degraded info independent of `state`: any unhealthy connector (required or optional) currently affecting this operator, real-data derived via getWorkspaceConnectorImpact. Never destroys saved configuration - purely descriptive. */
 function computeDegraded(operatorKey: OperatorKey, truth: SafeConnectorTruth[]): OperatorDegradedInfo | null {
   const unhealthyKeys = unhealthyConnectorKeys(truth);
   if (!unhealthyKeys.length) return null;
 
   const affectingKeys: string[] = [];
+  const issues: OperatorRemediation[] = [];
   const lostCapabilities = new Set<string>();
   const stillAvailableCapabilities = new Set<string>();
 
@@ -216,6 +278,18 @@ function computeDegraded(operatorKey: OperatorKey, truth: SafeConnectorTruth[]):
     affectingKeys.push(connectorKey);
     for (const capability of forThisOperator.lostCapabilities) lostCapabilities.add(capability);
     for (const capability of forThisOperator.stillAvailableCapabilities) stillAvailableCapabilities.add(capability);
+    const connectorName = connectorDisplayName(connectorKey);
+    const humanLost = humanizeCapabilities(forThisOperator.lostCapabilities);
+    const issueImpact = forThisOperator.impact === "hard_requirement" ? "required" : "optional";
+    issues.push({
+      connectorKey,
+      connectorName,
+      severity: issueImpact === "required" ? "blocking" : "attention",
+      label: `Fix ${connectorName}`,
+      href: connectorRemediationHref(connectorKey),
+      reason: `${connectorName} needs to be reconnected.`,
+      impact: remediationImpact({ operatorKey, connectorName, impact: issueImpact, lostCapabilities: humanLost }),
+    });
   }
 
   if (!affectingKeys.length) return null;
@@ -223,6 +297,8 @@ function computeDegraded(operatorKey: OperatorKey, truth: SafeConnectorTruth[]):
     unhealthyConnectors: affectingKeys.map(connectorDisplayName),
     lostCapabilities: humanizeCapabilities(Array.from(lostCapabilities)),
     stillAvailableCapabilities: humanizeCapabilities(Array.from(stillAvailableCapabilities)),
+    impact: issues.some((issue) => issue.severity === "blocking") ? "required" : "optional",
+    issues,
   };
 }
 
@@ -240,13 +316,16 @@ export function buildOperatorProductState(input: {
   readiness: OperatorReadiness;
   activation: OperatorActivationState | null;
   truth: SafeConnectorTruth[];
+  coreConfiguration?: OperatorCoreConfiguration;
 }): OperatorProductStateResult {
   const { readiness, activation, truth } = input;
   const operator = getOperatorDefinition(readiness.operatorKey);
   const operatorName = operator?.name ?? readiness.operatorKey;
   const connectedKeys = connectedKeysFromTruth(truth);
   const optionalReadiness = getOperatorConnectorReadiness(readiness.operatorKey, connectedKeys);
-  const requiredConnectorHealth = getRequiredConnectorHealth(readiness.operatorKey, truth);
+  const requiredConnectorHealth = input.coreConfiguration?.ready === false
+    ? "missing"
+    : getRequiredConnectorHealth(readiness.operatorKey, truth);
   const hasHealthyOptionalCapability = Boolean(optionalReadiness && optionalReadiness.satisfiedOptional.length > 0);
   const degraded = computeDegraded(readiness.operatorKey, truth);
 
@@ -255,17 +334,51 @@ export function buildOperatorProductState(input: {
     activation,
     requiredConnectorHealth,
     hasHealthyOptionalCapability,
+    hasOptionalDegradation: degraded?.impact === "optional",
   });
+
+  const readinessModel = optionalReadiness;
+  const missingCoreCapabilities = humanizeCapabilities(readinessModel?.missingRequired ?? []);
+  const missingOptionalCapabilities = humanizeCapabilities(readinessModel?.missingOptional ?? []);
+  const configurationAction: OperatorRemediation | null = input.coreConfiguration?.ready === false && input.coreConfiguration.connectorKey
+    ? {
+        connectorKey: input.coreConfiguration.connectorKey,
+        connectorName: connectorDisplayName(input.coreConfiguration.connectorKey),
+        severity: activation?.activated ? "blocking" : "informational",
+        label: `Configure ${connectorDisplayName(input.coreConfiguration.connectorKey)}`,
+        href: `/connectors?setup=${input.coreConfiguration.connectorKey}-project`,
+        reason: `Choose the ${connectorDisplayName(input.coreConfiguration.connectorKey)} project this operator may monitor.`,
+        impact: activation?.activated
+          ? "Core project monitoring cannot continue until a bounded project scope is selected."
+          : "A bounded project scope is required before Operations can be activated.",
+      }
+    : null;
+  const requiredActions = [...(configurationAction ? [configurationAction] : []), ...(degraded?.issues ?? [])];
+  const lifecycle = state === "needs_setup" ? "available_to_unlock" : state === "ready_to_activate" ? "ready_to_activate" : state === "paused" ? "paused" : "active";
+  const health = state === "needs_attention" ? "needs_attention" : state === "active_limited" ? "limited_context" : state === "billing_attention" || state === "suspended" || state === "plan_required" ? "billing_attention" : "healthy";
+  const impact = state === "active_limited"
+    ? "Core work continues with reduced optional context."
+    : state === "needs_attention"
+      ? "Core work is blocked until the required connection is restored."
+      : state === "active"
+        ? "Core work is running normally."
+        : "No operator work is currently running.";
 
   return {
     operatorKey: readiness.operatorKey,
     operatorName,
     state,
     label: STATE_LABEL[state],
-    description: describeState({ state, operatorName, nextSetupStep: readiness.nextSetupStep, degraded }),
+    description: describeState({ state, operatorName, operatorKey: readiness.operatorKey, nextSetupStep: readiness.nextSetupStep, degraded }),
     connectedSystems: (readiness.availableConnectorKeys ?? readiness.connectedRequiredConnectors).map(connectorDisplayName),
     availableNow: readiness.availableBusinessActions ?? humanizeOperatorActions(readiness.availableActions ?? []),
-    nextAction: nextActionFor(state, operatorHref(readiness.operatorKey)),
+    nextAction: nextActionFor(state, operatorHref(readiness.operatorKey), requiredActions[0] ?? null, readiness.operatorKey),
+    lifecycle,
+    health,
+    impact,
+    missingCoreCapabilities,
+    missingOptionalCapabilities,
+    requiredActions,
     degraded,
   };
 }
@@ -283,10 +396,24 @@ export async function getWorkspaceOperatorProductStates(input: {
   supabase?: SupabaseAdmin;
 }): Promise<OperatorProductStateResult[]> {
   const supabase = input.supabase ?? createSupabaseAdmin();
-  const [readinessList, truth] = await Promise.all([
+  const [readinessList, truth, workspacePolicy, projectCredentials] = await Promise.all([
     getWorkspaceOperatorReadiness({ workspaceId: input.workspaceId }),
     getConnectorTruth({ workspaceId: input.workspaceId, supabase }),
+    loadWorkspacePolicySettings({ workspaceId: input.workspaceId, supabase }),
+    supabase.from("os_connector_credentials").select("connector_key,metadata").eq("workspace_id", input.workspaceId).in("connector_key", ["asana", "jira"]),
   ]);
+
+  const credentialMetadata = new Map((projectCredentials.data ?? []).map((row) => [String(row.connector_key), (row.metadata ?? {}) as Record<string, unknown>]));
+  const healthyProjectKeys = truth.filter((row) => ["trello", "asana", "jira"].includes(row.connectorKey) && (row.status === "connected" || row.status === "healthy")).map((row) => row.connectorKey);
+  const configuredProjectKey = healthyProjectKeys.find((connectorKey) => {
+    if (connectorKey === "trello") return Boolean(workspacePolicy.trello.defaultBoardId && workspacePolicy.trello.defaultListId);
+    const metadata = credentialMetadata.get(connectorKey);
+    return Boolean(metadata && typeof metadata.selectedProjectId === "string" && metadata.selectedProjectId);
+  }) ?? null;
+  const operationsConfiguration: OperatorCoreConfiguration = {
+    ready: configuredProjectKey !== null,
+    connectorKey: configuredProjectKey ?? healthyProjectKeys[0] ?? null,
+  };
 
   const realReadiness = readinessList.filter((item) => REAL_OPERATOR_KEYS.includes(item.operatorKey));
   const activationStates = await Promise.all(
@@ -297,6 +424,7 @@ export async function getWorkspaceOperatorProductStates(input: {
     readiness,
     activation: activationStates[index],
     truth,
+    coreConfiguration: readiness.operatorKey === "operations" ? operationsConfiguration : undefined,
   }));
 }
 

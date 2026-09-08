@@ -3,11 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useOS } from "@/lib/os/app-provider";
-import { getConnectorDefinition } from "@/lib/connectors/registry";
-import { humanizeOperatorActions } from "@/lib/operators/action-labels";
 import { OperatorActivationToggle, type ActivationEligibility } from "@/components/operators/activation-toggle";
-import { OperatorDegradedNotice } from "@/components/operators/degraded-notice";
-import { OperatorWorkforceBriefing } from "@/components/operators/workforce-briefing";
+import { OperatorWorkforceBriefing, type OperatorBriefingState } from "@/components/operators/workforce-briefing";
 
 type OperatorReadiness = {
   operatorKey: string;
@@ -204,6 +201,7 @@ export default function ClientFlowOperatorPage() {
   const { state } = useOS();
   const [readiness, setReadiness] = useState<OperatorReadiness | null>(null);
   const [status, setStatus] = useState<ClientFlowStatus | null>(null);
+  const [presentationState, setPresentationState] = useState<OperatorBriefingState | null>(null);
   const [runs, setRuns] = useState<ClientFlowRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -294,79 +292,7 @@ export default function ClientFlowOperatorPage() {
   const lastCheckAt = monitoring?.lastRunAt ?? monitoring?.lastScanTime ?? null;
   const hasRunScan = Boolean(lastCheckAt);
   const monitoringActive = monitoring?.status === "monitoring_active";
-  const setupState = setup?.state ?? (activeEmailConnector?.executable ? "setup_incomplete" : "needs_setup");
-  const readinessPercent = setup?.readinessPercent ?? readiness?.readinessPercent ?? 0;
   const emailMode = status?.customerEmailMode === "draft_only" ? "Draft only" : "Approval required";
-
-  const pill = (() => {
-    if (gmailReconnectRequired) return { label: "Needs setup", color: "var(--amber)", bg: "rgba(245,194,107,0.1)" };
-    if (setupState === "needs_setup") return { label: "Needs setup", color: "var(--text-dim)", bg: "rgba(255,255,255,0.04)" };
-    if (setupState === "setup_incomplete") return { label: "Setup incomplete", color: "var(--amber)", bg: "rgba(245,194,107,0.1)" };
-    if (monitoringActive) return { label: "Monitoring active", color: "var(--green)", bg: "rgba(81,216,138,0.1)" };
-    return { label: "Ready", color: "var(--green)", bg: "rgba(81,216,138,0.1)" };
-  })();
-
-  const heroTitle = setupState === "needs_setup"
-    ? "Connect Gmail or Microsoft 365 to start Client Flow"
-    : setupState === "setup_incomplete"
-      ? "Client Flow is almost ready"
-      : "Client Flow is ready to monitor client requests";
-  const heroSub = (() => {
-    if (setupState === "needs_setup") return "Client Flow reads client emails and prepares approved replies. Connect Gmail or Microsoft 365 to begin.";
-    if (setupState === "setup_incomplete") {
-      if (!setup?.trelloTaskExecutionReady) return "Select a Trello board and list so Client Flow can turn requests into approved tasks.";
-      return "A couple of setup steps remain. Complete them to unlock the full flow.";
-    }
-    return "Monitoring client communication in the background. Approvals appear only when action is needed.";
-  })();
-
-  const checklist: ChecklistItem[] = [
-    {
-      label: `${activeProviderLabel} connected`,
-      ok: Boolean(activeEmailConnector?.executable) && !gmailReconnectRequired,
-      detail: gmailReconnectRequired
-        ? `Reconnect ${activeProviderLabel} to restore reading and approval-gated replies.`
-        : activeEmailConnector?.accountEmail
-          ? `Reading client emails as ${activeEmailConnector.accountEmail}.`
-          : "Reads client emails and prepares approved replies. Connect Gmail or Microsoft 365.",
-      action: gmailReconnectRequired
-        ? { label: `Reconnect ${activeProviderLabel}`, href: "/app/connectors" }
-        : { label: "Open connectors", href: "/app/connectors" },
-    },
-    {
-      label: "Trello board and list selected",
-      ok: Boolean(setup?.trelloTaskExecutionReady),
-      detail: setup?.trelloConnected
-        ? setup?.trelloDestinationSet
-          ? `Tasks are created on ${status?.trello?.defaultListName || "the selected list"} after approval.`
-          : "Connected, but a task destination is not selected yet."
-        : "Connect Trello to create project tasks after approval.",
-      action: { label: "Select Trello board/list", href: "/app/connectors" },
-    },
-    {
-      label: "Customer email policy set",
-      ok: Boolean(setup?.customerEmailPolicySet ?? true),
-      detail: `Client replies are set to ${emailMode.toLowerCase()}.`,
-      action: { label: "Review approval policy", href: "/app/policies" },
-    },
-    {
-      label: "Approval flow active",
-      ok: Boolean(setup?.approvalFlowActive ?? true),
-      detail: "Every client reply and task waits for human approval before it runs.",
-      action: { label: "View approvals", href: "/app/approvals" },
-    },
-    {
-      label: "Slack alert channel selected",
-      ok: Boolean(setup?.slackAlertsReady),
-      recommended: true,
-      detail: setup?.slackConnected
-        ? setup?.slackChannelSelected
-          ? `Internal alerts post to ${status?.slack?.defaultChannelName ? `#${status.slack.defaultChannelName}` : "the selected channel"}.`
-          : "Connected, but alerts are disabled. Select a channel to enable."
-        : "Connect Slack to get internal alerts when client approvals are created.",
-      action: { label: "Select Slack channel", href: "/app/connectors" },
-    },
-  ];
 
   return (
     <div className="os-page operator-detail-page">
@@ -376,75 +302,12 @@ export default function ClientFlowOperatorPage() {
           <h1>Client Flow Operator</h1>
           <div className="os-page-sub">Monitors client communication, prepares follow-ups, and turns requests into approved project actions.</div>
         </div>
-        <div className="os-page-actions" style={{ alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: pill.color, background: pill.bg, padding: "6px 12px", borderRadius: 999 }}>{pill.label}</span>
-          <Link href="/app/approvals" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>View approvals</Link>
-          <button className="btn btn-ghost btn-sm" type="button" onClick={submitScan} disabled={!canRun || scanSubmitting} style={{ opacity: !canRun || scanSubmitting ? 0.45 : 1 }}>
-            {scanSubmitting ? "Checking..." : "Run manual check"}
-          </button>
-        </div>
+        {presentationState && <span className="os-status" data-state={presentationState.state}>{presentationState.label}</span>}
       </div>
 
-      <OperatorWorkforceBriefing operatorKey="client_flow" />
+      <OperatorWorkforceBriefing operatorKey="client_flow" onStateChange={setPresentationState} />
 
       {error && <div role="alert" style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>{error}</div>}
-
-      {/* Hero readiness */}
-      <div className="p" style={{ gap: 0, overflow: "hidden" }}>
-        <div style={{ padding: "24px 26px", display: "grid", gap: 20 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 20, flexWrap: "wrap" }}>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.01em" }}>{loading ? "Loading operator state..." : heroTitle}</h2>
-              <div style={{ marginTop: 6, fontSize: 13.5, color: "var(--text-dim)", maxWidth: 560 }}>{heroSub}</div>
-            </div>
-            <div style={{ textAlign: "right", minWidth: 120 }}>
-              <div style={{ fontSize: 30, fontWeight: 600, color: readinessPercent >= 100 ? "var(--green)" : "var(--text)" }}>{readinessPercent}%</div>
-              <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>setup complete</div>
-            </div>
-          </div>
-          <div style={{ height: 8, borderRadius: 999, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${readinessPercent}%`, background: "linear-gradient(90deg, #5FD3A8, #4DE8E1)", transition: "width 0.4s ease" }} />
-          </div>
-          {setup?.slackRecommendedMissing && setupState === "ready" && (
-            <div style={{ fontSize: 12.5, color: "var(--blue)" }}>Recommended setup missing: select a Slack channel to receive internal alerts when client approvals are created.</div>
-          )}
-          <div style={{ display: "grid", gap: 0 }}>
-            {checklist.map((item, index) => (
-              <div key={item.label} style={{ borderTop: index === 0 ? "none" : "1px solid var(--line)" }}>
-                <ChecklistRow item={item} />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Connected tools */}
-      <div className="p" style={{ gap: 0 }}>
-        <div className="p-head"><h3>Connected tools</h3></div>
-        <div style={{ padding: "18px 20px", display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
-          <ToolCard
-            name={activeProviderLabel}
-            tone="Client inbox"
-            ready={Boolean(activeEmailConnector?.executable) && !gmailReconnectRequired}
-            headline="Reads client emails and prepares approved replies."
-            note={gmailReconnectRequired ? `Reconnect ${activeProviderLabel} to restore access.` : undefined}
-          />
-          <ToolCard
-            name="Slack"
-            tone="Internal alerts"
-            ready={Boolean(setup?.slackAlertsReady)}
-            headline="Sends internal alerts when client approvals are created."
-            note={setup?.slackConnected && !setup?.slackAlertsReady ? "Connected, but alerts are disabled. Select a channel to enable." : undefined}
-          />
-          <ToolCard
-            name="Trello"
-            tone="Project tasks"
-            ready={Boolean(setup?.trelloTaskExecutionReady)}
-            headline="Creates project tasks after approval."
-            note={setup?.trelloConnected && !setup?.trelloDestinationSet ? "Connected, but task destination is not selected." : undefined}
-          />
-        </div>
-      </div>
 
       {/* Monitoring summary + policy */}
       <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 14 }}>
@@ -486,7 +349,7 @@ export default function ClientFlowOperatorPage() {
           <div style={{ padding: "8px 20px 16px" }}>
             <PolicyRow label="Customer email" value={emailMode} tone="amber" />
             <div style={{ borderTop: "1px solid var(--line)" }} />
-            <PolicyRow label="Trello task changes" value="Approval required" tone="amber" />
+            <PolicyRow label="Project task changes" value="Approval required" tone="amber" />
             <div style={{ borderTop: "1px solid var(--line)" }} />
             <PolicyRow label="Slack alerts" value={setup?.slackAlertsReady ? "Enabled" : "Disabled"} tone={setup?.slackAlertsReady ? "green" : "neutral"} />
             <div style={{ borderTop: "1px solid var(--line)" }} />
@@ -495,11 +358,13 @@ export default function ClientFlowOperatorPage() {
         </div>
       </div>
 
-      {/* Last run and pending approvals */}
+      {/* Current work */}
       <div className="p" style={{ gap: 0 }}>
         <div className="p-head">
-          <h3>Last run and pending approvals</h3>
-          <button className="btn btn-ghost btn-sm" type="button" onClick={submitScan} disabled={!canRun || scanSubmitting} style={{ opacity: !canRun || scanSubmitting ? 0.45 : 1 }}>{scanSubmitting ? "Checking..." : "Run manual check"}</button>
+          <h3>Current work</h3>
+          {(monitoring?.recentPendingApprovals?.length ?? 0) > 0
+            ? <Link href="/app/approvals" className="btn btn-primary btn-sm">{monitoring?.recentPendingApprovals?.length} awaiting review</Link>
+            : <Link href="/app/approvals" className="lnk-open">Approval inbox</Link>}
         </div>
         <div style={{ padding: "18px 20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
@@ -525,40 +390,16 @@ export default function ClientFlowOperatorPage() {
 
       {/* Activation */}
       {(() => {
-        const systemsInUse = [
-          ...(activeEmailConnector?.executable ? [activeProviderLabel] : []),
-          ...(setup?.trelloConnected ? [getConnectorDefinition("trello")?.displayName ?? "Trello"] : []),
-          ...(setup?.slackConnected ? [getConnectorDefinition("slack")?.displayName ?? "Slack"] : []),
-        ];
-        const availableNow = readiness?.availableBusinessActions ?? humanizeOperatorActions(readiness?.availableActions ?? []);
         const upgrades = (status?.optionalUpsellConnectors ?? []).filter((c) => c.status === "available");
         const configured = Boolean(readiness?.canRunManual);
         const eligibility = readiness?.executionEligibility;
         return (
           <section className="p" style={{ gap: 0 }}>
-            <div className="p-head"><h3>Operator activation</h3></div>
+            <div className="p-head"><h3>Controls & configuration</h3><Link href="/app/connectors" className="lnk-open">Manage context</Link></div>
             <div style={{ padding: "16px 20px", display: "grid", gap: 16 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16 }}>
-                <div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Systems in use</div>
-                  <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-mute)" }}>{systemsInUse.length ? systemsInUse.join(", ") : "None connected yet"}</div>
-                  <div style={{ marginTop: 6, display: "flex", gap: 10 }}>
-                    <Link href="/app/connectors" className="lnk-open">Manage connections</Link>
-                    {gmailReconnectRequired && (
-                      <button type="button" className="lnk-open" style={{ border: "none", background: "none", cursor: "pointer", padding: 0, color: "var(--amber)" }} onClick={() => startEmailReconnect(activeProvider === "microsoft" ? "microsoft" : "gmail")}>
-                        Reconnect {activeProviderLabel}
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Available now</div>
-                  <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-mute)" }}>{availableNow.length ? availableNow.join(", ") : "Connect a system to get started"}</div>
-                </div>
-              </div>
               {upgrades.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Optional enhancements</div>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Optional context</div>
                   <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-mute)" }}>
                     {upgrades.map((c) => c.displayName).join(", ")} could add further context. <Link href="/app/connectors" className="lnk-open">Connect</Link>
                   </div>
@@ -579,15 +420,6 @@ export default function ClientFlowOperatorPage() {
           </section>
         );
       })()}
-
-      {state.workspace.id && (
-        <OperatorDegradedNotice
-          operatorKey="client_flow"
-          workspaceId={state.workspace.id}
-          userId={state.currentUser.id}
-          userEmail={state.currentUser.email}
-        />
-      )}
 
       {/* Advanced details */}
       <details className="p" style={{ gap: 0 }}>

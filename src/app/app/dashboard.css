@@ -2410,7 +2410,7 @@ select.os-input option {
   font: 500 12px/1.4 var(--font-sans);
 }
 .os-root .os-status::before { content: ""; width: 5px; height: 5px; flex: none; border-radius: 50%; background: currentColor; }
-.os-root .os-status:is([data-state="active"], [data-state="enhanced"], [data-state="connected"]) { color: var(--green); background: var(--green-soft); }
+.os-root .os-status:is([data-state="active"], [data-state="active_limited"], [data-state="enhanced"], [data-state="connected"]) { color: var(--green); background: var(--green-soft); }
 .os-root .os-status[data-state="ready_to_activate"] { color: var(--cyan); background: var(--cyan-softer); }
 .os-root .os-status:is([data-state="needs_attention"], [data-state="billing_attention"], [data-state="reconnect_needed"]) { color: var(--amber); background: var(--amber-soft); }
 .os-root .os-status[data-state="suspended"] { color: var(--rose); background: var(--rose-soft); }

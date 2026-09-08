@@ -22,7 +22,7 @@ type OperatorReadiness = {
 type ProductState = {
   operatorKey: string;
   operatorName: string;
-  state: "needs_setup" | "needs_attention" | "ready_to_activate" | "plan_required" | "billing_attention" | "suspended" | "paused" | "active" | "enhanced";
+  state: "needs_setup" | "needs_attention" | "ready_to_activate" | "plan_required" | "billing_attention" | "suspended" | "paused" | "active" | "active_limited" | "enhanced";
   label: string;
   description: string;
   connectedSystems: string[];
@@ -31,7 +31,7 @@ type ProductState = {
   degraded: { unhealthyConnectors: string[]; lostCapabilities: string[]; stillAvailableCapabilities: string[] } | null;
 };
 
-const RUNNING_PRODUCT_STATES = new Set(["active", "enhanced", "paused"]);
+const RUNNING_PRODUCT_STATES = new Set(["active", "active_limited", "enhanced", "paused"]);
 
 type AgentStatus = "configured" | "available" | "upgrade" | "coming";
 
@@ -281,7 +281,7 @@ export default function AgentsRegistryPage() {
   }), [configuredKeys, productStateByKey, readinessByKey]);
 
   const current = cards.filter((c) => Boolean(HREF_BY_KEY[c.key])).sort((a, b) => {
-    const rank = (item: CardModel) => item.productState?.state === "active" || item.productState?.state === "enhanced" ? 0 : item.productState?.state === "ready_to_activate" ? 1 : item.productState?.state === "needs_setup" ? 3 : 2;
+    const rank = (item: CardModel) => item.productState?.state === "active" || item.productState?.state === "active_limited" || item.productState?.state === "enhanced" ? 0 : item.productState?.state === "ready_to_activate" ? 1 : item.productState?.state === "needs_setup" ? 3 : 2;
     return rank(a) - rank(b);
   });
   const expanding = cards.filter((c) => c.status === "upgrade" || c.status === "coming");

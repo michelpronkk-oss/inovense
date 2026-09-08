@@ -3,11 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useOS } from "@/lib/os/app-provider";
-import { getConnectorDefinition } from "@/lib/connectors/registry";
-import { humanizeOperatorActions } from "@/lib/operators/action-labels";
 import { OperatorActivationToggle, type ActivationEligibility } from "@/components/operators/activation-toggle";
-import { OperatorDegradedNotice } from "@/components/operators/degraded-notice";
-import { OperatorWorkforceBriefing } from "@/components/operators/workforce-briefing";
+import { OperatorWorkforceBriefing, type OperatorBriefingState } from "@/components/operators/workforce-briefing";
 
 type OperatorReadiness = {
   operatorKey: string;
@@ -150,6 +147,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 export default function OperationsOperatorPage() {
   const { state } = useOS();
   const [status, setStatus] = useState<OperationsStatus | null>(null);
+  const [presentationState, setPresentationState] = useState<OperatorBriefingState | null>(null);
   const [runs, setRuns] = useState<OperationsRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -212,60 +210,8 @@ export default function OperationsOperatorPage() {
   const setup = status?.setup;
   const monitoring = status?.monitoring;
   const canRun = Boolean(setup?.canRunManual);
-  const setupState = setup?.state ?? "needs_setup";
-  const readinessPercent = setup?.readinessPercent ?? 0;
   const lastCheckAt = monitoring?.lastRunAt ?? monitoring?.lastScanTime ?? null;
   const hasRunScan = Boolean(lastCheckAt);
-
-  const pill = (() => {
-    if (setupState === "needs_setup") return { label: "Needs setup", color: "var(--text-dim)", bg: "rgba(255,255,255,0.04)" };
-    if (setupState === "setup_incomplete") return { label: "Setup incomplete", color: "var(--amber)", bg: "rgba(245,194,107,0.1)" };
-    if (monitoring?.status === "monitoring_active") return { label: "Monitoring active", color: "var(--green)", bg: "rgba(81,216,138,0.1)" };
-    return { label: "Ready", color: "var(--green)", bg: "rgba(81,216,138,0.1)" };
-  })();
-
-  const heroTitle = setupState === "needs_setup"
-    ? "Connect a project tool to start Operations"
-    : setupState === "setup_incomplete"
-      ? "Operations is almost ready"
-      : "Operations is monitoring your boards";
-  const heroSub = (() => {
-    if (setupState === "needs_setup") return "Operations reads a configured Trello, Asana, or Jira project and prepares approved internal updates.";
-    if (setupState === "setup_incomplete") return "Connect a project tool and select its bounded destination so Operations knows where to look and act.";
-    return "Watching project work in the background. Approvals appear only when work needs attention.";
-  })();
-
-  const checklist: ChecklistItem[] = [
-    {
-      label: "Project tool connected",
-      ok: Boolean(setup?.projectManagementReady),
-      detail: setup?.projectManagementReady ? "A configured project source is ready for bounded monitoring." : "Connect Trello, Asana, or Jira and select one project destination.",
-      action: { label: "Open connector settings", href: "/app/connectors" },
-    },
-    {
-      label: "Project scope selected",
-      ok: Boolean(setup?.projectManagementReady),
-      detail: setup?.projectManagementReady ? "Operations is restricted to the selected project scope." : "Select a project in the connected tool before running a check.",
-      action: { label: "Select project", href: "/app/connectors" },
-    },
-    {
-      label: "Approval flow active",
-      ok: Boolean(setup?.approvalFlowActive ?? true),
-      detail: "Every Slack update and project-tool change waits for human approval before it runs.",
-      action: { label: "View approvals", href: "/app/approvals" },
-    },
-    {
-      label: "Slack alert channel selected",
-      ok: Boolean(setup?.slackAlertsReady),
-      recommended: true,
-      detail: setup?.slackConnected
-        ? setup?.slackChannelSelected
-          ? `Internal updates can post to ${status?.slack?.defaultChannelName ? `#${status.slack.defaultChannelName}` : "the selected channel"}.`
-          : "Connected, but no channel selected. Select one for internal updates."
-        : "Connect Slack to prepare internal operations updates.",
-      action: { label: "Open Slack settings", href: "/app/connectors" },
-    },
-  ];
 
   return (
     <div className="os-page operator-detail-page">
@@ -275,54 +221,12 @@ export default function OperationsOperatorPage() {
           <h1>Operations Operator</h1>
           <div className="os-page-sub">Monitors internal work, finds stalled tasks, and prepares approved operational updates.</div>
         </div>
-        <div className="os-page-actions" style={{ alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: pill.color, background: pill.bg, padding: "6px 12px", borderRadius: 999 }}>{pill.label}</span>
-          <Link href="/app/approvals" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>View approvals</Link>
-          <button className="btn btn-ghost btn-sm" type="button" onClick={submitScan} disabled={!canRun || scanSubmitting} style={{ opacity: !canRun || scanSubmitting ? 0.45 : 1 }}>
-            {scanSubmitting ? "Checking..." : "Run manual check"}
-          </button>
-        </div>
+        {presentationState && <span className="os-status" data-state={presentationState.state}>{presentationState.label}</span>}
       </div>
 
-      <OperatorWorkforceBriefing operatorKey="operations" />
+      <OperatorWorkforceBriefing operatorKey="operations" onStateChange={setPresentationState} />
 
       {error && <div role="alert" style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>{error}</div>}
-
-      <div className="p" style={{ gap: 0, overflow: "hidden" }}>
-        <div style={{ padding: "24px 26px", display: "grid", gap: 20 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 20, flexWrap: "wrap" }}>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.01em" }}>{loading ? "Loading operator state..." : heroTitle}</h2>
-              <div style={{ marginTop: 6, fontSize: 13.5, color: "var(--text-dim)", maxWidth: 560 }}>{heroSub}</div>
-            </div>
-            <div style={{ textAlign: "right", minWidth: 120 }}>
-              <div style={{ fontSize: 30, fontWeight: 600, color: readinessPercent >= 100 ? "var(--green)" : "var(--text)" }}>{readinessPercent}%</div>
-              <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>setup complete</div>
-            </div>
-          </div>
-          <div style={{ height: 8, borderRadius: 999, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${readinessPercent}%`, background: "linear-gradient(90deg, #66D0E0, #4DE8E1)", transition: "width 0.4s ease" }} />
-          </div>
-          {setup?.slackRecommendedMissing && setupState === "ready" && (
-            <div style={{ fontSize: 12.5, color: "var(--blue)" }}>Recommended setup missing: select a Slack channel to post internal operations updates.</div>
-          )}
-          <div style={{ display: "grid", gap: 0 }}>
-            {checklist.map((item, index) => (
-              <div key={item.label} style={{ borderTop: index === 0 ? "none" : "1px solid var(--line)" }}>
-                <ChecklistRow item={item} />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="p" style={{ gap: 0 }}>
-        <div className="p-head"><h3>Connected tools</h3></div>
-        <div style={{ padding: "18px 20px", display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
-          <ToolCard name="Trello / Asana / Jira" tone="Project / task source" ready={Boolean(setup?.projectManagementReady)} headline="Reads one selected project and prepares approved follow-through." note={!setup?.projectManagementReady ? "Connect a project tool and select its destination." : undefined} />
-          <ToolCard name="Slack" tone="Internal updates" ready={Boolean(setup?.slackAlertsReady)} headline="Posts internal operations updates after approval." note={setup?.slackConnected && !setup?.slackAlertsReady ? "Connected, but no channel selected." : undefined} />
-        </div>
-      </div>
 
       <div className="p" style={{ gap: 0 }}>
         <div className="p-head">
@@ -348,7 +252,7 @@ export default function OperationsOperatorPage() {
           )}
           {scanResult && (
             <div style={{ marginTop: 14, padding: "12px 14px", borderRadius: 12, background: scanResult.status === "setup_incomplete" ? "rgba(245,194,107,0.06)" : "rgba(102,208,224,0.06)", boxShadow: scanResult.status === "setup_incomplete" ? "inset 0 0 0 1px rgba(245,194,107,0.2)" : "inset 0 0 0 1px rgba(102,208,224,0.18)", display: "grid", gap: 6 }}>
-              <div style={{ fontSize: 12.8, fontWeight: 600 }}>{scanResult.status === "setup_incomplete" ? "Setup incomplete" : `Manual check ${scanResult.status ?? "completed"}`}</div>
+              <div style={{ fontSize: 12.8, fontWeight: 600 }}>{scanResult.status === "setup_incomplete" ? "Check could not start" : `Manual check ${scanResult.status ?? "completed"}`}</div>
               {scanResult.message && <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{scanResult.message}</div>}
               {scanResult.status === "completed" && <div style={{ fontSize: 12, color: "var(--text-mute)" }}>{scanResult.cardsChecked ?? 0} cards checked · {scanResult.signalsFound ?? 0} signals · {scanResult.approvalsCreated ?? 0} approvals.</div>}
               {scanResult.suggestions && scanResult.suggestions.length > 0 && (
@@ -362,32 +266,16 @@ export default function OperationsOperatorPage() {
       </div>
 
       {(() => {
-        const systemsInUse = [
-          ...(setup?.trelloConnected ? [getConnectorDefinition("trello")?.displayName ?? "Trello"] : []),
-          ...(setup?.slackConnected ? [getConnectorDefinition("slack")?.displayName ?? "Slack"] : []),
-        ];
-        const availableNow = status?.readiness?.availableBusinessActions ?? humanizeOperatorActions(status?.readiness?.availableActions ?? []);
         const upgrades = (status?.optionalUpsellConnectors ?? []).filter((c) => c.status === "available");
         const configured = Boolean(status?.readiness?.canRunManual ?? setup?.canRunManual);
         const eligibility = status?.readiness?.executionEligibility;
         return (
           <div className="p" style={{ gap: 0 }}>
-            <div className="p-head"><h3>Operator activation</h3></div>
+            <div className="p-head"><h3>Controls & configuration</h3><Link href="/app/connectors" className="lnk-open">Manage context</Link></div>
             <div style={{ padding: "18px 20px", display: "grid", gap: 16 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16 }}>
-                <div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Systems in use</div>
-                  <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-mute)" }}>{systemsInUse.length ? systemsInUse.join(", ") : "None connected yet"}</div>
-                  <Link href="/app/connectors" className="lnk-open" style={{ marginTop: 6, display: "inline-block" }}>Manage connections</Link>
-                </div>
-                <div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Available now</div>
-                  <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-mute)" }}>{availableNow.length ? availableNow.join(", ") : "Connect a system to get started"}</div>
-                </div>
-              </div>
               {upgrades.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Optional enhancements</div>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Optional context</div>
                   <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-mute)" }}>
                     {upgrades.map((c) => c.displayName).join(", ")} could add further context. <Link href="/app/connectors" className="lnk-open">Connect</Link>
                   </div>
@@ -409,19 +297,12 @@ export default function OperationsOperatorPage() {
         );
       })()}
 
-      {state.workspace.id && (
-        <OperatorDegradedNotice
-          operatorKey="operations"
-          workspaceId={state.workspace.id}
-          userId={state.currentUser.id}
-          userEmail={state.currentUser.email}
-        />
-      )}
-
       <div className="p" style={{ gap: 0 }}>
         <div className="p-head">
-          <h3>Latest signals and pending approvals</h3>
-          <Link href="/app/approvals" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Approval inbox</Link>
+          <h3>Current work</h3>
+          {(monitoring?.recentPendingApprovals?.length ?? 0) > 0
+            ? <Link href="/app/approvals" className="btn btn-primary btn-sm">{monitoring?.recentPendingApprovals?.length} awaiting review</Link>
+            : <Link href="/app/approvals" className="lnk-open">Approval inbox</Link>}
         </div>
         <div style={{ padding: "18px 20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           <div style={{ display: "grid", gap: 10, alignContent: "start" }}>

@@ -7,6 +7,8 @@ type DegradedInfo = {
   unhealthyConnectors: string[];
   lostCapabilities: string[];
   stillAvailableCapabilities: string[];
+  impact: "required" | "optional";
+  issues: Array<{ label: string; href: string; reason: string; impact: string }>;
 } | null;
 
 type ProductStateResult = {
@@ -53,29 +55,15 @@ export function OperatorDegradedNotice({
 
   if (!state?.degraded) return null;
 
-  const isHardRequirement = state.state === "needs_attention";
+  const isHardRequirement = state.degraded.impact === "required";
+  const issue = state.degraded.issues[0];
 
   return (
     <div className="p operator-degraded" data-severity={isHardRequirement ? "required" : "optional"}>
-      <div className="p-head"><h3>Connection needs attention</h3></div>
+      <div className="p-head"><h3>{isHardRequirement ? "Needs attention" : "Limited context"}</h3></div>
       <div style={{ padding: "14px 18px", display: "grid", gap: 10 }}>
-        {isHardRequirement ? (
-          <div style={{ fontSize: 12.5, color: "var(--amber)" }}>
-            Needs attention: reconnect {state.degraded.unhealthyConnectors.join(", ")} to resume monitoring.
-          </div>
-        ) : (
-          <>
-            <div style={{ fontSize: 12.5, color: "var(--text-dim)" }}>
-              {state.degraded.unhealthyConnectors.join(", ")} needs attention. This operator keeps running with reduced context.
-            </div>
-            {state.degraded.stillAvailableCapabilities.length > 0 && (
-              <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Still available: {state.degraded.stillAvailableCapabilities.join(", ")}</div>
-            )}
-            {state.degraded.lostCapabilities.length > 0 && (
-              <div style={{ fontSize: 12, color: "var(--amber)" }}>Unavailable: {state.degraded.lostCapabilities.join(", ")}</div>
-            )}
-          </>
-        )}
+        <div style={{ fontSize: 12.5, color: isHardRequirement ? "var(--amber)" : "var(--text-dim)" }}>{issue?.reason ?? state.description}</div>
+        {issue?.impact && <div style={{ fontSize: 12, color: "var(--text-mute)" }}>{issue.impact}</div>}
         {state.nextAction && (
           <Link href={state.nextAction.href} className="btn btn-ghost btn-sm" style={{ width: "fit-content", textDecoration: "none" }}>{state.nextAction.label}</Link>
         )}

@@ -339,22 +339,24 @@ function latestRunAt(operatorKey: string, runs: Row[]): string | null {
   return found ? timeValue(found) : null;
 }
 
-function buildOperators(input: { approvals: Row[]; runs: Row[]; truth: SafeConnectorTruth[]; trelloReady: boolean; slackReady: boolean; operatorKeys?: DashboardOperator["key"][] }): DashboardOperator[] {
-  const connected = (key: string) => connectorIsConnected(input.truth.find((item) => item.connectorKey === key));
+function buildOperators(input: { approvals: Row[]; runs: Row[]; productStates: OperatorProductStateResult[]; operatorKeys?: DashboardOperator["key"][] }): DashboardOperator[] {
   const specs = [
-    { key: "revenue" as const, needs: connected("gmail"), monitoring: connected("gmail"), description: "Monitors Gmail for revenue opportunities and prepares follow-up email with CRM context." },
-    { key: "client_flow" as const, needs: connected("gmail") && input.trelloReady, monitoring: connected("gmail"), description: "Monitors client messages, drafts replies, and prepares approved Trello tasks." },
-    { key: "operations" as const, needs: input.trelloReady, monitoring: input.trelloReady, description: "Watches Trello boards for stalled work and prepares Slack or Trello updates." },
+    { key: "revenue" as const, description: "Monitors customer communication for revenue opportunities and prepares approval-gated follow-up." },
+    { key: "client_flow" as const, description: "Monitors customer communication, drafts replies, and uses optional project context when available." },
+    { key: "operations" as const, description: "Monitors configured project work and prepares approval-gated operational updates." },
   ];
 
   return specs.filter((spec) => !input.operatorKeys || input.operatorKeys.includes(spec.key)).map((spec) => {
     const def = getOperatorDefinition(spec.key);
+    const productState = input.productStates.find((item) => item.operatorKey === spec.key);
     const pending = input.approvals.filter((row) => stringValue(row.status) === "pending" && (stringValue(row.agent_id) === spec.key || stringValue(asRecord(row.continuation_payload).operatorKey) === spec.key)).length;
     const lastRunAtValue = latestRunAt(spec.key, input.runs);
+    const running = productState?.lifecycle === "active";
+    const ready = productState?.state === "ready_to_activate";
     return {
       key: spec.key,
       name: def?.name ?? operatorDisplayName(spec.key),
-      status: spec.needs ? (spec.monitoring && lastRunAtValue ? "monitoring" : "ready") : "needs_setup",
+      status: running ? "monitoring" : ready ? "ready" : "needs_setup",
       lastRunAt: lastRunAtValue,
       nextRunAt: null,
       pendingApprovals: pending,
@@ -485,8 +487,6 @@ export async function getDashboardOverview(input: {
   const connectors = buildConnectors({ truth });
   const trelloDestinationSet = Boolean(workspaceSettings.trello.defaultBoardId && workspaceSettings.trello.defaultListId);
   const slackChannelSelected = Boolean(workspaceSettings.slack.slackDefaultChannelId);
-  const trelloReady = Boolean(connectors.find((connector) => connector.key === "trello")?.connected && trelloDestinationSet);
-  const slackReady = Boolean(connectors.find((connector) => connector.key === "slack")?.connected && slackChannelSelected);
   const onboardingData = asRecord(workspace.data.onboarding_data);
   const selectedPriority = stringValue(onboardingData.first_priority);
   const selectedKeys: DashboardOperator["key"][] | undefined = selectedPriority === "revenue" || selectedPriority === "client_flow" || selectedPriority === "operations"
@@ -506,7 +506,7 @@ export async function getDashboardOverview(input: {
     trialEndsAt: stringValue(workspace.data.trial_ends_at) ?? undefined,
   };
   const executionEligibility = getWorkspaceExecutionEligibilityFromWorkspace(eligibilityWorkspace);
-  const operators = buildOperators({ approvals, runs, truth, trelloReady, slackReady, operatorKeys: selectedKeys });
+  const operators = buildOperators({ approvals, runs, productStates: operatorProductStates, operatorKeys: selectedKeys });
   const today = summarizeToday({ approvals, runs, logs });
   const pendingApprovals = approvals.filter((row) => stringValue(row.status) === "pending");
   const highRiskCount = pendingApprovals.filter((row) => riskFromPayload(asRecord(row.continuation_payload)) === "high").length;

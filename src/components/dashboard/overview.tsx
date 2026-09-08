@@ -83,8 +83,8 @@ function dashboardCounts(overview: DashboardOverview) {
   return {
     connected: overview.connectors.filter((connector) => connector.connected).length,
     ready: overview.operatorProductStates.filter((operator) => operator.state === "ready_to_activate").length,
-    active: overview.operatorProductStates.filter((operator) => operator.state === "active" || operator.state === "enhanced").length,
-    attention: overview.operatorProductStates.filter((operator) => operator.state === "needs_attention" || operator.degraded).length,
+    active: overview.operatorProductStates.filter((operator) => operator.state === "active" || operator.state === "active_limited" || operator.state === "enhanced").length,
+    attention: overview.operatorProductStates.filter((operator) => operator.state === "needs_attention" || operator.state === "active_limited").length,
   };
 }
 
@@ -155,7 +155,7 @@ function DashboardReadinessSummary({ overview }: { overview: DashboardOverview }
   const counts = dashboardCounts(overview);
   const states = overview.operatorProductStates;
   const firstReady = states.find((operator) => operator.state === "ready_to_activate");
-  const firstAttention = states.find((operator) => operator.state === "needs_attention" || operator.degraded);
+  const firstAttention = states.find((operator) => operator.state === "needs_attention" || operator.state === "active_limited");
   const planBlocked = states.filter((operator) => operator.state === "plan_required" || operator.state === "billing_attention" || operator.state === "suspended").length;
   const lifecycle = overview.lifecycleState;
   const summary = lifecycle === "A"
@@ -354,7 +354,7 @@ export function OSOverview() {
 
   // State A remains an explicit server-backed first-run branch, but uses the
   // same control-center frame as later states so the dashboard stays familiar.
-  if (healthyConnectors === 0) {
+  if (overview.lifecycleState === "A") {
     const hasOnboardingPriorities = overview.workspace.onboardingSystems.length > 0;
     return (
       <div className="os-page dashboard-overview dashboard-first-run">
@@ -408,7 +408,7 @@ export function OSOverview() {
   // situation elsewhere in the workspace does not demote this to State F -
   // it is surfaced as a section within E instead (below), so the rest of the
   // product is never hidden behind an attention screen.
-  const attentionStates = overview.operatorProductStates.filter((item) => item.state === "needs_attention" || item.degraded);
+  const attentionStates = overview.operatorProductStates.filter((item) => item.state === "needs_attention" || item.state === "active_limited");
 
   // Billing eligibility banner: at least one connector is live and an
   // operator is actively running (State E), but the workspace itself is not
@@ -467,18 +467,14 @@ export function OSOverview() {
           something else is actively running. */}
       {attentionStates.length > 0 && (
         <div className="p" style={{ borderRadius: 14, background: "rgba(245,194,107,0.05)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.18)" }}>
-          <div className="p-head"><h3>Needs attention</h3><span className="p-meta">{attentionStates.length} operator{attentionStates.length === 1 ? "" : "s"}</span></div>
+          <div className="p-head"><h3>Operator attention</h3><span className="p-meta">{attentionStates.length} actionable</span></div>
           <div style={{ padding: "12px 18px", display: "grid", gap: 10 }}>
             {attentionStates.map((item) => (
               <div key={item.operatorKey} style={{ display: "flex", justifyContent: "space-between", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
                 <div>
-                  <div style={{ fontSize: 12.8, fontWeight: 600 }}>{item.operatorName}</div>
-                  <div style={{ marginTop: 3, fontSize: 12, color: "var(--text-mute)" }}>{item.description}</div>
-                  {item.degraded && item.state !== "needs_attention" && (
-                    <div style={{ marginTop: 3, fontSize: 11.5, color: "var(--text-mute)" }}>
-                      Unavailable: {item.degraded.lostCapabilities.join(", ")}{item.degraded.stillAvailableCapabilities.length ? ` · Still available: ${item.degraded.stillAvailableCapabilities.join(", ")}` : ""}
-                    </div>
-                  )}
+                  <div style={{ fontSize: 12.8, fontWeight: 600 }}>{item.operatorName} <span style={{ color: item.state === "needs_attention" ? "var(--amber)" : "var(--blue)", fontWeight: 500 }}>· {item.label}</span></div>
+                  {item.requiredActions[0] && <div style={{ marginTop: 3, fontSize: 12, color: "var(--text-dim)" }}>{item.requiredActions[0].reason}</div>}
+                  <div style={{ marginTop: 3, fontSize: 11.5, color: "var(--text-mute)" }}>{item.description}</div>
                 </div>
                 {item.nextAction && <Link className="btn btn-ghost btn-sm" href={item.nextAction.href} style={{ textDecoration: "none", flexShrink: 0 }}>{item.nextAction.label}</Link>}
               </div>
@@ -660,7 +656,7 @@ function LifecyclePreOperationalState({
   error: string;
 }) {
   const states = overview.operatorProductStates;
-  const attentionStates = states.filter((item) => item.state === "needs_attention" || item.degraded);
+  const attentionStates = states.filter((item) => item.state === "needs_attention" || item.state === "active_limited");
 
   return (
     <div className="os-page dashboard-overview">
@@ -689,10 +685,9 @@ function LifecyclePreOperationalState({
             {attentionStates.map((item) => (
               <div className="dashboard-attention-row" key={item.operatorKey}>
                 <div>
-                  <strong>{item.operatorName}</strong>
+                  <strong>{item.operatorName} · {item.label}</strong>
+                  {item.requiredActions[0] && <span>{item.requiredActions[0].reason}</span>}
                   <p>{item.description}</p>
-                  {item.degraded?.lostCapabilities.length ? <span>Unavailable: {item.degraded.lostCapabilities.join(", ")}</span> : null}
-                  {item.degraded?.stillAvailableCapabilities.length ? <span>Still available: {item.degraded.stillAvailableCapabilities.join(", ")}</span> : null}
                 </div>
                 {item.nextAction && <Link className="btn btn-ghost btn-sm" href={item.nextAction.href}>{item.nextAction.label}</Link>}
               </div>

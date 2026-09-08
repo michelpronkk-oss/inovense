@@ -16,7 +16,7 @@ assert.match(briefing, /No issues need attention right now/);
 assert.doesNotMatch(briefing, /readinessPercent/);
 assert.match(list, /getOperatorCapabilityCopy/);
 assert.match(briefing, /getOperatorCapabilityCopy/);
-assert.match(briefing, /category=\$\{capabilityCopy\.required/);
+assert.match(briefing, /operatorKey === "operations" \? "\/app\/connectors\?discover=1&category=project_management" : "\/app\/connectors\?discover=1&category=email_calendar"/);
 assert.match(readiness, /Trello, Asana, or Jira/);
 assert.match(activation, /workflow history, and recorded outcomes stay available/);
 console.log("Operator discovery smoke: visible roles, alternative system capability, explicit activation, and non-technical unlock language verified.");

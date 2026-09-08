@@ -45,8 +45,8 @@ function testSharedModelExistsAndIsPure() {
 function testPrecedenceOrderInSource() {
   const source = read("src/lib/operators/product-state.ts");
   const idxCommingNext = source.indexOf('if (readiness.status === "coming_next") return "needs_setup";');
-  const idxMissing = source.indexOf('if (requiredConnectorHealth === "missing" || readiness.status === "missing_connector") return "needs_setup";');
-  const idxUnhealthy = source.indexOf('if (requiredConnectorHealth === "unhealthy") return "needs_attention";');
+  const idxMissing = source.indexOf('if (requiredConnectorHealth === "missing" || readiness.status === "missing_connector") {');
+  const idxUnhealthy = source.indexOf('if (requiredConnectorHealth === "unhealthy") return activated ? "needs_attention" : "needs_setup";');
   const idxBilling = source.indexOf('if (readiness.status === "upgrade_required" || !eligibility.eligible) {');
   const idxPaused = source.indexOf('if (!activated && everActivated) return "paused";');
   const idxReady = source.indexOf('if (!activated) return "ready_to_activate";');
@@ -153,6 +153,10 @@ async function loadComputeOperatorProductState() {
       'import { createSupabaseAdmin } from "@/lib/server/supabase-admin";',
       throwingReplacement("createSupabaseAdmin"),
     ],
+    [
+      'import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";',
+      throwingReplacement("loadWorkspacePolicySettings"),
+    ],
   ];
   for (const [search, replace] of replacements) {
     assert.ok(source.includes(search), `expected to find and replace this exact import line in product-state.ts:\n${search}`);
@@ -234,7 +238,7 @@ async function testPrecedenceRuntime() {
     hasHealthyOptionalCapability: false,
   }), "paused");
 
-  // 6. Required connector unhealthy -> needs_attention (even though it was previously ready/active).
+  // 6. Required connector unhealthy -> needs_attention for an active operator.
   assert.equal(compute({
     readiness: { status: "ready", executionEligibility: eligibility("eligible", true) },
     activation: { activated: true, activatedAt: "2026-01-01T00:00:00.000Z", deactivatedAt: null },
@@ -242,22 +246,40 @@ async function testPrecedenceRuntime() {
     hasHealthyOptionalCapability: false,
   }), "needs_attention");
 
-  // 7. Optional connector unhealthy alone never breaks the operator - state stays active
-  // (degraded/enhancement-loss is carried separately in OperatorDegradedInfo, not the state enum).
+  // An inactive operator with an unhealthy core connection is still in the
+  // unlock phase rather than being presented as an operational incident.
+  assert.equal(compute({
+    readiness: { status: "missing_connector", executionEligibility: eligibility("eligible", true) },
+    activation: null,
+    requiredConnectorHealth: "unhealthy",
+    hasHealthyOptionalCapability: false,
+  }), "needs_setup");
+
+  // 7. Optional connector unhealthy keeps the operator active while clearly
+  // presenting the reduced optional context.
   assert.equal(compute({
     readiness: { status: "ready", executionEligibility: eligibility("eligible", true) },
     activation: { activated: true, activatedAt: "2026-01-01T00:00:00.000Z", deactivatedAt: null },
     requiredConnectorHealth: "ok",
     hasHealthyOptionalCapability: false,
-  }), "active");
+    hasOptionalDegradation: true,
+  }), "active_limited");
 
-  // 8. Optional connector healthy -> enhanced.
+  // 8. Optional connector healthy keeps the canonical Active state.
   assert.equal(compute({
     readiness: { status: "ready", executionEligibility: eligibility("eligible", true) },
     activation: { activated: true, activatedAt: "2026-01-01T00:00:00.000Z", deactivatedAt: null },
     requiredConnectorHealth: "ok",
     hasHealthyOptionalCapability: true,
-  }), "enhanced");
+  }), "active");
+
+  // Active + core capability missing is an operational failure, never setup.
+  assert.equal(compute({
+    readiness: { status: "missing_connector", executionEligibility: eligibility("eligible", true) },
+    activation: { activated: true, activatedAt: "2026-01-01T00:00:00.000Z", deactivatedAt: null },
+    requiredConnectorHealth: "missing",
+    hasHealthyOptionalCapability: false,
+  }), "needs_attention");
 
   // Precedence proof: BOTH missing a required connector AND billing issues present
   // -> needs_setup, never plan_required. Hard requirements always win.
