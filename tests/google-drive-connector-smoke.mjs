@@ -11,6 +11,9 @@ const folders = read("src/app/api/connectors/google-drive/folders/route.ts");
 const settings = read("src/app/api/connectors/google-drive/settings/route.ts");
 const disconnect = read("src/app/api/connectors/disconnect/route.ts");
 const registry = read("src/lib/connectors/registry.ts");
+const truth = read("src/lib/connectors/truth.ts");
+const connectorsPage = read("src/app/app/connectors/page.tsx");
+const unlockCopy = read("src/lib/operators/unlock-copy.ts");
 
 assert.match(gmail, /GOOGLE_DRIVE_READONLY_SCOPE/);
 assert.match(gmail, /includeDriveScope\?: boolean/);
@@ -49,6 +52,15 @@ assert.match(settings, /getGoogleDriveFileMetadata/);
 assert.match(settings, /Grant Drive access/);
 assert.match(callback, /existingScopes/);
 assert.match(gmail, /include_granted_scopes/);
+assert.match(truth, /truth\.status === "configuration_required"[\s\S]{0,220}isConnected: truth\.status === "healthy" \|\| truth\.status === "configuration_required"/);
+assert.match(connectorsPage, /Google Drive access granted\. Choose a folder to finish setup\./);
+assert.match(connectorsPage, /connectedConnector\.health !== "healthy"/);
+assert.match(connectorsPage, /router\.replace\("\/app\/connectors"\)/);
+assert.match(unlockCopy, /isLiveOperator\(operator\.key\)/);
+for (const future of ["Knowledge & Memory Operator", "Marketing Operator", "SEO Implementation Operator", "Proposal & Quote Operator", "Review & Proof Operator"]) {
+  assert.doesNotMatch(connectorsPage, new RegExp(future.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `${future} must not appear in connector UI`);
+  assert.doesNotMatch(unlockCopy, new RegExp(future.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `${future} must not appear in OAuth success copy`);
+}
 assert.match(disconnect, /connectorKey === "google_drive"/);
 assert.match(disconnect, /writeGoogleDriveSettings/);
 assert.match(registry, /connectorKey: "google_drive"[\s\S]*authType: "direct_oauth"[\s\S]*status: "available"/);

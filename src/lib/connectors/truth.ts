@@ -908,10 +908,14 @@ function applyTruth(connector: Connector, truth: SafeConnectorTruth): Connector 
   }
 
   if (truth.connectorKey === "google_drive") {
-    const connected = truth.status === "healthy" || truth.status === "not_connected" || truth.status === "reconnect_required" || truth.status === "permission_required";
+    // Drive shares Gmail's credential, but its capability has its own setup
+    // state. A granted Drive scope with no selected folder remains a real
+    // connected Google capability so it stays visible in Connected tools with
+    // a truthful "Choose a folder" state.
+    const connected = truth.status === "healthy" || truth.status === "configuration_required" || truth.status === "not_connected" || truth.status === "reconnect_required" || truth.status === "permission_required";
     return {
       ...connector,
-      isConnected: truth.status === "healthy" || truth.status === "not_connected",
+      isConnected: truth.status === "healthy" || truth.status === "configuration_required" || truth.status === "not_connected",
       status: connected ? "connected" : truth.status === "error" ? "error" : "available",
       health: truth.status === "healthy" ? "healthy" : "disabled",
       lastSync: "-",

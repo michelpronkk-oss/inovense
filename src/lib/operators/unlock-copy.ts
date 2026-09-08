@@ -6,7 +6,7 @@
 // capability a connector does not really provide.
 
 import { getConnectorDefinition, listConnectors } from "@/lib/connectors/registry";
-import { getOperatorDefinition, OPERATOR_REGISTRY, type OperatorKey } from "@/lib/operators/registry";
+import { getOperatorDefinition, isLiveOperator, OPERATOR_REGISTRY, type OperatorKey } from "@/lib/operators/registry";
 import { getOperatorConnectorReadiness } from "@/lib/operators/connector-requirements";
 import { getRealWorkspaceSuggestedWorkflows, type RealWorkflowSuggestion } from "@/lib/os/workflow-recommendations";
 
@@ -32,6 +32,9 @@ export function getUnlockDeltaForConnector(input: {
 
   const deltas: OperatorUnlockDelta[] = [];
   for (const operator of OPERATOR_REGISTRY) {
+    // The registry also contains roadmap definitions. Connector success copy
+    // is a production surface and may only mention operators that are live.
+    if (!isLiveOperator(operator.key)) continue;
     const readinessBefore = getOperatorConnectorReadiness(operator.key, before);
     const readinessAfter = getOperatorConnectorReadiness(operator.key, after);
     if (!readinessBefore || !readinessAfter) continue;

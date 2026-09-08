@@ -436,16 +436,42 @@ export default function ConnectorsPage() {
   useEffect(() => {
     const connected = searchParams.get("connected");
     if (!connected) return;
-    // Real capability delta, not per-connector hardcoded prose - see
-    // unlockMessageForConnector (src/lib/operators/unlock-copy.ts). Passing
-    // real operatorReadiness lets it also mention a workflow suggestion that
-    // genuinely newly became available - never shown otherwise.
-    setFeedback(unlockMessageForConnector({
-      connectorKey: connected,
-      connectedConnectorKeys,
-      operatorReadiness: operatorReadiness.map((r) => ({ operatorKey: r.operatorKey, ready: r.status === "ready" || r.status === "draft_only" })),
-    }));
-    router.replace("/connectors");
+    const connectedConnector = state.connectors.find((connector) => normalizeConnectorKey(connector.id) === connected);
+    if (connected === "google_drive" && (!connectedConnector || connectedConnector.health !== "healthy")) {
+      const needsFolder = !connectedConnector
+        || connectedConnector.records.includes("Select a folder")
+        || connectedConnector.records.includes("Select folders")
+        || connectedConnector.records.includes("Drive access is ready");
+      setFeedback(needsFolder
+        ? "Google Drive access granted. Choose a folder to finish setup."
+        : "Google Drive access granted, but verification is still pending. Open Drive setup to review it.");
+    } else {
+      // Real capability delta, not per-connector hardcoded prose - see
+      // unlockMessageForConnector (src/lib/operators/unlock-copy.ts). Passing
+      // real operatorReadiness lets it mention only live, genuinely affected
+      // operators and workflow suggestions.
+      setFeedback(unlockMessageForConnector({
+        connectorKey: connected,
+        connectedConnectorKeys,
+        operatorReadiness: operatorReadiness.map((r) => ({ operatorKey: r.operatorKey, ready: r.status === "ready" || r.status === "draft_only" })),
+      }));
+    }
+    router.replace("/app/connectors");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const oauthStatus = searchParams.get("gmail");
+    if (!oauthStatus) return;
+    const message = oauthStatus === "oauth_denied"
+      ? "Google access was not granted. No connector was changed."
+      : oauthStatus === "missing_code"
+        ? "Google did not return an authorization code. Try again."
+        : oauthStatus === "supabase_missing"
+          ? "Google access could not be saved because the workspace connection service is unavailable."
+          : "Google connection could not be completed. No success state was recorded.";
+    setFeedback(message);
+    router.replace("/app/connectors");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -456,7 +482,7 @@ export default function ConnectorsPage() {
       ? "Only a workspace owner or admin can enable Microsoft Teams."
       : "Microsoft Teams permissions were not granted. Teams stays unavailable until they are approved.");
     setDrawerConnectorId("microsoft_teams");
-    router.replace("/connectors");
+    router.replace("/app/connectors");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -466,7 +492,7 @@ export default function ConnectorsPage() {
     setSetupConnectorId(null);
     setSearch(searchParams.get("q") ?? "");
     setDiscoveryCategory("all");
-    router.replace("/connectors");
+    router.replace("/app/connectors");
   }, [router, searchParams]);
 
   useEffect(() => {
