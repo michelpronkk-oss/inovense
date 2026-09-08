@@ -58,6 +58,12 @@ const REAL_OPERATOR_VALUE: Record<string, { owns: string; value: string; enhance
   },
 };
 
+const DISCOVERY_REQUIREMENTS: Record<string, { required: string; compatible: string[]; optional: string[] }> = {
+  revenue: { required: "One email system", compatible: ["Gmail", "Microsoft 365"], optional: ["HubSpot", "Salesforce", "Google Drive"] },
+  client_flow: { required: "One customer conversation system", compatible: ["Gmail", "Microsoft 365"], optional: ["HubSpot", "Salesforce", "Google Drive"] },
+  operations: { required: "One project system", compatible: ["Jira", "Asana", "Trello"], optional: ["Slack", "Microsoft Teams", "Google Drive"] },
+};
+
 const LOOP_STEPS = ["Detect", "Prepare", "Approve", "Execute", "Log"];
 
 function Arrow() {
@@ -108,14 +114,16 @@ function AgentCard({ model, onOpenDetails }: { model: CardModel; onOpenDetails: 
   const dim = status === "upgrade" || status === "coming";
   const running = Boolean(productState && RUNNING_PRODUCT_STATES.has(productState.state));
   const statusLabel = productState
-    ? productState.label
+    ? productState.state === "needs_setup" ? "Connect a system" : productState.label
     : status === "configured" ? "Configured" : status === "available" ? (readyReason ? "Ready to activate" : "Available") : status === "upgrade" ? "Upgrade" : "Coming next";
 
   const attentionState = productState?.state === "needs_attention" || productState?.state === "plan_required" || productState?.state === "billing_attention" || productState?.state === "suspended";
+  const discovery = DISCOVERY_REQUIREMENTS[model.key];
+  const locked = productState?.state === "needs_setup";
 
   const foot = productState
     ? (attentionState
-      ? <span className="ag-ready warn"><span className="rd" /> {productState.label}</span>
+      ? <span className="ag-ready warn"><span className="rd" /> {productState.state === "needs_setup" ? "Available to unlock" : productState.label}</span>
       : running
         ? <span className={`ag-ready ${productState.state === "paused" ? "warn" : "on"}`}><span className="rd" /> {productState.state === "paused" ? "Monitoring paused" : "Monitoring"}</span>
         : <span className="ag-ready"><span className="rd" /> {productState.label}</span>)
@@ -131,8 +139,8 @@ function AgentCard({ model, onOpenDetails }: { model: CardModel; onOpenDetails: 
       ? <span className="ag-ready"><Lock /> Plan upgrade</span>
       : <span className="ag-ready"><Lock /> On the roadmap</span>;
 
-  const openEl = productState?.nextAction
-    ? <Link className="ag-open" href={productState.nextAction.href}>{productState.nextAction.label} <Arrow /></Link>
+  const openEl = productState
+    ? <Link className="ag-open" href={href ?? "/agents"}>{running ? "Open operator" : "View operator"} <Arrow /></Link>
     : (status === "configured" || status === "available") && href
     ? <Link className="ag-open" href={href}>Open operator <Arrow /></Link>
     : <span className="ag-roadmap-state">{status === "upgrade" ? "Available with plan upgrade" : "Planned for a future release"}</span>;
@@ -149,6 +157,11 @@ function AgentCard({ model, onOpenDetails }: { model: CardModel; onOpenDetails: 
       </div>
 
       <div className="ag-mission">{op.mission}</div>
+
+      {discovery && <div style={{ display: "grid", gap: 5, marginTop: -2, fontSize: 11.5, color: "var(--text-mute)" }}>
+        <span>{locked ? `Requires: ${discovery.required}` : productState?.connectedSystems.length ? `Connected context: ${productState.connectedSystems.slice(0, 2).join(" · ")}` : `Works with: ${discovery.compatible.join(" · ")}`}</span>
+        {locked && <span style={{ color: "var(--text-faint)" }}>Works with: {discovery.compatible.join(" · ")}</span>}
+      </div>}
 
       {!productState && status === "available" && readyReason && (
         <div style={{ fontSize: 11.5, color: "var(--text-mute)", marginTop: -6 }}>Because: {readyReason}</div>
@@ -272,7 +285,10 @@ export default function AgentsRegistryPage() {
     };
   }), [configuredKeys, productStateByKey, readinessByKey]);
 
-  const current = cards.filter((c) => Boolean(HREF_BY_KEY[c.key]));
+  const current = cards.filter((c) => Boolean(HREF_BY_KEY[c.key])).sort((a, b) => {
+    const rank = (item: CardModel) => item.productState?.state === "active" || item.productState?.state === "enhanced" ? 0 : item.productState?.state === "ready_to_activate" ? 1 : item.productState?.state === "needs_setup" ? 3 : 2;
+    return rank(a) - rank(b);
+  });
   const expanding = cards.filter((c) => c.status === "upgrade" || c.status === "coming");
   const showCurrent = filter !== "expanding";
   const showExpanding = filter !== "active";

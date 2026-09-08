@@ -37,6 +37,7 @@
     "test:capability-billing-gating": "node tests/capability-billing-gating-smoke.mjs",
     "test:product-journey": "node tests/product-journey-pass2-smoke.mjs",
     "test:operator-product-state": "node tests/operator-product-state-smoke.mjs",
+    "test:operator-discovery": "node tests/operator-discovery-smoke.mjs",
     "test:pricing-scale": "node tests/pricing-scale-smoke.mjs",
     "test:trial-lifecycle": "node tests/trial-lifecycle-smoke.mjs",
     "test:connector-impact": "node tests/connector-impact-smoke.mjs",
