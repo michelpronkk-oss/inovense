@@ -45,7 +45,8 @@ function testSourceContracts() {
   const styles = read("src/app/admin/system-map/system-map.css");
   assert.match(styles, /\.admin-system-map-page\s*\{[\s\S]*position:\s*fixed/, "System Map must bypass the shared content column on desktop");
   assert.match(styles, /left:\s*248px/, "full-screen System Map must start at the sidebar edge");
-  assert.match(styles, /\.admin-system-map-page \.sysmap-canvas-wrap\s*\{[\s\S]*height:\s*100%/, "System Map canvas must fill the viewport surface");
+  assert.match(styles, /grid-template-rows:\s*auto minmax\(0, 1fr\)/, "System Map must reserve all remaining viewport height for its workspace");
+  assert.match(styles, /grid-template-columns:\s*minmax\(0, 1fr\) 348px/, "System Map must keep a dedicated inspector without constraining the graph");
 
   const canvas = read("src/app/admin/system-map/SystemMapCanvas.tsx");
   assert.match(canvas, /^"use client";/, "the interactive canvas must be a client component");
@@ -57,6 +58,8 @@ function testSourceContracts() {
   assert.doesNotMatch(canvas, /supabase|createSupabaseAdmin/i, "the client canvas must never talk to Supabase directly");
   assert.match(canvas, /onNodeClick/, "node click/selection handling must exist");
   assert.match(canvas, /sysmap-panel/, "a details-panel render path must exist");
+  assert.match(canvas, /sysmap-workspace/, "canvas and inspector must use the dedicated workspace layout");
+  assert.match(canvas, /Architecture inspector/, "the inspector must remain available before a node is selected");
   assert.match(canvas, /Escape/, "details panel must be closable with Escape");
 
   // Regression guard: custom @xyflow/react node types get NO default

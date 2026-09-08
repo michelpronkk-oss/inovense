@@ -147,11 +147,31 @@ function DetailsPanel({ node, branchLabel, live, notes, onClose, onCreateNote, o
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [node, onClose]);
 
-  // No overlay at all when nothing is selected -- the graph should get the
-  // full canvas by default, not a permanently-reserved empty panel hiding
-  // whatever nodes happen to sit under it (previously the Infrastructure
-  // column was invisible behind an idle "Select a node..." placeholder).
-  if (!node) return null;
+  if (!node) {
+    return (
+      <aside className="sysmap-panel sysmap-panel-empty" aria-label="System Map inspector">
+        <div className="sysmap-panel-head">
+          <div>
+            <div className="admin-eyebrow">System Map</div>
+            <h3>Architecture inspector</h3>
+          </div>
+        </div>
+        <div className="sysmap-panel-body">
+          <div className="sysmap-inspector-empty">
+            <span className="admin-status-dot live" aria-hidden />
+            <div>
+              <strong>Select a node</strong>
+              <p>Inspect its live state, relationships, dependencies, and founder notes without leaving the map.</p>
+            </div>
+          </div>
+          <div className="sysmap-panel-section">
+            <span>Workspace controls</span>
+            <p>Drag to explore, use the canvas controls to zoom, or fit the current architecture to the available workspace.</p>
+          </div>
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside className="sysmap-panel" aria-label={`Details for ${node.label}`} role="dialog" aria-modal="false">
@@ -380,25 +400,28 @@ function SystemMapInner({
           />
         </form>
       </div>
-      <div className="sysmap-canvas-wrap">
-        <ReactFlow
-          nodes={flowNodesWithSelection}
-          edges={visibleEdges}
-          nodeTypes={nodeTypes}
-          onNodesChange={onNodesChange}
-          onNodeDragStop={handleNodeDragStop}
-          onNodeClick={handleNodeClick}
-          onSelectionChange={handleSelectionChange}
-          fitView
-          minZoom={0.35}
-          maxZoom={1.5}
-          proOptions={{ hideAttribution: true }}
-          nodesFocusable
-          elementsSelectable
-        >
-          <Background variant={BackgroundVariant.Dots} gap={26} size={1.4} color="rgba(148,163,184,0.16)" />
-          <Controls position="bottom-left" showInteractive={false} className="sysmap-controls" />
-        </ReactFlow>
+      <div className="sysmap-workspace">
+        <div className="sysmap-canvas-wrap">
+          <ReactFlow
+            nodes={flowNodesWithSelection}
+            edges={visibleEdges}
+            nodeTypes={nodeTypes}
+            onNodesChange={onNodesChange}
+            onNodeDragStop={handleNodeDragStop}
+            onNodeClick={handleNodeClick}
+            onSelectionChange={handleSelectionChange}
+            fitView
+            fitViewOptions={{ padding: 0.14, maxZoom: 1 }}
+            minZoom={0.35}
+            maxZoom={1.5}
+            proOptions={{ hideAttribution: true }}
+            nodesFocusable
+            elementsSelectable
+          >
+            <Background variant={BackgroundVariant.Dots} gap={26} size={1.4} color="rgba(148,163,184,0.16)" />
+            <Controls position="bottom-left" showInteractive={false} className="sysmap-controls" />
+          </ReactFlow>
+        </div>
         <DetailsPanel node={selectedNode} branchLabel={selectedBranchLabel} live={selectedId ? liveByNode.get(selectedId) : undefined} notes={selectedNotes} onClose={() => setSelectedId(null)} onCreateNote={(title, body) => saveNote("POST", { nodeId: selectedId, title, body })} onEditNote={(note, title, body) => saveNote("PATCH", { id: note.id, title, body })} onDeleteNote={(id) => saveNote("DELETE", null, id)} />
       </div>
     </div>
