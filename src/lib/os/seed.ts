@@ -3,7 +3,7 @@ import {
   listConnectors,
   type ConnectorDefinition,
 } from "@/lib/connectors/registry";
-import { getOperatorDefinition } from "@/lib/operators/registry";
+import { liveOperatorNames } from "@/lib/operators/registry";
 import type { OSState, Agent, Workflow, Approval, MemoryEntry, Connector, ExecutionLog, Policy } from "@/lib/os/types";
 
 // Deterministic IDs so seed is stable across reloads
@@ -168,7 +168,12 @@ export function connectorDefinitionToSeedConnector(def: ConnectorDefinition): Co
     writeScopes: def.writeActions,
     approvalRequiredFor: def.approvalRequiredActions,
     blockedActions: def.riskLevel === "high" ? ["External write without approval"] : [],
-    operatorsAllowed: def.usedByOperators.map((key) => getOperatorDefinition(key)?.name ?? key),
+    // Only operators that are actually live in production may be advertised on
+    // a connector card. The registry still lists roadmap operators against some
+    // connectors (Notion -> Marketing/Knowledge & Memory, Slack -> Approval &
+    // Risk/Support/Automation Architect, Gmail -> Support/Finance & Billing);
+    // showing those would claim capabilities that do not exist yet.
+    operatorsAllowed: liveOperatorNames(def.usedByOperators),
     records: available ? "Not connected" : def.setupNotes,
     lastSynced: "",
     eventsSynced: 0,
@@ -187,7 +192,7 @@ export function reconcileConnectorsWithRegistry(connectors: Connector[]): Connec
     const existing = connectors.find((connector) => connector.id.replace(/-/g, "_") === def.connectorKey);
     const keepRealTruth = Boolean(
       existing?.isConnected
-      && (existing.source === "native" || existing.source === "nango")
+      && existing.source === "native"
       && def.status === "available"
     );
 

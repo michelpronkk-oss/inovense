@@ -1,5 +1,7 @@
 import { decryptToken, encryptToken } from "@/lib/connectors/crypto";
+import { resolveAccessTokenWithRefreshLock } from "@/lib/connectors/refresh-lock";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { recordProviderFailure, recordProviderSuccess } from "@/lib/runtime/provider-health";
 import { providerRetryDelayMs, shouldRetryProviderFailure } from "@/lib/runtime/provider-retry";
 
 export const ASANA_REDIRECT_URI = "https://app.auterim.com/api/connectors/asana/callback";
@@ -52,7 +54,9 @@ export async function exchangeAsanaCode(code: string): Promise<AsanaTokenResult>
 export async function refreshAsanaAccessToken(refreshToken: string): Promise<AsanaTokenResult> {
   const response = await fetch(ASANA_OAUTH_TOKEN, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" }, body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: refreshToken, client_id: required("ASANA_CLIENT_ID"), client_secret: required("ASANA_CLIENT_SECRET") }), cache: "no-store" });
   const token = await parseResponse<AsanaTokenResult>(response);
-  if (!response.ok || !token.access_token) throw new Error(token.error_description || token.error || "Asana token refresh failed");
+  // Status and provider error code are preserved so a temporary Asana outage
+  // is never mistaken for a revoked grant.
+  if (!response.ok || !token.access_token) throw new AsanaExecutionError(token.error_description || token.error || "Asana token refresh failed", token.error || `http_${response.status}`, response.status);
   return token;
 }
 export async function revokeAsanaToken(accessToken: string): Promise<void> {
@@ -68,15 +72,41 @@ export async function getStoredAsanaCredential(workspaceId: string, supabase = c
   return (result.data as StoredAsanaCredential | null) ?? null;
 }
 export class AsanaReconnectionRequiredError extends Error {}
+export function asanaAccessTokenIsFresh(row: { token_expires_at?: string | null }): boolean {
+  return Boolean(row.token_expires_at && new Date(row.token_expires_at).getTime() > Date.now() + 60_000);
+}
+/**
+ * Asana refreshes are coordinated through the shared distributed lease. Asana
+ * usually returns the same refresh token, but this resolver writes credential
+ * state back, and any write-back can otherwise be overwritten by a worker
+ * holding older state. The credential_version compare-and-swap makes that
+ * impossible. A temporary Asana failure no longer forces a reconnect.
+ */
 export async function resolveAsanaAccessToken(input: { workspaceId: string; credential: StoredAsanaCredential; supabase?: ReturnType<typeof createSupabaseAdmin> }): Promise<string> {
   const supabase = input.supabase ?? createSupabaseAdmin();
-  if (input.credential.token_expires_at && new Date(input.credential.token_expires_at).getTime() > Date.now() + 60_000) return decryptToken(input.credential.encrypted_access_token);
+  if (asanaAccessTokenIsFresh(input.credential)) return decryptToken(input.credential.encrypted_access_token);
   if (!input.credential.encrypted_refresh_token) return decryptToken(input.credential.encrypted_access_token);
   try {
-    const token = await refreshAsanaAccessToken(decryptToken(input.credential.encrypted_refresh_token));
-    await supabase.from("os_connector_credentials").update({ encrypted_access_token: encryptToken(token.access_token), encrypted_refresh_token: token.refresh_token ? encryptToken(token.refresh_token) : input.credential.encrypted_refresh_token, token_expires_at: token.expires_in ? new Date(Date.now() + token.expires_in * 1000).toISOString() : null, status: "connected" }).eq("workspace_id", input.workspaceId).eq("connector_key", "asana");
-    return token.access_token;
-  } catch { await supabase.from("os_connector_credentials").update({ status: "needs_attention" }).eq("workspace_id", input.workspaceId).eq("connector_key", "asana"); throw new AsanaReconnectionRequiredError("Asana reconnection required."); }
+    const outcome = await resolveAccessTokenWithRefreshLock({
+      workspaceId: input.workspaceId, connectorKey: "asana", supabase, credential: input.credential, isFresh: asanaAccessTokenIsFresh,
+      refresh: async (latest) => {
+        if (!latest.encrypted_refresh_token) throw new AsanaReconnectionRequiredError("Asana reconnection required.");
+        const token = await refreshAsanaAccessToken(decryptToken(latest.encrypted_refresh_token));
+        return { accessToken: token.access_token, refreshToken: token.refresh_token ?? null, expiresAt: token.expires_in ? new Date(Date.now() + token.expires_in * 1000).toISOString() : null, status: "connected" };
+      },
+    });
+    await recordProviderSuccess({ workspaceId: input.workspaceId, connectorKey: "asana", operation: "oauth_refresh", supabase });
+    return outcome.accessToken;
+  } catch (error) {
+    const status = error instanceof AsanaExecutionError ? error.status : null;
+    const code = error instanceof AsanaExecutionError ? error.code : (error as { code?: string } | null)?.code ?? "oauth_refresh_failed";
+    const failure = await recordProviderFailure({ workspaceId: input.workspaceId, connectorKey: "asana", operation: "oauth_refresh", status, code, supabase });
+    if (failure.connectorHealthImpact === "reconnect_required" || error instanceof AsanaReconnectionRequiredError) {
+      await supabase.from("os_connector_credentials").update({ status: "needs_attention" }).eq("workspace_id", input.workspaceId).eq("connector_key", "asana");
+      throw new AsanaReconnectionRequiredError("Asana reconnection required.");
+    }
+    throw new AsanaExecutionError("Asana could not be reached to refresh access.", failure.safeCode, status && status >= 400 && status < 500 ? status : 502);
+  }
 }
 async function asanaFetchPage<T>(token: string, path: string, init?: RequestInit): Promise<{ data: T; nextOffset: string | null }> {
   let lastStatus = 0;

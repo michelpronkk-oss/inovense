@@ -13,7 +13,7 @@ const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 const workspace = read("src/lib/os/workspace.ts");
 const workspaceMembership = read("src/lib/server/workspace-membership.ts");
 const gmailAuth = read("src/app/api/connectors/gmail/auth/route.ts");
-const nangoSession = read("src/app/api/connectors/nango/session/route.ts");
+const hubspotAuth = read("src/app/api/connectors/hubspot/auth/route.ts");
 const appLayout = read("src/app/app/layout.tsx");
 const appGateway = read("src/lib/server/app-gateway.ts");
 const workspaceAccess = read("src/lib/server/workspace-access.ts");
@@ -51,9 +51,9 @@ assert.doesNotMatch(gmailAuth, /searchParams\.get\("userEmail"\)/);
 assert.doesNotMatch(gmailAuth, /searchParams\.get\("userId"\)/);
 assert.match(gmailAuth, /resolveWorkspaceContext/);
 
-assert.doesNotMatch(nangoSession, /body\.userEmail/);
-assert.doesNotMatch(nangoSession, /body\.userId/);
-assert.match(nangoSession, /resolveWorkspaceContext/);
+assert.doesNotMatch(hubspotAuth, /searchParams\.get\("userEmail"\)/);
+assert.doesNotMatch(hubspotAuth, /searchParams\.get\("userId"\)/);
+assert.match(hubspotAuth, /resolveWorkspaceContext/);
 
 // ── 4. /app route guard exists and enforces auth + onboarding order ──────
 assert.match(appLayout, /resolveAppGateway/);

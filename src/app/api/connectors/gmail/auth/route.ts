@@ -50,6 +50,6 @@ export async function GET(req: NextRequest) {
   }
 
   const state = createOAuthState(workspaceId, userEmail);
-  const authUrl = buildGoogleAuthUrl(state);
+  const authUrl = buildGoogleAuthUrl(state, { includeDriveScope: false });
   return NextResponse.redirect(authUrl);
 }

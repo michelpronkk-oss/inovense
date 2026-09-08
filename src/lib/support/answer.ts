@@ -1,11 +1,21 @@
 import { ROADMAP_ITEMS } from "@/lib/product/roadmap";
+import type { InactionReason } from "@/lib/support/diagnosis";
 import { SUPPORT_HELP, findSupportHelp } from "@/lib/support/knowledge";
 
 export type SupportAnswer = {
   answer: string;
   action?: { label: string; href: string };
   needsContact?: boolean;
+  /** Machine-readable codes behind an inaction answer. Never customer content. */
+  reasonCodes?: string[];
 };
+
+/** True when the customer is asking why Auterim did not do something. */
+export function isInactionQuestion(question: string): boolean {
+  const normalized = question.toLowerCase();
+  return /why (did ?n.?t|did not|has ?n.?t|has not|is ?n.?t|was ?n.?t|no)/.test(normalized)
+    || /nothing (happened|has happened|is happening)|no action|didn.?t (send|do|run|act|create)|not (sending|running|acting|doing anything)|stuck|stopped working|no approvals?/.test(normalized);
+}
 
 type ProductState = { operatorName: string; label: string; description: string; nextAction: { label: string; href: string } | null };
 
@@ -19,8 +29,17 @@ function actionForHelp(id: string) {
  * summaries and produces factual guidance. It does not act, change workspace
  * state, or inspect message, connector credential, or customer data.
  */
-export function answerSupportQuestion(question: string, states: ProductState[]): SupportAnswer {
+export function answerSupportQuestion(question: string, states: ProductState[], inactionReasons?: InactionReason[]): SupportAnswer {
   const normalized = question.toLowerCase();
+  // "Why didn't Auterim act?" is answered from verified workspace state, in
+  // priority order, as reason codes plus plain copy. No stack traces, no
+  // provider payloads, no business content.
+  if (inactionReasons?.length && isInactionQuestion(question)) {
+    const primary = inactionReasons[0];
+    const secondary = inactionReasons.slice(1, 3);
+    const answer = [primary.message, ...secondary.map((reason) => reason.message)].join(" ");
+    return { answer, action: primary.action, reasonCodes: inactionReasons.slice(0, 3).map((reason) => reason.code) };
+  }
   const roadmap = ROADMAP_ITEMS.find((item) => normalized.includes(item.name.toLowerCase()));
   if (roadmap) {
     const status = roadmap.status === "available" ? "available today" : roadmap.status === "next" ? "planned next" : "being explored";

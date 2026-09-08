@@ -1,5 +1,6 @@
 import {
   GOOGLE_DRIVE_READONLY_SCOPE,
+  GmailOAuthError,
   getMissingGmailScopes,
   resolveAccessTokenFromCredential,
   type StoredConnectorCredential,
@@ -116,8 +117,19 @@ export async function getStoredGoogleDriveCredential(workspaceId: string, supaba
   return (result.data as StoredConnectorCredential | null) ?? null;
 }
 export async function resolveGoogleDriveAccessToken(input: { workspaceId: string; credential: StoredConnectorCredential; supabase?: ReturnType<typeof createSupabaseAdmin> }): Promise<string> {
-  if (!hasGoogleDriveScope(input.credential.scopes)) throw new GoogleDriveError("Drive permission is required. Reconnect Google to grant Drive read access.", "drive_scope_missing", 403);
-  try { return await resolveAccessTokenFromCredential(input.credential); } catch { await (input.supabase ?? createSupabaseAdmin()).from("os_connector_credentials").update({ status: "needs_attention" }).eq("workspace_id", input.workspaceId).eq("connector_key", "gmail"); throw new GoogleDriveReconnectionRequiredError("Reconnect Google to restore Drive access."); }
+  if (!hasGoogleDriveScope(input.credential.scopes)) throw new GoogleDriveError("Drive permission is required. Grant Drive access to continue.", "drive_scope_missing", 403);
+  try {
+    return await resolveAccessTokenFromCredential(input.credential, input.supabase);
+  } catch (error) {
+    // A revoked Google grant needs a reconnect. Provider outages and rate
+    // limits are transient and must not destroy a still-valid credential.
+    const reconnect = error instanceof GmailOAuthError && (error.code === "invalid_grant" || error.status === 400 || error.status === 401);
+    if (reconnect) {
+      await (input.supabase ?? createSupabaseAdmin()).from("os_connector_credentials").update({ status: "needs_attention" }).eq("workspace_id", input.workspaceId).eq("connector_key", "gmail");
+      throw new GoogleDriveReconnectionRequiredError("Reconnect Google to restore Drive access.");
+    }
+    throw error;
+  }
 }
 
 async function parseJson<T>(response: Response): Promise<T> {

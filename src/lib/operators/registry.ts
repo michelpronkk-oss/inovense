@@ -302,3 +302,34 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
 export function getOperatorDefinition(operatorKey: string): OperatorDefinition | undefined {
   return OPERATOR_REGISTRY.find((operator) => operator.key === operatorKey);
 }
+
+/**
+ * The operators that actually exist in production today.
+ *
+ * OPERATOR_REGISTRY intentionally still describes the wider roadmap (preview /
+ * coming_next entries such as Marketing, Knowledge & Memory, SEO
+ * Implementation, Proposal & Quote and Review & Proof) because planning,
+ * pricing and roadmap surfaces read it. Customer-facing product UI must never
+ * advertise those as capabilities a connector is wired into, so every "used by
+ * operators" style badge derives its list from here rather than from a
+ * hardcoded string array.
+ */
+export const LIVE_OPERATOR_KEYS: OperatorKey[] = ["revenue", "client_flow", "operations"];
+
+export function isLiveOperator(operatorKey: string): operatorKey is OperatorKey {
+  return (LIVE_OPERATOR_KEYS as string[]).includes(operatorKey);
+}
+
+/**
+ * Display names for the live operators inside `operatorKeys`, in registry
+ * order. Unknown or not-yet-live keys are dropped rather than rendered raw, so
+ * a future roadmap key added to a connector definition can never leak into
+ * production UI as an operator badge.
+ */
+export function liveOperatorNames(operatorKeys: readonly string[]): string[] {
+  const requested = new Set(operatorKeys);
+  return LIVE_OPERATOR_KEYS
+    .filter((key) => requested.has(key))
+    .map((key) => getOperatorDefinition(key)?.name)
+    .filter((name): name is string => Boolean(name));
+}

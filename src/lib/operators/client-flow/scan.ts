@@ -818,9 +818,9 @@ export async function scanClientFlowSignals(input: {
       : normalizeEmail((microsoftCredential as StoredMicrosoftCredential).provider_email);
     const connectorTruth = await getConnectorTruth({ workspaceId, supabase });
     const hubspotConnected = connectorTruth.some((connector) =>
-      connector.connectorKey === "hubspot" && connector.status === "connected" && connector.providerConfigKey && connector.nangoConnectionId);
+      connector.connectorKey === "hubspot" && connector.executable === true);
     const trelloConnected = connectorTruth.some((connector) =>
-      connector.connectorKey === "trello" && connector.status === "connected" && connector.providerConfigKey && connector.nangoConnectionId);
+      connector.connectorKey === "trello" && (connector.status === "healthy" || connector.status === "connected") && connector.source === "native");
     // Microsoft Teams is a native connector, so there are no Nango ids to
     // check - only its own healthy truth (which already requires real Teams
     // consent, not just a working Microsoft 365 mail connection).

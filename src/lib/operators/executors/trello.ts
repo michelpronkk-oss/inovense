@@ -1,14 +1,35 @@
-import { Nango, type HTTP_METHOD } from "@nangohq/node";
-import { TRELLO_PROVIDER_CONFIG_KEY } from "@/lib/integrations/nango";
+// Trello execution transport.
+//
+// The public surface (trelloRequest / listTrelloBoards / listTrelloLists /
+// listTrelloCards / listTrelloCardsDetailed / listRecentTrelloCardComments /
+// createTrelloCardAfterApproval / moveTrelloCardAfterApproval /
+// addTrelloCardCommentAfterApproval) is unchanged, so Operations Operator
+// scanning, workflow materialization, approvals execution and the connector
+// setup routes are untouched. Only the transport changed: requests now go
+// straight to api.trello.com with the workspace's own encrypted OAuth 1.0a
+// access token instead of through a Nango proxy.
+
+import { decryptToken } from "@/lib/connectors/crypto";
+import {
+  TRELLO_API_BASE,
+  TRELLO_CONNECTOR_KEY,
+  appendTrelloAuth,
+  getStoredTrelloCredential,
+} from "@/lib/connectors/trello";
+import { getLegacyNangoConnection } from "@/lib/connectors/legacy-nango";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
+/** The HTTP verbs the Trello REST surface used here needs. */
+export type HTTP_METHOD = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+
 export type TrelloConnection = {
   workspaceId: string;
-  providerConfigKey: string;
-  nangoConnectionId: string;
+  accessToken: string;
+  memberId: string | null;
   accountEmail?: string | null;
+  scopes: string[];
 };
 
 export type TrelloBoard = {
@@ -58,16 +79,6 @@ export class TrelloExecutionError extends Error {
   }
 }
 
-function required(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`Missing required env var: ${name}`);
-  return value;
-}
-
-function nangoHost(): string {
-  return (process.env.NANGO_HOST || "https://api.nango.dev").replace(/\/+$/, "");
-}
-
 function readErrorResponse(error: unknown): {
   status?: number | null;
   statusText?: string | null;
@@ -108,26 +119,25 @@ function query(params: Record<string, string | null | undefined>): string {
   return value ? `?${value}` : "";
 }
 
+/**
+ * The workspace's direct Trello credential, or null when Trello has never been
+ * connected directly. A workspace still on the legacy Nango connection has no
+ * direct credential, so it resolves to null and callers surface an honest
+ * reconnect instruction rather than silently falling back to Nango.
+ */
 export async function getTrelloConnection(
   workspaceId: string,
   supabase: SupabaseAdmin = createSupabaseAdmin(),
 ): Promise<TrelloConnection | null> {
-  const res = await supabase
-    .from("os_connectors")
-    .select("workspace_id,connector_key,status,provider_email,provider_config_key,nango_connection_id")
-    .eq("workspace_id", workspaceId)
-    .eq("connector_key", "trello")
-    .eq("status", "connected")
-    .maybeSingle();
-
-  if (res.error) throw new Error(res.error.message);
-  if (!res.data?.provider_config_key || !res.data?.nango_connection_id) return null;
-
+  const credential = await getStoredTrelloCredential(workspaceId, supabase);
+  if (!credential) return null;
+  const metadata = (credential.metadata ?? {}) as Record<string, unknown>;
   return {
     workspaceId,
-    providerConfigKey: String(res.data.provider_config_key || TRELLO_PROVIDER_CONFIG_KEY),
-    nangoConnectionId: String(res.data.nango_connection_id),
-    accountEmail: typeof res.data.provider_email === "string" ? res.data.provider_email : null,
+    accessToken: decryptToken(credential.encrypted_access_token),
+    memberId: typeof metadata.memberId === "string" ? metadata.memberId : credential.provider_account_id ?? null,
+    accountEmail: credential.provider_email ?? null,
+    scopes: Array.isArray(credential.scopes) ? credential.scopes.filter((scope): scope is string => typeof scope === "string") : [],
   };
 }
 
@@ -137,24 +147,54 @@ async function trelloRequestWithConnection<T = unknown>(
   path: string,
   body?: unknown,
 ): Promise<T> {
-  const nango = new Nango({
-    secretKey: required("NANGO_SECRET_KEY"),
-    host: nangoHost(),
-    providerConfigKey: connection.providerConfigKey,
-    connectionId: connection.nangoConnectionId,
-  });
-
+  const step = `trello.${method.toLowerCase()}`;
+  // Auth travels as Trello's key/token query pair. `path` (never the signed
+  // URL) is what any error carries, so the token is never logged.
+  const url = `${TRELLO_API_BASE}${appendTrelloAuth(path.startsWith("/") ? path : `/${path}`, connection.accessToken)}`;
+  let response: Response;
   try {
-    const response = await nango.proxy<T>({
+    response = await fetch(url, {
       method,
-      endpoint: path,
-      data: body,
-      headers: body ? { "Content-Type": "application/json" } : undefined,
+      headers: {
+        Accept: "application/json",
+        ...(body ? { "Content-Type": "application/json" } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      cache: "no-store",
     });
-    return response.data;
   } catch (error) {
-    throw trelloApiError(`trello.${method.toLowerCase()}`, method, path, error);
+    throw trelloApiError(step, method, path, error);
   }
+
+  const text = await response.text();
+  let data: unknown = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    // Trello answers some failures with a bare text body ("invalid token").
+    data = text || null;
+  }
+
+  if (!response.ok) {
+    const code = response.status === 429
+      ? "trello_rate_limited"
+      : response.status === 404
+        ? "trello_not_found"
+        : response.status === 401
+          ? "trello_reconnect_required"
+          : response.status === 403
+            ? "trello_missing_scope"
+            : "trello_request_failed";
+    throw new TrelloExecutionError(
+      response.status === 429
+        ? "Trello rate limit reached. Try again later."
+        : response.status === 401
+          ? "Reconnect Trello to restore access."
+          : `Trello request failed (${response.status}).`,
+      { step, method, path, status: response.status, statusText: response.statusText, responseBody: data, code },
+    );
+  }
+  return data as T;
 }
 
 export async function trelloRequest<T = unknown>(
@@ -165,15 +205,23 @@ export async function trelloRequest<T = unknown>(
 ): Promise<T> {
   const connection = await getTrelloConnection(workspaceId);
   if (!connection) {
-    throw new TrelloExecutionError("Trello is not connected for this workspace.", {
-      step: "trello.connection",
-      method,
-      path,
-      status: 409,
-      statusText: "Missing Trello connection",
-      responseBody: { error: "trello_not_connected" },
-      code: "trello_not_connected",
-    });
+    // Distinguish "never connected" from "connected before the direct Trello
+    // auth migration", so the workspace is told what to actually do.
+    const legacy = await getLegacyNangoConnection({ workspaceId, connectorKey: TRELLO_CONNECTOR_KEY });
+    throw new TrelloExecutionError(
+      legacy.present
+        ? "Trello must be reconnected with Auterim's direct Trello authorization before it can run actions."
+        : "Trello is not connected for this workspace.",
+      {
+        step: "trello.connection",
+        method,
+        path,
+        status: 409,
+        statusText: legacy.present ? "Legacy Trello connection" : "Missing Trello connection",
+        responseBody: { error: legacy.present ? "trello_legacy_reconnect_required" : "trello_not_connected" },
+        code: legacy.present ? "trello_legacy_reconnect_required" : "trello_not_connected",
+      },
+    );
   }
   return trelloRequestWithConnection<T>(connection, method, path, body);
 }

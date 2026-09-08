@@ -131,8 +131,8 @@ export async function GET(req: NextRequest) {
   // 365 mail working - so this can never be a fake "Teams connected".
   const microsoftTeams = connectorTruth.find((connector) => connector.connectorKey === "microsoft_teams") ?? null;
   const teamsConnected = microsoftTeams?.status === "healthy";
-  const slackConnected = Boolean(slack && slack.status === "connected" && slack.providerConfigKey && slack.nangoConnectionId);
-  const trelloConnected = Boolean(trello && trello.status === "connected" && trello.providerConfigKey && trello.nangoConnectionId);
+  const slackConnected = Boolean(slack?.executable);
+  const trelloConnected = Boolean(trello?.executable);
   const gmailScopes = gmail?.scopes ?? [];
   const microsoftScopes = microsoft?.scopes ?? [];
   const gmailReconnectRequired = Boolean(gmail && !gmailScopes.includes(GMAIL_READONLY_SCOPE));

@@ -7,11 +7,12 @@
 // connectable. Everything else is "coming_soon" / "planned" and must render
 // as visibly disabled. Presence in this catalog never implies a connection.
 //
-// Today gmail (direct OAuth), google_drive (direct OAuth, read-only), microsoft (direct OAuth), microsoft_teams
-// (direct OAuth, sharing the Microsoft connection), salesforce (direct OAuth,
-// read-only), hubspot (Nango), slack (Nango), Trello (Nango), Asana and Jira
-// (direct OAuth) are
-// available.
+// Today gmail (direct OAuth), google_drive (direct OAuth, read-only, sharing the
+// Google connection), microsoft (direct OAuth), microsoft_teams (direct OAuth,
+// sharing the Microsoft connection), salesforce (direct OAuth, read-only),
+// slack (direct Slack OAuth), trello (direct Trello OAuth 1.0a), asana, jira and
+// zendesk (direct OAuth) are available. HubSpot is direct OAuth as well; all
+// remaining Nango auth types below are planned connectors only.
 
 import type { Capability } from "@/lib/connectors/capabilities";
 import type { OperatorKey } from "@/lib/operators/registry";
@@ -94,10 +95,6 @@ export function connectorCategoryLabel(definition: Pick<ConnectorDefinition, "ca
   return definition.categoryLabel ?? CONNECTOR_CATEGORY_LABELS[definition.category];
 }
 
-const HUBSPOT_PROVIDER_CONFIG_KEY = process.env.NANGO_HUBSPOT_CONFIG_KEY || "hubspot";
-const SLACK_PROVIDER_CONFIG_KEY = process.env.NANGO_SLACK_CONFIG_KEY || "slack";
-const TRELLO_PROVIDER_CONFIG_KEY = process.env.NANGO_TRELLO_CONFIG_KEY || "trello";
-
 export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
   // ── Available (real, functional today) ───────────────────────────────
   gmail: {
@@ -122,8 +119,7 @@ export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
     connectorKey: "hubspot",
     displayName: "HubSpot",
     category: "crm",
-    authType: "nango",
-    providerConfigKey: HUBSPOT_PROVIDER_CONFIG_KEY,
+    authType: "direct_oauth",
     letter: "Hs",
     color: "#FF7A59",
     description: "Create and update contacts and deals, with associations, after approval.",
@@ -135,7 +131,7 @@ export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
     approvalRequiredActions: ["Contact write", "Deal write"],
     eventTypes: ["crm.contact.created", "crm.deal.created"],
     riskLevel: "medium",
-    setupNotes: "Managed OAuth through Nango. No tokens are stored in Auterim.",
+    setupNotes: "Connects directly with HubSpot OAuth. Tokens are encrypted in Auterim and writes remain approval-gated.",
   },
 
   microsoft: {
@@ -162,14 +158,13 @@ export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
     setupNotes: "Planned via Google Calendar API (Nango). Not connectable yet.",
   },
   slack: {
-    connectorKey: "slack", displayName: "Slack", category: "team_chat", authType: "nango",
-    providerConfigKey: SLACK_PROVIDER_CONFIG_KEY,
+    connectorKey: "slack", displayName: "Slack", category: "team_chat", authType: "direct_oauth",
     letter: "Sl", color: "#611F69", description: "Read channels and post approval-gated messages.",
     status: "available", capabilities: ["chat.channels.read", "chat.messages.read", "chat.messages.send_after_approval", "chat.alerts.send_after_approval"],
     usedByOperators: ["operations", "client_flow", "approval_risk", "revenue", "support", "automation_architect"], readActions: ["Read channels", "Read messages"],
     writeActions: ["Post message after approval", "Send operator alert after approval"], approvalRequiredActions: ["send_channel_message", "send_direct_message", "send_operator_alert"],
     eventTypes: ["slack.message.received", "slack.mention.detected", "slack.channel.updated"],
-    riskLevel: "medium", setupNotes: "Connect Slack workspace. Select allowed channels later.",
+    riskLevel: "medium", setupNotes: "Connects directly with Slack OAuth (bot scopes: channels:read, groups:read, channels:join, chat:write). Select the alert channel after connecting. Workspaces connected before this change must reconnect once.",
   },
   microsoft_teams: {
     connectorKey: "microsoft_teams", displayName: "Microsoft Teams", category: "team_chat", authType: "direct_oauth",
@@ -257,12 +252,11 @@ export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
 
   // ── Planned (later) ──────────────────────────────────────────────────
   trello: {
-    connectorKey: "trello", displayName: "Trello", category: "project_management", authType: "nango",
-    providerConfigKey: TRELLO_PROVIDER_CONFIG_KEY,
+    connectorKey: "trello", displayName: "Trello", category: "project_management", authType: "direct_oauth",
     letter: "Tr", color: "#0079BF", description: "Read boards and prepare approval-gated card updates.",
     status: "available", capabilities: ["pm.projects.read", "pm.tasks.read", "pm.tasks.write_after_approval", "pm.tasks.update_after_approval", "pm.comments.write_after_approval"], usedByOperators: ["client_flow", "operations", "automation_architect", "revenue"],
     readActions: ["Read boards", "Read lists", "Read cards"], writeActions: ["Create card after approval", "Move card after approval", "Add card comment after approval"], approvalRequiredActions: ["create_card", "move_card", "add_card_comment"],
-    eventTypes: ["trello.card.created", "trello.card.updated", "trello.card.moved", "trello.comment.created"], riskLevel: "medium", setupNotes: "Connect Trello workspace. Select default board/list later.",
+    eventTypes: ["trello.card.created", "trello.card.updated", "trello.card.moved", "trello.comment.created"], riskLevel: "medium", setupNotes: "Connects directly with Trello OAuth (read and write scopes, no expiry). Select a default board and list after connecting. Workspaces connected before this change must reconnect once.",
   },
   clickup: {
     connectorKey: "clickup", displayName: "ClickUp", category: "project_management", authType: "nango",

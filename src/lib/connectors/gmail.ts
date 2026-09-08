@@ -1,5 +1,8 @@
 import { decryptToken, encryptToken } from "@/lib/connectors/crypto";
+import { resolveAccessTokenWithRefreshLock } from "@/lib/connectors/refresh-lock";
 import { AUTERIM_APP_URL } from "@/lib/brand";
+import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { recordProviderFailure, recordProviderSuccess } from "@/lib/runtime/provider-health";
 
 export const GMAIL_COMPOSE_SCOPE = "https://www.googleapis.com/auth/gmail.compose";
 export const GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
@@ -7,7 +10,7 @@ export const GMAIL_READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.reado
 export const GOOGLE_DRIVE_READONLY_SCOPE = "https://www.googleapis.com/auth/drive.readonly";
 export const GMAIL_SEND_REQUIRED_SCOPES = [GMAIL_COMPOSE_SCOPE, GMAIL_SEND_SCOPE];
 export const GMAIL_SCAN_REQUIRED_SCOPES = [GMAIL_READONLY_SCOPE];
-export const GMAIL_OAUTH_SCOPES = [GMAIL_COMPOSE_SCOPE, GMAIL_SEND_SCOPE, GMAIL_READONLY_SCOPE, GOOGLE_DRIVE_READONLY_SCOPE];
+export const GMAIL_OAUTH_SCOPES = [GMAIL_COMPOSE_SCOPE, GMAIL_SEND_SCOPE, GMAIL_READONLY_SCOPE];
 export const GMAIL_REQUIRED_SCOPES = GMAIL_SEND_REQUIRED_SCOPES;
 
 type TokenExchangeResult = {
@@ -17,6 +20,13 @@ type TokenExchangeResult = {
   scope?: string;
   token_type?: string;
 };
+
+export class GmailOAuthError extends Error {
+  constructor(message: string, public readonly status: number, public readonly code: string) {
+    super(message);
+    this.name = "GmailOAuthError";
+  }
+}
 
 export type GmailApiErrorDetails = {
   step: string;
@@ -92,7 +102,25 @@ export function getGoogleRedirectUri(): string {
   }
 }
 
-export function buildGoogleAuthUrl(state: string): string {
+/**
+ * One Google account, two capability surfaces.
+ *
+ * Gmail and Google Drive share a single Google OAuth client, a single consent
+ * flow and a single stored credential. There is deliberately no second Google
+ * connection and no separate Drive client id.
+ *
+ * `include_granted_scopes=true` is what makes adding Drive to an existing Gmail
+ * connection a real incremental consent: Google issues a token covering the
+ * union of what this client was already granted plus what is requested now, and
+ * reports that union back in the token response's `scope`. Without it, an
+ * existing Gmail user granting Drive could come back with a narrower grant than
+ * they already had.
+ *
+ * `prompt=consent` is kept because Google only returns a refresh token on an
+ * explicit consent, and losing the refresh token would break Gmail for a
+ * workspace that only wanted to add Drive.
+ */
+export function buildGoogleAuthUrl(state: string, options: { includeDriveScope?: boolean } = {}): string {
   const clientId = required("GOOGLE_CLIENT_ID");
   const redirectUri = getGoogleRedirectUri();
   const params = new URLSearchParams({
@@ -101,7 +129,8 @@ export function buildGoogleAuthUrl(state: string): string {
     response_type: "code",
     access_type: "offline",
     prompt: "consent",
-    scope: GMAIL_OAUTH_SCOPES.join(" "),
+    include_granted_scopes: "true",
+    scope: [...GMAIL_OAUTH_SCOPES, ...(options.includeDriveScope ? [GOOGLE_DRIVE_READONLY_SCOPE] : [])].join(" "),
     state,
   });
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
@@ -145,9 +174,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<TokenExc
     cache: "no-store",
   });
   const json = await res.json() as TokenExchangeResult & { error?: string; error_description?: string };
-  if (!res.ok || !json.access_token) {
-    throw new Error(json.error_description || json.error || "Failed to refresh Google access token");
-  }
+  if (!res.ok || !json.access_token) throw new GmailOAuthError(json.error_description || json.error || "Failed to refresh Google access token", res.status, json.error || "oauth_refresh_failed");
   return json;
 }
 
@@ -436,13 +463,56 @@ export function toStoredCredential(input: {
   };
 }
 
-export async function resolveAccessTokenFromCredential(credential: StoredConnectorCredential): Promise<string> {
-  const current = decryptToken(credential.encrypted_access_token);
-  const expiresAt = credential.token_expires_at ? new Date(credential.token_expires_at).getTime() : 0;
-  const hasExpired = Boolean(expiresAt && Date.now() > expiresAt - 45_000);
-  if (!hasExpired) return current;
-  if (!credential.encrypted_refresh_token) return current;
-  const refreshToken = decryptToken(credential.encrypted_refresh_token);
-  const refreshed = await refreshAccessToken(refreshToken);
-  return refreshed.access_token;
+export function gmailAccessTokenIsFresh(row: { token_expires_at?: string | null }): boolean {
+  const expiresAt = row.token_expires_at ? new Date(row.token_expires_at).getTime() : 0;
+  return !(expiresAt && Date.now() > expiresAt - 45_000);
+}
+
+const inFlightGmailRefreshes = new Map<string, Promise<string>>();
+
+export async function resolveAccessTokenFromCredential(credential: StoredConnectorCredential, supabase?: ReturnType<typeof createSupabaseAdmin>): Promise<string> {
+  if (gmailAccessTokenIsFresh(credential)) return decryptToken(credential.encrypted_access_token);
+  if (!credential.encrypted_refresh_token) return decryptToken(credential.encrypted_access_token);
+  const db = supabase ?? createSupabaseAdmin();
+  const existing = inFlightGmailRefreshes.get(credential.workspace_id);
+  if (existing) return existing;
+  const refreshPromise = (async () => {
+    try {
+      const outcome = await resolveAccessTokenWithRefreshLock({
+        workspaceId: credential.workspace_id,
+        connectorKey: "gmail",
+        supabase: db,
+        credential,
+        isFresh: gmailAccessTokenIsFresh,
+        refresh: async (latest) => {
+          if (!latest.encrypted_refresh_token) return { accessToken: decryptToken(latest.encrypted_access_token), status: "connected" };
+          const refreshed = await refreshAccessToken(decryptToken(latest.encrypted_refresh_token));
+          return {
+            accessToken: refreshed.access_token,
+            refreshToken: refreshed.refresh_token ?? null,
+            expiresAt: refreshed.expires_in ? new Date(Date.now() + refreshed.expires_in * 1000).toISOString() : null,
+            scopes: refreshed.scope?.split(/[ ,]+/).filter(Boolean) ?? null,
+            status: "connected",
+          };
+        },
+      });
+      await recordProviderSuccess({ workspaceId: credential.workspace_id, connectorKey: "gmail", operation: "oauth_refresh", supabase: db });
+      return outcome.accessToken;
+    } catch (error) {
+      await recordProviderFailure({
+        workspaceId: credential.workspace_id,
+        connectorKey: "gmail",
+        operation: "oauth_refresh",
+        status: error instanceof GmailOAuthError ? error.status : null,
+        code: error instanceof GmailOAuthError ? error.code : (error as { code?: string } | null)?.code ?? "oauth_refresh_failed",
+        supabase: db,
+      });
+      if (error instanceof GmailOAuthError && (error.code === "invalid_grant" || error.status === 400 || error.status === 401)) {
+        await db.from("os_connector_credentials").update({ status: "needs_attention" }).eq("workspace_id", credential.workspace_id).eq("connector_key", "gmail");
+      }
+      throw error;
+    }
+  })();
+  inFlightGmailRefreshes.set(credential.workspace_id, refreshPromise);
+  try { return await refreshPromise; } finally { inFlightGmailRefreshes.delete(credential.workspace_id); }
 }

@@ -14,6 +14,7 @@ import { addJiraComment, createJiraIssue, updateJiraIssue } from "@/lib/connecto
 import { addZendeskInternalNote, replyZendeskTicket, updateZendeskTicket } from "@/lib/connectors/zendesk";
 import { replyToIntercomConversation, updateIntercomConversation } from "@/lib/connectors/intercom";
 import { operatorRuntimeId } from "@/lib/operators/logging";
+import { recordProviderFailure, recordProviderSuccess } from "@/lib/runtime/provider-health";
 
 function buildPolicyInput(intent: ActionIntent, prepared: Omit<PreparedAction, "policyInput" | "policyDecision">): PolicyInput {
   const rawInput = intent.input ?? {};
@@ -87,7 +88,13 @@ function stringInput(action: PreparedAction, key: string): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-export async function executePreparedActionAfterApproval(input: {
+/**
+ * The one place a shared, approval-gated provider write is dispatched. It is
+ * wrapped by executePreparedActionAfterApproval() below so every write outcome
+ * lands in the shared provider-failure record without each adapter having to
+ * remember to report it.
+ */
+async function dispatchPreparedAction(input: {
   action: PreparedAction;
   approvalId: string;
 }): Promise<ActionExecutionResult> {
@@ -190,6 +197,37 @@ export async function executePreparedActionAfterApproval(input: {
   }
 
   throw new Error(`Unsupported prepared action for Trello: ${action.actionType}`);
+}
+
+/**
+ * Execute an approved provider write and record its operational outcome.
+ *
+ * The recording is best effort and never changes the result: a successful
+ * write stays successful even if telemetry is unavailable, and a failure is
+ * re-thrown unchanged so the caller's existing execution_unknown handling is
+ * untouched. Only a normalized operation category and a safe error code are
+ * stored, never the payload or the target.
+ */
+export async function executePreparedActionAfterApproval(input: {
+  action: PreparedAction;
+  approvalId: string;
+}): Promise<ActionExecutionResult> {
+  const action = input.action;
+  try {
+    const result = await dispatchPreparedAction(input);
+    await recordProviderSuccess({ workspaceId: action.workspaceId, connectorKey: action.connectorKey, operation: "write" });
+    return result;
+  } catch (error) {
+    const detail = (error ?? {}) as { status?: unknown; code?: unknown };
+    await recordProviderFailure({
+      workspaceId: action.workspaceId,
+      connectorKey: action.connectorKey,
+      operation: "write",
+      status: typeof detail.status === "number" ? detail.status : null,
+      code: typeof detail.code === "string" ? detail.code : null,
+    });
+    throw error;
+  }
 }
 
 // Future operators can call:

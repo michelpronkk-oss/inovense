@@ -103,7 +103,7 @@ function getNextConnectorStep(missing: ConnectorKey[]): string {
   const first = missing[0];
   if (first === "gmail") return "Connect Gmail with real OAuth.";
   if (first === "microsoft") return "Connect Microsoft 365 with real OAuth.";
-  if (first === "hubspot") return "Connect HubSpot through Nango.";
+  if (first === "hubspot") return "Connect HubSpot through direct OAuth.";
   if (first === "trello") return "Connect Trello and select a default board.";
   if (first) return `Connect ${first.replace(/_/g, " ")}.`;
   return "No connector setup required.";
@@ -318,7 +318,7 @@ function evaluateOperator(input: {
         entitlements,
         executionEligibility,
         reason: `${emailConnectors[0] === "microsoft" ? "Microsoft 365" : "Gmail"} is connected, so draft and approval work is available. HubSpot is missing, so CRM execution is disabled.`,
-        nextSetupStep: "Connect HubSpot through Nango for full revenue readiness.",
+        nextSetupStep: "Connect HubSpot through direct OAuth for full revenue readiness.",
         canRunManual: true,
       });
     }

@@ -1,13 +1,13 @@
-import { Nango, type HTTP_METHOD } from "@nangohq/node";
-import { HUBSPOT_PROVIDER_CONFIG_KEY, verifyNangoConnection } from "@/lib/integrations/nango";
+import { getStoredHubSpotCredential, hubSpotApiRequest, verifyHubSpotConnection, type StoredHubSpotCredential } from "@/lib/connectors/hubspot";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
+type HTTP_METHOD = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export type HubSpotConnection = {
   workspaceId: string;
-  providerConfigKey: string;
-  nangoConnectionId: string;
+  credential: StoredHubSpotCredential;
+  supabase: SupabaseAdmin;
   accountEmail?: string | null;
 };
 
@@ -156,16 +156,6 @@ export class HubSpotExecutionError extends Error {
     this.name = "HubSpotExecutionError";
     this.details = details;
   }
-}
-
-function required(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`Missing required env var: ${name}`);
-  return value;
-}
-
-function nangoHost(): string {
-  return (process.env.NANGO_HOST || "https://api.nango.dev").replace(/\/+$/, "");
 }
 
 function cleanString(value: unknown): string | null {
@@ -409,29 +399,19 @@ function safeDealName(value: unknown, fallbackEmail: string): string {
 }
 
 export async function getHubSpotConnection(workspaceId: string, supabase = createSupabaseAdmin()): Promise<HubSpotConnection | null> {
-  const res = await supabase
-    .from("os_connectors")
-    .select("workspace_id,connector_key,status,provider_email,provider_config_key,nango_connection_id")
-    .eq("workspace_id", workspaceId)
-    .eq("connector_key", "hubspot")
-    .eq("status", "connected")
-    .maybeSingle();
-
-  if (res.error) throw new Error(res.error.message);
-  if (!res.data?.provider_config_key || !res.data?.nango_connection_id) return null;
-
-  const verification = await verifyNangoConnection({
-    connectorKey: "hubspot",
-    providerConfigKey: String(res.data.provider_config_key),
-    connectionId: String(res.data.nango_connection_id),
-  });
-  if (!verification.ok) return null;
+  const credential = await getStoredHubSpotCredential(workspaceId, supabase);
+  if (!credential || credential.status === "needs_attention") return null;
+  try {
+    await verifyHubSpotConnection({ workspaceId, credential, supabase });
+  } catch {
+    return null;
+  }
 
   return {
     workspaceId,
-    providerConfigKey: String(res.data.provider_config_key || HUBSPOT_PROVIDER_CONFIG_KEY),
-    nangoConnectionId: String(res.data.nango_connection_id),
-    accountEmail: typeof res.data.provider_email === "string" ? res.data.provider_email : null,
+    credential,
+    supabase,
+    accountEmail: credential.provider_email ?? null,
   };
 }
 
@@ -441,21 +421,15 @@ async function hubspotRequestWithConnection<T = unknown>(
   path: string,
   body?: unknown,
 ): Promise<T> {
-  const nango = new Nango({
-    secretKey: required("NANGO_SECRET_KEY"),
-    host: nangoHost(),
-    providerConfigKey: connection.providerConfigKey,
-    connectionId: connection.nangoConnectionId,
-  });
-
   try {
-    const response = await nango.proxy<T>({
+    return await hubSpotApiRequest<T>({
+      workspaceId: connection.workspaceId,
+      credential: connection.credential,
       method,
-      endpoint: path,
-      data: body,
-      headers: body ? { "Content-Type": "application/json" } : undefined,
+      path,
+      body,
+      supabase: connection.supabase,
     });
-    return response.data;
   } catch (error) {
     throw createHubSpotError(error, `hubspot.${method.toLowerCase()}`, method, path);
   }

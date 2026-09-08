@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { AI_MAX_RETRIES, AI_REQUEST_TIMEOUT_MS } from "@/lib/runtime/ai-limits";
 import { inspectSite } from "./site-inspector";
 import { resolveOutputLanguage } from "./language";
 import {
@@ -184,7 +185,7 @@ export async function runLeadResearch(
   );
 
   // 4. Call Claude
-  const client = new Anthropic({ apiKey });
+  const client = new Anthropic({ apiKey, timeout: AI_REQUEST_TIMEOUT_MS, maxRetries: AI_MAX_RETRIES });
 
   let rawText: string;
   try {

@@ -126,7 +126,10 @@ check(8, "Missing Teams consent never reports healthy", () => {
 check(9, "Reconnect and re-consent reuse one connection without duplicate records", () => {
   assert.match(callbackRoute, /onConflict: "workspace_id,connector_key"/, "re-consent must upsert the same credential row");
   assert.match(microsoft, /export function microsoftProfileForStoredScopes/, "refresh must keep the Teams profile for a Teams-consented workspace");
-  assert.match(microsoft, /refreshAccessToken\(refreshToken, microsoftProfileForStoredScopes\(credential\.scopes\)\)/, "refresh must not silently drop Teams access");
+  // The scope profile is now derived from the freshly re-read credential row
+  // inside the distributed refresh lock, never from state loaded before the
+  // lease was acquired, so a concurrent refresh cannot drop Teams access.
+  assert.match(microsoft, /refreshAccessToken\(decryptToken\(latest\.encrypted_refresh_token\), microsoftProfileForStoredScopes\(latest\.scopes\)\)/, "refresh must not silently drop Teams access");
   assert.match(connectorsPage, /Reconnect Microsoft Teams/, "a re-consent control must exist in the UI");
 });
 

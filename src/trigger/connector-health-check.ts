@@ -22,8 +22,8 @@ type ConnectorHealth = {
   recommendedFix: string | null;
 };
 
-function nangoConnected(truth: SafeConnectorTruth | undefined): boolean {
-  return Boolean(truth && truth.status === "connected" && truth.providerConfigKey && truth.nangoConnectionId);
+function connectorConnected(truth: SafeConnectorTruth | undefined): boolean {
+  return Boolean(truth && !truth.operationalDegraded && (truth.status === "healthy" || truth.status === "connected"));
 }
 
 function safeErrorMessage(error: unknown): string {
@@ -49,8 +49,8 @@ export const connectorHealthCheck = task({
     // Gmail (native): rely on scope/readiness truth, no extra API call needed.
     const gmail = byKey.get("gmail");
     {
-      const connected = Boolean(gmail && gmail.status !== "missing" && gmail.status !== "not_connected" && gmail.status !== "error");
-      const healthy = Boolean(gmail?.executable);
+      const connected = Boolean(gmail && !gmail.operationalDegraded && gmail.status !== "missing" && gmail.status !== "not_connected" && gmail.status !== "error");
+      const healthy = Boolean(gmail?.executable && !gmail.operationalDegraded);
       results.push({
         connectorKey: "gmail",
         displayName: "Gmail",
@@ -66,34 +66,34 @@ export const connectorHealthCheck = task({
       });
     }
 
-    // HubSpot (Nango): connection-level check via existing safe DB helper.
+    // HubSpot: connection-level check via the direct encrypted credential.
     {
       const hubspot = byKey.get("hubspot");
-      const connected = nangoConnected(hubspot);
+      const connected = Boolean(hubspot && !hubspot.operationalDegraded && (hubspot.status === "healthy" || hubspot.executable));
       let healthy = false;
       let detail = "Not connected";
-      let recommendedFix: string | null = "Connect HubSpot through Nango.";
+      let recommendedFix: string | null = "Connect HubSpot through direct OAuth.";
       if (connected) {
         try {
           const connection = await getHubSpotConnection(workspaceId);
           healthy = Boolean(connection);
-          detail = healthy ? "Connected through Nango." : "Connection record incomplete.";
-          recommendedFix = healthy ? null : "Reconnect HubSpot through Nango.";
+          detail = healthy ? "Connected through direct OAuth." : "Connection record incomplete.";
+          recommendedFix = healthy ? null : "Reconnect HubSpot through direct OAuth.";
         } catch (error) {
           detail = `HubSpot check failed: ${safeErrorMessage(error)}`;
-          recommendedFix = "Reconnect HubSpot through Nango.";
+          recommendedFix = "Reconnect HubSpot through direct OAuth.";
         }
       }
       results.push({ connectorKey: "hubspot", displayName: "HubSpot", connected, healthy, status: hubspot?.status ?? "not_connected", detail, recommendedFix });
     }
 
-    // Slack (Nango): lightweight live read (list channels) if connected.
+    // Slack: lightweight live read (list channels) if connected.
     {
       const slack = byKey.get("slack");
-      const connected = nangoConnected(slack);
+      const connected = connectorConnected(slack);
       let healthy = false;
       let detail = "Not connected";
-      let recommendedFix: string | null = "Connect Slack through Nango.";
+      let recommendedFix: string | null = "Connect Slack through direct OAuth.";
       if (connected) {
         try {
           const channels = await listSlackChannels(workspaceId);
@@ -109,13 +109,13 @@ export const connectorHealthCheck = task({
       results.push({ connectorKey: "slack", displayName: "Slack", connected, healthy, status: slack?.status ?? "not_connected", detail, recommendedFix });
     }
 
-    // Trello (Nango): lightweight live read (list boards) if connected.
+    // Trello: lightweight live read (list boards) if connected.
     {
       const trello = byKey.get("trello");
-      const connected = nangoConnected(trello);
+      const connected = connectorConnected(trello);
       let healthy = false;
       let detail = "Not connected";
-      let recommendedFix: string | null = "Connect Trello through Nango.";
+      let recommendedFix: string | null = "Connect Trello through direct OAuth.";
       if (connected) {
         try {
           const boards = await listTrelloBoards(workspaceId);

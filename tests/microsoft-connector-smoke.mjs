@@ -14,6 +14,7 @@ const root = process.cwd();
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
 const microsoftConnector = read("src/lib/connectors/microsoft.ts");
+const refreshLock = read("src/lib/connectors/refresh-lock.ts");
 const oauthState = read("src/lib/connectors/oauth-state.ts");
 const authRoute = read("src/app/api/connectors/microsoft/auth/route.ts");
 const callbackRoute = read("src/app/api/connectors/microsoft/callback/route.ts");
@@ -24,7 +25,6 @@ const registry = read("src/lib/connectors/registry.ts");
 const truth = read("src/lib/connectors/truth.ts");
 const readiness = read("src/lib/operators/readiness.ts");
 const disconnectRoute = read("src/app/api/connectors/disconnect/route.ts");
-const nangoIntegration = read("src/lib/integrations/nango.ts");
 
 // ── A. Authorization URL contract: client_id, tenant=organizations default,
 //       exact redirect_uri source, exact scopes, state ──────────────────
@@ -93,8 +93,15 @@ assert.match(microsoftConnector, /provider_account_id: input\.providerAccountId/
 assert.match(microsoftConnector, /export async function refreshAccessToken/);
 assert.match(microsoftConnector, /grant_type: "refresh_token"/);
 assert.match(microsoftConnector, /export async function resolveMicrosoftAccessToken/);
-assert.match(microsoftConnector, /const nextRefreshToken = refreshed\.refresh_token \?\? refreshToken;/, "rotated refresh token must be persisted, old one discarded");
-assert.match(microsoftConnector, /encrypted_refresh_token: encryptToken\(nextRefreshToken\)/, "the new refresh token must be re-encrypted and stored");
+// Rotation is now persisted by the shared distributed refresh lock, which
+// re-encrypts the rotated token under a credential_version compare-and-swap so
+// a stale worker can never overwrite a newer one. The old token is discarded;
+// a provider that returns none keeps the existing, still-valid token.
+assert.match(microsoftConnector, /resolveAccessTokenWithRefreshLock/, "Microsoft's rotating refresh tokens must be coordinated across workers");
+assert.match(microsoftConnector, /connectorKey: "microsoft"/, "the refresh lease must be scoped to the Microsoft credential");
+assert.match(microsoftConnector, /refreshToken: refreshed\.refresh_token \?\? null/, "a rotated refresh token must be handed to the lock helper for persistence");
+assert.match(refreshLock, /encrypted_refresh_token: refreshed\.refreshToken \? encryptToken\(refreshed\.refreshToken\) : latest\.encrypted_refresh_token \?\? null/, "the new refresh token must be re-encrypted and stored");
+assert.match(refreshLock, /\.eq\("credential_version", expectedVersion\)/, "a stale worker must never overwrite a newer rotated refresh token");
 assert.match(microsoftConnector, /export function isMicrosoftReauthRequiredError/);
 assert.match(microsoftConnector, /status: "needs_attention"/, "a dead refresh token must mark the connector needs_attention");
 assert.match(microsoftConnector, /inFlightRefreshes/, "concurrent refresh calls for the same workspace must be deduped");
@@ -156,9 +163,5 @@ assert.match(readiness, /GENERIC_TRUTH_CONNECTORS: ConnectorKey\[\] = \[[^\]]*"m
 assert.match(microsoftConnector, /export function getMicrosoftConfigStatus/);
 assert.match(authRoute, /getMicrosoftConfigStatus/);
 assert.doesNotMatch(authRoute, /console\.error\([^)]*MICROSOFT_CLIENT_SECRET/i, "missing-config logging must never include secret values");
-
-// ── Outlook must no longer go through Nango ───────────────────────────────
-assert.doesNotMatch(nangoIntegration, /OUTLOOK_PROVIDER_CONFIG_KEY/, "Outlook must no longer have a Nango provider config key");
-assert.doesNotMatch(nangoIntegration, /connectorKey === "outlook"/, "Nango integration must no longer special-case an outlook connector");
 
 console.log("Auterim Microsoft 365 connector smoke contracts passed.");

@@ -132,17 +132,10 @@ export async function GET(req: NextRequest) {
   const gmail = connectorTruth.find((connector) => connector.connectorKey === "gmail") ?? null;
   const microsoft = connectorTruth.find((connector) => connector.connectorKey === "microsoft") ?? null;
   const hubspot = connectorTruth.find((connector) => connector.connectorKey === "hubspot") ?? null;
-  // Microsoft 365 is a direct-OAuth connector (own stored credential), unlike
-  // HubSpot's Nango-managed connection, so "connected" is just its own
-  // executable truth status - there is no providerConfigKey/nangoConnectionId
-  // to check.
+  // Microsoft 365 and HubSpot are direct-OAuth connectors. Their executable
+  // truth is derived from the encrypted credential and live provider check.
   const microsoftConnected = Boolean(microsoft?.executable);
-  const hubspotConnected = Boolean(
-    hubspot
-    && hubspot.status === "connected"
-    && hubspot.providerConfigKey
-    && hubspot.nangoConnectionId
-  );
+  const hubspotConnected = Boolean(hubspot?.executable);
   const gmailScopes = gmail?.scopes ?? [];
   const reconnectRequired = Boolean(gmail && !gmailScopes.includes(GMAIL_READONLY_SCOPE));
   const latestScanRow = (runs.data ?? []).find((run) => asScanSummary(run.output));
@@ -172,8 +165,8 @@ export async function GET(req: NextRequest) {
     : [null, null] as const;
 
   // Capability-based readiness. Connector keys are only counted as connected
-  // when they can actually execute (Gmail with send scope, HubSpot with a live
-  // Nango connection), so this never reports readiness the workspace lacks.
+  // when they can actually execute (Gmail with send scope, HubSpot with a
+  // healthy direct credential), so this never reports readiness the workspace lacks.
   const connectedConnectorKeys: string[] = [];
   if (gmail?.executable) connectedConnectorKeys.push("gmail");
   if (microsoftConnected) connectedConnectorKeys.push("microsoft");
@@ -209,8 +202,8 @@ export async function GET(req: NextRequest) {
       status: hubspot.status,
       accountEmail: hubspot.accountEmail,
       connected: hubspotConnected,
-      providerConfigKey: hubspot.providerConfigKey,
-      hasNangoConnection: Boolean(hubspot.nangoConnectionId),
+      source: hubspot.source ?? null,
+      missingScopes: hubspot.missingScopes ?? [],
     } : null,
     capabilityReadiness: {
       connectedConnectors: connectedConnectorKeys,

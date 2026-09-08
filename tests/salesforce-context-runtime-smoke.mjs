@@ -43,7 +43,7 @@ async function bundleModule(relSourcePath) {
     format: "esm",
     target: "node18",
     alias: { "@": path.join(root, "src") },
-    external: ["@supabase/supabase-js", "@anthropic-ai/sdk", "@nangohq/node", "@nangohq/frontend"],
+    external: ["@supabase/supabase-js", "@anthropic-ai/sdk"],
     logLevel: "silent",
   });
   return import(pathToFileURL(outfile).href + `?t=${Date.now()}`);

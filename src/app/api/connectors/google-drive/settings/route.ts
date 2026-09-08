@@ -19,7 +19,7 @@ export async function PATCH(req: NextRequest) {
   const supabase = createSupabaseAdmin(); const context = await resolveWorkspaceContext({ workspaceId: body.workspaceId, supabase }); if (!context.ok) return NextResponse.json({ error: context.error }, { status: context.status });
   try { await requireWorkspaceAdmin(context.userId, context.workspaceId, supabase); } catch (error) { return NextResponse.json({ error: error instanceof AuthorizationError ? error.message : "Could not verify workspace permissions." }, { status: error instanceof AuthorizationError ? error.status : 500 }); }
   const credential = await getStoredGoogleDriveCredential(context.workspaceId, supabase); if (!credential) return NextResponse.json({ error: "Connect Google before configuring Drive." }, { status: 409 });
-  if (!hasGoogleDriveScope(credential.scopes)) return NextResponse.json({ error: "Drive permission is required. Reconnect Google first." }, { status: 403 });
+  if (!hasGoogleDriveScope(credential.scopes)) return NextResponse.json({ error: "Drive permission is required. Grant Drive access to continue." }, { status: 403 });
   let verifiedFolders: GoogleDriveFolderScope[] | undefined;
   if (body.folders) {
     if (!Array.isArray(body.folders) || body.folders.length > 5) return NextResponse.json({ error: "Select no more than five Drive folders." }, { status: 400 });

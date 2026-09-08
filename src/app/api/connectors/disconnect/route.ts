@@ -4,7 +4,7 @@ import { revokeAsanaToken } from "@/lib/connectors/asana";
 import { revokeJiraToken } from "@/lib/connectors/jira";
 import { revokeZendeskToken } from "@/lib/connectors/zendesk";
 import { MICROSOFT_TEAMS_CONNECTOR_KEY, writeMicrosoftTeamsSettings } from "@/lib/connectors/microsoft-teams";
-import { getConnectorDefinition, isSupportedNangoConnector } from "@/lib/connectors/registry";
+import { getConnectorDefinition } from "@/lib/connectors/registry";
 import { getVerifiedSupabaseUser } from "@/lib/supabase/server";
 import { requireWorkspaceAdmin, AuthorizationError } from "@/lib/server/workspace-access";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
@@ -14,10 +14,6 @@ type DisconnectBody = {
   workspaceId?: string;
   connectorKey?: string;
 };
-
-function nangoHost() {
-  return (process.env.NANGO_HOST || "https://api.nango.dev").replace(/\/+$/, "");
-}
 
 async function revokeGmailAccess(encryptedAccessToken: string) {
   try {
@@ -35,22 +31,6 @@ async function revokeGmailAccess(encryptedAccessToken: string) {
   }
 }
 
-async function revokeNangoConnection(input: { providerConfigKey: string | null; connectionId: string | null }) {
-  if (!input.providerConfigKey || !input.connectionId || !process.env.NANGO_SECRET_KEY) return;
-  try {
-    const url = new URL(`${nangoHost()}/connection/${encodeURIComponent(input.connectionId)}`);
-    url.searchParams.set("provider_config_key", input.providerConfigKey);
-    await fetch(url, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${process.env.NANGO_SECRET_KEY}` },
-      cache: "no-store",
-    });
-  } catch {
-    // The local record is still removed below, which blocks all Auterim
-    // access even if the upstream provider is temporarily unavailable.
-  }
-}
-
 export async function POST(req: NextRequest) {
   if (!hasSupabaseAdminConfig()) {
     return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
@@ -59,7 +39,7 @@ export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as DisconnectBody;
   const workspaceId = body.workspaceId?.trim() || "";
   const connectorKey = body.connectorKey?.trim() || "";
-  if (!workspaceId || (connectorKey !== "gmail" && connectorKey !== "google_drive" && connectorKey !== "microsoft" && connectorKey !== MICROSOFT_TEAMS_CONNECTOR_KEY && connectorKey !== "salesforce" && connectorKey !== "asana" && connectorKey !== "jira" && connectorKey !== "zendesk" && connectorKey !== "intercom" && !isSupportedNangoConnector(connectorKey))) {
+  if (!workspaceId || !["gmail", "google_drive", "microsoft", MICROSOFT_TEAMS_CONNECTOR_KEY, "salesforce", "asana", "jira", "zendesk", "intercom", "hubspot", "slack", "trello"].includes(connectorKey)) {
     return NextResponse.json({ error: "A workspace and supported connector are required." }, { status: 400 });
   }
 
@@ -183,25 +163,29 @@ export async function POST(req: NextRequest) {
     // the app from Intercom's own settings when required.
     const removed = await supabase.from("os_connector_credentials").delete().eq("workspace_id", workspaceId).eq("connector_key", "intercom");
     if (removed.error) return NextResponse.json({ error: removed.error.message }, { status: 500 });
-  } else {
-    const connection = await supabase
+  } else if (connectorKey === "hubspot" || connectorKey === "slack" || connectorKey === "trello") {
+    // Slack and Trello use the canonical encrypted direct credential store.
+    // Deleting that row immediately blocks Auterim access. Any legacy managed
+    // row is removed locally as migration metadata; no managed runtime is used.
+    const removedCredential = await supabase
+      .from("os_connector_credentials")
+      .delete()
+      .eq("workspace_id", workspaceId)
+      .eq("connector_key", connectorKey);
+    if (removedCredential.error) return NextResponse.json({ error: removedCredential.error.message }, { status: 500 });
+    const legacy = await supabase
       .from("os_connectors")
-      .select("provider_config_key,nango_connection_id")
+      .select("connector_key")
       .eq("workspace_id", workspaceId)
       .eq("connector_key", connectorKey)
       .maybeSingle();
-    if (connection.error) return NextResponse.json({ error: connection.error.message }, { status: 500 });
-    await revokeNangoConnection({
-      providerConfigKey: connection.data?.provider_config_key ?? null,
-      connectionId: connection.data?.nango_connection_id ?? null,
-    });
-
-    const removed = await supabase
+    if (legacy.error) return NextResponse.json({ error: legacy.error.message }, { status: 500 });
+    const removedLegacy = await supabase
       .from("os_connectors")
       .delete()
       .eq("workspace_id", workspaceId)
       .eq("connector_key", connectorKey);
-    if (removed.error) return NextResponse.json({ error: removed.error.message }, { status: 500 });
+    if (removedLegacy.error) return NextResponse.json({ error: removedLegacy.error.message }, { status: 500 });
   }
 
   const displayName = getConnectorDefinition(connectorKey)?.displayName ?? connectorKey;

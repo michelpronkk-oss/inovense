@@ -1,5 +1,7 @@
 import { decryptToken, encryptToken } from "@/lib/connectors/crypto";
+import { credentialRotatedSince, resolveAccessTokenWithRefreshLock } from "@/lib/connectors/refresh-lock";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { recordProviderFailure, recordProviderSuccess } from "@/lib/runtime/provider-health";
 import crypto from "node:crypto";
 
 const SALESFORCE_LOGIN_URL = "https://login.salesforce.com";
@@ -102,8 +104,17 @@ export async function refreshSalesforceAccessToken(refreshToken: string): Promis
     body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: refreshToken, client_id: required("SALESFORCE_CLIENT_ID"), client_secret: required("SALESFORCE_CLIENT_SECRET") }), cache: "no-store",
   });
   const token = await readTokenResponse(response);
-  if (!response.ok || !token.access_token) throw new Error(token.error_description || token.error || "Salesforce token refresh failed");
+  // The status and Salesforce error code are carried so a temporary login-host
+  // outage is never mistaken for a revoked grant.
+  if (!response.ok || !token.access_token) throw new SalesforceOAuthError(token.error_description || token.error || "Salesforce token refresh failed", token.error || `http_${response.status}`, response.status);
   return token as SalesforceTokenResult;
+}
+
+export class SalesforceOAuthError extends Error {
+  constructor(message: string, public readonly code = "salesforce_oauth_failed", public readonly status = 502) {
+    super(message);
+    this.name = "SalesforceOAuthError";
+  }
 }
 
 /** Only an OAuth-returned HTTPS Salesforce instance may become an API origin. */
@@ -171,12 +182,32 @@ export async function forceRefreshSalesforceAccessToken(input: { workspaceId: st
   if (!input.credential.encrypted_refresh_token) throw new SalesforceReconnectionRequiredError("Salesforce requires reconnection.");
   const supabase = input.supabase ?? createSupabaseAdmin();
   try {
-    const refreshed = await refreshSalesforceAccessToken(decryptToken(input.credential.encrypted_refresh_token));
-    await supabase.from("os_connector_credentials").update({ encrypted_access_token: encryptToken(refreshed.access_token), encrypted_refresh_token: refreshed.refresh_token ? encryptToken(refreshed.refresh_token) : input.credential.encrypted_refresh_token, status: "connected" }).eq("workspace_id", input.workspaceId).eq("connector_key", "salesforce");
-    return refreshed.access_token;
+    // Salesforce publishes no access-token expiry here, so "usable" means the
+    // stored credential has actually changed since the token this caller used.
+    // That also makes a concurrent refresh by another worker reusable rather
+    // than duplicated.
+    const outcome = await resolveAccessTokenWithRefreshLock({
+      workspaceId: input.workspaceId, connectorKey: "salesforce", supabase, credential: input.credential,
+      isFresh: credentialRotatedSince(input.credential.encrypted_access_token),
+      refresh: async (latest) => {
+        if (!latest.encrypted_refresh_token) throw new SalesforceReconnectionRequiredError("Salesforce requires reconnection.");
+        const refreshed = await refreshSalesforceAccessToken(decryptToken(latest.encrypted_refresh_token));
+        return { accessToken: refreshed.access_token, refreshToken: refreshed.refresh_token ?? null, expiresAt: null, status: "connected" };
+      },
+    });
+    await recordProviderSuccess({ workspaceId: input.workspaceId, connectorKey: "salesforce", operation: "oauth_refresh", supabase });
+    return outcome.accessToken;
   } catch (error) {
-    await supabase.from("os_connector_credentials").update({ status: "needs_attention" }).eq("workspace_id", input.workspaceId).eq("connector_key", "salesforce");
-    throw new SalesforceReconnectionRequiredError(error instanceof Error ? "Salesforce refresh failed. Reconnect required." : "Salesforce requires reconnection.");
+    const status = error instanceof SalesforceOAuthError ? error.status : null;
+    const code = error instanceof SalesforceOAuthError ? error.code : (error as { code?: string } | null)?.code ?? "oauth_refresh_failed";
+    const failure = await recordProviderFailure({ workspaceId: input.workspaceId, connectorKey: "salesforce", operation: "oauth_refresh", status, code, supabase });
+    // Only a genuinely dead grant downgrades the connector. A temporary
+    // Salesforce failure or a lost refresh race leaves the credential intact.
+    if (failure.connectorHealthImpact === "reconnect_required" || error instanceof SalesforceReconnectionRequiredError) {
+      await supabase.from("os_connector_credentials").update({ status: "needs_attention" }).eq("workspace_id", input.workspaceId).eq("connector_key", "salesforce");
+      throw new SalesforceReconnectionRequiredError("Salesforce refresh failed. Reconnect required.");
+    }
+    throw new SalesforceOAuthError("Salesforce could not be reached to refresh access.", failure.safeCode, status && status >= 400 && status < 500 ? status : 502);
   }
 }
 

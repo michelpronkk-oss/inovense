@@ -74,7 +74,8 @@ type RevenueStatus = {
     status?: string;
     accountEmail?: string | null;
     connected?: boolean;
-    hasNangoConnection?: boolean;
+    source?: string | null;
+    missingScopes?: string[];
   } | null;
   revenueMode?: "email_only_mode" | "full_crm_mode" | string;
   capabilityReadiness?: {

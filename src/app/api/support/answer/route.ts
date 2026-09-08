@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getWorkspaceOperatorProductStates } from "@/lib/operators/product-state";
-import { answerSupportQuestion } from "@/lib/support/answer";
+import { answerSupportQuestion, isInactionQuestion } from "@/lib/support/answer";
+import { diagnoseWorkspaceInaction } from "@/lib/support/diagnosis";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 
@@ -28,7 +29,13 @@ export async function POST(request: NextRequest) {
   if (!allowedAttempt(`${context.workspaceId}:${context.userId ?? context.userEmail ?? "member"}`)) return NextResponse.json({ error: "Please wait a few minutes before asking again." }, { status: 429 });
   try {
     const states = await getWorkspaceOperatorProductStates({ workspaceId: context.workspaceId, supabase });
-    return NextResponse.json(answerSupportQuestion(question, states));
+    // The extra diagnostic reads only run for "why didn't Auterim act"
+    // questions, and a failing diagnosis degrades to the normal answer rather
+    // than failing the request.
+    const inaction = isInactionQuestion(question)
+      ? await diagnoseWorkspaceInaction({ workspaceId: context.workspaceId, supabase }).then((result) => result.reasons).catch(() => undefined)
+      : undefined;
+    return NextResponse.json(answerSupportQuestion(question, states, inaction));
   } catch (error) {
     console.error("[support.answer_failed]", { workspaceId: context.workspaceId, reason: error instanceof Error ? error.message : "unknown" });
     return NextResponse.json({ error: "Auterim could not check your workspace right now. You can still contact support." }, { status: 503 });

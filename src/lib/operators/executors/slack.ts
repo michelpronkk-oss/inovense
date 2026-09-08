@@ -1,14 +1,34 @@
-import { Nango, type HTTP_METHOD } from "@nangohq/node";
-import { SLACK_PROVIDER_CONFIG_KEY } from "@/lib/integrations/nango";
+// Slack execution transport.
+//
+// This module keeps exactly the same public surface it had while Slack ran on
+// Nango (slackRequest / listSlackChannels / sendSlackMessageAfterApproval /
+// joinSlackChannelIfPublic / sendSlackInternalNotification), so every caller -
+// approvals, notifications, workflow materialization, the connector setup
+// routes and the health-check job - is untouched. Only the transport changed:
+// requests now go straight to the Slack Web API with the workspace's own
+// encrypted bot token instead of through a Nango proxy.
+
+import {
+  SLACK_API_BASE,
+  SLACK_CONNECTOR_KEY,
+  SlackReconnectionRequiredError,
+  getStoredSlackCredential,
+  resolveSlackAccessToken,
+} from "@/lib/connectors/slack";
+import { getLegacyNangoConnection } from "@/lib/connectors/legacy-nango";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
+/** The HTTP verbs the Slack Web API surface used here needs. */
+export type HTTP_METHOD = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+
 export type SlackConnection = {
   workspaceId: string;
-  providerConfigKey: string;
-  nangoConnectionId: string;
+  accessToken: string;
+  teamId: string | null;
   accountEmail?: string | null;
+  scopes: string[];
 };
 
 export type SlackChannel = {
@@ -52,16 +72,6 @@ export class SlackExecutionError extends Error {
     this.name = "SlackExecutionError";
     this.details = details;
   }
-}
-
-function required(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`Missing required env var: ${name}`);
-  return value;
-}
-
-function nangoHost(): string {
-  return (process.env.NANGO_HOST || "https://api.nango.dev").replace(/\/+$/, "");
 }
 
 function readErrorResponse(error: unknown): {
@@ -116,26 +126,26 @@ function assertSlackOk(response: unknown, step: string, method: HTTP_METHOD, pat
   }
 }
 
+/**
+ * The workspace's direct Slack credential, or null when Slack has never been
+ * connected directly. A workspace still on the legacy Nango connection has no
+ * direct credential, so it resolves to null here and callers surface an honest
+ * reconnect instruction instead of silently falling back to Nango.
+ */
 export async function getSlackConnection(
   workspaceId: string,
   supabase: SupabaseAdmin = createSupabaseAdmin(),
 ): Promise<SlackConnection | null> {
-  const res = await supabase
-    .from("os_connectors")
-    .select("workspace_id,connector_key,status,provider_email,provider_config_key,nango_connection_id")
-    .eq("workspace_id", workspaceId)
-    .eq("connector_key", "slack")
-    .eq("status", "connected")
-    .maybeSingle();
-
-  if (res.error) throw new Error(res.error.message);
-  if (!res.data?.provider_config_key || !res.data?.nango_connection_id) return null;
-
+  const credential = await getStoredSlackCredential(workspaceId, supabase);
+  if (!credential) return null;
+  const accessToken = await resolveSlackAccessToken({ workspaceId, credential, supabase });
+  const metadata = (credential.metadata ?? {}) as Record<string, unknown>;
   return {
     workspaceId,
-    providerConfigKey: String(res.data.provider_config_key || SLACK_PROVIDER_CONFIG_KEY),
-    nangoConnectionId: String(res.data.nango_connection_id),
-    accountEmail: typeof res.data.provider_email === "string" ? res.data.provider_email : null,
+    accessToken,
+    teamId: typeof metadata.teamId === "string" ? metadata.teamId : credential.provider_account_id ?? null,
+    accountEmail: credential.provider_email ?? null,
+    scopes: Array.isArray(credential.scopes) ? credential.scopes.filter((scope): scope is string => typeof scope === "string") : [],
   };
 }
 
@@ -145,26 +155,58 @@ async function slackRequestWithConnection<T = unknown>(
   path: string,
   body?: unknown,
 ): Promise<T> {
-  const nango = new Nango({
-    secretKey: required("NANGO_SECRET_KEY"),
-    host: nangoHost(),
-    providerConfigKey: connection.providerConfigKey,
-    connectionId: connection.nangoConnectionId,
-  });
-
+  const step = `slack.${method.toLowerCase()}`;
+  let response: Response;
   try {
-    const response = await nango.proxy<T>({
+    response = await fetch(`${SLACK_API_BASE}${path.startsWith("/") ? path : `/${path}`}`, {
       method,
-      endpoint: path,
-      data: body,
-      headers: body ? { "Content-Type": "application/json" } : undefined,
+      headers: {
+        Authorization: `Bearer ${connection.accessToken}`,
+        Accept: "application/json",
+        ...(body ? { "Content-Type": "application/json; charset=utf-8" } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      cache: "no-store",
     });
-    assertSlackOk(response.data, `slack.${method.toLowerCase()}`, method, path);
-    return response.data;
   } catch (error) {
-    if (error instanceof SlackExecutionError) throw error;
-    throw slackApiError(`slack.${method.toLowerCase()}`, method, path, error);
+    throw slackApiError(step, method, path, error);
   }
+
+  const text = await response.text();
+  let data: unknown = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    throw new SlackExecutionError("Slack returned an invalid response.", {
+      step,
+      method,
+      path,
+      status: response.status,
+      statusText: response.statusText,
+      responseBody: null,
+      code: "slack_invalid_response",
+    });
+  }
+
+  if (!response.ok) {
+    throw new SlackExecutionError(
+      response.status === 429 ? "Slack rate limit reached. Try again later." : `Slack request failed (${response.status}).`,
+      {
+        step,
+        method,
+        path,
+        status: response.status,
+        statusText: response.statusText,
+        responseBody: data,
+        code: response.status === 429 ? "slack_rate_limited" : response.status === 401 ? "slack_reconnect_required" : "slack_request_failed",
+      },
+    );
+  }
+
+  // Slack answers 200 with { ok: false, error } for authorization and scope
+  // problems, so the body check is what actually catches a dead token.
+  assertSlackOk(data, step, method, path);
+  return data as T;
 }
 
 export async function slackRequest<T = unknown>(
@@ -173,17 +215,42 @@ export async function slackRequest<T = unknown>(
   path: string,
   body?: unknown,
 ): Promise<T> {
-  const connection = await getSlackConnection(workspaceId);
+  let connection: SlackConnection | null;
+  try {
+    connection = await getSlackConnection(workspaceId);
+  } catch (error) {
+    if (error instanceof SlackReconnectionRequiredError) {
+      throw new SlackExecutionError("Reconnect Slack to restore access.", {
+        step: "slack.connection",
+        method,
+        path,
+        status: 401,
+        statusText: "Slack reconnect required",
+        responseBody: { error: "slack_reconnect_required" },
+        code: "slack_reconnect_required",
+      });
+    }
+    throw error;
+  }
+
   if (!connection) {
-    throw new SlackExecutionError("Slack is not connected for this workspace.", {
-      step: "slack.connection",
-      method,
-      path,
-      status: 409,
-      statusText: "Missing Slack connection",
-      responseBody: { error: "slack_not_connected" },
-      code: "slack_not_connected",
-    });
+    // Distinguish "never connected" from "connected before the direct Slack
+    // OAuth migration", so the workspace is told what to actually do.
+    const legacy = await getLegacyNangoConnection({ workspaceId, connectorKey: SLACK_CONNECTOR_KEY });
+    throw new SlackExecutionError(
+      legacy.present
+        ? "Slack must be reconnected with Auterim's direct Slack app before it can run actions."
+        : "Slack is not connected for this workspace.",
+      {
+        step: "slack.connection",
+        method,
+        path,
+        status: 409,
+        statusText: legacy.present ? "Legacy Slack connection" : "Missing Slack connection",
+        responseBody: { error: legacy.present ? "slack_legacy_reconnect_required" : "slack_not_connected" },
+        code: legacy.present ? "slack_legacy_reconnect_required" : "slack_not_connected",
+      },
+    );
   }
   return slackRequestWithConnection<T>(connection, method, path, body);
 }

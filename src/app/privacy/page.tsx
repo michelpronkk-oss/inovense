@@ -72,7 +72,7 @@ export default function PrivacyPage() {
 
             <h2>Sub-processors and infrastructure</h2>
             <p>
-              Auterim runs on a small set of infrastructure providers who process data on our behalf under their own confidentiality and security commitments: Supabase (database and authentication), Vercel (hosting), Resend (transactional email), Nango (connector authentication), Trigger.dev (background job execution), and Dodo Payments (billing, for paid plans only).
+              Auterim runs on a small set of infrastructure providers who process data on our behalf under their own confidentiality and security commitments: Supabase (database and authentication), Vercel (hosting), Resend (transactional email), Trigger.dev (background job execution), and Dodo Payments (billing, for paid plans only).
             </p>
 
             <h2>Data retention</h2>

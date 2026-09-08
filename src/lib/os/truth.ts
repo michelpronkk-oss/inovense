@@ -1,9 +1,10 @@
 import type { Connector, ExecutionLog } from "@/lib/os/types";
 
-// A connector is real only when authenticated via native OAuth or Nango.
-// Seed and preview sources are demo — never real production state.
+// A connector is real only when authenticated through a direct provider OAuth
+// credential. Legacy managed-auth state remains representable for migration,
+// but it must never count as an executable connection.
 export function isRealConnector(connector: Connector): boolean {
-  return connector.source === "native" || connector.source === "nango";
+  return connector.source === "native";
 }
 
 export function isDemoConnector(connector: Connector): boolean {
@@ -22,8 +23,8 @@ export function getRealConnectedCount(connectors: Connector[]): number {
   return getRealConnectedConnectors(connectors).length;
 }
 
-// A connector is "real connected" only when it is both connected AND authenticated
-// via a real provider (native OAuth or Nango). Preview/demo connections do not count.
+// A connector is "real connected" only when it is both connected and backed by
+// a direct provider credential. Preview and legacy managed state do not count.
 export function isRealConnectedConnector(connector: Connector): boolean {
   return connector.isConnected && isRealConnector(connector);
 }

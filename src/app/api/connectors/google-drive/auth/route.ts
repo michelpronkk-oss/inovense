@@ -16,5 +16,5 @@ export async function GET(req: NextRequest) {
   const workspace = await supabase.from("os_workspaces").select("billing_status,can_use_real_connectors").eq("id", context.workspaceId).single();
   if (workspace.error || !workspace.data) return NextResponse.json({ error: "Workspace not found." }, { status: 404 });
   if (!workspace.data.can_use_real_connectors || workspace.data.billing_status === "preview") return NextResponse.redirect(new URL("/pricing?gate=connectors&source=google_drive", getAppUrl()));
-  return NextResponse.redirect(buildGoogleAuthUrl(createOAuthState(context.workspaceId, context.userEmail, "google_drive")));
+  return NextResponse.redirect(buildGoogleAuthUrl(createOAuthState(context.workspaceId, context.userEmail, "google_drive"), { includeDriveScope: true }));
 }

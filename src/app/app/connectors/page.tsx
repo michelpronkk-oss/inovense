@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import Nango from "@nangohq/frontend";
-import type { ConnectUIEvent } from "@nangohq/frontend";
 import { useOS } from "@/lib/os/app-provider";
 import { LinkIcon, PlusIcon } from "@/components/dashboard/icons";
 import type { Connector } from "@/lib/os/types";
@@ -156,6 +154,11 @@ function connectorStatusLabel(input: {
   asanaReady?: boolean;
   jiraReady?: boolean;
 }): { label: string; color: string; background: string; border: string } {
+  if (input.connector.id === "google_drive" && input.connector.health !== "healthy") {
+    if (input.connector.records.includes("Grant Drive access")) return { label: "Drive access needed", color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
+    if (input.connector.records.includes("Select a folder") || input.connector.records.includes("Select folders")) return { label: "Choose folders", color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
+    if (input.connector.records.includes("Reconnect")) return { label: "Reconnect required", color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
+  }
   if (!input.isRealConnected && input.connector.records.includes("Reconnect required")) return { label: "Reconnect required", color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
   if (!input.isRealConnected) return { label: "Not connected", color: "#b8c5c8", background: "rgba(255,255,255,0.04)", border: "rgba(255,255,255,0.12)" };
   if (input.connector.id === "slack" && !input.slackReady) return { label: "Setup incomplete", color: "var(--amber)", background: "rgba(245,194,107,0.08)", border: "rgba(245,194,107,0.24)" };
@@ -186,14 +189,6 @@ export default function ConnectorsPage() {
   const [feedback, setFeedback] = useState("");
   const [disconnectingConnectorId, setDisconnectingConnectorId] = useState<string | null>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [nangoConnectLoadingId, setNangoConnectLoadingId] = useState<string | null>(null);
-  const [nangoStatuses, setNangoStatuses] = useState<Record<string, {
-    status: "connected" | "error" | "pending" | "reconnect_required" | "not_connected";
-    provider_email?: string | null;
-    connected_at?: string | null;
-    provider_config_key?: string | null;
-    nango_connection_id?: string | null;
-  }>>({});
   const [slackChannels, setSlackChannels] = useState<SlackChannel[]>([]);
   const [slackChannelsLoading, setSlackChannelsLoading] = useState(false);
   const [slackSettingsLoading, setSlackSettingsLoading] = useState(false);
@@ -250,7 +245,7 @@ export default function ConnectorsPage() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [operatorReadiness, setOperatorReadiness] = useState<{ operatorKey: string; status: string; canRunManual: boolean; availableActions: string[]; availableBusinessActions?: string[] }[]>([]);
 
-  // Real connected = authenticated via native OAuth or managed OAuth integration
+  // Real connected means authenticated through a provider's direct OAuth flow.
   const realConnectedConnectors = useMemo(
     () => state.connectors.filter((c) => isRealConnectedConnector(c)),
     [state.connectors]
@@ -281,7 +276,7 @@ export default function ConnectorsPage() {
   }, [availableCatalogConnectors, discoveryCategory, search, state.workspace.onboardingSystems]);
 
   // What onboarding said this workspace already uses, that is not yet
-  // actually connected (real OAuth/Nango truth, never the onboarding
+  // actually connected (real OAuth truth, never the onboarding
   // selection itself). Never fabricated - falls back to an empty list when
   // onboarding recorded nothing or everything is already connected.
   const connectedConnectorKeys = useMemo(
@@ -324,6 +319,9 @@ export default function ConnectorsPage() {
   };
   const startGoogleDriveConsent = () => {
     window.location.href = `/api/connectors/google-drive/auth?workspaceId=${encodeURIComponent(state.workspace.id)}`;
+  };
+  const startDirectConnectorOAuth = (connectorId: "hubspot" | "slack" | "trello") => {
+    window.location.href = `/api/connectors/${connectorId}/auth?workspaceId=${encodeURIComponent(state.workspace.id)}`;
   };
 
   const startRealMicrosoftOAuth = () => {
@@ -383,56 +381,6 @@ export default function ConnectorsPage() {
       setDisconnectingConnectorId(null);
     }
   };
-
-  const fetchNangoStatus = async (connectorKey: string) => {
-    const qs = new URLSearchParams({
-      workspaceId: state.workspace.id,
-      connectorKey,
-      userId: state.currentUser.id,
-      userEmail: state.currentUser.email,
-    });
-    const res = await fetch(`/api/connectors/nango/status?${qs.toString()}`, {
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    const json = await res.json() as {
-      status: "connected" | "error" | "pending" | "reconnect_required" | "not_connected";
-      provider_email?: string | null;
-      connected_at?: string | null;
-      provider_config_key?: string | null;
-      nango_connection_id?: string | null;
-    };
-    setNangoStatuses((prev) => ({ ...prev, [connectorKey]: json }));
-    if (json.status === "connected") {
-      connectConnector(connectorKey, "real");
-    } else {
-      disconnectConnector(connectorKey);
-    }
-    return json;
-  };
-
-  const testNangoConnection = async (connectorKey: string) => {
-    setFeedback("Checking connection health...");
-    try {
-      const result = await fetchNangoStatus(connectorKey);
-      const status = result?.status;
-      if (status === "connected") setFeedback("Connection healthy. Checked just now.");
-      else if (status === "reconnect_required") setFeedback("Connection needs attention. Reconnect to restore access.");
-      else if (status === "error") setFeedback("Connection check failed. Reconnect and try again.");
-      else setFeedback("Connection is not active.");
-    } catch {
-      setFeedback("Connection check failed. Reconnect and try again.");
-    }
-  };
-
-  useEffect(() => {
-    getAvailableConnectors()
-      .filter((connector) => connector.authType === "nango")
-      .forEach((connector) => {
-        fetchNangoStatus(connector.connectorKey).catch(() => undefined);
-      });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.workspace.id]);
 
   useEffect(() => {
     if (drawerConnectorId !== "google_drive") return;
@@ -576,131 +524,6 @@ export default function ConnectorsPage() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [addOpen, drawerConnectorId, setupConnectorId]);
-
-  const startNangoConnect = async (connectorKey: string) => {
-    const connectorDef = getConnectorDefinition(connectorKey);
-    if (!connectorDef || connectorDef.status !== "available" || connectorDef.authType !== "nango") {
-      setFeedback("This connector is not available to connect yet.");
-      return;
-    }
-    setNangoConnectLoadingId(connectorKey);
-    setFeedback("");
-    try {
-      const sessionRes = await fetch("/api/connectors/nango/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workspaceId: state.workspace.id,
-          connectorKey,
-          userEmail: state.currentUser.email,
-          userId: state.currentUser.id,
-        }),
-      });
-      const sessionJson = await sessionRes.json() as {
-        token?: string;
-        sessionToken?: string;
-        connectLink?: string | null;
-        expiresAt?: string | null;
-        providerConfigKey?: string;
-        data?: {
-          token?: string;
-          sessionToken?: string;
-          connect_link?: string | null;
-          connectLink?: string | null;
-          expires_at?: string | null;
-          expiresAt?: string | null;
-        };
-        error?: string;
-        message?: string;
-      };
-      const nangoSessionToken = sessionJson.token || sessionJson.sessionToken || sessionJson.data?.token || sessionJson.data?.sessionToken;
-      const nangoConnectLink = sessionJson.connectLink || sessionJson.data?.connectLink || sessionJson.data?.connect_link || null;
-      if (!sessionRes.ok || !nangoSessionToken) {
-        setFeedback(sessionJson.message || sessionJson.error || (nangoConnectLink
-          ? "Nango returned a connect link but no session token for the embedded connector."
-          : `Failed to start ${connectorDef.displayName} connect.`));
-        return;
-      }
-      const sessionProviderConfigKey = sessionJson.providerConfigKey || connectorDef.providerConfigKey || connectorKey;
-
-      const nango = new Nango();
-      const finalizeNangoConnection = async (event: ConnectUIEvent) => {
-        if (event.type !== "connect") return;
-        const payload = event.payload as {
-          providerConfigKey?: string;
-          provider_config_key?: string;
-          connectionId?: string;
-          connection_id?: string;
-        };
-        const connectionId = payload.connectionId || payload.connection_id || "";
-        if (!connectionId) {
-          setFeedback(`${connectorDef.displayName} OAuth succeeded, but Nango did not return a connection id to save.`);
-          return;
-        }
-
-        const finalizeRes = await fetch("/api/connectors/nango/finalize", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            workspaceId: state.workspace.id,
-            connectorKey,
-            userId: state.currentUser.id,
-            userEmail: state.currentUser.email,
-            providerConfigKey: payload.providerConfigKey || payload.provider_config_key || sessionProviderConfigKey,
-            nangoConnectionId: connectionId,
-            providerEmail: state.currentUser.email,
-            providerAccountId: state.currentUser.id || state.currentUser.email,
-            provider: connectorKey,
-            raw: payload,
-          }),
-        });
-        const finalizeJson = await finalizeRes.json().catch(() => ({})) as { error?: string; message?: string; provider_email?: string | null; connected_at?: string | null; provider_config_key?: string | null; nango_connection_id?: string | null };
-        if (!finalizeRes.ok) {
-          setFeedback(finalizeJson.message || finalizeJson.error || `${connectorDef.displayName} OAuth succeeded, but Auterim could not save the connector.`);
-          return;
-        }
-
-        setNangoStatuses((prev) => ({ ...prev, [connectorKey]: {
-          status: "connected",
-          provider_email: finalizeJson.provider_email ?? state.currentUser.email,
-          connected_at: finalizeJson.connected_at ?? null,
-          provider_config_key: finalizeJson.provider_config_key ?? sessionProviderConfigKey,
-          nango_connection_id: finalizeJson.nango_connection_id ?? connectionId,
-        } }));
-        connectConnector(connectorKey, "real");
-        setFeedback(`${connectorDef.displayName} connected.`);
-        setAddOpen(false);
-        setSetupConnectorId(null);
-      };
-      const pollStatus = () => {
-        let tries = 0;
-        const timer = setInterval(() => {
-          tries += 1;
-          fetchNangoStatus(connectorKey).catch(() => undefined);
-          if (tries >= 6) clearInterval(timer);
-        }, 1500);
-      };
-
-      nango.openConnectUI({
-        sessionToken: nangoSessionToken,
-        onEvent: async (event) => {
-          if (event.type === "connect") {
-            await finalizeNangoConnection(event);
-            pollStatus();
-          } else if (event.type === "error") {
-            setFeedback(event.payload.errorMessage || `${connectorDef.displayName} OAuth failed.`);
-          } else if (event.type === "close") {
-            setFeedback(`${connectorDef.displayName} authorization was not completed. Checking connection status...`);
-            pollStatus();
-          }
-        },
-      });
-    } catch {
-      setFeedback("Could not start secure connector setup.");
-    } finally {
-      setNangoConnectLoadingId(null);
-    }
-  };
 
   const slackQueryString = () => new URLSearchParams({
     workspaceId: state.workspace.id,
@@ -1308,11 +1131,6 @@ export default function ConnectorsPage() {
                     {zendeskSetupError && <div style={{ fontSize: 11.5, color: "#ffaaaa" }}>{zendeskSetupError}</div>}
                   </div>
                 )}
-                {getConnectorDefinition(setupConnector.id)?.authType === "nango" && (
-                  <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>
-                    Managed OAuth connection{nangoStatuses[setupConnector.id]?.provider_email ? ` - ${nangoStatuses[setupConnector.id].provider_email}` : ""}
-                  </div>
-                )}
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
                   <button className="btn btn-ghost btn-sm" onClick={() => setSetupConnectorId(null)}>Cancel</button>
                   {isConnectorAvailableForAuth(normalizeConnectorKey(setupConnector.id)) ? (
@@ -1353,11 +1171,15 @@ export default function ConnectorsPage() {
                         startRealZendeskOAuth();
                         return;
                       }
-                      if (getConnectorDefinition(setupConnector.id)?.authType === "nango") {
-                        startNangoConnect(setupConnector.id);
+                      if (setupConnector.id === "hubspot") {
+                        startDirectConnectorOAuth("hubspot");
                         return;
                       }
-                    }}>{nangoConnectLoadingId === setupConnector.id ? "Connecting..." : "Connect real account"}</button>
+                      if (setupConnector.id === "slack" || setupConnector.id === "trello") {
+                        startDirectConnectorOAuth(setupConnector.id);
+                        return;
+                      }
+                    }}>Connect real account</button>
                   ) : (
                     <button className="btn btn-sm" disabled title="This connector is not available to connect yet." style={{ opacity: 0.55, cursor: "not-allowed" }}>
                       Coming soon
@@ -1403,16 +1225,6 @@ export default function ConnectorsPage() {
             {drawerConnector.id === "microsoft" && drawerConnector.isConnected && (drawerConnector.health !== "healthy" || drawerConnector.records.includes("Reconnect required")) && (
               <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "rgba(245,194,107,0.08)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.2)", fontSize: 12, color: "var(--amber)" }}>
                 Reconnect required to restore Microsoft 365 access. This can happen if Microsoft permissions were revoked, or if required scopes are missing.
-              </div>
-            )}
-            {getConnectorDefinition(drawerConnector.id)?.authType === "nango" && nangoStatuses[drawerConnector.id]?.status === "connected" && (
-              <div style={{ marginTop: 10, fontSize: 11.5, color: "#9DEFEA", padding: "9px 10px", borderRadius: 10, background: "rgba(77,232,225,0.055)", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.16)" }}>
-                Connection verified{nangoStatuses[drawerConnector.id].provider_email ? ` · ${nangoStatuses[drawerConnector.id].provider_email}` : ""}
-              </div>
-            )}
-            {getConnectorDefinition(drawerConnector.id)?.authType === "nango" && nangoStatuses[drawerConnector.id]?.status === "reconnect_required" && (
-              <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--amber)", padding: "9px 10px", borderRadius: 10, background: "rgba(245,194,107,0.055)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.16)" }}>
-                Connection issue: provider authorization could not be verified. Reconnect required.
               </div>
             )}
             {drawerConnector.id === "google_drive" && (
@@ -1693,8 +1505,7 @@ export default function ConnectorsPage() {
                 {isRealConnectedConnector(drawerConnector) && (
                   <>
                     <button className="btn btn-ghost btn-sm" onClick={() => {
-                      if (getConnectorDefinition(drawerConnector.id)?.authType === "nango") void testNangoConnection(drawerConnector.id);
-                      else { testConnector(drawerConnector.id); setFeedback(`${drawerConnector.name} tested.`); }
+                      testConnector(drawerConnector.id); setFeedback(`${drawerConnector.name} tested.`);
                     }}>Test connection</button>
                     {drawerConnector.id !== "gmail" && drawerConnector.id !== "microsoft" && drawerConnector.id !== "microsoft_teams" && drawerConnector.id !== "salesforce" && (
                       <button className="btn btn-ghost btn-sm" onClick={() => { resyncConnector(drawerConnector.id); setFeedback(`${drawerConnector.name} resynced.`); }}>Resync</button>
@@ -1703,7 +1514,7 @@ export default function ConnectorsPage() {
                       <button className="btn btn-primary btn-sm" onClick={startRealGmailOAuth}>Reconnect Gmail</button>
                     )}
                     {drawerConnector.id === "google_drive" && (
-                      <button className="btn btn-primary btn-sm" onClick={startGoogleDriveConsent}>Grant Drive permission</button>
+                      <button className="btn btn-primary btn-sm" onClick={startGoogleDriveConsent}>Grant Drive access</button>
                     )}
                     {drawerConnector.id === "microsoft" && (
                       <button className="btn btn-primary btn-sm" onClick={startRealMicrosoftOAuth}>Reconnect Microsoft 365</button>
@@ -1723,15 +1534,19 @@ export default function ConnectorsPage() {
                     {drawerConnector.id === "zendesk" && (
                       <button className="btn btn-primary btn-sm" onClick={startRealZendeskOAuth}>Reconnect Zendesk</button>
                     )}
+                    {(drawerConnector.id === "slack" || drawerConnector.id === "trello") && (
+                      <button className="btn btn-primary btn-sm" onClick={() => startDirectConnectorOAuth(drawerConnector.id as "slack" | "trello")}>Reconnect {drawerConnector.name}</button>
+                    )}
+                    {drawerConnector.id === "hubspot" && (
+                      <button className="btn btn-primary btn-sm" onClick={() => startDirectConnectorOAuth("hubspot")}>Reconnect HubSpot</button>
+                    )}
                   </>
                 )}
                 <button className="btn btn-ghost btn-sm" onClick={() => {
-                  const next = drawerConnector.operatorsAllowed.includes("Support Operator")
-                    ? drawerConnector.operatorsAllowed.filter((x) => x !== "Support Operator")
-                    : [...drawerConnector.operatorsAllowed, "Support Operator"];
-                  updateConnectorPermissions(drawerConnector.id, next);
-                  setFeedback(`${drawerConnector.name} permissions updated.`);
-                }}>Update operators</button>
+                  const liveNames = connectorOperatorNames(drawerConnector.id);
+                  updateConnectorPermissions(drawerConnector.id, liveNames);
+                  setFeedback(`${drawerConnector.name} operator access refreshed.`);
+                }}>Refresh operator access</button>
               </div>
               <button className="btn btn-ghost btn-sm" disabled={disconnectingConnectorId === drawerConnector.id} onClick={() => void disconnectRealConnector(drawerConnector)}>
                 {disconnectingConnectorId === drawerConnector.id ? "Disconnecting..." : "Disconnect"}
@@ -1820,7 +1635,7 @@ function ConnectorSetupView({
 
       <SectionBlock title="Used by operators">
         <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
-          {(connector.operatorsAllowed.length ? connector.operatorsAllowed : ["All operators"]).map((item) => (
+          {(connectorOperatorNames(connector.id).length ? connectorOperatorNames(connector.id) : ["Live operators pending"]).map((item) => (
             <span key={item} style={{ fontSize: 11.5, color: "var(--text-dim)", padding: "6px 9px", borderRadius: 999, background: "rgba(255,255,255,0.04)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}>
               {shortOperatorLabel(item)}
             </span>

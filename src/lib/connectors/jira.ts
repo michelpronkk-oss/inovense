@@ -1,5 +1,7 @@
 import { decryptToken, encryptToken } from "@/lib/connectors/crypto";
+import { credentialRotatedSince, resolveAccessTokenWithRefreshLock } from "@/lib/connectors/refresh-lock";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { recordProviderFailure, recordProviderSuccess } from "@/lib/runtime/provider-health";
 import { providerRetryDelayMs, shouldRetryProviderFailure } from "@/lib/runtime/provider-retry";
 
 export const JIRA_REDIRECT_URI = "https://app.auterim.com/api/connectors/jira/callback";
@@ -75,7 +77,9 @@ export async function refreshJiraAccessToken(refreshToken: string): Promise<Jira
   // token and client credentials; scopes are granted by the original consent.
   const response = await fetch(JIRA_TOKEN_URL, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ grant_type: "refresh_token", refresh_token: refreshToken, client_id: required("JIRA_CLIENT_ID"), client_secret: required("JIRA_CLIENT_SECRET") }), cache: "no-store" });
   const token = await parseResponse<JiraTokenResult>(response);
-  if (!response.ok || !token.access_token) throw new Error(token.error_description || token.error || "Jira token refresh failed");
+  // The status and Atlassian error code are preserved so a temporary 5xx at
+  // auth.atlassian.com is never mistaken for a revoked grant.
+  if (!response.ok || !token.access_token) throw new JiraExecutionError(token.error_description || token.error || "Jira token refresh failed", token.error || `http_${response.status}`, response.status);
   return token;
 }
 
@@ -109,19 +113,59 @@ export function isCreateableJiraIssueType(issueType: JiraIssueType | null | unde
   return Boolean(issueType?.id && issueType.name && issueType.subtask !== true && issueType.createable !== false);
 }
 
+export function jiraAccessTokenIsFresh(row: { token_expires_at?: string | null }): boolean {
+  return Boolean(row.token_expires_at && new Date(row.token_expires_at).getTime() > Date.now() + 60_000);
+}
+
+/**
+ * Atlassian rotates refresh tokens, so two workers refreshing at once could
+ * previously persist mutually invalidated credentials. Refreshes now run under
+ * the shared distributed lease with a credential_version compare-and-swap.
+ *
+ * Failure handling is classified rather than blanket: only a genuinely dead
+ * grant marks the connector as needing attention. A temporary auth.atlassian.com
+ * outage, a busy lease, or a refused stale write all leave the credential
+ * exactly as it was.
+ */
+async function refreshJiraCredential(input: { workspaceId: string; credential: StoredJiraCredential; supabase: ReturnType<typeof createSupabaseAdmin>; isFresh: (row: { token_expires_at?: string | null; encrypted_access_token: string }) => boolean }): Promise<string> {
+  try {
+    const outcome = await resolveAccessTokenWithRefreshLock({
+      workspaceId: input.workspaceId,
+      connectorKey: "jira",
+      supabase: input.supabase,
+      credential: input.credential,
+      isFresh: input.isFresh,
+      refresh: async (latest) => {
+        if (!latest.encrypted_refresh_token) throw new JiraReconnectionRequiredError("Jira reconnection required.");
+        const token = await refreshJiraAccessToken(decryptToken(latest.encrypted_refresh_token));
+        return {
+          accessToken: token.access_token,
+          refreshToken: token.refresh_token ?? null,
+          expiresAt: token.expires_in ? new Date(Date.now() + token.expires_in * 1000).toISOString() : null,
+          scopes: token.scope?.split(/[ ,]+/).filter(Boolean) ?? null,
+          status: "connected",
+        };
+      },
+    });
+    await recordProviderSuccess({ workspaceId: input.workspaceId, connectorKey: "jira", operation: "oauth_refresh", supabase: input.supabase });
+    return outcome.accessToken;
+  } catch (error) {
+    const status = error instanceof JiraExecutionError ? error.status : null;
+    const code = error instanceof JiraExecutionError ? error.code : (error as { code?: string } | null)?.code ?? "oauth_refresh_failed";
+    const failure = await recordProviderFailure({ workspaceId: input.workspaceId, connectorKey: "jira", operation: "oauth_refresh", status, code, supabase: input.supabase });
+    if (failure.connectorHealthImpact === "reconnect_required" || error instanceof JiraReconnectionRequiredError) {
+      await input.supabase.from("os_connector_credentials").update({ status: "needs_attention" }).eq("workspace_id", input.workspaceId).eq("connector_key", "jira");
+      throw new JiraReconnectionRequiredError("Jira reconnection required.");
+    }
+    throw new JiraExecutionError("Jira could not be reached to refresh access.", failure.safeCode, status && status >= 400 && status < 500 ? status : 502);
+  }
+}
+
 export async function resolveJiraAccessToken(input: { workspaceId: string; credential: StoredJiraCredential; supabase?: ReturnType<typeof createSupabaseAdmin> }): Promise<string> {
   const supabase = input.supabase ?? createSupabaseAdmin();
-  if (input.credential.token_expires_at && new Date(input.credential.token_expires_at).getTime() > Date.now() + 60_000) return decryptToken(input.credential.encrypted_access_token);
+  if (jiraAccessTokenIsFresh(input.credential)) return decryptToken(input.credential.encrypted_access_token);
   if (!input.credential.encrypted_refresh_token) return decryptToken(input.credential.encrypted_access_token);
-  try {
-    const token = await refreshJiraAccessToken(decryptToken(input.credential.encrypted_refresh_token));
-    const updated = await supabase.from("os_connector_credentials").update({ encrypted_access_token: encryptToken(token.access_token), encrypted_refresh_token: token.refresh_token ? encryptToken(token.refresh_token) : input.credential.encrypted_refresh_token, token_expires_at: token.expires_in ? new Date(Date.now() + token.expires_in * 1000).toISOString() : null, scopes: token.scope?.split(/[ ,]+/).filter(Boolean) ?? input.credential.scopes, status: "connected" }).eq("workspace_id", input.workspaceId).eq("connector_key", "jira");
-    if (updated.error) throw new Error(updated.error.message);
-    return token.access_token;
-  } catch {
-    await supabase.from("os_connector_credentials").update({ status: "needs_attention" }).eq("workspace_id", input.workspaceId).eq("connector_key", "jira");
-    throw new JiraReconnectionRequiredError("Jira reconnection required.");
-  }
+  return refreshJiraCredential({ workspaceId: input.workspaceId, credential: input.credential, supabase, isFresh: jiraAccessTokenIsFresh });
 }
 
 async function providerFetch<T>(url: string, token: string, init?: RequestInit): Promise<{ response: Response; body: T }> {
@@ -164,16 +208,18 @@ export async function jiraFetchWithRefresh<T>(input: { workspaceId: string; cred
   let token = await resolveJiraAccessToken({ workspaceId: input.workspaceId, credential: input.credential, supabase });
   let response = await providerFetch<T>(resourceUrl(input.cloudId, input.path), token, input.init);
   if (response.response.status === 401 && input.credential.encrypted_refresh_token) {
-    try {
-      const refreshed = await refreshJiraAccessToken(decryptToken(input.credential.encrypted_refresh_token));
-      token = refreshed.access_token;
-      const saved = await supabase.from("os_connector_credentials").update({ encrypted_access_token: encryptToken(token), encrypted_refresh_token: refreshed.refresh_token ? encryptToken(refreshed.refresh_token) : input.credential.encrypted_refresh_token, token_expires_at: refreshed.expires_in ? new Date(Date.now() + refreshed.expires_in * 1000).toISOString() : null, scopes: refreshed.scope?.split(/[ ,]+/).filter(Boolean) ?? input.credential.scopes, status: "connected" }).eq("workspace_id", input.workspaceId).eq("connector_key", "jira");
-      if (saved.error) throw new Error(saved.error.message);
-      response = await providerFetch<T>(resourceUrl(input.cloudId, input.path), token, input.init);
-    } catch {
-      await supabase.from("os_connector_credentials").update({ status: "needs_attention" }).eq("workspace_id", input.workspaceId).eq("connector_key", "jira");
-      throw new JiraReconnectionRequiredError("Jira reconnection required.");
-    }
+    // The token this call already used is known bad, so "fresh" here means
+    // "the stored credential has actually changed since we read it". If another
+    // worker rotated it while this request was in flight, the lock helper
+    // returns that newer token instead of burning a second rotation.
+    const usedCiphertext = input.credential.encrypted_access_token;
+    token = await refreshJiraCredential({
+      workspaceId: input.workspaceId,
+      credential: input.credential,
+      supabase,
+      isFresh: credentialRotatedSince(usedCiphertext),
+    });
+    response = await providerFetch<T>(resourceUrl(input.cloudId, input.path), token, input.init);
   }
   if (!response.response.ok) { const error = response.body as Record<string, unknown>; const messages = Array.isArray(error.errorMessages) ? error.errorMessages.filter((item): item is string => typeof item === "string") : []; throw new JiraExecutionError(messages[0] || "Jira rejected the request.", `jira_http_${response.response.status}`, response.response.status >= 400 && response.response.status < 500 ? response.response.status : 502); }
   return response.body;

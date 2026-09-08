@@ -14,17 +14,47 @@ import { JIRA_READ_SCOPES, JIRA_WRITE_SCOPES, getJiraConfigStatus, getJiraProjec
 import { ZENDESK_READ_SCOPES, ZENDESK_WRITE_SCOPES, ZendeskExecutionError, ZendeskReconnectionRequiredError, getZendeskConfigStatus, getStoredZendeskCredential, normalizeZendeskSubdomain, resolveZendeskAccessToken, verifyZendeskConnection } from "@/lib/connectors/zendesk";
 import { INTERCOM_PERMISSIONS, IntercomExecutionError, IntercomReconnectionRequiredError, getIntercomConfigStatus, getStoredIntercomCredential, normalizeIntercomRegion, resolveIntercomAccessToken, verifyIntercomConnection, type IntercomRegion } from "@/lib/connectors/intercom";
 import { getConnectorDefinition, listSupportedNangoConnectors } from "@/lib/connectors/registry";
-import { verifyNangoConnection } from "@/lib/integrations/nango";
+import { getLegacyNangoConnection } from "@/lib/connectors/legacy-nango";
+import { decryptToken } from "@/lib/connectors/crypto";
+import {
+  SLACK_CONNECTOR_KEY,
+  SLACK_READ_SCOPES,
+  SLACK_SEND_SCOPES,
+  getMissingSlackScopes,
+  getSlackConfigStatus,
+  getStoredSlackCredential,
+  hasSlackSendScope,
+  resolveSlackAccessToken,
+  verifySlackConnection,
+} from "@/lib/connectors/slack";
+import {
+  TRELLO_CONNECTOR_KEY,
+  TRELLO_OAUTH_SCOPES,
+  TRELLO_WRITE_SCOPE,
+  getStoredTrelloCredential,
+  getTrelloConfigStatus,
+  verifyTrelloConnection,
+} from "@/lib/connectors/trello";
+import { liveOperatorNames } from "@/lib/operators/registry";
+import { getHubSpotConfigStatus, getMissingHubSpotScopes, getStoredHubSpotCredential, HUBSPOT_CONNECTOR_KEY, verifyHubSpotConnection, HubSpotConnectorError, HubSpotReconnectionRequiredError } from "@/lib/connectors/hubspot";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { getProviderFailureSnapshot } from "@/lib/runtime/provider-health";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
 // "permission_required" is distinct from "reconnect_required": the underlying
 // provider account is still valid, but a specific capability's scopes were
-// never granted (or were revoked). Microsoft Teams is the first connector to
+// never granted (or were revoked). Microsoft Teams was the first connector to
 // use it - a healthy Microsoft 365 mail connection must never be reported as
-// a healthy Teams connection.
-export type ConnectorTruthStatus = "connected" | "healthy" | "disabled" | "reconnect_required" | "permission_required" | "missing" | "not_connected" | "not_configured" | "error";
+// a healthy Teams connection. Google Drive uses it the same way on top of the
+// shared Google credential.
+//
+// "configuration_required" is distinct again: authorization is complete and the
+// provider works, but the workspace has not yet chosen the scope the capability
+// operates on (a Drive folder, a Slack alert channel, a Trello board/list).
+// That is a setup step, never an auth failure, and must never be shown as
+// "Reconnect".
+export type ConnectorTruthStatus = "connected" | "healthy" | "disabled" | "reconnect_required" | "permission_required" | "configuration_required" | "missing" | "not_connected" | "not_configured" | "error";
 
 export type SafeConnectorTruth = {
   connectorKey: string;
@@ -38,9 +68,18 @@ export type SafeConnectorTruth = {
   reconnectRequired?: boolean;
   executable?: boolean;
   statusMessage?: string;
+  /** Repeated transient provider failures, kept separate from auth truth. */
+  operationalDegraded?: boolean;
   providerConfigKey?: string | null;
   nangoConnectionId?: string | null;
   source?: "native" | "nango";
+  /**
+   * True only for a connector that has migrated to direct provider auth but
+   * where this workspace still has the pre-migration Nango row and no direct
+   * credential. Safe to surface in admin/support diagnostics: it carries no
+   * token material, only "this workspace owes one reconnect".
+   */
+  legacyNangoConnection?: boolean;
 };
 
 function asStringArray(value: unknown): string[] {
@@ -135,8 +174,7 @@ export async function getConnectorTruth(input: {
 }): Promise<SafeConnectorTruth[]> {
   const supabase = input.supabase ?? createSupabaseAdmin();
 
-  const supportedNangoKeys = listSupportedNangoConnectors().map((def) => def.connectorKey);
-  const [gmailRes, microsoftRes, salesforceRes, asanaRes, jiraRes, zendeskRes, intercomRes, nangoRes] = await Promise.all([
+  const [gmailRes, microsoftRes, salesforceRes, asanaRes, jiraRes, zendeskRes, intercomRes, hubspotRes, slackRes, trelloRes, legacyHubspotRes] = await Promise.all([
     supabase
       .from("os_connector_credentials")
       .select("connector_key, provider_email, scopes, status, created_at, token_expires_at, encrypted_access_token, encrypted_refresh_token, metadata")
@@ -182,10 +220,31 @@ export async function getConnectorTruth(input: {
       .eq("connector_key", "intercom")
       .maybeSingle(),
     supabase
+      .from("os_connector_credentials")
+      .select("connector_key, provider_account_id, provider_email, scopes, status, created_at, token_expires_at, encrypted_access_token, encrypted_refresh_token, metadata")
+      .eq("workspace_id", input.workspaceId)
+      .eq("connector_key", HUBSPOT_CONNECTOR_KEY)
+      .maybeSingle(),
+    // Slack and Trello now read the same canonical encrypted credential store
+    // as every other direct connector. There is no second Slack/Trello source.
+    supabase
+      .from("os_connector_credentials")
+      .select("connector_key, provider_account_id, provider_email, scopes, status, created_at, token_expires_at, encrypted_access_token, encrypted_refresh_token, metadata")
+      .eq("workspace_id", input.workspaceId)
+      .eq("connector_key", SLACK_CONNECTOR_KEY)
+      .maybeSingle(),
+    supabase
+      .from("os_connector_credentials")
+      .select("connector_key, provider_account_id, provider_email, scopes, status, created_at, token_expires_at, encrypted_access_token, encrypted_refresh_token, metadata")
+      .eq("workspace_id", input.workspaceId)
+      .eq("connector_key", TRELLO_CONNECTOR_KEY)
+      .maybeSingle(),
+    supabase
       .from("os_connectors")
       .select("connector_key, provider_email, status, connected_at, provider_config_key, nango_connection_id")
       .eq("workspace_id", input.workspaceId)
-      .in("connector_key", supportedNangoKeys),
+      .eq("connector_key", HUBSPOT_CONNECTOR_KEY)
+      .maybeSingle(),
   ]);
 
   const gmailRow = gmailRes.data;
@@ -196,22 +255,80 @@ export async function getConnectorTruth(input: {
   const gmailSendReconnectRequired = Boolean(gmailRow && gmailMissingSendScopes.length > 0);
   const gmailScanReconnectRequired = Boolean(gmailRow && gmailMissingScanScopes.length > 0);
 
+  const hubspotRow = hubspotRes.data;
+  const hubspotScopes = asStringArray(hubspotRow?.scopes);
+  const hubspotMissingScopes = getMissingHubSpotScopes(hubspotScopes);
+  const hubspotConfig = getHubSpotConfigStatus();
+  let hubspotStatus: ConnectorTruthStatus = hubspotRes.error ? "error" : hubspotConfig.configured ? "not_connected" : "not_configured";
+  let hubspotIdentityEmail: string | null = hubspotRow?.provider_email ?? null;
+  let hubspotLegacy = false;
+  if (!hubspotRow && !hubspotRes.error && legacyHubspotRes.data?.status === "connected" && legacyHubspotRes.data.nango_connection_id) {
+    hubspotLegacy = true;
+    hubspotStatus = "reconnect_required";
+  } else if (hubspotRow) {
+    if (hubspotMissingScopes.length > 0) hubspotStatus = "permission_required";
+    else {
+      try {
+        const credential = await getStoredHubSpotCredential(input.workspaceId, supabase);
+        if (!credential) hubspotStatus = "not_connected";
+        else {
+          const identity = await verifyHubSpotConnection({ workspaceId: input.workspaceId, credential, supabase });
+          hubspotIdentityEmail = identity.userEmail ?? hubspotIdentityEmail;
+          hubspotStatus = "healthy";
+        }
+      } catch (error) {
+        hubspotStatus = error instanceof HubSpotReconnectionRequiredError
+          ? "reconnect_required"
+          : error instanceof HubSpotConnectorError && (error.status === 403 || error.code.includes("permission") || error.code.includes("scope"))
+            ? "permission_required"
+            : "reconnect_required";
+      }
+    }
+  }
+
+  // ── Google Drive: a capability of the shared Google credential ────────
+  //
+  // Drive has no connection of its own. It reads the exact os_connector_
+  // credentials row Gmail owns (connector_key "gmail"), so there is never a
+  // second Google account, a second credential, or a Nango Drive auth. The
+  // ladder is deliberate, and each rung maps to a different customer action:
+  //
+  //   no Google credential            -> missing                (Connect Google account)
+  //   credential, drive scope absent  -> permission_required    (Grant Drive access)
+  //   scope granted, no folder chosen -> configuration_required (Select a folder)
+  //   folders chosen, provider check fails on auth -> reconnect_required
+  //   folders chosen, provider check passes        -> healthy
+  //
+  // Drive is only ever "healthy" after a real Drive API call against the
+  // selected folders succeeds. A missing Drive scope says nothing about Gmail:
+  // the Gmail truth row below is computed independently from Gmail's own
+  // scopes, so Drive permission_required can never make Gmail look unhealthy.
   const gmailCredential = gmailRow as StoredConnectorCredential | null;
-  let driveStatus: ConnectorTruthStatus = gmailRes.error ? "error" : gmailCredential ? "permission_required" : "missing";
   const driveIdentityEmail = gmailCredential?.provider_email ?? null;
   const driveSettings = defaultGoogleDriveSettings(gmailCredential?.metadata);
   const driveFolderCount = driveSettings.folders.length;
   const driveScopeGranted = hasGoogleDriveScope(gmailScopes);
+  const driveFoldersSelected = driveSettings.enabled && driveFolderCount > 0;
+  let driveStatus: ConnectorTruthStatus = gmailRes.error
+    ? "error"
+    : !gmailCredential
+      ? "missing"
+      : !driveScopeGranted
+        ? "permission_required"
+        : "configuration_required";
   if (gmailCredential && driveScopeGranted) {
-    driveStatus = driveSettings.enabled && driveSettings.folders.length > 0 ? "healthy" : "not_connected";
     try {
       const token = await resolveGoogleDriveAccessToken({ workspaceId: input.workspaceId, credential: gmailCredential, supabase });
-      if (driveSettings.enabled && driveSettings.folders.length > 0) {
+      if (driveFoldersSelected) {
         for (const folder of driveSettings.folders.slice(0, 5)) await getGoogleDriveFileMetadata(token, folder.folderId);
         driveStatus = "healthy";
       }
     } catch (error) {
-      driveStatus = error instanceof GoogleDriveReconnectionRequiredError ? "reconnect_required" : error instanceof GoogleDriveError && (error.code === "permission_required" || error.code === "drive_scope_missing") ? "permission_required" : "error";
+      driveStatus = error instanceof GoogleDriveReconnectionRequiredError
+        ? "reconnect_required"
+        : error instanceof GoogleDriveError && (error.code === "permission_required" || error.code === "drive_scope_missing")
+          ? "permission_required"
+          : "error";
     }
   }
 
@@ -359,48 +476,111 @@ export async function getConnectorTruth(input: {
           : "reconnect_required";
     }
   }
-  const nangoRows = Array.isArray(nangoRes.data) ? nangoRes.data : [];
-  const nangoTruth: SafeConnectorTruth[] = await Promise.all(supportedNangoKeys.map(async (connectorKey) => {
-    const def = getConnectorDefinition(connectorKey);
-    const row = nangoRows.find((item) => item.connector_key === connectorKey);
-    const hasStoredConnection = Boolean(row && row.status === "connected" && row.provider_config_key && row.nango_connection_id);
-    const verification = hasStoredConnection && row?.provider_config_key && row.nango_connection_id
-      ? await verifyNangoConnection({
-        connectorKey,
-        providerConfigKey: row.provider_config_key,
-        connectionId: row.nango_connection_id,
-      })
-      : null;
-    const connected = hasStoredConnection && verification?.ok === true;
-    const reconnectRequired = hasStoredConnection && verification?.ok === false;
-    const status = nangoRes.error
-      ? "error"
-      : connected
-        ? "connected"
-        : reconnectRequired
-          ? "reconnect_required"
-          : row?.status === "error" ? "error" : "not_connected";
-    return {
-      connectorKey,
-      displayName: def?.displayName ?? connectorKey,
-      authType: "managed",
-      status,
-      accountEmail: row?.provider_email ?? null,
-      connectedAt: row?.connected_at ?? null,
-      scopes: [],
-      providerConfigKey: row?.provider_config_key ?? null,
-      nangoConnectionId: row?.nango_connection_id ?? null,
-      reconnectRequired: reconnectRequired || undefined,
-      source: connected ? "nango" : undefined,
-      statusMessage: connected
-        ? "Connected through Nango"
-        : reconnectRequired
-          ? "Reconnect required: provider credentials could not be verified"
-          : status === "error" ? "Connection error" : "Not connected",
-    };
-  }));
+  // ── Slack (direct OAuth) ──────────────────────────────────────────────
+  //
+  //   platform not configured        -> not_configured
+  //   no direct credential, legacy Nango row present -> reconnect_required
+  //   no direct credential at all    -> not_connected
+  //   credential, read scope missing -> permission_required
+  //   credential, provider rejects it-> reconnect_required
+  //   credential verified with Slack -> healthy
+  //
+  // `executable` additionally requires chat:write, so the execution policy can
+  // never authorize a Slack post into an install that cannot perform one. The
+  // chosen alert channel is workspace policy, checked by its own callers.
+  const slackRow = slackRes.data;
+  const slackScopes = asStringArray(slackRow?.scopes);
+  const slackConfig = getSlackConfigStatus();
+  let slackStatus: ConnectorTruthStatus = slackRes.error ? "error" : slackConfig.configured ? "not_connected" : "not_configured";
+  let slackLegacy = false;
+  let slackSendGranted = false;
+  const slackMissingScopes = slackRow ? getMissingSlackScopes(slackScopes, [...SLACK_READ_SCOPES, ...SLACK_SEND_SCOPES]) : [];
+  if (!slackRow && !slackRes.error) {
+    const legacy = await getLegacyNangoConnection({ workspaceId: input.workspaceId, connectorKey: SLACK_CONNECTOR_KEY, supabase });
+    if (legacy.present) {
+      slackLegacy = true;
+      slackStatus = "reconnect_required";
+    }
+  } else if (slackRow) {
+    slackSendGranted = hasSlackSendScope(slackScopes);
+    if (getMissingSlackScopes(slackScopes, SLACK_READ_SCOPES).length > 0) slackStatus = "permission_required";
+    else if (slackRow.status === "needs_attention") slackStatus = "reconnect_required";
+    else {
+      try {
+        const credential = await getStoredSlackCredential(input.workspaceId, supabase);
+        if (!credential) slackStatus = "not_connected";
+        else {
+          const token = await resolveSlackAccessToken({ workspaceId: input.workspaceId, credential, supabase });
+          await verifySlackConnection(token);
+          slackStatus = "healthy";
+        }
+      } catch {
+        slackStatus = "reconnect_required";
+      }
+    }
+  }
 
-  return [
+  // ── Trello (direct OAuth 1.0a) ────────────────────────────────────────
+  // Same ladder as Slack. Trello tokens are issued with expiration=never, so
+  // there is no expiry rung: a dead token surfaces as a failed provider check.
+  const trelloRow = trelloRes.data;
+  const trelloScopes = asStringArray(trelloRow?.scopes);
+  const trelloConfig = getTrelloConfigStatus();
+  let trelloStatus: ConnectorTruthStatus = trelloRes.error ? "error" : trelloConfig.configured ? "not_connected" : "not_configured";
+  let trelloLegacy = false;
+  let trelloIdentityEmail: string | null = trelloRow?.provider_email ?? null;
+  const trelloWriteGranted = trelloScopes.map((scope) => scope.toLowerCase()).includes(TRELLO_WRITE_SCOPE);
+  if (!trelloRow && !trelloRes.error) {
+    const legacy = await getLegacyNangoConnection({ workspaceId: input.workspaceId, connectorKey: TRELLO_CONNECTOR_KEY, supabase });
+    if (legacy.present) {
+      trelloLegacy = true;
+      trelloStatus = "reconnect_required";
+    }
+  } else if (trelloRow) {
+    try {
+      const credential = await getStoredTrelloCredential(input.workspaceId, supabase);
+      if (!credential) trelloStatus = "not_connected";
+      else {
+        const identity = await verifyTrelloConnection(decryptToken(credential.encrypted_access_token));
+        trelloIdentityEmail = identity.email ?? identity.username ?? trelloIdentityEmail;
+        trelloStatus = "healthy";
+      }
+    } catch {
+      trelloStatus = "reconnect_required";
+    }
+  }
+
+  // All production connectors now use direct provider OAuth. Legacy Nango
+  // rows are surfaced only as migration hints on the individual connector
+  // truth objects above; they are never verified through a runtime client.
+  const nangoTruth: SafeConnectorTruth[] = [];
+
+  const rows: SafeConnectorTruth[] = [
+    {
+      connectorKey: HUBSPOT_CONNECTOR_KEY,
+      displayName: "HubSpot",
+      authType: "native",
+      status: hubspotStatus,
+      accountEmail: hubspotIdentityEmail,
+      connectedAt: hubspotRow?.created_at ?? legacyHubspotRes.data?.connected_at ?? null,
+      scopes: hubspotScopes,
+      missingScopes: hubspotMissingScopes,
+      reconnectRequired: hubspotStatus === "reconnect_required" || hubspotStatus === "permission_required",
+      executable: hubspotStatus === "healthy" && hubspotMissingScopes.length === 0,
+      legacyNangoConnection: hubspotLegacy || undefined,
+      statusMessage: hubspotStatus === "healthy"
+        ? "Connected. HubSpot CRM context and approval-gated updates are ready."
+        : hubspotStatus === "permission_required"
+          ? "HubSpot permissions are incomplete. Reconnect HubSpot to grant the required CRM scopes."
+          : hubspotLegacy
+            ? "HubSpot was connected through the previous managed OAuth provider. Reconnect HubSpot once to move to direct authorization."
+            : hubspotStatus === "reconnect_required"
+              ? "Reconnect required to restore HubSpot access."
+              : hubspotStatus === "not_configured"
+                ? "HubSpot is not configured yet."
+                : "Ready to connect",
+      source: hubspotRow ? "native" : undefined,
+    },
     {
       connectorKey: "gmail",
       displayName: "Gmail",
@@ -434,10 +614,10 @@ export async function getConnectorTruth(input: {
       executable: false,
       statusMessage: driveStatus === "healthy"
         ? `Drive ready. Monitoring ${driveFolderCount} selected folder${driveFolderCount === 1 ? "" : "s"}.`
-        : driveStatus === "not_connected"
-          ? "Google account connected. Select a Drive folder to enable document context."
+        : driveStatus === "configuration_required"
+          ? "Drive access is ready. Select a folder to enable document context."
           : driveStatus === "permission_required"
-            ? "Google account connected. Drive permission required; reconnect Google to continue."
+            ? "Google account connected. Grant Drive access to continue."
             : driveStatus === "reconnect_required"
               ? "Reconnect Google to restore Drive access."
               : driveStatus === "error"
@@ -537,11 +717,117 @@ export async function getConnectorTruth(input: {
       statusMessage: intercomStatus === "healthy" ? `Connected in ${intercomRegion?.toUpperCase() ?? "selected"} region. Conversation reads are ready.${intercomWriteScopesGranted ? " Approval-gated replies and updates are enabled." : " Reconnect to grant conversation write permission."}` : intercomStatus === "permission_required" ? "Intercom permissions are incomplete. Reconnect Intercom." : intercomStatus === "reconnect_required" ? "Reconnect required to restore Intercom access" : intercomStatus === "not_configured" ? "Intercom is not configured yet" : "Ready to connect. Public installation remains pending Intercom review.",
       source: intercomRow ? "native" : undefined,
     },
+    {
+      connectorKey: SLACK_CONNECTOR_KEY,
+      displayName: "Slack",
+      authType: "native",
+      status: slackStatus,
+      // A Slack bot install identifies a Slack workspace, not a person, so this
+      // carries the team name rather than inventing an account email.
+      accountEmail: slackRow?.provider_email ?? null,
+      connectedAt: slackRow?.created_at ?? null,
+      scopes: slackScopes,
+      missingScopes: slackMissingScopes.length ? slackMissingScopes : undefined,
+      reconnectRequired: slackStatus === "reconnect_required" || slackStatus === "permission_required",
+      executable: slackStatus === "healthy" && slackSendGranted,
+      legacyNangoConnection: slackLegacy || undefined,
+      statusMessage: slackStatus === "healthy"
+        ? slackSendGranted
+          ? "Connected. Channel reads are ready and Slack messages are approval-gated."
+          : "Connected. Reconnect Slack to grant the message permission."
+        : slackStatus === "permission_required"
+          ? "Slack channel read permission is missing. Reconnect Slack."
+          : slackLegacy
+            ? "Slack was connected through the previous managed OAuth provider. Reconnect Slack once to move to Auterim's direct Slack app."
+            : slackStatus === "reconnect_required"
+              ? "Reconnect required to restore Slack access"
+              : slackStatus === "not_configured"
+                ? "Slack is not configured yet"
+                : "Ready to connect",
+      source: slackRow ? "native" : undefined,
+    },
+    {
+      connectorKey: TRELLO_CONNECTOR_KEY,
+      displayName: "Trello",
+      authType: "native",
+      status: trelloStatus,
+      accountEmail: trelloIdentityEmail,
+      connectedAt: trelloRow?.created_at ?? null,
+      scopes: trelloScopes,
+      missingScopes: TRELLO_OAUTH_SCOPES.filter((scope) => !trelloScopes.map((item) => item.toLowerCase()).includes(scope)),
+      reconnectRequired: trelloStatus === "reconnect_required",
+      executable: trelloStatus === "healthy" && trelloWriteGranted,
+      legacyNangoConnection: trelloLegacy || undefined,
+      statusMessage: trelloStatus === "healthy"
+        ? trelloWriteGranted
+          ? "Connected. Board reads are ready and card actions are approval-gated."
+          : "Connected. Reconnect Trello to grant approved write permission."
+        : trelloLegacy
+          ? "Trello was connected through the previous managed OAuth provider. Reconnect Trello once to move to Auterim's direct authorization."
+          : trelloStatus === "reconnect_required"
+            ? "Reconnect required to restore Trello access"
+            : trelloStatus === "not_configured"
+              ? "Trello is not configured yet"
+              : "Ready to connect",
+      source: trelloRow ? "native" : undefined,
+    },
     ...nangoTruth,
   ];
+
+  // Provider operation counters are operational evidence, not authorization
+  // state. Keep the auth status truthful while carrying the signal into the
+  // connector health model so dashboards and readiness checks can explain a
+  // transient outage without incorrectly asking the customer to reconnect.
+  const providerFailures = await getProviderFailureSnapshot({ workspaceId: input.workspaceId, supabase });
+  const degraded = new Set(providerFailures.degradedConnectors);
+  return rows.map((row) => degraded.has(row.connectorKey)
+    ? {
+      ...row,
+      operationalDegraded: true,
+      statusMessage: `${row.statusMessage ?? "Connected."} Provider is experiencing repeated transient failures; retries continue.`,
+    }
+    : row);
+}
+
+/**
+ * Operator badges are derived, never hardcoded: the connector registry says
+ * which operators use a connector, and liveOperatorNames() drops everything
+ * that is not actually live in production. That is what stops the connector UI
+ * advertising roadmap operators (Marketing, Knowledge & Memory, SEO
+ * Implementation, Proposal & Quote, Review & Proof and the rest) as if a
+ * connector were already wired into them.
+ */
+function operatorBadges(connectorKey: string): string[] {
+  return liveOperatorNames(getConnectorDefinition(connectorKey)?.usedByOperators ?? []);
 }
 
 function applyTruth(connector: Connector, truth: SafeConnectorTruth): Connector {
+  if (truth.connectorKey === HUBSPOT_CONNECTOR_KEY) {
+    const connected = truth.status === "healthy" || truth.status === "reconnect_required" || truth.status === "permission_required";
+    const degraded = truth.status !== "healthy";
+    return {
+      ...connector,
+      isConnected: connected,
+      status: connected ? "connected" : truth.status === "error" ? "error" : "available",
+      health: truth.status === "healthy" ? "healthy" : "disabled",
+      lastSync: "-",
+      lastSynced: truth.connectedAt ?? "",
+      syncMode: "manual",
+      syncFreq: "Approval-gated",
+      permissions: ["Read CRM contacts, deals, and properties", "Create and update CRM records after approval", "Create notes and tasks after approval"],
+      readScopes: truth.missingScopes?.length ? [`Missing HubSpot permissions: ${truth.missingScopes.join(", ")}`] : ["HubSpot CRM read access granted"],
+      writeScopes: truth.executable ? ["contacts:write", "deals:write", "notes:write", "tasks:write"] : [],
+      approvalRequiredFor: ["HubSpot contact and deal changes", "HubSpot notes and task creation"],
+      blockedActions: truth.executable ? [] : [truth.statusMessage ?? "Reconnect HubSpot to enable CRM actions"],
+      operatorsAllowed: operatorBadges(truth.connectorKey),
+      records: truth.statusMessage ?? "Not connected",
+      eventsSynced: 0,
+      recentSyncEvents: [],
+      authErrors: degraded || truth.status === "error" ? 1 : 0,
+      source: connected ? truth.source : undefined,
+    };
+  }
+
   if (truth.connectorKey === "gmail") {
     const hasCredential = truth.status !== "missing" && truth.status !== "not_connected" && truth.status !== "error";
     const reconnectRequired = truth.status === "reconnect_required";
@@ -567,7 +853,7 @@ function applyTruth(connector: Connector, truth: SafeConnectorTruth): Connector 
       blockedActions: truth.scopes.includes(GMAIL_READONLY_SCOPE)
         ? ["Store full inbox", "Read labels", "Send without approval"]
         : ["Scan inbox until Gmail readonly is granted", "Read labels", "Send without approval"],
-      operatorsAllowed: ["Revenue Operator", "Client Flow Operator"],
+      operatorsAllowed: operatorBadges(truth.connectorKey),
       records: reconnectRequired
         ? "Reconnect required to enable send permissions"
         : scanReconnectRequired
@@ -606,7 +892,7 @@ function applyTruth(connector: Connector, truth: SafeConnectorTruth): Connector 
       writeScopes: truth.scopes.filter((scope) => ["mail.send", "calendars.readwrite"].includes(scope.toLowerCase())),
       approvalRequiredFor: ["External email send", "Calendar event create/update/delete"],
       blockedActions: ["Send without approval", "Modify calendar without approval"],
-      operatorsAllowed: ["Revenue Operator", "Client Flow Operator"],
+      operatorsAllowed: operatorBadges(truth.connectorKey),
       records: reconnectRequired
         ? "Reconnect required to restore Microsoft 365 access"
         : truth.accountEmail
@@ -637,7 +923,7 @@ function applyTruth(connector: Connector, truth: SafeConnectorTruth): Connector 
       writeScopes: [],
       approvalRequiredFor: [],
       blockedActions: ["Upload, edit, delete, move, share, or change permissions"],
-      operatorsAllowed: ["Client Flow Operator", "Operations Operator"],
+      operatorsAllowed: operatorBadges(truth.connectorKey),
       records: truth.statusMessage ?? "Not connected",
       eventsSynced: 0,
       recentSyncEvents: [],
@@ -672,7 +958,7 @@ function applyTruth(connector: Connector, truth: SafeConnectorTruth): Connector 
       writeScopes: sendGranted ? ["Send approved Teams channel message"] : [],
       approvalRequiredFor: ["Teams channel message send"],
       blockedActions: ["Send without approval", "Read chats or attachments", "Delete or edit existing Teams messages"],
-      operatorsAllowed: ["Operations Operator", "Client Flow Operator"],
+      operatorsAllowed: operatorBadges(truth.connectorKey),
       records: truth.statusMessage ?? "Not connected",
       eventsSynced: 0,
       recentSyncEvents: [],
@@ -691,7 +977,7 @@ function applyTruth(connector: Connector, truth: SafeConnectorTruth): Connector 
       lastSync: "-", lastSynced: truth.connectedAt ?? "", syncMode: "manual", syncFreq: "Not enabled",
       permissions: [], readScopes: [], writeScopes: [],
       approvalRequiredFor: ["Future Salesforce record changes require approval"],
-      blockedActions: ["Revenue CRM reads and writes are not enabled yet"], operatorsAllowed: ["Revenue Operator (future)"],
+      blockedActions: ["Revenue CRM reads and writes are not enabled yet"], operatorsAllowed: operatorBadges(truth.connectorKey),
       records: truth.statusMessage ?? "Not connected", eventsSynced: 0, recentSyncEvents: [], authErrors: truth.status === "error" || truth.status === "reconnect_required" ? 1 : 0,
       source: connected ? truth.source : undefined,
     };
@@ -699,17 +985,17 @@ function applyTruth(connector: Connector, truth: SafeConnectorTruth): Connector 
 
   if (truth.connectorKey === "asana") {
     const connected = truth.status === "healthy" || truth.status === "reconnect_required" || truth.status === "permission_required";
-    return { ...connector, isConnected: connected, status: connected ? "connected" : truth.status === "error" ? "error" : "available", health: truth.status === "healthy" ? "healthy" : "disabled", lastSync: "-", lastSynced: truth.connectedAt ?? "", syncMode: "manual", syncFreq: "On demand", permissions: ["Read Asana workspaces", "Read selected projects and tasks", "Create/update tasks after approval", "Add comments after approval"], readScopes: ["Workspace and project reads", "Task detail reads"], writeScopes: truth.executable ? ["tasks:write", "stories:write"] : [], approvalRequiredFor: ["Asana task creation", "Asana task updates", "Asana comments"], blockedActions: truth.executable ? [] : ["Asana writes until write scopes and a configured project are ready"], operatorsAllowed: ["Operations Operator"], records: truth.statusMessage ?? "Not connected", eventsSynced: 0, recentSyncEvents: [], authErrors: truth.status === "error" || truth.status === "reconnect_required" || truth.status === "permission_required" ? 1 : 0, source: connected ? truth.source : undefined };
+    return { ...connector, isConnected: connected, status: connected ? "connected" : truth.status === "error" ? "error" : "available", health: truth.status === "healthy" ? "healthy" : "disabled", lastSync: "-", lastSynced: truth.connectedAt ?? "", syncMode: "manual", syncFreq: "On demand", permissions: ["Read Asana workspaces", "Read selected projects and tasks", "Create/update tasks after approval", "Add comments after approval"], readScopes: ["Workspace and project reads", "Task detail reads"], writeScopes: truth.executable ? ["tasks:write", "stories:write"] : [], approvalRequiredFor: ["Asana task creation", "Asana task updates", "Asana comments"], blockedActions: truth.executable ? [] : ["Asana writes until write scopes and a configured project are ready"], operatorsAllowed: operatorBadges(truth.connectorKey), records: truth.statusMessage ?? "Not connected", eventsSynced: 0, recentSyncEvents: [], authErrors: truth.status === "error" || truth.status === "reconnect_required" || truth.status === "permission_required" ? 1 : 0, source: connected ? truth.source : undefined };
   }
 
   if (truth.connectorKey === "jira") {
     const connected = truth.status === "healthy" || truth.status === "reconnect_required" || truth.status === "permission_required";
-    return { ...connector, isConnected: connected, status: connected ? "connected" : truth.status === "error" ? "error" : "available", health: truth.status === "healthy" ? "healthy" : "disabled", lastSync: "-", lastSynced: truth.connectedAt ?? "", syncMode: "manual", syncFreq: "On demand", permissions: ["Read Jira projects and issues", "Create issues after approval", "Update issues after approval", "Add comments after approval"], readScopes: ["Jira work and project reads", "Jira user reads"], writeScopes: truth.executable ? ["write:jira-work"] : [], approvalRequiredFor: ["Jira issue creation", "Jira issue updates", "Jira comments"], blockedActions: truth.executable ? ["Delete Jira issues", "Change workflow status without a validated transition"] : ["Jira writes until a selected project and write scope are ready"], operatorsAllowed: ["Operations Operator"], records: truth.statusMessage ?? "Not connected", eventsSynced: 0, recentSyncEvents: [], authErrors: truth.status === "error" || truth.status === "reconnect_required" || truth.status === "permission_required" ? 1 : 0, source: connected ? truth.source : undefined };
+    return { ...connector, isConnected: connected, status: connected ? "connected" : truth.status === "error" ? "error" : "available", health: truth.status === "healthy" ? "healthy" : "disabled", lastSync: "-", lastSynced: truth.connectedAt ?? "", syncMode: "manual", syncFreq: "On demand", permissions: ["Read Jira projects and issues", "Create issues after approval", "Update issues after approval", "Add comments after approval"], readScopes: ["Jira work and project reads", "Jira user reads"], writeScopes: truth.executable ? ["write:jira-work"] : [], approvalRequiredFor: ["Jira issue creation", "Jira issue updates", "Jira comments"], blockedActions: truth.executable ? ["Delete Jira issues", "Change workflow status without a validated transition"] : ["Jira writes until a selected project and write scope are ready"], operatorsAllowed: operatorBadges(truth.connectorKey), records: truth.statusMessage ?? "Not connected", eventsSynced: 0, recentSyncEvents: [], authErrors: truth.status === "error" || truth.status === "reconnect_required" || truth.status === "permission_required" ? 1 : 0, source: connected ? truth.source : undefined };
   }
 
   if (truth.connectorKey === "zendesk") {
     const connected = truth.status === "healthy" || truth.status === "reconnect_required" || truth.status === "permission_required";
-    return { ...connector, isConnected: connected, status: connected ? "connected" : truth.status === "error" ? "error" : "available", health: truth.status === "healthy" ? "healthy" : "disabled", lastSync: "-", lastSynced: truth.connectedAt ?? "", syncMode: "manual", syncFreq: "Incremental polling", permissions: ["Read tickets and bounded comments", "Read requester, assignee, and organization context", "Send public replies after approval", "Add internal notes after approval", "Update ticket fields after approval"], readScopes: ["tickets:read", "users:read", "organizations:read"], writeScopes: truth.executable ? ["tickets:write"] : [], approvalRequiredFor: ["Public Zendesk replies", "Internal notes", "Status, priority, and assignee updates"], blockedActions: truth.executable ? ["Delete tickets", "Manage users, organizations, macros, triggers, or automations"] : ["Zendesk writes until tickets:write and a healthy connection are ready"], operatorsAllowed: ["Client Flow Operator", "Operations Operator"], records: truth.statusMessage ?? "Not connected", eventsSynced: 0, recentSyncEvents: [], authErrors: truth.status === "error" || truth.status === "reconnect_required" || truth.status === "permission_required" ? 1 : 0, source: connected ? truth.source : undefined };
+    return { ...connector, isConnected: connected, status: connected ? "connected" : truth.status === "error" ? "error" : "available", health: truth.status === "healthy" ? "healthy" : "disabled", lastSync: "-", lastSynced: truth.connectedAt ?? "", syncMode: "manual", syncFreq: "Incremental polling", permissions: ["Read tickets and bounded comments", "Read requester, assignee, and organization context", "Send public replies after approval", "Add internal notes after approval", "Update ticket fields after approval"], readScopes: ["tickets:read", "users:read", "organizations:read"], writeScopes: truth.executable ? ["tickets:write"] : [], approvalRequiredFor: ["Public Zendesk replies", "Internal notes", "Status, priority, and assignee updates"], blockedActions: truth.executable ? ["Delete tickets", "Manage users, organizations, macros, triggers, or automations"] : ["Zendesk writes until tickets:write and a healthy connection are ready"], operatorsAllowed: operatorBadges(truth.connectorKey), records: truth.statusMessage ?? "Not connected", eventsSynced: 0, recentSyncEvents: [], authErrors: truth.status === "error" || truth.status === "reconnect_required" || truth.status === "permission_required" ? 1 : 0, source: connected ? truth.source : undefined };
   }
 
   if (truth.connectorKey === "intercom") {
@@ -728,7 +1014,34 @@ function applyTruth(connector: Connector, truth: SafeConnectorTruth): Connector 
       writeScopes: truth.executable ? ["conversations:write"] : [],
       approvalRequiredFor: ["Intercom replies", "Conversation close/reopen/assignment"],
       blockedActions: truth.executable ? ["Bulk or campaign messaging", "Manage users, companies, tags, or content"] : ["Intercom writes until conversations:write and a healthy connection are ready"],
-      operatorsAllowed: ["Client Flow Operator", "Revenue Operator"],
+      operatorsAllowed: operatorBadges(truth.connectorKey),
+      records: truth.statusMessage ?? "Not connected",
+      eventsSynced: 0,
+      recentSyncEvents: [],
+      authErrors: truth.status === "error" || truth.status === "reconnect_required" || truth.status === "permission_required" ? 1 : 0,
+      source: connected ? truth.source : undefined,
+    };
+  }
+
+  if (truth.connectorKey === SLACK_CONNECTOR_KEY || truth.connectorKey === TRELLO_CONNECTOR_KEY) {
+    const connected = truth.status === "healthy" || truth.status === "reconnect_required" || truth.status === "permission_required";
+    return {
+      ...connector,
+      isConnected: connected,
+      status: connected ? "connected" : truth.status === "error" ? "error" : "available",
+      health: truth.status === "healthy" ? "healthy" : "disabled",
+      lastSync: "-",
+      lastSynced: truth.connectedAt ?? "",
+      syncMode: "manual",
+      syncFreq: truth.connectorKey === SLACK_CONNECTOR_KEY ? "Approval-gated" : "On demand",
+      permissions: truth.connectorKey === SLACK_CONNECTOR_KEY
+        ? ["Read channels", "Read bounded channel context", "Send approved internal messages"]
+        : ["Read boards and lists", "Create and update cards after approval"],
+      readScopes: truth.missingScopes?.length ? [`Missing provider access: ${truth.missingScopes.join(", ")}`] : ["Provider read access granted"],
+      writeScopes: truth.executable ? [truth.connectorKey === SLACK_CONNECTOR_KEY ? "chat:write" : TRELLO_WRITE_SCOPE] : [],
+      approvalRequiredFor: truth.connectorKey === SLACK_CONNECTOR_KEY ? ["Slack internal message send"] : ["Trello card changes"],
+      blockedActions: truth.executable ? [] : [truth.statusMessage ?? "Reconnect to enable approved actions"],
+      operatorsAllowed: operatorBadges(truth.connectorKey),
       records: truth.statusMessage ?? "Not connected",
       eventsSynced: 0,
       recentSyncEvents: [],
@@ -767,7 +1080,7 @@ function applyTruth(connector: Connector, truth: SafeConnectorTruth): Connector 
 }
 
 function isTruthConnectorKey(connectorId: string): connectorId is SafeConnectorTruth["connectorKey"] {
-  return connectorId === "gmail" || connectorId === "google_drive" || connectorId === "microsoft" || connectorId === MICROSOFT_TEAMS_CONNECTOR_KEY || connectorId === "salesforce" || connectorId === "asana" || connectorId === "jira" || connectorId === "zendesk" || connectorId === "intercom" || listSupportedNangoConnectors().some((def) => def.connectorKey === connectorId);
+  return connectorId === HUBSPOT_CONNECTOR_KEY || connectorId === "gmail" || connectorId === "google_drive" || connectorId === "microsoft" || connectorId === MICROSOFT_TEAMS_CONNECTOR_KEY || connectorId === "salesforce" || connectorId === "asana" || connectorId === "jira" || connectorId === "zendesk" || connectorId === "intercom" || connectorId === SLACK_CONNECTOR_KEY || connectorId === TRELLO_CONNECTOR_KEY || listSupportedNangoConnectors().some((def) => def.connectorKey === connectorId);
 }
 
 export function applyConnectorTruthToState(state: OSState, truthRows: SafeConnectorTruth[]): OSState {

@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { AI_MAX_RETRIES, AI_REQUEST_TIMEOUT_MS } from "@/lib/runtime/ai-limits";
 import type { PreparedGmailFollowUp } from "@/lib/operators/executors/gmail";
 import type { ClientFlowSignal } from "@/lib/operators/client-flow/scan";
 
@@ -153,7 +154,7 @@ export async function draftClientFlowReplyWithAI(input: {
   }
 
   try {
-    const client = new Anthropic({ apiKey });
+    const client = new Anthropic({ apiKey, timeout: AI_REQUEST_TIMEOUT_MS, maxRetries: AI_MAX_RETRIES });
     const message = await client.messages.create({
       model: CLIENT_FLOW_DRAFT_MODEL,
       max_tokens: 1400,

@@ -1209,15 +1209,10 @@ export async function scanRevenueOpportunities(input: {
       : normalizeEmail((microsoftCredential as StoredMicrosoftCredential).provider_email);
     const connectorTruth = await getConnectorTruth({ workspaceId, supabase });
     const hubspotConnected = connectorTruth.some((connector) =>
-      connector.connectorKey === "hubspot"
-      && connector.status === "connected"
-      && connector.providerConfigKey
-      && connector.nangoConnectionId
+      connector.connectorKey === "hubspot" && connector.executable === true
     );
-    // Salesforce is a direct-OAuth (native) connector, not Nango-managed, so
-    // it has no providerConfigKey/nangoConnectionId to check - a "connected"
-    // status on the stored credential row is sufficient, mirroring how
-    // Microsoft 365's native connection is treated elsewhere in this file.
+    // Salesforce is a direct-OAuth (native) connector, so a "connected"
+    // status on the stored credential row is sufficient.
     const salesforceConnected = connectorTruth.some((connector) =>
       connector.connectorKey === "salesforce"
       && connector.status === "connected"

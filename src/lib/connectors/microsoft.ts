@@ -22,7 +22,9 @@
 //   tokens are read/written.
 
 import { decryptToken, encryptToken } from "@/lib/connectors/crypto";
+import { resolveAccessTokenWithRefreshLock } from "@/lib/connectors/refresh-lock";
 import { AUTERIM_APP_URL } from "@/lib/brand";
+import { recordProviderFailure, recordProviderSuccess } from "@/lib/runtime/provider-health";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
@@ -188,11 +190,14 @@ async function readJson(res: Response): Promise<Record<string, unknown>> {
 
 export class MicrosoftOAuthError extends Error {
   code?: string;
+  /** HTTP status from the token endpoint, so a 5xx is not misread as a dead credential. */
+  status?: number;
 
-  constructor(message: string, code?: string) {
+  constructor(message: string, code?: string, status?: number) {
     super(message);
     this.name = "MicrosoftOAuthError";
     this.code = code;
+    this.status = status;
   }
 }
 
@@ -237,7 +242,7 @@ export async function refreshAccessToken(refreshToken: string, profile: Microsof
   });
   const json = await readJson(res) as TokenExchangeResult & { error?: string; error_description?: string };
   if (!res.ok || !json.access_token) {
-    throw new MicrosoftOAuthError(json.error_description || json.error || "Failed to refresh Microsoft access token", json.error);
+    throw new MicrosoftOAuthError(json.error_description || json.error || "Failed to refresh Microsoft access token", json.error, res.status);
   }
   return json;
 }
@@ -401,13 +406,18 @@ export class MicrosoftReauthRequiredError extends Error {
   }
 }
 
-// Simple same-process in-flight guard so concurrent calls for the same
-// workspace credential do not each independently call Microsoft's token
-// endpoint (which would otherwise race to consume/rotate the same refresh
-// token). This intentionally is not a distributed lock - Microsoft's own
-// refresh-token rotation and invalid_grant handling below already make a
-// lost race safe, just wasteful, so an in-process guard is enough.
+// Same-process in-flight guard. It stays as a cheap first-level coalescer so
+// concurrent calls inside ONE worker share a single refresh, but it is no
+// longer the safety mechanism: serverless workers do not share this Map. The
+// real guarantee is the distributed lease plus credential_version
+// compare-and-swap in connectors/refresh-lock.ts, which is what makes
+// Microsoft's single-use rotating refresh tokens safe across workers.
 const inFlightRefreshes = new Map<string, Promise<string>>();
+
+export function microsoftAccessTokenIsFresh(row: { token_expires_at?: string | null }): boolean {
+  const expiresAt = row.token_expires_at ? new Date(row.token_expires_at).getTime() : 0;
+  return !(expiresAt && Date.now() > expiresAt - 60_000);
+}
 
 /**
  * Resolve a usable Microsoft Graph access token for a workspace, refreshing
@@ -416,6 +426,10 @@ const inFlightRefreshes = new Map<string, Promise<string>>();
  * os_connector_credentials on refresh, because Microsoft's v2 endpoint
  * rotates the refresh token on every use - failing to persist the new one
  * would strand the connector after exactly one refresh.
+ *
+ * Microsoft is the strongest case for distributed refresh coordination in this
+ * product: its refresh tokens are single-use, so two workers refreshing at
+ * once would previously have raced to persist mutually invalidated tokens.
  */
 export async function resolveMicrosoftAccessToken(input: {
   workspaceId: string;
@@ -423,10 +437,7 @@ export async function resolveMicrosoftAccessToken(input: {
   supabase?: SupabaseAdmin;
 }): Promise<string> {
   const { workspaceId, credential } = input;
-  const current = decryptToken(credential.encrypted_access_token);
-  const expiresAt = credential.token_expires_at ? new Date(credential.token_expires_at).getTime() : 0;
-  const hasExpired = Boolean(expiresAt && Date.now() > expiresAt - 60_000);
-  if (!hasExpired) return current;
+  if (microsoftAccessTokenIsFresh(credential)) return decryptToken(credential.encrypted_access_token);
   if (!credential.encrypted_refresh_token) {
     throw new MicrosoftReauthRequiredError("Microsoft 365 access token expired and no refresh token is stored.");
   }
@@ -437,30 +448,39 @@ export async function resolveMicrosoftAccessToken(input: {
 
   const supabase = input.supabase ?? createSupabaseAdmin();
   const refreshPromise = (async () => {
-    const refreshToken = decryptToken(credential.encrypted_refresh_token as string);
     try {
-      // A workspace that already consented to Teams must keep refreshing with
-      // the Teams scope profile, otherwise the new access token would silently
-      // drop Teams access while the stored scopes still claimed it.
-      const refreshed = await refreshAccessToken(refreshToken, microsoftProfileForStoredScopes(credential.scopes));
-      const nextExpiresAt = refreshed.expires_in ? new Date(Date.now() + refreshed.expires_in * 1000).toISOString() : null;
-      // Microsoft always issues a new refresh token on rotation. If, for any
-      // reason, one is not returned, keep the existing (still valid) one
-      // rather than deleting it.
-      const nextRefreshToken = refreshed.refresh_token ?? refreshToken;
-      await supabase
-        .from("os_connector_credentials")
-        .update({
-          encrypted_access_token: encryptToken(refreshed.access_token),
-          encrypted_refresh_token: encryptToken(nextRefreshToken),
-          token_expires_at: nextExpiresAt,
-          status: "connected",
-        })
-        .eq("workspace_id", workspaceId)
-        .eq("connector_key", "microsoft");
-      return refreshed.access_token;
+      const outcome = await resolveAccessTokenWithRefreshLock({
+        workspaceId,
+        connectorKey: "microsoft",
+        supabase,
+        credential,
+        isFresh: microsoftAccessTokenIsFresh,
+        refresh: async (latest) => {
+          if (!latest.encrypted_refresh_token) {
+            throw new MicrosoftReauthRequiredError("Microsoft 365 access token expired and no refresh token is stored.");
+          }
+          // A workspace that already consented to Teams must keep refreshing
+          // with the Teams scope profile, otherwise the new access token would
+          // silently drop Teams access while the stored scopes still claimed
+          // it. The scopes come from the freshly re-read row, never from state
+          // loaded before the lease was acquired.
+          const refreshed = await refreshAccessToken(decryptToken(latest.encrypted_refresh_token), microsoftProfileForStoredScopes(latest.scopes));
+          return {
+            accessToken: refreshed.access_token,
+            // Microsoft always rotates. If it ever does not return one, the
+            // lock helper keeps the existing still-valid token rather than
+            // deleting credential state.
+            refreshToken: refreshed.refresh_token ?? null,
+            expiresAt: refreshed.expires_in ? new Date(Date.now() + refreshed.expires_in * 1000).toISOString() : null,
+            status: "connected",
+          };
+        },
+      });
+      await recordProviderSuccess({ workspaceId, connectorKey: "microsoft", operation: "oauth_refresh", supabase });
+      return outcome.accessToken;
     } catch (error) {
       if (isMicrosoftReauthRequiredError(error)) {
+        await recordProviderFailure({ workspaceId, connectorKey: "microsoft", operation: "oauth_refresh", status: 401, code: "invalid_grant", supabase });
         await supabase
           .from("os_connector_credentials")
           .update({ status: "needs_attention" })
@@ -468,6 +488,17 @@ export async function resolveMicrosoftAccessToken(input: {
           .eq("connector_key", "microsoft");
         throw new MicrosoftReauthRequiredError("Microsoft 365 refresh token was revoked or expired. Reconnect required.");
       }
+      // A transient token-endpoint failure, a busy lease, or a refused stale
+      // write must all leave the credential intact. Nothing here deletes or
+      // downgrades a still-valid credential.
+      await recordProviderFailure({
+        workspaceId,
+        connectorKey: "microsoft",
+        operation: "oauth_refresh",
+        status: error instanceof MicrosoftOAuthError ? error.status ?? null : null,
+        code: error instanceof MicrosoftOAuthError ? error.code ?? null : (error as { code?: string } | null)?.code ?? "oauth_refresh_failed",
+        supabase,
+      });
       throw error;
     }
   })();
@@ -527,7 +558,17 @@ async function graphRequest<T = unknown>(accessToken: string, method: string, pa
     cache: "no-store",
   });
   const text = await res.text();
-  const json = text ? (JSON.parse(text) as unknown) : null;
+  // A malformed provider response must surface as a normal Graph error, not as
+  // an unhandled JSON parse failure that looks like an Auterim bug.
+  let json: unknown = null;
+  if (text) {
+    try {
+      json = JSON.parse(text) as unknown;
+    } catch {
+      if (res.ok) throw new MicrosoftGraphError("Microsoft Graph returned an unreadable response.", { step: `graph.${method.toLowerCase()}`, status: 502, statusText: "Malformed response", responseBody: null });
+      json = null;
+    }
+  }
   if (!res.ok) {
     throw new MicrosoftGraphError(graphMessageFromBody(json, `Microsoft Graph ${method} ${path} failed`), {
       step: `graph.${method.toLowerCase()}`,

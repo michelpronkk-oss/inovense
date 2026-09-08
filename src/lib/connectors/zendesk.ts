@@ -1,5 +1,7 @@
 import { decryptToken, encryptToken } from "@/lib/connectors/crypto";
+import { credentialRotatedSince, resolveAccessTokenWithRefreshLock } from "@/lib/connectors/refresh-lock";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { recordProviderFailure, recordProviderSuccess } from "@/lib/runtime/provider-health";
 import { providerRetryDelayMs, shouldRetryProviderFailure } from "@/lib/runtime/provider-retry";
 
 export const ZENDESK_REDIRECT_URI = "https://app.auterim.com/api/connectors/zendesk/callback";
@@ -88,7 +90,9 @@ export async function refreshZendeskAccessToken(subdomain: string, refreshToken:
   const { baseUrl } = normalizeZendeskSubdomain(subdomain);
   const response = await fetch(`${baseUrl}/oauth/tokens`, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ grant_type: "refresh_token", refresh_token: refreshToken, client_id: required("ZENDESK_CLIENT_ID"), client_secret: required("ZENDESK_CLIENT_SECRET") }), cache: "no-store" });
   const token = await parseResponse<ZendeskTokenResult>(response);
-  if (!response.ok || !token.access_token) throw new ZendeskExecutionError(token.error_description || token.error || "Zendesk token refresh failed", "oauth_refresh_failed", 502);
+  // The real status is preserved so a temporary Zendesk outage is never
+  // mistaken for a revoked grant.
+  if (!response.ok || !token.access_token) throw new ZendeskExecutionError(token.error_description || token.error || "Zendesk token refresh failed", token.error || `http_${response.status}`, response.status);
   return token;
 }
 
@@ -120,20 +124,46 @@ function subdomainFromCredential(credential: StoredZendeskCredential): string {
   return normalizeZendeskSubdomain(value).subdomain;
 }
 
+export function zendeskAccessTokenIsFresh(row: { token_expires_at?: string | null }): boolean {
+  return Boolean(row.token_expires_at && new Date(row.token_expires_at).getTime() > Date.now() + 60_000);
+}
+
+/**
+ * Zendesk refreshes run under the shared distributed lease with a
+ * credential_version compare-and-swap, so a worker holding older state can
+ * never overwrite a newer persisted token. Only a genuinely dead grant marks
+ * the connector as needing attention; a Zendesk outage leaves it intact.
+ */
+async function refreshZendeskCredential(input: { workspaceId: string; subdomain: string; credential: StoredZendeskCredential; supabase: ReturnType<typeof createSupabaseAdmin>; isFresh: (row: { token_expires_at?: string | null; encrypted_access_token: string }) => boolean }): Promise<string> {
+  try {
+    const outcome = await resolveAccessTokenWithRefreshLock({
+      workspaceId: input.workspaceId, connectorKey: "zendesk", supabase: input.supabase, credential: input.credential, isFresh: input.isFresh,
+      refresh: async (latest) => {
+        if (!latest.encrypted_refresh_token) throw new ZendeskReconnectionRequiredError("Zendesk reconnection required.");
+        const token = await refreshZendeskAccessToken(input.subdomain, decryptToken(latest.encrypted_refresh_token));
+        return { accessToken: token.access_token, refreshToken: token.refresh_token ?? null, expiresAt: token.expires_in ? new Date(Date.now() + token.expires_in * 1000).toISOString() : null, scopes: token.scope?.split(/[ ,]+/).filter(Boolean) ?? null, status: "connected" };
+      },
+    });
+    await recordProviderSuccess({ workspaceId: input.workspaceId, connectorKey: "zendesk", operation: "oauth_refresh", supabase: input.supabase });
+    return outcome.accessToken;
+  } catch (error) {
+    const status = error instanceof ZendeskExecutionError ? error.status : null;
+    const code = error instanceof ZendeskExecutionError ? error.code : (error as { code?: string } | null)?.code ?? "oauth_refresh_failed";
+    const failure = await recordProviderFailure({ workspaceId: input.workspaceId, connectorKey: "zendesk", operation: "oauth_refresh", status, code, supabase: input.supabase });
+    if (failure.connectorHealthImpact === "reconnect_required" || error instanceof ZendeskReconnectionRequiredError) {
+      await input.supabase.from("os_connector_credentials").update({ status: "needs_attention" }).eq("workspace_id", input.workspaceId).eq("connector_key", "zendesk");
+      throw new ZendeskReconnectionRequiredError("Zendesk reconnection required.");
+    }
+    throw new ZendeskExecutionError("Zendesk could not be reached to refresh access.", failure.safeCode, status && status >= 400 && status < 500 ? status : 502);
+  }
+}
+
 export async function resolveZendeskAccessToken(input: { workspaceId: string; credential: StoredZendeskCredential; supabase?: ReturnType<typeof createSupabaseAdmin> }): Promise<string> {
   const supabase = input.supabase ?? createSupabaseAdmin();
   const subdomain = subdomainFromCredential(input.credential);
-  if (input.credential.token_expires_at && new Date(input.credential.token_expires_at).getTime() > Date.now() + 60_000) return decryptToken(input.credential.encrypted_access_token);
+  if (zendeskAccessTokenIsFresh(input.credential)) return decryptToken(input.credential.encrypted_access_token);
   if (!input.credential.encrypted_refresh_token) return decryptToken(input.credential.encrypted_access_token);
-  try {
-    const token = await refreshZendeskAccessToken(subdomain, decryptToken(input.credential.encrypted_refresh_token));
-    const updated = await supabase.from("os_connector_credentials").update({ encrypted_access_token: encryptToken(token.access_token), encrypted_refresh_token: token.refresh_token ? encryptToken(token.refresh_token) : input.credential.encrypted_refresh_token, token_expires_at: token.expires_in ? new Date(Date.now() + token.expires_in * 1000).toISOString() : null, scopes: token.scope?.split(/[ ,]+/).filter(Boolean) ?? input.credential.scopes, status: "connected" }).eq("workspace_id", input.workspaceId).eq("connector_key", "zendesk");
-    if (updated.error) throw new Error(updated.error.message);
-    return token.access_token;
-  } catch {
-    await supabase.from("os_connector_credentials").update({ status: "needs_attention" }).eq("workspace_id", input.workspaceId).eq("connector_key", "zendesk");
-    throw new ZendeskReconnectionRequiredError("Zendesk reconnection required.");
-  }
+  return refreshZendeskCredential({ workspaceId: input.workspaceId, subdomain, credential: input.credential, supabase, isFresh: zendeskAccessTokenIsFresh });
 }
 
 async function providerFetch<T>(baseUrl: string, token: string, path: string, init?: RequestInit): Promise<{ response: Response; body: T }> {
@@ -173,16 +203,15 @@ export async function zendeskFetchWithRefresh<T>(input: { workspaceId: string; c
   const baseUrl = normalizeZendeskSubdomain(subdomain).baseUrl;
   let result = await providerFetch<T>(baseUrl, token, input.path, input.init);
   if (result.response.status === 401 && input.credential.encrypted_refresh_token) {
-    try {
-      const refreshed = await refreshZendeskAccessToken(subdomain, decryptToken(input.credential.encrypted_refresh_token));
-      token = refreshed.access_token;
-      const saved = await supabase.from("os_connector_credentials").update({ encrypted_access_token: encryptToken(token), encrypted_refresh_token: refreshed.refresh_token ? encryptToken(refreshed.refresh_token) : input.credential.encrypted_refresh_token, token_expires_at: refreshed.expires_in ? new Date(Date.now() + refreshed.expires_in * 1000).toISOString() : null, scopes: refreshed.scope?.split(/[ ,]+/).filter(Boolean) ?? input.credential.scopes, status: "connected" }).eq("workspace_id", input.workspaceId).eq("connector_key", "zendesk");
-      if (saved.error) throw new Error(saved.error.message);
-      result = await providerFetch<T>(baseUrl, token, input.path, input.init);
-    } catch {
-      await supabase.from("os_connector_credentials").update({ status: "needs_attention" }).eq("workspace_id", input.workspaceId).eq("connector_key", "zendesk");
-      throw new ZendeskReconnectionRequiredError("Zendesk reconnection required.");
-    }
+    // The token this call used is known bad, so only a credential that has
+    // actually changed counts as usable. If another worker rotated it while
+    // this request was in flight, that newer token is reused instead of
+    // burning a second rotation.
+    token = await refreshZendeskCredential({
+      workspaceId: input.workspaceId, subdomain, credential: input.credential, supabase,
+      isFresh: credentialRotatedSince(input.credential.encrypted_access_token),
+    });
+    result = await providerFetch<T>(baseUrl, token, input.path, input.init);
   }
   if (!result.response.ok) throw errorFromResponse(result);
   return result.body;

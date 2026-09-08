@@ -36,7 +36,7 @@ const capacityRows = [
   { label: "Approval policies", values: ["Foundation · approval-first", "Workforce · advanced", "Scale · advanced"] },
 ];
 
-export default async function PricingPage({ searchParams }: PageProps<"/pricing">) {
+export default async function PricingPage({ searchParams }: { searchParams: Promise<{ billing?: string }> }) {
   const billing = (await searchParams).billing;
   return (
     <>

@@ -44,7 +44,24 @@ export async function GET(req: NextRequest) {
       providerAccountId: profile.id,
     });
     const existingScopes = Array.isArray(existing.data?.scopes) ? existing.data.scopes.filter((scope): scope is string => typeof scope === "string") : [];
-    credential.scopes = Array.from(new Set([...(credential.scopes ?? []), ...existingScopes]));
+    // Scope truth comes from Google, not from what Auterim asked for.
+    //
+    // buildGoogleAuthUrl sends include_granted_scopes=true, so a successful
+    // exchange returns the CUMULATIVE grant for this client: adding Drive to an
+    // existing Gmail connection comes back with the Gmail scopes still present,
+    // which is what makes incremental consent safe here.
+    //
+    // The provider list is therefore authoritative rather than unioned with the
+    // stored one. Unioning would be the dishonest choice: a user who removes a
+    // permission on Google's consent screen would keep being reported as still
+    // holding it, and the connector would show healthy for a capability it can
+    // no longer perform. The union only survives as a fallback for the case
+    // where Google returns no scope string at all, where dropping the stored
+    // truth would be a worse guess than keeping it.
+    const grantedScopes = (tokenData.scope ?? "").split(" ").filter(Boolean);
+    credential.scopes = grantedScopes.length
+      ? Array.from(new Set(grantedScopes))
+      : Array.from(new Set([...(credential.scopes ?? []), ...existingScopes]));
     // Google may omit refresh_token during incremental consent. Preserve the
     // existing encrypted refresh token and Drive folder configuration in that
     // case so adding Drive never breaks Gmail or resets the selected scope.

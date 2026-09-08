@@ -19,8 +19,18 @@ const root = process.cwd();
 const tmpDir = path.join(root, "tests", ".tmp-ai-runtime-smoke");
 fs.mkdirSync(tmpDir, { recursive: true });
 
+// The shared model timeout/retry ceilings live in src/lib/runtime/ai-limits.ts.
+// That path alias cannot resolve in this standalone loader, so the real values
+// are read from the module source and inlined, keeping one source of truth.
+const aiLimitsSource = fs.readFileSync(path.join(root, "src/lib/runtime/ai-limits.ts"), "utf8");
+const AI_LIMITS_INLINE = [
+  `const AI_REQUEST_TIMEOUT_MS = ${aiLimitsSource.match(/AI_REQUEST_TIMEOUT_MS = ([\d_]+)/)[1]};`,
+  `const AI_MAX_RETRIES = ${aiLimitsSource.match(/AI_MAX_RETRIES = ([\d_]+)/)[1]};`,
+].join("\n");
+
 function loadModule(relSourcePath) {
-  const source = fs.readFileSync(path.join(root, relSourcePath), "utf8");
+  const source = fs.readFileSync(path.join(root, relSourcePath), "utf8")
+    .replace('import { AI_MAX_RETRIES, AI_REQUEST_TIMEOUT_MS } from "@/lib/runtime/ai-limits";', AI_LIMITS_INLINE);
   const { code } = esbuild.transformSync(source, { loader: "ts", format: "esm", target: "node18" });
   const tmpFile = path.join(tmpDir, `${path.basename(relSourcePath, ".ts")}.mjs`);
   fs.writeFileSync(tmpFile, code, "utf8");

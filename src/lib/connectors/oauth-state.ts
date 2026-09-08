@@ -21,7 +21,7 @@ function stateSecret(): string {
 export type MicrosoftScopeProfileClaim = "base" | "teams";
 
 type MicrosoftOAuthStatePayload = OAuthStatePayload & { provider: "microsoft"; scopeProfile?: MicrosoftScopeProfileClaim };
-export type DirectOAuthProvider = "microsoft" | "salesforce" | "asana" | "jira" | "zendesk" | "intercom";
+export type DirectOAuthProvider = "microsoft" | "salesforce" | "asana" | "jira" | "zendesk" | "intercom" | "slack" | "hubspot";
 export type ProviderOAuthStatePayload = OAuthStatePayload & { provider: DirectOAuthProvider };
 export type ZendeskOAuthStatePayload = OAuthStatePayload & { provider: "zendesk"; subdomain: string };
 export type IntercomOAuthStatePayload = OAuthStatePayload & { provider: "intercom"; region: "us" | "eu" | "au" };
@@ -36,6 +36,8 @@ function providerStateSecret(provider: DirectOAuthProvider): string {
   if (provider === "jira") return process.env.JIRA_OAUTH_STATE_SECRET || process.env.JIRA_CLIENT_SECRET || "";
   if (provider === "zendesk") return process.env.ZENDESK_OAUTH_STATE_SECRET || process.env.ZENDESK_CLIENT_SECRET || "";
   if (provider === "intercom") return process.env.INTERCOM_OAUTH_STATE_SECRET || process.env.INTERCOM_CLIENT_SECRET || "";
+  if (provider === "slack") return process.env.SLACK_OAUTH_STATE_SECRET || process.env.SLACK_CLIENT_SECRET || "";
+  if (provider === "hubspot") return process.env.HUBSPOT_OAUTH_STATE_SECRET || process.env.HUBSPOT_CLIENT_SECRET || "";
   return process.env.SALESFORCE_OAUTH_STATE_SECRET || process.env.SALESFORCE_CLIENT_SECRET || "";
 }
 

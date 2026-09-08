@@ -50,7 +50,7 @@ assert.match(crm, /status: "unsupported"/);
 assert.match(crm, /supports: \(capability\) => SALESFORCE_READ_CAPABILITIES\.includes\(capability\)/, "salesforceAdapter must only ever advertise read capabilities");
 assert.match(crm, /async findPersonByEmail\(workspaceId, email\) \{\s*\n\s*const credential = await getStoredSalesforceCredential/, "salesforceAdapter.findPersonByEmail must use the real Salesforce REST lookup");
 assert.match(crm, /async getOpportunityContext\(workspaceId, person\)/, "salesforceAdapter must implement read-only company/opportunity context");
-assert.match(crm, /async executeApprovedRevenueActions\(\) \{ return \{ status: "unsupported", provider: "salesforce", capability: "contact\.write" \}; \}/, "salesforceAdapter must never execute a Salesforce write");
+assert.doesNotMatch(crm, /executeApprovedRevenueActions|salesforceRequest\(.*(?:POST|PATCH|DELETE)/, "salesforceAdapter must never execute a Salesforce write");
 assert.doesNotMatch(crm, /salesforceRequest\(.*"POST"|salesforceRequest\(.*"PATCH"|salesforceRequest\(.*"DELETE"/, "crm.ts must never issue a Salesforce mutation");
 
 assert.match(salesforceRest, /export const SALESFORCE_API_VERSION/, "the Salesforce API version must be centralized in one constant");

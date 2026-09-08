@@ -22,6 +22,7 @@ import { continueRunAfterApproval, runAgent as runAgentRuntime, type AgentRuntim
 import { installWorkflowFromSuggestion, type SuggestedWorkflow } from "@/lib/os/workflow-recommendations";
 import { getEntitlements, type Entitlements } from "@/lib/os/entitlements";
 import { reportLegacyMigrationEvent } from "@/lib/migration-telemetry";
+import { getConnectorDefinition } from "@/lib/connectors/registry";
 
 const STORAGE_KEY = "auterim-os-state-v7";
 const LEGACY_STORAGE_KEYS = ["inovense-os-state-v7", "inovense-os-state-v1"];
@@ -93,7 +94,7 @@ function reducer(state: OSState, action: OSAction): OSState {
       const hasRealConnector = (connectorId: string) => state.connectors.some((connector) =>
         connector.id === connectorId
         && connector.isConnected
-        && (connector.source === "native" || connector.source === "nango")
+        && connector.source === "native"
       );
       const missingRevenueRequirements = action.preferredOperator === "Revenue Operator"
         ? [
@@ -925,7 +926,7 @@ export function AppProvider({ children, initialContext }: { children: React.Reac
     if (mode === "preview") {
       dispatch({
         type: "APPEND_LOG",
-        log: logEntry(`Preview connector state blocked for ${connector.name}. Connectors require real OAuth or managed auth.`, "connector.preview_connect_blocked", "warn"),
+        log: logEntry(`Preview connector state blocked for ${connector.name}. Connectors require a real provider OAuth connection.`, "connector.preview_connect_blocked", "warn"),
       });
       return;
     }
@@ -942,7 +943,7 @@ export function AppProvider({ children, initialContext }: { children: React.Reac
       connectorId,
       patch: {
         records: connector.records,
-        source: connectorId === "gmail" || connectorId === "google_drive" ? "native" : "nango",
+        source: getConnectorDefinition(connectorId)?.authType === "direct_oauth" ? "native" : "seed",
       },
     });
   }, [setConnectorConnected, state.connectors, state.workspace]);

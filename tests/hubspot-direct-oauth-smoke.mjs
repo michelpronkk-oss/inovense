@@ -1,0 +1,41 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
+const registry = read("src/lib/connectors/registry.ts");
+const connector = read("src/lib/connectors/hubspot.ts");
+const auth = read("src/app/api/connectors/hubspot/auth/route.ts");
+const callback = read("src/app/api/connectors/hubspot/callback/route.ts");
+const executor = read("src/lib/operators/executors/hubspot.ts");
+const truth = read("src/lib/connectors/truth.ts");
+const disconnect = read("src/app/api/connectors/disconnect/route.ts");
+
+assert.match(registry, /hubspot:[\s\S]*?authType:\s*"direct_oauth"[\s\S]*?status:\s*"available"/);
+assert.match(connector, /crm\.objects\.contacts\.read/);
+assert.match(connector, /crm\.objects\.contacts\.write/);
+assert.match(connector, /crm\.objects\.deals\.read/);
+assert.match(connector, /crm\.objects\.deals\.write/);
+assert.match(connector, /crm\.objects\.notes\.write/);
+assert.match(connector, /crm\.objects\.tasks\.write/);
+assert.match(connector, /resolveAccessTokenWithRefreshLock/);
+assert.match(connector, /os_connector_credentials/);
+assert.match(auth, /createProviderOAuthState\("hubspot"/);
+assert.match(auth, /requireWorkspaceAdmin/);
+assert.doesNotMatch(auth, /Nango|@nangohq/i);
+assert.match(callback, /parseProviderOAuthState\("hubspot"/);
+assert.match(callback, /exchangeHubSpotCode/);
+assert.match(callback, /upsert\(credential/);
+assert.match(callback, /clearLegacyNangoConnection/);
+assert.doesNotMatch(callback, /@nangohq|@\/lib\/integrations\/nango|new Nango\s*\(/i);
+assert.match(executor, /hubSpotApiRequest/);
+assert.match(executor, /getStoredHubSpotCredential/);
+assert.doesNotMatch(executor, /@nangohq|Nango\s*\(|nangoConnectionId|providerConfigKey/);
+assert.match(truth, /connectorKey: HUBSPOT_CONNECTOR_KEY/);
+assert.match(truth, /source: hubspotRow \? "native"/);
+assert.match(truth, /legacyNangoConnection/);
+assert.match(disconnect, /connectorKey === "hubspot"/);
+
+console.log("hubspot-direct-oauth-smoke: passed");

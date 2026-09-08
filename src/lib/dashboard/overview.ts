@@ -171,7 +171,7 @@ function inLast24h(value: unknown, now = Date.now()): boolean {
 function connectorIsConnected(truth: SafeConnectorTruth | undefined): boolean {
   if (!truth) return false;
   if (truth.connectorKey === "gmail") return Boolean(truth.executable && (truth.status === "healthy" || truth.status === "connected"));
-  return Boolean(truth.status === "connected" && truth.providerConfigKey && truth.nangoConnectionId);
+  return Boolean((truth.status === "healthy" || truth.status === "connected") && truth.source === "native");
 }
 
 function operatorDisplayName(key: string | null): string {

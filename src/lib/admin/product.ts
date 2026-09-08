@@ -6,6 +6,8 @@ import {
   getMicrosoftTeamsScopeState,
   readMicrosoftTeamsSettings,
 } from "@/lib/connectors/microsoft-teams";
+import { getPipelineLagMetrics, type PipelineLagMetrics } from "@/lib/runtime/pipeline-metrics";
+import { getProviderFailureSnapshot } from "@/lib/runtime/provider-health";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 
 type Row = Record<string, unknown>;
@@ -20,6 +22,16 @@ export type ProductData = {
   operators: Array<{ key: string; total: number; completed: number; running: number; failed: number }>;
   approvalStates: Array<{ state: string; count: number }>;
   connectorStates: Array<{ key: string; status: string; count: number }>;
+  /** Compact operational truth: what is failing right now, and what is backing up. */
+  operations: {
+    providerFailuresAvailable: boolean;
+    degradedConnectors: string[];
+    reconnectRequiredConnectors: string[];
+    permissionRequiredConnectors: string[];
+    rateLimitedConnectors: string[];
+    recentProviderFailures: number;
+    lag: PipelineLagMetrics;
+  };
   unavailable?: string;
 };
 
@@ -80,11 +92,24 @@ function nativeConnectorRows(rows: Row[]): Row[] {
   return output;
 }
 
+const EMPTY_LAG: PipelineLagMetrics = {
+  available: false, measuredAt: new Date(0).toISOString(),
+  signals: { pending: null, oldestAgeMinutes: null, oldestCandidateAgeMinutes: null },
+  workflows: { pending: null, oldestAgeMinutes: null, stuck: null, oldestStuckAgeMinutes: null, blocked: null, executionUnknown: null },
+  approvals: { pending: null, oldestAgeMinutes: null },
+  outcomeObservation: { pending: null, oldestAgeMinutes: null, exhausted: null },
+};
+
+const EMPTY_OPERATIONS: ProductData["operations"] = {
+  providerFailuresAvailable: false, degradedConnectors: [], reconnectRequiredConnectors: [],
+  permissionRequiredConnectors: [], rateLimitedConnectors: [], recentProviderFailures: 0, lag: EMPTY_LAG,
+};
+
 function unavailable(message: string): ProductData {
   return {
     sourceStatus: "unavailable", runs: { total: null, completed: null, running: null, failed: null },
     approvals: { pending: null, approved: null, rejected: null }, connectors: { connected: null, needsAttention: null, workspaces: null },
-    operators: [], approvalStates: [], connectorStates: [], unavailable: message,
+    operators: [], approvalStates: [], connectorStates: [], operations: EMPTY_OPERATIONS, unavailable: message,
   };
 }
 
@@ -93,6 +118,13 @@ export async function getProductData(): Promise<ProductData> {
   if (!hasSupabaseAdminConfig()) return unavailable("Supabase is not configured.");
 
   const db = createSupabaseAdmin();
+  // Operational truth is read alongside the product counters, from the one
+  // shared provider-failure record and real persisted pipeline state. Neither
+  // read can throw: an unavailable source degrades to "not measured".
+  const [providerFailures, lag] = await Promise.all([
+    getProviderFailureSnapshot({ supabase: db }),
+    getPipelineLagMetrics({ supabase: db }),
+  ]);
   const [runResult, approvalResult, managedConnectorResult, nativeCredentialResult] = await Promise.all([
     safely(() => db.from("os_operator_runs").select("operator_key,status,workspace_id,created_at").order("created_at", { ascending: false }).limit(500)),
     safely(() => db.from("os_approvals").select("status,workspace_id,created_at").order("created_at", { ascending: false }).limit(500)),
@@ -147,5 +179,14 @@ export async function getProductData(): Promise<ProductData> {
     operators: [...operators.entries()].sort((a, b) => b[1].total - a[1].total).slice(0, 8).map(([key, value]) => ({ key, ...value })),
     approvalStates: approvalResult.available ? tally(approvalResult.rows, "status").slice(0, 6).map(([state, count]) => ({ state, count })) : [],
     connectorStates: [...connectorTotals.values()].sort((a, b) => b.count - a.count).slice(0, 8),
+    operations: {
+      providerFailuresAvailable: providerFailures.available,
+      degradedConnectors: providerFailures.degradedConnectors,
+      reconnectRequiredConnectors: providerFailures.reconnectRequiredConnectors,
+      permissionRequiredConnectors: providerFailures.permissionRequiredConnectors,
+      rateLimitedConnectors: providerFailures.rateLimitedConnectors,
+      recentProviderFailures: providerFailures.recentFailureCount,
+      lag,
+    },
   };
 }

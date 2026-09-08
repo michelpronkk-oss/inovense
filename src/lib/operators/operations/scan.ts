@@ -289,7 +289,10 @@ export async function scanOperationsSignals(input: {
     loadWorkspacePolicySettings({ supabase, workspaceId }),
   ]);
   const policySettings = await loadPolicyWorkspaceSettings({ supabase, workspaceId });
-  const isConnected = (key: string) => truth.some((c) => c.connectorKey === key && c.status === "connected" && c.providerConfigKey && c.nangoConnectionId);
+  const isConnected = (key: string) => truth.some((c) =>
+    c.connectorKey === key
+    && (c.status === "healthy" || c.status === "connected")
+    && c.executable === true);
   const trelloConnected = isConnected("trello");
   const asanaTruth = truth.find((c) => c.connectorKey === "asana");
   const asanaConnected = asanaTruth?.status === "healthy";

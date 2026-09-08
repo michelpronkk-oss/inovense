@@ -124,8 +124,8 @@ export async function GET(req: NextRequest) {
 
   const slack = connectorTruth.find((c) => c.connectorKey === "slack") ?? null;
   const trello = connectorTruth.find((c) => c.connectorKey === "trello") ?? null;
-  const slackConnected = Boolean(slack && slack.status === "connected" && slack.providerConfigKey && slack.nangoConnectionId);
-  const trelloConnected = Boolean(trello && trello.status === "connected" && trello.providerConfigKey && trello.nangoConnectionId);
+  const slackConnected = Boolean(slack?.executable);
+  const trelloConnected = Boolean(trello?.executable);
   const trelloDestinationSet = Boolean(policy.trello.defaultBoardId && policy.trello.defaultListId);
   const asana = connectorTruth.find((c) => c.connectorKey === "asana") ?? null;
   const jira = connectorTruth.find((c) => c.connectorKey === "jira") ?? null;

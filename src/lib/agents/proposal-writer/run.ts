@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { AI_MAX_RETRIES, AI_REQUEST_TIMEOUT_MS } from "@/lib/runtime/ai-limits";
 import { getClientLocaleForLeadSource } from "@/lib/client-locale";
 import { normalizeCurrencyCode } from "@/lib/currency";
 import {
@@ -243,7 +244,7 @@ export async function runProposalWriter(
 
   const resolution = resolveOutputLanguage(input);
 
-  const client = new Anthropic({ apiKey });
+  const client = new Anthropic({ apiKey, timeout: AI_REQUEST_TIMEOUT_MS, maxRetries: AI_MAX_RETRIES });
 
   let rawText: string;
   try {
