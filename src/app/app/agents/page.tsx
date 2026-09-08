@@ -5,6 +5,7 @@ import Link from "next/link";
 import { StatusBadge } from "@/components/operators/status-badge";
 import { useOS } from "@/lib/os/app-provider";
 import { OPERATOR_REGISTRY } from "@/lib/operators/registry";
+import { getOperatorCapabilityCopy } from "@/lib/operators/capability-presentation";
 import { GLYPHS, OPERATORS, type Operator } from "@/data/operators";
 
 type OperatorReadiness = {
@@ -56,12 +57,6 @@ const REAL_OPERATOR_VALUE: Record<string, { owns: string; value: string; enhance
     value: "Finds work that needs attention and prepares controlled task updates.",
     enhancement: "Team alerts alongside task-board monitoring",
   },
-};
-
-const DISCOVERY_REQUIREMENTS: Record<string, { required: string; compatible: string[]; optional: string[] }> = {
-  revenue: { required: "One email system", compatible: ["Gmail", "Microsoft 365"], optional: ["HubSpot", "Salesforce", "Google Drive"] },
-  client_flow: { required: "One customer conversation system", compatible: ["Gmail", "Microsoft 365"], optional: ["HubSpot", "Salesforce", "Google Drive"] },
-  operations: { required: "One project system", compatible: ["Jira", "Asana", "Trello"], optional: ["Slack", "Microsoft Teams", "Google Drive"] },
 };
 
 const LOOP_STEPS = ["Detect", "Prepare", "Approve", "Execute", "Log"];
@@ -118,7 +113,7 @@ function AgentCard({ model, onOpenDetails }: { model: CardModel; onOpenDetails: 
     : status === "configured" ? "Configured" : status === "available" ? (readyReason ? "Ready to activate" : "Available") : status === "upgrade" ? "Upgrade" : "Coming next";
 
   const attentionState = productState?.state === "needs_attention" || productState?.state === "plan_required" || productState?.state === "billing_attention" || productState?.state === "suspended";
-  const discovery = DISCOVERY_REQUIREMENTS[model.key];
+  const capabilityCopy = getOperatorCapabilityCopy(model.key);
   const locked = productState?.state === "needs_setup";
 
   const foot = productState
@@ -158,9 +153,9 @@ function AgentCard({ model, onOpenDetails }: { model: CardModel; onOpenDetails: 
 
       <div className="ag-mission">{op.mission}</div>
 
-      {discovery && <div style={{ display: "grid", gap: 5, marginTop: -2, fontSize: 11.5, color: "var(--text-mute)" }}>
-        <span>{locked ? `Requires: ${discovery.required}` : productState?.connectedSystems.length ? `Connected context: ${productState.connectedSystems.slice(0, 2).join(" · ")}` : `Works with: ${discovery.compatible.join(" · ")}`}</span>
-        {locked && <span style={{ color: "var(--text-faint)" }}>Works with: {discovery.compatible.join(" · ")}</span>}
+      {capabilityCopy.required.length > 0 && <div style={{ display: "grid", gap: 5, marginTop: -2, fontSize: 11.5, color: "var(--text-mute)" }}>
+        <span>{locked ? `Requires: ${capabilityCopy.required.join(" · ")}` : productState?.connectedSystems.length ? `Connected context: ${capabilityCopy.required.join(" · ")}` : `Requires: ${capabilityCopy.required.join(" · ")}`}</span>
+        {capabilityCopy.optional.length > 0 && <span style={{ color: "var(--text-faint)" }}>Optional context: {capabilityCopy.optional.join(" · ")}</span>}
       </div>}
 
       {!productState && status === "available" && readyReason && (

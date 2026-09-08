@@ -525,7 +525,8 @@ export default function ConnectorsPage() {
     setAddOpen(true);
     setSetupConnectorId(null);
     setSearch(searchParams.get("q") ?? "");
-    setDiscoveryCategory("all");
+    const requestedCategory = searchParams.get("category") as ConnectorDiscoveryCategory | null;
+    setDiscoveryCategory(requestedCategory && CONNECTOR_DISCOVERY_CATEGORIES.some((category) => category.key === requestedCategory) ? requestedCategory : "all");
     router.replace("/app/connectors");
   }, [router, searchParams]);
 

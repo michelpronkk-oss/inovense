@@ -29,10 +29,13 @@ import type {
   SystemMapNode as SystemMapNodeData,
   SystemMapStatus,
 } from "@/lib/admin/system-map";
+import type { SystemMapLiveContext, SystemMapLiveData, SystemMapRuntimeStatus } from "@/lib/admin/system-map-live";
 
 const STORAGE_KEY = "auterim-admin-system-map-positions-v1";
 
-type FlowNode = Node<SystemMapNodeData, "systemMapNode">;
+type SystemMapNote = { id: string; node_id: string | null; title: string; body: string; updated_at: string };
+type FlowData = SystemMapNodeData & { live?: SystemMapLiveContext };
+type FlowNode = Node<FlowData, "systemMapNode">;
 
 function loadStoredPositions(): Record<string, { x: number; y: number }> {
   if (typeof window === "undefined") return {};
@@ -62,6 +65,7 @@ function statusTone(status?: SystemMapStatus): string {
   if (status === "needs_attention") return "attention";
   return "";
 }
+function runtimeTone(status?: SystemMapRuntimeStatus) { return status === "healthy" ? "live" : status === "failing" ? "attention" : status === "degraded" || status === "disconnected" ? "partial" : "planned"; }
 
 function SystemMapNodeCard({ data, selected }: NodeProps<FlowNode>) {
   const tone = statusTone(data.status);
@@ -87,7 +91,7 @@ function SystemMapNodeCard({ data, selected }: NodeProps<FlowNode>) {
       )}
       <div className="sysmap-node-head">
         <span className="sysmap-node-label">{data.label}</span>
-        {data.status && <span className={`admin-status-dot ${tone}`} aria-hidden />}
+        {(data.live || data.status) && <span className={`admin-status-dot ${data.live ? runtimeTone(data.live.status) : tone} ${data.live?.status === "failing" ? "sysmap-status-incident" : ""}`} aria-hidden />}
       </div>
       {data.subtitle && <span className="sysmap-node-subtitle">{data.subtitle}</span>}
       {isCollapsible && (
@@ -101,12 +105,12 @@ function SystemMapNodeCard({ data, selected }: NodeProps<FlowNode>) {
 
 const nodeTypes = { systemMapNode: SystemMapNodeCard };
 
-function toFlowNodes(nodes: SystemMapNodeData[], positions: Record<string, { x: number; y: number }>): FlowNode[] {
+function toFlowNodes(nodes: SystemMapNodeData[], positions: Record<string, { x: number; y: number }>, liveByNode = new Map<string, SystemMapLiveContext>()): FlowNode[] {
   return nodes.map((node) => ({
     id: node.id,
     type: "systemMapNode" as const,
     position: positions[node.id] ?? node.position,
-    data: node,
+    data: { ...node, live: liveByNode.get(node.id) },
     draggable: true,
     focusable: true,
   }));
@@ -124,8 +128,11 @@ function toFlowEdges(edges: SystemMapEdge[]): Edge[] {
   }));
 }
 
-function DetailsPanel({ node, branchLabel, onClose }: { node: SystemMapNodeData | null; branchLabel?: string; onClose: () => void }) {
+function DetailsPanel({ node, branchLabel, live, notes, onClose, onCreateNote, onEditNote, onDeleteNote }: { node: SystemMapNodeData | null; branchLabel?: string; live?: SystemMapLiveContext; notes: SystemMapNote[]; onClose: () => void; onCreateNote: (title: string, body: string) => Promise<void>; onEditNote: (note: SystemMapNote, title: string, body: string) => Promise<void>; onDeleteNote: (id: string) => Promise<void> }) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const [title, setTitle] = useState(""); const [body, setBody] = useState(""); const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState(""); const [editBody, setEditBody] = useState("");
 
   useEffect(() => {
     if (node) closeRef.current?.focus();
@@ -164,6 +171,7 @@ function DetailsPanel({ node, branchLabel, onClose }: { node: SystemMapNodeData 
             <span className={`admin-status-pill ${statusTone(node.status)}`}>{statusLabel(node.status)}</span>
           </div>
         )}
+        {live && <div className="sysmap-panel-section"><span>Current operational state</span><span className={`admin-status-pill ${runtimeTone(live.status)}`}>{live.status.replace(/_/g, " ")}</span><p>{live.summary}</p>{live.lastUpdated && <small>Updated {new Date(live.lastUpdated).toLocaleString("en-GB")}</small>}{live.blockingIssue && <p className="sysmap-panel-warning">{live.blockingIssue}</p>}</div>}
         {node.subtitle && (
           <div className="sysmap-panel-section">
             <span>Type</span>
@@ -204,6 +212,7 @@ function DetailsPanel({ node, branchLabel, onClose }: { node: SystemMapNodeData 
             </a>
           </div>
         )}
+        <div className="sysmap-panel-section"><span>Founder notes</span><div className="sysmap-notes">{notes.map((note) => <div className="sysmap-note" key={note.id}>{editingId === note.id ? <form className="sysmap-note-form" onSubmit={async (event) => { event.preventDefault(); if (!editTitle.trim() || !editBody.trim()) return; setSaving(true); await onEditNote(note, editTitle, editBody); setSaving(false); setEditingId(null); }}><input aria-label="Note title" value={editTitle} onChange={(event) => setEditTitle(event.target.value)} maxLength={120} /><textarea aria-label="Note body" value={editBody} onChange={(event) => setEditBody(event.target.value)} maxLength={1000} rows={3} /><div><button className="sysmap-btn" disabled={saving}>{saving ? "Saving..." : "Save changes"}</button><button type="button" className="sysmap-note-cancel" onClick={() => setEditingId(null)}>Cancel</button></div></form> : <><strong>{note.title}</strong><p>{note.body}</p><small>{new Date(note.updated_at).toLocaleString("en-GB")}</small><div><button type="button" onClick={() => { setEditingId(note.id); setEditTitle(note.title); setEditBody(note.body); }}>Edit</button><button type="button" onClick={() => { if (window.confirm("Delete this note?")) void onDeleteNote(note.id); }}>Delete</button></div></>}</div>)}</div><form className="sysmap-note-form" onSubmit={async (event) => { event.preventDefault(); if (!title.trim() || !body.trim()) return; setSaving(true); await onCreateNote(title, body); setTitle(""); setBody(""); setSaving(false); }}><input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Note title" maxLength={120} /><textarea value={body} onChange={(event) => setBody(event.target.value)} placeholder="Add a concise note" maxLength={1000} rows={3} /><button className="sysmap-btn" disabled={saving}>{saving ? "Saving..." : "Add note"}</button></form></div>
       </div>
     </aside>
   );
@@ -213,24 +222,34 @@ function SystemMapInner({
   initialNodes,
   initialEdges,
   branchLookup,
+  initialLive,
 }: {
   initialNodes: SystemMapNodeData[];
   initialEdges: SystemMapEdge[];
   branchLookup: Record<SystemMapBranchId, string>;
+  initialLive: SystemMapLiveData;
 }) {
   const { fitView, setCenter, getZoom } = useReactFlow<FlowNode, Edge>();
-  const [rfNodes, setRfNodes] = useState<FlowNode[]>(() => toFlowNodes(initialNodes, {}));
+  const [liveData, setLiveData] = useState<SystemMapLiveData>(initialLive);
+  const [notes, setNotes] = useState<SystemMapNote[]>([]);
+  const liveByNode = useMemo(() => new Map(liveData.contexts.map((item) => [item.nodeId, item])), [liveData]);
+  const [rfNodes, setRfNodes] = useState<FlowNode[]>(() => toFlowNodes(initialNodes, {}, new Map(initialLive.contexts.map((item) => [item.nodeId, item]))));
   const [collapsedBranches, setCollapsedBranches] = useState<Set<SystemMapBranchId>>(new Set());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
     const stored = loadStoredPositions();
-    if (Object.keys(stored).length > 0) setRfNodes(toFlowNodes(initialNodes, stored));
+    if (Object.keys(stored).length > 0) setRfNodes(toFlowNodes(initialNodes, stored, new Map(initialLive.contexts.map((item) => [item.nodeId, item]))));
     // Only runs once on mount — deliberately excludes initialNodes from deps
     // since the data source is static for the lifetime of this page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const refreshLive = useCallback(async () => { const response = await fetch("/api/admin/system-map", { cache: "no-store" }); if (response.ok) setLiveData(await response.json() as SystemMapLiveData); }, []);
+  const refreshNotes = useCallback(async () => { const response = await fetch("/api/admin/system-map/notes", { cache: "no-store" }); if (response.ok) { const json = await response.json() as { notes?: SystemMapNote[] }; setNotes(json.notes ?? []); } }, []);
+  useEffect(() => { void refreshNotes(); const timer = window.setInterval(() => void refreshLive(), 60_000); return () => window.clearInterval(timer); }, [refreshLive, refreshNotes]);
+  useEffect(() => { setRfNodes((current) => current.map((node) => ({ ...node, data: { ...node.data, live: liveByNode.get(node.id) } }))); }, [liveByNode]);
 
   const flowEdges = useMemo(() => toFlowEdges(initialEdges), [initialEdges]);
 
@@ -289,11 +308,11 @@ function SystemMapInner({
   }, []);
 
   const handleResetLayout = useCallback(() => {
-    setRfNodes(toFlowNodes(initialNodes, {}));
+    setRfNodes(toFlowNodes(initialNodes, {}, liveByNode));
     if (typeof window !== "undefined") window.localStorage.removeItem(STORAGE_KEY);
     setCollapsedBranches(new Set());
     window.requestAnimationFrame(() => fitView({ duration: 300 }));
-  }, [fitView, initialNodes]);
+  }, [fitView, initialNodes, liveByNode]);
 
   const handleFitView = useCallback(() => fitView({ duration: 300 }), [fitView]);
   const handleExpandAll = useCallback(() => setCollapsedBranches(new Set()), []);
@@ -324,6 +343,8 @@ function SystemMapInner({
     },
     [search, initialNodes, rfNodes, setCenter, getZoom],
   );
+  const saveNote = useCallback(async (method: "POST" | "PATCH" | "DELETE", payload: Record<string, unknown> | null, id?: string) => { const response = await fetch(`/api/admin/system-map/notes${id ? `?id=${encodeURIComponent(id)}` : ""}`, { method, headers: payload ? { "Content-Type": "application/json" } : undefined, body: payload ? JSON.stringify(payload) : undefined }); if (response.ok) await refreshNotes(); }, [refreshNotes]);
+  const selectedNotes = notes.filter((note) => note.node_id === selectedId);
 
   return (
     <div className="sysmap-shell">
@@ -340,6 +361,9 @@ function SystemMapInner({
           </button>
           <button type="button" className="sysmap-btn" onClick={handleCollapseAll}>
             Collapse all
+          </button>
+          <button type="button" className="sysmap-btn" onClick={() => void refreshLive()}>
+            Refresh health
           </button>
         </div>
         <form className="sysmap-search" role="search" onSubmit={handleSearch}>
@@ -375,16 +399,16 @@ function SystemMapInner({
           <Background variant={BackgroundVariant.Dots} gap={26} size={1.4} color="rgba(148,163,184,0.16)" />
           <Controls position="bottom-left" showInteractive={false} className="sysmap-controls" />
         </ReactFlow>
-        <DetailsPanel node={selectedNode} branchLabel={selectedBranchLabel} onClose={() => setSelectedId(null)} />
+        <DetailsPanel node={selectedNode} branchLabel={selectedBranchLabel} live={selectedId ? liveByNode.get(selectedId) : undefined} notes={selectedNotes} onClose={() => setSelectedId(null)} onCreateNote={(title, body) => saveNote("POST", { nodeId: selectedId, title, body })} onEditNote={(note, title, body) => saveNote("PATCH", { id: note.id, title, body })} onDeleteNote={(id) => saveNote("DELETE", null, id)} />
       </div>
     </div>
   );
 }
 
-export function SystemMapCanvas(props: { nodes: SystemMapNodeData[]; edges: SystemMapEdge[]; branchLookup: Record<SystemMapBranchId, string> }) {
+export function SystemMapCanvas(props: { nodes: SystemMapNodeData[]; edges: SystemMapEdge[]; branchLookup: Record<SystemMapBranchId, string>; initialLive: SystemMapLiveData }) {
   return (
     <ReactFlowProvider>
-      <SystemMapInner initialNodes={props.nodes} initialEdges={props.edges} branchLookup={props.branchLookup} />
+      <SystemMapInner initialNodes={props.nodes} initialEdges={props.edges} branchLookup={props.branchLookup} initialLive={props.initialLive} />
     </ReactFlowProvider>
   );
 }
