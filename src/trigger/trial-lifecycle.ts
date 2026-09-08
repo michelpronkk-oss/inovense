@@ -1,6 +1,7 @@
 import { schedules } from "@trigger.dev/sdk/v3";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { sendTrialLifecycleEmail } from "@/lib/billing/trial-notifications";
+import { withTaskHeartbeat } from "@/lib/runtime/task-heartbeat";
 
 type TrialRow = { id: string; workspace_id: string; trial_plan: "starter" | "growth" | "scale"; trial_ends_at: string | null };
 
@@ -13,7 +14,7 @@ export const trialLifecycle = schedules.task({
   cron: { pattern: "5 * * * *", timezone: "UTC" },
   retry: { maxAttempts: 2, factor: 2, minTimeoutInMs: 1_000, maxTimeoutInMs: 8_000, randomize: true },
   queue: { name: "billing-lifecycle", concurrencyLimit: 1 },
-  run: async () => {
+  run: () => withTaskHeartbeat({ taskId: "trial-lifecycle", expectedCadenceMinutes: 60 }, async () => {
     const supabase = createSupabaseAdmin();
     const result = await supabase.from("os_trial_entitlements").select("id,workspace_id,trial_plan,trial_ends_at").eq("trial_status", "active").not("trial_ends_at", "is", null).limit(1000);
     if (result.error) throw new Error(`Could not load active trials: ${result.error.message}`);
@@ -36,5 +37,5 @@ export const trialLifecycle = schedules.task({
       }
     }
     return { activeTrials: rows(result.data).length, reminders, expired };
-  },
+  }),
 });

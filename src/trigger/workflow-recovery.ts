@@ -2,6 +2,7 @@ import { schedules } from "@trigger.dev/sdk/v3";
 import { pruneProviderOperations } from "@/lib/runtime/provider-health";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { listWorkspacesWithStuckWorkflowSteps, recoverStuckWorkflowSteps, type WorkflowRecoverySummary } from "@/lib/workflows/recovery";
+import { withTaskHeartbeat } from "@/lib/runtime/task-heartbeat";
 
 /**
  * Automatic stuck-workflow recovery.
@@ -31,7 +32,7 @@ export const workflowRecoveryScan = schedules.task({
   retry: { maxAttempts: 2, factor: 2, minTimeoutInMs: 1_000, maxTimeoutInMs: 8_000, randomize: true },
   queue: { name: "workflow-recovery", concurrencyLimit: 1 },
   maxDuration: 300,
-  run: async () => {
+  run: () => withTaskHeartbeat({ taskId: "workflow-recovery-scan", expectedCadenceMinutes: 15 }, async () => {
     const supabase = createSupabaseAdmin();
     const now = new Date();
 
@@ -90,5 +91,5 @@ export const workflowRecoveryScan = schedules.task({
       prunedOperationalRows,
       results,
     };
-  },
+  }),
 });

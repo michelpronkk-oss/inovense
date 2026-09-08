@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireInternalAdmin } from "@/lib/admin/auth";
-import { getSystemMapLiveData } from "@/lib/admin/system-map-live";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 
 const clean = (value: unknown, max: number) => typeof value === "string" ? value.trim().slice(0, max) : "";
 
 async function scope() {
-  const live = await getSystemMapLiveData();
-  return live.workspaceId;
+  if (!hasSupabaseAdminConfig()) return null;
+  const result = await createSupabaseAdmin().from("os_workspaces").select("id").order("created_at", { ascending: true }).limit(1).maybeSingle();
+  return result.error || typeof result.data?.id !== "string" ? null : result.data.id;
 }
 
 export async function GET() {

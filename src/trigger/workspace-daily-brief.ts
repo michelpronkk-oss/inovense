@@ -3,6 +3,7 @@ import { sendSlackInternalNotification } from "@/lib/operators/executors/slack";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { recordSystemTaskRun } from "@/lib/operators/runtime/system-task";
+import { withTaskHeartbeat } from "@/lib/runtime/task-heartbeat";
 
 const DEFAULT_WORKSPACE_ID = "ws-atlas";
 
@@ -154,9 +155,9 @@ export const workspaceDailyBrief = schedules.task({
   },
   retry: { maxAttempts: 2, factor: 2, minTimeoutInMs: 1_000, maxTimeoutInMs: 8_000, randomize: true },
   queue: { name: "workspace-briefs", concurrencyLimit: 1 },
-  run: async () => {
+  run: () => withTaskHeartbeat({ taskId: "workspace-daily-brief", expectedCadenceMinutes: 24 * 60 }, async () => {
     // TODO: multi-workspace fanout. List active workspaces, run a brief per
     // workspace, respect plan entitlements and operator enabled/disabled state.
     return runWorkspaceDailyBrief(DEFAULT_WORKSPACE_ID);
-  },
+  }),
 });

@@ -4,6 +4,7 @@ import { getOperatorReadiness } from "@/lib/operators/readiness";
 import { getWorkspaceExecutionEligibility } from "@/lib/os/execution-eligibility";
 import { getOperatorActivationState } from "@/lib/operators/activation";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { withTaskHeartbeat } from "@/lib/runtime/task-heartbeat";
 
 type OperationsOperatorScanPayload = {
   workspaceId?: string;
@@ -96,7 +97,7 @@ export const operationsOperatorDailyScan = schedules.task({
     pattern: "0 8 * * *",
     timezone: "UTC",
   },
-  run: async () => {
+  run: () => withTaskHeartbeat({ taskId: "operations-operator-daily-scan", expectedCadenceMinutes: 24 * 60 }, async () => {
     const discovery = await listEligibleOperationsWorkspaceIds();
 
     if (!discovery.ok) {
@@ -144,5 +145,5 @@ export const operationsOperatorDailyScan = schedules.task({
       workspacesNeedingAttention,
       results,
     };
-  },
+  }),
 });

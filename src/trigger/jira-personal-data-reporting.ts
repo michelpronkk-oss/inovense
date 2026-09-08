@@ -1,5 +1,6 @@
 import { schedules } from "@trigger.dev/sdk/v3";
 import { reportPersistedJiraPersonalData } from "@/lib/connectors/jira-personal-data";
+import { withTaskHeartbeat } from "@/lib/runtime/task-heartbeat";
 
 /**
  * Atlassian's default reporting cycle is seven days. Running this bounded,
@@ -13,6 +14,5 @@ export const jiraPersonalDataReporting = schedules.task({
   retry: { maxAttempts: 2, factor: 2, minTimeoutInMs: 1_000, maxTimeoutInMs: 8_000, randomize: true },
   queue: { name: "jira-personal-data-reporting", concurrencyLimit: 1 },
   maxDuration: 300,
-  run: async () => reportPersistedJiraPersonalData(),
+  run: () => withTaskHeartbeat({ taskId: "jira-personal-data-reporting", expectedCadenceMinutes: 24 * 60 }, reportPersistedJiraPersonalData),
 });
-

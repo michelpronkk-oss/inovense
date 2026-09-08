@@ -270,14 +270,18 @@ function buildConnectorNodes(): SystemMapNode[] {
 // ── Governance branch (static, factual — real modules, no live registry) ─
 
 function buildGovernanceNodes(): SystemMapNode[] {
-  const items: Array<Pick<SystemMapNode, "id" | "label" | "description" | "responsibility" | "notes">> = [
-    { id: "gov-approvals", label: "Approvals", description: "Every external or risky action (send email, write CRM record, move a card) routes through an explicit approval step before it executes.", responsibility: "No unattended external action without human sign-off.", notes: "Enforced per-operator via each operator's approvalRequiredActions list." },
+  const items: Array<Pick<SystemMapNode, "id" | "label" | "description" | "responsibility" | "notes" | "relatedRoute">> = [
+    { id: "gov-approvals", label: "Approvals", description: "Every external or risky action (send email, write CRM record, move a card) routes through an explicit approval step before it executes.", responsibility: "No unattended external action without human sign-off.", notes: "Enforced per-operator via each operator's approvalRequiredActions list.", relatedRoute: "/product" },
     { id: "gov-policies", label: "Policies", description: "Per-workspace rules that define what an operator is and is not allowed to do, beyond the platform's own hard-coded blocked actions.", responsibility: "Let a business narrow operator behavior to its own risk tolerance." },
     { id: "gov-memory", label: "Memory", description: "Structured, reusable business context an operator can read before acting, kept separate from raw customer data.", responsibility: "Give operators consistent context without re-asking the business." },
     { id: "gov-auth-rls", label: "Auth & RLS", description: "Supabase Row Level Security plus workspace-scoped auth checks on every table and route, so one workspace can never read another's data.", responsibility: "Tenant isolation at the data layer." },
     { id: "gov-execution-eligibility", label: "Execution eligibility", description: "Real, billing-derived gate (src/lib/os/execution-eligibility.ts) that decides whether a workspace is currently allowed to run real, non-preview operator work.", responsibility: "Ties real execution to real billing status, not client-supplied state." },
     { id: "gov-operator-activation", label: "Operator activation", description: "Explicit, per-workspace on/off switch (src/lib/operators/activation.ts) for a given operator's unattended scheduled scan.", responsibility: "An operator never runs unattended until a workspace turns it on." },
     { id: "gov-readiness", label: "Readiness", description: "Capability and connector requirement graph (src/lib/operators/readiness.ts, connector-requirements.ts) that computes how ready a workspace is to run a given operator.", responsibility: "Turns connector state into an honest readiness percentage and next setup step." },
+    { id: "gov-signal-engine", label: "Signal Engine", description: "Bounded ingestion and candidate processing turns connector events into safe operator signals.", responsibility: "Detect relevant work without storing full provider content.", relatedRoute: "/system-health" },
+    { id: "gov-workflow-runtime", label: "Workflow Runtime", description: "Coordinates multi-step work while preserving approval, dependency, and recovery state.", responsibility: "Move prepared work through controlled execution.", relatedRoute: "/product" },
+    { id: "gov-execution-layer", label: "Execution Layer", description: "Idempotent execution intents record policy decisions and external write outcomes.", responsibility: "Prevent blind retries and duplicate external actions.", notes: "An uncertain provider result is held for human review.", relatedRoute: "/operators" },
+    { id: "gov-outcomes", label: "Outcome Observers", description: "Records observed workflow outcomes and attribution evidence where an observer has run.", responsibility: "Measure confirmed outcomes without inventing causality." },
   ];
   return items.map((item, index) => ({
     ...item,
@@ -383,6 +387,17 @@ const DEPENDENCY_EDGE_PAIRS: Array<[string, string]> = [
   ["operator-operations", "gov-approvals"],
   ["operator-operations", "gov-policies"],
   ["operator-operations", "gov-memory"],
+  ["operator-revenue", "gov-signal-engine"],
+  ["operator-client_flow", "gov-signal-engine"],
+  ["operator-operations", "gov-signal-engine"],
+  ["operator-revenue", "gov-workflow-runtime"],
+  ["operator-client_flow", "gov-workflow-runtime"],
+  ["operator-operations", "gov-workflow-runtime"],
+  ["gov-workflow-runtime", "gov-execution-layer"],
+  ["gov-workflow-runtime", "gov-approvals"],
+  ["gov-outcomes", "gov-execution-layer"],
+  ["gov-signal-engine", "infra-trigger"],
+  ["gov-workflow-runtime", "infra-trigger"],
   ["biz-support", "infra-resend"],
   ["biz-feedback", "infra-resend"],
   ["biz-billing", "biz-dodo"],
