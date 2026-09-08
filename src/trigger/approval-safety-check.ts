@@ -14,6 +14,8 @@ const STALE_THRESHOLD_HOURS = 48;
 
 export const approvalSafetyCheck = task({
   id: "approval-safety-check",
+  retry: { maxAttempts: 2, factor: 2, minTimeoutInMs: 1_000, maxTimeoutInMs: 8_000, randomize: true },
+  queue: { name: "approval-safety", concurrencyLimit: 2 },
   run: async (payload: ApprovalSafetyPayload) => {
     const workspaceId = payload.workspaceId?.trim() || DEFAULT_WORKSPACE_ID;
     const supabase = createSupabaseAdmin();

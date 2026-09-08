@@ -6,6 +6,7 @@ import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { AuthorizationError, requireWorkspaceRoleForIdentity } from "@/lib/server/workspace-access";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { getAppUrl } from "@/lib/urls";
+import { advanceWorkflowForApproval } from "@/lib/workflows/lifecycle";
 
 type RejectBody = {
   workspaceId?: string;
@@ -111,6 +112,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (update.error) {
     return NextResponse.json({ error: update.error.message }, { status: 500 });
   }
+  await optionalLearningStep("workflow.advance_after_rejection", () => advanceWorkflowForApproval({ approvalId: id, workspaceId: context.workspaceId, supabase }));
 
   const continuation = asContinuationPayload(approval.data.continuation_payload);
   const operatorRunId = continuation?.operatorRunId || approval.data.run_id;

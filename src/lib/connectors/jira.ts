@@ -1,5 +1,6 @@
 import { decryptToken, encryptToken } from "@/lib/connectors/crypto";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { providerRetryDelayMs, shouldRetryProviderFailure } from "@/lib/runtime/provider-retry";
 
 export const JIRA_REDIRECT_URI = "https://app.auterim.com/api/connectors/jira/callback";
 const JIRA_AUTHORIZE_URL = "https://auth.atlassian.com/authorize";
@@ -21,7 +22,7 @@ export type JiraIssue = {
   id: string; key: string; self?: string;
   fields?: { summary?: string; description?: unknown; status?: { name?: string; statusCategory?: { key?: string } }; priority?: { id?: string; name?: string }; assignee?: { accountId?: string; displayName?: string } | null; reporter?: { accountId?: string; displayName?: string } | null; duedate?: string | null; created?: string; updated?: string; labels?: string[]; issuetype?: { id?: string; name?: string }; parent?: { key?: string }; comment?: { comments?: Array<{ id?: string; body?: unknown; author?: { displayName?: string } }> } };
 };
-export type JiraIssueType = { id: string; name: string; subtask?: boolean; hierarchyLevel?: number };
+export type JiraIssueType = { id: string; name: string; subtask?: boolean; hierarchyLevel?: number; createable?: boolean };
 export type JiraPriority = { id: string; name: string };
 export type StoredJiraCredential = {
   workspace_id: string; connector_key: "jira"; provider_account_id?: string | null; provider_email?: string | null;
@@ -91,7 +92,7 @@ export function toStoredJiraCredential(input: { workspaceId: string; token: Jira
   return {
     workspace_id: input.workspaceId, connector_key: "jira", provider_account_id: input.identity?.accountId ?? null, provider_email: input.identity?.emailAddress?.toLowerCase() ?? null,
     encrypted_access_token: encryptToken(input.token.access_token), encrypted_refresh_token: input.token.refresh_token ? encryptToken(input.token.refresh_token) : null, token_expires_at: expiresAt, scopes, status: "connected",
-    metadata: { provider: "jira", cloudId: input.resource.id, siteUrl: input.resource.url ?? null, siteName: input.resource.name ?? null, selectedProjectId: null, selectedProjectKey: null, selectedProjectName: null, syncCursor: null, connectedAt: new Date().toISOString() },
+    metadata: { provider: "jira", cloudId: input.resource.id, siteUrl: input.resource.url ?? null, siteName: input.resource.name ?? null, selectedProjectId: null, selectedProjectKey: null, selectedProjectName: null, selectedIssueTypeId: null, selectedIssueTypeName: null, syncCursor: null, connectedAt: new Date().toISOString() },
   };
 }
 
@@ -103,6 +104,10 @@ export async function getStoredJiraCredential(workspaceId: string, supabase = cr
 
 export class JiraReconnectionRequiredError extends Error {}
 export class JiraExecutionError extends Error { constructor(message: string, public readonly code = "jira_write_failed", public readonly status = 502) { super(message); } }
+
+export function isCreateableJiraIssueType(issueType: JiraIssueType | null | undefined): issueType is JiraIssueType {
+  return Boolean(issueType?.id && issueType.name && issueType.subtask !== true && issueType.createable !== false);
+}
 
 export async function resolveJiraAccessToken(input: { workspaceId: string; credential: StoredJiraCredential; supabase?: ReturnType<typeof createSupabaseAdmin> }): Promise<string> {
   const supabase = input.supabase ?? createSupabaseAdmin();
@@ -128,9 +133,9 @@ async function providerFetch<T>(url: string, token: string, init?: RequestInit):
     lastStatus = response.status;
     const body = await parseResponse<T>(response);
     if (response.ok) return { response, body };
-    if (![429, 500, 502, 503, 504].includes(response.status)) return { response, body };
+    if (!shouldRetryProviderFailure({ status: response.status, attempt })) return { response, body };
     const retryAfter = Number(response.headers.get("retry-after") || 0);
-    await new Promise((resolve) => setTimeout(resolve, Math.min(1500, retryAfter * 1000 || 250 * (attempt + 1))));
+    await new Promise((resolve) => setTimeout(resolve, providerRetryDelayMs(attempt, retryAfter > 0 ? retryAfter * 1000 : null, 1500)));
   }
   throw new JiraExecutionError(`Jira request failed (${lastStatus || "network"}).`, "provider_unavailable", 502);
 }
@@ -187,7 +192,7 @@ export async function listJiraProjects(token: string, cloudId: string): Promise<
 export async function getJiraProject(token: string, cloudId: string, projectIdOrKey: string): Promise<JiraProject> { return jiraFetch<JiraProject>(token, cloudId, `/project/${encodeURIComponent(projectIdOrKey)}`); }
 export async function listJiraIssueTypes(token: string, cloudId: string, projectIdOrKey: string): Promise<JiraIssueType[]> {
   const body = await jiraFetch<{ issueTypes?: JiraIssueType[] }>(token, cloudId, `/issue/createmeta/${encodeURIComponent(projectIdOrKey)}/issuetypes?startAt=0&maxResults=50`);
-  return (body.issueTypes ?? []).filter((item) => item.id && item.name && item.subtask !== true);
+  return (body.issueTypes ?? []).filter(isCreateableJiraIssueType);
 }
 export async function listJiraPriorities(token: string, cloudId: string): Promise<JiraPriority[]> { return jiraFetch<JiraPriority[]>(token, cloudId, "/priority"); }
 

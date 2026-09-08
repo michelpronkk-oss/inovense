@@ -13,6 +13,7 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     ".trigger/**",
+    ".claude/worktrees/**",
     "videos-ino/build/**",
     "videos-ino/out/**",
     "social-assets/dist/**",

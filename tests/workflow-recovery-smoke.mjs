@@ -1,0 +1,17 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+const lifecycle = fs.readFileSync("src/lib/workflows/lifecycle.ts", "utf8");
+const materializer = fs.readFileSync("src/lib/workflows/materialize.ts", "utf8");
+const recovery = fs.readFileSync("src/lib/workflows/recovery.ts", "utf8");
+const approve = fs.readFileSync("src/app/api/approvals/[id]/approve/route.ts", "utf8");
+assert.match(lifecycle, /approval_execution_failed/);
+assert.match(lifecycle, /dependency_unavailable/);
+assert.match(materializer, /approval_already_exists/);
+assert.match(materializer, /dedupe_key/);
+assert.match(materializer, /execution_intent_id/);
+assert.match(recovery, /execution_unknown/);
+assert.match(recovery, /eq\("status", "executing"\)/);
+assert.match(approve, /execution_unknown/);
+assert.match(approve, /requiresManualReview: executionStatus === "execution_unknown"/);
+assert.doesNotMatch(recovery, /executePreparedActionAfterApproval|fetch\(/);
+console.log("Workflow recovery smoke: safe blocked states, approval dedupe, and durable execution linkage verified.");

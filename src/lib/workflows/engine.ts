@@ -120,3 +120,17 @@ export function conservativeAttribution(input: { hasObservedProviderState: boole
   if (input.hasLinkedAction && input.hasDeterministicProviderRelation) return "direct";
   return input.hasLinkedAction ? "influenced" : "observed";
 }
+
+/** Derive plan state from durable step truth; no caller may mark a plan done by fiat. */
+export function deriveWorkflowStatus(steps: Array<Pick<WorkflowStep, "status">>): WorkflowStatus {
+  if (steps.length === 0) return "blocked";
+  const states = steps.map((step) => step.status);
+  if (states.every((state) => state === "completed" || state === "skipped")) return "completed";
+  if (states.some((state) => state === "executing")) return "executing";
+  const hasCompleted = states.some((state) => state === "completed");
+  if (states.some((state) => state === "blocked" || state === "failed")) return hasCompleted ? "partially_completed" : "blocked";
+  if (states.some((state) => state === "rejected")) return hasCompleted ? "partially_completed" : "blocked";
+  if (states.some((state) => state === "awaiting_approval")) return "awaiting_approval";
+  if (states.some((state) => state === "approved")) return "partially_approved";
+  return "planned";
+}

@@ -9,6 +9,8 @@ import type { SignalEvent } from "@/lib/signals/types";
  */
 export const signalEngineIngest = task({
   id: "signal-engine-ingest",
+  retry: { maxAttempts: 2, factor: 2, minTimeoutInMs: 500, maxTimeoutInMs: 8_000, randomize: true },
+  queue: { name: "signal-ingest", concurrencyLimit: 4 },
   run: async (payload: { workspaceId: string; events: SignalEvent[] }) => {
     return ingestSignalBatch({ workspaceId: payload.workspaceId, events: payload.events.slice(0, 100) });
   },

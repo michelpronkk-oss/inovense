@@ -34,6 +34,8 @@ function safeErrorMessage(error: unknown): string {
 
 export const connectorHealthCheck = task({
   id: "connector-health-check",
+  retry: { maxAttempts: 2, factor: 2, minTimeoutInMs: 1_000, maxTimeoutInMs: 8_000, randomize: true },
+  queue: { name: "connector-health", concurrencyLimit: 2 },
   run: async (payload: ConnectorHealthPayload) => {
     const workspaceId = payload.workspaceId?.trim() || DEFAULT_WORKSPACE_ID;
 

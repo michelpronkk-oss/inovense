@@ -37,6 +37,7 @@ type ApprovalRow = {
     editedAt?: string | null;
     editedBy?: string | null;
     operatorKey: string | null;
+    workflow?: { id: string | null; objective: string | null; stepId: string | null; stepOrder: number | null; stepCount: number | null; stepReason: string | null };
     dedupeKey?: string | null;
     dedupeMetadata?: Record<string, unknown> | null;
     preparedActions?: string[];
@@ -453,6 +454,7 @@ export default function ApprovalsPage() {
             const operations = item.payload_preview.operations ?? null;
             const operationsExecution = recordValue(item.payload_preview.executionResult);
             const preparedActions = item.payload_preview.preparedActions ?? [];
+            const workflow = item.payload_preview.workflow;
             const crmStatus = item.payload_preview.crmStatusText
               ?? (item.payload_preview.crmPreparationStatus === "hubspot_not_connected"
                 ? "CRM update not prepared because HubSpot is not connected."
@@ -514,6 +516,13 @@ export default function ApprovalsPage() {
 
             return (
               <article key={item.id} className="appr-row approval-review-card">
+                {workflow?.id && (
+                  <div style={{ marginBottom: 10, padding: "8px 10px", borderRadius: 10, background: "rgba(77,232,225,0.06)", border: "1px solid rgba(77,232,225,0.14)", fontSize: 11.5, color: "var(--text-dim)" }}>
+                    <strong style={{ color: "var(--cyan)" }}>{workflow.objective || "Workflow action"}</strong>
+                    {workflow.stepOrder && workflow.stepCount ? ` · Step ${workflow.stepOrder} of ${workflow.stepCount}` : ""}
+                    {workflow.stepReason ? <div style={{ marginTop: 3 }}>{workflow.stepReason}</div> : null}
+                  </div>
+                )}
                 <div className="appr-row-top">
                   <span className={`pill ${tagClass(category)}`}>{category}</span>
                   <span className="appr-row-title">{item.title}</span>

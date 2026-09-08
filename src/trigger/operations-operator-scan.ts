@@ -17,6 +17,8 @@ const MAX_FANOUT_WORKSPACES = 500;
 // or Trello changes directly here; everything stays behind approval.
 export const operationsOperatorScan = task({
   id: "operations-operator-scan",
+  retry: { maxAttempts: 2, factor: 2, minTimeoutInMs: 1_000, maxTimeoutInMs: 8_000, randomize: true },
+  queue: { name: "operator-scans", concurrencyLimit: 3 },
   run: async (payload: OperationsOperatorScanPayload) => {
     const workspaceId = payload.workspaceId?.trim() || DEFAULT_OPERATIONS_WORKSPACE_ID;
     const result = await scanOperationsSignals({ workspaceId, sourceMode: "manual" });
@@ -88,6 +90,8 @@ type FanoutWorkspaceResult = {
 
 export const operationsOperatorDailyScan = schedules.task({
   id: "operations-operator-daily-scan",
+  retry: { maxAttempts: 2, factor: 2, minTimeoutInMs: 1_000, maxTimeoutInMs: 8_000, randomize: true },
+  queue: { name: "operator-scan-fanout", concurrencyLimit: 1 },
   cron: {
     pattern: "0 8 * * *",
     timezone: "UTC",

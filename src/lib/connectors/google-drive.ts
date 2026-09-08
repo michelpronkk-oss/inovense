@@ -5,6 +5,7 @@ import {
   type StoredConnectorCredential,
 } from "@/lib/connectors/gmail";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { providerRetryDelayMs, shouldRetryProviderFailure } from "@/lib/runtime/provider-retry";
 
 export const GOOGLE_DRIVE_CONNECTOR_KEY = "google_drive" as const;
 export const DRIVE_API_BASE = "https://www.googleapis.com/drive/v3";
@@ -136,9 +137,9 @@ async function driveRequest(token: string, path: string, init?: RequestInit): Pr
       const response = await fetch(`${DRIVE_API_BASE}${path.startsWith("/") ? path : `/${path}`}`, { ...init, headers: { Accept: "application/json", Authorization: `Bearer ${token}`, ...(init?.headers ?? {}) }, cache: "no-store" });
       lastStatus = response.status;
       if (response.ok) return response;
-      if (![429, 500, 502, 503, 504].includes(response.status)) throw providerError(response.status);
+      if (!shouldRetryProviderFailure({ status: response.status, attempt })) throw providerError(response.status);
       const retryAfter = Number(response.headers.get("retry-after") || 0);
-      await new Promise((resolve) => setTimeout(resolve, Math.min(1500, retryAfter * 1000 || 250 * (attempt + 1))));
+      await new Promise((resolve) => setTimeout(resolve, providerRetryDelayMs(attempt, retryAfter > 0 ? retryAfter * 1000 : null, 1500)));
     } catch (error) {
       if (error instanceof GoogleDriveError) throw error;
       if (attempt === 2) throw new GoogleDriveError("Google Drive could not be reached.", "provider_unavailable", 502);

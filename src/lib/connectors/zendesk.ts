@@ -1,5 +1,6 @@
 import { decryptToken, encryptToken } from "@/lib/connectors/crypto";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { providerRetryDelayMs, shouldRetryProviderFailure } from "@/lib/runtime/provider-retry";
 
 export const ZENDESK_REDIRECT_URI = "https://app.auterim.com/api/connectors/zendesk/callback";
 export const ZENDESK_READ_SCOPES = ["tickets:read", "users:read", "organizations:read"] as const;
@@ -144,9 +145,9 @@ async function providerFetch<T>(baseUrl: string, token: string, path: string, in
     lastStatus = response.status;
     const body = await parseResponse<T>(response);
     if (response.ok) return { response, body };
-    if (![429, 500, 502, 503, 504].includes(response.status)) return { response, body };
+    if (!shouldRetryProviderFailure({ status: response.status, attempt })) return { response, body };
     const retryAfter = Number(response.headers.get("retry-after") || 0);
-    await new Promise((resolve) => setTimeout(resolve, Math.min(1500, retryAfter * 1000 || 250 * (attempt + 1))));
+    await new Promise((resolve) => setTimeout(resolve, providerRetryDelayMs(attempt, retryAfter > 0 ? retryAfter * 1000 : null, 1500)));
   }
   throw new ZendeskExecutionError(`Zendesk request failed (${lastStatus || "network"}).`, "provider_unavailable", 502);
 }

@@ -1,5 +1,6 @@
 import { decryptToken, encryptToken } from "@/lib/connectors/crypto";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { providerRetryDelayMs, shouldRetryProviderFailure } from "@/lib/runtime/provider-retry";
 
 export const ASANA_REDIRECT_URI = "https://app.auterim.com/api/connectors/asana/callback";
 const ASANA_OAUTH_AUTHORIZE = "https://app.asana.com/-/oauth_authorize";
@@ -83,9 +84,9 @@ async function asanaFetchPage<T>(token: string, path: string, init?: RequestInit
     const response = await fetch(`${ASANA_API_BASE}${path}`, { ...init, headers: { Accept: "application/json", Authorization: `Bearer ${token}`, ...(init?.headers ?? {}) }, cache: "no-store" });
     lastStatus = response.status;
     if (response.ok) { const body = await response.json() as { data: T; next_page?: { offset?: string } | null }; return { data: body.data, nextOffset: body.next_page?.offset ?? null }; }
-    if (![429, 500, 502, 503, 504].includes(response.status)) break;
+    if (!shouldRetryProviderFailure({ status: response.status, attempt })) break;
     const retryAfter = Number(response.headers.get("retry-after") || 0);
-    await new Promise((resolve) => setTimeout(resolve, Math.min(1500, retryAfter * 1000 || 200 * (attempt + 1))));
+    await new Promise((resolve) => setTimeout(resolve, providerRetryDelayMs(attempt, retryAfter > 0 ? retryAfter * 1000 : null, 1500)));
   }
   throw new Error(`Asana API request failed (${lastStatus || "network"})`);
 }

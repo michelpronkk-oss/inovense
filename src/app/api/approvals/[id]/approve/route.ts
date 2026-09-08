@@ -23,6 +23,8 @@ import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { AuthorizationError, requireWorkspaceRoleForIdentity } from "@/lib/server/workspace-access";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { getAppUrl } from "@/lib/urls";
+import { advanceWorkflowForApproval } from "@/lib/workflows/lifecycle";
+import { classifyProviderFailure } from "@/lib/runtime/provider-retry";
 
 type ApproveBody = {
   workspaceId?: string;
@@ -638,9 +640,17 @@ function teamsErrorResponse(error: unknown) {
   }, { status: 502 });
 }
 
+function safeProviderActionMessage(provider: string, code: string): string {
+  if (code === "reconnect_required" || code === "oauth_refresh_failed") return `${provider} needs attention before this action can continue.`;
+  if (code === "permission_required" || code.includes("scope")) return `${provider} permissions need attention before this action can continue.`;
+  if (code.includes("destination") || code.includes("inaccessible") || code.includes("not_configured")) return `The configured ${provider} destination is no longer available.`;
+  if (code.includes("unavailable") || code.includes("rate_limit") || code.includes("provider_failed")) return `${provider} is temporarily unavailable. The action was not retried automatically.`;
+  return `${provider} could not complete this action. Review the connector status and approval log.`;
+}
+
 function sharedActionErrorResponse(error: unknown) {
   if (error instanceof AsanaExecutionError) {
-    return NextResponse.json({ error: error.code, message: error.message }, { status: error.status });
+    return NextResponse.json({ error: error.code, message: safeProviderActionMessage("Asana", error.code) }, { status: error.status });
   }
   if (error instanceof TrelloExecutionError) {
     return NextResponse.json({
@@ -649,9 +659,9 @@ function sharedActionErrorResponse(error: unknown) {
       details: error.details,
     }, { status: error.details.status ?? 502 });
   }
-  if (error instanceof JiraExecutionError) return NextResponse.json({ error: error.code, message: error.message }, { status: error.status });
-  if (error instanceof ZendeskExecutionError) return NextResponse.json({ error: error.code, message: error.message }, { status: error.status });
-  if (error instanceof IntercomExecutionError) return NextResponse.json({ error: error.code, message: error.message }, { status: error.status });
+  if (error instanceof JiraExecutionError) return NextResponse.json({ error: error.code, message: safeProviderActionMessage("Jira", error.code) }, { status: error.status });
+  if (error instanceof ZendeskExecutionError) return NextResponse.json({ error: error.code, message: safeProviderActionMessage("Zendesk", error.code) }, { status: error.status });
+  if (error instanceof IntercomExecutionError) return NextResponse.json({ error: error.code, message: safeProviderActionMessage("Intercom", error.code) }, { status: error.status });
   return NextResponse.json({
     error: "shared_action_failed",
     message: error instanceof Error ? error.message : "Shared action execution failed.",
@@ -712,6 +722,9 @@ async function executeSharedActionApproval(input: {
       action: input.payload.preparedAction,
       approvalId: input.approvalId,
     });
+    if (policyDecision?.intentId) {
+      await input.supabase.from("os_execution_intents").update({ status: "succeeded" }).eq("id", policyDecision.intentId).eq("workspace_id", input.payload.workspaceId);
+    }
     const executionResult = {
       status: "executed",
       action: actionResult,
@@ -725,6 +738,7 @@ async function executeSharedActionApproval(input: {
       continuation_payload: { ...continuation, executionResult },
     }).eq("id", input.approvalId).eq("workspace_id", input.payload.workspaceId);
     if (approvalUpdate.error) return NextResponse.json({ error: "approval_update_failed", message: approvalUpdate.error.message }, { status: 500 });
+    await advanceWorkflowForApproval({ approvalId: input.approvalId, workspaceId: input.payload.workspaceId, supabase: input.supabase });
 
     const actionType = input.payload.preparedAction.actionType;
     const trelloEvent = input.payload.preparedAction.connectorKey === "asana"
@@ -792,13 +806,26 @@ async function executeSharedActionApproval(input: {
         : error instanceof IntercomExecutionError
           ? { message: error.message, details: { code: error.code, status: error.status } }
       : { message: error instanceof Error ? error.message : "Shared action execution failed.", details: null };
+    const errorDetails = errorPayload.details && typeof errorPayload.details === "object" ? errorPayload.details as Record<string, unknown> : {};
+    const safeErrorPayload = {
+      ...errorPayload,
+      message: typeof errorDetails.code === "string" ? safeProviderActionMessage(connectorLabel, errorDetails.code) : "The provider action could not be completed. Review the approval log.",
+    };
+    const failureClass = classifyProviderFailure({
+      status: typeof errorDetails.status === "number" ? errorDetails.status : null,
+      code: typeof errorDetails.code === "string" ? errorDetails.code : null,
+    });
+    const executionStatus = failureClass === "transient" ? "execution_unknown" : "failed";
+    if (policyDecision?.intentId) {
+      await input.supabase.from("os_execution_intents").update({ status: executionStatus }).eq("id", policyDecision.intentId).eq("workspace_id", input.payload.workspaceId);
+    }
     await input.supabase.from("os_approvals").update({
       status: "failed",
       resolved_at: new Date().toISOString(),
       resolved_by: input.resolvedBy,
       continuation_payload: {
         ...continuation,
-        executionResult: { status: "failed", error: errorPayload },
+        executionResult: { status: executionStatus, error: safeErrorPayload, requiresManualReview: executionStatus === "execution_unknown" },
       },
     }).eq("id", input.approvalId).eq("workspace_id", input.payload.workspaceId);
     await optionalStep([], "slack_notification.execution_failed", () => sendSlackApprovalNotification({
@@ -1111,6 +1138,7 @@ async function executeSlackApproval(input: {
     if (approvalUpdate.error) {
       return NextResponse.json({ error: "approval_update_failed", message: approvalUpdate.error.message }, { status: 500 });
     }
+    await advanceWorkflowForApproval({ approvalId: input.approvalId, workspaceId: input.payload.workspaceId, supabase: input.supabase });
 
     await optionalStep([], "os_execution_logs.insert", () => input.supabase.from("os_execution_logs").insert({
       id: `log-slack-send-${Date.now()}`,
@@ -1242,6 +1270,7 @@ async function executeTeamsApproval(input: {
     if (approvalUpdate.error) {
       return NextResponse.json({ error: "approval_update_failed", message: approvalUpdate.error.message }, { status: 500 });
     }
+    await advanceWorkflowForApproval({ approvalId: input.approvalId, workspaceId: input.payload.workspaceId, supabase: input.supabase });
 
     await optionalStep([], "os_execution_logs.insert", () => input.supabase.from("os_execution_logs").insert({
       id: `log-teams-send-${Date.now()}`,
@@ -1638,6 +1667,7 @@ async function executeMicrosoftApproval(input: {
   if (approvalUpdate.error) {
     return NextResponse.json({ error: "approval_update_failed", message: approvalUpdate.error.message }, { status: 500 });
   }
+  await advanceWorkflowForApproval({ approvalId, workspaceId: payload.workspaceId, supabase });
 
   await optionalStep(warnings, "os_execution_logs.insert", () => supabase.from("os_execution_logs").insert([
     {
@@ -2312,6 +2342,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (approvalUpdate.error) {
     return NextResponse.json({ error: "approval_update_failed", message: approvalUpdate.error.message }, { status: 500 });
   }
+  await advanceWorkflowForApproval({ approvalId: id, workspaceId: context.workspaceId, supabase });
 
   await optionalStep(warnings, "os_execution_logs.insert", () => supabase.from("os_execution_logs").insert([
     {

@@ -10,6 +10,12 @@ type GmailContinuationPayload = {
   workspaceId?: string;
   operatorRunId?: string;
   operatorKey?: string;
+  workflowId?: string;
+  workflowObjective?: string;
+  workflowStepId?: string;
+  workflowStepOrder?: number;
+  workflowStepCount?: number;
+  workflowStepReason?: string;
   to?: string;
   channelId?: string;
   subject?: string;
@@ -230,6 +236,14 @@ function mapApproval(row: Record<string, unknown>, livePolicy: PolicyWorkspaceSe
       editedAt: continuation.editedAt ?? null,
       editedBy: continuation.editedBy ?? null,
       operatorKey: continuation.operatorKey ?? null,
+      workflow: {
+        id: stringValue(continuation.workflowId),
+        objective: stringValue(continuation.workflowObjective),
+        stepId: stringValue(continuation.workflowStepId),
+        stepOrder: typeof continuation.workflowStepOrder === "number" ? continuation.workflowStepOrder : null,
+        stepCount: typeof continuation.workflowStepCount === "number" ? continuation.workflowStepCount : null,
+        stepReason: stringValue(continuation.workflowStepReason),
+      },
       dedupeKey: continuation.dedupeKey ?? (typeof row.dedupe_key === "string" ? row.dedupe_key : null),
       dedupeMetadata: continuation.dedupeMetadata ?? null,
       preparedActions: Array.isArray(continuation.preparedActions) ? continuation.preparedActions.filter((item): item is string => typeof item === "string") : [],

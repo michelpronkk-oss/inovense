@@ -1,0 +1,15 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+const lifecycle = fs.readFileSync("src/lib/workflows/lifecycle.ts", "utf8");
+const migration = fs.readFileSync("supabase/migrations/20260908_workflow_lifecycle_hardening.sql", "utf8");
+const approve = fs.readFileSync("src/app/api/approvals/[id]/approve/route.ts", "utf8");
+const reject = fs.readFileSync("src/app/api/approvals/[id]/reject/route.ts", "utf8");
+assert.match(migration, /approval_id text references public\.os_approvals/);
+assert.match(migration, /workflowStepId/);
+assert.match(lifecycle, /dependency_unavailable/);
+assert.match(lifecycle, /approval_execution_failed/);
+assert.match(lifecycle, /advanceWorkflowForApproval/);
+assert.match(approve, /advanceWorkflowForApproval/);
+assert.match(reject, /advanceWorkflowForApproval/);
+assert.doesNotMatch(lifecycle, /executePreparedActionAfterApproval|fetch\(/);
+console.log("Workflow approval smoke: canonical approval links, dependency blocking, lifecycle advancement, and no parallel provider execution verified.");

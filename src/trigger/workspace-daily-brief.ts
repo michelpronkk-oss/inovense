@@ -152,6 +152,8 @@ export const workspaceDailyBrief = schedules.task({
     pattern: "0 9 * * *",
     timezone: "UTC",
   },
+  retry: { maxAttempts: 2, factor: 2, minTimeoutInMs: 1_000, maxTimeoutInMs: 8_000, randomize: true },
+  queue: { name: "workspace-briefs", concurrencyLimit: 1 },
   run: async () => {
     // TODO: multi-workspace fanout. List active workspaces, run a brief per
     // workspace, respect plan entitlements and operator enabled/disabled state.

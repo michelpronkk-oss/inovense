@@ -11,6 +11,8 @@ function rows(value: unknown): TrialRow[] {
 export const trialLifecycle = schedules.task({
   id: "trial-lifecycle",
   cron: { pattern: "5 * * * *", timezone: "UTC" },
+  retry: { maxAttempts: 2, factor: 2, minTimeoutInMs: 1_000, maxTimeoutInMs: 8_000, randomize: true },
+  queue: { name: "billing-lifecycle", concurrencyLimit: 1 },
   run: async () => {
     const supabase = createSupabaseAdmin();
     const result = await supabase.from("os_trial_entitlements").select("id,workspace_id,trial_plan,trial_ends_at").eq("trial_status", "active").not("trial_ends_at", "is", null).limit(1000);

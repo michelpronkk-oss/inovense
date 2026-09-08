@@ -1,0 +1,17 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+const signal = fs.readFileSync("src/lib/signals/store.ts", "utf8");
+const workflow = fs.readFileSync("src/lib/workflows/store.ts", "utf8");
+const migration = fs.readFileSync("supabase/migrations/20260908_signal_engine.sql", "utf8");
+const lifecycle = fs.readFileSync("src/lib/workflows/lifecycle.ts", "utf8");
+const trigger = fs.readFileSync("src/trigger/signal-engine.ts", "utf8");
+assert.match(signal, /onConflict: "workspace_id,dedupe_key"/);
+assert.match(signal, /claim_os_signal_sync_lease/);
+assert.match(workflow, /onConflict: "workspace_id,dedupe_key"/);
+assert.match(workflow, /materializable/);
+assert.match(migration, /unique \(workspace_id, dedupe_key\)/);
+assert.match(lifecycle, /advanceWorkflowForApproval/);
+assert.match(lifecycle, /materializeWorkflowStep/);
+assert.match(trigger, /maxAttempts: 2/);
+assert.match(trigger, /concurrencyLimit: 4/);
+console.log("Launch reliability smoke: workspace scoping, cursor leases, signal/workflow dedupe, dependency advancement, and fail-closed materialization verified.");

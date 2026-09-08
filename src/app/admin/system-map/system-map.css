@@ -3,12 +3,9 @@
    and status tones (.admin-status-pill/.admin-status-dot) rather than
    inventing a parallel color language. */
 
-/* Break out of the shared .admin-content 1320px reading-width container
-   (src/app/admin/admin.css) for this page only, so the graph can use the
-   full available width next to the sidebar instead of sitting in a boxed
-   column with a large unused margin. Scoped via :has() so no other admin
-   page is affected. */
-.admin-content:has(.admin-system-map-page) { width: 100%; max-width: none; padding-right: clamp(14px, 1.6vw, 24px); }
+/* The .admin-content full-bleed override for this page lives in
+   src/app/admin/admin.css, right next to the base rule it overrides --
+   see the comment there for why. */
 
 .sysmap-shell { display: grid; gap: 16px; }
 
@@ -108,9 +105,23 @@
 .sysmap-panel-link { color: #5ce2db; font-size: 11px; font-weight: 600; text-decoration: none; }
 
 @media (max-width: 820px) {
-  .admin-content:has(.admin-system-map-page) { padding-right: 0; }
-  .sysmap-canvas-wrap { height: 62vh; border-radius: 0; }
-  .sysmap-panel { position: fixed; inset: auto 10px 10px 10px; top: auto; height: min(66vh, 520px); }
-  .sysmap-search { min-width: 0; flex: 1 1 160px; }
-  .sysmap-controls.react-flow__controls { flex-direction: row; }
+  .sysmap-shell { gap: 12px; }
+  /* .admin-content keeps its normal 18px mobile gutter (the page title
+     needs it too) -- only the toolbar and canvas break back out of it to
+     reach the true screen edge, since that's the part that actually
+     benefits from the extra width on a small screen. */
+  .sysmap-toolbar, .sysmap-canvas-wrap { margin-inline: -18px; width: calc(100% + 36px); }
+  .sysmap-toolbar { flex-wrap: nowrap; border-radius: 0; border-inline: 0; padding: 10px 14px; gap: 8px; }
+  /* A single scrollable row (same pattern as .admin-sidebar-nav) reads
+     cleaner on a phone than four buttons wrapping across lines. */
+  .sysmap-toolbar-group { flex: none; overflow-x: auto; -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 20px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 20px), transparent); scroll-behavior: smooth; scrollbar-width: none; }
+  .sysmap-toolbar-group::-webkit-scrollbar { display: none; }
+  .sysmap-btn { flex: none; padding: 8px 12px; min-height: 36px; }
+  .sysmap-search { margin-left: 0; flex: 1 1 auto; min-width: 96px; }
+  /* 16px prevents iOS Safari's automatic zoom-on-focus for smaller inputs. */
+  .sysmap-search input { font-size: 16px; }
+  .sysmap-canvas-wrap { height: calc(100dvh - 230px); min-height: 420px; border-radius: 0; border-inline: 0; }
+  .sysmap-panel { position: fixed; inset: auto 8px 8px 8px; top: auto; width: auto; height: min(60dvh, 480px); border-radius: 14px; }
+  .sysmap-controls.react-flow__controls button { width: 40px; height: 40px; }
+  .sysmap-node { min-width: 150px; max-width: 180px; }
 }

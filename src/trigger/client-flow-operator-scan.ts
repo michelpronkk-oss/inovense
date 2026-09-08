@@ -14,6 +14,8 @@ const MAX_FANOUT_WORKSPACES = 500;
 
 export const clientFlowOperatorScan = task({
   id: "client-flow-operator-scan",
+  retry: { maxAttempts: 2, factor: 2, minTimeoutInMs: 1_000, maxTimeoutInMs: 8_000, randomize: true },
+  queue: { name: "operator-scans", concurrencyLimit: 3 },
   run: async (payload: ClientFlowOperatorScanPayload) => {
     const workspaceId = payload.workspaceId?.trim();
     if (!workspaceId) {
@@ -89,6 +91,8 @@ type FanoutWorkspaceResult = {
 
 export const clientFlowOperatorDailyScan = schedules.task({
   id: "client-flow-operator-daily-scan",
+  retry: { maxAttempts: 2, factor: 2, minTimeoutInMs: 1_000, maxTimeoutInMs: 8_000, randomize: true },
+  queue: { name: "operator-scan-fanout", concurrencyLimit: 1 },
   cron: {
     pattern: "30 7 * * *",
     timezone: "UTC",
