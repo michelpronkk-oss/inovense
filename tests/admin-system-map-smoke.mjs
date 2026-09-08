@@ -35,7 +35,9 @@ function testSourceContracts() {
   assert.match(layout, /requireInternalAdmin/, "the shared admin layout must still call requireInternalAdmin");
   assert.match(layout, /isSystemMapWorkspace/, "the admin layout must explicitly identify the System Map route");
   assert.match(layout, /admin-shell-main-workspace/, "the System Map must receive a route-scoped shell variant");
-  assert.match(layout, /admin-content-workspace/, "the System Map must receive a route-scoped content variant");
+  assert.match(layout, /admin-workspace/, "the System Map must render outside the normal admin-content wrapper");
+  assert.match(layout, /\?\s*\(\s*<main className="admin-workspace"/, "System Map must have a dedicated main branch");
+  assert.match(layout, /<main className="admin-content">\{children\}<\/main>/, "normal admin routes must retain their constrained content branch");
 
   assert.ok(fs.existsSync(path.join(root, "src/app/admin/system-map/page.tsx")), "route file must exist as a normal child of src/app/admin");
   const page = read("src/app/admin/system-map/page.tsx");
@@ -48,7 +50,8 @@ function testSourceContracts() {
   const styles = read("src/app/admin/system-map/system-map.css");
   const adminStyles = read("src/app/admin/admin.css");
   assert.match(adminStyles, /\.admin-shell-main-workspace\s*\{[\s\S]*grid-template-rows:\s*58px minmax\(0,1fr\)/, "System Map shell must reserve the viewport below the utility bar");
-  assert.match(adminStyles, /\.admin-content-workspace\s*\{[\s\S]*max-width:\s*none/, "System Map must remove the shared 1320px max-width on the actual content ancestor");
+  assert.match(adminStyles, /\.admin-workspace\s*\{[\s\S]*width:\s*100%/, "System Map must use a direct full-width workspace ancestor");
+  assert.doesNotMatch(adminStyles, /\.admin-workspace\s*\{[^}]*max-width/, "System Map workspace must not introduce another max-width");
   assert.doesNotMatch(adminStyles, /:has\(\.admin-system-map-page\)/, "System Map width must not depend on an inner-child :has override");
   assert.match(styles, /grid-template-rows:\s*auto minmax\(0, 1fr\)/, "System Map must reserve all remaining viewport height for its workspace");
   assert.match(styles, /grid-template-columns:\s*minmax\(0, 1fr\) 348px/, "System Map must keep a dedicated inspector without constraining the graph");
