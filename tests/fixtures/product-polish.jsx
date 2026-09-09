@@ -13,6 +13,10 @@ import Approvals from "../../src/app/app/approvals/page";
 import Policies from "../../src/app/app/policies/page";
 import Settings from "../../src/app/app/settings/page";
 import Plans from "../../src/app/app/plans/page";
+import Memory from "../../src/app/app/memory/page";
+import Activity from "../../src/app/app/activity/page";
+import Logs from "../../src/app/app/logs/page";
+import Insights from "../../src/app/app/insights/page";
 
 const params = new URLSearchParams(location.search);
 const lifecycle = params.get("state") || "E";
@@ -39,6 +43,9 @@ const productStates = keys.map((key, index) => ({
   availableNow: lifecycle === "A" ? [] : ["Prepare customer replies", "Review pipeline context"],
   nextAction: { label: lifecycle === "C" ? "Activate operator" : lifecycle === "D" ? "Choose a plan" : lifecycle === "F" ? "Reconnect system" : lifecycle === "B" ? "Connect required system" : "Open operator", href: lifecycle === "F" || lifecycle === "B" ? "/connectors" : "/agents/" + key.replace("_", "-") },
   degraded: lifecycle === "F" ? { unhealthyConnectors: ["Gmail"], lostCapabilities: ["Email monitoring"], stillAvailableCapabilities: ["CRM context"] } : null,
+  connectedCoreSystems: lifecycle === "A" ? [] : ["Gmail"],
+  missingOptionalCapabilities: [],
+  requiredActions: [],
 }));
 const eligibility = { eligible: lifecycle !== "D", status: lifecycle === "D" ? "plan_required" : "eligible", reason: "Ready" };
 const readiness = keys.map((operatorKey) => ({ operatorKey, status: "ready", readinessPercent: 100, canRunManual: true, canExecuteRealActions: true, availableActions: ["gmail.createDraft"], connectedRequiredConnectors: ["gmail"], missingRequiredConnectors: [], blockedActions: [], approvalRequiredActions: [], reason: "Connected systems are ready.", nextSetupStep: "Activate when ready.", executionEligibility: eligibility }));
@@ -56,7 +63,9 @@ const overview = {
   today: Object.fromEntries(["runsCount", "approvalsCreated", "approvalsApproved", "actionsExecuted", "autoHandled", "blockedByPolicy", "emailsSent", "hubspotUpdates", "trelloUpdates", "slackMessages", "failedExecutions"].map((key) => [key, 0])),
   operators: keys.map((key, index) => ({ key, name: names[index], status: "monitoring", lastRunAt: null, nextRunAt: null, pendingApprovals: 0, signalsToday: 0, actionsToday: 0, href: "/agents/" + key.replace("_", "-") })),
   connectors: state.connectors.filter((c) => Object.hasOwn(connectorPurpose, c.id)).map((c) => ({ key: c.id, name: c.name, connected: c.isConnected, status: c.isConnected ? "connected" : "needs_setup", purpose: connectorPurpose[c.id], href: "/connectors", usedBy: c.id === "hubspot" ? ["Revenue"] : c.id === "trello" ? ["Client Flow", "Operations"] : ["Revenue", "Client Flow"], lastCheckedAt: null })),
-  activity: fixtureActivity, nextBestActions: [], lastUpdatedAt: new Date().toISOString(),
+  activity: fixtureActivity,
+  activitySummary: { runs: fixtureActivity.filter((item) => item.type === "run.completed").length, approvals: fixtureActivity.filter((item) => item.type === "approval.pending").length, actions: 0, issues: 0, total: fixtureActivity.length, daily: Array.from({ length: 7 }, (_, index) => ({ day: new Date(Date.now() - (6 - index) * 86400000).toISOString().slice(0, 10), count: index === 6 ? fixtureActivity.length : 0 })) },
+  nextBestActions: [], lastUpdatedAt: new Date().toISOString(),
 };
 window.fetch = async (input, options) => {
   if (options?.method && options.method !== "GET") throw new Error("Fixture blocks every mutation");
@@ -76,8 +85,9 @@ window.fetch = async (input, options) => {
   }] : [] };
   else if (url.pathname === "/api/operators/runs") data = { runs: [] };
   else if (url.pathname === "/api/connectors/accounts") data = { accounts: [] };
+  else if (url.pathname === "/api/activity") data = { items: fixtureActivity.map((item) => ({ id: item.id, occurredAt: item.time, category: item.type === "run.completed" ? "operator_run" : item.type === "approval.pending" ? "approval" : "workflow", title: item.title, description: item.description, operatorKey: item.operatorKey, connectorKey: item.connectorKey, severity: item.severity === "warning" ? "attention" : item.severity === "success" ? "success" : "info", status: "recorded", relatedRoute: item.href, technicalEventId: null })), summary: { runs: 1, approvals: 1, actions: 0, issues: 0, total: fixtureActivity.length, daily: [] }, hasMore: false, partialHistory: false };
   return new Response(JSON.stringify(data), { status: 200, headers: { "Content-Type": "application/json" } });
 };
-const pages = { dashboard: OSOverview, connectors: Connectors, agents: Agents, revenue: Revenue, "client-flow": ClientFlow, operations: Operations, approvals: Approvals, policies: Policies, settings: Settings, plans: Plans };
+const pages = { dashboard: OSOverview, connectors: Connectors, agents: Agents, revenue: Revenue, "client-flow": ClientFlow, operations: Operations, approvals: Approvals, policies: Policies, settings: Settings, plans: Plans, memory: Memory, activity: Activity, logs: Logs, insights: Insights };
 const Page = pages[params.get("surface")] || OSOverview;
 createRoot(document.getElementById("fixture")).render(<div className="os-root"><AppShell><Page /></AppShell></div>);

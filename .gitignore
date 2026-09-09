@@ -26,6 +26,7 @@ dist
 build
 .turbo
 coverage
+tests/.tmp-*/
 
 # Deployment / local services
 .vercel

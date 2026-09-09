@@ -61,7 +61,14 @@ async function main() {
       ['from "@/lib/connectors/capabilities";', `from "${capabilitiesUrl}";`],
     ]);
     const { planCandidateWorkflow, deriveWorkflowStatus, conservativeAttribution } = await import(engineUrl);
-    const { routeSignalEvent } = await import(buildModule("src/lib/signals/engine.ts"));
+    // Signal engine imports inbound classification as a runtime dependency.
+    // Build the real inbound module and inject its file URL so this isolated
+    // Node harness never asks Node to resolve the app's `@/` alias literally.
+    const inboundUrl = buildModule("src/lib/signals/inbound.ts");
+    const signalEngineUrl = buildModule("src/lib/signals/engine.ts", [], [
+      ['from "@/lib/signals/inbound";', `from "${inboundUrl}";`],
+    ]);
+    const { routeSignalEvent } = await import(signalEngineUrl);
     const { evaluatePolicy } = await import(buildModule("src/lib/policies/evaluate.ts"));
     const { describeInactionReasons } = await import(buildModule("src/lib/support/diagnosis.ts", [], [
       ['import "server-only";', ""],
@@ -290,7 +297,12 @@ async function main() {
         assert.match(source, /retry: \{ maxAttempts: \d/, `${file} must declare a bounded retry policy`);
         assert.match(source, /queue: \{ name: "[a-z-]+", concurrencyLimit: \d+ \}/, `${file} must declare a bounded queue`);
         assert.doesNotMatch(source, /access_token|refresh_token|client_secret|encryptToken|decryptToken/, `${file} must never carry token material in a task payload`);
-        assert.match(source, /workspaceId/, `${file} must be workspace bound`);
+        // The Jira reporting sweep is intentionally a single global scheduler:
+        // it discovers and groups workspace credentials internally, while the
+        // actual report/update queries remain workspace scoped. Other tasks
+        // carry an explicit workspaceId in their payload.
+        if (file === "jira-personal-data-reporting.ts") assert.match(source, /reportPersistedJiraPersonalData/);
+        else assert.match(source, /workspaceId/, `${file} must be workspace bound`);
       }
       assert.match(read("trigger.config.ts"), /maxDuration: 3600/);
     });

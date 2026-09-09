@@ -106,6 +106,7 @@
     "test:operational-metrics": "node tests/operational-metrics-smoke.mjs",
     "test:queue-lag": "node tests/queue-lag-smoke.mjs",
     "test:beta-runtime-final": "node tests/beta-runtime-final-smoke.mjs",
+    "test:browser-smoke": "node tests/product-polish-browser.mjs",
     "trigger:dev": "npx trigger.dev@latest dev",
     "trigger:deploy": "npx trigger.dev@latest deploy"
   },
@@ -145,6 +146,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@trigger.dev/build": "4.5.16",
     "@types/node": "^20",
