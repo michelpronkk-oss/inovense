@@ -58,7 +58,7 @@ export default function LogsPage() {
   const visibleLogs = filtered.slice(0, visibleCount);
 
   return (
-    <div className="os-page">
+    <div className="os-page logs-page">
       <PageHeader
         eyebrow="Execution layer · live"
         title="Execution logs"

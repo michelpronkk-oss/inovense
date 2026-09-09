@@ -160,9 +160,10 @@ function AgentCard({ model, onOpenDetails }: { model: CardModel; onOpenDetails: 
 
       <div className="ag-mission">{op.mission}</div>
 
-      {capabilityCopy.required.length > 0 && <div style={{ display: "grid", gap: 5, marginTop: -2, fontSize: 11.5, color: "var(--text-mute)" }}>
-        <span>{locked ? `Requires: ${capabilityCopy.required.join(" · ")}` : productState?.connectedSystems.length ? `Connected context: ${capabilityCopy.required.join(" · ")}` : `Requires: ${capabilityCopy.required.join(" · ")}`}</span>
-        {capabilityCopy.optional.length > 0 && <span style={{ color: "var(--text-faint)" }}>Optional context: {capabilityCopy.optional.join(" · ")}</span>}
+      {capabilityCopy.required.length > 0 && <div className="ag-capability-summary">
+        <span className="ag-capability-label">{locked ? "Requires" : productState?.connectedSystems.length ? "Connected context" : "Requires"}</span>
+        <div className="ag-capability-chips">{capabilityCopy.required.slice(0, 3).map((capability) => <span key={capability}>{capability}</span>)}</div>
+        {capabilityCopy.optional.length > 0 && <small>Optional: {capabilityCopy.optional.slice(0, 2).join(" · ")}</small>}
       </div>}
 
       {!productState && status === "available" && readyReason && (

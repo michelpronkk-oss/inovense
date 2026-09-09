@@ -150,7 +150,7 @@ export default function TeamPage() {
   };
 
   return (
-    <div className="os-page">
+    <div className="os-page team-page">
       <div className="os-page-head">
         <div>
           <span className="os-greet">Team - {countLabel}</span>
@@ -181,23 +181,19 @@ export default function TeamPage() {
           <h3><UsersIcon size={13} /> Workspace members</h3>
           <div className="p-meta">{activeMemberCount} active</div>
         </div>
+        <div className="team-member-table-head" aria-hidden="true"><span>Person</span><span>Email</span><span>Role</span><span>Status</span><span>Actions</span></div>
         {state.teamMembers.map((m) => {
           const memberRole = normalizeWorkspaceRole(undefined, m.role);
           const statusLabel = m.active ? (m.status === "pending" ? "Pending invite" : "Active") : "Disabled";
           return (
-            <div className="team-member-row" key={m.id} style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 20px", borderBottom: "1px solid var(--line)", opacity: m.active ? 1 : 0.6 }}>
-              <div style={{ width: 36, height: 36, borderRadius: "50%", background: `linear-gradient(135deg, ${m.color}40, ${m.color}15)`, boxShadow: `inset 0 0 0 1px ${m.color}55`, display: "grid", placeItems: "center", fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600, color: m.color, flexShrink: 0 }}>{m.initials}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 500 }}>{m.name}</div>
-                <div style={{ marginTop: 2, color: "var(--text-mute)", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.email}</div>
-              </div>
-              <div className="team-member-meta" style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
-                <span className="p-chip">{WORKSPACE_ROLE_LABELS[memberRole]}</span>
-                <span style={{ minWidth: 84, textAlign: "right", color: m.active ? "var(--text-mute)" : "#F5C26B", fontSize: 11.5 }}>{statusLabel}</span>
-                {canManage && canManageTarget(currentRole, memberRole) && (
-                  <button className="appr-btn edit" onClick={() => { setInviteFeedback(""); setEditing({ ...m, role: WORKSPACE_ROLE_LABELS[memberRole] }); }}>Manage</button>
-                )}
-              </div>
+            <div className="team-member-row" key={m.id} style={{ opacity: m.active ? 1 : 0.6 }}>
+              <div className="team-member-person"><span style={{ background: `linear-gradient(135deg, ${m.color}40, ${m.color}15)`, boxShadow: `inset 0 0 0 1px ${m.color}55`, color: m.color }}>{m.initials}</span><strong>{m.name}</strong></div>
+              <span className="team-member-email">{m.email}</span>
+              <span className="p-chip">{WORKSPACE_ROLE_LABELS[memberRole]}</span>
+              <span className="team-member-status" data-disabled={!m.active || undefined}>{statusLabel}</span>
+              <div className="team-member-actions">{canManage && canManageTarget(currentRole, memberRole) && (
+                <button className="appr-btn edit" onClick={() => { setInviteFeedback(""); setEditing({ ...m, role: WORKSPACE_ROLE_LABELS[memberRole] }); }}>Manage</button>
+              )}</div>
             </div>
           );
         })}

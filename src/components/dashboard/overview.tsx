@@ -93,10 +93,10 @@ function dashboardCounts(overview: DashboardOverview) {
 function DashboardMetrics({ overview }: { overview: DashboardOverview }) {
   const counts = dashboardCounts(overview);
   const metrics = [
-    { label: "Systems connected", value: counts.connected },
-    { label: "Operators ready", value: counts.ready },
-    { label: "Active operators", value: counts.active },
-    { label: "Needs attention", value: counts.attention, attention: counts.attention > 0 },
+    { label: "Systems connected", value: counts.connected, detail: counts.connected ? "Live context available" : "Connect a first system", symbol: "◎" },
+    { label: "Operators ready", value: counts.ready, detail: counts.ready ? "Ready to deploy" : "No operator waiting", symbol: "↗" },
+    { label: "Active operators", value: counts.active, detail: counts.active ? "Monitoring now" : "Nothing running yet", symbol: "◌" },
+    { label: "Needs attention", value: counts.attention, detail: counts.attention ? "A review is needed" : "All systems clear", attention: counts.attention > 0, symbol: "!" },
   ];
 
   return (
@@ -105,8 +105,8 @@ function DashboardMetrics({ overview }: { overview: DashboardOverview }) {
       <div className="dashboard-metric-grid">
         {metrics.map((metric) => (
           <div className="dashboard-metric" data-attention={metric.attention || undefined} key={metric.label}>
-            <span>{metric.label}</span>
-            <strong>{metric.value}</strong>
+            <div className="dashboard-metric-top"><span className="dashboard-metric-symbol" aria-hidden="true">{metric.symbol}</span><span>{metric.label}</span></div>
+            <div className="dashboard-metric-value"><strong>{metric.value}</strong><small>{metric.detail}</small></div>
           </div>
         ))}
       </div>

@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/product-ui/page-primitives";
 import { useOS } from "@/lib/os/app-provider";
@@ -433,12 +434,10 @@ export default function ApprovalsPage() {
             Loading approvals...
           </div>
         ) : visible.length === 0 ? (
-          <div style={{ padding: "40px 24px", textAlign: "center" }}>
-            <div style={{ fontSize: 28, marginBottom: 10 }}>
-              <CheckIcon size={28} style={{ color: "var(--green)", margin: "0 auto" }} />
-            </div>
-            <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 6 }}>No approvals waiting</div>
-            <div style={{ fontSize: 13, color: "var(--text-mute)" }}>You’re all caught up{filter !== "All" ? ` in ${filter.toLowerCase()}` : ""}.</div>
+          <div className="approvals-all-clear">
+            <div className="approvals-clear-mark"><CheckIcon size={18} /></div>
+            <div><span className="approvals-clear-kicker">Review inbox</span><strong>All clear</strong><p>0 actions waiting{filter !== "All" ? ` in ${filter.toLowerCase()}` : ""}. Consequential work will return here before it runs.</p></div>
+            <Link className="btn btn-ghost btn-sm" href="/logs">Recent history</Link>
           </div>
         ) : (
           visible.map((item) => {

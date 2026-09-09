@@ -3136,3 +3136,202 @@ select.os-input option {
   .os-root .activity-page .dashboard-metric:nth-child(n + 3),
   .os-root .approvals-page .approval-stats .kpi:nth-child(n + 3) { border-top: 1px solid var(--line); }
 }
+
+/* ============================================================
+   Final visual depth: retain the broad operating canvas while giving
+   live objects, data and empty workspaces distinct surface levels.
+   ============================================================ */
+.os-root {
+  --surface-level-1: rgba(255,255,255,.012);
+  --surface-level-2: rgba(255,255,255,.026);
+  --surface-level-3: rgba(77,232,225,.055);
+  --depth-line: rgba(255,255,255,.095);
+}
+.os-root .p { border-color: var(--depth-line); }
+.os-root :is(.btn, .appr-btn, .connector-list-row, .team-member-row, .dashboard-ready-row, .workflow-empty-lifecycle li) { transition: background-color .16s ease, border-color .16s ease, color .16s ease, transform .16s ease; }
+.os-root :is(.btn, .appr-btn, .connector-list-row, .team-member-row):focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+/* Dashboard: the metrics form a compact instrument cluster and work
+   surfaces are raised only where the user has something to inspect. */
+.os-root .dashboard-readiness-summary {
+  padding: 18px 20px;
+  border: 1px solid var(--depth-line);
+  border-left: 2px solid var(--cyan);
+  border-radius: var(--radius-md);
+  background: linear-gradient(105deg, rgba(77,232,225,.055), var(--surface-level-1) 42%, rgba(255,255,255,.018));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
+}
+.os-root .dashboard-readiness-summary[data-state="F"] { border-left-color: var(--amber); background: linear-gradient(105deg, rgba(245,194,107,.06), var(--surface-level-1) 42%, rgba(255,255,255,.018)); }
+.os-root .dashboard-metric-grid {
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid var(--depth-line);
+  border-radius: var(--radius-md);
+  background: var(--surface-level-1);
+}
+.os-root .dashboard-metric,
+.os-root .dashboard-metric + .dashboard-metric {
+  min-height: 94px;
+  padding: 14px 15px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--surface-level-2);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.025), inset 0 0 0 1px rgba(255,255,255,.045);
+}
+.os-root .dashboard-metric:hover { background: rgba(255,255,255,.045); }
+.os-root .dashboard-metric-top { display: flex; align-items: center; gap: 7px; color: var(--text-mute); font-size: 11px; font-weight: 540; }
+.os-root .dashboard-metric-symbol { display: grid; width: 18px; height: 18px; place-items: center; border-radius: 6px; background: rgba(77,232,225,.1); color: var(--cyan); font: 700 11px var(--font-mono); }
+.os-root .dashboard-metric[data-attention="true"] .dashboard-metric-symbol { background: rgba(245,194,107,.11); color: var(--amber); }
+.os-root .dashboard-metric-value { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 13px; }
+.os-root .dashboard-metric-value strong { font-size: 26px; }
+.os-root .dashboard-metric-value small { max-width: 13ch; color: var(--text-faint); font-size: 10.5px; line-height: 1.35; text-align: right; }
+.os-root .dashboard-workforce-activity {
+  padding: 18px 20px;
+  border: 1px solid var(--depth-line);
+  border-radius: var(--radius-md);
+  background: var(--surface-level-1);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.025);
+}
+.os-root .dashboard-activity-counts { gap: 6px; padding: 10px; border-radius: 9px; background: rgba(0,0,0,.12); box-shadow: inset 0 0 0 1px rgba(255,255,255,.04); }
+.os-root .dashboard-activity-counts span { padding: 5px 9px; border-radius: 6px; background: rgba(255,255,255,.025); }
+.os-root .dashboard-telemetry-frame { margin-top: 13px; padding: 8px 12px; border: 1px solid rgba(255,255,255,.055); border-radius: 10px; background: linear-gradient(180deg, rgba(255,255,255,.016), transparent); }
+.os-root .dashboard-value-grid { gap: 18px; }
+.os-root .dashboard-value-grid .p,
+.os-root .dashboard-activity-grid .p,
+.os-root .dashboard-connectors-panel {
+  border: 1px solid var(--depth-line);
+  border-radius: var(--radius-md);
+  background: var(--surface-level-1);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.025);
+}
+.os-root .dashboard-ready-list { padding: 0 14px 8px; }
+.os-root .dashboard-ready-row {
+  position: relative;
+  margin-top: 5px;
+  padding: 12px 10px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: rgba(255,255,255,.015);
+}
+.os-root .dashboard-ready-row:hover { border-color: var(--line-2); background: rgba(255,255,255,.035); }
+.os-root .dashboard-ready-row::before { content: ""; width: 6px; height: 6px; margin-right: 1px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 0 3px rgba(77,232,225,.08); }
+.os-root .dashboard-ready-row > div { flex: 1; }
+.os-root .dashboard-connectors-panel .conn-tile { padding: 11px 10px; border: 1px solid rgba(255,255,255,.04); border-radius: 8px; background: rgba(255,255,255,.014); }
+.os-root .dashboard-connectors-panel .conn-tile + .conn-tile { border-left: 1px solid rgba(255,255,255,.04); }
+
+/* Operators: cards remain meaningful workforce objects, with a compact
+   capability register instead of extra explanatory prose. */
+.os-root .agents-page .ag-card {
+  min-height: 294px;
+  border: 1px solid var(--depth-line);
+  background: linear-gradient(145deg, rgba(255,255,255,.038), rgba(255,255,255,.012));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+}
+.os-root .agents-page .ag-card:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--c) 35%, var(--depth-line)); background: linear-gradient(145deg, color-mix(in srgb, var(--c) 7%, transparent), rgba(255,255,255,.028)); }
+.os-root .agents-page .ag-card.dim { background: rgba(255,255,255,.012); }
+.os-root .ag-av { border-radius: 14px; background: color-mix(in srgb, var(--c) 10%, transparent) !important; }
+.os-root .ag-badge { border-radius: 7px; }
+.os-root .ag-capability-summary { display: grid; gap: 6px; margin-top: -2px; }
+.os-root .ag-capability-label { color: var(--text-faint); font-size: 10px; font-weight: 600; letter-spacing: .055em; text-transform: uppercase; }
+.os-root .ag-capability-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.os-root .ag-capability-chips span { padding: 4px 7px; border: 1px solid rgba(255,255,255,.07); border-radius: 999px; background: rgba(255,255,255,.025); color: var(--text-dim); font-size: 10.5px; line-height: 1.25; }
+.os-root .ag-capability-summary small { color: var(--text-faint); font-size: 10.5px; }
+.os-root .ag-foot { margin-top: auto; }
+
+/* Workflow and approval empty states use a composed operational frame rather
+   than a tall, generic blank card. */
+.os-root .workflow-empty-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(360px, .9fr);
+  gap: 28px;
+  align-items: center;
+  min-height: min(43vh, 390px);
+  padding: clamp(24px, 4vw, 54px);
+  border: 1px solid var(--depth-line);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(77,232,225,.035), transparent 45%), var(--surface-level-1);
+}
+.os-root .workflow-empty-copy { display: grid; justify-items: start; gap: 12px; }
+.os-root .workflow-empty-kicker, .os-root .approvals-clear-kicker { color: var(--cyan); font-size: 10px; font-weight: 650; letter-spacing: .085em; text-transform: uppercase; }
+.os-root .workflow-empty-copy .os-empty-state { min-height: 0; padding: 0; }
+.os-root .workflow-empty-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.os-root .workflow-empty-lifecycle { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; border: 1px solid rgba(255,255,255,.07); border-radius: 10px; overflow: hidden; background: rgba(0,0,0,.12); }
+.os-root .workflow-empty-lifecycle li { display: grid; grid-template-columns: 34px 1fr; align-items: center; gap: 8px; min-height: 46px; padding: 0 14px; border-bottom: 1px solid rgba(255,255,255,.06); background: rgba(255,255,255,.012); }
+.os-root .workflow-empty-lifecycle li:last-child { border-bottom: 0; }
+.os-root .workflow-empty-lifecycle li:hover { background: rgba(77,232,225,.04); }
+.os-root .workflow-empty-lifecycle span { color: var(--text-faint); font: 10px var(--font-mono); }
+.os-root .workflow-empty-lifecycle strong { color: var(--text-dim); font-size: 12.5px; font-weight: 560; }
+.os-root .approvals-page.no-approvals > .p { min-height: 0; border: 1px solid var(--depth-line); border-radius: var(--radius-md); background: var(--surface-level-1); }
+.os-root .approvals-all-clear { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: 14px; min-height: 142px; padding: 22px 18px; }
+.os-root .approvals-clear-mark { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid rgba(81,216,138,.32); border-radius: 13px; background: rgba(81,216,138,.09); color: var(--green); }
+.os-root .approvals-all-clear strong { display: block; margin-top: 3px; color: var(--text); font-size: 15px; font-weight: 620; }
+.os-root .approvals-all-clear p { max-width: 58ch; margin: 5px 0 0; color: var(--text-mute); font-size: 12.5px; line-height: 1.5; }
+
+/* Connector and account objects: each row conveys health, ownership and
+   a management affordance without becoming a mini-card grid. */
+.os-root .connectors-list,
+.os-root .settings-page > .p { border: 1px solid var(--depth-line) !important; border-radius: var(--radius-md) !important; background: var(--surface-level-1) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.025) !important; }
+.os-root .connector-list-row { margin: 5px 10px; width: calc(100% - 20px) !important; padding: 13px 12px !important; border: 1px solid transparent !important; border-radius: 9px; background: rgba(255,255,255,.012) !important; }
+.os-root .connector-list-row:hover { border-color: var(--line-2) !important; background: rgba(255,255,255,.038) !important; }
+.os-root .connector-list-row .connector-brand-logo { box-shadow: inset 0 0 0 1px rgba(255,255,255,.11); }
+.os-root .connector-manage { color: var(--cyan); font-size: 11.5px; font-weight: 600; }
+.os-root .settings-account-row { margin: 6px 10px; padding: 13px 12px !important; border: 1px solid rgba(255,255,255,.055) !important; border-radius: 9px; background: rgba(255,255,255,.012); }
+.os-root .settings-account-row:hover { background: rgba(255,255,255,.032); border-color: var(--line-2) !important; }
+.os-root .settings-accounts-empty { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 10px; padding: 18px 14px !important; border: 1px dashed rgba(255,255,255,.11); border-radius: 9px; background: rgba(255,255,255,.01); }
+
+/* Settings uses a hierarchy of one primary account surface and three concise
+   governance surfaces. Plans maintain their existing structure with clearer
+   plan identity and a quiet recommended state. */
+.os-root .settings-page .settings-studio { gap: 14px; }
+.os-root .settings-page .settings-studio > .p { min-height: 210px; border: 1px solid var(--depth-line); border-radius: var(--radius-md); background: var(--surface-level-1); }
+.os-root .settings-page .settings-workspace-surface { background: linear-gradient(140deg, rgba(77,232,225,.045), rgba(255,255,255,.012)) !important; }
+.os-root .settings-workspace-body { padding: 16px 18px; }
+.os-root .settings-policy-list, .os-root .settings-notification-list { padding-inline: 18px; }
+.os-root .plans-current-summary { border: 1px solid rgba(77,232,225,.2) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.04) !important; }
+.os-root .plans-card { border: 1px solid var(--depth-line) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.035) !important; }
+.os-root .plans-card:hover { border-color: var(--line-2) !important; transform: translateY(-1px); }
+.os-root .plans-card[style*="rgba(77,232,225"] { border-color: rgba(77,232,225,.3) !important; background: linear-gradient(155deg, rgba(77,232,225,.095), rgba(11,16,23,.92) 48%) !important; }
+
+/* Team and history pages become intentional data surfaces at every density. */
+.os-root .team-page > .p { padding: 0; overflow: hidden; border: 1px solid var(--depth-line); background: var(--surface-level-1); }
+.os-root .team-page > .p > .p-head { padding: 16px 18px 12px; }
+.os-root .team-member-table-head { display: grid; grid-template-columns: minmax(180px, 1.05fr) minmax(200px, 1.5fr) minmax(90px, .6fr) minmax(110px, .65fr) minmax(90px, .5fr); gap: 14px; padding: 9px 20px; border-block: 1px solid rgba(255,255,255,.07); background: rgba(255,255,255,.018); color: var(--text-faint); font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; }
+.os-root .team-member-row { position: relative; display: grid !important; grid-template-columns: minmax(180px, 1.05fr) minmax(200px, 1.5fr) minmax(90px, .6fr) minmax(110px, .65fr) minmax(90px, .5fr); align-items: center; gap: 14px; min-height: 66px; padding: 13px 20px !important; border-bottom: 1px solid rgba(255,255,255,.055) !important; }
+.os-root .team-member-row:hover { background: rgba(255,255,255,.025); }
+.os-root .team-member-person { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.os-root .team-member-person > span { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; border-radius: 10px; font: 600 11px var(--font-mono); }
+.os-root .team-member-person strong { overflow: hidden; color: var(--text-dim); font-size: 13px; font-weight: 580; text-overflow: ellipsis; white-space: nowrap; }
+.os-root .team-member-email { overflow: hidden; color: var(--text-mute); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.os-root .team-member-status { color: var(--green); font-size: 11.5px; font-weight: 520; }
+.os-root .team-member-status[data-disabled="true"] { color: var(--amber); }
+.os-root .team-member-actions { display: flex; justify-content: flex-end; }
+.os-root .logs-page .logs-viewport { border: 1px solid rgba(255,255,255,.06); border-radius: 10px; background: rgba(0,0,0,.1); }
+.os-root .logs-page .logs-viewport > div > div:not(:first-child):hover { background: rgba(255,255,255,.026); }
+
+@media (max-width: 1023px) {
+  .os-root .workflow-empty-workspace { grid-template-columns: 1fr; }
+  .os-root .workflow-empty-lifecycle { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .os-root .workflow-empty-lifecycle li { grid-template-columns: 1fr; min-height: 68px; padding: 10px; border-bottom: 0; border-right: 1px solid rgba(255,255,255,.06); }
+  .os-root .workflow-empty-lifecycle li:last-child { border-right: 0; }
+  .os-root .settings-page .settings-studio { gap: 14px; }
+}
+@media (max-width: 700px) {
+  .os-root .dashboard-metric-grid { gap: 4px; padding: 4px; }
+  .os-root .dashboard-metric, .os-root .dashboard-metric + .dashboard-metric { min-height: 88px; padding: 12px 11px; border: 0; }
+  .os-root .dashboard-metric-value { align-items: flex-start; flex-direction: column; gap: 4px; margin-top: 9px; }
+  .os-root .dashboard-metric-value small { max-width: none; text-align: left; }
+  .os-root .dashboard-workforce-activity { padding: 15px; }
+  .os-root .workflow-empty-workspace { min-height: 0; padding: 24px 18px; }
+  .os-root .workflow-empty-lifecycle { grid-template-columns: 1fr; }
+  .os-root .workflow-empty-lifecycle li { grid-template-columns: 34px 1fr; min-height: 42px; padding: 0 12px; border-right: 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .os-root .approvals-all-clear { grid-template-columns: 42px minmax(0, 1fr); align-items: start; }
+  .os-root .approvals-all-clear .btn { grid-column: 1 / -1; width: 100%; justify-content: center; }
+  .os-root .connector-list-row, .os-root .settings-account-row { margin-inline: 6px; width: calc(100% - 12px) !important; }
+  .os-root .team-member-table-head { display: none; }
+  .os-root .team-page > .p { overflow: visible; }
+  .os-root .team-member-row { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; margin-inline: 0; padding: 13px 14px !important; }
+  .os-root .team-member-email { grid-column: 1; }
+  .os-root .team-member-row > .p-chip { grid-column: 2; grid-row: 1; }
+  .os-root .team-member-status { grid-column: 1; }
+  .os-root .team-member-actions { grid-column: 2; grid-row: 2 / span 2; align-self: end; }
+}

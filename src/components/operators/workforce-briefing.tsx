@@ -115,7 +115,7 @@ export function OperatorWorkforceBriefing({
           <div className="operator-state-grid">
             <StateItem label={capabilityCopy.required[0] ?? "Core context"} value={primaryProvider ? `Connected via ${primaryProvider}` : "Ready"} />
             <StateItem label="Monitoring" value={product.lifecycle === "paused" ? "Paused" : "Starts after activation"} />
-            <StateItem label="Control" value="Human approval required" />
+            <StateItem label="Your control" value="Human approval required" />
           </div>
         </div>
       )}
