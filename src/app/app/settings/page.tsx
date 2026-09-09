@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { OSModal } from "@/components/dashboard/modal";
 import { useRouter, useSearchParams } from "next/navigation";
-import { LinkIcon, SettingsIcon } from "@/components/dashboard/icons";
+import { LinkIcon, SettingsIcon, XIcon } from "@/components/dashboard/icons";
 import type { ConnectedAccount } from "@/app/api/connectors/accounts/route";
 import { useOS } from "@/lib/os/app-provider";
 import { saveWorkspaceSettings } from "./actions";
@@ -270,7 +270,7 @@ export default function SettingsPage() {
           <h3><SettingsIcon size={13} /> Billing</h3>
           {showManageBilling && canManageWorkspace ? (
             <button className="btn btn-ghost btn-sm" onClick={openBillingPortal} disabled={billingBusy} style={{ opacity: billingBusy ? 0.7 : 1 }}>
-              {billingBusy ? "Opening..." : "Manage billing"}
+              {billingBusy ? "Opening…" : "Manage billing"}
             </button>
           ) : canManageWorkspace ? (
             <a className="btn btn-primary btn-sm" href="/plans">Choose a plan</a>
@@ -346,13 +346,15 @@ export default function SettingsPage() {
                   >
                     {isConnected ? "Reconnect" : "Connect"}
                   </button>}
+                  {/* Disconnecting revokes a real credential, so it keeps
+                      negative weight rather than reading as a neutral action. */}
                   {canManageWorkspace && <button
-                    className="appr-btn deny"
+                    className="appr-btn deny is-negative"
                     style={{ fontSize: 11, opacity: disconnectingAccount === acct.connectorKey ? 0.6 : 1 }}
                     disabled={!isConnected || disconnectingAccount === acct.connectorKey}
                     onClick={() => void disconnectAccount(acct.connectorKey)}
                   >
-                    {disconnectingAccount === acct.connectorKey ? "Disconnecting..." : "Disconnect"}
+                    {disconnectingAccount === acct.connectorKey ? "Disconnecting…" : "Disconnect"}
                   </button>}
                 </div>
               </div>
@@ -412,9 +414,13 @@ export default function SettingsPage() {
       {editing && (
         <OSModal label={`Edit ${editing}`} className="os-modal-backdrop settings-edit-backdrop" onClose={() => setEditing(null)}>
           <div className="os-modal settings-edit-modal" style={{ maxWidth: 680, width: "92%" }} onClick={(e) => e.stopPropagation()}>
+            {/* Icon close in the header; Cancel stays in the footer. Same
+                modal language as the team and connector dialogs. */}
             <div className="os-modal-head">
               <h3>Edit {editing}</h3>
-              <button className="appr-btn deny" onClick={() => setEditing(null)}>Close</button>
+              <button className="os-iconbtn" onClick={() => setEditing(null)} aria-label="Close">
+                <XIcon size={13} />
+              </button>
             </div>
 
             {editing === "workspace" && (
@@ -459,7 +465,7 @@ export default function SettingsPage() {
             <div className="settings-edit-actions" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
               <button className="btn btn-ghost btn-sm" onClick={() => setEditing(null)}>Cancel</button>
               <button className="btn btn-primary btn-sm" onClick={save} disabled={saving} style={{ opacity: saving ? 0.7 : 1 }}>
-                {saving ? "Saving..." : "Save"}
+                {saving ? "Saving…" : "Save"}
               </button>
             </div>
           </div>

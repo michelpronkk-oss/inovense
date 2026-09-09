@@ -184,13 +184,17 @@ export default function TeamPage() {
         <div className="team-member-table-head" aria-hidden="true"><span>Person</span><span>Email</span><span>Role</span><span>Status</span><span>Actions</span></div>
         {state.teamMembers.map((m) => {
           const memberRole = normalizeWorkspaceRole(undefined, m.role);
-          const statusLabel = m.active ? (m.status === "pending" ? "Pending invite" : "Active") : "Disabled";
+          // Three real states, three distinct treatments. "Pending invite"
+          // previously rendered in the same green as an active member, which
+          // read as though an unaccepted invite already had access.
+          const statusTone = !m.active ? "disabled" : m.status === "pending" ? "pending" : "active";
+          const statusLabel = statusTone === "pending" ? "Pending invite" : statusTone === "disabled" ? "Disabled" : "Active";
           return (
-            <div className="team-member-row" key={m.id} style={{ opacity: m.active ? 1 : 0.6 }}>
+            <div className="team-member-row" key={m.id} data-status={statusTone}>
               <div className="team-member-person"><span style={{ background: `linear-gradient(135deg, ${m.color}40, ${m.color}15)`, boxShadow: `inset 0 0 0 1px ${m.color}55`, color: m.color }}>{m.initials}</span><strong>{m.name}</strong></div>
               <span className="team-member-email">{m.email}</span>
               <span className="p-chip">{WORKSPACE_ROLE_LABELS[memberRole]}</span>
-              <span className="team-member-status" data-disabled={!m.active || undefined}>{statusLabel}</span>
+              <span className="team-member-status"><i aria-hidden />{statusLabel}</span>
               <div className="team-member-actions">{canManage && canManageTarget(currentRole, memberRole) && (
                 <button className="appr-btn edit" onClick={() => { setInviteFeedback(""); setEditing({ ...m, role: WORKSPACE_ROLE_LABELS[memberRole] }); }}>Manage</button>
               )}</div>
@@ -261,21 +265,25 @@ export default function TeamPage() {
 
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 15, borderTop: "1px solid var(--line)" }}>
                   <button className="btn btn-ghost btn-sm" onClick={() => setEditing(null)}>Cancel</button>
-                  <button className="btn btn-primary btn-sm" disabled={savingMember} onClick={() => void saveMember()}>{savingMember ? "Saving..." : "Save changes"}</button>
+                  <button className="btn btn-primary btn-sm" disabled={savingMember} onClick={() => void saveMember()}>{savingMember ? "Saving…" : "Save changes"}</button>
                 </div>
                 {inviteFeedback && <div style={{ marginTop: 10, fontSize: 12, color: inviteFeedback.toLowerCase().includes("failed") || inviteFeedback.toLowerCase().includes("permission") || inviteFeedback.toLowerCase().includes("cannot") ? "#ff8f8f" : "var(--text-mute)" }}>{inviteFeedback}</div>}
               </>
             ) : (
               <>
-                <div className="os-modal-head">
-                  <h3>Invite member</h3>
-                  <button className="appr-btn deny" onClick={() => setShowInvite(false)}>Close</button>
+                {/* Icon close in the header, Cancel in the footer -- the text
+                    "Close" button that used to sit here competed with Cancel
+                    for the same job. Matches the edit/remove modals below. */}
+                <div className="os-modal-head" style={{ alignItems: "flex-start" }}>
+                  <div>
+                    <h3>Invite member</h3>
+                    <p className="team-invite-lede">They&apos;ll receive one secure invitation for <strong>{state.workspace.name}</strong>.</p>
+                  </div>
+                  <button className="os-iconbtn" onClick={() => setShowInvite(false)} aria-label="Close">
+                    <XIcon size={13} />
+                  </button>
                 </div>
                 <div className="team-invite-form">
-                  <div className="team-invite-intro">
-                    <span>WORKSPACE ACCESS</span>
-                    <p>They&apos;ll receive one secure invitation for <strong>{state.workspace.name}</strong>.</p>
-                  </div>
                   <div className="team-invite-fields">
                     <label>
                       <span>Name <em>optional</em></span>
@@ -300,13 +308,16 @@ export default function TeamPage() {
                       ))}
                     </div>
                   </fieldset>
-                  <div className="team-invite-summary">
-                    <div><span>ACCESS INCLUDED</span><strong>{WORKSPACE_ROLE_CAPABILITIES[role].join(" · ")}</strong></div>
-                    <p>Access can be changed or revoked at any time.</p>
-                  </div>
+                  {/* The capability list is real information the role rows
+                      don't carry, so it stays -- but as a quiet line rather
+                      than a third bordered panel stacked in a small modal. */}
+                  <p className="team-invite-summary-line">
+                    <span>Includes</span> {WORKSPACE_ROLE_CAPABILITIES[role].join(" · ")}
+                    <em>Access can be changed or revoked at any time.</em>
+                  </p>
                   <div className="team-invite-actions">
                     <button className="btn btn-ghost btn-sm" onClick={() => setShowInvite(false)}>Cancel</button>
-                    <button className="btn btn-primary btn-sm" onClick={submitInvite} disabled={!email.includes("@") || inviting}>{inviting ? "Sending invitation..." : "Send invitation"}</button>
+                    <button className="btn btn-primary btn-sm" onClick={submitInvite} disabled={!email.includes("@") || inviting}>{inviting ? "Sending invitation…" : "Send invitation"}</button>
                   </div>
                   {inviteFeedback && <div style={{ fontSize: 12, color: inviteFeedback.toLowerCase().includes("failed") || inviteFeedback.toLowerCase().includes("valid") ? "#ff8f8f" : "#64ffd7" }}>{inviteFeedback}</div>}
                 </div>
@@ -332,7 +343,7 @@ export default function TeamPage() {
             {removeError && <div style={{ marginTop: 12, fontSize: 12, color: "#ff8f8f" }}>{removeError}</div>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 }}>
               <button className="btn btn-ghost btn-sm" disabled={removing} onClick={() => setRemovingMember(null)}>Cancel</button>
-              <button className="team-danger-btn severe" disabled={removing} onClick={() => void confirmRemove()}>{removing ? "Removing..." : "Remove member"}</button>
+              <button className="team-danger-btn severe" disabled={removing} onClick={() => void confirmRemove()}>{removing ? "Removing…" : "Remove member"}</button>
             </div>
           </div>
         </div>

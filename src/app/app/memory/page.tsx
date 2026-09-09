@@ -71,8 +71,10 @@ export default function MemoryPage() {
       </div>
 
       <section className="memory-summary-rail" aria-label="Memory summary">
-        <div><span>Entries</span><strong>{entries.length}</strong><small>{totalFields} structured fields</small></div>
-        <div><span>Categories</span><strong>{new Set(entries.map((e) => e.type)).size}</strong><small>Business context types</small></div>
+        {/* Two metrics that carry real weight. Category count is genuine but
+            sparse (typically three or four), so it rides along as detail
+            rather than claiming an equal-sized slot next to them. */}
+        <div><span>Entries</span><strong>{entries.length}</strong><small>{totalFields} structured fields · {new Set(entries.map((e) => e.type)).size} categories</small></div>
         <div><span>Last updated</span><strong>{mostRecent ? relativeTime(mostRecent.updatedAt) : "Not yet"}</strong><small>{mostRecent?.label ?? "Awaiting workspace context"}</small></div>
         <aside><span className="dot dot-cyan" /> References appear after operators safely use memory in live work.</aside>
       </section>
@@ -123,7 +125,7 @@ export default function MemoryPage() {
                     </span>
                   ))}
                 </div>
-                <span className="memory-entry-chevron" aria-hidden="true">{isOpen ? "⌃" : "⌄"}</span>
+                <span className="memory-entry-chevron" aria-hidden="true" />
               </button>
               {isOpen && (
                 <div className="memory-index-detail" style={{ padding: "0 16px 15px 55px" }}>

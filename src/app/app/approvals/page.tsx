@@ -580,7 +580,7 @@ export default function ApprovalsPage() {
                             />
                             </label>
                             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                              <button className="appr-btn approve" type="button" disabled={isSavingEdit} onClick={() => saveDraftEdit(item)}>{isSavingEdit ? "Saving..." : "Save changes"}</button>
+                              <button className="appr-btn approve" type="button" disabled={isSavingEdit} onClick={() => saveDraftEdit(item)}>{isSavingEdit ? "Saving…" : "Save changes"}</button>
                               <button className="appr-btn edit" type="button" disabled={isSavingEdit} onClick={() => cancelEditingDraft(item.id)}>Cancel</button>
                             </div>
                           </div>
@@ -867,7 +867,7 @@ export default function ApprovalsPage() {
                     </select>
                   </label>
                   <div className="appr-row-actions" style={{ marginTop: 0 }}>
-                    <button className="appr-btn deny" disabled={isBusy || isSavingEdit} onClick={() => actOnApproval(item, "reject", rejectionReason)}>Reject</button>
+                    <button className="appr-btn deny is-negative" disabled={isBusy || isSavingEdit} onClick={() => actOnApproval(item, "reject", rejectionReason)}>Reject</button>
                     <button className="appr-btn edit" disabled={isBusy || isSavingEdit} onClick={() => startEditingDraft(item)}>Edit draft</button>
                     <button className="appr-btn approve" disabled={isBusy || isSavingEdit} onClick={() => actOnApproval(item, "approve")}>
                       {customerEmailMode === "draft_only" ? "Mark reviewed" : item.approval_type === "email" ? "Approve and send" : "Approve"}

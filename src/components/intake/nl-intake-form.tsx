@@ -386,7 +386,7 @@ export default function NlIntakeForm() {
           size="lg"
           className="rounded-full bg-brand px-10 text-white hover:bg-brand/90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
         >
-          {status === "loading" ? "Versturen..." : "Project starten"}
+          {status === "loading" ? "Versturen…" : "Project starten"}
         </Button>
 
         <p className="text-xs text-zinc-600">

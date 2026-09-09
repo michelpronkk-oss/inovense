@@ -1,10 +1,12 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { StatusBadge } from "@/components/operators/status-badge";
 import { useOS } from "@/lib/os/app-provider";
-import { OPERATOR_REGISTRY } from "@/lib/operators/registry";
+import { OPERATOR_REGISTRY, isLiveOperator } from "@/lib/operators/registry";
+import { operatorAvatarPath } from "@/lib/operator-assets";
 import { getOperatorCapabilityCopy } from "@/lib/operators/capability-presentation";
 import { GLYPHS, OPERATORS, type Operator } from "@/data/operators";
 import { PageHeader } from "@/components/product-ui/page-primitives";
@@ -84,13 +86,24 @@ function Lock() {
   );
 }
 
-function AgAvatar({ color, glyph }: { color: string; glyph: string }) {
+/**
+ * Live operators wear their canonical portrait; roadmap roles keep the
+ * abstract silhouette. That difference is deliberate product truth -- a
+ * shipped operator looks like a real member of the workforce, an unbuilt one
+ * visibly does not, so the index never implies more staff than exists.
+ */
+function AgAvatar({ color, glyph, operatorKey }: { color: string; glyph: string; operatorKey?: string }) {
+  const avatar = operatorKey && isLiveOperator(operatorKey) ? operatorAvatarPath(operatorKey) : null;
   return (
-    <div className="ag-av" style={{ background: `${color}12`, boxShadow: `inset 0 0 0 1px ${color}55`, color }}>
-      <svg viewBox="0 0 24 24" fill="currentColor" className="ag-person">
-        <circle cx="12" cy="8.5" r="3.6" />
-        <path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5z" />
-      </svg>
+    <div className={`ag-av${avatar ? " has-portrait" : ""}`} style={{ background: `${color}12`, boxShadow: `inset 0 0 0 1px ${color}55`, color }}>
+      {avatar ? (
+        <Image src={avatar} alt="" width={72} height={72} className="ag-portrait" aria-hidden />
+      ) : (
+        <svg viewBox="0 0 24 24" fill="currentColor" className="ag-person">
+          <circle cx="12" cy="8.5" r="3.6" />
+          <path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5z" />
+        </svg>
+      )}
       <span className="ag-badge" style={{ color, boxShadow: `0 0 0 2px var(--bg), inset 0 0 0 1px ${color}55` }}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.1} strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: GLYPHS[glyph] ?? "" }} />
       </span>
@@ -150,7 +163,7 @@ function AgentCard({ model, onOpenDetails }: { model: CardModel; onOpenDetails: 
   return (
     <div className={`ag-card ${dim ? "dim" : ""}`} style={{ "--c": op.color } as CSSProperties}>
       <div className="ag-card-top">
-        <AgAvatar color={op.color} glyph={op.glyph} />
+        <AgAvatar color={op.color} glyph={op.glyph} operatorKey={model.key} />
         <div className="ag-id">
           <h3 className="ag-name">{href ? <Link href={href}>{op.name}</Link> : op.name}</h3>
           <div className="ag-tag">{op.tag}</div>
@@ -195,7 +208,7 @@ function OperatorDetails({ model, onClose }: { model: CardModel; onClose: () => 
       <section className="os-modal agent-details-modal" style={{ "--c": op.color } as CSSProperties} role="dialog" aria-modal="true" aria-labelledby="operator-details-title" onClick={(event) => event.stopPropagation()}>
         <div className="agent-details-topline"><span>Operator briefing</span><button className="agent-details-close" type="button" onClick={onClose}>Close</button></div>
         <div className="agent-details-hero" style={{ "--c": op.color } as CSSProperties}>
-          <AgAvatar color={op.color} glyph={op.glyph} />
+          <AgAvatar color={op.color} glyph={op.glyph} operatorKey={model.key} />
           <div><span>{op.tag}</span><h2 id="operator-details-title">{op.name}</h2><p>{op.mission}</p></div>
           <StatusBadge state={productState.state}>{productState.label}</StatusBadge>
         </div>
@@ -314,11 +327,11 @@ export default function AgentsRegistryPage() {
         <span className="ag-legend-label">Every operator<strong>runs one loop</strong></span>
         <span className="ag-loop-summary">One controlled loop · approval required</span>
         <div className="ag-legend-flow">
-          {LOOP_STEPS.map((s, i) => (
-            <Fragment key={s}>
-              {i > 0 && <span className="ag-loop-arrow">&rarr;</span>}
-              <span className={`ag-loop-pill ${s === "Approve" ? "gate" : ""}`}><span className="d" />{s}</span>
-            </Fragment>
+          {/* The connector between steps is drawn in CSS (.ag-loop-pill::after)
+              so the rail stays continuous instead of relying on a text arrow
+              that sits on its own baseline. */}
+          {LOOP_STEPS.map((s) => (
+            <span key={s} className={`ag-loop-pill ${s === "Approve" ? "gate" : ""}`}><span className="d" />{s}</span>
           ))}
         </div>
         <div className="ag-filter" style={{ marginLeft: "auto" }}>

@@ -151,7 +151,7 @@ export default function RegisterPage() {
           {resendNotice && <div className="auth-alert success" role="status">{resendNotice}</div>}
           <button className="auth-secondary" type="button" onClick={resendVerification} disabled={resendBusy || resendCooldown > 0}>
             {resendBusy
-              ? "Sending verification email..."
+              ? "Sending verification email…"
               : resendCooldown > 0
                 ? `Resend available in ${resendCooldown}s`
                 : "Resend verification email"}
@@ -193,7 +193,7 @@ export default function RegisterPage() {
             <input id="password" className="auth-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" autoComplete="new-password" />
           </div>
           <button className="auth-submit" type="submit" disabled={busy}>
-            {busy ? "Creating account..." : "Create account"}
+            {busy ? "Creating account…" : "Create account"}
           </button>
         </form>
 

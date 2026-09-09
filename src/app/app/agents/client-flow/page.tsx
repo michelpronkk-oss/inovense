@@ -256,14 +256,14 @@ export default function ClientFlowOperatorPage() {
           <div className="p-head">
             <div>
               <h3>Monitoring</h3>
-              <div className="p-meta" style={{ marginTop: 4 }}>{loading ? "Loading..." : monitoringActive ? "Daily monitoring active" : "Scheduled monitoring"}{lastCheckAt ? ` · Last check ${relativeTime(lastCheckAt)}` : ""}</div>
+              <div className="p-meta" style={{ marginTop: 4 }}>{loading ? "Loading…" : monitoringActive ? "Daily monitoring active" : "Scheduled monitoring"}{lastCheckAt ? ` · Last check ${relativeTime(lastCheckAt)}` : ""}</div>
             </div>
           </div>
           <div style={{ padding: "18px 20px" }}>
             {!hasRunScan ? (
               <div style={{ display: "grid", gap: 12, justifyItems: "start" }}>
                 <div style={{ fontSize: 13, color: "var(--text-dim)" }}>Monitoring is active. The first scheduled check has not run yet.</div>
-                <button className="btn btn-ghost btn-sm" type="button" onClick={submitScan} disabled={!canRun || scanSubmitting} style={{ opacity: !canRun || scanSubmitting ? 0.45 : 1 }}>{scanSubmitting ? "Checking..." : "Run manual check"}</button>
+                <button className="btn btn-ghost btn-sm" type="button" onClick={submitScan} disabled={!canRun || scanSubmitting} style={{ opacity: !canRun || scanSubmitting ? 0.45 : 1 }}>{scanSubmitting ? "Checking…" : "Run manual check"}</button>
               </div>
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>

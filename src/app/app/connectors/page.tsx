@@ -1169,29 +1169,43 @@ export default function ConnectorsPage() {
                 <div className="connector-finder-intro">Choose the systems that give your workforce more context and useful actions.</div>
                 <div className="connector-finder-body">
                   <div className="connector-finder-controls">
-                    <input className="os-input" placeholder="Search systems..." aria-label="Search connector systems" value={search} onChange={(e) => setSearch(e.target.value)} />
+                    <input className="os-input" placeholder="Search systems…" aria-label="Search connector systems" value={search} onChange={(e) => setSearch(e.target.value)} />
                     <label className="connector-finder-category"><span className="sr-only">Connector category</span><select className="os-input" aria-label="Connector category" value={discoveryCategory} onChange={(event) => setDiscoveryCategory(event.target.value as ConnectorDiscoveryCategory)}>{CONNECTOR_DISCOVERY_CATEGORIES.map((category) => <option key={category.key} value={category.key}>{category.label}</option>)}</select></label>
                   </div>
                   {prioritizedAvailable.length > 0 ? (
-                    <div className="connector-finder-results" aria-label="Connector results"><div className="connector-finder-grid">
-                      {prioritizedAvailable.map((c) => {
-                        const connectorKey = normalizeConnectorKey(c.id);
-                        const definition = getConnectorDefinition(connectorKey);
-                        const discoveryState = connectorDiscoveryState(c);
-                        const operators = connectorOperatorNames(connectorKey).map(shortOperatorLabel);
-                        return (
-                          <button className="connector-finder-card" data-connected={isRealConnectedConnector(c) || undefined} key={c.id} onClick={() => { if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); }}>
-                            <div className="connector-finder-card-head">
-                              <div className="connector-brand-logo" style={{ width: 30, height: 30, borderRadius: 9 }}>{IntegrationLogos[c.name] ?? <span style={{ color: c.color, fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{c.letter}</span>}</div>
-                              <div><strong>{c.name}</strong><span>{definition ? connectorCategoryLabel(definition) : CONNECTOR_CATEGORY_LABELS.custom_api}</span></div>
-                            </div>
-                            <p>{connectorCapabilities(connectorKey)[0] ?? "Useful workspace context"}</p>
-                            {operators.length > 0 && <small>Useful for {operators.join(" · ")}</small>}
-                            <div className="connector-finder-card-foot" style={{ color: discoveryState.color }}><span>{discoveryState.status}</span><span>{discoveryState.action} →</span></div>
-                          </button>
-                        );
-                      })}
-                    </div></div>
+                    // Already-connected systems are grouped and labelled apart from
+                    // the ones still available. In a single flat grid a connected
+                    // provider carries the same weight as ten unconnected ones,
+                    // which is what made this read as a pile of boxes.
+                    <div className="connector-finder-results" aria-label="Connector results">
+                      {([
+                        ["Connected", prioritizedAvailable.filter((c) => isRealConnectedConnector(c))],
+                        ["Available", prioritizedAvailable.filter((c) => !isRealConnectedConnector(c))],
+                      ] as const).filter(([, group]) => group.length > 0).map(([groupLabel, group]) => (
+                        <section className="connector-finder-group" data-group={groupLabel.toLowerCase()} key={groupLabel}>
+                          <h4 className="connector-finder-group-label">{groupLabel}<span>{group.length}</span></h4>
+                          <div className="connector-finder-grid">
+                            {group.map((c) => {
+                              const connectorKey = normalizeConnectorKey(c.id);
+                              const definition = getConnectorDefinition(connectorKey);
+                              const discoveryState = connectorDiscoveryState(c);
+                              const operators = connectorOperatorNames(connectorKey).map(shortOperatorLabel);
+                              return (
+                                <button className="connector-finder-card" data-connected={isRealConnectedConnector(c) || undefined} key={c.id} onClick={() => { if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); }}>
+                                  <div className="connector-finder-card-head">
+                                    <div className="connector-brand-logo" style={{ width: 30, height: 30, borderRadius: 9 }}>{IntegrationLogos[c.name] ?? <span style={{ color: c.color, fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{c.letter}</span>}</div>
+                                    <div><strong>{c.name}</strong><span>{definition ? connectorCategoryLabel(definition) : CONNECTOR_CATEGORY_LABELS.custom_api}</span></div>
+                                  </div>
+                                  <p>{connectorCapabilities(connectorKey)[0] ?? "Useful workspace context"}</p>
+                                  {operators.length > 0 && <small>Useful for {operators.join(" · ")}</small>}
+                                  <div className="connector-finder-card-foot" style={{ color: discoveryState.color }}><span>{discoveryState.status}</span><span>{discoveryState.action} →</span></div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </section>
+                      ))}
+                    </div>
                   ) : (
                     <div className="os-empty-state" style={{ padding: "24px 16px" }}>No live connectors match this search.</div>
                   )}
@@ -1290,7 +1304,9 @@ export default function ConnectorsPage() {
           <div className="os-modal" style={{ width: "min(820px, 94vw)", maxHeight: "88vh", overflow: "auto" }} onClick={(e) => e.stopPropagation()}>
             <div className="os-modal-head">
               <h3>{drawerConnector.name} details</h3>
-              <button className="appr-btn deny" onClick={() => setDrawerConnectorId(null)}>Close</button>
+              <button className="os-iconbtn" onClick={() => setDrawerConnectorId(null)} aria-label="Close">
+                <XIcon size={13} />
+              </button>
             </div>
             <ConnectorSetupView
               connector={drawerConnector}
@@ -1327,7 +1343,7 @@ export default function ConnectorsPage() {
                 </div>
                 <label className="lab" htmlFor="drive-folder-select">Selected folder</label>
                 <select id="drive-folder-select" className="os-input" value={driveSettings.folders[0]?.folderId ?? ""} disabled={driveLoading || driveSaving} onChange={(event) => { const selected = driveFolders.find((folder) => folder.folderId === event.target.value) ?? null; void saveDriveSettings(selected); }}>
-                  <option value="">{driveLoading ? "Loading folders..." : "Select a folder"}</option>
+                  <option value="">{driveLoading ? "Loading folders…" : "Select a folder"}</option>
                   {driveFolders.map((folder) => <option key={folder.folderId} value={folder.folderId}>{folder.folderName}</option>)}
                 </select>
                 <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>Google account access is shared with Gmail. Disabling Drive does not disconnect Gmail.</div>
@@ -1370,7 +1386,7 @@ export default function ConnectorsPage() {
                       });
                     }}
                   >
-                    <option value="">{slackChannelsLoading ? "Loading channels..." : "Select alert channel"}</option>
+                    <option value="">{slackChannelsLoading ? "Loading channels…" : "Select alert channel"}</option>
                     {slackChannels.map((channel) => (
                       <option key={channel.id} value={channel.id}>
                         {channel.isPrivate ? "private: " : "#"}{channel.name}{channel.isPrivate && !channel.isMember ? " - invite required" : ""}
@@ -1472,7 +1488,7 @@ export default function ConnectorsPage() {
                           if (teamId) void fetchTeamsChannels(teamId);
                         }}
                       >
-                        <option value="">{teamsLoading ? "Loading teams..." : "Select a team"}</option>
+                        <option value="">{teamsLoading ? "Loading teams…" : "Select a team"}</option>
                         {teamsTeams.map((team) => <option key={team.id} value={team.id}>{team.displayName}</option>)}
                       </select>
                       <select
@@ -1534,7 +1550,7 @@ export default function ConnectorsPage() {
                       });
                     }}
                   >
-                    <option value="">{trelloLoading ? "Loading boards..." : "Select default board"}</option>
+                    <option value="">{trelloLoading ? "Loading boards…" : "Select default board"}</option>
                     {trelloBoards.map((board) => <option key={board.id} value={board.id}>{board.name}</option>)}
                   </select>
                   <select
@@ -1566,7 +1582,7 @@ export default function ConnectorsPage() {
               <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 10 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}><div><div style={{ fontSize: 12.5, fontWeight: 600 }}>Asana project scope</div><div style={{ fontSize: 11.5, color: "var(--text-mute)", marginTop: 2 }}>Choose the project Operations may monitor and update after approval.</div></div><button className="btn btn-ghost btn-sm" onClick={() => { void fetchAsanaWorkspaces(); }}>Refresh workspaces</button></div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  <select className="os-input" value={asanaSettings.selectedWorkspaceId ?? ""} disabled={asanaLoading || asanaSaving} onFocus={() => { if (!asanaWorkspaces.length) void fetchAsanaWorkspaces(); }} onChange={(event) => { const selected = asanaWorkspaces.find((item) => item.gid === event.target.value) ?? null; setAsanaProjects([]); setAsanaSettings((current) => ({ ...current, selectedWorkspaceId: selected?.gid ?? null, selectedWorkspaceName: selected?.name ?? null, selectedProjectId: null, selectedProjectName: null })); if (selected) void fetchAsanaProjects(selected.gid); }}><option value="">{asanaLoading ? "Loading workspaces..." : "Select workspace"}</option>{asanaWorkspaces.map((item) => <option key={item.gid} value={item.gid}>{item.name}</option>)}</select>
+                  <select className="os-input" value={asanaSettings.selectedWorkspaceId ?? ""} disabled={asanaLoading || asanaSaving} onFocus={() => { if (!asanaWorkspaces.length) void fetchAsanaWorkspaces(); }} onChange={(event) => { const selected = asanaWorkspaces.find((item) => item.gid === event.target.value) ?? null; setAsanaProjects([]); setAsanaSettings((current) => ({ ...current, selectedWorkspaceId: selected?.gid ?? null, selectedWorkspaceName: selected?.name ?? null, selectedProjectId: null, selectedProjectName: null })); if (selected) void fetchAsanaProjects(selected.gid); }}><option value="">{asanaLoading ? "Loading workspaces…" : "Select workspace"}</option>{asanaWorkspaces.map((item) => <option key={item.gid} value={item.gid}>{item.name}</option>)}</select>
                   <select className="os-input" value={asanaSettings.selectedProjectId ?? ""} disabled={asanaLoading || asanaSaving || !asanaSettings.selectedWorkspaceId} onFocus={() => { if (asanaSettings.selectedWorkspaceId && !asanaProjects.length) void fetchAsanaProjects(asanaSettings.selectedWorkspaceId); }} onChange={(event) => { const selected = asanaProjects.find((item) => item.gid === event.target.value) ?? null; void saveAsanaSettings({ selectedProjectId: selected?.gid ?? null, selectedProjectName: selected?.name ?? null }); }}><option value="">{asanaSettings.selectedWorkspaceId ? "Select project" : "Select workspace first"}</option>{asanaProjects.map((item) => <option key={item.gid} value={item.gid}>{item.name}</option>)}</select>
                 </div>
                 <div style={{ fontSize: 11.5, color: drawerAsanaReady ? "#9DEFEA" : "var(--amber)" }}>{drawerAsanaReady ? `Read scope: ${asanaSettings.selectedWorkspaceName} / ${asanaSettings.selectedProjectName}` : "Select a workspace and project to enable Operations reads."}</div>
@@ -1576,8 +1592,8 @@ export default function ConnectorsPage() {
             {drawerConnector.id === "jira" && isRealConnectedConnector(drawerConnector) && (
               <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)", display: "grid", gap: 10 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}><div><div style={{ fontSize: 12.5, fontWeight: 600 }}>Jira project scope</div><div style={{ fontSize: 11.5, color: "var(--text-mute)", marginTop: 2 }}>{jiraSettings.siteName ? `Site: ${jiraSettings.siteName}. ` : ""}Choose the one project Operations may monitor and update after approval.</div></div><button className="btn btn-ghost btn-sm" onClick={() => { void fetchJiraProjects(); }}>Refresh projects</button></div>
-                <select className="os-input" value={jiraSettings.selectedProjectId ?? ""} disabled={jiraLoading || jiraSaving} onChange={(event) => { const selected = jiraProjects.find((project) => project.id === event.target.value) ?? null; void saveJiraSettings(selected); }}><option value="">{jiraLoading ? "Loading projects..." : "Select project"}</option>{jiraProjects.map((project) => <option key={project.id} value={project.id}>{project.key} · {project.name}</option>)}</select>
-                <select className="os-input" value={jiraSettings.selectedIssueTypeId ?? ""} disabled={jiraLoading || jiraSaving || !jiraSettings.selectedProjectId} onChange={(event) => { const selected = jiraIssueTypes.find((item) => item.id === event.target.value) ?? null; void saveJiraSettings(null, selected); }}><option value="">{jiraSettings.selectedProjectId ? (jiraLoading ? "Loading issue types..." : "Select default issue type") : "Select project first"}</option>{jiraIssueTypes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
+                <select className="os-input" value={jiraSettings.selectedProjectId ?? ""} disabled={jiraLoading || jiraSaving} onChange={(event) => { const selected = jiraProjects.find((project) => project.id === event.target.value) ?? null; void saveJiraSettings(selected); }}><option value="">{jiraLoading ? "Loading projects…" : "Select project"}</option>{jiraProjects.map((project) => <option key={project.id} value={project.id}>{project.key} · {project.name}</option>)}</select>
+                <select className="os-input" value={jiraSettings.selectedIssueTypeId ?? ""} disabled={jiraLoading || jiraSaving || !jiraSettings.selectedProjectId} onChange={(event) => { const selected = jiraIssueTypes.find((item) => item.id === event.target.value) ?? null; void saveJiraSettings(null, selected); }}><option value="">{jiraSettings.selectedProjectId ? (jiraLoading ? "Loading issue types…" : "Select default issue type") : "Select project first"}</option>{jiraIssueTypes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
                 <div style={{ fontSize: 11.5, color: drawerJiraReady ? "#9DEFEA" : "var(--amber)" }}>{drawerJiraReady ? `Write scope: ${jiraSettings.selectedProjectKey} · ${jiraSettings.selectedIssueTypeName}` : "Select a project and valid default issue type to enable Jira workflow writes."}</div>
                 {jiraSetupError && <div style={{ fontSize: 11.5, color: "#ffaaaa" }}>{jiraSetupError}</div>}
               </div>
@@ -1648,8 +1664,8 @@ export default function ConnectorsPage() {
                 )}
               </div>
               {drawerConnector.id !== "google_drive" && isRealConnectedConnector(drawerConnector) && (
-                <button className="btn btn-ghost btn-sm" style={{ color: "#f0a5a5", borderColor: "rgba(240,165,165,0.24)" }} disabled={disconnectingConnectorId === drawerConnector.id} onClick={() => void disconnectRealConnector(drawerConnector)}>
-                  {disconnectingConnectorId === drawerConnector.id ? "Disconnecting..." : "Disconnect"}
+                <button className="btn btn-danger btn-sm" disabled={disconnectingConnectorId === drawerConnector.id} onClick={() => void disconnectRealConnector(drawerConnector)}>
+                  {disconnectingConnectorId === drawerConnector.id ? "Disconnecting…" : "Disconnect"}
                 </button>
               )}
               </div>

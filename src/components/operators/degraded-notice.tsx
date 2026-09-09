@@ -23,7 +23,7 @@ type ProductStateResult = {
  * fetches the shared operator product-state (src/lib/operators/product-state.ts,
  * via GET /api/operators/product-state) and renders nothing unless that
  * operator actually has a degraded connector right now. Distinguishes a
- * required-connector loss ("Needs attention: reconnect...") from an
+ * required-connector loss ("Needs attention: reconnect…") from an
  * optional-connector loss ("Still available: ... / Unavailable: ...") using
  * the same real data - never invents its own connector-health logic.
  */

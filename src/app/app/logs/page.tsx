@@ -56,6 +56,7 @@ export default function LogsPage() {
     (eventFilter === "All events" || l.event === eventFilter)
   );
   const visibleLogs = filtered.slice(0, visibleCount);
+  const hasActiveFilter = agentFilter !== "All agents" || eventFilter !== "All events";
 
   return (
     <div className="os-page logs-page">
@@ -68,19 +69,27 @@ export default function LogsPage() {
         </>}
       />
 
-      <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", padding: "10px 12px", border: "1px solid var(--line)", borderRadius: 12, background: "rgba(255,255,255,0.018)" }}>
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-mute)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Agent</span>
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-          {agentMarks.map((a) => (
-            <button key={a} onClick={() => { setAgentFilter(a); setVisibleCount(10); }} className={`appr-btn${agentFilter === a ? " approve" : " edit"}`} style={{ fontSize: 10.5, padding: "4px 10px" }}>{a}</button>
-          ))}
-        </div>
-        <span style={{ width: 1, height: 18, background: "var(--line)" }} aria-hidden="true" />
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-mute)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Event</span>
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-          {eventTypes.map((e) => (
-            <button key={e} onClick={() => { setEventFilter(e); setVisibleCount(10); }} className={`appr-btn${eventFilter === e ? " approve" : " edit"}`} style={{ fontSize: 10.5, padding: "4px 10px" }}>{e === "All events" ? e : formatEventKey(e)}</button>
-          ))}
+      {/* Two compact selects rather than a chip per event type: event keys grow
+          with every new action the platform records, and a wrapping wall of
+          chips stops being scannable well before that list is complete. */}
+      <div className="logs-filter-bar">
+        <label className="logs-filter">
+          <span>Agent</span>
+          <select className="os-input" value={agentFilter} onChange={(event) => { setAgentFilter(event.target.value); setVisibleCount(10); }}>
+            {agentMarks.map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
+        </label>
+        <label className="logs-filter">
+          <span>Event</span>
+          <select className="os-input" value={eventFilter} onChange={(event) => { setEventFilter(event.target.value); setVisibleCount(10); }}>
+            {eventTypes.map((e) => <option key={e} value={e}>{e === "All events" ? e : formatEventKey(e)}</option>)}
+          </select>
+        </label>
+        <div className="logs-filter-result">
+          <span>{filtered.length} of {state.logs.length} entries</span>
+          {hasActiveFilter && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setAgentFilter("All agents"); setEventFilter("All events"); setVisibleCount(10); }}>Clear filters</button>
+          )}
         </div>
       </div>
 

@@ -200,7 +200,7 @@ export function OperatorDetail({ operatorKey }: { operatorKey: OperatorDetailKey
           <div className="od-hero-mission">{op.mission}</div>
         </div>
         <div className="od-hero-actions">
-          <button className="btn btn-ghost btn-sm" type="button" onClick={runManualCheck} disabled={!canRun || busy} style={{ opacity: !canRun || busy ? 0.45 : 1 }}>{busy ? "Checking..." : "Run manual check"}</button>
+          <button className="btn btn-ghost btn-sm" type="button" onClick={runManualCheck} disabled={!canRun || busy} style={{ opacity: !canRun || busy ? 0.45 : 1 }}>{busy ? "Checking…" : "Run manual check"}</button>
           <Link className="btn btn-primary btn-sm" href="/approvals" style={{ textDecoration: "none" }}>View approvals</Link>
         </div>
       </div>
@@ -372,7 +372,7 @@ export function OperatorDetail({ operatorKey }: { operatorKey: OperatorDetailKey
               <div className="t">Advanced</div>
               <div className="s">Run a manual check now, outside the scheduled monitoring loop.</div>
             </div>
-            <button className="btn btn-ghost btn-sm" type="button" onClick={runManualCheck} disabled={!canRun || busy} style={{ opacity: !canRun || busy ? 0.45 : 1 }}>{busy ? "Checking..." : "Run manual check"}</button>
+            <button className="btn btn-ghost btn-sm" type="button" onClick={runManualCheck} disabled={!canRun || busy} style={{ opacity: !canRun || busy ? 0.45 : 1 }}>{busy ? "Checking…" : "Run manual check"}</button>
           </div>
         </div>
       </div>

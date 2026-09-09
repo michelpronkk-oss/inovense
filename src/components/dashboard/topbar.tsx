@@ -123,7 +123,7 @@ function DeployModal({ onClose }: { onClose: () => void }) {
                 autoFocus
                 value={searchQ}
                 onChange={(e) => setSearchQ(e.target.value)}
-                placeholder="Search operators..."
+                placeholder="Search operators…"
                 style={{ flex: 1, background: "none", border: "none", outline: "none", color: "var(--text)", fontFamily: "var(--font-sans)", fontSize: 13 }}
               />
               {searchQ && (
@@ -215,7 +215,7 @@ function DeployModal({ onClose }: { onClose: () => void }) {
                 },
                 {
                   label: "Primary workflow",
-                  placeholder: "Select workflow or create new...",
+                  placeholder: "Select workflow or create new…",
                   hint: null,
                   value: workflow,
                   onChange: (e: React.ChangeEvent<HTMLInputElement>) => setWorkflow(e.target.value),

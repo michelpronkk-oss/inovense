@@ -66,7 +66,7 @@ export default function ResetPasswordPage() {
         <p className="auth-sub">Choose a new password for your Auterim account.</p>
 
         {error && <div className="auth-alert error" role="alert">{error}</div>}
-        {done && <div className="auth-alert success" role="status">Password updated. Redirecting...</div>}
+        {done && <div className="auth-alert success" role="status">Password updated. Redirecting…</div>}
 
         {!done && ready && !error && (
           <form onSubmit={onSubmit} noValidate>
@@ -79,7 +79,7 @@ export default function ResetPasswordPage() {
               <input id="confirm" className="auth-input" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="Repeat password" autoComplete="new-password" />
             </div>
             <button className="auth-submit" type="submit" disabled={busy}>
-              {busy ? "Updating..." : "Update password"}
+              {busy ? "Updating…" : "Update password"}
             </button>
           </form>
         )}

@@ -177,7 +177,7 @@ export function OSSidebar() {
                   <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0 4px" }}>
                     <div className="os-profile-avatar" style={{ width: 48, height: 48, ...avatarStyle }}>{state.currentUser.initials}</div>
                     <label className="btn btn-ghost btn-sm" style={{ width: "fit-content", cursor: uploadingAvatar ? "wait" : "pointer" }}>
-                      {uploadingAvatar ? "Uploading..." : "Change photo"}
+                      {uploadingAvatar ? "Uploading…" : "Change photo"}
                       <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" disabled={uploadingAvatar} onChange={(event) => void uploadAvatar(event.target.files?.[0])} style={{ display: "none" }} />
                     </label>
                   </div>
@@ -252,7 +252,7 @@ export function OSSidebar() {
                     setProfileFeedback(result.message);
                   }}
                 >
-                  {savingProfile ? "Saving..." : "Save changes"}
+                  {savingProfile ? "Saving…" : "Save changes"}
                 </button>
               </div>
             </div>

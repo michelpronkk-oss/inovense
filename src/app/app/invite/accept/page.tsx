@@ -48,7 +48,7 @@ export default function InviteAcceptPage() {
         <AuthCardBadge />
         <h1 className="auth-title">Team invite</h1>
 
-        {status === "checking" && <p className="auth-sub">Checking your invite...</p>}
+        {status === "checking" && <p className="auth-sub">Checking your invite…</p>}
 
         {status === "needs_login" && (
           <>
@@ -64,7 +64,7 @@ export default function InviteAcceptPage() {
 
         {status === "error" && <div className="auth-alert error" role="alert">{message}</div>}
 
-        {status === "done" && <div className="auth-alert success" role="status">Invite accepted. Taking you to your workspace...</div>}
+        {status === "done" && <div className="auth-alert success" role="status">Invite accepted. Taking you to your workspace…</div>}
       </div>
     </div>
   );

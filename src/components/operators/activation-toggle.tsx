@@ -135,7 +135,7 @@ export function OperatorActivationToggle({
       </button>
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ fontSize: 13, fontWeight: 600 }}>
-          {loading ? "Loading control..." : error && !state ? "Control unavailable" : activated && runtimeControl ? "Pause operator" : !activated && runtimeControl ? "Activate operator" : activated ? "Active" : wasEverActivated ? "Paused" : "Ready to activate"}
+          {loading ? "Loading control…" : error && !state ? "Control unavailable" : activated && runtimeControl ? "Pause operator" : !activated && runtimeControl ? "Activate operator" : activated ? "Active" : wasEverActivated ? "Paused" : "Ready to activate"}
         </div>
         <div id={descriptionId} style={{ marginTop: 2, fontSize: 12, color: "var(--text-mute)" }}>
           {!configured

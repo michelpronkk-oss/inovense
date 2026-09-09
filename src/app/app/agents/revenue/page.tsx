@@ -344,7 +344,7 @@ export default function RevenueOperatorPage() {
         />
 
         {showRuntime && <section className="p operator-current-work" style={{ marginTop: 14, padding: 0 }}>
-          <div className="p-head"><h3>Monitoring & current work</h3><div style={{ display: "flex", gap: 8 }}>{pendingApprovals > 0 ? <Link href="/app/approvals" className="btn btn-primary btn-sm">{pendingApprovals} awaiting review</Link> : null}<button className="btn btn-ghost btn-sm" type="button" onClick={submitRevenueScan} disabled={!canRunRevenue || scanSubmitting}>{scanSubmitting ? "Checking..." : "Run manual check"}</button></div></div>
+          <div className="p-head"><h3>Monitoring & current work</h3><div style={{ display: "flex", gap: 8 }}>{pendingApprovals > 0 ? <Link href="/app/approvals" className="btn btn-primary btn-sm">{pendingApprovals} awaiting review</Link> : null}<button className="btn btn-ghost btn-sm" type="button" onClick={submitRevenueScan} disabled={!canRunRevenue || scanSubmitting}>{scanSubmitting ? "Checking…" : "Run manual check"}</button></div></div>
           <div style={{ padding: "8px 18px 16px" }}>
             {pendingApprovals > 0 ? monitoring?.recentPendingApprovals.map((approval) => <div key={approval.id} style={{ padding: "12px 0", borderBottom: "1px solid var(--line)", display: "flex", justifyContent: "space-between", gap: 20 }}><div><div style={{ fontSize: 13, fontWeight: 520 }}>{approval.subject || approval.title}</div><div style={{ marginTop: 3, fontSize: 11.5, color: "var(--text-mute)" }}>{approval.to || "Unknown recipient"}</div></div><div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--amber)" }}>Approval needed</div></div>) : <div style={{ padding: "12px 0 4px", color: "var(--text-mute)", fontSize: 12.5 }}>{revenueRuns.length ? `${revenueRuns.length} recent check${revenueRuns.length === 1 ? "" : "s"} recorded. Next scheduled check: ${dateTimeLabel(monitoring?.nextRunAt)}.` : `No issues need attention right now. Next scheduled check: ${dateTimeLabel(monitoring?.nextRunAt)}.`}</div>}
           </div>
@@ -409,7 +409,7 @@ export default function RevenueOperatorPage() {
             <input className="os-input" value={leadName} onChange={(e) => setLeadName(e.target.value)} placeholder="Lead name" required />
             <input className="os-input" value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} placeholder="Lead email" type="email" required />
             <textarea className="os-input" value={context} onChange={(e) => setContext(e.target.value)} placeholder="Context for the follow-up" rows={3} required style={{ gridColumn: "1 / -1" }} />
-            <button className="btn btn-primary btn-sm" type="submit" disabled={!canRunRevenue || runSubmitting} style={{ width: "fit-content" }}>{runSubmitting ? "Preparing..." : "Prepare for approval"}</button>
+            <button className="btn btn-primary btn-sm" type="submit" disabled={!canRunRevenue || runSubmitting} style={{ width: "fit-content" }}>{runSubmitting ? "Preparing…" : "Prepare for approval"}</button>
           </form>
         </details>}
       </div>
@@ -428,7 +428,7 @@ export default function RevenueOperatorPage() {
         <div className="os-page-actions">
           <Link href="/app/approvals" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>View approvals</Link>
           <button className="btn btn-ghost btn-sm" type="button" onClick={submitRevenueScan} disabled={!canRunRevenue || scanSubmitting} style={{ opacity: !canRunRevenue || scanSubmitting ? 0.45 : 1 }}>
-            {scanSubmitting ? "Checking..." : "Run manual check"}
+            {scanSubmitting ? "Checking…" : "Run manual check"}
           </button>
         </div>
       </div>
@@ -441,7 +441,7 @@ export default function RevenueOperatorPage() {
         <div className="p-head">
           <div>
             <h3>Monitoring active</h3>
-            <div className="p-meta" style={{ marginTop: 4 }}>{runtimeLoading ? "Loading real operator state..." : monitoring?.nextScanLabel ?? "Daily scan ready"}</div>
+            <div className="p-meta" style={{ marginTop: 4 }}>{runtimeLoading ? "Loading real operator state…" : monitoring?.nextScanLabel ?? "Daily scan ready"}</div>
           </div>
           {gmailReconnectRequired && <button className="btn btn-primary btn-sm" type="button" onClick={startGmailReconnect}>Reconnect Gmail</button>}
         </div>
@@ -573,7 +573,7 @@ export default function RevenueOperatorPage() {
             <input className="os-input" value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} placeholder="Lead email" type="email" required />
             <textarea className="os-input" value={context} onChange={(e) => setContext(e.target.value)} placeholder="Context for the follow-up" rows={4} required />
             <input className="os-input" value="follow_up" disabled aria-disabled="true" />
-            <button className="btn btn-primary btn-sm" type="submit" disabled={!canRunRevenue || runSubmitting} style={{ opacity: !canRunRevenue || runSubmitting ? 0.45 : 1, width: "fit-content" }}>{runSubmitting ? "Preparing..." : "Prepare manual follow-up approval"}</button>
+            <button className="btn btn-primary btn-sm" type="submit" disabled={!canRunRevenue || runSubmitting} style={{ opacity: !canRunRevenue || runSubmitting ? 0.45 : 1, width: "fit-content" }}>{runSubmitting ? "Preparing…" : "Prepare manual follow-up approval"}</button>
           </form>
         )}
       </div>

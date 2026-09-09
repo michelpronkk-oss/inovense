@@ -78,6 +78,10 @@ export function OperatorWorkforceBriefing({
   return (
     <section className="operator-runtime-surface" data-operator-state={product?.state ?? "loading"}>
       <div className="operator-runtime-summary">
+        {/* Ready and locked must never read as the same thing here, so the
+            eyebrow keeps its distinct wording per state. The readiness list
+            below is where the duplication was, and it now leads with
+            "Before activation" instead of repeating this line. */}
         <div className="p-meta">{active ? "Runtime summary" : locked ? "Role available" : "Ready when you are"}</div>
         <p>{calmSummary}</p>
         {!active && <div className="operator-runtime-role">{responsibility[operatorKey][0]}. {product?.availableNow?.[0] ?? "Auterim will keep consequential actions under your control."}</div>}
@@ -111,7 +115,7 @@ export function OperatorWorkforceBriefing({
 
       {!active && !locked && product && (
         <div className="operator-current-state">
-          <div className="operator-surface-heading"><span>Ready state</span><small>Before activation</small></div>
+          <div className="operator-surface-heading"><span>Before activation</span><small>What is already in place</small></div>
           <div className="operator-state-grid">
             <StateItem label={capabilityCopy.required[0] ?? "Core context"} value={primaryProvider ? `Connected via ${primaryProvider}` : "Ready"} />
             <StateItem label="Monitoring" value={product.lifecycle === "paused" ? "Paused" : "Starts after activation"} />

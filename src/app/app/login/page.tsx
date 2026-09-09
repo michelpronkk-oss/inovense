@@ -91,7 +91,7 @@ export default function LoginPage() {
             />
           </div>
           <button className="auth-submit" type="submit" disabled={busy}>
-            {busy ? "Signing in..." : "Sign in"}
+            {busy ? "Signing in…" : "Sign in"}
           </button>
         </form>
 

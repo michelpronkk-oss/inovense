@@ -92,11 +92,14 @@ function dashboardCounts(overview: DashboardOverview) {
 
 function DashboardMetrics({ overview }: { overview: DashboardOverview }) {
   const counts = dashboardCounts(overview);
+  // The marker reports state rather than decorating the tile: geometric
+  // glyphs ("◎ ↗ ◌ !") rendered inconsistently across fonts and carried no
+  // meaning. Tone is derived from the same real counts shown beside it.
   const metrics = [
-    { label: "Systems connected", value: counts.connected, detail: counts.connected ? "Live context available" : "Connect a first system", symbol: "◎" },
-    { label: "Operators ready", value: counts.ready, detail: counts.ready ? "Ready to deploy" : "No operator waiting", symbol: "↗" },
-    { label: "Active operators", value: counts.active, detail: counts.active ? "Monitoring now" : "Nothing running yet", symbol: "◌" },
-    { label: "Needs attention", value: counts.attention, detail: counts.attention ? "A review is needed" : "All systems clear", attention: counts.attention > 0, symbol: "!" },
+    { label: "Systems connected", value: counts.connected, detail: counts.connected ? "Live context available" : "Connect a first system", tone: counts.connected ? "on" : "idle" },
+    { label: "Operators ready", value: counts.ready, detail: counts.ready ? "Ready to deploy" : "No operator waiting", tone: counts.ready ? "on" : "idle" },
+    { label: "Active operators", value: counts.active, detail: counts.active ? "Monitoring now" : "Nothing running yet", tone: counts.active ? "live" : "idle" },
+    { label: "Needs attention", value: counts.attention, detail: counts.attention ? "A review is needed" : "All systems clear", attention: counts.attention > 0, tone: counts.attention ? "warn" : "clear" },
   ];
 
   return (
@@ -105,7 +108,7 @@ function DashboardMetrics({ overview }: { overview: DashboardOverview }) {
       <div className="dashboard-metric-grid">
         {metrics.map((metric) => (
           <div className="dashboard-metric" data-attention={metric.attention || undefined} key={metric.label}>
-            <div className="dashboard-metric-top"><span className="dashboard-metric-symbol" aria-hidden="true">{metric.symbol}</span><span>{metric.label}</span></div>
+            <div className="dashboard-metric-top"><span className="dashboard-metric-symbol" data-tone={metric.tone} aria-hidden="true" /><span>{metric.label}</span></div>
             <div className="dashboard-metric-value"><strong>{metric.value}</strong><small>{metric.detail}</small></div>
           </div>
         ))}
@@ -522,7 +525,7 @@ export function OSOverview() {
                         onClick={() => { if (!busy && !needsSetup) void runManualCheck(operator.key); }}
                         style={{ opacity: busy || needsSetup ? 0.45 : 1, cursor: busy || needsSetup ? "default" : "pointer" }}
                       >
-                        {busyScan === operator.key ? "Checking..." : "Run check"}
+                        {busyScan === operator.key ? "Checking…" : "Run check"}
                       </button>
                       <Link className="lnk" href={operator.href}>Open</Link>
                     </div>
