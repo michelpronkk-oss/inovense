@@ -55,22 +55,28 @@ export default function WorkflowsPage() {
 }
 
 function EmptyWorkflows({ connectedSystemCount, hasActiveOperator }: { connectedSystemCount: number; hasActiveOperator: boolean }) {
-  const stages = [["Detect", "Identify meaningful change"], ["Prepare", "Assemble the response"], ["Approve", "Review consequential action"], ["Execute", "Act through connected systems"], ["Measure", "Observe the result"]] as const;
+  const stages = [["Detect", "Meaningful change found"], ["Prepare", "Response assembled"], ["Approve", "Human review"], ["Execute", "Action taken"], ["Measure", "Outcome observed"]] as const;
   const noConnectedSystems = connectedSystemCount === 0;
-  const title = noConnectedSystems ? "No workflows in progress" : hasActiveOperator ? "No workflows in progress" : "Your systems are ready for an operator";
-  const description = noConnectedSystems
-    ? "Connect a system so an operator can detect meaningful work and coordinate the next safe steps."
+  // One truthful state drives the status line, the description and the single
+  // call to action together -- never a CTA that contradicts the status.
+  const state = noConnectedSystems
+    ? { tone: "idle" as const, status: "No systems connected", description: "Connect a system so an operator can detect meaningful work and coordinate the next safe steps.", action: { href: "/app/connectors", label: "Connect a system" } }
     : hasActiveOperator
-      ? "Your operators are monitoring. When something needs coordinated action, the plan will appear here."
-      : "When an operator detects something that needs coordinated action, the plan will appear here.";
-  const action = noConnectedSystems ? { href: "/app/connectors", label: "Connect a system" } : hasActiveOperator ? null : { href: "/app/agents", label: "Activate an operator" };
+      ? { tone: "live" as const, status: "Operators monitoring", description: "Your operators are monitoring. Coordinated work will appear here when action is needed.", action: null }
+      : { tone: "waiting" as const, status: "Waiting for an operator", description: "When an operator detects something that needs coordinated action, the plan will appear here.", action: { href: "/app/agents", label: "Activate an operator" } };
   return <section className="workflows-page-empty workflow-empty-workspace" aria-label="Workflow workspace is empty">
-    <div className="workflow-empty-copy">
+    <header className="workflow-empty-head">
       <span className="workflow-empty-kicker">Workflow workspace</span>
-      <EmptyState title={title}>{description}</EmptyState>
-      <div className="workflow-empty-actions">{action && <Link href={action.href} className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>{action.label}</Link>}<Link href="/app/agents" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>View operators</Link></div>
+      <span className={`workflow-empty-state tone-${state.tone}`}><i aria-hidden />{state.status}</span>
+    </header>
+    <div className="workflow-empty-copy">
+      <EmptyState title="No workflows in progress">{state.description}</EmptyState>
     </div>
-    <ol className="workflow-empty-lifecycle">{stages.map(([stage, detail], index) => <li key={stage}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{stage}</strong><small>{detail}</small></div></li>)}</ol>
+    <ol className="workflow-empty-lifecycle">{stages.map(([stage, detail]) => <li key={stage}><span className="workflow-empty-node" aria-hidden /><strong>{stage}</strong><small>{detail}</small></li>)}</ol>
+    <footer className="workflow-empty-foot">
+      <p>Workflows bring together context, approvals, execution, and outcome tracking.</p>
+      {state.action && <Link href={state.action.href} className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>{state.action.label}</Link>}
+    </footer>
   </section>;
 }
 function WorkflowRow({ workflow, selected, onSelect }: { workflow: WorkflowPresentation; selected: boolean; onSelect: () => void }) { const done = workflow.steps.filter((step) => ["completed", "skipped"].includes(step.status)).length; return <button type="button" onClick={onSelect} style={{ width: "100%", textAlign: "left", background: selected ? "rgba(77,232,225,0.055)" : "transparent", color: "inherit", border: 0, borderTop: "1px solid var(--line)", padding: "15px 18px", cursor: "pointer" }}><div style={{ display: "flex", gap: 12, justifyContent: "space-between", alignItems: "flex-start" }}><div><div style={{ fontSize: 13.5, fontWeight: 650 }}>{workflow.objective}</div><div style={{ marginTop: 4, fontSize: 12, color: "var(--text-mute)" }}>{workflow.operatorName}{workflow.source ? ` · Started from ${workflow.source.label}` : ""}</div></div><span style={{ color: color(workflow.status), fontSize: 11.5, whiteSpace: "nowrap" }}>{label(workflow.status)}</span></div><div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginTop: 10, fontSize: 11.5, color: "var(--text-mute)" }}><span>{done} of {workflow.steps.length} steps complete{workflow.priority === "high" ? " · High priority" : ""}</span><span>{relativeTime(workflow.createdAt)}</span></div></button>; }
