@@ -1183,7 +1183,7 @@ export default function ConnectorsPage() {
                         const discoveryState = connectorDiscoveryState(c);
                         const operators = connectorOperatorNames(connectorKey).map(shortOperatorLabel);
                         return (
-                          <button className="connector-finder-card" key={c.id} onClick={() => { if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); }}>
+                          <button className="connector-finder-card" data-connected={isRealConnectedConnector(c) || undefined} key={c.id} onClick={() => { if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); }}>
                             <div className="connector-finder-card-head">
                               <div className="connector-brand-logo" style={{ width: 30, height: 30, borderRadius: 9 }}>{IntegrationLogos[c.name] ?? <span style={{ color: c.color, fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{c.letter}</span>}</div>
                               <div><strong>{c.name}</strong><span>{definition ? connectorCategoryLabel(definition) : CONNECTOR_CATEGORY_LABELS.custom_api}</span></div>

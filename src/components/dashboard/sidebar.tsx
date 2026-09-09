@@ -150,10 +150,11 @@ export function OSSidebar() {
           <div className="os-modal os-profile-modal" style={{ maxWidth: 620, width: "92%", paddingBottom: 76 }} onClick={(e) => e.stopPropagation()}>
             <div className="os-modal-head">
               <div>
-                <div className="os-profile-eyebrow">Workspace identity</div>
+                <div className="os-profile-eyebrow">Account settings</div>
                 <h3>Profile settings</h3>
+                <p className="os-profile-context">{state.workspace.name} workspace</p>
               </div>
-              <button className="appr-btn deny" onClick={() => setProfileOpen(false)}>Close</button>
+              <button type="button" className="os-iconbtn" aria-label="Close profile settings" onClick={() => setProfileOpen(false)}><XIcon size={14} /></button>
             </div>
             <div className="os-profile-identity">
               <div className="os-profile-avatar" style={avatarStyle}>{state.currentUser.initials}</div>

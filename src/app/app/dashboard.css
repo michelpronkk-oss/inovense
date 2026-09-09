@@ -3137,6 +3137,123 @@ select.os-input option {
   .os-root .approvals-page .approval-stats .kpi:nth-child(n + 3) { border-top: 1px solid var(--line); }
 }
 
+/* Final product micro-polish: shared controls and the few remaining utility
+   surfaces now use one calm interaction language. */
+.os-root .btn,
+.os-root .appr-btn {
+  min-height: 34px;
+  gap: 7px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -.005em;
+}
+.os-root .btn-ghost,
+.os-root .appr-btn.edit {
+  background: rgba(255,255,255,.048);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.11), inset 0 1px 0 rgba(255,255,255,.025);
+  color: var(--text-dim);
+}
+.os-root .btn-ghost:hover,
+.os-root .appr-btn.edit:hover { background: rgba(255,255,255,.078); border-color: transparent; color: var(--text); }
+.os-root .appr-btn.deny,
+.os-root .team-danger-btn { background: rgba(242,118,124,.07); box-shadow: inset 0 0 0 1px rgba(242,118,124,.2); color: #f3b1b5; }
+.os-root :is(.btn, .appr-btn, .os-iconbtn):disabled { opacity: .42; cursor: not-allowed; filter: saturate(.55); }
+.os-root :is(.btn, .appr-btn, .os-iconbtn):active:not(:disabled) { transform: translateY(1px); }
+.os-root .os-iconbtn { width: 34px; height: 34px; min-width: 34px; border-radius: 8px; background: rgba(255,255,255,.04); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1), inset 0 1px 0 rgba(255,255,255,.025); }
+.os-root .os-iconbtn:hover { background: rgba(255,255,255,.075); }
+.os-root .os-iconbtn:focus-visible,
+.os-root :is(.btn, .appr-btn):focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.os-root .os-input { min-height: 38px; border-radius: 8px; background: rgba(255,255,255,.035); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
+.os-root .os-input::placeholder { color: var(--text-faint); }
+.os-root .os-input:focus { box-shadow: inset 0 0 0 1px var(--cyan-line), 0 0 0 3px rgba(77,232,225,.07); }
+
+/* Connector discovery is a compact provider inventory, not a generic card
+   catalog. Connection truth remains entirely in the existing modal logic. */
+.os-root .connector-finder-modal { padding: 20px; }
+.os-root .connector-finder-modal .os-modal-head { align-items: flex-start; margin-bottom: 4px; }
+.os-root .connector-finder-modal .os-modal-head h3 { font-size: 17px; font-weight: 650; }
+.os-root .connector-finder-intro { max-width: 58ch; font-size: 12.5px; }
+.os-root .connector-finder-body { gap: 12px; margin-top: 16px; }
+.os-root .connector-finder-body > .os-input { min-height: 42px; padding-inline: 13px; }
+.os-root .connector-discovery-filters { gap: 5px; padding-bottom: 2px; }
+.os-root .connector-discovery-filters button { min-height: 30px; padding: 6px 10px; border-color: rgba(255,255,255,.1); background: rgba(255,255,255,.018); font-size: 11px; }
+.os-root .connector-discovery-filters button.on { background: rgba(77,232,225,.08); border-color: rgba(77,232,225,.32); }
+.os-root .connector-finder-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.os-root .connector-finder-card { min-height: 148px; gap: 7px; padding: 12px; border: 1px solid rgba(255,255,255,.075); border-radius: 10px; background: rgba(255,255,255,.018); box-shadow: inset 0 1px 0 rgba(255,255,255,.025); }
+.os-root .connector-finder-card:hover { border-color: rgba(77,232,225,.34); background: rgba(77,232,225,.045); transform: translateY(-1px); }
+.os-root .connector-finder-card[data-connected="true"] { border-color: rgba(77,232,225,.21); background: linear-gradient(135deg, rgba(77,232,225,.055), rgba(255,255,255,.016) 52%); }
+.os-root .connector-finder-card-head { gap: 9px; }
+.os-root .connector-finder-card-head > .connector-brand-logo { width: 32px !important; height: 32px !important; border-radius: 9px !important; box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
+.os-root .connector-finder-card-head strong { font-size: 12.5px; }
+.os-root .connector-finder-card-head span { font-size: 10.5px; }
+.os-root .connector-finder-card p { font-size: 11.5px; line-height: 1.4; }
+.os-root .connector-finder-card small { min-height: 0; color: var(--text-faint); font-size: 10px; }
+.os-root .connector-finder-card-foot { align-items: center; padding-top: 7px; border-top: 1px solid rgba(255,255,255,.055); font-size: 10.5px; }
+.os-root .connector-finder-card-foot span:first-child::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: currentColor; }
+
+/* Memory is a business context index. It deliberately avoids terminal green
+   and equal-weight analytics cards. */
+.os-root .memory-page { width: min(100%, 1420px); max-width: none; }
+.os-root .memory-enrichment-note { max-width: 72ch; margin-top: 8px; color: var(--text-mute); font-size: 12.5px; line-height: 1.5; }
+.os-root .memory-summary-rail { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(260px, 1.25fr); gap: 0; border-block: 1px solid var(--line); background: rgba(255,255,255,.01); }
+.os-root .memory-summary-rail > div { display: grid; align-content: center; gap: 4px; min-height: 82px; padding: 13px 18px; border-right: 1px solid var(--line); }
+.os-root .memory-summary-rail > div > span { color: var(--text-faint); font-size: 10px; font-weight: 600; letter-spacing: .065em; text-transform: uppercase; }
+.os-root .memory-summary-rail strong { color: var(--text); font-size: 20px; font-weight: 580; line-height: 1.1; }
+.os-root .memory-summary-rail small { color: var(--text-mute); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.os-root .memory-summary-rail aside { display: flex; align-items: center; gap: 8px; padding: 13px 18px; color: var(--text-mute); font-size: 11.5px; line-height: 1.45; }
+.os-root .memory-summary-rail aside .dot { flex: none; }
+.os-root .memory-search { display: flex; align-items: center; gap: 9px; min-height: 42px; padding: 0 12px; border: 1px solid rgba(255,255,255,.1); border-radius: 9px; background: rgba(255,255,255,.025); color: var(--text-mute); }
+.os-root .memory-search:focus-within { border-color: var(--cyan-line); box-shadow: 0 0 0 3px rgba(77,232,225,.06); }
+.os-root .memory-search input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: var(--text); font: 13px var(--font-sans); }
+.os-root .memory-search input::placeholder { color: var(--text-faint); }
+.os-root .memory-search button { border: 0; background: transparent; color: var(--text-mute); font: 600 11px var(--font-sans); cursor: pointer; }
+.os-root .memory-index { padding: 0; overflow: hidden; border: 1px solid rgba(255,255,255,.09); background: rgba(255,255,255,.012); }
+.os-root .memory-index > .p-head { padding: 16px 18px 12px; }
+.os-root .memory-index-row { border-top: 1px solid rgba(255,255,255,.055); }
+.os-root .memory-index-trigger { transition: background .15s ease; }
+.os-root .memory-index-trigger:hover, .os-root .memory-index-row.is-open .memory-index-trigger { background: rgba(255,255,255,.032) !important; }
+.os-root .memory-index-trigger:focus-visible { outline: 2px solid var(--cyan); outline-offset: -2px; }
+.os-root .memory-index-detail { background: rgba(0,0,0,.08); }
+.os-root .memory-index-reference { color: var(--text-mute) !important; font-family: var(--font-sans); }
+.os-root .memory-index-empty { min-height: 130px; display: grid; place-items: center; }
+
+/* Profile and settings identity surfaces share the same quiet modal family. */
+.os-root .os-profile-modal { padding: 20px; background: linear-gradient(180deg, var(--surface-raised), var(--surface)); }
+.os-root .os-profile-modal .os-modal-head { align-items: flex-start; margin-bottom: 14px; }
+.os-root .os-profile-context { margin: 4px 0 0; color: var(--text-mute); font-size: 11.5px; }
+.os-root .os-profile-eyebrow { font-family: var(--font-sans); font-size: 10px; font-weight: 650; letter-spacing: .06em; }
+.os-root .os-profile-identity { padding: 14px 0; margin-bottom: 14px; border-radius: 0; background: transparent; box-shadow: none; border-block: 1px solid rgba(255,255,255,.075); }
+.os-root .os-profile-email { font-family: var(--font-sans); font-size: 11.5px; }
+.os-root .os-profile-role { background: rgba(77,232,225,.07); font-family: var(--font-sans); font-size: 10px; font-weight: 600; letter-spacing: .02em; text-transform: none; }
+.os-root .os-prof-tabs { width: 100%; gap: 3px; padding: 3px; border-radius: 8px; background: rgba(255,255,255,.025); }
+.os-root .os-prof-tab { flex: 1; min-height: 31px; padding: 5px 8px; border-radius: 6px; font-family: var(--font-sans); font-size: 11.5px; font-weight: 560; letter-spacing: 0; text-transform: none; }
+.os-root .os-profile-content { margin-top: 14px; }
+.os-root .os-profile-section { padding: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.os-root .os-profile-section-head { padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,.065); }
+.os-root .os-profile-field { color: var(--text-mute); font-family: var(--font-sans); font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.os-root .os-profile-field input[readonly] { background: rgba(255,255,255,.018); color: var(--text-mute); box-shadow: inset 0 0 0 1px rgba(255,255,255,.065); }
+.os-root .os-profile-access { font-family: var(--font-sans); font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.os-root .os-prof-savebar { left: 20px; right: 20px; bottom: 14px; border-radius: 9px; background: rgba(10,13,18,.96); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1), 0 10px 26px rgba(0,0,0,.24); }
+.os-root .settings-account-skeleton { display: grid; grid-template-columns: 34px minmax(160px, 1fr) 96px; gap: 14px; align-items: center; padding: 14px 18px; }
+.os-root .settings-account-skeleton span { height: 14px; border-radius: 6px; background: linear-gradient(90deg, rgba(255,255,255,.035), rgba(255,255,255,.075), rgba(255,255,255,.035)); background-size: 200% 100%; animation: os-skeleton 1.25s ease-in-out infinite; }
+.os-root .settings-account-skeleton span:first-child { width: 34px; height: 34px; }
+@keyframes os-skeleton { to { background-position: -200% 0; } }
+
+@media (max-width: 700px) {
+  .os-root .connector-finder-modal { padding: 16px; }
+  .os-root .connector-finder-grid { grid-template-columns: 1fr; }
+  .os-root .connector-finder-card { min-height: 132px; }
+  .os-root .memory-summary-rail { grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+  .os-root .memory-summary-rail > div { min-height: 76px; padding: 12px; border-bottom: 1px solid var(--line); }
+  .os-root .memory-summary-rail > div:nth-child(even) { border-right: 0; }
+  .os-root .memory-summary-rail aside { grid-column: 1 / -1; padding: 12px; }
+  .os-root .os-profile-modal { padding: 16px; }
+  .os-root .os-prof-savebar { left: 16px; right: 16px; }
+  .os-root .settings-account-skeleton { grid-template-columns: 34px 1fr; padding: 14px; }
+  .os-root .settings-account-skeleton span:last-child { display: none; }
+}
+
 /* ============================================================
    Final visual depth: retain the broad operating canvas while giving
    live objects, data and empty workspaces distinct surface levels.

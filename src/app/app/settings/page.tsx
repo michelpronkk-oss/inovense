@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { OSModal } from "@/components/dashboard/modal";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { LinkIcon, SettingsIcon } from "@/components/dashboard/icons";
 import type { ConnectedAccount } from "@/app/api/connectors/accounts/route";
 import { useOS } from "@/lib/os/app-provider";
@@ -16,8 +16,9 @@ import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-gri
 type SectionKey = "workspace" | "notifications";
 
 export default function SettingsPage() {
-  const { state, updateWorkspace, updateCurrentUser, disconnectConnector } = useOS();
+  const { state, updateWorkspace, updateCurrentUser, disconnectConnector, refreshWorkspace } = useOS();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [editing, setEditing] = useState<SectionKey | null>(null);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
@@ -124,8 +125,6 @@ export default function SettingsPage() {
       setWorkspaceLogoPreview(logoUrl);
     }
 
-    if (editing === "workspace") updateWorkspace(workspaceToSave);
-
     const saveResult = await saveWorkspaceSettings({
       workspace: editing === "workspace" ? workspaceToSave : state.workspace,
     });
@@ -136,6 +135,16 @@ export default function SettingsPage() {
       return;
     }
 
+    if (editing === "workspace") {
+      updateWorkspace(workspaceToSave);
+      try {
+        await refreshWorkspace();
+        router.refresh();
+      } catch {
+        // The confirmed local update keeps the shell current if a follow-up
+        // canonical refresh is temporarily unavailable.
+      }
+    }
     setEditing(null);
     setSaving(false);
     setWorkspaceLogoFile(null);
@@ -286,7 +295,7 @@ export default function SettingsPage() {
           </div>
         </div>
         {accountsLoading ? (
-          <div style={{ padding: "16px 18px", fontSize: 12.5, color: "var(--text-faint)" }}>Loading...</div>
+          <div className="settings-account-skeleton" aria-label="Loading connected accounts"><span /><span /><span /></div>
         ) : visibleConnectedAccounts.length === 0 ? (
           <div className="settings-accounts-empty" style={{ padding: "16px 18px", fontSize: 12.5, color: "var(--text-faint)" }}>
             <span>No accounts connected.</span>

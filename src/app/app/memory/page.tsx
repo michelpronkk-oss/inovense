@@ -47,8 +47,9 @@ export default function MemoryPage() {
   const entries = useMemo(() => state.memory, [state.memory]);
 
   const totalFields = entries.reduce((sum, e) => sum + e.fieldCount, 0);
-  const mostRecent = entries.reduce((latest, e) =>
-    new Date(e.updatedAt) > new Date(latest.updatedAt) ? e : latest, entries[0]);
+  const mostRecent = entries.length
+    ? entries.reduce((latest, e) => new Date(e.updatedAt) > new Date(latest.updatedAt) ? e : latest, entries[0])
+    : undefined;
 
   const filtered = entries.filter(
     (e) => !q ||
@@ -59,45 +60,35 @@ export default function MemoryPage() {
   const visibleEntries = filtered.slice(0, visibleCount);
 
   return (
-    <div className="os-page">
+    <div className="os-page memory-page">
       <div className="os-page-head">
         <div>
-          <span className="os-greet">Business context - {entries.length} entries</span>
+          <span className="os-greet">Business context</span>
           <h1>Memory</h1>
-          <div className="os-page-sub">Structured business knowledge that operators reference during execution. Clients, brand voice, processes, market intelligence.</div>
-          <div style={{ marginTop: 8, color: "#9DEFEA", fontSize: 12.5 }}>
-            {isPreview ? "Your owner-confirmed brief is available now. Connected systems and approved operator outputs enrich memory when you activate." : "Memory is enriched from connected systems and approved operator outputs."}
-          </div>
+          <div className="os-page-sub">Structured business context operators can safely reference.</div>
+          <div className="memory-enrichment-note">{isPreview ? "Your owner-confirmed brief is ready. Connected systems and approved work can enrich it after activation." : "Connected systems and approved work enrich this context over time."}</div>
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-        {[
-          { label: "Total entries", val: String(entries.length), sub: `${totalFields} total fields` },
-          { label: "Categories", val: String(new Set(entries.map((e) => e.type)).size), sub: "client, brand, process..." },
-          { label: "Referenced (7d)", val: "-", sub: "Available after first operator run" },
-          { label: "Last updated", val: mostRecent ? relativeTime(mostRecent.updatedAt) : "-", sub: mostRecent?.label ?? "" },
-        ].map((s) => (
-          <div className="kpi" key={s.label}>
-            <div className="kpi-top"><span className="lab">{s.label}</span></div>
-            <div className="kpi-val">{s.val}</div>
-            <div className="kpi-meta"><span className="kpi-delta">{s.sub}</span></div>
-          </div>
-        ))}
-      </div>
+      <section className="memory-summary-rail" aria-label="Memory summary">
+        <div><span>Entries</span><strong>{entries.length}</strong><small>{totalFields} structured fields</small></div>
+        <div><span>Categories</span><strong>{new Set(entries.map((e) => e.type)).size}</strong><small>Business context types</small></div>
+        <div><span>Last updated</span><strong>{mostRecent ? relativeTime(mostRecent.updatedAt) : "Not yet"}</strong><small>{mostRecent?.label ?? "Awaiting workspace context"}</small></div>
+        <aside><span className="dot dot-cyan" /> References appear after operators safely use memory in live work.</aside>
+      </section>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "rgba(255,255,255,0.03)", borderRadius: 10, boxShadow: "inset 0 0 0 1px var(--line)" }}>
-        <SearchIcon size={14} style={{ color: "var(--text-mute)", flexShrink: 0 }} />
+      <div className="memory-search">
+        <SearchIcon size={15} aria-hidden="true" />
         <input
           value={q}
           onChange={(e) => { setQ(e.target.value); setVisibleCount(5); }}
-          placeholder="Search memory entries, tags, content..."
-          style={{ flex: 1, background: "none", border: "none", outline: "none", color: "var(--text)", fontFamily: "var(--font-sans)", fontSize: 13.5 }}
+          placeholder="Search memory, tags, or content…"
+          aria-label="Search memory"
         />
-        {q && <button onClick={() => setQ("")} style={{ color: "var(--text-mute)", background: "none", border: "none", cursor: "pointer", fontSize: 11, fontFamily: "var(--font-mono)" }}>clear</button>}
+        {q && <button type="button" onClick={() => setQ("")}>Clear</button>}
       </div>
 
-      <div className="p">
+      <div className="p memory-index">
         <div className="p-head">
           <h3><DatabaseIcon size={13} /> Memory index</h3>
           <div className="p-meta">{visibleEntries.length} of {filtered.length} entries</div>
@@ -107,9 +98,12 @@ export default function MemoryPage() {
           const isOpen = expanded === e.id;
           const fields = contextFields(e.content);
           return (
-            <div key={e.id} style={{ borderBottom: "1px solid var(--line)" }}>
+            <div key={e.id} className={`memory-index-row${isOpen ? " is-open" : ""}`}>
               <button
                 onClick={() => setExpanded(isOpen ? null : e.id)}
+                aria-expanded={isOpen}
+                aria-label={`${isOpen ? "Close" : "Open"} ${e.label}`}
+                className="memory-index-trigger"
                 style={{ width: "100%", textAlign: "left", padding: "13px 16px", background: isOpen ? "rgba(255,255,255,0.014)" : "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 11 }}
               >
                 <div style={{ width: 28, height: 28, borderRadius: 8, background: `${color}10`, boxShadow: `inset 0 0 0 1px ${color}30`, display: "grid", placeItems: "center", flexShrink: 0 }}>
@@ -132,7 +126,7 @@ export default function MemoryPage() {
                 <div style={{ color: "var(--text-faint)", marginLeft: 4, fontSize: 15, fontWeight: 300, transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>&gt;</div>
               </button>
               {isOpen && (
-                <div style={{ padding: "0 16px 15px 55px" }}>
+                <div className="memory-index-detail" style={{ padding: "0 16px 15px 55px" }}>
                   {fields.length > 0 ? (
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 7 }}>
                       {fields.map((field) => (

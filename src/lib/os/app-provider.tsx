@@ -418,6 +418,7 @@ interface OSContextValue {
   updateCurrentUser: (patch: Partial<CurrentUser>) => void;
   setDashboardPrefs: (value: Partial<DashboardState>) => void;
   updateWorkspace: (patch: Partial<Workspace>) => void;
+  refreshWorkspace: () => Promise<void>;
   appendExecutionLog: (event: string, message: string, status?: ExecutionLog["status"]) => void;
   installSuggestedWorkflow: (suggestion: SuggestedWorkflow) => void;
   pendingApprovals: number;
@@ -1066,6 +1067,23 @@ export function AppProvider({ children, initialContext }: { children: React.Reac
     dispatch({ type: "SET_WORKSPACE", value, log: logEntry("Workspace settings updated", "workspace_updated") });
   }, [state.workspace]);
 
+  // Workspace identity is rendered by the persistent shell as well as by
+  // settings. Rehydrate the canonical server projection after a successful
+  // identity mutation so the sidebar never relies on a stale snapshot.
+  const refreshWorkspace = useCallback(async () => {
+    const identity = getIdentity();
+    const params = new URLSearchParams({
+      workspaceId: identity.workspaceId || "",
+      userId: identity.userId || "",
+      userEmail: identity.userEmail || "",
+      userName: identity.userName || "",
+    });
+    const response = await fetch(`/api/os/state?${params.toString()}`, { cache: "no-store" });
+    const payload = await response.json().catch(() => null) as { state?: OSState } | null;
+    if (!response.ok || !payload?.state || !payload.state.workspace) throw new Error("Could not refresh workspace identity.");
+    dispatch({ type: "HYDRATE", state: payload.state });
+  }, [getIdentity]);
+
   const appendExecutionLog = useCallback((event: string, message: string, status: ExecutionLog["status"] = "ok") => {
     dispatch({ type: "APPEND_LOG", log: { ...logEntry(message, event, status), actorType: "user", actorUserId: state.currentUser.id, actorDisplayName: state.currentUser.name, actorEmail: state.currentUser.email } });
   }, [state.currentUser.email, state.currentUser.id, state.currentUser.name]);
@@ -1109,6 +1127,7 @@ export function AppProvider({ children, initialContext }: { children: React.Reac
         updateCurrentUser,
         setDashboardPrefs,
         updateWorkspace,
+        refreshWorkspace,
         appendExecutionLog,
         installSuggestedWorkflow,
         pendingApprovals,
