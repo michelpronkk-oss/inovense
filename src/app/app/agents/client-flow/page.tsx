@@ -6,6 +6,7 @@ import { useOS } from "@/lib/os/app-provider";
 import { OperatorActivationToggle, type ActivationEligibility } from "@/components/operators/activation-toggle";
 import { OperatorWorkforceBriefing, type OperatorBriefingState } from "@/components/operators/workforce-briefing";
 import { getOperatorCapabilityCopy } from "@/lib/operators/capability-presentation";
+import { OperatorRuntimeAvatar } from "@/components/operators/runtime-avatar";
 
 type OperatorReadiness = {
   operatorKey: string;
@@ -227,7 +228,8 @@ export default function ClientFlowOperatorPage() {
   return (
     <div className="os-page operator-detail-page">
       <div className="os-page-head">
-        <div>
+        <div className="operator-page-heading">
+          <OperatorRuntimeAvatar operatorKey="client_flow" />
           <span className="os-greet"><Link href="/app/agents" style={{ color: "inherit", textDecoration: "none" }}>Operators</Link> / Client Flow</span>
           <h1>Client Flow Operator</h1>
           <div className="os-page-sub">Monitors client communication, prepares follow-ups, and turns requests into approved project actions.</div>

@@ -123,15 +123,15 @@ export function OperatorActivationToggle({
     <div className="operator-activation" aria-busy={loading || saving}>
       <button
         type="button"
-        role="switch"
-        className="operator-activation-switch"
-        aria-label="Scheduled operator monitoring"
+        role={runtimeControl && !activated ? undefined : "switch"}
+        className={runtimeControl && !activated ? "btn btn-primary btn-sm operator-activation-cta" : "operator-activation-switch"}
+        aria-label={runtimeControl && !activated ? "Activate operator" : "Scheduled operator monitoring"}
         aria-describedby={descriptionId}
-        aria-checked={activated}
+        aria-checked={runtimeControl && !activated ? undefined : activated}
         onClick={() => void toggle()}
         disabled={loading || saving || !canManage || !configured || (!activated && !executionEligibility.eligible)}
       >
-        <span aria-hidden="true" />
+        {runtimeControl && !activated ? "Activate operator" : <span aria-hidden="true" />}
       </button>
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ fontSize: 13, fontWeight: 600 }}>

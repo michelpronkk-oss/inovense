@@ -6,6 +6,7 @@ import { useOS } from "@/lib/os/app-provider";
 import { OperatorActivationToggle } from "@/components/operators/activation-toggle";
 import { OperatorWorkforceBriefing, type OperatorBriefingState } from "@/components/operators/workforce-briefing";
 import { getOperatorCapabilityCopy } from "@/lib/operators/capability-presentation";
+import { OperatorRuntimeAvatar } from "@/components/operators/runtime-avatar";
 
 type Status = { readiness?: { status: string; canRunManual: boolean; executionEligibility?: Record<string, unknown> }; monitoring?: { status: string; lastRunAt?: string | null; nextRunAt?: string | null; scanned: number; signalsFound: number; approvalsCreated: number; skippedCount: number; nextScanLabel: string; recentPendingApprovals: { id: string; title: string; created_at?: string | null }[] }; error?: string };
 type Run = { id: string; status: string; output?: { title?: string; type?: string } | null; created_at: string; approval_id?: string | null };
@@ -65,7 +66,7 @@ export default function SupportOperatorPage() {
   ];
 
   return <div className="os-page operator-detail-page support-operator-page">
-    <div className="os-page-head"><div><span className="os-greet"><Link href="/app/agents" style={{ color: "inherit", textDecoration: "none" }}>Operators</Link> / Support</span><h1>Support Operator</h1><div className="os-page-sub">Keeps support requests moving, prepares reviewable responses, and makes unresolved customer issues visible.</div></div>{briefing && <span className="os-status" data-state={briefing.state}>{briefing.label}</span>}</div>
+    <div className="os-page-head"><div className="operator-page-heading"><OperatorRuntimeAvatar operatorKey="support" /><div><span className="os-greet"><Link href="/app/agents" style={{ color: "inherit", textDecoration: "none" }}>Operators</Link> / Support</span><h1>Support Operator</h1><div className="os-page-sub">Keeps support requests moving, prepares reviewable responses, and makes unresolved customer issues visible.</div></div></div>{briefing && <span className="os-status" data-state={briefing.state}>{briefing.label}</span>}</div>
     <OperatorWorkforceBriefing operatorKey="support" onStateChange={setBriefing} runtime={{ pendingApprovals: monitoring?.recentPendingApprovals.length ?? 0, monitoringLabel: monitoring?.status === "monitoring_active" ? "Active" : "Scheduled", nextCheckLabel: monitoring?.nextScanLabel ?? "Daily support check" }} />
     {error && <div role="alert" className="os-attention" style={{ borderLeftColor: "var(--rose)" }}><div><strong>Support needs attention</strong><p>{error}</p></div></div>}
 

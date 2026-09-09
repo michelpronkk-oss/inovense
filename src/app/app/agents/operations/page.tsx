@@ -6,6 +6,7 @@ import { useOS } from "@/lib/os/app-provider";
 import { OperatorActivationToggle, type ActivationEligibility } from "@/components/operators/activation-toggle";
 import { OperatorWorkforceBriefing, type OperatorBriefingState } from "@/components/operators/workforce-briefing";
 import { getOperatorCapabilityCopy } from "@/lib/operators/capability-presentation";
+import { OperatorRuntimeAvatar } from "@/components/operators/runtime-avatar";
 
 type OperatorReadiness = {
   operatorKey: string;
@@ -176,7 +177,8 @@ export default function OperationsOperatorPage() {
   return (
     <div className="os-page operator-detail-page">
       <div className="os-page-head">
-        <div>
+        <div className="operator-page-heading">
+          <OperatorRuntimeAvatar operatorKey="operations" />
           <span className="os-greet"><Link href="/app/agents" style={{ color: "inherit", textDecoration: "none" }}>Operators</Link> / Operations</span>
           <h1>Operations Operator</h1>
           <div className="os-page-sub">Monitors internal work, finds stalled tasks, and prepares approved operational updates.</div>

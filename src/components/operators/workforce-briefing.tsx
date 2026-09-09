@@ -88,7 +88,7 @@ export function OperatorWorkforceBriefing({
             <Link href={remediation.href} className="btn btn-ghost btn-sm">{remediation.label}</Link>
           </div>
         )}
-        {!active && !remediation && product?.nextAction && (
+        {!active && !remediation && product?.lifecycle !== "ready_to_activate" && product?.nextAction && (
           <Link href={product.nextAction.href} className="btn btn-primary btn-sm operator-runtime-unlock">{product.nextAction.label}</Link>
         )}
         {locked && product?.requiredActions.length === 0 && product?.state === "needs_setup" && (

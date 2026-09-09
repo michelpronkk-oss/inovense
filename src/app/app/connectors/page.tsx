@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useOS } from "@/lib/os/app-provider";
-import { LinkIcon, PlusIcon } from "@/components/dashboard/icons";
+import { LinkIcon, PlusIcon, XIcon } from "@/components/dashboard/icons";
 import type { Connector } from "@/lib/os/types";
 import { UsageBanner } from "@/components/upgrade-prompt";
 import { getEntitlements } from "@/lib/os/entitlements";
@@ -310,6 +310,13 @@ export default function ConnectorsPage() {
       return connector ? [connector] : [];
     });
   }, [availableCatalogConnectors, discoveryCategory, search, state.workspace.onboardingSystems]);
+  const prioritizedAvailable = useMemo(() => [...filteredAvailable].sort((left, right) => {
+    const connectedDelta = Number(isRealConnectedConnector(right)) - Number(isRealConnectedConnector(left));
+    if (connectedDelta !== 0) return connectedDelta;
+    const relevanceDelta = connectorOperatorNames(normalizeConnectorKey(right.id)).length - connectorOperatorNames(normalizeConnectorKey(left.id)).length;
+    if (relevanceDelta !== 0) return relevanceDelta;
+    return left.name.localeCompare(right.name);
+  }), [filteredAvailable]);
 
   // What onboarding said this workspace already uses, that is not yet
   // actually connected (real OAuth truth, never the onboarding
@@ -1152,32 +1159,22 @@ export default function ConnectorsPage() {
       {/* Add connector modal */}
       {addOpen && (
         <div className="os-modal-backdrop" onClick={() => { setAddOpen(false); setSetupConnectorId(null); }}>
-          <div className={`os-modal ${!setupConnector ? "connector-finder-modal" : ""}`} style={{ width: "min(760px, 94vw)", maxHeight: "88vh", overflow: "auto" }} onClick={(e) => e.stopPropagation()}>
+          <div className={`os-modal ${!setupConnector ? "connector-finder-modal" : ""}`} style={{ width: "min(820px, 94vw)", maxHeight: "88vh", overflow: setupConnector ? "auto" : "hidden" }} onClick={(e) => e.stopPropagation()}>
             {!setupConnector ? (
               <>
                 <div className="os-modal-head">
                   <h3>Find a connector</h3>
-                  <button className="appr-btn deny" onClick={() => setAddOpen(false)}>Close</button>
+                  <button type="button" className="os-iconbtn connector-finder-close" aria-label="Close connector finder" onClick={() => setAddOpen(false)}><XIcon size={15} /></button>
                 </div>
                 <div className="connector-finder-intro">Choose the systems that give your workforce more context and useful actions.</div>
                 <div className="connector-finder-body">
-                  <input className="os-input" placeholder="Search systems..." aria-label="Search connector systems" value={search} onChange={(e) => setSearch(e.target.value)} />
-                  <div className="connector-discovery-filters" aria-label="Connector categories">
-                    {CONNECTOR_DISCOVERY_CATEGORIES.map((category) => (
-                      <button
-                        type="button"
-                        key={category.key}
-                        aria-pressed={discoveryCategory === category.key}
-                        className={discoveryCategory === category.key ? "on" : ""}
-                        onClick={() => setDiscoveryCategory(category.key)}
-                      >
-                        {category.label}
-                      </button>
-                    ))}
+                  <div className="connector-finder-controls">
+                    <input className="os-input" placeholder="Search systems..." aria-label="Search connector systems" value={search} onChange={(e) => setSearch(e.target.value)} />
+                    <label className="connector-finder-category"><span className="sr-only">Connector category</span><select className="os-input" aria-label="Connector category" value={discoveryCategory} onChange={(event) => setDiscoveryCategory(event.target.value as ConnectorDiscoveryCategory)}>{CONNECTOR_DISCOVERY_CATEGORIES.map((category) => <option key={category.key} value={category.key}>{category.label}</option>)}</select></label>
                   </div>
-                  {filteredAvailable.length > 0 ? (
-                    <div className="connector-finder-grid">
-                      {filteredAvailable.map((c) => {
+                  {prioritizedAvailable.length > 0 ? (
+                    <div className="connector-finder-results" aria-label="Connector results"><div className="connector-finder-grid">
+                      {prioritizedAvailable.map((c) => {
                         const connectorKey = normalizeConnectorKey(c.id);
                         const definition = getConnectorDefinition(connectorKey);
                         const discoveryState = connectorDiscoveryState(c);
@@ -1189,12 +1186,12 @@ export default function ConnectorsPage() {
                               <div><strong>{c.name}</strong><span>{definition ? connectorCategoryLabel(definition) : CONNECTOR_CATEGORY_LABELS.custom_api}</span></div>
                             </div>
                             <p>{connectorCapabilities(connectorKey)[0] ?? "Useful workspace context"}</p>
-                            {operators.length > 0 && <small>For {operators.join(" · ")}</small>}
+                            {operators.length > 0 && <small>Useful for {operators.join(" · ")}</small>}
                             <div className="connector-finder-card-foot" style={{ color: discoveryState.color }}><span>{discoveryState.status}</span><span>{discoveryState.action} →</span></div>
                           </button>
                         );
                       })}
-                    </div>
+                    </div></div>
                   ) : (
                     <div className="os-empty-state" style={{ padding: "24px 16px" }}>No live connectors match this search.</div>
                   )}

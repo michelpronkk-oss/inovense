@@ -46,7 +46,7 @@ assert.match(briefing, /product\?\.state === "active_limited"/);
 assert.match(briefing, /Core work continues/);
 assert.match(state, /readiness\.operatorKey === "support"[\s\S]*readiness\.connectedRequiredConnectors/, "Support core context must come from its real OR-path readiness result");
 assert.match(state, /state === "plan_required" \|\| state === "billing_attention" \|\| state === "suspended"[\s\S]*"blocked"/, "billing-gated operators must not present as active runtimes");
-assert.match(briefing, /!active && !remediation && product\?\.nextAction/, "a plan-gated operator must expose its canonical next action");
+assert.match(briefing, /!active && !remediation && product\?\.lifecycle !== "ready_to_activate" && product\?\.nextAction/, "a plan-gated operator must expose its canonical next action while ready operators keep one activation control");
 assert.match(support, /Available via \$\{briefing\.connectedCoreSystems\.join/, "Support must name its live core provider instead of showing customer support as unavailable");
 
 console.log("operator-presentation-truth-smoke: canonical state, capability, dashboard, and detail UX contracts passed.");

@@ -116,26 +116,26 @@ export default function MemoryPage() {
                   </div>
                   <div style={{ fontSize: 11.5, color: "var(--text-mute)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.summary} <span style={{ color: "var(--text-faint)" }}>· {e.fieldCount} fields · {relativeTime(e.updatedAt)}</span></div>
                 </div>
-                <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                <div className="memory-entry-tags">
                   {e.tags.slice(0, 2).map((t) => (
-                    <span key={t} style={{ fontFamily: "var(--font-mono)", fontSize: 8.5, padding: "3px 6px", borderRadius: 4, background: "rgba(255,255,255,0.025)", color: "var(--text-mute)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+                    <span key={t}>
                       {t}
                     </span>
                   ))}
                 </div>
-                <div style={{ color: "var(--text-faint)", marginLeft: 4, fontSize: 15, fontWeight: 300, transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>&gt;</div>
+                <span className="memory-entry-chevron" aria-hidden="true">{isOpen ? "⌃" : "⌄"}</span>
               </button>
               {isOpen && (
                 <div className="memory-index-detail" style={{ padding: "0 16px 15px 55px" }}>
                   {fields.length > 0 ? (
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 7 }}>
+                    <dl className="memory-definition-grid">
                       {fields.map((field) => (
-                        <div key={field.label} style={{ padding: "9px 10px", borderRadius: 8, background: "rgba(255,255,255,0.018)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
-                          <div style={{ fontFamily: "var(--font-mono)", fontSize: 8.5, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{field.label}</div>
-                          <div style={{ color: "var(--text-dim)", fontSize: 12, lineHeight: 1.4, overflowWrap: "anywhere" }}>{field.value}</div>
+                        <div key={field.label}>
+                          <dt>{field.label}</dt>
+                          <dd>{field.value}</dd>
                         </div>
                       ))}
-                    </div>
+                    </dl>
                   ) : (
                     <div style={{ padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.018)", boxShadow: "inset 0 0 0 1px var(--line)", fontSize: 12.5, color: "var(--text-dim)", lineHeight: 1.6 }}>{e.content}</div>
                   )}

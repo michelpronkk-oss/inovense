@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { WorkflowPresentation } from "@/lib/workflows/presentation";
 import { EmptyState, PageHeader } from "@/components/product-ui/page-primitives";
+import { useOS } from "@/lib/os/app-provider";
+import { getRealConnectedConnectors } from "@/lib/os/truth";
 
 function relativeTime(value: string) {
   const minutes = Math.floor(Math.max(0, Date.now() - new Date(value).getTime()) / 60000);
@@ -17,6 +19,7 @@ function label(value: string) { return value.replace(/_/g, " ").replace(/\b\w/g,
 function color(status: string) { return status === "completed" ? "var(--green)" : status === "blocked" || status === "failed" ? "var(--rose)" : status.includes("approval") || status === "planned" ? "var(--amber)" : "var(--cyan)"; }
 
 export default function WorkflowsPage() {
+  const { state } = useOS();
   const searchParams = useSearchParams();
   const [workflows, setWorkflows] = useState<WorkflowPresentation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +42,7 @@ export default function WorkflowsPage() {
   return <div className="os-page workflows-page">
     <PageHeader eyebrow="Coordinated work" title="Workflows" description="The plans Auterim is handling across your connected systems. You stay in control of every consequential action." actions={<Link href="/app/approvals" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>Review approvals</Link>} />
     {error && <div role="alert" className="p" style={{ padding: "12px 14px", color: "var(--rose)" }}>{error} <button className="btn btn-ghost btn-sm" onClick={() => void load()} style={{ marginLeft: 8 }}>Retry</button></div>}
-    {loading ? <div className="p" style={{ padding: 20, color: "var(--text-mute)" }}>Loading real workflow activity…</div> : workflows.length === 0 ? <EmptyWorkflows /> : <>
+    {loading ? <div className="p" style={{ padding: 20, color: "var(--text-mute)" }}>Loading real workflow activity…</div> : workflows.length === 0 ? <EmptyWorkflows connectedSystemCount={getRealConnectedConnectors(state.connectors).length} hasActiveOperator={state.agents.some((agent) => agent.status === "running")} /> : <>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
         {[{ label: "Open workflows", value: active, detail: "Need attention or are moving forward" }, { label: "Ready for review", value: waiting, detail: "Have a safe next action prepared" }, { label: "Observed outcomes", value: workflows.reduce((sum, workflow) => sum + workflow.outcomes.length, 0), detail: "Evidence recorded after work completed" }].map((item) => <div className="kpi" key={item.label}><div className="lab">{item.label}</div><div className="kpi-val">{item.value}</div><div className="kpi-meta">{item.detail}</div></div>)}
       </div>
@@ -51,15 +54,23 @@ export default function WorkflowsPage() {
   </div>;
 }
 
-function EmptyWorkflows() {
-  const stages = ["Detect", "Prepare", "Approve", "Execute", "Measure"];
+function EmptyWorkflows({ connectedSystemCount, hasActiveOperator }: { connectedSystemCount: number; hasActiveOperator: boolean }) {
+  const stages = [["Detect", "Identify meaningful change"], ["Prepare", "Assemble the response"], ["Approve", "Review consequential action"], ["Execute", "Act through connected systems"], ["Measure", "Observe the result"]] as const;
+  const noConnectedSystems = connectedSystemCount === 0;
+  const title = noConnectedSystems ? "No workflows in progress" : hasActiveOperator ? "No workflows in progress" : "Your systems are ready for an operator";
+  const description = noConnectedSystems
+    ? "Connect a system so an operator can detect meaningful work and coordinate the next safe steps."
+    : hasActiveOperator
+      ? "Your operators are monitoring. When something needs coordinated action, the plan will appear here."
+      : "When an operator detects something that needs coordinated action, the plan will appear here.";
+  const action = noConnectedSystems ? { href: "/app/connectors", label: "Connect a system" } : hasActiveOperator ? null : { href: "/app/agents", label: "Activate an operator" };
   return <section className="workflows-page-empty workflow-empty-workspace" aria-label="Workflow workspace is empty">
     <div className="workflow-empty-copy">
       <span className="workflow-empty-kicker">Workflow workspace</span>
-      <EmptyState title="No coordinated work yet">When a connected system produces a meaningful signal, Auterim assembles a safe plan, prepares the required review, and records the outcome here.</EmptyState>
-      <div className="workflow-empty-actions"><Link href="/app/connectors" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>Connect a system</Link><Link href="/app/agents" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>View operators</Link></div>
+      <EmptyState title={title}>{description}</EmptyState>
+      <div className="workflow-empty-actions">{action && <Link href={action.href} className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>{action.label}</Link>}<Link href="/app/agents" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>View operators</Link></div>
     </div>
-    <ol className="workflow-empty-lifecycle">{stages.map((stage, index) => <li key={stage}><span>{String(index + 1).padStart(2, "0")}</span><strong>{stage}</strong></li>)}</ol>
+    <ol className="workflow-empty-lifecycle">{stages.map(([stage, detail], index) => <li key={stage}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{stage}</strong><small>{detail}</small></div></li>)}</ol>
   </section>;
 }
 function WorkflowRow({ workflow, selected, onSelect }: { workflow: WorkflowPresentation; selected: boolean; onSelect: () => void }) { const done = workflow.steps.filter((step) => ["completed", "skipped"].includes(step.status)).length; return <button type="button" onClick={onSelect} style={{ width: "100%", textAlign: "left", background: selected ? "rgba(77,232,225,0.055)" : "transparent", color: "inherit", border: 0, borderTop: "1px solid var(--line)", padding: "15px 18px", cursor: "pointer" }}><div style={{ display: "flex", gap: 12, justifyContent: "space-between", alignItems: "flex-start" }}><div><div style={{ fontSize: 13.5, fontWeight: 650 }}>{workflow.objective}</div><div style={{ marginTop: 4, fontSize: 12, color: "var(--text-mute)" }}>{workflow.operatorName}{workflow.source ? ` · Started from ${workflow.source.label}` : ""}</div></div><span style={{ color: color(workflow.status), fontSize: 11.5, whiteSpace: "nowrap" }}>{label(workflow.status)}</span></div><div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginTop: 10, fontSize: 11.5, color: "var(--text-mute)" }}><span>{done} of {workflow.steps.length} steps complete{workflow.priority === "high" ? " · High priority" : ""}</span><span>{relativeTime(workflow.createdAt)}</span></div></button>; }

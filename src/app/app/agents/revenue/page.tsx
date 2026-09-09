@@ -8,6 +8,7 @@ import { humanizeOperatorActions } from "@/lib/operators/action-labels";
 import { OperatorActivationToggle, type ActivationEligibility } from "@/components/operators/activation-toggle";
 import { OperatorWorkforceBriefing, type OperatorBriefingState } from "@/components/operators/workforce-briefing";
 import { getOperatorCapabilityCopy } from "@/lib/operators/capability-presentation";
+import { OperatorRuntimeAvatar } from "@/components/operators/runtime-avatar";
 
 type OperatorReadiness = {
   operatorKey: string;
@@ -319,7 +320,8 @@ export default function RevenueOperatorPage() {
     return (
       <div className="os-page operator-detail-page">
         <div className="os-page-head" style={{ marginBottom: 24 }}>
-          <div>
+          <div className="operator-page-heading">
+            <OperatorRuntimeAvatar operatorKey="revenue" />
             <span className="os-greet"><Link href="/app/agents" style={{ color: "inherit", textDecoration: "none" }}>Operators</Link> / Revenue</span>
             <h1>Revenue Operator</h1>
             <div className="os-page-sub">Find opportunities and prepare follow-ups for approval.</div>
@@ -417,7 +419,8 @@ export default function RevenueOperatorPage() {
   return (
     <div className="os-page operator-detail-page">
       <div className="os-page-head">
-        <div>
+        <div className="operator-page-heading">
+          <OperatorRuntimeAvatar operatorKey="revenue" />
           <span className="os-greet"><Link href="/app/agents" style={{ color: "inherit", textDecoration: "none" }}>Operators</Link> / Revenue</span>
           <h1>Revenue Operator</h1>
           <div className="os-page-sub">Auterim watches revenue signals in the background and asks for approval only when action is needed.</div>

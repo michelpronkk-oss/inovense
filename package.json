@@ -59,6 +59,7 @@
     "test:execution-policy": "node tests/execution-policy-smoke.mjs",
     "test:settings-controls": "node tests/settings-controls-smoke.mjs",
     "test:workspace-identity-shell": "node tests/workspace-identity-shell-smoke.mjs",
+    "test:release-candidate-ui": "node tests/release-candidate-ui-smoke.mjs",
     "test:team-roles": "node tests/team-roles-smoke.mjs",
     "test:team-invite-email": "node tests/team-invite-email-smoke.mjs",
     "test:team-remove-member": "node tests/team-remove-member-smoke.mjs",
