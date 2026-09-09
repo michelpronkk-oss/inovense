@@ -7,6 +7,7 @@ import { useOS } from "@/lib/os/app-provider";
 import { OPERATOR_REGISTRY } from "@/lib/operators/registry";
 import { getOperatorCapabilityCopy } from "@/lib/operators/capability-presentation";
 import { GLYPHS, OPERATORS, type Operator } from "@/data/operators";
+import { PageHeader } from "@/components/product-ui/page-primitives";
 
 type OperatorReadiness = {
   operatorKey: string;
@@ -85,7 +86,7 @@ function Lock() {
 
 function AgAvatar({ color, glyph }: { color: string; glyph: string }) {
   return (
-    <div className="ag-av" style={{ background: `linear-gradient(135deg, ${color}26, ${color}08)`, boxShadow: `inset 0 0 0 1px ${color}55`, color }}>
+    <div className="ag-av" style={{ background: `${color}12`, boxShadow: `inset 0 0 0 1px ${color}55`, color }}>
       <svg viewBox="0 0 24 24" fill="currentColor" className="ag-person">
         <circle cx="12" cy="8.5" r="3.6" />
         <path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5z" />
@@ -296,17 +297,15 @@ export default function AgentsRegistryPage() {
 
   return (
     <div className="os-page agents-page">
-      <div className="os-page-head">
-        <div>
-          <span className="ag-head-eyebrow">Your workforce</span>
-          <h1 style={{ marginTop: 10 }}>Operators</h1>
-          <div className="os-page-sub">Deploy focused AI operators that own a business loop, prepare work, and keep consequential actions under approval.</div>
-        </div>
-        <div className="os-page-actions">
+      <PageHeader
+        eyebrow="Your workforce"
+        title="Operators"
+        description="Deploy focused AI operators that own a business loop, prepare work, and keep consequential actions under approval."
+        actions={<>
           <Link href="/approvals" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Approval inbox</Link>
           <Link href="/connectors" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Connectors</Link>
-        </div>
-      </div>
+        </>}
+      />
 
       {error && <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>{error}</div>}
 

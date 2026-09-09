@@ -86,6 +86,7 @@
     "test:cross-connector-workflows": "node tests/cross-connector-workflows-smoke.mjs",
     "test:workflow-approvals": "node tests/workflow-approvals-smoke.mjs",
     "test:workflow-ui": "node tests/workflow-ui-smoke.mjs",
+    "test:product-ui-system": "node tests/product-ui-system-smoke.mjs",
     "test:workflow-product-experience": "node tests/workflow-product-experience-smoke.mjs",
     "test:workflow-outcome-observers": "node tests/workflow-outcome-observers-smoke.mjs",
     "test:workflow-materialization-runtime": "node tests/workflow-materialization-runtime-smoke.mjs",

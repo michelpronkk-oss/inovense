@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { useOS } from "@/lib/os/app-provider";
 import type { Agent, ExecutionLog } from "@/lib/os/types";
 import { DocIcon, FilterIcon } from "@/components/dashboard/icons";
+import { EmptyState, PageHeader } from "@/components/product-ui/page-primitives";
 
 const STATUS_COLOR: Record<string, string> = { ok: "#51D88A", warn: "#F5C26B", waiting: "#4DE8E1", error: "#F2767C" };
 
@@ -58,16 +59,14 @@ export default function LogsPage() {
 
   return (
     <div className="os-page">
-      <div className="os-page-head">
-        <div>
-          <span className="os-greet">Execution layer - live</span>
-          <h1>Execution logs</h1>
-          <div className="os-page-sub">Real-time log stream across all operators. Every action, tool call, and output recorded.</div>
-        </div>
-        <div className="os-page-actions">
+      <PageHeader
+        eyebrow="Execution layer · live"
+        title="Execution logs"
+        description="A searchable record of operator actions, tool calls, and outcomes in this workspace."
+        actions={<>
           <button className="btn btn-ghost btn-sm" disabled aria-disabled="true" title="Export is coming soon"><FilterIcon size={12} /> Export</button>
-        </div>
-      </div>
+        </>}
+      />
 
       <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", padding: "10px 12px", border: "1px solid var(--line)", borderRadius: 12, background: "rgba(255,255,255,0.018)" }}>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-mute)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Agent</span>
@@ -125,9 +124,7 @@ export default function LogsPage() {
             </div>
             );
           })}
-          {filtered.length === 0 && (
-            <div style={{ padding: "32px 18px", textAlign: "center", color: "var(--text-mute)", fontSize: 13, fontFamily: "var(--font-sans)" }}>No log entries match current filters.</div>
-          )}
+          {filtered.length === 0 && <EmptyState title="No log entries match these filters.">Change a filter to inspect another part of the workspace activity.</EmptyState>}
           </div>
         </div>
         {visibleLogs.length < filtered.length && (

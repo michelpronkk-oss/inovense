@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PageHeader } from "@/components/product-ui/page-primitives";
 import { useOS } from "@/lib/os/app-provider";
 import { InboxIcon, CheckIcon } from "@/components/dashboard/icons";
 
@@ -371,13 +372,11 @@ export default function ApprovalsPage() {
 
   return (
     <div className={`os-page approvals-page ${pending.length === 0 ? "no-approvals" : "has-approvals"}`}>
-      <div className="os-page-head">
-        <div>
-          <span className="os-greet">Approval inbox - {pending.length} waiting</span>
-          <h1>Approvals</h1>
-          <div className="os-page-sub">Review operator actions before they run.</div>
-        </div>
-        <div className="os-page-actions">
+      <PageHeader
+        eyebrow={`Approval inbox · ${pending.length} waiting`}
+        title="Approvals"
+        description="Review prepared operator actions before they run."
+        actions={<>
           <button className="btn btn-ghost btn-sm" onClick={() => router.push("/logs")}>History</button>
           <button
             className="btn btn-primary btn-sm"
@@ -387,8 +386,8 @@ export default function ApprovalsPage() {
           >
             <CheckIcon size={12} /> Approve all
           </button>
-        </div>
-      </div>
+        </>}
+      />
 
       <div className="approval-stats" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
         {[
