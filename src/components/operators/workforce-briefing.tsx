@@ -9,12 +9,13 @@ export type OperatorBriefingState = {
   state: "needs_setup" | "needs_attention" | "ready_to_activate" | "plan_required" | "billing_attention" | "suspended" | "paused" | "active" | "active_limited" | "enhanced";
   label: string;
   description: string;
-  lifecycle: "available_to_unlock" | "ready_to_activate" | "active" | "paused";
+  lifecycle: "available_to_unlock" | "ready_to_activate" | "active" | "paused" | "blocked";
   health: "healthy" | "limited_context" | "needs_attention" | "billing_attention";
   connectedSystems: string[];
   connectedCoreSystems: string[];
   availableNow: string[];
   missingOptionalCapabilities: string[];
+  nextAction: { label: string; href: string } | null;
   requiredActions: Array<{ label: string; href: string; reason: string; impact: string }>;
   degraded: { lostCapabilities: string[]; impact: "required" | "optional" } | null;
 };
@@ -65,7 +66,7 @@ export function OperatorWorkforceBriefing({
   const active = product?.lifecycle === "active";
   const locked = product?.lifecycle === "available_to_unlock";
   const capabilityCopy = getOperatorCapabilityCopy(operatorKey);
-  const action = product?.requiredActions[0] ?? null;
+  const remediation = product?.requiredActions[0] ?? null;
 
   const calmSummary = active
     ? product?.state === "active_limited"
@@ -81,11 +82,14 @@ export function OperatorWorkforceBriefing({
         <p>{calmSummary}</p>
         {!active && <div className="operator-runtime-role">{responsibility[operatorKey][0]}. {product?.availableNow?.[0] ?? "Auterim will keep consequential actions under your control."}</div>}
         {error && <div className="operator-runtime-error">{error}</div>}
-        {action && (
+        {remediation && (
           <div className="operator-runtime-attention" data-severity={product?.health === "needs_attention" ? "blocking" : "attention"}>
-            <div><span>{product?.health === "needs_attention" ? "Needs attention" : "Limited context"}</span><strong>{action.reason}</strong><p>{action.impact}</p></div>
-            <Link href={action.href} className="btn btn-ghost btn-sm">{action.label}</Link>
+            <div><span>{product?.health === "needs_attention" ? "Needs attention" : "Limited context"}</span><strong>{remediation.reason}</strong><p>{remediation.impact}</p></div>
+            <Link href={remediation.href} className="btn btn-ghost btn-sm">{remediation.label}</Link>
           </div>
+        )}
+        {!active && !remediation && product?.nextAction && (
+          <Link href={product.nextAction.href} className="btn btn-primary btn-sm operator-runtime-unlock">{product.nextAction.label}</Link>
         )}
         {locked && product?.requiredActions.length === 0 && product?.state === "needs_setup" && (
           <Link href={operatorKey === "operations" ? "/app/connectors?discover=1&category=project_management" : "/app/connectors?discover=1&category=email_calendar"} className="btn btn-primary btn-sm operator-runtime-unlock">Connect a system</Link>

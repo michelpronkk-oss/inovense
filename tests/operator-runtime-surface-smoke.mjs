@@ -24,8 +24,8 @@ assert.match(productState, /return hasOptionalDegradation \? "active_limited" : 
 // 2. Optional degradation keeps the runtime active with limited context.
 assert.match(productState, /active_limited: "Active · Limited context"/);
 // 3. The remediation explanation has a single owner in the shared surface.
-assert.equal((briefing.match(/\{action\.reason\}/g) ?? []).length, 1);
-assert.equal((briefing.match(/\{action\.impact\}/g) ?? []).length, 1);
+assert.equal((briefing.match(/\{remediation\.reason\}/g) ?? []).length, 1);
+assert.equal((briefing.match(/\{remediation\.impact\}/g) ?? []).length, 1);
 // 4. The page header owns the sole canonical status badge.
 for (const source of [clientVisible, operationsVisible, revenueCompact, supportVisible]) assert.equal((source.match(/briefing\.label|presentationState\.label/g) ?? []).length, 1);
 assert.doesNotMatch(briefing, /product\?\.label/);
@@ -35,9 +35,11 @@ for (const source of [clientVisible, operationsVisible, revenueCompact]) assert.
 // 6. Active surfaces contain no onboarding-style almost-ready claim.
 for (const source of [briefing, clientVisible, operationsVisible, revenueCompact]) assert.doesNotMatch(source, /almost ready/i);
 // 7. Each live operator renders exactly one manual monitoring action.
-for (const [name, source] of [["Client Flow", clientVisible], ["Operations", operationsVisible], ["Revenue", revenueCompact], ["Support", supportVisible]]) {
+for (const [name, source] of [["Client Flow", clientVisible], ["Operations", operationsVisible], ["Revenue", revenueCompact]]) {
   assert.equal((source.match(/Run manual check/g) ?? []).length, 1, `${name} must expose one manual check`);
 }
+assert.equal((supportVisible.match(/onClick=\{runScan\}/g) ?? []).length, 1, "Support must expose one manual check");
+assert.match(supportVisible, /Check now/, "Support's compact live-state rail must retain its manual check control");
 // 8. Zero-work states use a compact line rather than a large empty grid.
 for (const source of [clientVisible, operationsVisible, revenueCompact, supportVisible]) assert.match(source, /No issues need attention right now|No support work needs attention/);
 assert.match(clientVisible, /operator-compact-empty/);
@@ -62,10 +64,10 @@ assert.match(revenueCompact, /CRM updates/);
 assert.match(dashboard, /item\.requiredActions\[0\]\.reason/);
 for (const source of [client, operations, revenue, support]) assert.match(source, /OperatorWorkforceBriefing/);
 // 15. Attention preserves exact reason, impact, label, and destination.
-assert.match(briefing, /action\.reason/);
-assert.match(briefing, /action\.impact/);
-assert.match(briefing, /href=\{action\.href\}/);
-assert.match(briefing, /\{action\.label\}/);
+assert.match(briefing, /remediation\.reason/);
+assert.match(briefing, /remediation\.impact/);
+assert.match(briefing, /href=\{remediation\.href\}/);
+assert.match(briefing, /\{remediation\.label\}/);
 assert.match(briefing, /connectedCoreSystems\[0\]/);
 // 16. Operations leads with the business capability; providers stay in Advanced.
 assert.match(operationsVisible, /Monitors internal work, finds stalled tasks/);

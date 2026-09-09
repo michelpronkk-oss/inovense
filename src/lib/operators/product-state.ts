@@ -81,7 +81,7 @@ export type OperatorProductStateResult = {
   connectedCoreSystems: string[];
   availableNow: string[];
   nextAction: { label: string; href: string } | null;
-  lifecycle: "available_to_unlock" | "ready_to_activate" | "active" | "paused";
+  lifecycle: "available_to_unlock" | "ready_to_activate" | "active" | "paused" | "blocked";
   health: "healthy" | "limited_context" | "needs_attention" | "billing_attention";
   impact: string;
   missingCoreCapabilities: string[];
@@ -361,7 +361,18 @@ export function buildOperatorProductState(input: {
       }
     : null;
   const requiredActions = [...(configurationAction ? [configurationAction] : []), ...(degraded?.issues ?? [])];
-  const lifecycle = state === "needs_setup" ? "available_to_unlock" : state === "ready_to_activate" ? "ready_to_activate" : state === "paused" ? "paused" : "active";
+  // A plan or billing restriction is not an active runtime. Keeping it
+  // separate prevents surfaces from claiming that monitoring is live while
+  // also showing a plan-gated status.
+  const lifecycle = state === "needs_setup"
+    ? "available_to_unlock"
+    : state === "ready_to_activate"
+      ? "ready_to_activate"
+      : state === "paused"
+        ? "paused"
+        : state === "plan_required" || state === "billing_attention" || state === "suspended"
+          ? "blocked"
+          : "active";
   const health = state === "needs_attention" ? "needs_attention" : state === "active_limited" ? "limited_context" : state === "billing_attention" || state === "suspended" || state === "plan_required" ? "billing_attention" : "healthy";
   const impact = state === "active_limited"
     ? "Core work continues with reduced optional context."
@@ -378,7 +389,13 @@ export function buildOperatorProductState(input: {
     label: STATE_LABEL[state],
     description: describeState({ state, operatorName, operatorKey: readiness.operatorKey, nextSetupStep: readiness.nextSetupStep, degraded }),
     connectedSystems: (readiness.availableConnectorKeys ?? readiness.connectedRequiredConnectors).map(connectorDisplayName),
-    connectedCoreSystems: getConnectedRequiredConnectorKeys(readiness.operatorKey, input.truth).map(connectorDisplayName),
+    // Support deliberately has an OR relationship between Zendesk, Intercom,
+    // Gmail, and Microsoft 365. Its core path is resolved by readiness, not
+    // by the fixed-capability helper (which has no hard Support capability).
+    connectedCoreSystems: (readiness.operatorKey === "support"
+      ? readiness.connectedRequiredConnectors
+      : getConnectedRequiredConnectorKeys(readiness.operatorKey, input.truth)
+    ).map(connectorDisplayName),
     availableNow: readiness.availableBusinessActions ?? humanizeOperatorActions(readiness.availableActions ?? []),
     nextAction: nextActionFor(state, operatorHref(readiness.operatorKey), requiredActions[0] ?? null, readiness.operatorKey),
     lifecycle,
