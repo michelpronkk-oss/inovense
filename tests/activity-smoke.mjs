@@ -32,6 +32,8 @@ try {
   assert.match(normalize, /Action blocked by policy/);
   assert.match(normalize, /severity === "failure" \|\| item\.severity === "attention"/, "issues use only failed or attention states");
   assert.match(dashboard, /View activity/);
+  assert.match(dashboard, /Prepared/);
+  assert.match(dashboard, /Held at approval/);
   assert.doesNotMatch(dashboard, /Open logs/);
   assert.match(dashboardSource, /normalizeWorkforceActivity/, "dashboard uses the shared activity definition");
   assert.match(dashboardSource, /activitySummary/);
@@ -53,6 +55,9 @@ try {
   assert.equal(result.summary.runs, 1);
   assert.equal(result.summary.approvals, 1);
   assert.equal(result.summary.actions, 1);
+  assert.equal(result.summary.prepared, 1, "dashboard preparation series is derived from real approval records");
+  assert.equal(result.summary.executed, 1, "dashboard execution series is derived from completed actions");
+  assert.equal(result.summary.held, 0, "only unresolved approvals appear in the held series");
   assert.equal(result.items.some((item) => /sent/i.test(item.description)), false, "email content/status detail stays out of the human feed");
   assert.equal(result.summary.daily.length, 7, "seven-day dashboard timeline has one truthful bucket per day");
   console.log("Activity navigation, workspace safety, normalization, and dashboard contracts passed.");

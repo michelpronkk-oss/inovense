@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "node:crypto";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
+import { getVerifiedSupabaseUser } from "@/lib/supabase/server";
+import { allowRateLimit, clientAddress, requestBodyWithinLimit } from "@/lib/server/request-guards";
 
 type DraftBody = {
   workspaceId?: string;
-  userEmail?: string;
   runId?: string;
   agentId?: string;
   to?: string;
@@ -20,23 +22,39 @@ export async function POST(req: NextRequest) {
   if (!hasSupabaseAdminConfig()) {
     return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
   }
+  if (!requestBodyWithinLimit(req, 64 * 1024)) {
+    return NextResponse.json({ error: "Request is too large." }, { status: 413 });
+  }
   try {
     const payload = (await req.json()) as DraftBody;
     const workspaceId = required(payload.workspaceId, "workspaceId");
-    const userEmail = required(payload.userEmail?.toLowerCase(), "userEmail");
     const to = required(payload.to, "to");
     const subject = required(payload.subject, "subject");
     const body = required(payload.body, "body");
 
+    if (workspaceId.length > 120 || to.length > 320 || subject.length > 300 || body.length > 20_000) {
+      return NextResponse.json({ error: "One or more fields exceed the allowed length." }, { status: 400 });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+      return NextResponse.json({ error: "A valid recipient is required." }, { status: 400 });
+    }
+
+    const user = await getVerifiedSupabaseUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const supabase = createSupabaseAdmin();
-    const member = await supabase
+    const membership = await supabase
       .from("os_workspace_members")
       .select("workspace_id")
       .eq("workspace_id", workspaceId)
-      .eq("email", userEmail)
+      .eq("user_id", user.id)
+      .eq("active", true)
+      .neq("status", "pending")
       .maybeSingle();
-
-    if (!member.data) return NextResponse.json({ error: "Workspace membership not found." }, { status: 403 });
+    if (membership.error || !membership.data) return NextResponse.json({ error: "Workspace membership not found." }, { status: 403 });
+    if (!allowRateLimit(`gmail-draft:${workspaceId}:${user.id}:${clientAddress(req)}`, 10, 10 * 60 * 1000)) {
+      return NextResponse.json({ error: "Please wait before creating another approval." }, { status: 429 });
+    }
 
     const ws = await supabase
       .from("os_workspaces")
@@ -48,7 +66,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Real execution requires an active plan." }, { status: 402 });
     }
 
-    const approvalId = `appr-gmail-${Date.now()}`;
+    const approvalId = `appr-gmail-${crypto.randomUUID()}`;
     const nowIso = new Date().toISOString();
     const approvalInsert = await supabase.from("os_approvals").insert({
       id: approvalId,
@@ -94,8 +112,7 @@ export async function POST(req: NextRequest) {
       approvalId,
       message: "Approval required before sending",
     });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Failed to create approval";
-    return NextResponse.json({ error: msg }, { status: 400 });
+  } catch {
+    return NextResponse.json({ error: "Failed to create approval." }, { status: 400 });
   }
 }

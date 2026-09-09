@@ -21,7 +21,16 @@ export type WorkforceActivitySummary = {
   actions: number;
   issues: number;
   total: number;
-  daily: Array<{ day: string; count: number }>;
+  prepared: number;
+  executed: number;
+  held: number;
+  /**
+   * A truthful chart projection for the dashboard. These are derived from
+   * the same normalized activity records used by Activity, never seeded UI
+   * values: an approval is prepared work, a pending approval is held work,
+   * and an execution is completed work.
+   */
+  daily: Array<{ day: string; count: number; prepared: number; executed: number; held: number }>;
 };
 
 export type WorkforceActivityPage = { items: WorkforceActivityItem[]; summary: WorkforceActivitySummary; hasMore: boolean; partialHistory: boolean };

@@ -59,3 +59,36 @@ export function CapabilityList({ items }: { items: string[] }) {
     </ul>
   );
 }
+
+/** Data-only metric rail. Callers keep ownership of aggregation and labels. */
+export function MetricStrip({ items, className = "" }: { items: Array<{ id?: string; label: ReactNode; value: ReactNode; detail: ReactNode; tone?: "default" | "attention" }>; className?: string }) {
+  return (
+    <div className={`os-metric-strip ${className}`.trim()}>
+      {items.map((item, index) => (
+        <div className="os-metric-strip-item" data-tone={item.tone ?? "default"} key={item.id ?? index}>
+          <span>{item.label}</span>
+          <strong>{item.value}</strong>
+          <small>{item.detail}</small>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** A presentational rendering of the fixed Auterim operating loop. */
+export function LoopRail({ stages, current, className = "" }: { stages: ReadonlyArray<{ label: string; detail?: string }>; current?: string; className?: string }) {
+  const activeIndex = current ? stages.findIndex((stage) => stage.label === current) : -1;
+  return (
+    <ol className={`os-loop-rail ${className}`.trim()}>
+      {stages.map((stage, index) => {
+        const state = activeIndex < 0 ? "next" : index < activeIndex ? "done" : index === activeIndex ? "current" : "next";
+        return <li data-state={state} key={stage.label}><span aria-hidden="true" /><strong>{stage.label}</strong>{stage.detail && <small>{stage.detail}</small>}</li>;
+      })}
+    </ol>
+  );
+}
+
+/** Compact definition-list pattern for capability-first product surfaces. */
+export function CapabilityDefinitionList({ items }: { items: Array<{ label: string; value: ReactNode }> }) {
+  return <dl className="os-capability-definition-list">{items.map((item) => <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>;
+}

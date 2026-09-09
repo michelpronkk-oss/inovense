@@ -93,13 +93,28 @@ export function normalizeWorkforceActivity(input: { approvals: Row[]; runs: Row[
 }
 
 export function summarizeWorkforceActivity(items: WorkforceActivityItem[], start: number, end: number): WorkforceActivitySummary {
-  const days: Array<{ day: string; count: number }> = [];
+  const days: WorkforceActivitySummary["daily"] = [];
   const dayCount = Math.max(1, Math.ceil((end - start) / 86400000));
   const cursor = new Date(end);
   cursor.setUTCHours(0, 0, 0, 0);
   cursor.setUTCDate(cursor.getUTCDate() - dayCount + 1);
-  for (let index = 0; index < dayCount; index += 1, cursor.setUTCDate(cursor.getUTCDate() + 1)) days.push({ day: cursor.toISOString().slice(0, 10), count: 0 });
+  for (let index = 0; index < dayCount; index += 1, cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+    days.push({ day: cursor.toISOString().slice(0, 10), count: 0, prepared: 0, executed: 0, held: 0 });
+  }
   const byDay = new Map(days.map((item) => [item.day, item]));
-  for (const item of items) { const day = item.occurredAt.slice(0, 10); const bucket = byDay.get(day); if (bucket) bucket.count += 1; }
-  return { runs: items.filter((item) => item.category === "operator_run").length, approvals: items.filter((item) => item.category === "approval").length, actions: items.filter((item) => item.category === "execution").length, issues: items.filter((item) => item.severity === "failure" || item.severity === "attention").length, total: items.length, daily: days };
+  for (const item of items) {
+    const day = item.occurredAt.slice(0, 10);
+    const bucket = byDay.get(day);
+    if (!bucket) continue;
+    bucket.count += 1;
+    if (item.category === "approval") {
+      bucket.prepared += 1;
+      if (item.status === "pending") bucket.held += 1;
+    }
+    if (item.category === "execution") bucket.executed += 1;
+  }
+  const prepared = items.filter((item) => item.category === "approval").length;
+  const executed = items.filter((item) => item.category === "execution").length;
+  const held = items.filter((item) => item.category === "approval" && item.status === "pending").length;
+  return { runs: items.filter((item) => item.category === "operator_run").length, approvals: prepared, actions: executed, issues: items.filter((item) => item.severity === "failure" || item.severity === "attention").length, total: items.length, prepared, executed, held, daily: days };
 }

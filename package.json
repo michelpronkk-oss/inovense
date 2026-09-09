@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test:rebrand": "node tests/auterim-phase4-smoke.mjs",
     "test:auth-security": "node tests/auth-security-smoke.mjs",
+    "test:pre-beta-security": "node tests/pre-beta-security-smoke.mjs",
     "test:microsoft-connector": "node tests/microsoft-connector-smoke.mjs",
     "test:microsoft-teams-connector": "node tests/microsoft-teams-connector-smoke.mjs && node tests/microsoft-teams-runtime-smoke.mjs",
     "test:salesforce-connector": "node tests/salesforce-connector-smoke.mjs && node tests/salesforce-context-runtime-smoke.mjs",
@@ -130,7 +131,7 @@
     "konva": "^10.2.3",
     "lucide-react": "^1.7.0",
     "motion": "^12.38.0",
-    "next": "16.2.2",
+    "next": "16.3.3",
     "next-themes": "^0.4.6",
     "radix-ui": "^1.4.3",
     "react": "19.2.4",
@@ -154,7 +155,7 @@
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
-    "eslint-config-next": "16.2.2",
+    "eslint-config-next": "16.3.3",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

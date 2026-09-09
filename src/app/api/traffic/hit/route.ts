@@ -1,10 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { allowRateLimit, clientAddress, requestBodyWithinLimit } from "@/lib/server/request-guards";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
+    if (!requestBodyWithinLimit(req, 16 * 1024)) return NextResponse.json({ ok: false }, { status: 413 });
+    if (!allowRateLimit(`traffic:${clientAddress(req)}`, 120, 60 * 1000)) return NextResponse.json({ ok: false }, { status: 429 });
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object") {
       return NextResponse.json({ ok: false }, { status: 400 });

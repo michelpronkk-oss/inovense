@@ -402,8 +402,8 @@ export default function SettingsPage() {
             <button className="appr-btn edit" onClick={() => startEdit("notifications")}>Email delivery</button>
           </div>
           <div className="settings-notification-list">
-            <div><span>Approval requests</span><strong>{state.currentUser.notifications.approvals ? `Email on — ${state.currentUser.email}` : "Email off"}</strong></div>
-            <div><span>Control alerts</span><strong>{state.currentUser.notifications.alerts ? `Email on — ${state.currentUser.email}` : "Email off"}</strong></div>
+            <div><span>Approval requests</span><strong>{state.currentUser.notifications.approvals ? `Email on: ${state.currentUser.email}` : "Email off"}</strong></div>
+            <div><span>Control alerts</span><strong>{state.currentUser.notifications.alerts ? `Email on: ${state.currentUser.email}` : "Email off"}</strong></div>
           </div>
         </section>
       </div>
@@ -432,7 +432,7 @@ export default function SettingsPage() {
                   <div>
                     <div className="workspace-identity-title">Workspace emblem</div>
                     <div className="workspace-identity-copy">
-                      {workspaceLogoFile ? `${workspaceLogoFile.name} selected — save workspace to apply it.` : "Use a square PNG, JPG, WebP, or SVG. Maximum 2 MB."}
+                      {workspaceLogoFile ? `${workspaceLogoFile.name} selected. Save workspace to apply it.` : "Use a square PNG, JPG, WebP, or SVG. Maximum 2 MB."}
                     </div>
                     <label className="btn btn-ghost btn-sm workspace-logo-upload">
                       {workspaceLogoPreview ? "Replace logo" : "Upload logo"}
@@ -463,7 +463,6 @@ export default function SettingsPage() {
             )}
 
             <div className="settings-edit-actions" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
-              <button className="btn btn-ghost btn-sm" onClick={() => setEditing(null)}>Cancel</button>
               <button className="btn btn-primary btn-sm" onClick={save} disabled={saving} style={{ opacity: saving ? 0.7 : 1 }}>
                 {saving ? "Saving…" : "Save"}
               </button>

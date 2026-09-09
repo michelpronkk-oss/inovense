@@ -1,5 +1,9 @@
+import dns from "node:dns/promises";
+import net from "node:net";
+
 const FETCH_TIMEOUT_MS = 10_000;
 const MAX_TEXT_LENGTH = 6_000;
+const MAX_REDIRECTS = 3;
 
 // High-confidence Dutch indicator words that rarely appear in English text
 const DUTCH_INDICATORS = new Set([
@@ -32,6 +36,61 @@ function isSocialUrl(url: string): boolean {
   } catch {
     return false;
   }
+}
+
+function isPrivateAddress(address: string): boolean {
+  const normalized = address.toLowerCase();
+  if (net.isIPv4(address)) {
+    const octets = address.split(".").map(Number);
+    const [a, b] = octets;
+    return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254)
+      || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168)
+      || (a === 100 && b >= 64 && b <= 127) || (a === 198 && (b === 18 || b === 19))
+      || a >= 224;
+  }
+  if (!net.isIPv6(address)) return true;
+  return normalized === "::1" || normalized.startsWith("fc") || normalized.startsWith("fd")
+    || normalized.startsWith("fe8") || normalized.startsWith("fe9")
+    || normalized.startsWith("fea") || normalized.startsWith("feb")
+    || normalized.startsWith("::ffff:10.") || normalized.startsWith("::ffff:192.168.")
+    || normalized.startsWith("::ffff:127.");
+}
+
+async function assertPublicUrl(rawUrl: string): Promise<URL> {
+  const parsed = new URL(rawUrl);
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("Only HTTP(S) URLs are supported.");
+  if (parsed.username || parsed.password) throw new Error("URLs with credentials are not supported.");
+  if (parsed.port && parsed.port !== "80" && parsed.port !== "443") throw new Error("Non-standard ports are not supported.");
+  const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (hostname === "localhost" || hostname.endsWith(".localhost") || hostname.endsWith(".local") || isPrivateAddress(hostname)) {
+    throw new Error("Private or local network URLs are not supported.");
+  }
+  const addresses = await dns.lookup(hostname, { all: true, verbatim: true });
+  if (!addresses.length || addresses.some((entry) => isPrivateAddress(entry.address))) {
+    throw new Error("Private or local network URLs are not supported.");
+  }
+  return parsed;
+}
+
+async function fetchPublicUrl(initialUrl: string, signal: AbortSignal): Promise<{ response: Response; url: string }> {
+  let currentUrl = initialUrl;
+  for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {
+    await assertPublicUrl(currentUrl);
+    const response = await fetch(currentUrl, {
+      signal,
+      redirect: "manual",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; Inovense-Research/1.0; +https://auterim.com)",
+        Accept: "text/html,application/xhtml+xml",
+        "Accept-Language": "en,nl;q=0.9",
+      },
+    });
+    if (response.status < 300 || response.status >= 400) return { response, url: currentUrl };
+    const location = response.headers.get("location");
+    if (!location || redirectCount === MAX_REDIRECTS) throw new Error("Too many or invalid redirects.");
+    currentUrl = new URL(location, currentUrl).toString();
+  }
+  throw new Error("Too many redirects.");
 }
 
 function stripHtml(html: string): string {
@@ -133,20 +192,15 @@ export async function inspectSite(
   }
 
   try {
+    await assertPublicUrl(url);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
     let html: string;
     try {
-      const res = await fetch(url, {
-        signal: controller.signal,
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (compatible; Inovense-Research/1.0; +https://auterim.com)",
-          Accept: "text/html,application/xhtml+xml",
-          "Accept-Language": "en,nl;q=0.9",
-        },
-      });
+      const fetched = await fetchPublicUrl(url, controller.signal);
+      const res = fetched.response;
+      url = fetched.url;
       clearTimeout(timer);
 
       if (!res.ok) {

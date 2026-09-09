@@ -1003,7 +1003,7 @@ export default function ConnectorsPage() {
           generic catalog, per the onboarding brief - never marked
           "connected" from the onboarding selection alone. */}
       {onboardingHighlightConnectors.length > 0 && (
-        <div className="p connector-priorities">
+        <div className="p connector-priorities connector-capability-summary">
           <div className="p-head">
             <h3>Systems you already use</h3>
             <div className="p-meta">Selected during setup</div>
@@ -1032,7 +1032,7 @@ export default function ConnectorsPage() {
           operator - never destroys saved configuration, purely descriptive.
           See getWorkspaceConnectorImpact (connector-requirements.ts). */}
       {degradedConnectorImpacts.length > 0 && (
-        <div className="p" style={{ borderRadius: 16, background: "rgba(245,194,107,0.045)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.2)" }}>
+        <div className="p connector-attention-list" style={{ borderRadius: 16, background: "rgba(245,194,107,0.045)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.2)" }}>
           <div className="p-head">
             <h3>Needs attention</h3>
             <div className="p-meta">{degradedConnectorImpacts.length} connector{degradedConnectorImpacts.length === 1 ? "" : "s"}</div>
@@ -1065,7 +1065,7 @@ export default function ConnectorsPage() {
       {/* Real, capability-derived business outcomes - only ever populated from
           operators that can actually run today (see whatAuterimCanDoNow). */}
       {whatAuterimCanDoNow.length > 0 && (
-        <div className="p" style={{ borderRadius: 16, background: "linear-gradient(145deg, rgba(77,232,225,0.045), rgba(255,255,255,0.012))" }}>
+        <div className="p connector-capability-summary" style={{ borderRadius: 16, background: "linear-gradient(145deg, rgba(77,232,225,0.045), rgba(255,255,255,0.012))" }}>
           <div className="p-head" style={{ alignItems: "flex-start" }}>
             <h3>What Auterim can do now</h3>
             <div className="p-meta">{whatAuterimCanDoNow.length} live {whatAuterimCanDoNow.length === 1 ? "capability" : "capabilities"}</div>
@@ -1093,7 +1093,7 @@ export default function ConnectorsPage() {
           directly - only routes to the relevant operator's detail page to
           inspect/configure/activate. */}
       {suggestedWorkflows.length > 0 && (
-        <div className="p" style={{ borderRadius: 16 }}>
+        <div className="p connector-workflow-summary" style={{ borderRadius: 16 }}>
           <div className="p-head">
             <h3>Suggested workflows</h3>
             <div className="p-meta">Ready to set up</div>

@@ -264,7 +264,6 @@ export default function TeamPage() {
                 </div>
 
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 15, borderTop: "1px solid var(--line)" }}>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setEditing(null)}>Cancel</button>
                   <button className="btn btn-primary btn-sm" disabled={savingMember} onClick={() => void saveMember()}>{savingMember ? "Saving…" : "Save changes"}</button>
                 </div>
                 {inviteFeedback && <div style={{ marginTop: 10, fontSize: 12, color: inviteFeedback.toLowerCase().includes("failed") || inviteFeedback.toLowerCase().includes("permission") || inviteFeedback.toLowerCase().includes("cannot") ? "#ff8f8f" : "var(--text-mute)" }}>{inviteFeedback}</div>}
@@ -316,7 +315,6 @@ export default function TeamPage() {
                     <em>Access can be changed or revoked at any time.</em>
                   </p>
                   <div className="team-invite-actions">
-                    <button className="btn btn-ghost btn-sm" onClick={() => setShowInvite(false)}>Cancel</button>
                     <button className="btn btn-primary btn-sm" onClick={submitInvite} disabled={!email.includes("@") || inviting}>{inviting ? "Sending invitation…" : "Send invitation"}</button>
                   </div>
                   {inviteFeedback && <div style={{ fontSize: 12, color: inviteFeedback.toLowerCase().includes("failed") || inviteFeedback.toLowerCase().includes("valid") ? "#ff8f8f" : "#64ffd7" }}>{inviteFeedback}</div>}
@@ -342,7 +340,6 @@ export default function TeamPage() {
             </div>
             {removeError && <div style={{ marginTop: 12, fontSize: 12, color: "#ff8f8f" }}>{removeError}</div>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 }}>
-              <button className="btn btn-ghost btn-sm" disabled={removing} onClick={() => setRemovingMember(null)}>Cancel</button>
               <button className="team-danger-btn severe" disabled={removing} onClick={() => void confirmRemove()}>{removing ? "Removing…" : "Remove member"}</button>
             </div>
           </div>

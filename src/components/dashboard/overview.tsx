@@ -8,6 +8,7 @@ import { useOS } from "@/lib/os/app-provider";
 import type { DashboardOverview, DashboardOperator } from "@/lib/dashboard/overview";
 import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-grid";
 import { DashboardLoadingState } from "@/components/dashboard/loading-state";
+import { MetricStrip } from "@/components/product-ui/page-primitives";
 
 type ScanKey = DashboardOperator["key"];
 type OverviewResponse = DashboardOverview & { error?: string; message?: string };
@@ -105,50 +106,58 @@ function DashboardMetrics({ overview }: { overview: DashboardOverview }) {
   return (
     <section className="dashboard-metrics" aria-labelledby="auterim-overview-title">
       <div className="dashboard-section-label" id="auterim-overview-title">Auterim overview</div>
-      <div className="dashboard-metric-grid">
-        {metrics.map((metric) => (
-          <div className="dashboard-metric" data-attention={metric.attention || undefined} key={metric.label}>
-            <div className="dashboard-metric-top"><span className="dashboard-metric-symbol" data-tone={metric.tone} aria-hidden="true" /><span>{metric.label}</span></div>
-            <div className="dashboard-metric-value"><strong>{metric.value}</strong><small>{metric.detail}</small></div>
-          </div>
-        ))}
-      </div>
+      <MetricStrip className="dashboard-metric-grid" items={metrics.map((metric) => ({
+        id: metric.label,
+        label: <><span className="dashboard-metric-symbol" data-tone={metric.tone} aria-hidden="true" />{metric.label}</>,
+        value: metric.value,
+        detail: metric.detail,
+        tone: metric.attention ? "attention" : "default",
+      }))} />
     </section>
   );
 }
 
 function WorkforceActivity({ overview }: { overview: DashboardOverview }) {
   const summary = overview.activitySummary;
-  const max = Math.max(...summary.daily.map((item) => item.count), 1);
-  const hasActivity = summary.total > 0;
-  const points = summary.daily.map((item, index) => {
+  const hasActivity = summary.prepared > 0 || summary.executed > 0 || summary.held > 0;
+  const max = Math.max(...summary.daily.flatMap((item) => [item.prepared, item.executed, item.held]), 1);
+  const pointString = (key: "prepared" | "executed" | "held") => summary.daily.map((item, index) => {
     const x = 40 + index * (640 / Math.max(summary.daily.length - 1, 1));
-    const y = 150 - (item.count / max) * 112;
+    const y = 150 - (item[key] / max) * 112;
     return `${x},${y}`;
   }).join(" ");
+  const preparedPoints = pointString("prepared");
+  const executedPoints = pointString("executed");
+  const heldPoints = pointString("held");
 
   return (
     <section className="p dashboard-workforce-activity" aria-labelledby="workforce-activity-title">
       <div className="p-head">
         <div>
           <h3 id="workforce-activity-title">Workforce activity</h3>
-          <span>Recorded work across the last 7 days</span>
+          <span>Prepared, executed, and held work across the last 7 days</span>
         </div>
         <Link className="lnk-open" href="/activity">View activity</Link>
       </div>
-      <div className="dashboard-activity-counts" aria-label={`${summary.runs} runs, ${summary.approvals} approvals, ${summary.actions} actions, ${summary.issues} issues`}>
-        <span><b>{summary.runs}</b> Runs</span><span><b>{summary.approvals}</b> Approvals</span><span><b>{summary.actions}</b> Actions</span><span data-attention={summary.issues > 0 || undefined}><b>{summary.issues}</b> Issues</span>
+      <div className="dashboard-activity-counts" aria-label={`${summary.prepared} prepared, ${summary.executed} executed, and ${summary.held} held at approval across the last seven days`}>
+        <span data-series="prepared"><b>{summary.prepared}</b> Prepared</span><span data-series="executed"><b>{summary.executed}</b> Executed</span><span data-series="held"><b>{summary.held}</b> Held at approval</span>
       </div>
       <div className="dashboard-telemetry-frame">
-        <svg viewBox="0 0 720 190" role="img" aria-label={hasActivity ? `${summary.total} workforce events across seven days. ${summary.runs} runs, ${summary.approvals} approvals, ${summary.actions} actions, and ${summary.issues} issues.` : "No workforce activity recorded yet"}>
+        <svg viewBox="0 0 720 190" role="img" aria-label={hasActivity ? `${summary.prepared} prepared actions, ${summary.executed} executed actions, and ${summary.held} actions held at approval across seven days.` : "No prepared, executed, or held workforce activity recorded yet"}>
           {[38, 76, 114, 152].map((y) => <line key={y} x1="40" x2="680" y1={y} y2={y} />)}
           {summary.daily.map((item, index) => { const x = 40 + index * (640 / Math.max(summary.daily.length - 1, 1)); return <g key={item.day}><line className="dashboard-telemetry-day" x1={x} x2={x} y1="28" y2="152" /><text className="dashboard-telemetry-axis" x={x} y="178" textAnchor={index === 0 ? "start" : index === summary.daily.length - 1 ? "end" : "middle"}>{new Date(`${item.day}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "short" })}</text></g>; })}
-          {hasActivity && <><polyline points={points} fill="none" stroke="#4DE8E1" strokeWidth="2" /><polygon points={`40,152 ${points} 680,152`} fill="rgba(77,232,225,.10)" />{summary.daily.map((item, index) => { const x = 40 + index * (640 / Math.max(summary.daily.length - 1, 1)); const y = 150 - (item.count / max) * 112; return <circle key={item.day} cx={x} cy={y} r="4" fill="#4DE8E1"><title>{`${item.day}: ${item.count} activity event${item.count === 1 ? "" : "s"}`}</title></circle>; })}</>}
+          {hasActivity && <>
+            <polygon points={`40,152 ${preparedPoints} 680,152`} fill="rgba(77,232,225,.10)" />
+            <polyline points={preparedPoints} fill="none" stroke="#4DE8E1" strokeWidth="2" />
+            <polyline points={executedPoints} fill="none" stroke="#51D88A" strokeWidth="1.8" />
+            <polyline points={heldPoints} fill="none" stroke="#F5C26B" strokeWidth="1.8" strokeDasharray="4 4" />
+            {summary.daily.map((item, index) => { const x = 40 + index * (640 / Math.max(summary.daily.length - 1, 1)); const y = 150 - (item.prepared / max) * 112; return <circle key={item.day} cx={x} cy={y} r="3.5" fill="#4DE8E1"><title>{`${item.day}: ${item.prepared} prepared, ${item.executed} executed, ${item.held} held at approval`}</title></circle>; })}
+          </>}
         </svg>
         {!hasActivity && (
           <div className="dashboard-telemetry-empty">
             <strong>Activity is still building.</strong>
-            <span>Activate an operator to start seeing workforce activity here.</span>
+            <span>Prepared, executed, and held work will appear here after operators begin monitoring.</span>
           </div>
         )}
       </div>

@@ -173,11 +173,11 @@ function AgentCard({ model, onOpenDetails }: { model: CardModel; onOpenDetails: 
 
       <div className="ag-mission">{op.mission}</div>
 
-      {capabilityCopy.required.length > 0 && <div className="ag-capability-summary">
-        <span className="ag-capability-label">{locked ? "Requires" : productState?.connectedSystems.length ? "Connected context" : "Requires"}</span>
-        <div className="ag-capability-chips">{capabilityCopy.required.slice(0, 3).map((capability) => <span key={capability}>{capability}</span>)}</div>
-        {capabilityCopy.optional.length > 0 && <small>Optional: {capabilityCopy.optional.slice(0, 2).join(" · ")}</small>}
-      </div>}
+      {capabilityCopy.required.length > 0 && <dl className="ag-operating-context">
+        <div><dt>{locked ? "Requires" : productState?.connectedSystems.length ? "Core capability" : "Requires"}</dt><dd>{capabilityCopy.required.slice(0, 3).join(" · ")}</dd></div>
+        {capabilityCopy.optional.length > 0 && <div><dt>Optional context</dt><dd>{capabilityCopy.optional.slice(0, 2).join(" · ")}</dd></div>}
+        <div><dt>Control</dt><dd>Consequential actions require approval</dd></div>
+      </dl>}
 
       {!productState && status === "available" && readyReason && (
         <div style={{ fontSize: 11.5, color: "var(--text-mute)", marginTop: -6 }}>Because: {readyReason}</div>

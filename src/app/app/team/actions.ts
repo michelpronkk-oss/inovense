@@ -8,6 +8,7 @@ import { getVerifiedSupabaseUser } from "@/lib/supabase/server";
 import { requireWorkspaceAdmin, AuthorizationError } from "@/lib/server/workspace-access";
 import { renderTeamInviteEmail } from "@/lib/email/auth-emails";
 import { TRANSACTIONAL_FROM } from "@/lib/email/config";
+import { allowRateLimit } from "@/lib/server/request-guards";
 import { INVITABLE_WORKSPACE_ROLES, WORKSPACE_ROLE_CAPABILITIES, WORKSPACE_ROLE_LABELS, canManageTarget, legacyRoleLabel, normalizeWorkspaceRole, type WorkspaceRole } from "@/lib/workspace-permissions";
 
 // Simple in-memory attempt window, same idiom used by
@@ -120,7 +121,8 @@ type InviteResult =
 export async function inviteWorkspaceMember(input: InviteInput): Promise<InviteResult> {
   const email = input.email.trim().toLowerCase();
   const name = input.name?.trim().replace(/\s+/g, " ") ?? "";
-  if (!email || !email.includes("@")) return { success: false, error: "Enter a valid email address." };
+  if (!email || email.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { success: false, error: "Enter a valid email address." };
+  if (name.length > 200) return { success: false, error: "The invitee name is too long." };
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -148,6 +150,10 @@ export async function inviteWorkspaceMember(input: InviteInput): Promise<InviteR
       return { success: false, error: "You do not have permission to invite members to this workspace." };
     }
     return { success: false, error: "Could not verify your workspace permissions." };
+  }
+
+  if (!allowRateLimit(`workspace-invite:${workspaceId}:${verifiedUser.id}:${email}`, 5, RESEND_WINDOW_MS)) {
+    return { success: false, error: "Please wait a few minutes before sending another invitation to this address." };
   }
 
   const supabase = createClient(url, key, { auth: { persistSession: false } });

@@ -144,6 +144,13 @@ function webhookSigningKey(secret: string): Buffer {
     : Buffer.from(normalized, "utf8");
 }
 
+export function isDodoWebhookTimestampFresh(timestamp: string | null, nowMs = Date.now()): boolean {
+  if (!timestamp || !/^\d+$/.test(timestamp)) return false;
+  const seconds = Number(timestamp);
+  if (!Number.isSafeInteger(seconds)) return false;
+  return Math.abs(nowMs / 1000 - seconds) <= 5 * 60;
+}
+
 export function verifyDodoWebhookSignature(
   rawBody: string,
   headers: { id: string | null; timestamp: string | null; signature: string | null },

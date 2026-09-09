@@ -219,7 +219,6 @@ export function OSSidebar() {
                 {hasProfileChanges ? "Unsaved changes" : "All changes saved"}
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button className="btn btn-ghost btn-sm" onClick={() => setProfileOpen(false)}>Cancel</button>
                 <button
                   className="btn btn-primary btn-sm"
                   disabled={!hasProfileChanges || savingProfile}

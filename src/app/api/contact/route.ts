@@ -1,9 +1,16 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { allowRateLimit, clientAddress, requestBodyWithinLimit } from "@/lib/server/request-guards";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
+    if (!requestBodyWithinLimit(req, 32 * 1024)) {
+      return NextResponse.json({ ok: false, error: "Request is too large" }, { status: 413 });
+    }
+    if (!allowRateLimit(`contact:${clientAddress(req)}`, 5, 10 * 60 * 1000)) {
+      return NextResponse.json({ ok: false, error: "Please wait before sending another message" }, { status: 429 });
+    }
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object") {
       return NextResponse.json({ ok: false, error: "Invalid request" }, { status: 400 });
@@ -23,9 +30,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ ok: false, error: "Message must be between 10 and 5000 characters" }, { status: 400 });
     }
 
-    // Forward to internal notification address via a simple log
-    // Wire up to Resend / Supabase / email provider when ready
-    console.log("[contact]", { name, email, company: body.company ?? "", message });
+    // Keep public contact submissions out of production logs. The message may
+    // contain personal data or credentials pasted by a visitor.
 
     return NextResponse.json({ ok: true });
   } catch {

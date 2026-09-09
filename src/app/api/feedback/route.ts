@@ -4,6 +4,7 @@ import { AUTERIM_EMAILS } from "@/lib/brand";
 import { SUPPORT_FROM } from "@/lib/email/config";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
+import { requestBodyWithinLimit } from "@/lib/server/request-guards";
 
 const TYPES = new Set(["general", "connector_request", "operator_request", "feature_request", "bug"]);
 const LIMIT = 5;
@@ -25,6 +26,7 @@ function text(value: unknown, maximum: number) {
 
 export async function POST(request: NextRequest) {
   if (!hasSupabaseAdminConfig()) return NextResponse.json({ error: "Feedback is temporarily unavailable." }, { status: 503 });
+  if (!requestBodyWithinLimit(request, 64 * 1024)) return NextResponse.json({ error: "Request is too large." }, { status: 413 });
   const body = await request.json().catch(() => ({}));
   const workspaceId = text(body.workspaceId, 120);
   const feedbackType = text(body.feedbackType, 40);

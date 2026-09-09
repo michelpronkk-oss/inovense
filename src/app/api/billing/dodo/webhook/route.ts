@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { getBillingEntitlementsForPlan, type BillingPlanTier } from "@/lib/pricing";
-import { verifyDodoWebhookSignature } from "@/lib/billing/dodo";
+import { isDodoWebhookTimestampFresh, verifyDodoWebhookSignature } from "@/lib/billing/dodo";
 import { getWorkspaceTrialEntitlement, recordTrialStarted, updateTrialStatus } from "@/lib/billing/trials";
 import { sendTrialLifecycleEmail } from "@/lib/billing/trial-notifications";
 
@@ -26,7 +26,7 @@ function mapProductToPlan(productId: string | undefined): BillingPlanTier | null
   return null;
 }
 
-function mapEventToBillingStatus(eventType: string, trialEndsAt?: string): BillingStatus {
+function mapEventToBillingStatus(eventType: string, trialEndsAt?: string): BillingStatus | null {
   if (eventType === "subscription.cancelled") return "canceled";
   if (eventType === "subscription.failed" || eventType === "payment.failed") return "past_due";
   if (eventType === "subscription.expired") return "canceled";
@@ -41,7 +41,7 @@ function mapEventToBillingStatus(eventType: string, trialEndsAt?: string): Billi
   ) {
     return "active";
   }
-  return "active";
+  return null;
 }
 
 function firstString(...values: Array<unknown>): string | undefined {
@@ -74,16 +74,34 @@ function dodoInterval(value: unknown): "day" | "week" | "month" | "year" | null 
 }
 
 export async function POST(req: NextRequest) {
+  const contentLength = Number(req.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > 256 * 1024) {
+    return NextResponse.json({ error: "Webhook body is too large." }, { status: 413 });
+  }
   const rawBody = await req.text();
+  if (new TextEncoder().encode(rawBody).byteLength > 256 * 1024) {
+    return NextResponse.json({ error: "Webhook body is too large." }, { status: 413 });
+  }
+  const webhookTimestamp = req.headers.get("webhook-timestamp");
+  if (!isDodoWebhookTimestampFresh(webhookTimestamp)) {
+    return NextResponse.json({ error: "Webhook timestamp is invalid or expired." }, { status: 401 });
+  }
   if (!verifyDodoWebhookSignature(rawBody, {
     id: req.headers.get("webhook-id"),
-    timestamp: req.headers.get("webhook-timestamp"),
+    timestamp: webhookTimestamp,
     signature: req.headers.get("webhook-signature"),
   })) {
     return NextResponse.json({ error: "Invalid webhook signature." }, { status: 401 });
   }
 
-  const payload = JSON.parse(rawBody) as Record<string, unknown>;
+  let payload: Record<string, unknown>;
+  try {
+    const parsed = JSON.parse(rawBody);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("invalid_payload");
+    payload = parsed as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: "Malformed webhook payload." }, { status: 400 });
+  }
   const eventType = firstString(payload.type, payload.event_type, (payload.event as Record<string, unknown> | undefined)?.type) || "unknown";
   const eventId = firstString(payload.id, payload.event_id, `${eventType}-${crypto.randomUUID()}`) as string;
   const data = (payload.data as Record<string, unknown> | undefined) || {};
@@ -151,7 +169,7 @@ export async function POST(req: NextRequest) {
   }, { onConflict: "event_id" }).select("event_id, processed_at, processing_status").maybeSingle();
 
   if (insertEvent.error) {
-    return NextResponse.json({ error: `Failed to persist billing event: ${insertEvent.error.message}` }, { status: 500 });
+    return NextResponse.json({ error: "Webhook could not be persisted." }, { status: 500 });
   }
 
   if (insertEvent.data?.processed_at) {
@@ -172,6 +190,17 @@ export async function POST(req: NextRequest) {
 
   const entitlements = getBillingEntitlementsForPlan(plan);
   const billingStatus = mapEventToBillingStatus(eventType, trialEndsAt);
+  if (!billingStatus) {
+    await supabase
+      .from("os_billing_events")
+      .update({
+        processing_status: "warning_unknown_event_type",
+        warning_message: "Webhook event type was authenticated but not recognized; no entitlement change was applied.",
+        processed_at: new Date().toISOString(),
+      })
+      .eq("event_id", eventId);
+    return NextResponse.json({ ok: true, warning: "Unknown event type ignored." });
+  }
   const updatePayload = {
     // `operator` is a legacy persisted key. Keep the key in plan_tier, but
     // never surface the obsolete billing name in workspace display fields.
@@ -205,7 +234,7 @@ export async function POST(req: NextRequest) {
         warning_message: wsUpdate.error.message,
       })
       .eq("event_id", eventId);
-    return NextResponse.json({ error: `Failed to update workspace entitlements: ${wsUpdate.error.message}` }, { status: 500 });
+    return NextResponse.json({ error: "Workspace entitlements could not be updated." }, { status: 500 });
   }
 
   if (subscriptionId && recurringAmount !== null && currency && frequencyInterval && subscriptionStatus) {

@@ -514,8 +514,9 @@ export default function ApprovalsPage() {
 
             return (
               <article key={item.id} className="appr-row approval-review-card">
+                <header className="approval-case-head">
                 {workflow?.id && (
-                  <div style={{ marginBottom: 10, padding: "8px 10px", borderRadius: 10, background: "rgba(77,232,225,0.06)", border: "1px solid rgba(77,232,225,0.14)", fontSize: 11.5, color: "var(--text-dim)" }}>
+                  <div className="approval-workflow-context" style={{ marginBottom: 10, padding: "8px 10px", borderRadius: 10, background: "rgba(77,232,225,0.06)", border: "1px solid rgba(77,232,225,0.14)", fontSize: 11.5, color: "var(--text-dim)" }}>
                     <strong style={{ color: "var(--cyan)" }}>{workflow.objective || "Workflow action"}</strong>
                     {workflow.stepOrder && workflow.stepCount ? ` · Step ${workflow.stepOrder} of ${workflow.stepCount}` : ""}
                     {workflow.stepReason ? <div style={{ marginTop: 3 }}>{workflow.stepReason}</div> : null}
@@ -527,6 +528,7 @@ export default function ApprovalsPage() {
                 </div>
                 <div className="appr-row-from">{operatorName} - {timeAgo(item.created_at)}</div>
                 <div className="appr-row-body">{item.description}</div>
+                </header>
                 <div style={{ marginTop: 12, padding: revenueApproval ? "0" : "9px 10px", borderRadius: revenueApproval ? 18 : 8, background: revenueApproval ? "linear-gradient(145deg, rgba(255,255,255,0.055), rgba(77,232,225,0.025) 45%, rgba(0,0,0,0.12))" : "rgba(255,255,255,0.025)", boxShadow: revenueApproval ? "inset 0 0 0 1px rgba(255,255,255,0.09), 0 18px 60px rgba(0,0,0,0.22)" : "inset 0 0 0 1px var(--line)", overflow: "hidden", display: "grid", gap: revenueApproval ? 0 : 4 }}>
                   {revenueApproval && (
                     <>

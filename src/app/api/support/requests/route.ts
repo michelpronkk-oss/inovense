@@ -6,6 +6,7 @@ import { getWorkspaceOperatorProductStates } from "@/lib/operators/product-state
 import { getConnectorTruth } from "@/lib/connectors/truth";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
+import { requestBodyWithinLimit } from "@/lib/server/request-guards";
 
 const TOPICS = new Set(["account", "connector", "operator", "billing", "bug", "other"]);
 const attempts = new Map<string, number[]>();
@@ -15,6 +16,7 @@ function text(value: unknown, maximum: number) { return typeof value === "string
 
 export async function POST(request: NextRequest) {
   if (!hasSupabaseAdminConfig()) return NextResponse.json({ error: "Support is temporarily unavailable." }, { status: 503 });
+  if (!requestBodyWithinLimit(request, 64 * 1024)) return NextResponse.json({ error: "Request is too large." }, { status: 413 });
   const body = await request.json().catch(() => ({}));
   const workspaceId = text(body.workspaceId, 120);
   const topic = text(body.topic, 40);

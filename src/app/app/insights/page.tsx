@@ -5,9 +5,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useOS } from "@/lib/os/app-provider";
 import { getEntitlements } from "@/lib/os/entitlements";
 import { UpgradePrompt } from "@/components/upgrade-prompt";
+import { MetricStrip, PageHeader } from "@/components/product-ui/page-primitives";
 import type { WorkflowPresentation } from "@/lib/workflows/presentation";
 
-function relative(value: string) { const hours = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 3600000)); return hours < 1 ? "Just now" : hours < 24 ? `${hours}h ago` : `${Math.floor(hours / 24)}d ago`; }
+function relative(value: string) {
+  const hours = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 3600000));
+  return hours < 1 ? "Just now" : hours < 24 ? `${hours}h ago` : `${Math.floor(hours / 24)}d ago`;
+}
 
 export default function InsightsPage() {
   const { state } = useOS();
@@ -15,11 +19,34 @@ export default function InsightsPage() {
   const [workflows, setWorkflows] = useState<WorkflowPresentation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const load = useCallback(async () => { setLoading(true); setError(""); try { const response = await fetch("/api/workflows", { cache: "no-store" }); const json = await response.json().catch(() => ({})) as { workflows?: WorkflowPresentation[]; error?: string }; if (!response.ok) throw new Error(json.error || "Could not load outcome evidence."); setWorkflows(json.workflows ?? []); } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not load outcome evidence."); } finally { setLoading(false); } }, []);
+  const load = useCallback(async () => {
+    setLoading(true); setError("");
+    try {
+      const response = await fetch("/api/workflows", { cache: "no-store" });
+      const json = await response.json().catch(() => ({})) as { workflows?: WorkflowPresentation[]; error?: string };
+      if (!response.ok) throw new Error(json.error || "Could not load outcome evidence.");
+      setWorkflows(json.workflows ?? []);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not load outcome evidence."); }
+    finally { setLoading(false); }
+  }, []);
   useEffect(() => { if (entitlements.features.insights) void load(); }, [entitlements.features.insights, load]);
   const outcomes = useMemo(() => workflows.flatMap((workflow) => workflow.outcomes.map((outcome) => ({ ...outcome, workflow }))).sort((a, b) => new Date(b.observedAt).getTime() - new Date(a.observedAt).getTime()), [workflows]);
   const byOperator = useMemo(() => Object.entries(outcomes.reduce<Record<string, number>>((all, outcome) => { all[outcome.workflow.operatorName] = (all[outcome.workflow.operatorName] ?? 0) + 1; return all; }, {})), [outcomes]);
-  if (!entitlements.features.insights) return <div className="os-page" style={{ display: "flex", flexDirection: "column" }}><div className="os-page-head"><div><span className="os-greet">Workforce feature</span><h1>Insights</h1><div className="os-page-sub">Outcome intelligence for your AI workforce.</div></div></div><UpgradePrompt feature="Outcome intelligence" description="Understand operator performance, business outcomes, trends, and measurable impact across your AI workforce." requiredPlan="growth" /></div>;
-  return <div className="os-page"><div className="os-page-head"><div><span className="os-greet">Measured outcomes</span><h1>Insights</h1><div className="os-page-sub">Evidence Auterim has observed after work completed. Activity and technical logs remain separate views.</div></div><div className="os-page-actions"><Link className="btn btn-ghost btn-sm" href="/app/workflows">Open workflows</Link></div></div>{error && <div className="p" style={{ padding: 12, color: "var(--rose)" }}>{error} <button className="btn btn-ghost btn-sm" onClick={() => void load()} style={{ marginLeft: 8 }}>Retry</button></div>}{loading ? <div className="p" style={{ padding: 20, color: "var(--text-mute)" }}>Loading outcome evidence…</div> : outcomes.length === 0 ? <div className="p" style={{ padding: "28px 22px", maxWidth: 740 }}><div style={{ fontSize: 16, fontWeight: 650 }}>No outcome evidence yet</div><div style={{ marginTop: 7, color: "var(--text-dim)", fontSize: 13, lineHeight: 1.55 }}>Auterim records an insight only after a connected system provides evidence that work changed something. You can still review current plans and approvals at any time.</div><div style={{ display: "flex", gap: 8, marginTop: 16 }}><Link className="btn btn-primary btn-sm" href="/app/workflows">View workflows</Link><Link className="btn btn-ghost btn-sm" href="/app/approvals">Review approvals</Link></div></div> : <><div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}><Metric label="Observed outcomes" value={outcomes.length} detail="Connected-system evidence" /><Metric label="Workflows with evidence" value={new Set(outcomes.map((outcome) => outcome.workflow.id)).size} detail="Completed work with an observed result" /><Metric label="Directly attributed" value={outcomes.filter((outcome) => outcome.attribution === "direct").length} detail="Only where the evidence supports it" /></div><div className="os-grid-2"><section className="p" style={{ padding: 0 }}><div className="p-head"><div><h3>Latest evidence</h3><div className="p-meta" style={{ marginTop: 3 }}>No estimates or unverified impact claims.</div></div></div><div>{outcomes.slice(0, 12).map((outcome) => <div key={outcome.id} style={{ padding: "13px 18px", borderTop: "1px solid var(--line)" }}><div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}><strong style={{ fontSize: 13 }}>{outcome.label}</strong><span style={{ fontSize: 11.5, color: "var(--text-mute)" }}>{relative(outcome.observedAt)}</span></div><div style={{ marginTop: 4, fontSize: 12, color: "var(--text-dim)" }}>{outcome.workflow.objective} · {outcome.workflow.operatorName} · {outcome.attribution} evidence</div></div>)}</div></section><section className="p"><div className="p-head"><div><h3>Where outcomes are appearing</h3><div className="p-meta" style={{ marginTop: 3 }}>By responsible operator</div></div></div><div style={{ display: "grid", gap: 10, padding: "4px 0" }}>{byOperator.map(([name, count]) => <div key={name} style={{ display: "flex", justifyContent: "space-between", paddingBottom: 9, borderBottom: "1px solid var(--line)", fontSize: 13 }}><span style={{ color: "var(--text-dim)" }}>{name}</span><strong>{count} observed</strong></div>)}</div></section></div></>}</div>;
+
+  if (!entitlements.features.insights) return <div className="os-page insights-page"><PageHeader eyebrow="Workforce feature" title="Insights" description="Evidence-backed outcome reporting for your workforce." /><UpgradePrompt feature="Outcome intelligence" description="Review observed outcomes from completed work when connected systems provide evidence." requiredPlan="growth" /></div>;
+
+  const observed = outcomes.filter((outcome) => outcome.attribution === "observed").length;
+  const influenced = outcomes.filter((outcome) => outcome.attribution === "influenced").length;
+  const direct = outcomes.filter((outcome) => outcome.attribution === "direct").length;
+  return <div className="os-page insights-page">
+    <PageHeader eyebrow="Measured outcomes" title="Insights" description="Evidence Auterim has observed after work completed. Activity and technical logs remain separate views." actions={<Link className="btn btn-ghost btn-sm" href="/app/workflows">Open workflows</Link>} />
+    {error && <div className="p" style={{ padding: 12, color: "var(--rose)" }}>{error} <button className="btn btn-ghost btn-sm" onClick={() => void load()} style={{ marginLeft: 8 }}>Retry</button></div>}
+    {loading ? <div className="p insights-loading">Loading outcome evidence…</div> : outcomes.length === 0 ? <section className="p insights-empty"><div><span>Evidence status</span><strong>Not enough evidence yet</strong><p>Auterim records an insight only after a connected system confirms that completed work changed something.</p></div><div><Link className="btn btn-primary btn-sm" href="/app/workflows">View workflows</Link><Link className="btn btn-ghost btn-sm" href="/app/approvals">Review approvals</Link></div></section> : <>
+      <MetricStrip className="insights-metric-rail" items={[{ label: "Observed", value: observed, detail: "Recorded by a connected system" }, { label: "Influenced", value: influenced, detail: "Evidence linked to completed work" }, { label: "Direct", value: direct, detail: "Only where attribution supports it" }]} />
+      <div className="os-grid-2 insights-evidence-grid">
+        <section className="p insights-evidence-list"><div className="p-head"><div><h3>Latest evidence</h3><div className="p-meta">No estimates or unverified impact claims.</div></div></div><div>{outcomes.slice(0, 12).map((outcome) => <div key={outcome.id} className="insights-evidence-row"><div><strong>{outcome.label}</strong><small>{outcome.workflow.objective} · {outcome.workflow.operatorName}</small></div><span data-attribution={outcome.attribution}>{outcome.attribution}</span><time>{relative(outcome.observedAt)}</time></div>)}</div></section>
+        <section className="p insights-by-operator"><div className="p-head"><div><h3>Where evidence appears</h3><div className="p-meta">By responsible operator</div></div></div><div>{byOperator.map(([name, count]) => <div key={name}><span>{name}</span><strong>{count} observed</strong></div>)}</div></section>
+      </div>
+    </>}
+  </div>;
 }
-function Metric({ label, value, detail }: { label: string; value: number; detail: string }) { return <div className="kpi"><div className="lab">{label}</div><div className="kpi-val">{value}</div><div className="kpi-meta">{detail}</div></div>; }

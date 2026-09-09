@@ -65,7 +65,7 @@ export default function MemoryPage() {
         <div>
           <span className="os-greet">Business context</span>
           <h1>Memory</h1>
-          <div className="os-page-sub">Structured business context operators can safely reference.</div>
+          <div className="os-page-sub">What Auterim knows about your business. Operators use this context before they act.</div>
           <div className="memory-enrichment-note">{isPreview ? "Your owner-confirmed brief is ready. Connected systems and approved work can enrich it after activation." : "Connected systems and approved work enrich this context over time."}</div>
         </div>
       </div>
@@ -76,7 +76,7 @@ export default function MemoryPage() {
             rather than claiming an equal-sized slot next to them. */}
         <div><span>Entries</span><strong>{entries.length}</strong><small>{totalFields} structured fields · {new Set(entries.map((e) => e.type)).size} categories</small></div>
         <div><span>Last updated</span><strong>{mostRecent ? relativeTime(mostRecent.updatedAt) : "Not yet"}</strong><small>{mostRecent?.label ?? "Awaiting workspace context"}</small></div>
-        <aside><span className="dot dot-cyan" /> References appear after operators safely use memory in live work.</aside>
+        <aside><span className="dot dot-cyan" /> Sources and safe operator use remain visible in each record.</aside>
       </section>
 
       <div className="memory-search">
@@ -141,7 +141,7 @@ export default function MemoryPage() {
                   ) : (
                     <div style={{ padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.018)", boxShadow: "inset 0 0 0 1px var(--line)", fontSize: 12.5, color: "var(--text-dim)", lineHeight: 1.6 }}>{e.content}</div>
                   )}
-                  <div style={{ color: "var(--text-faint)", fontSize: 10.5, marginTop: 9 }}>Owner-confirmed context · Available to approved operators</div>
+                  <div className="memory-provenance">Workspace context · Available to approved operators</div>
                 </div>
               )}
             </div>

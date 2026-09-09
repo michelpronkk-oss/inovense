@@ -93,7 +93,7 @@ export default function LogsPage() {
         </div>
       </div>
 
-      <div className="p" style={{ overflow: "hidden" }}>
+      <div className="p logs-audit-surface" style={{ overflow: "hidden" }}>
         <div className="p-head" style={{ alignItems: "flex-start" }}>
           <h3><DocIcon size={13} /> Log stream</h3>
           <div className="p-meta">
@@ -101,8 +101,8 @@ export default function LogsPage() {
           </div>
         </div>
         <div className="logs-viewport">
-          <div style={{ fontFamily: "var(--font-mono)", minWidth: 0 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "88px minmax(130px,0.55fr) minmax(120px,0.7fr) minmax(160px,1.5fr) 72px", gap: 12, padding: "8px 18px", color: "var(--text-faint)", fontSize: 9.5, letterSpacing: "0.08em", textTransform: "uppercase", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)" }}>
+          <div className="logs-table" style={{ fontFamily: "var(--font-mono)", minWidth: 0 }}>
+          <div className="logs-table-head" style={{ display: "grid", gridTemplateColumns: "88px minmax(130px,0.55fr) minmax(120px,0.7fr) minmax(160px,1.5fr) 72px", gap: 12, padding: "8px 18px", color: "var(--text-faint)", fontSize: 9.5, letterSpacing: "0.08em", textTransform: "uppercase", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)" }}>
             <span>Time</span><span>Actor</span><span>Event</span><span>Subject</span><span style={{ textAlign: "right" }}>Status</span>
           </div>
           {visibleLogs.map((l) => {
@@ -110,6 +110,7 @@ export default function LogsPage() {
             return (
             <div
               key={l.id}
+              className="logs-table-row"
               style={{
                 display: "grid",
                 gridTemplateColumns: "88px minmax(130px,0.55fr) minmax(120px,0.7fr) minmax(160px,1.5fr) 72px",
@@ -128,7 +129,7 @@ export default function LogsPage() {
               <span style={{ width: "fit-content", maxWidth: "100%", fontSize: 10, padding: "4px 7px", borderRadius: 6, background: "rgba(255,255,255,0.04)", color: "var(--text-mute)", boxShadow: "inset 0 0 0 1px var(--line)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {formatEventKey(l.event)}
               </span>
-              <span style={{ color: "var(--text-dim)", fontFamily: "var(--font-sans)", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.message}>{l.message}</span>
+              <span className="logs-subject" style={{ color: "var(--text-dim)", fontFamily: "var(--font-sans)", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={`${l.message} (${l.id})`}><strong>{l.message}</strong><small>{l.id}</small></span>
               <span style={{ justifySelf: "end", fontFamily: "var(--font-sans)", fontSize: 10.5, fontWeight: 600, padding: "4px 7px", borderRadius: 999, color: STATUS_COLOR[l.status] ?? "var(--text-dim)", background: `${STATUS_COLOR[l.status] ?? "#8B98A8"}14`, boxShadow: `inset 0 0 0 1px ${STATUS_COLOR[l.status] ?? "#8B98A8"}35` }}>{l.status}</span>
             </div>
             );

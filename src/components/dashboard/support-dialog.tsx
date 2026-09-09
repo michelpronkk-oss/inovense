@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { OSModal } from "@/components/dashboard/modal";
 import { useOS } from "@/lib/os/app-provider";
 import { findSupportHelp } from "@/lib/support/knowledge";
+import { XIcon } from "@/components/dashboard/icons";
 
 type Answer = { answer: string; action?: { label: string; href: string }; needsContact?: boolean };
 type Topic = "account" | "connector" | "operator" | "billing" | "bug" | "other";
@@ -67,7 +68,7 @@ export function SupportDialog() {
       <section className="os-modal os-support-drawer" onClick={(event) => event.stopPropagation()}>
         <header className="os-support-head">
           <div><span>Auterim support</span><h2>How can we help?</h2><p>Guidance for this workspace, without leaving your work.</p></div>
-          <button type="button" className="appr-btn deny" onClick={() => setOpen(false)}>Close</button>
+          <button type="button" className="os-iconbtn" aria-label="Close support" onClick={() => setOpen(false)}><XIcon size={14} /></button>
         </header>
         <div className="os-support-scroll">
           <section className="os-support-section">
