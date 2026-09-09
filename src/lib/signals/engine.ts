@@ -207,6 +207,9 @@ function candidateFor(event: SignalEvent, decision: SignalDecision, operatorKey:
 }
 
 function categoryForInbound(classification: InboundClassification): SignalCategory {
+  if (classification.primaryOperator === "support") {
+    return ["COMPLAINT", "ESCALATION"].includes(classification.primaryIntent) ? "support_risk" : "customer_request";
+  }
   if (classification.primaryIntent === "COMPLAINT" || classification.primaryIntent === "ESCALATION") return "escalation";
   if (classification.operationsSignal) {
     if (["DELIVERY_RISK", "INTERNAL_BLOCKER"].includes(classification.primaryIntent)) return "delivery_risk";

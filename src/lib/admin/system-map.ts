@@ -96,7 +96,7 @@ export const SYSTEM_MAP_BRANCHES: SystemMapBranch[] = [
   { id: "infrastructure", label: "Infrastructure", description: "The vendors Auterim itself runs on." },
 ];
 
-const LIVE_OPERATOR_KEYS: OperatorKey[] = ["revenue", "client_flow", "operations"];
+const LIVE_OPERATOR_KEYS: OperatorKey[] = ["revenue", "client_flow", "operations", "support"];
 
 const OPERATOR_ADMIN_NOTES: Record<string, string> = {
   revenue: "Qualifies inbound demand, drafts follow-ups, and keeps CRM next steps current across Gmail/Microsoft 365, HubSpot, and Salesforce context.",

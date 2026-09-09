@@ -79,7 +79,7 @@ export type DashboardOverview = {
   activitySummary: WorkforceActivitySummary;
   nextBestActions: DashboardNextAction[];
   /**
-   * Real, shared product state per real operator (revenue/client_flow/operations)
+   * Real, shared product state per live operator
    * from src/lib/operators/product-state.ts - the single source of truth for
    * dashboard lifecycle states B-F, never re-derived from `operators` above
    * (which only carries the older ready/needs_setup/monitoring vocabulary
@@ -102,7 +102,7 @@ export type DashboardApproval = {
 };
 
 export type DashboardOperator = {
-  key: "revenue" | "client_flow" | "operations";
+  key: "revenue" | "client_flow" | "operations" | "support";
   name: string;
   status: "ready" | "needs_setup" | "monitoring" | "disabled";
   lastRunAt: string | null;
@@ -178,6 +178,7 @@ function operatorDisplayName(key: string | null): string {
   if (key === "client_flow") return "Client Flow";
   if (key === "operations") return "Operations";
   if (key === "revenue") return "Revenue";
+  if (key === "support") return "Support";
   return key ? key.replace(/_/g, " ") : "Operator";
 }
 
@@ -344,6 +345,7 @@ function buildOperators(input: { approvals: Row[]; runs: Row[]; productStates: O
     { key: "revenue" as const, description: "Monitors customer communication for revenue opportunities and prepares approval-gated follow-up." },
     { key: "client_flow" as const, description: "Monitors customer communication, drafts replies, and uses optional project context when available." },
     { key: "operations" as const, description: "Monitors configured project work and prepares approval-gated operational updates." },
+    { key: "support" as const, description: "Monitors support work, prepares controlled customer responses, and observes resolution." },
   ];
 
   return specs.filter((spec) => !input.operatorKeys || input.operatorKeys.includes(spec.key)).map((spec) => {
@@ -489,7 +491,7 @@ export async function getDashboardOverview(input: {
   const slackChannelSelected = Boolean(workspaceSettings.slack.slackDefaultChannelId);
   const onboardingData = asRecord(workspace.data.onboarding_data);
   const selectedPriority = stringValue(onboardingData.first_priority);
-  const selectedKeys: DashboardOperator["key"][] | undefined = selectedPriority === "revenue" || selectedPriority === "client_flow" || selectedPriority === "operations"
+  const selectedKeys: DashboardOperator["key"][] | undefined = selectedPriority === "revenue" || selectedPriority === "client_flow" || selectedPriority === "operations" || selectedPriority === "support"
     ? [selectedPriority]
     : undefined;
   const onboardingSystems = Array.isArray(onboardingData.systems)

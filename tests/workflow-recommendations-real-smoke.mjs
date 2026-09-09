@@ -4,14 +4,10 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import esbuild from "esbuild";
 
-// Smoke tests for the Pass 2B real-workspace workflow recommendation adapter
-// (getRealWorkspaceSuggestedWorkflows, src/lib/os/workflow-recommendations.ts).
-//
-// Part A: source-contract checks proving getSuggestedWorkflows(state) and
-// installWorkflowFromSuggestion are byte-for-byte untouched, and that the new
-// adapter never references an aspirational/unbuilt connector.
-//
-// Part B: real runtime execution of getRealWorkspaceSuggestedWorkflows.
+// Smoke tests for the real workflow architecture. The Workflows page reads
+// persisted workflow presentations from /api/workflows; it must never fall
+// back to demo suggestions or the deleted mock recommendation engine.
+// The real-workspace adapter is tested below as an additive unlock surface.
 
 const root = process.cwd();
 
@@ -19,30 +15,20 @@ function read(file) {
   return fs.readFileSync(path.join(root, file), "utf8");
 }
 
-const ORIGINAL_GET_SUGGESTED_WORKFLOWS = `export function getSuggestedWorkflows(state: OSState): SuggestedWorkflow[] {
-  const suggestions: SuggestedWorkflow[] = [];
-  const pendingApprovals = state.approvals.filter((a) => a.status === "pending").length;
-  const hasOperationalLogs = state.logs.length > 4 || state.agentRuns.length > 0;`;
-
-function testExistingEngineUntouched() {
-  const source = read("src/lib/os/workflow-recommendations.ts");
-  const normalized = source.replace(/\r\n/g, "\n");
-  assert.match(source, /export function getSuggestedWorkflows\(state: OSState\): SuggestedWorkflow\[\] \{/, "getSuggestedWorkflows must still exist with its original signature");
-  assert.ok(normalized.includes(ORIGINAL_GET_SUGGESTED_WORKFLOWS), "the first lines of getSuggestedWorkflows's body must be byte-for-byte unchanged");
-  assert.match(source, /suggest-inbound-revenue-operator/, "the original 7 mock suggestions must still be present");
-  assert.match(source, /suggest-meeting-scheduling-assistant/, "the last original mock suggestion must still be present");
-  assert.match(source, /export function installWorkflowFromSuggestion\(state: OSState, suggestion: SuggestedWorkflow\): Workflow \{/, "installWorkflowFromSuggestion must be untouched");
-
-  // The real adapter must be additive, declared after installWorkflowFromSuggestion,
-  // never inside getSuggestedWorkflows's own body.
-  const getSuggestedIdx = source.indexOf("export function getSuggestedWorkflows");
-  const installIdx = source.indexOf("export function installWorkflowFromSuggestion");
-  const adapterIdx = source.indexOf("export function getRealWorkspaceSuggestedWorkflows");
-  assert.ok(getSuggestedIdx > 0 && installIdx > getSuggestedIdx && adapterIdx > installIdx, "the real adapter must be declared after both untouched functions, never inside them");
-
-  // The real caller of the untouched function must still exist and still call it (never broken/removed).
+function testPersistedWorkflowsSurface() {
   const workflowsPage = read("src/app/app/workflows/page.tsx");
-  assert.match(workflowsPage, /getSuggestedWorkflows/, "workflows page must still call the untouched mock engine");
+  const workflowsRoute = read("src/app/api/workflows/route.ts");
+  const presentation = read("src/lib/workflows/presentation.ts");
+
+  assert.match(workflowsPage, /fetch\("\/api\/workflows"/, "Workflows page must load the real workflow API");
+  assert.match(workflowsPage, /WorkflowPresentation/, "Workflows page must render persisted workflow presentations");
+  assert.doesNotMatch(workflowsPage, /getSuggestedWorkflows|installWorkflowFromSuggestion/, "Workflows page must not use the deleted mock engine");
+  assert.match(workflowsRoute, /requireWorkspaceMember/, "Workflow API must enforce workspace membership");
+  assert.match(workflowsRoute, /getWorkflowPresentations/, "Workflow API must use the persisted workflow presentation adapter");
+  assert.match(presentation, /from\("os_workflow_runs"\)/, "Workflow presentations must originate from persisted workflow runs");
+  assert.match(presentation, /from\("os_workflow_steps"\)/, "Workflow presentations must include persisted steps");
+  assert.match(presentation, /from\("os_workflow_outcomes"\)/, "Workflow presentations must include persisted outcome evidence");
+  assert.doesNotMatch(presentation, /getSuggestedWorkflows|SuggestedWorkflow/, "Workflow presentation data must not be demo suggestions");
 }
 
 function testNoAspirationalConnectorsInRealDefinitions() {
@@ -56,7 +42,7 @@ function testNoAspirationalConnectorsInRealDefinitions() {
   for (const connector of ASPIRATIONAL) {
     assert.doesNotMatch(block, new RegExp(`["']${connector}["']`), `real workflow suggestion definitions must never reference the aspirational connector "${connector}"`);
   }
-  const REAL = ["gmail", "microsoft", "hubspot", "salesforce", "trello", "slack"];
+  const REAL = ["gmail", "microsoft", "hubspot", "salesforce", "trello", "slack", "zendesk", "intercom"];
   for (const connector of REAL) {
     assert.match(block, new RegExp(`["']${connector}["']`), `expected the real connector "${connector}" to be referenced somewhere in the real suggestion definitions`);
   }
@@ -85,6 +71,7 @@ async function testRealAdapterRuntime() {
     { operatorKey: "revenue", ready: true },
     { operatorKey: "client_flow", ready: true },
     { operatorKey: "operations", ready: true },
+    { operatorKey: "support", ready: true },
   ];
 
   // 1. Microsoft/Gmail + CRM -> real Revenue suggestion.
@@ -138,7 +125,16 @@ async function testRealAdapterRuntime() {
     assert.ok(!result.some((s) => s.id === "real-operations-trello-slack-escalation"), "an operator that is not really ready must hide its suggestion even if connectors are healthy");
   }
 
-  console.log("  getRealWorkspaceSuggestedWorkflows runtime checks passed: all 3 real combos, missing-capability hiding, unhealthy-connector removal, and operator-readiness gating verified.");
+  // 7. Support can use any one of its real communication paths.
+  {
+    const result = getReal({ connectedConnectorKeys: ["zendesk"], operatorReadiness: allReady });
+    const found = result.find((s) => s.id === "real-support-response-workflow");
+    assert.ok(found, "Zendesk alone must produce the real Support response suggestion");
+    assert.equal(found.operatorKey, "support");
+    assert.equal(found.href, "/agents/support");
+  }
+
+  console.log("  getRealWorkspaceSuggestedWorkflows runtime checks passed: real combos, support path, missing-capability hiding, unhealthy-connector removal, and readiness gating verified.");
 }
 
 function testUnlockCopyMentionsNewWorkflow() {
@@ -152,7 +148,7 @@ function testUnlockCopyMentionsNewWorkflow() {
 }
 
 async function main() {
-  testExistingEngineUntouched();
+  testPersistedWorkflowsSurface();
   testNoAspirationalConnectorsInRealDefinitions();
   testUnlockCopyMentionsNewWorkflow();
   await testRealAdapterRuntime();

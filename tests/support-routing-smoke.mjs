@@ -1,0 +1,11 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+const inbound = fs.readFileSync("src/lib/signals/inbound.ts", "utf8");
+const workflow = fs.readFileSync("src/lib/workflows/engine.ts", "utf8");
+assert.match(inbound, /support: \["SUPPORT_REQUEST", "CUSTOMER_QUESTION", "COMPLAINT", "ESCALATION"\]/);
+assert.match(inbound, /hasSupportContext/);
+assert.match(inbound, /if \(support\) return "support"/);
+assert.match(workflow, /operatorKey === "support"/);
+assert.match(workflow, /reply_zendesk_ticket/);
+assert.match(workflow, /reply_intercom_conversation/);
+console.log("support-routing-smoke: support intent taxonomy, precedence, and workflow routing contracts passed.");

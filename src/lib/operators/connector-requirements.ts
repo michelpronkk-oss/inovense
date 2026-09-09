@@ -69,8 +69,12 @@ export const OPERATOR_CONNECTOR_REQUIREMENTS: Record<OperatorKey, OperatorConnec
   },
   support: {
     operatorKey: "support",
-    required: ["support.tickets.read", "support.replies.send_after_approval"],
-    optional: ["email.read"],
+    // Support can operate through any one healthy customer communication path:
+    // Zendesk, Intercom, or approval-gated email. The readiness branch in
+    // readiness.ts evaluates this OR relationship; these are enhancements for
+    // the shared capability graph and connector impact model.
+    required: [],
+    optional: ["support.tickets.read", "support.customers.read", "support.tickets.reply_after_approval", "support.tickets.comment_after_approval", "support.tickets.update_after_approval", "support.conversations.read", "support.contacts.read", "support.conversations.reply_after_approval", "support.conversations.assign_after_approval", "support.conversations.update_after_approval", "email.read", "email.send_after_approval", "docs.read", "crm.contacts.read", "chat.messages.send_after_approval"],
   },
   marketing: {
     operatorKey: "marketing",

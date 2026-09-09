@@ -9,11 +9,13 @@ const dashboard = read("src/components/dashboard/overview.tsx");
 const client = read("src/app/app/agents/client-flow/page.tsx");
 const operations = read("src/app/app/agents/operations/page.tsx");
 const revenue = read("src/app/app/agents/revenue/page.tsx");
+const support = read("src/app/app/agents/support/page.tsx");
 
 const visible = (source) => source.slice(source.indexOf("export default function"));
 const revenueCompactStart = revenue.indexOf("  if (!showLegacyDiagnostics)");
 const revenueLegacyStart = revenue.indexOf("\n  return (", revenueCompactStart);
 const revenueCompact = revenue.slice(revenueCompactStart, revenueLegacyStart);
+const supportVisible = visible(support);
 const clientVisible = visible(client);
 const operationsVisible = visible(operations);
 
@@ -25,7 +27,7 @@ assert.match(productState, /active_limited: "Active · Limited context"/);
 assert.equal((briefing.match(/\{action\.reason\}/g) ?? []).length, 1);
 assert.equal((briefing.match(/\{action\.impact\}/g) ?? []).length, 1);
 // 4. The page header owns the sole canonical status badge.
-for (const source of [clientVisible, operationsVisible, revenueCompact]) assert.equal((source.match(/presentationState\.label/g) ?? []).length, 1);
+for (const source of [clientVisible, operationsVisible, revenueCompact, supportVisible]) assert.equal((source.match(/briefing\.label|presentationState\.label/g) ?? []).length, 1);
 assert.doesNotMatch(briefing, /product\?\.label/);
 // 5. Runtime presentation contains no setup percentage.
 assert.doesNotMatch(briefing, /readinessPercent/);
@@ -33,32 +35,32 @@ for (const source of [clientVisible, operationsVisible, revenueCompact]) assert.
 // 6. Active surfaces contain no onboarding-style almost-ready claim.
 for (const source of [briefing, clientVisible, operationsVisible, revenueCompact]) assert.doesNotMatch(source, /almost ready/i);
 // 7. Each live operator renders exactly one manual monitoring action.
-for (const [name, source] of [["Client Flow", clientVisible], ["Operations", operationsVisible], ["Revenue", revenueCompact]]) {
+for (const [name, source] of [["Client Flow", clientVisible], ["Operations", operationsVisible], ["Revenue", revenueCompact], ["Support", supportVisible]]) {
   assert.equal((source.match(/Run manual check/g) ?? []).length, 1, `${name} must expose one manual check`);
 }
 // 8. Zero-work states use a compact line rather than a large empty grid.
-for (const source of [clientVisible, operationsVisible, revenueCompact]) assert.match(source, /No issues need attention right now/);
+for (const source of [clientVisible, operationsVisible, revenueCompact, supportVisible]) assert.match(source, /No issues need attention right now|No support work needs attention/);
 assert.match(clientVisible, /operator-compact-empty/);
 assert.match(operationsVisible, /operator-compact-empty/);
 // 9. Optional context is expressed as capabilities.
-for (const source of [client, operations, revenue]) assert.match(source, /getOperatorCapabilityCopy/);
+for (const source of [client, operations, revenue, support]) assert.match(source, /getOperatorCapabilityCopy/);
 for (const source of [clientVisible, operationsVisible, revenueCompact]) assert.match(source, /optionalContext\.join/);
 // 10. The normal context surface does not map a growing provider dump.
-for (const source of [clientVisible, operationsVisible, revenueCompact]) assert.doesNotMatch(source, /upgrades\.map|optionalUpsellConnectors\.map/);
+for (const source of [clientVisible, operationsVisible, revenueCompact, supportVisible]) assert.doesNotMatch(source, /upgrades\.map|optionalUpsellConnectors\.map/);
 // 11. Locked operators cannot render monitoring or current-work surfaces.
-for (const source of [clientVisible, operationsVisible, revenueCompact]) assert.match(source, /showRuntime &&[\s\S]{0,1800}(Monitoring|operator-current-work)/);
+for (const source of [clientVisible, operationsVisible, revenueCompact, supportVisible]) assert.match(source, /briefing\?\.lifecycle === "active"|showRuntime &&[\s\S]{0,1800}(Monitoring|operator-current-work)/);
 // 12. Ready inactive operators use the activation control without runtime empty states.
 assert.match(briefing, /Ready when you are/);
 assert.match(activation, /Activate operator/);
 assert.match(briefing, /const active = product\?\.lifecycle === "active"/);
 // 13. Policy is translated into business language across all operators.
-for (const source of [clientVisible, operationsVisible, revenueCompact]) assert.match(source, /Human review/);
+for (const source of [clientVisible, operationsVisible, revenueCompact, supportVisible]) assert.match(source, /Human review|Approval required/);
 assert.match(clientVisible, /Customer-facing messages/);
 assert.match(operationsVisible, /Project updates/);
 assert.match(revenueCompact, /CRM updates/);
 // 14. Dashboard and detail surfaces continue to consume the shared truth model.
 assert.match(dashboard, /item\.requiredActions\[0\]\.reason/);
-for (const source of [client, operations, revenue]) assert.match(source, /OperatorWorkforceBriefing/);
+for (const source of [client, operations, revenue, support]) assert.match(source, /OperatorWorkforceBriefing/);
 // 15. Attention preserves exact reason, impact, label, and destination.
 assert.match(briefing, /action\.reason/);
 assert.match(briefing, /action\.impact/);

@@ -35,8 +35,8 @@ import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
-/** The three operators this pass covers. Other registry entries are previews/planned and are out of scope for this state model. */
-export const REAL_OPERATOR_KEYS: OperatorKey[] = ["revenue", "client_flow", "operations"];
+/** The live operators with shared product state. Other registry entries remain previews/planned. */
+export const REAL_OPERATOR_KEYS: OperatorKey[] = ["revenue", "client_flow", "operations", "support"];
 
 export type OperatorProductState =
   | "needs_setup"
@@ -173,6 +173,7 @@ const STATE_LABEL: Record<OperatorProductState, string> = {
 function coreResponsibility(operatorKey: OperatorKey): string {
   if (operatorKey === "revenue") return "Revenue monitoring and approval-gated follow-up";
   if (operatorKey === "client_flow") return "Customer email monitoring and approval-gated replies";
+  if (operatorKey === "support") return "Support request monitoring and approval-gated responses";
   return "Project monitoring and approval-gated operational updates";
 }
 
@@ -215,6 +216,8 @@ function nextActionFor(state: OperatorProductState, operatorHref: string, remedi
     case "needs_setup":
       return operatorKey === "operations"
         ? { label: "Add project management", href: "/connectors?discover=1&category=project_management" }
+        : operatorKey === "support"
+          ? { label: "Add customer support", href: "/connectors?discover=1&category=support" }
         : { label: "Add customer communication", href: "/connectors?discover=1&category=email_calendar" };
     case "needs_attention":
     case "active_limited":
@@ -256,10 +259,12 @@ function remediationImpact(input: { operatorKey: OperatorKey; connectorName: str
   if (input.impact === "required") {
     if (input.operatorKey === "client_flow") return `Customer communication is unavailable because ${input.connectorName} needs attention. Client Flow cannot monitor new customer messages until this is fixed.`;
     if (input.operatorKey === "revenue") return `Revenue monitoring is unavailable because ${input.connectorName} needs attention. New opportunities cannot be monitored until this is fixed.`;
+    if (input.operatorKey === "support") return `Customer support is unavailable because ${input.connectorName} needs attention. New support work cannot be monitored until this is fixed.`;
     return `Project monitoring is unavailable because ${input.connectorName} needs attention. Operations cannot monitor project work until this is fixed.`;
   }
   if (input.operatorKey === "client_flow") return `${input.connectorName} is unavailable, so ${lost || "optional context"} is temporarily limited. Customer email monitoring and approval-gated replies continue normally.`;
   if (input.operatorKey === "revenue") return `${input.connectorName} is unavailable, so ${lost || "optional context"} is temporarily limited. Revenue monitoring and approval-gated follow-up continue normally.`;
+  if (input.operatorKey === "support") return `${input.connectorName} is unavailable, so ${lost || "optional context"} is temporarily limited. Core support monitoring and approval-gated responses continue normally.`;
   return `${input.connectorName} is unavailable, so ${lost || "optional context"} is temporarily limited. Core project monitoring continues normally.`;
 }
 
@@ -387,7 +392,7 @@ export function buildOperatorProductState(input: {
 }
 
 /**
- * IO-loading entry point: loads real readiness (readiness.ts), real
+ * IO-loading entry point: loads live readiness (readiness.ts), real
  * activation state (activation.ts), and real connector truth
  * (connectors/truth.ts) for the workspace's three real operators, then
  * builds each one's product state. This is the single function `/app/agents`,

@@ -105,7 +105,7 @@ function connectorCapabilities(connectorId: string): string[] {
 }
 
 function connectorOperatorNames(connectorId: string): string[] {
-  const realOperatorKeys = new Set(["revenue", "client_flow", "operations"]);
+  const realOperatorKeys = new Set(["revenue", "client_flow", "operations", "support"]);
   return (getConnectorDefinition(connectorId)?.usedByOperators ?? [])
     .filter((key) => realOperatorKeys.has(key))
     .map((key) => getOperatorDefinition(key)?.name)

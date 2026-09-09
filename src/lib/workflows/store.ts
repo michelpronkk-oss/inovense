@@ -17,7 +17,7 @@ export async function createWorkflowFromSignalCandidate(input: { workspaceId: st
   const [connectors, eligibility, activation, jiraCredential] = await Promise.all([
     getConnectorTruth({ workspaceId: input.workspaceId, supabase }),
     getWorkspaceExecutionEligibility(input.workspaceId, supabase),
-    getOperatorActivationState({ workspaceId: input.workspaceId, operatorKey: input.candidate.operatorKey as "revenue" | "client_flow" | "operations", supabase }),
+    getOperatorActivationState({ workspaceId: input.workspaceId, operatorKey: input.candidate.operatorKey as "revenue" | "client_flow" | "operations" | "support", supabase }),
     getStoredJiraCredential(input.workspaceId, supabase),
   ]);
   const connected = connectors.filter((row) => ["connected", "healthy"].includes(row.status)).map((row) => row.connectorKey);

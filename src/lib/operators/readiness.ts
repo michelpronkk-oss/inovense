@@ -365,6 +365,38 @@ function evaluateOperator(input: {
     });
   }
 
+  if (operator.key === "support") {
+    const healthy = truth.filter((connector) => connector.status === "connected" || connector.status === "healthy");
+    const supportConnectors = healthy.filter((connector) => connectorHasCapability(connector.connectorKey, "support.tickets.read") && connectorHasCapability(connector.connectorKey, "support.tickets.reply_after_approval"));
+    const conversationConnectors = healthy.filter((connector) => connectorHasCapability(connector.connectorKey, "support.conversations.read") && connectorHasCapability(connector.connectorKey, "support.conversations.reply_after_approval"));
+    const emailConnectors = healthy.filter((connector) => connectorHasCapability(connector.connectorKey, "email.read") && connectorHasCapability(connector.connectorKey, "email.send_after_approval"));
+    const coreConnectors = [...new Set([...supportConnectors, ...conversationConnectors, ...emailConnectors].map((connector) => connector.connectorKey))] as ConnectorKey[];
+    if (coreConnectors.length === 0) {
+      return baseResult({
+        operator,
+        status: "missing_connector",
+        connectedRequired: [],
+        missingRequired: [],
+        entitlements,
+        executionEligibility,
+        reason: "Support requires one usable customer support or communication path: Zendesk, Intercom, Gmail, or Microsoft 365.",
+        nextSetupStep: "Connect Zendesk, Intercom, Gmail, or Microsoft 365.",
+      });
+    }
+    const labels = coreConnectors.map((key) => key === "microsoft" ? "Microsoft 365" : key[0].toUpperCase() + key.slice(1));
+    return baseResult({
+      operator,
+      status: "ready",
+      connectedRequired: coreConnectors,
+      missingRequired: [],
+      entitlements,
+      executionEligibility,
+      reason: `Customer support is available through ${labels.join(" or ")}; customer-facing actions remain approval-gated.`,
+      nextSetupStep: "Ready to monitor support work and prepare controlled responses.",
+      canRunManual: true,
+    });
+  }
+
   if (operator.key === "operations") {
     // Operations can run against any healthy project-management provider with
     // a selected destination. The legacy operator registry keeps Trello as

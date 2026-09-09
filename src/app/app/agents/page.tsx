@@ -39,6 +39,7 @@ const HREF_BY_KEY: Record<string, string> = {
   revenue: "/agents/revenue",
   client_flow: "/agents/client-flow",
   operations: "/agents/operations",
+  support: "/agents/support",
 };
 
 const REAL_OPERATOR_VALUE: Record<string, { owns: string; value: string; enhancement: string }> = {
@@ -56,6 +57,11 @@ const REAL_OPERATOR_VALUE: Record<string, { owns: string; value: string; enhance
     owns: "Internal task flow and delivery follow-through",
     value: "Finds work that needs attention and prepares controlled task updates.",
     enhancement: "Team alerts alongside task-board monitoring",
+  },
+  support: {
+    owns: "Support requests, issues, and escalations",
+    value: "Resolves support work faster while every customer-facing action stays reviewable.",
+    enhancement: "CRM, documents, and team context for safer support handling",
   },
 };
 
@@ -316,7 +322,7 @@ export default function AgentsRegistryPage() {
           ))}
         </div>
         <div className="ag-filter" style={{ marginLeft: "auto" }}>
-          {([["all", "All 15"], ["active", "Current 3"], ["expanding", "Future 12"]] as const).map(([k, label]) => (
+          {([["all", `All ${cards.length}`], ["active", `Current ${current.length}`], ["expanding", `Future ${expanding.length}`]] as const).map(([k, label]) => (
             <button key={k} className={filter === k ? "on" : ""} aria-pressed={filter === k} onClick={() => setFilter(k)}>{label}</button>
           ))}
         </div>
@@ -326,7 +332,7 @@ export default function AgentsRegistryPage() {
         <section>
           <div className="ag-sec-head">
             <h2>Your available workforce</h2>
-            <span className="count"><span className="desktop-only">Three real operators, each with a focused operating loop.</span><span className="mobile-only">3 real operators</span></span>
+            <span className="count"><span className="desktop-only">{current.length} live operators, each with a focused operating loop.</span><span className="mobile-only">{current.length} live operators</span></span>
             <span className="rule" />
           </div>
           <div className="ag-grid">

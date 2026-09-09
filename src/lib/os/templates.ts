@@ -347,8 +347,8 @@ export const AGENT_TEMPLATES: Record<string, AgentTemplate> = {
     color: "#7EF6F0",
     role: "Client Success · Comms",
     tag: "Client Success · Comms",
-    description: "Monitors client health, drafts responses to common queries, escalates urgent issues and logs support activity.",
-    allowedTools: ["Gmail (read/draft)", "Slack (read)", "Memory (read/write)", "Notion (read)", "HubSpot (write)"],
+    description: "Monitors support requests, prepares bounded customer replies and escalation notes, and logs resolution evidence.",
+    allowedTools: ["Zendesk (read/reply)", "Intercom (read/reply)", "Gmail or Microsoft 365 (read/draft)", "Memory (read)"],
     allowedActions: [
       "read_memory",
       "write_memory",

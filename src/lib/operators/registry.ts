@@ -221,17 +221,17 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     key: "support",
     name: "Support Operator",
     category: "support",
-    businessOutcome: "Prepare accurate support replies and escalation notes.",
-    description: "Planned operator for support drafting and safe customer reply preparation.",
+    businessOutcome: "Resolve support work faster while preserving human control.",
+    description: "Detects support work, prepares bounded replies and escalation steps, and observes resolution evidence.",
     requiredConnectors: [],
-    optionalConnectors: ["gmail", "notion"],
-    capabilities: ["Support reply drafting", "Escalation summary preparation", "Customer context lookup"],
-    allowedActions: ["memory.read", "gmail.createDraft", "log.write"],
-    approvalRequiredActions: ["gmail.sendExternal", "refund.request"],
+    optionalConnectors: ["zendesk", "intercom", "gmail", "microsoft", "google_drive", "hubspot", "slack"],
+    capabilities: ["Customer support", "Customer communication", "Support reply drafting", "Ticket and conversation updates", "Escalation summary preparation", "Bounded customer context"],
+    allowedActions: ["memory.read", "gmail.createDraft", "zendesk.readTickets", "zendesk.prepareReply", "zendesk.prepareInternalNote", "zendesk.prepareTicketUpdate", "intercom.readConversations", "intercom.prepareReply", "intercom.prepareConversationUpdate", "log.write"],
+    approvalRequiredActions: ["gmail.sendExternal", "zendesk.replyTicket", "zendesk.addInternalNote", "zendesk.updateTicket", "intercom.replyConversation", "intercom.updateConversation"],
     blockedActions: ["payment.refund", "account.delete"],
     supportedModes: ["draft", "approval_gated"],
     planAvailability: ["growth", "scale", "operator", "enterprise"],
-    currentReleaseStatus: "coming_next",
+    currentReleaseStatus: "requires_connector",
   },
   {
     key: "hiring_team",
@@ -314,7 +314,7 @@ export function getOperatorDefinition(operatorKey: string): OperatorDefinition |
  * operators" style badge derives its list from here rather than from a
  * hardcoded string array.
  */
-export const LIVE_OPERATOR_KEYS: OperatorKey[] = ["revenue", "client_flow", "operations"];
+export const LIVE_OPERATOR_KEYS: OperatorKey[] = ["revenue", "client_flow", "operations", "support"];
 
 export function isLiveOperator(operatorKey: string): operatorKey is OperatorKey {
   return (LIVE_OPERATOR_KEYS as string[]).includes(operatorKey);

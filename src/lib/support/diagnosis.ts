@@ -174,7 +174,7 @@ async function safeRows(query: PromiseLike<{ data: unknown; error: unknown }>): 
   }
 }
 
-const OPERATOR_KEYS = ["revenue", "client_flow", "operations"] as const;
+const OPERATOR_KEYS = ["revenue", "client_flow", "operations", "support"] as const;
 
 /**
  * Gather verified workspace facts and explain current inaction. Every read is

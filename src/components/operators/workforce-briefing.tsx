@@ -23,6 +23,7 @@ const responsibility: Record<string, string[]> = {
   revenue: ["Spot meaningful commercial conversations", "Prepare thoughtful follow-up work", "Keep proposed external actions under approval"],
   client_flow: ["Notice customer requests and stalled handoffs", "Prepare a clear next response", "Coordinate safe follow-through across connected context"],
   operations: ["Surface blocked or stale delivery work", "Prepare recovery steps for review", "Keep internal follow-through visible"],
+  support: ["Notice support requests and repeated issues", "Prepare safe customer responses", "Observe whether support work is resolved"],
 };
 
 export function OperatorWorkforceBriefing({
@@ -30,7 +31,7 @@ export function OperatorWorkforceBriefing({
   onStateChange,
   runtime,
 }: {
-  operatorKey: "revenue" | "client_flow" | "operations";
+  operatorKey: "revenue" | "client_flow" | "operations" | "support";
   onStateChange?: (state: OperatorBriefingState | null) => void;
   runtime?: {
     pendingApprovals: number;
@@ -69,7 +70,7 @@ export function OperatorWorkforceBriefing({
   const calmSummary = active
     ? product?.state === "active_limited"
       ? "Core work continues while optional context is restored."
-      : `Everything needed for ${operatorKey === "client_flow" ? "Client Flow" : operatorKey === "revenue" ? "Revenue" : "Operations"} is available.`
+      : `Everything needed for ${operatorKey === "client_flow" ? "Client Flow" : operatorKey === "revenue" ? "Revenue" : operatorKey === "support" ? "Support" : "Operations"} is available.`
     : product?.description ?? "Auterim is checking this operator’s real state.";
   const primaryProvider = product?.connectedCoreSystems[0] ?? null;
 

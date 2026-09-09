@@ -13,19 +13,20 @@ import "./operators-registry.css";
 
 export const metadata: Metadata = {
   title: "AI Operators for Business",
-  description: "Meet the current Auterim AI operators for revenue, client flow and operations. Each owns a defined business responsibility and works within clear approval boundaries.",
+  description: "Meet the current Auterim AI operators for revenue, client flow, operations and support. Each owns a defined business responsibility and works within clear approval boundaries.",
   alternates: { canonical: "https://auterim.com/operators" },
-  openGraph: { url: "https://auterim.com/operators", title: "AI Operators for Business | Auterim", description: "Meet the current Auterim operators for revenue, client flow and operations, built around approved business context and clear control boundaries.", type: "website", images: [{ url: "/og/og-operators.png", width: 1200, height: 630, alt: "Auterim AI Operator Registry" }] },
-  twitter: { card: "summary_large_image", title: "AI Operators for Business | Auterim", description: "Meet the current Auterim operators for revenue, client flow and operations, built around approved business context and clear control boundaries.", images: [{ url: "/og/og-operators.png", width: 1200, height: 630, alt: "Auterim AI Operator Registry" }] },
+  openGraph: { url: "https://auterim.com/operators", title: "AI Operators for Business | Auterim", description: "Meet the current Auterim operators for revenue, client flow, operations and support, built around approved business context and clear control boundaries.", type: "website", images: [{ url: "/og/og-operators.png", width: 1200, height: 630, alt: "Auterim AI Operator Registry" }] },
+  twitter: { card: "summary_large_image", title: "AI Operators for Business | Auterim", description: "Meet the current Auterim operators for revenue, client flow, operations and support, built around approved business context and clear control boundaries.", images: [{ url: "/og/og-operators.png", width: 1200, height: 630, alt: "Auterim AI Operator Registry" }] },
 };
 
 const liveOperators: Array<{ key: OperatorKey; color: string; name: string; tag: string; owns: string; value: string; systems: string; work: string; control: string }> = [
   { key: "revenue", color: "#4DE8E1", name: "Revenue Operator", tag: "Sales · Pipeline", owns: "Inbound opportunities and sales follow-up.", value: "Keeps qualified interest moving while external actions remain reviewable.", systems: "Gmail or Microsoft 365; HubSpot adds CRM updates; Salesforce adds read context.", work: "Reads inbox context, prepares a follow-up, and creates an approval before an external send. HubSpot updates are approval-gated.", control: "External email and CRM writes wait for approval. Salesforce is read-context only today." },
   { key: "client_flow", color: "#5B8DEF", name: "Client Flow Operator", tag: "Intake · Onboarding", owns: "Client onboarding communication and handoff momentum.", value: "Prepares the next client update or handoff without losing the approval boundary.", systems: "Gmail or Microsoft 365; calendar and document context expand the role when available.", work: "Prepares onboarding summaries, follow-up drafts, and handoff checklists from approved workspace context.", control: "Client-facing messages and external invitations remain approval-gated." },
   { key: "operations", color: "#51D88A", name: "Operations Operator", tag: "Reports · Internal", owns: "Stalled internal work and delivery follow-through.", value: "Surfaces blocked work and prepares a controlled internal next step.", systems: "Trello; Slack adds internal channel visibility and approval-gated messages.", work: "Monitors boards for blocked, overdue, or stalled cards and prepares an update, card action, or escalation.", control: "Trello changes and Slack messages remain prepared until the right person approves them." },
+  { key: "support", color: "#66D0E0", name: "Support Operator", tag: "Tickets / Helpdesk", owns: "Support requests, technical issues, and escalations.", value: "Resolves support work faster while every customer-facing action remains reviewable.", systems: "Zendesk, Intercom, Gmail, or Microsoft 365; CRM and knowledge context are optional.", work: "Finds unresolved support work, prepares a bounded response or escalation, and observes resolution evidence.", control: "Customer replies, ticket updates, and escalations remain approval-gated." },
 ];
 
-const futureOperators = OPERATORS.slice(3);
+const futureOperators = OPERATORS.filter((operator) => !liveOperators.some((live) => live.name === operator.name));
 const loopDescriptions = ["Find a signal in approved context.", "Make the next step specific.", "Route sensitive work to an owner.", "Run only what policy permits.", "Leave a reviewable record."];
 
 export default function OperatorsPage() {

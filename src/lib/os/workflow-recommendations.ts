@@ -280,7 +280,7 @@ export function installWorkflowFromSuggestion(state: OSState, suggestion: Sugges
 // getSuggestedWorkflows() reference this module, because touching that
 // function's body at all was explicitly out of scope for this pass.
 
-export type RealOperatorKey = "revenue" | "client_flow" | "operations";
+export type RealOperatorKey = "revenue" | "client_flow" | "operations" | "support";
 
 type RealWorkflowSuggestionDefinition = {
   id: string;
@@ -312,6 +312,13 @@ const REAL_WORKFLOW_SUGGESTION_DEFINITIONS: RealWorkflowSuggestionDefinition[] =
     description: "When a client email needs follow-through, prepare a Trello delivery task alongside the approval-gated reply draft.",
     operatorKey: "client_flow",
     requiredConnectorGroups: [["gmail", "microsoft"], ["trello"]],
+  },
+  {
+    id: "real-support-response-workflow",
+    title: "Support response workflow",
+    description: "Monitor support requests from Zendesk, Intercom, or email and prepare approval-gated customer replies.",
+    operatorKey: "support",
+    requiredConnectorGroups: [["zendesk", "intercom", "gmail", "microsoft"]],
   },
 ];
 

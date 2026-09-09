@@ -21,7 +21,7 @@ export type WorkflowStep = {
 export type WorkflowPlan = {
   id: string;
   workspaceId: string;
-  operatorKey: "revenue" | "client_flow" | "operations";
+  operatorKey: "revenue" | "client_flow" | "operations" | "support";
   originatingSignalId: string;
   objective: string;
   entityRefs: string[];
@@ -56,7 +56,7 @@ export function planCandidateWorkflow(input: { candidate: SignalCandidate; signa
   const candidate = input.candidate;
   if (!input.context.activeOperatorKeys.includes(candidate.operatorKey) || !input.context.executionEligible || (candidate.priority ?? 0) < 65) return null;
   const operatorKey = candidate.operatorKey as WorkflowPlan["operatorKey"];
-  if (!["revenue", "client_flow", "operations"].includes(operatorKey)) return null;
+  if (!["revenue", "client_flow", "operations", "support"].includes(operatorKey)) return null;
   const now = input.now ?? new Date().toISOString();
   const connector = chooseProjectConnector(input.context.connectedConnectorKeys, input.context.executableConnectorKeys);
   const base = {
@@ -80,6 +80,18 @@ export function planCandidateWorkflow(input: { candidate: SignalCandidate; signa
     if (input.context.executableConnectorKeys.includes("microsoft_teams")) steps.push(step({ id: "internal-escalation", order: steps.length + 1, actionType: "send_teams_message", connectorKey: "microsoft_teams", targetRef: null, payloadRef: "derived:internal_escalation", dependencyStepIds: steps.length ? ["pm-follow-up"] : [], risk: "medium", approvalRequired: true, reason: "Prepare an internal escalation after the follow-up is ready." }));
     if (input.context.executableConnectorKeys.includes("zendesk")) steps.push(step({ id: "customer-response", order: steps.length + 1, actionType: "reply_zendesk_ticket", connectorKey: "zendesk", targetRef: candidate.sourceId, payloadRef: "derived:customer_reply", dependencyStepIds: steps.filter((item) => item.id === "internal-escalation").map((item) => item.id), risk: "high", approvalRequired: true, reason: "Prepare a separately reviewable customer response." }));
     return { ...base, objective: "Resolve customer escalation", steps };
+  }
+  if (operatorKey === "support" && ["customer_request", "support_risk", "escalation"].includes(candidate.signalType)) {
+    const source = candidate.source;
+    if (["gmail", "microsoft"].includes(source)) {
+      return { ...base, objective: "Resolve support request", steps: [step({ id: "support-response", order: 1, actionType: "send_email", connectorKey: source, targetRef: candidate.sourceId, payloadRef: "derived:support_response", dependencyStepIds: [], risk: "high", approvalRequired: true, reason: "Prepare a customer support response for approval." })] };
+    }
+    if (source === "zendesk") {
+      return { ...base, objective: "Resolve support ticket", steps: [step({ id: "support-ticket-response", order: 1, actionType: "reply_zendesk_ticket", connectorKey: "zendesk", targetRef: candidate.sourceId, payloadRef: "derived:support_ticket_response", dependencyStepIds: [], risk: "high", approvalRequired: true, reason: "Prepare a public support ticket reply for approval." })] };
+    }
+    if (source === "intercom") {
+      return { ...base, objective: "Resolve support conversation", steps: [step({ id: "support-conversation-response", order: 1, actionType: "reply_intercom_conversation", connectorKey: "intercom", targetRef: candidate.sourceId, payloadRef: "derived:support_conversation_response", dependencyStepIds: [], risk: "high", approvalRequired: true, reason: "Prepare a customer conversation reply for approval." })] };
+    }
   }
   if (operatorKey === "operations" && ["blocked_work", "overdue_work", "stalled_work", "delivery_risk"].includes(candidate.signalType)) {
     const steps: WorkflowStep[] = [];

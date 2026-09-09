@@ -16,12 +16,14 @@ const scanRoutes: Record<ScanKey, string> = {
   revenue: "/api/operators/revenue/scan",
   client_flow: "/api/operators/client-flow/scan",
   operations: "/api/operators/operations/scan",
+  support: "/api/operators/support/scan",
 };
 
 const operatorMeta: Record<ScanKey, { mark: string; color: string; tag: string; avatar: string }> = {
   revenue: { mark: "RV", color: "#4DE8E1", tag: "Revenue · Pipeline", avatar: "/operators/revenue-operator.png" },
   client_flow: { mark: "CF", color: "#5B8DEF", tag: "Client · Onboarding", avatar: "/operators/client-flow-operator.png" },
   operations: { mark: "OP", color: "#51D88A", tag: "Operations · Internal", avatar: "/operators/operations-operator.png" },
+  support: { mark: "SU", color: "#66D0E0", tag: "Support · Customer care", avatar: "/operators/support-operator.png" },
 };
 
 const connectorMeta: Record<string, { letter: string; color: string }> = {

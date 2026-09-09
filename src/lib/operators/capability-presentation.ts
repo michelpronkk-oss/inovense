@@ -27,6 +27,9 @@ function unique(values: string[]) { return Array.from(new Set(values)); }
 export function getOperatorCapabilityCopy(operatorKey: string): OperatorCapabilityCopy {
   const requirement = getOperatorConnectorRequirement(operatorKey);
   if (!requirement) return { required: [], optional: [] };
+  if (operatorKey === "support") {
+    return { required: ["Customer support", "Customer communication"], optional: ["CRM", "Documents & knowledge", "Team communication"] };
+  }
   return {
     required: unique(requirement.required.map(capabilityGroup)),
     optional: unique(requirement.optional.map(capabilityGroup)).filter((group) => !requirement.required.map(capabilityGroup).includes(group)),

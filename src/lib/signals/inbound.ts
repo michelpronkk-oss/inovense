@@ -22,13 +22,14 @@ export type InboundIntent =
 
 export type InboundActionability = "OBSERVE" | "RECOMMEND" | "WORKFLOW_CANDIDATE" | "IGNORE";
 export type InboundSenderKind = "human" | "automated" | "newsletter" | "unknown";
-export type InboundOperatorKey = "revenue" | "client_flow" | "operations";
+export type InboundOperatorKey = "revenue" | "client_flow" | "operations" | "support";
 
 /** The live routing registry. Future operators can subscribe to intents here without changing provider intake. */
 export const INBOUND_OPERATOR_INTENTS: Record<InboundOperatorKey, readonly InboundIntent[]> = {
   revenue: ["COMMERCIAL_INTENT", "PRICING_REQUEST", "PROPOSAL_REQUEST"],
-  client_flow: ["CUSTOMER_QUESTION", "SUPPORT_REQUEST", "COMPLAINT", "ESCALATION", "CHANGE_REQUEST", "DELIVERY_STATUS_REQUEST"],
+  client_flow: ["CUSTOMER_QUESTION", "COMPLAINT", "ESCALATION", "CHANGE_REQUEST", "DELIVERY_STATUS_REQUEST"],
   operations: ["INTERNAL_BLOCKER", "DELIVERY_RISK", "HANDOFF_ISSUE", "VENDOR_ISSUE"],
+  support: ["SUPPORT_REQUEST", "CUSTOMER_QUESTION", "COMPLAINT", "ESCALATION"],
 };
 
 export type InboundCommunicationEvent = {
@@ -84,6 +85,15 @@ const TERMS: Record<Exclude<InboundIntent, "NEWSLETTER" | "SPAM" | "AUTOMATED_NO
   CUSTOMER_QUESTION: ["can you", "could you", "what is", "what are", "how do", "please clarify", "question"],
   SUPPORT_REQUEST: ["need help", "support", "not working", "broken", "error", "issue", "problem", "help me"],
 };
+
+const SUPPORT_CONTEXT_TERMS = [
+  "support", "help", "not working", "doesn't work", "does not work", "broken", "bug", "error", "issue", "problem",
+  "integration", "feature", "reset", "login", "sign in", "password", "account access", "outage", "service failure",
+];
+
+function hasSupportContext(text: string): boolean {
+  return SUPPORT_CONTEXT_TERMS.some((term) => text.includes(term));
+}
 
 function inboundBounded(value: string, max: number): string {
   return value.replace(/\s+/g, " ").trim().slice(0, max);
@@ -146,9 +156,11 @@ function inboundMatches(text: string, terms: string[]): string[] {
 }
 
 function choosePrimary(intents: InboundIntent[], text: string): InboundOperatorKey | null {
+  const support = intents.some((intent) => intent === "SUPPORT_REQUEST" || ((intent === "CUSTOMER_QUESTION" || intent === "COMPLAINT" || intent === "ESCALATION") && hasSupportContext(text)));
   const client = intents.some((intent) => INBOUND_OPERATOR_INTENTS.client_flow.includes(intent) && intent !== "CUSTOMER_QUESTION");
   const operations = intents.some((intent) => INBOUND_OPERATOR_INTENTS.operations.includes(intent));
   const commercial = intents.some((intent) => INBOUND_OPERATOR_INTENTS.revenue.includes(intent));
+  if (support) return "support";
   if (client) return "client_flow";
   if (operations) return "operations";
   if (commercial) return "revenue";
@@ -179,12 +191,13 @@ export function classifyInboundCommunication(event: InboundCommunicationEvent): 
   const secondaryIntents = intents.slice(1, 4);
   const primaryOperator = choosePrimary([primaryIntent, ...secondaryIntents], text);
   const supportingOperators: InboundOperatorKey[] = [];
-  if (primaryOperator === "client_flow" && (intents.some((intent) => ["ESCALATION", "DELIVERY_STATUS_REQUEST", "COMPLAINT"].includes(intent)) || event.replyContext.unresolved)) supportingOperators.push("operations");
-  if (primaryOperator === "client_flow" && intents.some((intent) => ["PRICING_REQUEST", "PROPOSAL_REQUEST", "COMMERCIAL_INTENT"].includes(intent))) supportingOperators.push("revenue");
+  if ((primaryOperator === "client_flow" || primaryOperator === "support") && (intents.some((intent) => ["ESCALATION", "DELIVERY_RISK", "INTERNAL_BLOCKER", "DELIVERY_STATUS_REQUEST"].includes(intent)) || event.replyContext.unresolved)) supportingOperators.push("operations");
+  if ((primaryOperator === "client_flow" || primaryOperator === "support") && intents.some((intent) => ["PRICING_REQUEST", "PROPOSAL_REQUEST", "COMMERCIAL_INTENT"].includes(intent))) supportingOperators.push("revenue");
+  if (primaryOperator === "support" && (intents.includes("COMPLAINT") || intents.includes("ESCALATION") || hasSupportContext(text))) supportingOperators.push("client_flow");
   const allHits = detected.flatMap(([, hits]) => hits);
   const repeatedFollowUp = event.replyContext.messageCount >= 2 && event.replyContext.unresolved;
   const confidence: InboundClassification["confidence"] = repeatedFollowUp || allHits.length >= 2 ? "high" : allHits.length === 1 ? "medium" : "low";
-  const customerFacing = primaryOperator === "client_flow" || primaryOperator === "revenue";
+  const customerFacing = primaryOperator === "client_flow" || primaryOperator === "revenue" || primaryOperator === "support";
   const commercialSignal = intents.some((intent) => ["COMMERCIAL_INTENT", "PRICING_REQUEST", "PROPOSAL_REQUEST"].includes(intent));
   const supportSignal = intents.some((intent) => ["CUSTOMER_QUESTION", "SUPPORT_REQUEST", "COMPLAINT", "ESCALATION"].includes(intent));
   const operationsSignal = intents.some((intent) => ["INTERNAL_BLOCKER", "DELIVERY_RISK", "HANDOFF_ISSUE", "VENDOR_ISSUE"].includes(intent));

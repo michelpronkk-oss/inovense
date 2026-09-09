@@ -46,10 +46,10 @@ try {
   result = route({ subject: "A question about the rollout", snippet: "Can you explain what happens next?" });
   assert.equal(result.decision.primaryIntent, "CUSTOMER_QUESTION");
   assert.equal(result.candidates[0]?.operatorKey, "client_flow");
-  // 3. Complaint -> Client Flow.
-  result = route({ subject: "We are disappointed", snippet: "This is unacceptable and we are not satisfied." });
+  // 3. Complaint -> Support.
+  result = route({ subject: "The integration is broken", snippet: "This is unacceptable and we are not satisfied with the support issue." });
   assert.equal(result.decision.primaryIntent, "COMPLAINT");
-  assert.equal(result.decision.primaryOperator, "client_flow");
+  assert.equal(result.decision.primaryOperator, "support");
   assert.equal(result.decision.priorityLevel, "high");
   // 4. Escalation carries Operations as context without competing ownership.
   result = route({ subject: "Escalation: rollout blocked", snippet: "This is the third time we have asked. The rollout is still blocked." });
@@ -105,7 +105,7 @@ try {
   // 17. Support question is not commercial intent.
   result = route({ subject: "Support question", snippet: "The integration is not working. Can you help?" });
   assert.equal(result.decision.commercialSignal, false);
-  assert.equal(result.decision.primaryOperator, "client_flow");
+  assert.equal(result.decision.primaryOperator, "support");
   // 18. Bounded thread context is honored without storing a body.
   result = route({ metadata: { threadMessageCount: 999, threadUnresolved: true }, snippet: "Still waiting on delivery." });
   assert.equal(result.decision.primaryOperator, "client_flow");

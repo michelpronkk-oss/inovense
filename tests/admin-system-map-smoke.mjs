@@ -180,13 +180,13 @@ async function testRuntimeShape() {
   const humanNodes = systemMapNodes.filter((n) => n.kind === "human");
   assert.equal(humanNodes.length, 1, "Michel must be the only human node anywhere in the graph");
 
-  // Exactly the 3 real live operators, never more.
+  // Exactly the 4 real live operators, never more.
   const operatorNodes = systemMapNodes.filter((n) => n.kind === "operator");
-  assert.equal(operatorNodes.length, 3, "exactly 3 operator-kind nodes must exist");
+  assert.equal(operatorNodes.length, 4, "exactly 4 operator-kind nodes must exist");
   const liveOperatorKeys = operatorNodes.filter((n) => n.status === "live").map((n) => n.id).sort();
-  assert.deepEqual(liveOperatorKeys, ["operator-client_flow", "operator-operations", "operator-revenue"], "exactly revenue/client_flow/operations may be Live operators");
+assert.deepEqual(liveOperatorKeys, ["operator-client_flow", "operator-operations", "operator-revenue", "operator-support"], "exactly the four production operators may be Live operators");
   assert.ok(operatorNodes.every((n) => n.status === "live"), "no operator-kind node may be non-live (other registry operators must not leak in as operator-kind nodes)");
-  assert.ok(operatorsRegistryModule.OPERATOR_REGISTRY.length > 3, "sanity: the real registry must contain more than the 3 live operators");
+  assert.ok(operatorsRegistryModule.OPERATOR_REGISTRY.length > 4, "sanity: the real registry must contain more than the 4 live operators");
   const futureOperatorNode = systemMapNodes.find((n) => n.id === "operator-future");
   assert.ok(futureOperatorNode, "a future-operators rollup node must exist");
   assert.equal(futureOperatorNode.status, "planned", "future operators must be marked Planned, never Live");
@@ -231,7 +231,7 @@ async function testRuntimeShape() {
 
   // Counts are derived, not hardcoded, and self-consistent with the nodes.
   const counts = getSystemMapCounts();
-  assert.equal(counts.liveOperators, 3);
+  assert.equal(counts.liveOperators, 4);
   assert.equal(counts.liveConnectors, 10);
   assert.equal(counts.partialConnectors, 1);
   assert.ok(counts.plannedConnectors > 10, "plannedConnectors must reflect the real, larger catalog");
