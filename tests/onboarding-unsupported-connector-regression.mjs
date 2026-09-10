@@ -32,7 +32,7 @@ assert.match(page, /markOnboardingReturn\(\);\s*router\.push\(`\/connectors\?set
 // B. "I use another system" -> onboarding can continue safely
 // ─────────────────────────────────────────────────────────────────────────
 assert.match(page, /const hasCoreConnected = Boolean\(choice\?\.core\.some/, "step-3 validity must be based on real connected-account truth");
-assert.match(page, /draft\.step === 3 \? Boolean\(hasCoreConnected \|\| draft\.noSupportedConnector\) : true/, "declaring 'I use another system' must be an alternate, equally valid way to pass step 3");
+assert.match(page, /draft\.step === 3 \? Boolean\(hasCoreConnected \|\| draft\.noSupportedConnector \|\| draft\.trialDeclined \|\| !previewMode\) : true/, "declaring 'I use another system' must be an alternate, equally valid way to pass step 3");
 assert.match(page, /async function chooseNoSupportedConnector\(\)/, "there must be an explicit, separate action for declaring no supported system applies");
 assert.match(page, /saveOnboardingDraftAction\(\{ \.\.\.draft, noSupportedConnector: true, step: 3 \}\)/, "the declaration must be persisted server-side immediately, not just held in memory");
 assert.match(page, /I use another system/, "the exact product-specified copy must be present");
@@ -43,7 +43,7 @@ assert.doesNotMatch(page, /disabled=\{busy \|\| \(draft\.step === 3 && !hasCoreC
 // ─────────────────────────────────────────────────────────────────────────
 // C. Skip -> no fake operator activation, no fake monitoring_started
 // ─────────────────────────────────────────────────────────────────────────
-assert.match(page, /const limitedMode = draft\.noSupportedConnector && !hasCoreConnected/, "limited mode must be truthful - declared AND still actually unconnected");
+assert.match(page, /const limitedMode = previewMode \|\| \(draft\.noSupportedConnector && !hasCoreConnected\)/, "limited mode must be truthful - either still Preview, or declared-and-still-unconnected");
 {
   const fnStart = page.indexOf("async function completeLimitedOnboarding()");
   assert.ok(fnStart >= 0, "a distinct limited-mode completion path must exist");
@@ -72,7 +72,8 @@ assert.match(actions, /noSupportedConnector: data\.no_supported_connector === tr
 // ─────────────────────────────────────────────────────────────────────────
 // D. Limited-mode dashboard -> truthful state, connect CTA visible
 // ─────────────────────────────────────────────────────────────────────────
-assert.match(overview, /lifecycle === "A"\s*\?\s*\{ state: "needs_setup", label: "Connect workspace", message: "Connect a system so Auterim can understand your workspace\.", primary: "Connect systems", href: "\/connectors" \}/, "a workspace with zero healthy connectors must show a truthful, non-broken empty state with a real connect CTA");
+assert.match(overview, /dashboard-first-run/, "a workspace with zero healthy connectors must show a distinct, truthful first-run state, not a broken populated dashboard");
+assert.match(overview, /message: "Connect a system so Auterim can understand your workspace\."/, "a trialing-but-unconnected workspace must still get a real, honest next step");
 assert.match(overview, /\{!hasActivity && \(/, "activity must have an honest empty branch");
 assert.match(overview, /Activity is still building\./, "no fake activity may be claimed before anything runs");
 assert.doesNotMatch(overview, /Math\.random/, "dashboard state must never be randomly fabricated");

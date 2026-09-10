@@ -2,7 +2,6 @@ import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supaba
 import { createSupabaseServerActionClient, getVerifiedSupabaseUser } from "@/lib/supabase/server";
 import { requireWorkspaceOwner, resolveActiveWorkspaceId } from "@/lib/server/workspace-access";
 import { provisionInitialWorkspace } from "@/lib/server/provisioning";
-import { ensureOrganicTrial } from "@/lib/billing/trials";
 
 export type AppGatewayResult =
   | { status: "unconfigured" }
@@ -64,7 +63,7 @@ export async function resolveAppGateway(): Promise<AppGatewayResult> {
 
   const { data: workspace, error: workspaceError } = await admin
     .from("os_workspaces")
-    .select("onboarding_completed_at, plan_tier, billing_status")
+    .select("onboarding_completed_at")
     .eq("id", workspaceId)
     .maybeSingle();
 
@@ -72,19 +71,11 @@ export async function resolveAppGateway(): Promise<AppGatewayResult> {
     return { status: "error", message: workspaceError.message };
   }
 
-  // A workspace still going through onboarding has no billing relationship
-  // yet. Grant the existing 3-day Foundation trial automatically here - the
-  // first server-authoritative point after signup/provisioning - so
-  // onboarding's connector step has real entitlement instead of hitting a
-  // plan gate. Scoped to onboarding_completed_at IS NULL so this never
-  // reaches back into an already-onboarded workspace that simply chose to
-  // stay on preview. ensureOrganicTrial is itself a no-op once the workspace
-  // is no longer `preview` (trial granted, on a real plan, or ineligible).
-  if (!workspace?.onboarding_completed_at && workspace?.plan_tier === "preview" && workspace?.billing_status === "preview") {
-    await ensureOrganicTrial({ supabase: admin, workspaceId, ownerUserId: user.id }).catch(() => {
-      // Non-fatal: onboarding still functions, and the next request retries.
-    });
-  }
+  // No trial is granted here. A workspace stays Preview - no real connector
+  // OAuth, no operator activation, no monitoring - until the signed-in
+  // owner/admin explicitly starts the trial (POST /api/billing/trial/start).
+  // This gateway resolves identity and onboarding state only; it must never
+  // be a place where passive navigation grants entitlement.
 
   return {
     status: "ready",

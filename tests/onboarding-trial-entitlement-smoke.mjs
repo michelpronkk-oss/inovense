@@ -5,15 +5,19 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import esbuild from "esbuild";
 
-// Regression coverage for the fresh-signup trial bug: a brand-new workspace
-// must receive the existing 3-day Foundation trial automatically (no Dodo
-// checkout / card details), exactly once, and that entitlement must be
-// enough for the real-connector gate to open. See ensureOrganicTrial in
-// src/lib/billing/trials.ts and its call site in src/lib/server/app-gateway.ts.
+// Regression coverage for the explicit trial lifecycle: a workspace must be
+// able to receive the existing 3-day Foundation trial (no Dodo checkout /
+// card details), exactly once, idempotently - but ONLY when a signed-in
+// owner/admin explicitly asks for it (POST /api/billing/trial/start). Opening
+// Auterim, onboarding, or any other passive navigation must never itself
+// grant a trial. See ensureOrganicTrial in src/lib/billing/trials.ts, its
+// explicit call site in src/app/api/billing/trial/start/route.ts, and its
+// deliberate ABSENCE from src/lib/server/app-gateway.ts.
 
 const root = process.cwd();
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 const gatewaySource = read("src/lib/server/app-gateway.ts");
+const trialStartRouteSource = read("src/app/api/billing/trial/start/route.ts");
 
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "auterim-onboarding-trial-"));
 // Next.js provides "server-only" as a framework-internal marker module
@@ -154,8 +158,18 @@ try {
     assert.deepEqual(supabase.getWorkspace("ws-second"), { plan_tier: "preview", billing_status: "preview" }, "a blocked workspace must remain genuinely gated, not silently unlocked");
   }
 
-  assert.match(gatewaySource, /ensureOrganicTrial/, "the app gateway must grant the organic trial at the safe, server-authoritative provisioning point");
-  assert.match(gatewaySource, /!workspace\?\.onboarding_completed_at && workspace\?\.plan_tier === "preview" && workspace\?\.billing_status === "preview"/, "the gateway must only attempt the grant for a workspace still going through onboarding that is genuinely un-entitled - never an already-onboarded workspace that chose to stay on preview");
+  // The app gateway - resolved on every /app/* navigation, including simply
+  // opening Auterim or onboarding - must never itself grant a trial.
+  assert.doesNotMatch(gatewaySource, /ensureOrganicTrial/, "passive navigation (the app gateway) must never call the trial grant - only an explicit user action may");
+  assert.match(gatewaySource, /No trial is granted here/, "the gateway must document why it deliberately does not start a trial");
+
+  // The trial can only be granted through the one explicit, authenticated,
+  // authorized, idempotent route.
+  assert.match(trialStartRouteSource, /export async function POST\(\)/, "trial start must be an explicit action, not a GET/passive load");
+  assert.match(trialStartRouteSource, /ensureOrganicTrial/, "the explicit route must reuse the same trial-grant primitive, not a duplicate implementation");
+  assert.match(trialStartRouteSource, /requireWorkspaceAdmin\(user\.id, workspaceId, admin\)/, "starting a trial must require verified workspace owner/admin membership, not just any authenticated user");
+  assert.match(trialStartRouteSource, /before\.data\.plan_tier !== "preview" \|\| before\.data\.billing_status !== "preview"/, "a repeat call against an already-entitled workspace must be idempotent, never re-granted or reset");
+  assert.match(trialStartRouteSource, /"already_active" : "not_applicable"/, "a retry against an active trial must report success, not error, so double-clicks/refreshes are safe");
 
   console.log("Onboarding trial entitlement contracts passed.");
 } finally {

@@ -113,14 +113,19 @@ const ORGANIC_TRIAL_DAYS = 3;
 export type OrganicTrialOutcome = "granted" | "not_preview" | "not_eligible" | "workspace_unavailable";
 
 /**
- * Grants the existing 3-day Foundation trial automatically, without a Dodo
- * checkout or card details, so a fresh workspace can reach onboarding's
- * connector step with real entitlement instead of a plan gate. Safe to call
- * on every request while the workspace is still `preview`: it is a no-op the
- * moment billing_status moves off `preview` (trial granted, or genuinely
- * blocked), and getTrialEligibility's owner/customer/workspace checks plus
- * the unique constraints on os_trial_entitlements prevent a second trial for
- * the same owner or workspace.
+ * Grants the existing 3-day Foundation trial, without a Dodo checkout or
+ * card details, so a workspace can move from Preview to real entitlement
+ * instead of hitting a plan gate. Must ONLY be called from an explicit,
+ * user-triggered action (POST /api/billing/trial/start) - never from the
+ * app gateway, onboarding load, or any other passive navigation, per the
+ * product rule that opening Auterim must never itself start a trial.
+ *
+ * Idempotent and safe to call more than once for the same workspace: it is
+ * a no-op the moment billing_status moves off `preview` (trial granted,
+ * on a real plan, or genuinely ineligible), and getTrialEligibility's
+ * owner/customer/workspace checks plus the unique constraints on
+ * os_trial_entitlements prevent a second trial for the same owner or
+ * workspace.
  */
 export async function ensureOrganicTrial(input: {
   supabase: Supabase; workspaceId: string; ownerUserId: string;

@@ -43,6 +43,7 @@
     "test:onboarding-trial-entitlement": "node tests/onboarding-trial-entitlement-smoke.mjs",
     "test:onboarding-connector-escape": "node tests/onboarding-connector-escape-regression.mjs",
     "test:onboarding-unsupported-connector": "node tests/onboarding-unsupported-connector-regression.mjs",
+    "test:trial-explicit-lifecycle": "node tests/trial-explicit-lifecycle-regression.mjs",
     "test:app-loading": "node tests/app-loading-regression.mjs",
     "test:capability-billing-gating": "node tests/capability-billing-gating-smoke.mjs",
     "test:product-journey": "node tests/product-journey-pass2-smoke.mjs",

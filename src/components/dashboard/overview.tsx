@@ -11,6 +11,7 @@ import { DashboardLoadingState } from "@/components/dashboard/loading-state";
 import { MetricStrip, PageHeader } from "@/components/product-ui/page-primitives";
 import { ActivityAvatar } from "@/components/activity/activity-avatar";
 import { operatorDisplayName, withoutLeadingOperatorName } from "@/lib/activity/presentation";
+import { trialDaysRemaining } from "@/lib/os/plans";
 
 type ScanKey = DashboardOperator["key"];
 type OverviewResponse = DashboardOverview & { error?: string; message?: string };
@@ -199,15 +200,30 @@ function WorkforceActivity({ overview }: { overview: DashboardOverview }) {
   );
 }
 
-function DashboardReadinessSummary({ overview }: { overview: DashboardOverview }) {
+function DashboardReadinessSummary({ overview, trialEligible }: { overview: DashboardOverview; trialEligible?: boolean | null }) {
   const counts = dashboardCounts(overview);
   const states = overview.operatorProductStates;
   const firstReady = states.find((operator) => operator.state === "ready_to_activate");
   const firstAttention = states.find((operator) => operator.state === "needs_attention" || operator.state === "active_limited");
   const planBlocked = states.filter((operator) => operator.state === "plan_required" || operator.state === "billing_attention" || operator.state === "suspended").length;
   const lifecycle = overview.lifecycleState;
+  // State A can mean two very different things: the workspace never started
+  // a trial (Preview - real connectors/operators are genuinely locked), or a
+  // trial/paid workspace simply hasn't connected anything yet. Preview must
+  // never be told to "Connect systems" as if that were available now.
+  const billingStatus = overview.workspace.billingStatus;
+  const isPreview = !billingStatus || billingStatus === "preview";
+  const isTrialing = billingStatus === "trialing";
+  const trialEndsAt = overview.executionEligibility.trialEndsAt;
+  const trialDaysLeft = trialDaysRemaining(trialEndsAt);
   const summary = lifecycle === "A"
-    ? { state: "needs_setup", label: "Connect workspace", message: "Connect a system so Auterim can understand your workspace.", primary: "Connect systems", href: "/connectors" }
+    ? (isPreview
+        ? (trialEligible
+            ? { state: "preview", label: "Preview", message: "Preview is active. Start your 3-day trial to connect real systems and activate your workforce.", primary: "Start 3-day trial", href: "/plans" }
+            : { state: "preview", label: "Preview", message: "Preview is active. This account's trial has already been used - choose a plan to connect real systems.", primary: "Choose a plan", href: "/plans" })
+        : isTrialing
+          ? { state: "trialing", label: trialDaysLeft !== null ? `Trial active - ${trialDaysLeft} day${trialDaysLeft === 1 ? "" : "s"} left` : "Trial active", message: "Your trial is active. Connect your first system to start monitoring.", primary: "Connect your first system", href: "/connectors" }
+          : { state: "needs_setup", label: "Connect workspace", message: "Connect a system so Auterim can understand your workspace.", primary: "Connect systems", href: "/connectors" })
     : lifecycle === "B"
       ? { state: "needs_setup", label: "Workspace connected", message: `${counts.connected} system${counts.connected === 1 ? " is" : "s are"} connected. Auterim is mapping what each operator needs.`, primary: "Manage connections", href: "/connectors" }
       : lifecycle === "C"
@@ -227,7 +243,7 @@ function DashboardReadinessSummary({ overview }: { overview: DashboardOverview }
         </div>
         <div className="inline" style={{ flex: "none" }}>
           <Link className="btn btn-primary btn-sm" href={summary.href}>{summary.primary}</Link>
-          <Link className="btn btn-ghost btn-sm" href={summary.href === "/connectors" ? "/agents" : "/connectors"}>{summary.href === "/connectors" ? "View operators" : "Manage connections"}</Link>
+          <Link className="btn btn-ghost btn-sm" href={summary.href === "/connectors" ? "/agents" : "/connectors"}>{summary.href === "/connectors" ? "View operators" : summary.state === "preview" ? "View connectors" : "Manage connections"}</Link>
         </div>
       </div>
     </section>
@@ -289,6 +305,10 @@ export function OSOverview() {
   const [error, setError] = useState("");
   const [busyScan, setBusyScan] = useState<ScanKey | null>(null);
   const [busyApproval, setBusyApproval] = useState<string | null>(null);
+  // Whether this workspace still has an unused trial available - decides
+  // whether Preview copy offers "Start 3-day trial" or genuinely "Choose a
+  // plan". Server-authoritative; null while unknown.
+  const [trialEligible, setTrialEligible] = useState<boolean | null>(null);
 
   const identityParams = useMemo(() => new URLSearchParams({
     workspaceId: state.workspace.id,
@@ -339,6 +359,15 @@ export function OSOverview() {
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [loadOverview]);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/billing/trial-status", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((json) => { if (active && typeof json?.eligible === "boolean") setTrialEligible(json.eligible); })
+      .catch(() => { if (active) setTrialEligible(false); });
+    return () => { active = false; };
+  }, []);
 
   const runManualCheck = async (key: ScanKey) => {
     if (busyScan || busyApproval) return;
@@ -422,7 +451,7 @@ export function OSOverview() {
 
         {error && <section className="attn crit"><div className="card-pad" style={{ padding: "10px 14px", fontSize: 12.5 }}>{error}</div></section>}
 
-        <div className="sec"><DashboardReadinessSummary overview={overview} /></div>
+        <div className="sec"><DashboardReadinessSummary overview={overview} trialEligible={trialEligible} /></div>
         <div className="sec"><DashboardMetrics overview={overview} /></div>
         <div className="sec"><WorkforceActivity overview={overview} /></div>
         <div className="sec split" data-onboarding-priorities={hasOnboardingPriorities || undefined}>

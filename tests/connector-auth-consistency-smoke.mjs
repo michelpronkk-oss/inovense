@@ -22,7 +22,7 @@ assert.match(truth, /source: connected \? truth\.source : undefined/);
 assert.match(page, /connectorOperatorNames\(connector\.id\)/);
 assert.match(page, /Live operators pending/);
 assert.match(page, /startDirectConnectorOAuth/);
-assert.match(page, /setupConnector\.id === "slack" \|\| setupConnector\.id === "trello"/);
+assert.match(page, /connectorId === "slack" \|\| connectorId === "trello"/);
 assert.doesNotMatch(page, /Support Operator.*updateConnectorPermissions/);
 assert.match(disconnect, /connectorKey === "google_drive"/);
 assert.match(disconnect, /leave Gmail/);

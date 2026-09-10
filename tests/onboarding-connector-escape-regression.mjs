@@ -47,7 +47,7 @@ assert.match(connectors, /router\.push\("\/onboarding"\)/, "abandoning a connect
 assert.match(connectors, /onClick=\{\(\) => returnToOnboardingOrClose\(\(\) => \{ setAddOpen\(false\); setSetupConnectorId\(null\); \}\)\}/, "closing the connector modal via the backdrop must honor the return contract");
 assert.match(connectors, /aria-label="Close connector finder" onClick=\{\(\) => returnToOnboardingOrClose\(\(\) => setAddOpen\(false\)\)\}/, "closing the connector modal via its close button must honor the return contract");
 assert.match(connectors, /onClose=\{\(\) => returnToOnboardingOrClose\(\(\) => setUpgradeOpen\(false\)\)\}/, "closing the plan-required gate must honor the return contract, not silently strand the user in the app");
-assert.match(connectors, /title=\{isOnboarding \? "This workspace needs a plan to connect real accounts" : "Activate real connectors"\}/, "a genuinely-blocked onboarding workspace must see an accurate reason, not a generic upsell");
+assert.match(connectors, /trialEligible \? "Start your 3-day trial to connect real systems" : isOnboarding \? "This workspace needs a plan to connect real accounts" : "Activate real connectors"/, "a genuinely-blocked onboarding workspace must see an accurate reason, not a generic upsell; a trial-eligible one must be offered the trial first");
 
 // Success/failure OAuth return already existed - assert it still uses the
 // same shared contract instead of a locally-duplicated storage key.

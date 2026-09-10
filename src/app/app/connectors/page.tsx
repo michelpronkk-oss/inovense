@@ -213,6 +213,7 @@ export default function ConnectorsPage() {
     disconnectConnector,
     testConnector,
     resyncConnector,
+    refreshWorkspace,
   } = useOS();
 
   const router = useRouter();
@@ -230,6 +231,12 @@ export default function ConnectorsPage() {
   const [feedback, setFeedback] = useState("");
   const [disconnectingConnectorId, setDisconnectingConnectorId] = useState<string | null>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  // Whether this workspace still has an unused trial available - decides
+  // whether the gate offers "Start 3-day trial" or genuinely "Choose a
+  // plan". Server-authoritative (GET /api/billing/trial-status); null while
+  // unknown so the gate never claims a trial is available before it's sure.
+  const [trialEligible, setTrialEligible] = useState<boolean | null>(null);
+  const [startingTrial, setStartingTrial] = useState(false);
   const [slackChannels, setSlackChannels] = useState<SlackChannel[]>([]);
   const [slackChannelsLoading, setSlackChannelsLoading] = useState(false);
   const [slackSettingsLoading, setSlackSettingsLoading] = useState(false);
@@ -418,6 +425,48 @@ export default function ConnectorsPage() {
     window.location.href = `/api/connectors/zendesk/auth?workspaceId=${encodeURIComponent(state.workspace.id)}&subdomain=${encodeURIComponent(value)}`;
   };
 
+  // Shared by the "Connect real account" button and by the post-trial-start
+  // continuation below, so starting a trial from mid-connector-setup resumes
+  // the exact flow the user was already in instead of dropping them back to
+  // a bare connectors page.
+  const beginRealOAuth = (connectorId: string) => {
+    if (connectorId === "gmail") return startRealGmailOAuth();
+    if (connectorId === "google_drive") return startGoogleDriveConsent();
+    if (connectorId === "microsoft") return startRealMicrosoftOAuth();
+    if (connectorId === "microsoft_teams") return startMicrosoftTeamsConsent();
+    if (connectorId === "salesforce") return startRealSalesforceOAuth();
+    if (connectorId === "asana") return startRealAsanaOAuth();
+    if (connectorId === "jira") return startRealJiraOAuth();
+    if (connectorId === "zendesk") return startRealZendeskOAuth();
+    if (connectorId === "hubspot") return startDirectConnectorOAuth("hubspot");
+    if (connectorId === "slack" || connectorId === "trello") return startDirectConnectorOAuth(connectorId);
+  };
+
+  // The one authoritative "Start 3-day trial" call (POST /api/billing/trial/start).
+  // On success, rehydrates the real workspace entitlement and - if the gate
+  // was opened while setting up a specific connector - continues straight
+  // into that connector's real OAuth flow instead of leaving the user to
+  // click "Connect real account" a second time.
+  const startTrialAndContinue = async () => {
+    setStartingTrial(true);
+    try {
+      const response = await fetch("/api/billing/trial/start", { method: "POST" });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || !json.ok) throw new Error(json.error || "The trial could not be started. Please try again.");
+      await refreshWorkspace();
+      setUpgradeOpen(false);
+      if (setupConnector) {
+        beginRealOAuth(setupConnector.id);
+      } else {
+        setFeedback("Your 3-day trial is active. Real connections are unlocked.");
+      }
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "The trial could not be started. Please try again.");
+    } finally {
+      setStartingTrial(false);
+    }
+  };
+
   const disconnectRealConnector = async (connector: Connector) => {
     setDisconnectingConnectorId(connector.id);
     setFeedback("");
@@ -443,6 +492,15 @@ export default function ConnectorsPage() {
       setDisconnectingConnectorId(null);
     }
   };
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/billing/trial-status", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((json) => { if (active && typeof json?.eligible === "boolean") setTrialEligible(json.eligible); })
+      .catch(() => { if (active) setTrialEligible(false); });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (drawerConnectorId !== "google_drive") return;
@@ -997,7 +1055,7 @@ export default function ConnectorsPage() {
       <PageHeader
         eyebrow="Auterim workspace"
         title="Connectors"
-        description={`Connect your systems. See what your operators can do.${isPreview ? " Preview connections use sample data. Choose a plan to connect real accounts." : ""}`}
+        description={`Connect your systems. See what your operators can do.${isPreview ? (trialEligible ? " Preview connections use sample data. Start your 3-day trial to connect real accounts." : " Preview connections use sample data. Choose a plan to connect real accounts.") : ""}`}
         actions={atConnectorLimit ? (
           <Link href="/plans" className="btn btn-sm" style={{ background: "rgba(77,232,225,0.08)", color: "#4DE8E1", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.22)", textDecoration: "none" }}>
             <PlusIcon size={12} /> Upgrade to add more
@@ -1237,7 +1295,7 @@ export default function ConnectorsPage() {
                   <button className="btn btn-ghost btn-sm" onClick={() => setSetupConnectorId(null)}>Back</button>
                 </div>
                 <div className="modal-body">
-                <ConnectorSetupView connector={setupConnector} isRealConnected={false} isPreview={isPreview} />
+                <ConnectorSetupView connector={setupConnector} isRealConnected={false} isPreview={isPreview} trialEligible={trialEligible} />
                 {setupConnector.id === "gmail" && (
                   <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>Connect securely with Google</div>
                 )}
@@ -1266,46 +1324,7 @@ export default function ConnectorsPage() {
                         setUpgradeOpen(true);
                         return;
                       }
-                      if (setupConnector.id === "gmail") {
-                        startRealGmailOAuth();
-                        return;
-                      }
-                      if (setupConnector.id === "google_drive") {
-                        startGoogleDriveConsent();
-                        return;
-                      }
-                      if (setupConnector.id === "microsoft") {
-                        startRealMicrosoftOAuth();
-                        return;
-                      }
-                      if (setupConnector.id === "microsoft_teams") {
-                        startMicrosoftTeamsConsent();
-                        return;
-                      }
-                      if (setupConnector.id === "salesforce") {
-                        startRealSalesforceOAuth();
-                        return;
-                      }
-                      if (setupConnector.id === "asana") {
-                        startRealAsanaOAuth();
-                        return;
-                      }
-                      if (setupConnector.id === "jira") {
-                        startRealJiraOAuth();
-                        return;
-                      }
-                      if (setupConnector.id === "zendesk") {
-                        startRealZendeskOAuth();
-                        return;
-                      }
-                      if (setupConnector.id === "hubspot") {
-                        startDirectConnectorOAuth("hubspot");
-                        return;
-                      }
-                      if (setupConnector.id === "slack" || setupConnector.id === "trello") {
-                        startDirectConnectorOAuth(setupConnector.id);
-                        return;
-                      }
+                      beginRealOAuth(setupConnector.id);
                     }}>Connect real account</button>
                   ) : (
                     <button className="btn btn-sm" disabled title="This connector is not available to connect yet." style={{ opacity: 0.55, cursor: "not-allowed" }}>
@@ -1333,6 +1352,7 @@ export default function ConnectorsPage() {
               connector={drawerConnector}
               isRealConnected={isRealConnectedConnector(drawerConnector)}
               isPreview={isPreview}
+              trialEligible={trialEligible}
               advancedOpen={advancedOpen}
               onToggleAdvanced={() => setAdvancedOpen((open) => !open)}
               statusMeta={connectorStatusLabel({
@@ -1699,22 +1719,28 @@ export default function ConnectorsPage() {
       <UpgradeModal
         open={upgradeOpen}
         onClose={() => returnToOnboardingOrClose(() => setUpgradeOpen(false))}
-        title={isOnboarding ? "This workspace needs a plan to connect real accounts" : "Activate real connectors"}
+        title={trialEligible ? "Start your 3-day trial to connect real systems" : isOnboarding ? "This workspace needs a plan to connect real accounts" : "Activate real connectors"}
         body={
-          isOnboarding
-            ? entitlements.trialEndsAt
-              ? "Your trial has ended, so real connections need a plan to continue. Choose a plan, then come back to finish connecting your systems."
-              : "This workspace's trial has already been used, so real connections need a plan to continue. Choose a plan, then come back to finish connecting your systems."
-            : "Preview connectors let you model your stack. Choose a plan to connect real accounts and run operators live."
+          trialEligible
+            ? "Preview connectors let you model your stack. Start your 3-day trial to connect a real account, activate an operator, and see it work."
+            : isOnboarding
+              ? entitlements.trialEndsAt
+                ? "Your trial has ended, so real connections need a plan to continue. Choose a plan, then come back to finish connecting your systems."
+                : "This workspace's trial has already been used, so real connections need a plan to continue. Choose a plan, then come back to finish connecting your systems."
+              : "Preview connectors let you model your stack. Choose a plan to connect real accounts and run operators live."
         }
+        hint={trialEligible ? "Your 3-day Foundation trial includes 3 operators and 3 connected systems - no card required." : undefined}
+        onStartTrial={trialEligible ? startTrialAndContinue : undefined}
+        startTrialBusy={startingTrial}
+        secondaryLabel="Not now"
       />
     </div>
   );
 }
 
-function getConnectorSetupMessage({ isPreview, isConnected }: { isPreview: boolean; isConnected: boolean }): string {
+function getConnectorSetupMessage({ isPreview, isConnected, trialEligible }: { isPreview: boolean; isConnected: boolean; trialEligible?: boolean | null }): string {
   if (isConnected) return "Account connected.";
-  if (isPreview) return "Choose a plan to connect real accounts.";
+  if (isPreview) return trialEligible ? "Start your 3-day trial to connect real accounts." : "Choose a plan to connect real accounts.";
   return "Connect your account to enable this connector.";
 }
 
@@ -1722,6 +1748,7 @@ function ConnectorSetupView({
   connector,
   isRealConnected,
   isPreview,
+  trialEligible,
   advancedOpen = false,
   onToggleAdvanced,
   statusMeta,
@@ -1729,11 +1756,12 @@ function ConnectorSetupView({
   connector: Connector;
   isRealConnected: boolean;
   isPreview: boolean;
+  trialEligible?: boolean | null;
   advancedOpen?: boolean;
   onToggleAdvanced?: () => void;
   statusMeta?: { label: string; color: string; background: string; border: string };
 }) {
-  const setupMessage = getConnectorSetupMessage({ isPreview, isConnected: isRealConnected });
+  const setupMessage = getConnectorSetupMessage({ isPreview, isConnected: isRealConnected, trialEligible });
   const status = statusMeta ?? connectorStatusLabel({ connector, isRealConnected });
   const def = getConnectorDefinition(connector.id);
   const lastChecked = connector.lastSynced ? new Date(connector.lastSynced).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Just now";

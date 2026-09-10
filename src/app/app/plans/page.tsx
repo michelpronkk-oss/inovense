@@ -29,7 +29,7 @@ function displayDate(value?: string): string | null {
 }
 
 export default function PlansPage() {
-  const { state } = useOS();
+  const { state, refreshWorkspace } = useOS();
   const searchParams = useSearchParams();
   const entitlements = getEntitlements(state.workspace);
   const currentPlanLimits = getPlanLimits(state.workspace.planTier ?? state.workspace.plan);
@@ -37,6 +37,9 @@ export default function PlansPage() {
   const [trialState, setTrialState] = useState<{ eligible: boolean; status: string } | null>(null);
   const [billingBusy, setBillingBusy] = useState(false);
   const [portalError, setPortalError] = useState("");
+  const [startingTrial, setStartingTrial] = useState(false);
+  const [trialStartError, setTrialStartError] = useState("");
+  const [trialStarted, setTrialStarted] = useState(false);
   const canManageBilling = state.currentUser.roleLabel === "Owner" || state.currentUser.roleLabel === "Admin";
   const trialEnd = displayDate(entitlements.trialEndsAt);
   const showManageBilling = entitlements.billingStatus === "active" || entitlements.billingStatus === "trialing" || entitlements.billingStatus === "past_due";
@@ -60,6 +63,25 @@ export default function PlansPage() {
     if (!canManageBilling) return;
     setSubmitting(tier);
     window.location.assign(appHref(`/api/billing/dodo/checkout?plan=${tier}`));
+  }
+
+  // The one authoritative, cardless "Start 3-day trial" action - the same
+  // route onboarding and /connectors call. No checkout, no card details.
+  async function startTrial() {
+    if (!canManageBilling) return;
+    setStartingTrial(true);
+    setTrialStartError("");
+    try {
+      const response = await fetch(appHref("/api/billing/trial/start"), { method: "POST" });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || !json.ok) throw new Error(json.error || "The trial could not be started. Please try again.");
+      await refreshWorkspace();
+      setTrialStarted(true);
+    } catch (error) {
+      setTrialStartError(error instanceof Error ? error.message : "The trial could not be started. Please try again.");
+    } finally {
+      setStartingTrial(false);
+    }
   }
 
   async function openBillingPortal() {
@@ -107,7 +129,15 @@ export default function PlansPage() {
       <div className="card-pad">
         <span className="badge cyan"><i />Current plan</span>
         <div className="t-object" style={{ fontSize: 17, marginTop: 10 }}>{entitlements.billingStatus === "preview" ? "Preview: live systems are locked" : `${getPlanLabel(entitlements.planTier)} is ${entitlements.billingStatus}`}</div>
-        <p className="t-meta" style={{ marginTop: 6 }}>{trialEnd ? `Trial access ends ${trialEnd}.` : entitlements.billingStatus === "preview" ? trialState?.eligible ? "Your first three-day trial is available when you choose a plan." : "Choose a plan to connect real systems." : "Billing and cancellation are managed in the customer portal."}</p>
+        <p className="t-meta" style={{ marginTop: 6 }}>{trialEnd ? `Trial access ends ${trialEnd}.` : entitlements.billingStatus === "preview" ? trialState?.eligible ? "Your 3-day Foundation trial is available now - no card required." : "This account's trial has already been used. Choose a plan to connect real systems." : "Billing and cancellation are managed in the customer portal."}</p>
+        {entitlements.billingStatus === "preview" && trialState?.eligible && (
+          <div style={{ marginTop: 14 }}>
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => void startTrial()} disabled={!canManageBilling || startingTrial || trialStarted}>
+              {startingTrial ? "Starting…" : trialStarted ? "Trial active" : "Start 3-day trial"}
+            </button>
+            {trialStartError && <div className="t-meta" style={{ marginTop: 8, color: "var(--red, #F2767C)" }}>{trialStartError}</div>}
+          </div>
+        )}
       </div>
       <div className="card-pad" style={{ paddingTop: 0 }}>
         <MetricStrip items={[

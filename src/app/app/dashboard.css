@@ -4075,10 +4075,12 @@ select.os-input option {
    production derivation; this layer only assigns their visual treatment. */
 .os-root .os-status[data-state="available_to_unlock"],
 .os-root .os-status[data-state="needs_setup"],
+.os-root .os-status[data-state="preview"],
 .os-root .os-status[data-state="paused"] { color: var(--text-mute); background: rgba(255,255,255,.035); }
 .os-root .os-status[data-state="plan_required"] { color: var(--violet); background: rgba(167,139,250,.10); }
 .os-root .os-status[data-state="needs_attention"] { color: var(--red); background: var(--s-red); }
 .os-root .os-status[data-state="active_limited"] { color: var(--amber); background: var(--s-amber); }
+.os-root .os-status[data-state="trialing"] { color: var(--cyan); background: var(--cyan-softer); }
 
 @media (max-width: 700px) {
   /* The operator loop becomes a compact vertical sequence on phones. Keeping
