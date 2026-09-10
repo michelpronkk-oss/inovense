@@ -211,8 +211,10 @@ async function main() {
     await check(26, "Client Flow operator navigates to its detail route", () => assert.match(operators, /client_flow: "\/agents\/client-flow"/));
     await check(27, "Operations operator navigates to its detail route", () => assert.match(operators, /operations: "\/agents\/operations"/));
     await check(28, "No dead View details control remains", () => assert.doesNotMatch(operators, />View details</));
-    await check(29, "Future cards expose an intentional non-interactive roadmap state", () => {
-      assert.match(operators, /className="ag-roadmap-state"/);
+    await check(29, "Roadmap rows expose an intentional non-interactive, non-deployable state", () => {
+      assert.match(operators, /className="ag-roadmap-row"/);
+      assert.match(operators, /In design/);
+      assert.match(operators, /not deployable and do not consume plan seats/);
       assert.doesNotMatch(operators, /<button[^>]*>[^<]*Planned for a future release/);
     });
 

@@ -4414,3 +4414,220 @@ select.os-input option {
     font-size: 11px;
   }
 }
+
+/* ---- Operators: live workforce / roadmap (reference redesign) ---- */
+.os-root .agents-page {
+  width: 100%;
+  max-width: none;
+  gap: 0;
+  padding: var(--space-4) var(--space-6) var(--space-6);
+}
+.os-root .agents-page .product-page-header { margin-bottom: var(--space-8); }
+.os-root .agents-page .product-page-header .acts { padding-top: 0; }
+.os-root .agents-page > [role="alert"] { margin-bottom: var(--space-4); }
+.os-root .agents-page > section + section { margin-top: 28px; }
+.os-root .agents-page #live-workforce,
+.os-root .agents-page #operator-roadmap { scroll-margin-top: 24px; }
+.os-root .agents-page .ag-live-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+.os-root .agents-page .ag-live-heading .t-meta { flex: none; font-size: 11.5px; }
+.os-root .agents-page .ag-grid.ag-grid-live {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: 1fr;
+  gap: 14px var(--space-4);
+}
+
+/* The reference keeps both sections in one page composition. These controls
+   are anchors now, so they aid orientation without turning the page into a
+   mutually exclusive view switcher. */
+.os-root .agents-page .seg a {
+  display: block;
+  padding: 5px 11px;
+  border-radius: var(--r-xs);
+  color: var(--text-mute);
+  font-size: 12.5px;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.os-root .agents-page .seg a:hover { color: var(--text); }
+.os-root .agents-page .seg a.on { color: var(--text); background: rgba(255,255,255,.07); }
+
+.os-root .agents-page .ag-card {
+  display: flex;
+  min-height: 274px;
+  height: 100%;
+  gap: 0;
+  padding: var(--space-4) 18px 0;
+  border: 1px solid var(--depth-line);
+  border-radius: var(--r-lg);
+  background: var(--s1);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.025);
+}
+.os-root .agents-page .ag-card-top {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.os-root .agents-page .ag-card-top > .os-status {
+  grid-column: 3;
+  grid-row: 1;
+  align-self: start;
+  justify-self: end;
+}
+.os-root .agents-page .ag-av { width: 42px; height: 42px; border-radius: var(--r-md); }
+.os-root .agents-page .ag-name { font-size: 14px; font-weight: 600; line-height: 1.35; }
+.os-root .agents-page .ag-tag { margin-top: 2px; font-size: 11.5px; line-height: 1.35; }
+.os-root .agents-page .ag-card .ag-mission {
+  min-height: 19px;
+  margin: 0 0 14px;
+  color: var(--text-dim);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.os-root .agents-page .ag-operating-context {
+  gap: 7px;
+  margin: 0;
+  padding: 0 0 14px;
+  border: 0;
+}
+.os-root .agents-page .ag-operating-context > div { grid-template-columns: 120px minmax(0, 1fr); gap: 12px; }
+.os-root .agents-page .ag-operating-context dt {
+  color: var(--text-mute);
+  font: 400 11.5px/1.4 var(--font-sans);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.os-root .agents-page .ag-operating-context dd { color: var(--text-dim); font-size: 12.5px; line-height: 1.4; }
+.os-root .agents-page .ag-operating-context > div:first-child dd,
+.os-root .agents-page .ag-operating-context > div:last-child dd { color: var(--text); font-weight: 600; }
+.os-root .agents-page .ag-card .ag-foot {
+  min-height: 48px;
+  margin: auto -18px 0;
+  padding: 10px 18px;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+}
+.os-root .agents-page .ag-card-actions { width: auto; margin-left: auto; }
+.os-root .agents-page .ag-ready { min-width: 0; font-size: 11.5px; line-height: 1.35; }
+.os-root .agents-page .ag-open,
+.os-root .agents-page .ag-card .btn-sm {
+  min-height: 26px;
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+.os-root .agents-page .ag-open {
+  align-self: auto;
+  color: var(--text);
+  background: var(--s2);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+}
+.os-root .agents-page .ag-open:hover { background: var(--s3); }
+.os-root .agents-page .ag-open svg { display: none; }
+.os-root .agents-page .ag-card-top .os-status,
+.os-root .agents-page .ag-roadmap-row .os-status {
+  min-height: 19px;
+  padding: 3px 7px;
+  border-radius: var(--r-xs);
+  font: 600 9px/1.35 var(--font-mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.os-root .agents-page #operator-roadmap .ag-sec-head { margin: 0 0 12px; gap: var(--space-4); }
+.os-root .agents-page #operator-roadmap .ag-sec-head h2 {
+  color: var(--text-faint);
+  font: 400 10.5px/1.35 var(--font-mono);
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+.os-root .agents-page #operator-roadmap .ag-sec-head .count {
+  margin-left: auto;
+  color: var(--text-mute);
+  font: 400 11.5px/1.35 var(--font-sans);
+  letter-spacing: 0;
+}
+.os-root .agents-page #operator-roadmap .ag-sec-head .rule { display: none; }
+.os-root .agents-page .ag-roadmap-list {
+  display: flex;
+  overflow: hidden;
+  flex-direction: column;
+  border-radius: var(--r-lg);
+  background: var(--s1);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.os-root .agents-page .ag-roadmap-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 60px;
+  padding: 14px var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.os-root .agents-page .ag-roadmap-row:last-child { border-bottom: 0; }
+.os-root .agents-page .ag-roadmap-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 10px;
+  background: rgba(255,255,255,.035);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--text-mute);
+}
+.os-root .agents-page .ag-roadmap-glyph {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 8px;
+}
+.os-root .agents-page .ag-roadmap-glyph svg { width: 14px; height: 14px; }
+.os-root .agents-page .ag-roadmap-info {
+  display: flex;
+  align-items: flex-start;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+.os-root .agents-page .ag-roadmap-name { font-size: 12.5px; font-weight: 500; line-height: 1.35; color: var(--text-dim); }
+.os-root .agents-page .ag-roadmap-descriptor { font-size: 11px; line-height: 1.35; color: var(--text-mute); }
+.os-root .agents-page .ag-roadmap-row .os-status { flex: none; margin-left: auto; color: var(--text-mute); }
+.os-root .agents-page .ag-roadmap-footnote { margin: 11px 0 0; font-size: 11.5px; color: var(--text-faint); }
+
+@media (max-width: 600px) {
+  .os-root .agents-page { padding: var(--space-5) var(--space-4) calc(var(--space-16) + 72px); }
+  .os-root .agents-page .product-page-header { margin-bottom: var(--space-6); }
+  .os-root .agents-page .product-page-header .acts { width: 100%; }
+  .os-root .agents-page .ag-live-heading { align-items: baseline; margin-bottom: var(--space-3); }
+  .os-root .agents-page .ag-grid.ag-grid-live { grid-template-columns: 1fr; }
+  .os-root .agents-page .ag-card { min-height: 0; padding: var(--space-4) var(--space-4) 0; }
+  .os-root .agents-page .ag-card-top { grid-template-columns: auto minmax(0, 1fr); gap: 11px; }
+  .os-root .agents-page .ag-card-top > .os-status {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: start;
+    margin-top: 3px;
+  }
+  .os-root .agents-page .ag-tag { display: block; }
+  .os-root .agents-page .ag-card .ag-mission { min-height: 0; margin-bottom: var(--space-3); }
+  .os-root .agents-page .ag-operating-context { gap: 9px; padding-bottom: var(--space-4); }
+  .os-root .agents-page .ag-operating-context > div { grid-template-columns: 1fr; gap: 2px; }
+  .os-root .agents-page .ag-card .ag-foot { margin-right: calc(var(--space-4) * -1); margin-left: calc(var(--space-4) * -1); padding-inline: var(--space-4); }
+  .os-root .agents-page .ag-ready { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .os-root .agents-page > section + section { margin-top: var(--space-6); }
+  .os-root .agents-page .ag-roadmap-row { min-height: 58px; padding: 13px var(--space-3); gap: 11px; }
+  .os-root .agents-page .ag-roadmap-icon { width: 30px; height: 30px; }
+}

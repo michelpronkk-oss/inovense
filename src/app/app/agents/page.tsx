@@ -5,21 +5,16 @@ import Link from "next/link";
 import Image from "next/image";
 import { StatusBadge } from "@/components/operators/status-badge";
 import { useOS } from "@/lib/os/app-provider";
-import { OPERATOR_REGISTRY, isLiveOperator } from "@/lib/operators/registry";
+import { OPERATOR_REGISTRY, isLiveOperator, type OperatorKey } from "@/lib/operators/registry";
+import { REAL_OPERATOR_KEYS } from "@/lib/operators/product-state";
 import { operatorAvatarPath } from "@/lib/operator-assets";
 import { getOperatorCapabilityCopy } from "@/lib/operators/capability-presentation";
+import { getLiveOperatorCardPresentation, ROADMAP_OPERATOR_PRESENTATION } from "@/lib/operators/index-card-presentation";
 import { GLYPHS, OPERATORS, type Operator } from "@/data/operators";
-import { LoopRail, PageHeader } from "@/components/product-ui/page-primitives";
-
-type OperatorReadiness = {
-  operatorKey: string;
-  status: "ready" | "draft_only" | "missing_connector" | "upgrade_required" | "coming_next" | "preview";
-  nextSetupStep: string;
-  reason: string;
-};
+import { PageHeader } from "@/components/product-ui/page-primitives";
 
 // Mirrors OperatorProductStateResult (src/lib/operators/product-state.ts) -
-// the ONE shared server-computed state for the three real operators. This
+// the ONE shared server-computed state for the four live operators. This
 // page never re-derives readiness/activation/connector-truth logic itself;
 // it only renders whatever the shared API already decided.
 type ProductState = {
@@ -31,12 +26,9 @@ type ProductState = {
   connectedSystems: string[];
   availableNow: string[];
   nextAction: { label: string; href: string } | null;
+  requiredActions: { label: string; href: string; reason: string }[];
   degraded: { unhealthyConnectors: string[]; lostCapabilities: string[]; stillAvailableCapabilities: string[] } | null;
 };
-
-const RUNNING_PRODUCT_STATES = new Set(["active", "active_limited", "enhanced", "paused"]);
-
-type AgentStatus = "configured" | "available" | "upgrade" | "coming";
 
 const HREF_BY_KEY: Record<string, string> = {
   revenue: "/agents/revenue",
@@ -45,49 +37,12 @@ const HREF_BY_KEY: Record<string, string> = {
   support: "/agents/support",
 };
 
-const REAL_OPERATOR_VALUE: Record<string, { owns: string; value: string; enhancement: string }> = {
-  revenue: {
-    owns: "Inbound opportunities and sales follow-up",
-    value: "Keeps qualified interest moving while every external action stays reviewable.",
-    enhancement: "CRM context and approval-gated pipeline updates",
-  },
-  client_flow: {
-    owns: "Client onboarding communication and momentum",
-    value: "Surfaces stalled handoffs and prepares the next client touchpoint.",
-    enhancement: "Project and team context for richer onboarding checks",
-  },
-  operations: {
-    owns: "Internal task flow and delivery follow-through",
-    value: "Finds work that needs attention and prepares controlled task updates.",
-    enhancement: "Team alerts alongside task-board monitoring",
-  },
-  support: {
-    owns: "Support requests, issues, and escalations",
-    value: "Resolves support work faster while every customer-facing action stays reviewable.",
-    enhancement: "CRM, documents, and team context for safer support handling",
-  },
-};
-
-const OPERATOR_LOOP_STAGES = [
-  ["Detect", "Meaningful work found"],
-  ["Prepare", "Response assembled"],
-  ["Approve", "Human review"],
-  ["Execute", "Action taken"],
-  ["Log", "Outcome recorded"],
-] as const;
+const ACTIVE_STATES = new Set(["active", "active_limited", "enhanced"]);
 
 function Arrow() {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M5 12h14" /><path d="m13 6 6 6-6 6" />
-    </svg>
-  );
-}
-
-function Lock() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="lock">
-      <rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" />
     </svg>
   );
 }
@@ -117,132 +72,105 @@ function AgAvatar({ color, glyph, operatorKey }: { color: string; glyph: string;
   );
 }
 
-type CardModel = {
-  key: string;
-  op: Operator;
-  status: AgentStatus;
-  href?: string;
-  needsSetup: boolean;
-  /** Real readiness reason (readiness.ts) - only set when the operator can actually run today. */
-  readyReason?: string;
-  /** Real shared product state (product-state.ts) - set only for the three real operators (revenue/client_flow/operations). When present, this is the single source of truth for this card's label/foot/connected-systems/next-action; readyReason/needsSetup above are not used. */
-  productState?: ProductState;
-  value?: { owns: string; value: string; enhancement: string };
-};
+type PrimaryAction = { label: string; href: string; kind: "open" | "activate" | "fix" };
 
-function AgentCard({ model, onOpenDetails }: { model: CardModel; onOpenDetails: (model: CardModel) => void }) {
-  const { op, status, href, needsSetup, readyReason, productState } = model;
-  const dim = status === "upgrade" || status === "coming";
-  const running = Boolean(productState && RUNNING_PRODUCT_STATES.has(productState.state));
-  const statusLabel = productState
-    ? productState.state === "needs_setup" ? "Connect a system" : productState.label
-    : status === "configured" ? "Configured" : status === "available" ? (readyReason ? "Ready to activate" : "Available") : status === "upgrade" ? "Upgrade" : "Coming next";
+function primaryAction(productState: ProductState | undefined, operatorHref: string): PrimaryAction {
+  if (!productState) return { label: "Fix capability", href: operatorHref, kind: "fix" };
+  switch (productState.state) {
+    case "active":
+    case "enhanced":
+    case "active_limited":
+      return { label: "Open runtime", href: operatorHref, kind: "open" };
+    case "ready_to_activate":
+      return { label: "Activate operator", href: operatorHref, kind: "activate" };
+    case "paused":
+      return { label: "Resume operator", href: operatorHref, kind: "activate" };
+    default:
+      return { label: "Fix capability", href: productState.nextAction?.href ?? operatorHref, kind: "fix" };
+  }
+}
 
-  const attentionState = productState?.state === "needs_attention" || productState?.state === "plan_required" || productState?.state === "billing_attention" || productState?.state === "suspended";
-  const capabilityCopy = getOperatorCapabilityCopy(model.key);
-  const locked = productState?.state === "needs_setup";
+function footerStatusText(productState: ProductState | undefined, operatorKey: string): string {
+  if (!productState) return "Loading real state…";
+  switch (productState.state) {
+    case "active":
+    case "enhanced":
+    case "active_limited":
+      return getLiveOperatorCardPresentation(operatorKey)?.cadence ?? productState.label;
+    case "ready_to_activate":
+      return "Ready to activate";
+    case "paused":
+      return "Monitoring paused";
+    case "needs_attention":
+      return productState.requiredActions[0]?.reason ?? productState.description;
+    default:
+      return productState.description;
+  }
+}
 
-  const foot = productState
-    ? (attentionState
-      ? <span className="ag-ready warn"><span className="rd" /> {productState.state === "needs_setup" ? "Available to unlock" : productState.label}</span>
-      : running
-        ? <span className={`ag-ready ${productState.state === "paused" ? "warn" : "on"}`}><span className="rd" /> {productState.state === "paused" ? "Monitoring paused" : "Monitoring"}</span>
-        : <span className="ag-ready"><span className="rd" /> {productState.label}</span>)
-    : status === "configured"
-    ? (needsSetup
-      ? <span className="ag-ready warn"><span className="rd" /> Needs setup</span>
-      : <span className="ag-ready on"><span className="rd" /> Monitoring</span>)
-    : status === "available"
-      ? (needsSetup
-        ? <span className="ag-ready warn"><span className="rd" /> Connect a required tool first</span>
-        : <span className="ag-ready"><span className="rd" /> Available to configure</span>)
-    : status === "upgrade"
-      ? <span className="ag-ready"><Lock /> Plan upgrade</span>
-      : <span className="ag-ready"><Lock /> On the roadmap</span>;
+function footerTone(state: ProductState["state"] | undefined): "on" | "warn" | "" {
+  if (!state) return "";
+  if (ACTIVE_STATES.has(state)) return "on";
+  if (state === "needs_attention" || state === "plan_required" || state === "billing_attention" || state === "suspended" || state === "paused") return "warn";
+  return "";
+}
 
-  const openEl = productState
-    ? <Link className="ag-open" href={href ?? "/agents"}>{running ? "Open operator" : "View operator"} <Arrow /></Link>
-    : (status === "configured" || status === "available") && href
-    ? <Link className="ag-open" href={href}>Open operator <Arrow /></Link>
-    : <span className="ag-roadmap-state">{status === "upgrade" ? "Available with plan upgrade" : "Planned for a future release"}</span>;
+function LiveOperatorCard({ opKey, op, productState }: { opKey: OperatorKey; op: Operator; productState: ProductState | undefined }) {
+  const href = HREF_BY_KEY[opKey] ?? "/agents";
+  const presentation = getLiveOperatorCardPresentation(opKey);
+  const capabilityCopy = getOperatorCapabilityCopy(opKey);
+  const action = primaryAction(productState, href);
+  const stateKey = productState?.state ?? "needs_setup";
+  const statusLabel = productState?.label ?? "Available to unlock";
 
   return (
-    <div className={`ag-card ${dim ? "dim" : ""}`} style={{ "--c": op.color } as CSSProperties}>
+    <div className="ag-card" style={{ "--c": op.color } as CSSProperties}>
       <div className="ag-card-top">
-        <AgAvatar color={op.color} glyph={op.glyph} operatorKey={model.key} />
+        <AgAvatar color={op.color} glyph={op.glyph} operatorKey={opKey} />
         <div className="ag-id">
-          <h3 className="ag-name">{href ? <Link href={href}>{op.name}</Link> : op.name}</h3>
-          <div className="ag-tag">{op.tag}</div>
+          <h3 className="ag-name"><Link href={href}>{op.name}</Link></h3>
+          <div className="ag-tag">{presentation?.descriptor ?? op.tag}</div>
         </div>
-        <StatusBadge state={productState?.state ?? status}>{statusLabel}</StatusBadge>
+        <StatusBadge state={stateKey}>{statusLabel}</StatusBadge>
       </div>
 
-      <div className="ag-mission">{op.mission}</div>
+      {presentation && <p className="ag-mission">{presentation.mission}</p>}
 
-      {capabilityCopy.required.length > 0 && <dl className="ag-operating-context">
-        <div><dt>{locked ? "Requires" : productState?.connectedSystems.length ? "Core capability" : "Requires"}</dt><dd>{capabilityCopy.required.slice(0, 3).join(" · ")}</dd></div>
-        {capabilityCopy.optional.length > 0 && <div><dt>Optional context</dt><dd>{capabilityCopy.optional.slice(0, 2).join(" · ")}</dd></div>}
-        <div><dt>Control</dt><dd>Consequential actions require approval</dd></div>
-      </dl>}
-
-      {!productState && status === "available" && readyReason && (
-        <div style={{ fontSize: 11.5, color: "var(--text-mute)", marginTop: -6 }}>Because: {readyReason}</div>
-      )}
+      <dl className="ag-operating-context">
+        {capabilityCopy.required[0] && <div><dt>Core capability</dt><dd>{capabilityCopy.required[0]}</dd></div>}
+        {presentation && <div><dt>Provided by</dt><dd>{presentation.providedBy}</dd></div>}
+        {presentation && <div><dt>Optional context</dt><dd>{presentation.optionalContext}</dd></div>}
+        {presentation && <div><dt>Control</dt><dd>{presentation.control}</dd></div>}
+      </dl>
 
       <div className="ag-foot">
-        {foot}
+        <span className={`ag-ready ${footerTone(productState?.state)}`}><span className="rd" /> {footerStatusText(productState, opKey)}</span>
         <div className="ag-card-actions">
-          {productState && <button className="ag-details" type="button" onClick={() => onOpenDetails(model)}>Details <Arrow /></button>}
-          {openEl}
+          {action.kind === "open" ? (
+            <Link className="ag-open" href={action.href}>{action.label} <Arrow /></Link>
+          ) : action.kind === "activate" ? (
+            <Link className="btn btn-primary btn-sm" href={action.href}>{action.label}</Link>
+          ) : (
+            <Link className="btn btn-ghost btn-sm" href={action.href}>{action.label}</Link>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function sentenceCase(value: string): string {
-  return value ? `${value[0].toUpperCase()}${value.slice(1)}` : value;
-}
-
-function OperatorDetails({ model, onClose }: { model: CardModel; onClose: () => void }) {
-  const { op, productState, value, href } = model;
-  if (!productState || !value) return null;
-  const available = productState.availableNow;
-  const next = productState.nextAction;
+function RoadmapIcon({ color, glyph }: { color: string; glyph: string }) {
   return (
-    <div className="os-modal-backdrop agent-details-backdrop" role="presentation" onClick={onClose}>
-      <section className="os-modal agent-details-modal" style={{ "--c": op.color } as CSSProperties} role="dialog" aria-modal="true" aria-labelledby="operator-details-title" onClick={(event) => event.stopPropagation()}>
-        <div className="agent-details-topline"><span>Operator briefing</span><button className="agent-details-close" type="button" onClick={onClose}>Close</button></div>
-        <div className="agent-details-hero" style={{ "--c": op.color } as CSSProperties}>
-          <AgAvatar color={op.color} glyph={op.glyph} operatorKey={model.key} />
-          <div><span>{op.tag}</span><h2 id="operator-details-title">{op.name}</h2><p>{op.mission}</p></div>
-          <StatusBadge state={productState.state}>{productState.label}</StatusBadge>
-        </div>
-        <div className="agent-details-value"><span>Business value</span><strong>{sentenceCase(value.value)}</strong></div>
-        <div className="agent-details-grid">
-          <div className="agent-details-area"><span>Owns</span><strong>{sentenceCase(value.owns)}</strong></div>
-          <div className="agent-details-area"><span>Your systems</span><strong>{productState.connectedSystems.length ? productState.connectedSystems.map(sentenceCase).join(" · ") : "None connected yet"}</strong></div>
-          <div className="agent-details-area agent-details-capabilities"><span>{available.length ? "What it can do today" : "Next step"}</span>{available.length ? <ul>{available.map((item) => <li key={item}>{sentenceCase(item)}</li>)}</ul> : <strong>{sentenceCase(next?.label ?? productState.description)}</strong>}</div>
-          <div className="agent-details-area"><span>{productState.state === "enhanced" ? "Enhanced by" : "Enhance with"}</span><strong>{sentenceCase(value.enhancement)}</strong></div>
-        </div>
-        {productState.degraded && <div className="agent-details-alert">Unavailable while a connection needs attention: {productState.degraded.lostCapabilities.join(", ")}</div>}
-        <div className="agent-details-actions">
-          {next && <Link className="btn btn-primary btn-sm" href={next.href}>{next.label} <Arrow /></Link>}
-          {href && next?.href !== href && <Link className="btn btn-ghost btn-sm" href={href}>Open operator</Link>}
-        </div>
-      </section>
-    </div>
+    <span className="ag-roadmap-glyph" style={{ color, background: `${color}12`, boxShadow: `inset 0 0 0 1px ${color}45` }}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden dangerouslySetInnerHTML={{ __html: GLYPHS[glyph] ?? "" }} />
+    </span>
   );
 }
 
 export default function AgentsRegistryPage() {
   const { state } = useOS();
-  const [readiness, setReadiness] = useState<OperatorReadiness[]>([]);
   const [productStates, setProductStates] = useState<ProductState[]>([]);
   const [error, setError] = useState("");
-  const [filter, setFilter] = useState<"all" | "active" | "expanding">("all");
-  const [showAllExpanding, setShowAllExpanding] = useState(false);
-  const [detailModel, setDetailModel] = useState<CardModel | null>(null);
 
   const identityParams = useMemo(() => new URLSearchParams({
     workspaceId: state.workspace.id,
@@ -250,126 +178,80 @@ export default function AgentsRegistryPage() {
     userEmail: state.currentUser.email,
   }), [state.currentUser.email, state.currentUser.id, state.workspace.id]);
 
-  const loadReadiness = useCallback(async () => {
+  const loadProductState = useCallback(async () => {
     if (!state.workspace.id) return;
     setError("");
     try {
-      const [readinessRes, productStateRes] = await Promise.all([
-        fetch(`/api/operators/readiness?${identityParams.toString()}`, { cache: "no-store" }),
-        fetch(`/api/operators/product-state?${identityParams.toString()}`, { cache: "no-store" }),
-      ]);
-      const json = await readinessRes.json().catch(() => ({})) as { readiness?: OperatorReadiness[]; error?: string };
-      if (!readinessRes.ok) throw new Error(json.error || "Could not load operator readiness.");
-      setReadiness(Array.isArray(json.readiness) ? json.readiness : []);
-      const productStateJson = await productStateRes.json().catch(() => ({})) as { states?: ProductState[]; error?: string };
-      if (productStateRes.ok) setProductStates(Array.isArray(productStateJson.states) ? productStateJson.states : []);
+      const res = await fetch(`/api/operators/product-state?${identityParams.toString()}`, { cache: "no-store" });
+      const json = await res.json().catch(() => ({})) as { states?: ProductState[]; error?: string };
+      if (!res.ok) throw new Error(json.error || "Could not load operator state.");
+      setProductStates(Array.isArray(json.states) ? json.states : []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load operator readiness.");
+      setError(err instanceof Error ? err.message : "Could not load operator state.");
     }
   }, [identityParams, state.workspace.id]);
 
-  useEffect(() => { void loadReadiness(); }, [loadReadiness]);
-
   useEffect(() => {
-    if (!detailModel) return;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setDetailModel(null);
-    };
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [detailModel]);
+    const kickoff = window.setTimeout(() => { void loadProductState(); }, 0);
+    return () => window.clearTimeout(kickoff);
+  }, [loadProductState]);
 
-  const readinessByKey = useMemo(() => new Map(readiness.map((item) => [item.operatorKey, item])), [readiness]);
   const productStateByKey = useMemo(() => new Map(productStates.map((item) => [item.operatorKey, item])), [productStates]);
-  const configuredKeys = useMemo(() => new Set(state.agents.map((agent) => agent.templateId)), [state.agents]);
 
-  // Each design roster entry maps 1:1 (same order) to the real operator registry.
-  const cards: CardModel[] = useMemo(() => OPERATORS.map((op, i): CardModel => {
-    const registry = OPERATOR_REGISTRY[i];
-    const key = registry?.key ?? "";
-    const openable = Boolean(HREF_BY_KEY[key]);
-    const productState = productStateByKey.get(key);
-    const status: AgentStatus = openable
-      ? (productState ? (RUNNING_PRODUCT_STATES.has(productState.state) ? "configured" : "available") : (configuredKeys.has(key) ? "configured" : "available"))
-      : registry?.currentReleaseStatus === "coming_next" ? "coming" : "upgrade";
-    const r = readinessByKey.get(key);
-    const needsSetup = openable && Boolean(r && (r.status === "missing_connector" || r.status === "upgrade_required"));
-    const isReadyNow = status === "available" && Boolean(r && (r.status === "ready" || r.status === "draft_only"));
-    return {
-      key,
-      op,
-      status,
-      href: HREF_BY_KEY[key],
-      needsSetup,
-      readyReason: isReadyNow ? r?.reason : undefined,
-      productState,
-      value: REAL_OPERATOR_VALUE[key],
-    };
-  }), [configuredKeys, productStateByKey, readinessByKey]);
+  const liveCards = useMemo(() => REAL_OPERATOR_KEYS.map((key) => {
+    const definition = OPERATOR_REGISTRY.find((entry) => entry.key === key);
+    const op = definition ? OPERATORS.find((entry) => entry.name === definition.name) : null;
+    if (!op) return null;
+    return { key, op, productState: productStateByKey.get(key) };
+  }).filter((entry): entry is { key: OperatorKey; op: Operator; productState: ProductState | undefined } => Boolean(entry)), [productStateByKey]);
 
-  const current = cards.filter((c) => Boolean(HREF_BY_KEY[c.key])).sort((a, b) => {
-    const rank = (item: CardModel) => item.productState?.state === "active" || item.productState?.state === "active_limited" || item.productState?.state === "enhanced" ? 0 : item.productState?.state === "ready_to_activate" ? 1 : item.productState?.state === "needs_setup" ? 3 : 2;
-    return rank(a) - rank(b);
-  });
-  const expanding = cards.filter((c) => c.status === "upgrade" || c.status === "coming");
-  const showCurrent = filter !== "expanding";
-  const showExpanding = filter !== "active";
+  const activeCount = useMemo(() => liveCards.filter((card) => card.productState && ACTIVE_STATES.has(card.productState.state)).length, [liveCards]);
 
   return (
     <div className="os-page agents-page">
       <PageHeader
-        eyebrow="Your workforce"
         title="Operators"
-        description="Deploy focused AI operators that own a business loop, prepare work, and keep consequential actions under approval."
-        actions={<>
-          <Link href="/approvals" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Approval inbox</Link>
-          <Link href="/connectors" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Connectors</Link>
-        </>}
+        description="Specialized workforce roles. Each one runs the same loop and answers to the same policies."
+        actions={
+          <nav className="seg" aria-label="Operator sections">
+            <a href="#live-workforce">Live workforce</a>
+            <a className="on" aria-current="location" href="#operator-roadmap">Roadmap</a>
+          </nav>
+        }
       />
 
       {error && <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>{error}</div>}
 
-      <div className="panel card-pad ag-operator-loop" aria-label="Operator operating loop">
-        <p className="t-meta" style={{ margin: "0 0 14px" }}>Operators detect meaningful work, prepare a response, pause for approval, execute safely, and log the outcome.</p>
-        <LoopRail stages={OPERATOR_LOOP_STAGES.map(([label, detail]) => ({ label, detail }))} />
-      </div>
+      <section id="live-workforce" aria-labelledby="live-workforce-heading">
+          <div className="ag-live-heading">
+            <span id="live-workforce-heading" className="t-eyebrow">Live workforce</span>
+            <span className="t-meta">{liveCards.length} operators · {activeCount} active</span>
+          </div>
+          <div className="ag-grid ag-grid-live">
+            {liveCards.map((card) => <LiveOperatorCard key={card.key} opKey={card.key} op={card.op} productState={card.productState} />)}
+          </div>
+      </section>
 
-      <div className="ag-registry-toolbar" role="toolbar" aria-label="Operator views">
-        <span className="ag-registry-toolbar-label">View workforce</span>
-        <div className="ag-filter">
-          {([["all", `All ${cards.length}`], ["active", `Current ${current.length}`], ["expanding", `Future ${expanding.length}`]] as const).map(([k, label]) => (
-            <button key={k} className={filter === k ? "on" : ""} aria-pressed={filter === k} onClick={() => setFilter(k)}>{label}</button>
-          ))}
-        </div>
-      </div>
-
-      {showCurrent && current.length > 0 && (
-        <section>
+      <section id="operator-roadmap" aria-labelledby="operator-roadmap-heading">
           <div className="ag-sec-head">
-            <h2>Your available workforce</h2>
-            <span className="count"><span className="desktop-only">{current.length} live operators, each with a focused operating loop.</span><span className="mobile-only">{current.length} live operators</span></span>
+            <h2 id="operator-roadmap-heading">On the roadmap</h2>
+            <span className="count">Not available yet</span>
             <span className="rule" />
           </div>
-          <div className="ag-grid">
-            {current.map((model) => <AgentCard key={model.op.name} model={model} onOpenDetails={setDetailModel} />)}
+          <div className="ag-roadmap-list">
+            {ROADMAP_OPERATOR_PRESENTATION.map((item) => (
+              <div className="ag-roadmap-row" key={item.name}>
+                <span className="ag-roadmap-icon"><RoadmapIcon color={item.color} glyph={item.glyph} /></span>
+                <div className="ag-roadmap-info">
+                  <span className="ag-roadmap-name">{item.name}</span>
+                  <span className="ag-roadmap-descriptor">{item.descriptor}</span>
+                </div>
+                <StatusBadge state="needs_setup">In design</StatusBadge>
+              </div>
+            ))}
           </div>
-        </section>
-      )}
-
-      {showExpanding && (
-        <section>
-          <div className="ag-sec-head">
-            <h2>Expand your workforce</h2>
-            <span className="count">Future roles are shown separately from the operators available today.</span>
-            <span className="rule" />
-          </div>
-          <div className="ag-grid">
-            {(showAllExpanding ? expanding : expanding.slice(0, 6)).map((model) => <AgentCard key={model.op.name} model={model} onOpenDetails={setDetailModel} />)}
-          </div>
-          {expanding.length > 6 && <button className="appr-btn edit" onClick={() => setShowAllExpanding((value) => !value)} style={{ marginTop: 10 }}>{showAllExpanding ? "Show less" : `Show ${expanding.length - 6} more`}</button>}
-        </section>
-      )}
-      {detailModel && <OperatorDetails model={detailModel} onClose={() => setDetailModel(null)} />}
+          <p className="ag-roadmap-footnote">Roadmap operators are not deployable and do not consume plan seats.</p>
+      </section>
     </div>
   );
 }
