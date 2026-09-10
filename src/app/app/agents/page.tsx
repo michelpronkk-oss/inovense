@@ -334,7 +334,11 @@ export default function AgentsRegistryPage() {
             <span key={s} className={`ag-loop-pill ${s === "Approve" ? "gate" : ""}`}><span className="d" />{s}</span>
           ))}
         </div>
-        <div className="ag-filter" style={{ marginLeft: "auto" }}>
+      </div>
+
+      <div className="ag-registry-toolbar" role="toolbar" aria-label="Operator views">
+        <span className="ag-registry-toolbar-label">View workforce</span>
+        <div className="ag-filter">
           {([["all", `All ${cards.length}`], ["active", `Current ${current.length}`], ["expanding", `Future ${expanding.length}`]] as const).map(([k, label]) => (
             <button key={k} className={filter === k ? "on" : ""} aria-pressed={filter === k} onClick={() => setFilter(k)}>{label}</button>
           ))}
