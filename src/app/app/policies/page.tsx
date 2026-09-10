@@ -12,6 +12,7 @@ type PolicySettings = {
   autonomyMode: AutonomyMode;
   emergencyStopEnabled: boolean;
   customerEmailMode: "approval_required" | "draft_only" | "auto_send_low_risk";
+  connectorPolicies: Record<string, { customerEmailMode?: "approval_required" | "draft_only" }>;
   internalSlackNotificationsAllowed: boolean;
   dailyBriefAllowed: boolean;
   connectorHealthChecksAllowed: boolean;
@@ -90,7 +91,7 @@ export default function PoliciesPage() {
     return () => window.clearTimeout(handle);
   }, [load]);
 
-  const patch = async (body: Partial<Pick<PolicySettings, "autonomyMode" | "emergencyStopEnabled" | "customerEmailMode" | "dailyBriefAllowed">>) => {
+  const patch = async (body: Partial<Pick<PolicySettings, "autonomyMode" | "emergencyStopEnabled" | "customerEmailMode" | "dailyBriefAllowed">> & { connectorPolicy?: { connectorKey: string; customerEmailMode: "approval_required" | "draft_only" } }) => {
     setSaving(true);
     setError("");
     try {
@@ -112,9 +113,11 @@ export default function PoliciesPage() {
   const autonomousComments = policy?.autonomyMode === "guarded" || policy?.autonomyMode === "autonomous";
   const stop = Boolean(policy?.emergencyStopEnabled);
   const currentModeLabel = MODES.find((mode) => mode.key === policy?.autonomyMode)?.label ?? "Approval first";
-  const connectorIsActive = (key: string) => policy?.connectorState.some((connector) => connector.connectorKey === key && ["connected", "healthy"].includes(connector.status)) ?? false;
-  const connectedEmailConnectors = ["gmail", "microsoft"].filter(connectorIsActive);
-  const connectorLabel = (key: string) => policy?.connectorState.find((connector) => connector.connectorKey === key)?.displayName ?? key;
+  const connectorIsActive = (key: string) => policy?.connectorState.some((connector) => connector.connectorKey === key && ["connected", "healthy"].includes(connector.status) && connector.executable) ?? false;
+  const activeActionRules = (policy?.actionRules ?? []).filter((rule) => !rule.connector || connectorIsActive(rule.connector));
+  const activeWriteConnectors = (policy?.connectorState ?? []).filter((connector) => connector.executable && ["connected", "healthy"].includes(connector.status));
+  const effectiveEmailMode = (connectorKey: string) => policy?.connectorPolicies?.[connectorKey]?.customerEmailMode ?? policy?.customerEmailMode ?? "approval_required";
+  const hasEmailOverride = (connectorKey: string) => Boolean(policy?.connectorPolicies?.[connectorKey]?.customerEmailMode);
 
   return (
     <div className="os-page policy-page">
@@ -165,44 +168,54 @@ export default function PoliciesPage() {
         </div>
       </section>
 
-      {/* Customer email */}
-      <section className="card sec">
+      {/* Connector-local controls. Only executable, connected systems appear here. */}
+      {activeWriteConnectors.length > 0 && <section className="card sec">
         <div className="card-head">
-          <h3 className="t-section">Customer email</h3>
-          <span className="t-meta">Enforced</span>
+          <div>
+            <h3 className="t-section">Connected system controls</h3>
+            <p className="t-meta" style={{ margin: "4px 0 0" }}>Live controls for systems that can act in this workspace.</p>
+          </div>
+          <span className="badge green"><i />{activeWriteConnectors.length} live</span>
         </div>
-        <div className="card-pad stack">
-          <div className="grid2">
-            {([
-              { key: "approval_required", label: "Approval required", help: "Operators draft replies. You approve before sending." },
-              { key: "draft_only", label: "Draft only", help: "Operators prepare the reply but Gmail never sends it." },
-            ] as const).map((opt) => {
-              const active = policy?.customerEmailMode === opt.key;
+        <div className="rows">
+          {activeWriteConnectors.map((connector) => {
+            const isEmail = connector.connectorKey === "gmail" || connector.connectorKey === "microsoft";
+            const emailMode = effectiveEmailMode(connector.connectorKey);
+            if (isEmail) {
               return (
-                <button key={opt.key} type="button" disabled={saving || loading} onClick={() => patch({ customerEmailMode: opt.key })} aria-pressed={active} className={`radio-card${active ? " on" : ""}`}>
-                  <span className={`rdo${active ? " on" : ""}`} aria-hidden="true" />
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <b>{opt.label}</b>
-                    <span>{opt.help}</span>
+                <div className="row" key={connector.connectorKey}>
+                  <span className="grow">
+                    <span className="ttl">{connector.displayName} · customer email</span>
+                    <span className="sub">{hasEmailOverride(connector.connectorKey) ? "Custom policy for this connector." : "Inherited from the workspace control model."}</span>
                   </span>
-                  {active && <span className="badge cyan" style={{ flex: "none", alignSelf: "flex-start" }}>ACTIVE</span>}
-                </button>
+                  <span className="inline" style={{ flexShrink: 0 }}>
+                    <button type="button" className={`btn btn-sm ${emailMode === "approval_required" ? "btn-primary" : "btn-ghost"}`} disabled={saving || loading} onClick={() => patch({ connectorPolicy: { connectorKey: connector.connectorKey, customerEmailMode: "approval_required" } })}>Approval first</button>
+                    <button type="button" className={`btn btn-sm ${emailMode === "draft_only" ? "btn-primary" : "btn-ghost"}`} disabled={saving || loading} onClick={() => patch({ connectorPolicy: { connectorKey: connector.connectorKey, customerEmailMode: "draft_only" } })}>Draft only</button>
+                  </span>
+                </div>
               );
-            })}
-          </div>
-          <div className="rows">
-            <div className="row">
-              <span className="grow">
-                <span className="ttl">Auto-send low risk</span>
-                <span className="sub">Customer emails require your review.</span>
-              </span>
-              <span className="rt"><span className="badge muted">NOT AVAILABLE</span></span>
-            </div>
-          </div>
+            }
+            const guardrail = connector.connectorKey === "hubspot"
+              ? "CRM writes require approval. Context thresholds can only strengthen this boundary."
+              : connector.connectorKey === "trello"
+                ? "Card creation and moves require approval; low-risk comments follow the workspace mode."
+                : connector.connectorKey === "slack"
+                  ? "Operator messages require approval. Internal notifications remain separately controlled."
+                  : "Writes are approval-gated until a connector-specific automation policy is reviewed.";
+            return (
+              <div className="row" key={connector.connectorKey}>
+                <span className="grow">
+                  <span className="ttl">{connector.displayName}</span>
+                  <span className="sub">{guardrail}</span>
+                </span>
+                <span className="rt"><span className="dot dot-amber" />Approval required</span>
+              </div>
+            );
+          })}
         </div>
-      </section>
+      </section>}
 
-      <section className="card sec">
+      {activeActionRules.length > 0 && <section className="card sec">
         <div className="card-head">
           <div>
             <h3 className="t-section">Business rules</h3>
@@ -211,42 +224,31 @@ export default function PoliciesPage() {
           <span className="badge cyan">DETERMINISTIC</span>
         </div>
         <div className="rows">
-          {(policy?.actionRules ?? []).map((rule) => (
+            {activeActionRules.map((rule) => (
             <div className="row" key={rule.id}>
               <span className="grow">
                 <span className="ttl">{rule.connector || "Platform"} · {(rule.action || "all actions").replace(/_/g, " ")}</span>
                 <span className="sub">{rule.reason}</span>
               </span>
-              <span className="rt"><span className={`dot ${connectorIsActive(rule.connector || "") ? "dot-amber" : "dot"}`} />{rule.connector && !connectorIsActive(rule.connector) ? "Inactive · connect first" : rule.decision === "approval_required" ? "Approval required" : rule.decision}</span>
+              <span className="rt"><span className="dot dot-amber" />{rule.decision === "approval_required" ? "Approval required" : rule.decision}</span>
             </div>
           ))}
-          {!loading && (policy?.actionRules ?? []).length === 0 && <div className="card-pad"><p className="t-meta" style={{ margin: 0 }}>No contextual rules configured. The platform baseline remains active.</p></div>}
+        </div>
+      </section>}
+
+      {/* Automatic-where-safe */}
+      <section className="card sec">
+        <div className="card-head">
+          <h3 className="t-section">Allowed automatically</h3>
+          <span className="t-meta">Safe internal operations</span>
+        </div>
+        <div className="rows">
+          <Row label="Connector health checks" value={policy?.connectorHealthChecksAllowed ? "Auto" : "Off"} tone={policy?.connectorHealthChecksAllowed ? "green" : "neutral"} help="System checks, internal only." />
+          {connectorIsActive("slack") && <Row label="Internal Slack notifications" value={policy?.internalSlackNotificationsAllowed ? "Auto (enabled)" : "Off"} tone={policy?.internalSlackNotificationsAllowed ? "green" : "neutral"} help="Controlled in Slack connector settings." />}
+          {connectorIsActive("slack") && <Row label="Daily brief" value={stop ? "Blocked (stop)" : policy?.dailyBriefAllowed ? "Auto" : "Off"} tone={stop ? "rose" : policy?.dailyBriefAllowed ? "green" : "neutral"} help="Internal summary to the default Slack channel." />}
+          {connectorIsActive("trello") && <Row label="Low-risk Trello comments" value={stop ? "Blocked (stop)" : autonomousComments ? "Auto within limits" : "Approval required"} tone={stop ? "rose" : autonomousComments ? "green" : "amber"} help="Requires high confidence, connector health and hourly/daily safety limits." />}
         </div>
       </section>
-
-      {/* Automatic-where-safe + approval-where-it-matters */}
-      <div className="sec grid2">
-        <section className="card">
-          <div className="card-head"><h3 className="t-section">Allowed automatically</h3></div>
-          <div className="rows">
-            <Row label="Connector health checks" value={policy?.connectorHealthChecksAllowed ? "Auto" : "Off"} tone={policy?.connectorHealthChecksAllowed ? "green" : "neutral"} help="System checks, internal only." />
-            <Row label="Internal Slack notifications" value={!connectorIsActive("slack") ? "Unavailable" : policy?.internalSlackNotificationsAllowed ? "Auto (enabled)" : "Off"} tone={!connectorIsActive("slack") ? "neutral" : policy?.internalSlackNotificationsAllowed ? "green" : "neutral"} help={!connectorIsActive("slack") ? "Connect Slack to enable this capability." : "Controlled in Slack connector settings."} />
-            <Row label="Daily brief" value={!connectorIsActive("slack") ? "Unavailable" : stop ? "Blocked (stop)" : policy?.dailyBriefAllowed ? "Auto" : "Off"} tone={!connectorIsActive("slack") ? "neutral" : stop ? "rose" : policy?.dailyBriefAllowed ? "green" : "neutral"} help={!connectorIsActive("slack") ? "Connect Slack to deliver the brief." : "Internal summary to the default Slack channel."} />
-            <Row label="Low-risk Trello comments" value={!connectorIsActive("trello") ? "Unavailable" : stop ? "Blocked (stop)" : autonomousComments ? "Auto within limits" : "Approval required"} tone={!connectorIsActive("trello") ? "neutral" : stop ? "rose" : autonomousComments ? "green" : "amber"} help={!connectorIsActive("trello") ? "Connect Trello to enable project comments." : "Requires high confidence, connector health and hourly/daily safety limits."} />
-          </div>
-        </section>
-
-        <section className="card">
-          <div className="card-head"><h3 className="t-section">Requires approval</h3></div>
-          <div className="rows">
-            {connectedEmailConnectors.length > 0 && <Row label={`Customer emails · ${connectedEmailConnectors.map(connectorLabel).join(" / ")}`} value={stop ? "Blocked (stop)" : policy?.customerEmailMode === "draft_only" ? "Draft only" : "Approval required"} tone={stop ? "rose" : "amber"} />}
-            {connectorIsActive("hubspot") && <Row label="CRM writes · HubSpot" value={stop ? "Blocked (stop)" : "Approval required"} tone={stop ? "rose" : "amber"} />}
-            {connectorIsActive("trello") && <Row label="Trello card create / move" value={stop ? "Blocked (stop)" : "Approval required"} tone={stop ? "rose" : "amber"} />}
-            {connectorIsActive("slack") && <Row label="Operator Slack messages" value={stop ? "Blocked (stop)" : "Approval required"} tone={stop ? "rose" : "amber"} />}
-            {connectedEmailConnectors.length === 0 && !connectorIsActive("hubspot") && !connectorIsActive("trello") && !connectorIsActive("slack") && <div className="card-pad"><p className="t-meta" style={{ margin: 0 }}>No connected write-capable systems currently require approval.</p></div>}
-          </div>
-        </section>
-      </div>
 
       {/* Never allowed + emergency stop */}
       <div className="sec grid2">

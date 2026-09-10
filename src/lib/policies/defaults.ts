@@ -44,6 +44,7 @@ export const DEFAULT_POLICY_WORKSPACE_SETTINGS: PolicyWorkspaceSettings = {
   maxAutonomousActionsPerHour: 10,
   maxAutonomousActionsPerDay: 50,
   actionRules: DEFAULT_ACTION_RULES,
+  connectorPolicies: {},
 };
 
 // Stable destination classification per action type. Falls back to "system".

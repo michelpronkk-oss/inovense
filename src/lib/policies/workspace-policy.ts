@@ -53,6 +53,7 @@ export async function loadPolicyWorkspaceSettings(input: {
     maxAutonomousActionsPerHour: DEFAULT_POLICY_WORKSPACE_SETTINGS.maxAutonomousActionsPerHour,
     maxAutonomousActionsPerDay: DEFAULT_POLICY_WORKSPACE_SETTINGS.maxAutonomousActionsPerDay,
     actionRules: base.actionRules,
+    connectorPolicies: base.connectorPolicies,
   };
 }
 
@@ -60,16 +61,24 @@ export async function savePolicyWorkspaceSettings(input: {
   supabase?: SupabaseAdmin;
   workspaceId: string;
   actor?: string | null;
-  patch: Partial<Pick<PolicyWorkspaceSettings, "autonomyMode" | "emergencyStopEnabled" | "customerEmailMode" | "dailyBriefAllowed">>;
+  patch: Partial<Pick<PolicyWorkspaceSettings, "autonomyMode" | "emergencyStopEnabled" | "customerEmailMode" | "dailyBriefAllowed">> & {
+    connectorPolicy?: { connectorKey: string; customerEmailMode: "approval_required" | "draft_only" };
+  };
 }): Promise<PolicyWorkspaceSettings> {
   const supabase = input.supabase ?? createSupabaseAdmin();
   const base = await loadWorkspacePolicySettings({ supabase, workspaceId: input.workspaceId });
   const approvalPolicy = asRecord(base.approvalPolicy);
+  const connectorPolicies = { ...base.connectorPolicies };
+  const connectorPolicy = input.patch.connectorPolicy;
+  if (connectorPolicy && (connectorPolicy.connectorKey === "gmail" || connectorPolicy.connectorKey === "microsoft")) {
+    connectorPolicies[connectorPolicy.connectorKey] = { customerEmailMode: connectorPolicy.customerEmailMode };
+  }
 
   const nextApprovalPolicy = {
     ...approvalPolicy,
     version: 2,
     actionRules: base.actionRules,
+    connectorPolicies,
     ...(input.patch.autonomyMode !== undefined ? { autonomyMode: input.patch.autonomyMode } : {}),
     ...(input.patch.emergencyStopEnabled !== undefined ? { emergencyStopEnabled: input.patch.emergencyStopEnabled } : {}),
     ...(input.patch.customerEmailMode !== undefined ? { customerEmailMode: input.patch.customerEmailMode } : {}),

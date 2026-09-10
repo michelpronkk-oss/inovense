@@ -264,7 +264,8 @@ export function evaluatePolicy(input: PolicyInput, policy: PolicyWorkspaceSettin
 
   if (input.actionType === "send_email" || input.destinationType === "customer" || input.destinationType === "external") {
     if (stop) return build({ decision: "blocked", reason: "Emergency stop blocks customer email sends.", riskLevel: "high", matchedRuleId: "emergency.customer_email", policyInput: input, policy, entitlements });
-    if (policy.customerEmailMode === "draft_only") return build({ decision: "draft_only", reason: "Customer email policy is draft only. The reply is prepared but not sent.", riskLevel: "high", matchedRuleId: "customer_email.draft_only", policyInput: input, policy, entitlements });
+    const emailMode = policy.connectorPolicies?.[input.connectorKey]?.customerEmailMode ?? policy.customerEmailMode;
+    if (emailMode === "draft_only") return build({ decision: "draft_only", reason: `${input.connectorKey} email policy is draft only. The reply is prepared but not sent.`, riskLevel: "high", matchedRuleId: "customer_email.draft_only", policyInput: input, policy, entitlements });
     return build({ decision: "approval_required", reason: "Customer emails require human approval before sending.", riskLevel: "high", matchedRuleId: "customer_email.approval_required", policyInput: input, policy, entitlements });
   }
 

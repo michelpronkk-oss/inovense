@@ -1,10 +1,11 @@
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { DEFAULT_ACTION_RULES } from "@/lib/policies/defaults";
-import type { PolicyActionRule, PolicyCondition, PolicyConditionField, PolicyConditionOperator } from "@/lib/policies/types";
+import type { ConnectorPolicySettings, PolicyActionRule, PolicyCondition, PolicyConditionField, PolicyConditionOperator } from "@/lib/policies/types";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
 export type CustomerEmailMode = "approval_required" | "draft_only" | "auto_send_low_risk";
+export type ConnectorPolicyPatch = { connectorKey: string; customerEmailMode: "approval_required" | "draft_only" };
 
 export type SlackNotificationSettings = {
   slackNotificationsEnabled: boolean;
@@ -37,6 +38,7 @@ export const DEFAULT_APPROVAL_POLICY = {
   crmWrites: "Always require approval",
   customerEmailMode: DEFAULT_CUSTOMER_EMAIL_MODE,
   actionRules: DEFAULT_ACTION_RULES,
+  connectorPolicies: {},
 };
 
 export const DEFAULT_SLACK_NOTIFICATION_SETTINGS: SlackNotificationSettings = {
@@ -72,6 +74,20 @@ function stringOrNull(value: unknown): string | null {
 function customerEmailMode(value: unknown): CustomerEmailMode {
   if (value === "draft_only" || value === "auto_send_low_risk" || value === "approval_required") return value;
   return DEFAULT_CUSTOMER_EMAIL_MODE;
+}
+
+const CONNECTOR_POLICY_KEYS = new Set(["gmail", "microsoft"]);
+
+function parseConnectorPolicies(value: unknown): Record<string, ConnectorPolicySettings> {
+  const stored = asRecord(value);
+  const result: Record<string, ConnectorPolicySettings> = {};
+  for (const connectorKey of CONNECTOR_POLICY_KEYS) {
+    const candidate = asRecord(stored[connectorKey]);
+    if (candidate.customerEmailMode === "approval_required" || candidate.customerEmailMode === "draft_only") {
+      result[connectorKey] = { customerEmailMode: candidate.customerEmailMode };
+    }
+  }
+  return result;
 }
 
 const CONDITION_FIELDS = new Set<PolicyConditionField>([
@@ -154,6 +170,7 @@ export async function loadWorkspacePolicySettings(input: {
   version: number;
   actionRules: PolicyActionRule[];
   customerEmailMode: CustomerEmailMode;
+  connectorPolicies: Record<string, ConnectorPolicySettings>;
   slack: SlackNotificationSettings;
   trello: TrelloProjectSettings;
 }> {
@@ -176,6 +193,7 @@ export async function loadWorkspacePolicySettings(input: {
     version: 2,
     crmWrites: "Always require approval",
     actionRules,
+    connectorPolicies: parseConnectorPolicies(storedApprovalPolicy.connectorPolicies),
   };
   const notifications = asRecord(settings.data?.notifications);
   return {
@@ -184,6 +202,7 @@ export async function loadWorkspacePolicySettings(input: {
     version: 2,
     actionRules,
     customerEmailMode: customerEmailMode(approvalPolicy.customerEmailMode),
+    connectorPolicies: parseConnectorPolicies(approvalPolicy.connectorPolicies),
     slack: parseSlackNotificationSettings(notifications),
     trello: parseTrelloProjectSettings(notifications),
   };

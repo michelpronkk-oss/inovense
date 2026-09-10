@@ -59,6 +59,7 @@ const policy = (overrides = {}) => ({
   maxAutonomousActionsPerHour: 10,
   maxAutonomousActionsPerDay: 50,
   actionRules: [rule],
+  connectorPolicies: {},
   ...overrides,
 });
 
@@ -138,6 +139,11 @@ try {
   assert.equal(scope.parameters.payloadIdentity, emailPayloadIdentity("Subject", "Body"));
   assert.equal(approvalScopesEqual(scope, { ...scope, connector: "slack", action: "send_slack_message" }), false, "an approval scope must not authorize another connector action");
   assert.equal(approvalScopesEqual(scope, { ...scope, subjectId: "deal-2" }), false, "an approval scope must not authorize another subject");
+
+  const connectorDraft = evaluatePolicy(scopeInput, policy({ actionRules: [], connectorPolicies: { gmail: { customerEmailMode: "draft_only" } } }));
+  assert.equal(connectorDraft.decision, "draft_only", "a live connector override must reach the evaluator");
+  const microsoftApproval = evaluatePolicy({ ...scopeInput, connectorKey: "microsoft" }, policy({ actionRules: [], connectorPolicies: { gmail: { customerEmailMode: "draft_only" } } }));
+  assert.equal(microsoftApproval.decision, "approval_required", "connector overrides must not leak to another provider");
 
   const crmBaseline = evaluatePolicy(action(deal(10000)), policy({ actionRules: [] }));
   assert.equal(crmBaseline.decision, "approval_required", "CRM writes remain approval-required without contextual rules");

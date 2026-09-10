@@ -96,6 +96,11 @@ export type DestinationType = "internal" | "external" | "customer" | "crm" | "pr
 
 export type WorkspaceAutonomyMode = "manual" | "approval_first" | "guarded" | "autonomous";
 
+export type ConnectorPolicySettings = {
+  /** Connector-local override. The workspace mode remains the safety baseline. */
+  customerEmailMode?: "approval_required" | "draft_only";
+};
+
 export type PolicyDecision = {
   decision: PolicyDecisionKind;
   reason: string;
@@ -151,6 +156,7 @@ export type PolicyWorkspaceSettings = {
   maxAutonomousActionsPerHour: number;
   maxAutonomousActionsPerDay: number;
   actionRules: PolicyActionRule[];
+  connectorPolicies?: Record<string, ConnectorPolicySettings>;
 };
 
 export type PolicyEvaluationEntitlements = {

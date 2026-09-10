@@ -14,6 +14,7 @@ type PatchBody = {
   emergencyStopEnabled?: boolean;
   customerEmailMode?: string;
   dailyBriefAllowed?: boolean;
+  connectorPolicy?: { connectorKey?: string; customerEmailMode?: string };
 };
 
 function autonomyMode(value: unknown): WorkspaceAutonomyMode | undefined {
@@ -93,6 +94,22 @@ export async function PATCH(req: NextRequest) {
   }
   if (email) patch.customerEmailMode = email;
   if (typeof body.dailyBriefAllowed === "boolean") patch.dailyBriefAllowed = body.dailyBriefAllowed;
+
+  if (body.connectorPolicy !== undefined) {
+    const connectorKey = body.connectorPolicy.connectorKey;
+    const connectorEmail = body.connectorPolicy.customerEmailMode === "approval_required" || body.connectorPolicy.customerEmailMode === "draft_only"
+      ? body.connectorPolicy.customerEmailMode
+      : undefined;
+    if ((connectorKey !== "gmail" && connectorKey !== "microsoft") || !connectorEmail) {
+      return NextResponse.json({ error: "This connector policy is not supported." }, { status: 400 });
+    }
+    const truth = await getConnectorTruth({ supabase, workspaceId: context.workspaceId });
+    const connector = truth.find((candidate) => candidate.connectorKey === connectorKey);
+    if (!connector || !["connected", "healthy"].includes(connector.status) || !connector.executable) {
+      return NextResponse.json({ error: "Connect and finish configuring this system before changing its execution policy." }, { status: 409 });
+    }
+    patch.connectorPolicy = { connectorKey, customerEmailMode: connectorEmail };
+  }
 
   const policy = await savePolicyWorkspaceSettings({ supabase, workspaceId: context.workspaceId, patch, actor: context.userEmail || context.userId || null });
   const truth = await getConnectorTruth({ supabase, workspaceId: context.workspaceId });
