@@ -3027,6 +3027,7 @@ select.os-input option {
 .os-root .dashboard-telemetry-frame text { fill: var(--text-faint); font: 10px var(--font-mono); }
 .os-root .dashboard-telemetry-frame .dashboard-telemetry-axis { font-size: 9px; }
 .os-root .dashboard-telemetry-frame circle { stroke: #0a0d12; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.os-root .dashboard-telemetry-frame .dashboard-telemetry-held { fill: #0a0d12; stroke: var(--amber); stroke-width: 2; }
 .os-root .dashboard-telemetry-empty { position: absolute; inset: 42px 20px 32px 82px; display: grid; place-content: center; gap: 5px; text-align: center; pointer-events: none; }
 .os-root .dashboard-telemetry-empty strong { font-size: 13px; font-weight: 550; }
 .os-root .dashboard-telemetry-empty span { color: var(--text-mute); font-size: 11.5px; }

@@ -37,7 +37,7 @@ assert.match(connectorsPage, /if \(isPreview \|\| atConnectorLimit\) \{\s*setUpg
 assert.match(connectorsPage, /const startTrialAndContinue = async \(\) => \{/, "there must be one authoritative trial-start handler on the connectors page");
 assert.match(connectorsPage, /fetch\("\/api\/billing\/trial\/start", \{ method: "POST" \}\)/, "the connectors page must call the one explicit trial-start route, not duplicate the logic");
 assert.match(connectorsPage, /await refreshWorkspace\(\);\s*setUpgradeOpen\(false\);\s*if \(setupConnector\) \{\s*beginRealOAuth\(setupConnector\.id\);/, "after a successful trial start, the originally-requested connector's real OAuth must continue automatically");
-assert.match(connectorsPage, /onStartTrial=\{trialEligible \? startTrialAndContinue : undefined\}/, "the gate must only offer to start a trial when the workspace is genuinely still eligible");
+assert.match(connectorsPage, /\{trialEligible \? \(\s*<button type="button" className="btn btn-primary btn-sm" onClick=\{\(\) => void startTrialAndContinue\(\)\}/, "the gate must only offer to start a trial when the workspace is genuinely still eligible");
 assert.doesNotMatch(connectorsPage, /title=\{isOnboarding \? "This workspace needs a plan to connect real accounts" : "Activate real connectors"\}$/m, "the gate title must be decided by real trial eligibility first, not just onboarding context");
 
 // UpgradeModal itself must support the trial-first affordance without

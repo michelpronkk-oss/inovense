@@ -44,10 +44,15 @@ assert.match(connectors, /isOnboardingLaunch\(searchParams\)/, "connectors must 
 assert.match(connectors, /hasPendingOnboardingReturn\(\)/, "connectors must check the shared onboarding return contract, not a locally-duplicated key");
 assert.match(connectors, /const returnToOnboardingOrClose = \(fallback: \(\) => void\) => \{/, "there must be one explicit close-or-return handler used by every abandon path");
 assert.match(connectors, /router\.push\("\/onboarding"\)/, "abandoning a connector flow launched from onboarding must return to /onboarding");
-assert.match(connectors, /onClick=\{\(\) => returnToOnboardingOrClose\(\(\) => \{ setAddOpen\(false\); setSetupConnectorId\(null\); \}\)\}/, "closing the connector modal via the backdrop must honor the return contract");
+assert.match(connectors, /onClick=\{\(\) => returnToOnboardingOrClose\(\(\) => \{ setAddOpen\(false\); selectSetupConnector\(null\); \}\)\}/, "closing the connector modal via the backdrop must honor the return contract");
 assert.match(connectors, /aria-label="Close connector finder" onClick=\{\(\) => returnToOnboardingOrClose\(\(\) => setAddOpen\(false\)\)\}/, "closing the connector modal via its close button must honor the return contract");
-assert.match(connectors, /onClose=\{\(\) => returnToOnboardingOrClose\(\(\) => setUpgradeOpen\(false\)\)\}/, "closing the plan-required gate must honor the return contract, not silently strand the user in the app");
-assert.match(connectors, /trialEligible \? "Start your 3-day trial to connect real systems" : isOnboarding \? "This workspace needs a plan to connect real accounts" : "Activate real connectors"/, "a genuinely-blocked onboarding workspace must see an accurate reason, not a generic upsell; a trial-eligible one must be offered the trial first");
+// The entitlement gate itself is now a view inside the same connector
+// dialog (never a second stacked modal - see connector-trial-gate-layering-regression.mjs).
+// Dismissing it must return to the same connector's setup detail with
+// nothing lost, not jump back out to onboarding - that is reserved for
+// abandoning the whole dialog via its own backdrop/close control above.
+assert.match(connectors, /onClick=\{\(\) => setUpgradeOpen\(false\)\}>Back<\/button>/, "closing the gate must return to the same connector detail, preserving state, not silently strand the user or jump back to onboarding");
+assert.match(connectors, /\{trialEligible \? "Start your 3-day trial" : "Choose a plan to connect real accounts"\}/, "a genuinely-blocked workspace must see an accurate reason, not a generic upsell; a trial-eligible one must be offered the trial first");
 
 // Success/failure OAuth return already existed - assert it still uses the
 // same shared contract instead of a locally-duplicated storage key.

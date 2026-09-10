@@ -44,6 +44,8 @@
     "test:onboarding-connector-escape": "node tests/onboarding-connector-escape-regression.mjs",
     "test:onboarding-unsupported-connector": "node tests/onboarding-unsupported-connector-regression.mjs",
     "test:trial-explicit-lifecycle": "node tests/trial-explicit-lifecycle-regression.mjs",
+    "test:connector-trial-gate-layering": "node tests/connector-trial-gate-layering-regression.mjs",
+    "test:dashboard-recomposition": "node tests/dashboard-recomposition-regression.mjs",
     "test:app-loading": "node tests/app-loading-regression.mjs",
     "test:capability-billing-gating": "node tests/capability-billing-gating-smoke.mjs",
     "test:product-journey": "node tests/product-journey-pass2-smoke.mjs",

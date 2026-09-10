@@ -10,6 +10,17 @@ import { getWorkspaceOperatorProductStates, type OperatorProductStateResult } fr
 import { selectDashboardLifecycleState, type DashboardLifecycleState } from "@/lib/dashboard/lifecycle";
 import { normalizeWorkforceActivity } from "@/lib/activity/normalize";
 import type { WorkforceActivitySummary } from "@/lib/activity/types";
+import {
+  asPayload as asApprovalPayload,
+  isEmailKind,
+  approvalReason,
+  expectedOutcome,
+  afterApprovalText,
+  deriveWhyThisMatters,
+  deriveEvidenceSummary,
+} from "@/lib/approvals/presentation";
+import { getWorkflowPresentations } from "@/lib/workflows/presentation";
+import { loopStageForStatus, type WorkflowLoopStage } from "@/lib/workflows/stage";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
@@ -78,6 +89,8 @@ export type DashboardOverview = {
   activity: DashboardActivity[];
   activitySummary: WorkforceActivitySummary;
   nextBestActions: DashboardNextAction[];
+  /** Real, active (non-terminal) workflow runs - "Work in progress" on the dashboard. */
+  workInProgress: DashboardWorkItem[];
   /**
    * Real, shared product state per live operator
    * from src/lib/operators/product-state.ts - the single source of truth for
@@ -98,6 +111,22 @@ export type DashboardApproval = {
   operatorKey: string | null;
   riskLevel: string | null;
   policyDecision: string | null;
+  href: string;
+  /** Real detail breakdown, derived from the same fields /approvals shows - never fabricated. */
+  why: string | null;
+  evidence: string | null;
+  policy: string;
+  consequence: string | null;
+  /** True only for gmail/microsoft send-after-approval - the one kind with a real edit-draft route. */
+  canEditDraft: boolean;
+};
+
+export type DashboardWorkItem = {
+  id: string;
+  title: string;
+  operatorName: string;
+  updatedAt: string;
+  stage: WorkflowLoopStage;
   href: string;
 };
 
@@ -497,7 +526,7 @@ export async function getDashboardOverview(input: {
     .single();
   if (workspace.error || !workspace.data) throw new Error(workspace.error?.message || "Workspace not found.");
 
-  const [truth, policy, workspaceSettings, approvalsRes, runsRes, logsRes, outcomesRes, workflowsRes, operatorProductStates] = await Promise.all([
+  const [truth, policy, workspaceSettings, approvalsRes, runsRes, logsRes, outcomesRes, workflowsRes, operatorProductStates, workflowPresentations] = await Promise.all([
     getConnectorTruth({ workspaceId: input.workspaceId, supabase }),
     loadPolicyWorkspaceSettings({ supabase, workspaceId: input.workspaceId }),
     loadWorkspacePolicySettings({ supabase, workspaceId: input.workspaceId }),
@@ -509,6 +538,9 @@ export async function getDashboardOverview(input: {
     // Single shared operator product-state model (product-state.ts) - drives
     // dashboard lifecycle states B-F. Never re-derived locally here.
     getWorkspaceOperatorProductStates({ workspaceId: input.workspaceId, supabase }),
+    // Same real, shared workflow presentation the /workflows page uses -
+    // "Work in progress" on the dashboard, never a separate derivation.
+    getWorkflowPresentations({ workspaceId: input.workspaceId, limit: 20 }).catch(() => []),
   ]);
 
   const approvals = approvalsRes.error ? [] : (approvalsRes.data ?? []).map((row) => row as Row);
@@ -614,6 +646,8 @@ export async function getDashboardOverview(input: {
       draftOnlyCount,
       latest: pendingApprovals.slice(0, 5).map((row) => {
         const payload = asRecord(row.continuation_payload);
+        const continuation = asApprovalPayload(row.continuation_payload);
+        const policyReason = stringValue(row.policy_reason);
         return {
           id: String(row.id),
           title: stringValue(row.title) ?? "Approval required",
@@ -621,6 +655,11 @@ export async function getDashboardOverview(input: {
           operatorKey: stringValue(payload.operatorKey) ?? stringValue(row.agent_id),
           riskLevel: riskFromPayload(payload),
           policyDecision: policyDecisionFromPayload(payload) ?? "approval_required",
+          why: deriveWhyThisMatters(continuation),
+          evidence: deriveEvidenceSummary(continuation),
+          policy: approvalReason(continuation, policyReason),
+          consequence: expectedOutcome(continuation) ?? afterApprovalText(continuation),
+          canEditDraft: isEmailKind(continuation.kind),
           href: "/approvals",
         };
       }),
@@ -630,6 +669,18 @@ export async function getDashboardOverview(input: {
     connectors,
     activity,
     activitySummary: activityProjection.summary,
+    workInProgress: workflowPresentations
+      .filter((workflow) => !["completed", "cancelled"].includes(workflow.status))
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      .slice(0, 5)
+      .map((workflow) => ({
+        id: workflow.id,
+        title: workflow.objective,
+        operatorName: workflow.operatorName,
+        updatedAt: workflow.updatedAt,
+        stage: loopStageForStatus(workflow.status),
+        href: `/workflows?workflow=${encodeURIComponent(workflow.id)}`,
+      })),
     operatorProductStates,
     lifecycleState,
     nextBestActions: deriveNextBestActions({

@@ -32,8 +32,13 @@ try {
   assert.match(normalize, /category: "outcome"/);
   assert.match(normalize, /Action blocked by policy/);
   assert.match(normalize, /severity === "failure" \|\| item\.severity === "attention"/, "issues use only failed or attention states");
-  assert.match(dashboard, /All activity/);
-  assert.match(dashboard, /ActivityAvatar/);
+  // The dashboard's Workforce Activity chart is a real, connector/approval-
+  // derived summary of the same activity model (not a duplicate feed) - the
+  // dashboard intentionally no longer embeds its own scrollable "Recent
+  // activity" list/avatar row (see the dashboard recomposition to the
+  // Workforce activity / Workforce / Needs your review / Work in progress
+  // reference layout); the full activity feed remains reachable at its own
+  // real, separate page (asserted above), still linked from the shared nav.
   assert.match(dashboard, /Prepared/);
   assert.match(dashboard, /Held at approval/);
   assert.doesNotMatch(dashboard, /Open logs/);

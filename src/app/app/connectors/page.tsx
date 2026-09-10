@@ -9,7 +9,6 @@ import { LinkIcon, PlusIcon, XIcon } from "@/components/dashboard/icons";
 import type { Connector } from "@/lib/os/types";
 import { UsageBanner } from "@/components/upgrade-prompt";
 import { getEntitlements } from "@/lib/os/entitlements";
-import { UpgradeModal } from "@/components/upgrade-modal";
 import { isRealConnectedConnector } from "@/lib/os/truth";
 import { clearOnboardingReturn, hasPendingOnboardingReturn, isOnboardingLaunch } from "@/lib/onboarding/return-contract";
 import { ProviderLogo } from "@/components/connectors/provider-logo";
@@ -231,6 +230,11 @@ export default function ConnectorsPage() {
   const [feedback, setFeedback] = useState("");
   const [disconnectingConnectorId, setDisconnectingConnectorId] = useState<string | null>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  // The entitlement gate is a view inside the setup-detail dialog, gated on
+  // setupConnectorId. Every place that changes which connector is selected
+  // must go through this so a gate left open for one connector can never
+  // show up stale for a different one selected afterward.
+  const selectSetupConnector = (id: string | null) => { setSetupConnectorId(id); setUpgradeOpen(false); };
   // Whether this workspace still has an unused trial available - decides
   // whether the gate offers "Start 3-day trial" or genuinely "Choose a
   // plan". Server-authoritative (GET /api/billing/trial-status); null while
@@ -502,6 +506,7 @@ export default function ConnectorsPage() {
     return () => { active = false; };
   }, []);
 
+
   useEffect(() => {
     if (drawerConnectorId !== "google_drive") return;
     void fetchDriveSettings();
@@ -620,7 +625,7 @@ export default function ConnectorsPage() {
   useEffect(() => {
     if (searchParams.get("discover") !== "1") return;
     setAddOpen(true);
-    setSetupConnectorId(null);
+    selectSetupConnector(null);
     setSearch(searchParams.get("q") ?? "");
     const requestedCategory = searchParams.get("category") as ConnectorDiscoveryCategory | null;
     setDiscoveryCategory(requestedCategory && CONNECTOR_DISCOVERY_CATEGORIES.some((category) => category.key === requestedCategory) ? requestedCategory : "all");
@@ -658,7 +663,7 @@ export default function ConnectorsPage() {
     const connected = existing && isRealConnectedConnector(existing);
     if (connected) {
       setAddOpen(false);
-      setSetupConnectorId(null);
+      selectSetupConnector(null);
       setDrawerConnectorId(existing.id);
       if (setup === "slack-channel") setFeedback("Choose the Slack channel for internal approval alerts.");
       if (setup === "trello-project") setFeedback("Choose the Trello board and list for approved task updates.");
@@ -671,7 +676,7 @@ export default function ConnectorsPage() {
     const available = availableCatalogConnectors.find((connector) => normalizeConnectorKey(connector.id) === connectorId);
     if (available) {
       setAddOpen(true);
-      setSetupConnectorId(available.id);
+      selectSetupConnector(available.id);
       setSearch("");
       if (setup === "slack-channel") setFeedback("Connect Slack first, then choose the alert channel.");
       if (setup === "trello-project") setFeedback("Connect Trello first, then choose the board and list.");
@@ -686,14 +691,18 @@ export default function ConnectorsPage() {
     if (!addOpen && !drawerConnectorId) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        if (setupConnectorId) setSetupConnectorId(null);
+        // The entitlement gate is the current foreground view within this
+        // same dialog - Escape must close only it, one level at a time,
+        // exactly like every other nested view here.
+        if (upgradeOpen) setUpgradeOpen(false);
+        else if (setupConnectorId) selectSetupConnector(null);
         else if (addOpen) returnToOnboardingOrClose(() => setAddOpen(false));
         else setDrawerConnectorId(null);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [addOpen, drawerConnectorId, setupConnectorId]);
+  }, [addOpen, drawerConnectorId, setupConnectorId, upgradeOpen]);
 
   const slackQueryString = () => new URLSearchParams({
     workspaceId: state.workspace.id,
@@ -1061,7 +1070,7 @@ export default function ConnectorsPage() {
             <PlusIcon size={12} /> Upgrade to add more
           </Link>
         ) : (
-          <button className="btn btn-primary btn-sm" onClick={() => { setAddOpen(true); setSetupConnectorId(null); setSearch(""); setDiscoveryCategory("all"); }}>
+          <button className="btn btn-primary btn-sm" onClick={() => { setAddOpen(true); selectSetupConnector(null); setSearch(""); setDiscoveryCategory("all"); }}>
             <PlusIcon size={12} /> Add connector
           </button>
         )}
@@ -1094,7 +1103,7 @@ export default function ConnectorsPage() {
             {onboardingHighlightConnectors.map((c) => (
               <button
                 key={c.id}
-                onClick={() => { setAddOpen(true); setSetupConnectorId(c.id); setSearch(""); }}
+                onClick={() => { setAddOpen(true); selectSetupConnector(c.id); setSearch(""); }}
                 className="connector-priority-card"
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
@@ -1205,7 +1214,7 @@ export default function ConnectorsPage() {
           <div className="card-pad">
             <div className="t-object" style={{ marginBottom: 7 }}>Connect your first business tool</div>
             <p className="t-meta" style={{ margin: "0 0 18px" }}>Add the systems Auterim should understand and work with.</p>
-            <button className="btn btn-primary btn-sm" onClick={() => { setAddOpen(true); setSetupConnectorId(null); setSearch(""); setDiscoveryCategory("all"); }}><PlusIcon size={12} /> Add connector</button>
+            <button className="btn btn-primary btn-sm" onClick={() => { setAddOpen(true); selectSetupConnector(null); setSearch(""); setDiscoveryCategory("all"); }}><PlusIcon size={12} /> Add connector</button>
           </div>
         ) : (
           <div className="rows">
@@ -1232,8 +1241,8 @@ export default function ConnectorsPage() {
 
       {/* Add connector modal */}
       {addOpen && (
-        <div className="scrim" onClick={() => returnToOnboardingOrClose(() => { setAddOpen(false); setSetupConnectorId(null); })}>
-          <div className="modal wide connector-finder-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="scrim" onClick={() => returnToOnboardingOrClose(() => { setAddOpen(false); selectSetupConnector(null); })}>
+          <div className="modal wide connector-finder-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             {!setupConnector ? (
               <>
                 <div className="modal-head">
@@ -1269,7 +1278,7 @@ export default function ConnectorsPage() {
                                 const definition = getConnectorDefinition(connectorKey);
                                 const discoveryState = connectorDiscoveryState(c);
                                 return (
-                                  <div className="row link" key={c.id} role="button" tabIndex={0} onClick={() => { if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); } }}>
+                                  <div className="row link" key={c.id} role="button" tabIndex={0} onClick={() => { if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else selectSetupConnector(c.id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else selectSetupConnector(c.id); } }}>
                                     <span className="cn">
                                       <ProviderLogo connectorKey={connectorKey} name={c.name} fallbackLetter={c.letter} fallbackColor={c.color} box={30} size={20} radius={7} />
                                       <span className="nm"><b>{c.name}</b><span className="connector-finder-row-meta">{definition ? connectorCategoryLabel(definition) : CONNECTOR_CATEGORY_LABELS.custom_api} · {connectorCapabilities(connectorKey)[0] ?? "Useful workspace context"}</span></span>
@@ -1288,11 +1297,42 @@ export default function ConnectorsPage() {
                   )}
                 </div>
               </>
+            ) : upgradeOpen ? (
+              // The Preview/trial entitlement gate replaces the setup view
+              // in place, inside this SAME modal/backdrop, instead of
+              // stacking a second independent dialog on top of it. One
+              // foreground dialog, one focus trap, no z-index competition.
+              <>
+                <div className="modal-head">
+                  <div className="tt"><h3>{trialEligible ? "Start your 3-day trial" : "Choose a plan to connect real accounts"}</h3></div>
+                  <button className="btn btn-ghost btn-sm" onClick={() => setUpgradeOpen(false)}>Back</button>
+                </div>
+                <div className="modal-body" style={{ display: "grid", gap: 12 }}>
+                  <p style={{ color: "var(--text-dim)", fontSize: 13, lineHeight: 1.6 }}>
+                    {trialEligible
+                      ? "Connect real systems and activate your workforce when you're ready."
+                      : entitlements.trialEndsAt
+                        ? "Your trial has ended, so real connections need a plan to continue."
+                        : "This workspace's trial has already been used, so real connections need a plan to continue."}
+                  </p>
+                  <div style={{ borderRadius: 10, background: "rgba(77,232,225,0.06)", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.2)", padding: "10px 12px", fontSize: 12.5, color: "#9DEFEA" }}>
+                    {trialEligible ? "Your 3-day Foundation trial includes 3 operators and 3 connected systems - no card required." : "Foundation includes 3 operators and 3 connected systems."}
+                  </div>
+                </div>
+                <div className="modal-foot">
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setUpgradeOpen(false)}>{trialEligible ? "Not now" : "View plans"}</button>
+                  {trialEligible ? (
+                    <button type="button" className="btn btn-primary btn-sm" onClick={() => void startTrialAndContinue()} disabled={startingTrial}>{startingTrial ? "Starting…" : "Start 3-day trial"}</button>
+                  ) : (
+                    <Link className="btn btn-primary btn-sm" href="/plans">Choose Foundation</Link>
+                  )}
+                </div>
+              </>
             ) : (
               <>
                 <div className="modal-head">
                   <div className="tt"><h3>Setup connector</h3></div>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setSetupConnectorId(null)}>Back</button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => selectSetupConnector(null)}>Back</button>
                 </div>
                 <div className="modal-body">
                 <ConnectorSetupView connector={setupConnector} isRealConnected={false} isPreview={isPreview} trialEligible={trialEligible} />
@@ -1317,7 +1357,7 @@ export default function ConnectorsPage() {
                 )}
                 </div>
                 <div className="modal-foot">
-                  <button className="btn btn-ghost btn-sm" onClick={() => setSetupConnectorId(null)}>Cancel</button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => selectSetupConnector(null)}>Cancel</button>
                   {isConnectorAvailableForAuth(normalizeConnectorKey(setupConnector.id)) ? (
                     <button className="btn btn-primary btn-sm" onClick={() => {
                       if (isPreview || atConnectorLimit) {
@@ -1715,25 +1755,6 @@ export default function ConnectorsPage() {
           </div>
         </div>
       )}
-
-      <UpgradeModal
-        open={upgradeOpen}
-        onClose={() => returnToOnboardingOrClose(() => setUpgradeOpen(false))}
-        title={trialEligible ? "Start your 3-day trial to connect real systems" : isOnboarding ? "This workspace needs a plan to connect real accounts" : "Activate real connectors"}
-        body={
-          trialEligible
-            ? "Preview connectors let you model your stack. Start your 3-day trial to connect a real account, activate an operator, and see it work."
-            : isOnboarding
-              ? entitlements.trialEndsAt
-                ? "Your trial has ended, so real connections need a plan to continue. Choose a plan, then come back to finish connecting your systems."
-                : "This workspace's trial has already been used, so real connections need a plan to continue. Choose a plan, then come back to finish connecting your systems."
-              : "Preview connectors let you model your stack. Choose a plan to connect real accounts and run operators live."
-        }
-        hint={trialEligible ? "Your 3-day Foundation trial includes 3 operators and 3 connected systems - no card required." : undefined}
-        onStartTrial={trialEligible ? startTrialAndContinue : undefined}
-        startTrialBusy={startingTrial}
-        secondaryLabel="Not now"
-      />
     </div>
   );
 }

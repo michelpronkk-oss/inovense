@@ -55,6 +55,7 @@ export type WorkflowPresentation = {
   priority: "low" | "normal" | "high";
   confidence: "low" | "medium" | "high";
   createdAt: string;
+  updatedAt: string;
   source: { label: string; detail: string | null } | null;
   whyStarted: string[];
   nextAttention: string;
@@ -118,7 +119,7 @@ export async function getWorkflowPresentations(input: { workspaceId: string; wor
   const supabase = createSupabaseAdmin();
   let runsQuery = supabase
     .from("os_workflow_runs")
-    .select("id,operator_key,primary_owner,supporting_operators,external_communication_owner,dependency_state,handoff_reason,requested_outcome,relevant_context,result_evidence,originating_signal_id,objective,priority,confidence,status,created_at,parent_workflow_id")
+    .select("id,operator_key,primary_owner,supporting_operators,external_communication_owner,dependency_state,handoff_reason,requested_outcome,relevant_context,result_evidence,originating_signal_id,objective,priority,confidence,status,created_at,updated_at,parent_workflow_id")
     .eq("workspace_id", input.workspaceId)
     .order("created_at", { ascending: false })
     .limit(input.limit ?? 80);
@@ -200,7 +201,7 @@ export async function getWorkflowPresentations(input: { workspaceId: string; wor
       supportingWork: childrenByParent.get(id) ?? [],
       status: String(row.status), priority: priority(row.priority),
       confidence: text(row.confidence) === "high" || text(row.confidence) === "low" ? text(row.confidence) as "high" | "low" : "medium",
-      createdAt: String(row.created_at), source: sourceLabel(signalId ? signalById.get(signalId) : undefined),
+      createdAt: String(row.created_at), updatedAt: text(row.updated_at) ?? String(row.created_at), source: sourceLabel(signalId ? signalById.get(signalId) : undefined),
       whyStarted: signalId ? (reasonsBySignal.get(signalId) ?? []) : [], nextAttention: nextAttention(steps, String(row.status)), steps,
       outcomes: outcomesByWorkflow.get(id) ?? [],
     };

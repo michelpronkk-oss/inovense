@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { WorkflowPresentation, WorkflowStepPresentation } from "@/lib/workflows/presentation";
+import { loopStageForStatus } from "@/lib/workflows/stage";
 import { EmptyState, LoopRail, MetricStrip, PageHeader } from "@/components/product-ui/page-primitives";
 import { useOS } from "@/lib/os/app-provider";
 import { getRealConnectedConnectors } from "@/lib/os/truth";
@@ -23,14 +24,6 @@ function badgeTone(status: string): "green" | "red" | "amber" | "cyan" {
   if (status === "blocked" || status === "failed") return "red";
   if (status.includes("approval") || status === "planned") return "amber";
   return "cyan";
-}
-/** Maps the real workflow status onto the fixed Detect/Prepare/Approve/Execute/Measure loop for LoopRail. */
-function loopStageForStatus(status: string): string {
-  if (["completed", "partially_completed"].includes(status)) return "Measure";
-  if (status === "executing") return "Execute";
-  if (["awaiting_approval", "partially_approved"].includes(status)) return "Approve";
-  if (["blocked", "failed"].includes(status)) return "Execute";
-  return "Prepare";
 }
 
 export default function WorkflowsPage() {

@@ -92,8 +92,12 @@ assert.doesNotMatch(providerLogoSource, /<img\s/, "provider logos must be local 
 assert.match(page, /import \{ ProviderLogo \} from "@\/components\/connectors\/provider-logo"/, "onboarding must use the shared provider-logo component");
 assert.match(connectorsPage, /import \{ ProviderLogo \} from "@\/components\/connectors\/provider-logo"/, "the connectors page must use the same shared provider-logo component");
 assert.doesNotMatch(connectorsPage, /IntegrationLogos/, "the fragile display-name-keyed logo lookup must be fully replaced, not layered on top of");
-assert.match(overview, /import \{ ProviderLogo \} from "@\/components\/connectors\/provider-logo"/, "the dashboard connector strip must use the same shared provider-logo component");
-assert.doesNotMatch(overview, /IntegrationLogos/, "the dashboard connector strip must not keep the old display-name-keyed lookup");
+// The dashboard's own connector strip ("Business context") was removed when
+// the dashboard was recomposed to the Workforce activity / Workforce /
+// Needs your review / Work in progress reference layout - connector
+// visibility now lives on the real /connectors page, which is still
+// asserted above to use the shared ProviderLogo component.
+assert.doesNotMatch(overview, /IntegrationLogos/, "the dashboard must not keep the old display-name-keyed logo lookup even if it re-adds connector visibility later");
 assert.match(settingsPage, /import \{ ProviderLogo \} from "@\/components\/connectors\/provider-logo"/, "the settings connected-accounts list must use the same shared provider-logo component");
 assert.doesNotMatch(settingsPage, /IntegrationLogos/, "the settings connected-accounts list must not keep the old, gmail/hubspot-only hardcoded logo guess");
 for (const key of ["gmail", "microsoft", "microsoft_teams", "google_drive", "hubspot", "trello", "asana", "jira", "zendesk", "intercom", "slack"]) {

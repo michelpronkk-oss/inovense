@@ -6,35 +6,20 @@ import Image from "next/image";
 import { StatusBadge } from "@/components/operators/status-badge";
 import { useOS } from "@/lib/os/app-provider";
 import type { DashboardOverview, DashboardOperator } from "@/lib/dashboard/overview";
-import { ProviderLogo } from "@/components/connectors/provider-logo";
 import { DashboardLoadingState } from "@/components/dashboard/loading-state";
 import { MetricStrip, PageHeader } from "@/components/product-ui/page-primitives";
-import { ActivityAvatar } from "@/components/activity/activity-avatar";
-import { operatorDisplayName, withoutLeadingOperatorName } from "@/lib/activity/presentation";
 import { trialDaysRemaining } from "@/lib/os/plans";
+import { ArrowIcon } from "@/components/dashboard/icons";
+import type { WorkflowLoopStage } from "@/lib/workflows/stage";
 
 type ScanKey = DashboardOperator["key"];
 type OverviewResponse = DashboardOverview & { error?: string; message?: string };
 
-const scanRoutes: Record<ScanKey, string> = {
-  revenue: "/api/operators/revenue/scan",
-  client_flow: "/api/operators/client-flow/scan",
-  operations: "/api/operators/operations/scan",
-  support: "/api/operators/support/scan",
-};
-
 const operatorMeta: Record<ScanKey, { mark: string; color: string; tag: string; avatar: string }> = {
-  revenue: { mark: "RV", color: "#4DE8E1", tag: "Revenue · Pipeline", avatar: "/operators/revenue-operator.png" },
-  client_flow: { mark: "CF", color: "#5B8DEF", tag: "Client · Onboarding", avatar: "/operators/client-flow-operator.png" },
-  operations: { mark: "OP", color: "#51D88A", tag: "Operations · Internal", avatar: "/operators/operations-operator.png" },
-  support: { mark: "SU", color: "#66D0E0", tag: "Support · Customer care", avatar: "/operators/support-operator.png" },
-};
-
-const connectorMeta: Record<string, { letter: string; color: string }> = {
-  gmail: { letter: "G", color: "#EA4335" },
-  hubspot: { letter: "HS", color: "#FF7A59" },
-  slack: { letter: "Sl", color: "#A77FBC" },
-  trello: { letter: "Tr", color: "#4BA3E8" },
+  revenue: { mark: "RV", color: "#4DE8E1", tag: "Pipeline and renewals", avatar: "/operators/revenue-operator.png" },
+  client_flow: { mark: "CF", color: "#5B8DEF", tag: "Onboarding and delivery", avatar: "/operators/client-flow-operator.png" },
+  operations: { mark: "OP", color: "#51D88A", tag: "Delivery and project health", avatar: "/operators/operations-operator.png" },
+  support: { mark: "SU", color: "#66D0E0", tag: "Customer support load", avatar: "/operators/support-operator.png" },
 };
 
 function rgba(hex: string, a: number): string {
@@ -73,26 +58,6 @@ function timeAgo(value: string | null | undefined): string {
   if (mins < 60) return `${mins}m ago`;
   if (mins < 60 * 24) return `${Math.floor(mins / 60)}h ago`;
   return `${Math.floor(mins / (60 * 24))}d ago`;
-}
-
-function clockTime(value: string | null | undefined): string {
-  if (!value) return "--:--";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "--:--";
-  return date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-}
-
-function autonomyLabel(mode: DashboardOverview["policy"]["autonomyMode"]): string {
-  if (mode === "manual") return "Manual";
-  if (mode === "guarded") return "Guarded";
-  if (mode === "autonomous") return "Autonomous";
-  return "Approval first";
-}
-
-function customerEmailLabel(mode: DashboardOverview["policy"]["customerEmailMode"]): string {
-  if (mode === "draft_only") return "Customer emails draft only";
-  if (mode === "auto_send_low_risk") return "Customer emails auto-send low risk";
-  return "Customer emails require approval";
 }
 
 function dashboardCounts(overview: DashboardOverview) {
@@ -157,7 +122,9 @@ function WorkforceActivity({ overview }: { overview: DashboardOverview }) {
   }).join(" ");
   const preparedPoints = pointString("prepared");
   const executedPoints = pointString("executed");
-  const heldPoints = pointString("held");
+  // Y-axis: three real ticks (max / half / zero), rounded to whole units -
+  // never a fabricated scale independent of the actual data.
+  const yTicks = [{ y: 38, value: Math.ceil(max) }, { y: 95, value: Math.round(max / 2) }, { y: 152, value: 0 }];
 
   return (
     <div className="card" aria-labelledby="workforce-activity-title">
@@ -173,19 +140,21 @@ function WorkforceActivity({ overview }: { overview: DashboardOverview }) {
         </div>
       </div>
       <div className="card-pad" style={{ paddingTop: 18 }}>
-        <div className="dashboard-activity-counts" aria-label={`${summary.prepared} prepared, ${summary.executed} executed, and ${summary.held} held at approval across the last seven days`}>
-          <span data-series="prepared"><b>{summary.prepared}</b> Prepared</span><span data-series="executed"><b>{summary.executed}</b> Executed</span><span data-series="held"><b>{summary.held}</b> Held at approval</span>
-        </div>
         <div className="dashboard-telemetry-frame">
           <svg viewBox="0 0 720 190" role="img" aria-label={hasActivity ? `${summary.prepared} prepared actions, ${summary.executed} executed actions, and ${summary.held} actions held at approval across seven days.` : "No prepared, executed, or held workforce activity recorded yet"}>
-            {[38, 76, 114, 152].map((y) => <line key={y} x1="40" x2="680" y1={y} y2={y} />)}
-            {summary.daily.map((item, index) => { const x = 40 + index * (640 / Math.max(summary.daily.length - 1, 1)); return <g key={item.day}><line className="dashboard-telemetry-day" x1={x} x2={x} y1="28" y2="152" /><text className="dashboard-telemetry-axis" x={x} y="178" textAnchor={index === 0 ? "start" : index === summary.daily.length - 1 ? "end" : "middle"}>{new Date(`${item.day}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "short" })}</text></g>; })}
+            {yTicks.map((tick) => <line key={tick.y} x1="40" x2="680" y1={tick.y} y2={tick.y} />)}
+            {hasActivity && yTicks.map((tick) => <text key={tick.y} className="dashboard-telemetry-axis" x="30" y={tick.y + 3} textAnchor="end">{tick.value}</text>)}
+            {summary.daily.map((item, index) => { const x = 40 + index * (640 / Math.max(summary.daily.length - 1, 1)); return <text key={item.day} className="dashboard-telemetry-axis" x={x} y="178" textAnchor={index === 0 ? "start" : index === summary.daily.length - 1 ? "end" : "middle"}>{new Date(`${item.day}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "short" }).toUpperCase()}</text>; })}
             {hasActivity && <>
               <polygon points={`40,152 ${preparedPoints} 680,152`} fill="rgba(77,232,225,.10)" />
               <polyline points={preparedPoints} fill="none" stroke="#4DE8E1" strokeWidth="2" />
               <polyline points={executedPoints} fill="none" stroke="#51D88A" strokeWidth="1.8" />
-              <polyline points={heldPoints} fill="none" stroke="#F5C26B" strokeWidth="1.8" strokeDasharray="4 4" />
-              {summary.daily.map((item, index) => { const x = 40 + index * (640 / Math.max(summary.daily.length - 1, 1)); const y = 150 - (item.prepared / max) * 112; return <circle key={item.day} cx={x} cy={y} r="3.5" fill="#4DE8E1"><title>{`${item.day}: ${item.prepared} prepared, ${item.executed} executed, ${item.held} held at approval`}</title></circle>; })}
+              {summary.daily.map((item, index) => {
+                if (item.held <= 0) return null;
+                const x = 40 + index * (640 / Math.max(summary.daily.length - 1, 1));
+                const y = 150 - (item.prepared / max) * 112;
+                return <circle key={item.day} className="dashboard-telemetry-held" cx={x} cy={y} r="5"><title>{`${item.day}: ${item.held} held at approval`}</title></circle>;
+              })}
             </>}
           </svg>
           {!hasActivity && (
@@ -196,6 +165,73 @@ function WorkforceActivity({ overview }: { overview: DashboardOverview }) {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+const WORKFORCE_ORDER: ScanKey[] = ["revenue", "client_flow", "operations", "support"];
+
+/**
+ * "Workforce" card: every canonical operator, always - never filtered down
+ * to only the selected onboarding priority or only the currently-active
+ * ones (that narrower list lives in `overview.operators`). Status pills use
+ * the same canonical STATE_LABEL vocabulary as /agents (product-state.ts) -
+ * "Active", "Active · Limited context", "Ready to activate",
+ * "Needs attention" - never re-derived here.
+ */
+function WorkforceCard({ overview }: { overview: DashboardOverview }) {
+  const states = WORKFORCE_ORDER
+    .map((key) => overview.operatorProductStates.find((item) => item.operatorKey === key))
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+  return (
+    <div className="card" aria-labelledby="workforce-card-title">
+      <div className="card-head"><div className="t-section" id="workforce-card-title">Workforce</div><Link className="btn btn-sm btn-ghost" href="/agents">Manage</Link></div>
+      <div className="rows">
+        {states.map((item) => {
+          const key = item.operatorKey as ScanKey;
+          return (
+            <div className="row" key={item.operatorKey}>
+              <span className="op-id">
+                <OperatorAvatar operatorKey={key} size={34} />
+                <span className="nm"><b>{item.operatorName}</b><span>{operatorMeta[key]?.tag ?? item.label}</span></span>
+              </span>
+              <span className="rt"><StatusBadge state={item.state}>{item.label}</StatusBadge></span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function stageTone(stage: WorkflowLoopStage): "muted" | "amber" | "cyan" | "green" {
+  if (stage === "Approve") return "amber";
+  if (stage === "Execute") return "cyan";
+  if (stage === "Measure") return "green";
+  return "muted";
+}
+
+/** "Work in progress" card: real, active (non-terminal) workflow runs - see overview.workInProgress. */
+function WorkInProgress({ overview }: { overview: DashboardOverview }) {
+  const items = overview.workInProgress;
+  return (
+    <div className="card" aria-labelledby="work-in-progress-title">
+      <div className="card-head"><div className="t-section" id="work-in-progress-title">Work in progress</div><Link className="btn btn-sm btn-ghost" href="/workflows">All workflows</Link></div>
+      {items.length === 0 ? (
+        <p className="t-meta card-pad" style={{ margin: 0 }}>No active workflows right now.</p>
+      ) : (
+        <div className="rows">
+          {items.map((item) => (
+            <Link key={item.id} href={item.href} className="row link">
+              <span className="grow"><span className="ttl">{item.title}</span><span className="sub">{item.operatorName} · updated {timeAgo(item.updatedAt)}</span></span>
+              <span className="rt inline" style={{ gap: 8 }}>
+                <span className={`badge ${stageTone(item.stage)}`}>{item.stage.toUpperCase()}</span>
+                <ArrowIcon size={14} style={{ color: "var(--text-faint)" }} />
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -303,7 +339,6 @@ export function OSOverview() {
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [busyScan, setBusyScan] = useState<ScanKey | null>(null);
   const [busyApproval, setBusyApproval] = useState<string | null>(null);
   // Whether this workspace still has an unused trial available - decides
   // whether Preview copy offers "Start 3-day trial" or genuinely "Choose a
@@ -369,28 +404,8 @@ export function OSOverview() {
     return () => { active = false; };
   }, []);
 
-  const runManualCheck = async (key: ScanKey) => {
-    if (busyScan || busyApproval) return;
-    setBusyScan(key);
-    setError("");
-    try {
-      const res = await fetch(scanRoutes[key], {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspaceId: state.workspace.id, userId: state.currentUser.id, userEmail: state.currentUser.email, maxResults: 10 }),
-      });
-      const json = await res.json().catch(() => ({})) as { error?: string; message?: string };
-      if (!res.ok) throw new Error(json.message || json.error || "Manual check could not run.");
-      await loadOverview();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Manual check could not run.");
-    } finally {
-      setBusyScan(null);
-    }
-  };
-
   const actOnApproval = async (id: string, action: "approve" | "reject") => {
-    if (busyApproval || busyScan) return;
+    if (busyApproval) return;
     setBusyApproval(id);
     setError("");
     try {
@@ -430,9 +445,7 @@ export function OSOverview() {
   const greet = hh < 5 ? "Good night" : hh < 12 ? "Good morning" : hh < 18 ? "Good afternoon" : "Good evening";
   const firstName = state.currentUser.name?.trim().split(/\s+/)[0] || titleCase((state.currentUser.email?.split("@")[0] || "there").split(/[._-]/)[0]);
   const pending = overview.approvals.pendingCount;
-  const healthyConnectors = overview.connectors.filter((c) => c.connected).length;
-  const mode = autonomyLabel(overview.policy.autonomyMode);
-  const busy = busyScan !== null || busyApproval !== null;
+  const busy = busyApproval !== null;
 
   const headerActions = (
     <>
@@ -498,7 +511,6 @@ export function OSOverview() {
   const showEligibilityBanner = !eligibility.eligible;
 
   const topApproval = overview.approvals.latest[0];
-  const moreApprovals = overview.approvals.latest.slice(1, 4);
 
   return (
     <div className="os-page dashboard-overview">
@@ -562,8 +574,8 @@ export function OSOverview() {
 
       <div className="sec split">
         <div className="stack">
-          <div className="card">
-            <div className="card-head"><div className="t-section">Needs your review</div><Link className="btn btn-sm btn-ghost" href="/approvals">Open approvals</Link></div>
+          <div className="card" aria-labelledby="needs-review-title">
+            <div className="card-head"><div className="t-section" id="needs-review-title">Needs your review</div><Link className="btn btn-sm btn-ghost" href="/approvals">Open approvals</Link></div>
             <div className="card-pad" style={{ paddingTop: 16 }}>
               {!topApproval ? (
                 <p className="t-meta" style={{ margin: 0 }}>Nothing needs your review.</p>
@@ -571,123 +583,31 @@ export function OSOverview() {
                 <>
                   <div className="inline" style={{ gap: 11, marginBottom: 14 }}>
                     <OperatorAvatar operatorKey={(topApproval.operatorKey as ScanKey) ?? "revenue"} size={28} />
-                    <span className="t-compact ink">{titleCase(topApproval.operatorKey)}</span>
+                    <span className="t-compact ink">{titleCase(topApproval.operatorKey)} Operator</span>
                     <span className="badge amber">AWAITING APPROVAL</span>
                   </div>
                   <div className="t-object" style={{ fontSize: 16 }}>{topApproval.title}</div>
-                  <dl className="kv" style={{ marginTop: 16 }}>
-                    <dt>Waiting</dt><dd>{timeAgo(topApproval.createdAt)}</dd>
-                    <dt>Risk</dt><dd>{titleCase(topApproval.riskLevel) || "Medium"}</dd>
-                    <dt>Policy</dt><dd>{titleCase(topApproval.policyDecision) || "Approval required"}</dd>
-                  </dl>
+                  <div className="grid4" style={{ marginTop: 16 }}>
+                    <div><span className="t-meta">Why</span><p className="t-compact" style={{ margin: "4px 0 0" }}>{topApproval.why ?? "Detected from live connected-system activity."}</p></div>
+                    <div><span className="t-meta">Evidence</span><p className="t-compact" style={{ margin: "4px 0 0" }}>{topApproval.evidence ?? "Full context is in Open approvals."}</p></div>
+                    <div><span className="t-meta">Policy</span><p className="t-compact" style={{ margin: "4px 0 0" }}>{topApproval.policy}</p></div>
+                    <div><span className="t-meta">Consequence</span><p className="t-compact" style={{ margin: "4px 0 0" }}>{topApproval.consequence ?? "Recorded in the run log after your decision."}</p></div>
+                  </div>
                   <div className="inline" style={{ marginTop: 18, gap: 9 }}>
                     <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void actOnApproval(topApproval.id, "approve")}>{busyApproval === topApproval.id ? "…" : "Approve and send"}</button>
-                    <Link className="btn btn-secondary" href={topApproval.href}>Open</Link>
+                    <Link className="btn btn-secondary" href={topApproval.href}>{topApproval.canEditDraft ? "Edit draft" : "Open"}</Link>
                     <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => void actOnApproval(topApproval.id, "reject")}>{busyApproval === topApproval.id ? "…" : "Reject"}</button>
                   </div>
                 </>
               )}
             </div>
-            {moreApprovals.length > 0 && (
-              <div className="rows">
-                {moreApprovals.map((approval) => (
-                  <div className="row link" key={approval.id}>
-                    <span className="grow"><span className="ttl">{approval.title}</span><span className="sub">{titleCase(approval.operatorKey)} · updated {timeAgo(approval.createdAt)}</span></span>
-                    <span className="rt"><span className="badge amber">WAITING</span><Link className="btn btn-sm btn-ghost" href={approval.href}>Open</Link></span>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
-          <div className="card">
-            <div className="card-head"><div className="t-section">Business context</div><Link className="btn btn-sm btn-ghost" href="/connectors">Connectors</Link></div>
-            <div className="rows">
-              {overview.connectors.map((connector) => {
-                const meta = connectorMeta[connector.key] ?? { letter: connector.name.slice(0, 2), color: "#4DE8E1" };
-                return (
-                  <Link key={connector.key} href={connector.href} className="row link">
-                    <span className="cn">
-                      <ProviderLogo connectorKey={connector.key.replace(/-/g, "_")} name={connector.name} fallbackLetter={meta.letter} fallbackColor={meta.color} box={30} size={20} radius={7} />
-                      <span className="nm"><b>{connector.name}</b><span>{connector.connected ? "Connected" : "Needs setup"}</span></span>
-                    </span>
-                    <span className="rt inline" style={{ gap: 7 }}>
-                      <span className={`dot ${connector.connected ? "dot-green" : "dot-amber"}`} />
-                      <span className="t-meta">{connector.connected ? (connector.lastCheckedAt ? timeAgo(connector.lastCheckedAt) : "connected") : "needs setup"}</span>
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-            <div className="card-pad" style={{ padding: "12px 18px", borderTop: "1px solid var(--line)" }}>
-              <span className="t-meta">{healthyConnectors}/{overview.connectors.length} healthy</span>
-            </div>
-          </div>
-
-          <WhatAuterimCanDo overview={overview} />
+          <WorkInProgress overview={overview} />
         </div>
 
         <div className="stack">
-          <div className="card">
-            <div className="card-head"><div className="t-section">{overview.operators.length === 1 ? "Your first operator" : "Workforce"}</div><Link className="btn btn-sm btn-ghost" href="/agents">Manage</Link></div>
-            <div className="rows">
-              {overview.operators.map((operator) => {
-                const needsSetup = operator.status === "needs_setup";
-                const productState = overview.operatorProductStates.find((item) => item.operatorKey === operator.key);
-                return (
-                  <div className="row" key={operator.key}>
-                    <span className="op-id">
-                      <OperatorAvatar operatorKey={operator.key} size={34} />
-                      <span className="nm"><b>{operator.name}</b><span>{operator.pendingApprovals} pending · checked {timeAgo(operator.lastRunAt)}</span></span>
-                    </span>
-                    <span className="rt">
-                      <StatusBadge state={productState?.state ?? operator.status}>{productState?.label ?? (needsSetup ? "Needs setup" : "Monitoring")}</StatusBadge>
-                      <button type="button" className="btn btn-sm btn-ghost" disabled={busy || needsSetup} onClick={() => { if (!busy && !needsSetup) void runManualCheck(operator.key); }}>{busyScan === operator.key ? "…" : "Check"}</button>
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="card-head"><div className="t-section">Recent activity</div><Link className="btn btn-sm btn-ghost" href="/activity">All activity</Link></div>
-            {overview.activity.length === 0 ? (
-              <p className="t-meta card-pad" style={{ margin: 0 }}>No activity yet. Operator runs will appear here.</p>
-            ) : (
-              <div className="rows">
-                {overview.activity.slice(0, 6).map((item) => {
-                  const name = operatorDisplayName(item.operatorKey);
-                  const action = withoutLeadingOperatorName(name, item.description || titleCase(item.title));
-                  return (
-                    <div className="row activity-row dense" key={item.id}>
-                      <time className="activity-row-time t-mono">{clockTime(item.time)}</time>
-                      <ActivityAvatar operatorKey={item.operatorKey} />
-                      <span className="grow activity-row-body">
-                        <b className="activity-row-name">{name}</b>
-                        <span className="activity-row-action">{action}</span>
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          <div className="card">
-            <div className="card-head"><div className="t-section">Policy</div><Link className="btn btn-sm btn-ghost" href="/policies">Manage</Link></div>
-            <div className="card-pad" style={{ padding: "14px 18px", display: "grid", gap: 8 }}>
-              <div className="inline" style={{ gap: 7 }}>
-                <span className="badge cyan">{mode.toUpperCase()}</span>
-                {overview.policy.emergencyStopEnabled && <span className="badge red">EMERGENCY STOP ON</span>}
-              </div>
-              <div className="t-compact">{customerEmailLabel(overview.policy.customerEmailMode)}.</div>
-              <div className="t-meta">Approval-first where risk matters. Rechecked before execution.</div>
-            </div>
-          </div>
-
-          <ReadyToDeploy overview={overview} />
-          <UnlockMore overview={overview} />
+          <WorkforceCard overview={overview} />
         </div>
       </div>
     </div>
