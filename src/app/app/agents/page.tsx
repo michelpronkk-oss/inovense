@@ -65,9 +65,11 @@ function AgAvatar({ color, glyph, operatorKey }: { color: string; glyph: string;
           <path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5z" />
         </svg>
       )}
-      <span className="ag-badge" style={{ color, boxShadow: `0 0 0 2px var(--bg), inset 0 0 0 1px ${color}55` }}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.1} strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: GLYPHS[glyph] ?? "" }} />
-      </span>
+      {!avatar && (
+        <span className="ag-badge" style={{ color, boxShadow: `0 0 0 2px var(--bg), inset 0 0 0 1px ${color}55` }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.1} strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: GLYPHS[glyph] ?? "" }} />
+        </span>
+      )}
     </div>
   );
 }

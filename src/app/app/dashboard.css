@@ -4417,8 +4417,8 @@ select.os-input option {
 
 /* ---- Operators: live workforce / roadmap (reference redesign) ---- */
 .os-root .agents-page {
-  width: 100%;
-  max-width: none;
+  width: min(100%, 1600px);
+  max-width: 1600px;
   gap: 0;
   padding: var(--space-4) var(--space-6) var(--space-6);
 }
