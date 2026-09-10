@@ -65,6 +65,7 @@
     "test:dashboard-lifecycle": "node tests/dashboard-lifecycle-smoke.mjs",
     "test:activity": "node tests/activity-smoke.mjs",
     "test:activity-copy": "node tests/activity-capability-copy-smoke.mjs",
+    "test:memory-governance": "node tests/memory-governance-smoke.mjs",
     "test:notifications": "node tests/notifications-smoke.mjs",
     "test:execution-policy": "node tests/execution-policy-smoke.mjs",
     "test:contextual-policy": "node tests/contextual-policy-smoke.mjs",

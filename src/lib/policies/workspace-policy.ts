@@ -159,6 +159,7 @@ export function buildPolicyInputFromContinuation(input: {
       source: stringValue(c.source) ?? `${connectorKey}_scan`,
       metadata: {
         dedupeKey: stringValue(c.dedupeKey),
+        ...(Array.isArray(sourceMetadata.memoryDependencies) ? { memoryDependencies: sourceMetadata.memoryDependencies } : {}),
         payloadIdentity: emailPayloadIdentity(
           stringValue(c.editedDraftSubject) ?? stringValue(c.draftSubject) ?? stringValue(c.subject) ?? "",
           stringValue(c.editedDraftBody) ?? stringValue(c.draftBody) ?? stringValue(c.body) ?? "",
@@ -209,6 +210,7 @@ export function buildPolicyInputFromContinuation(input: {
         cardId: stringValue(asRecord(trello.input).cardId),
         listId: stringValue(asRecord(trello.input).listId),
         source: "trello_scan",
+        metadata: asRecord(trello.metadata),
       };
     }
     if (Object.keys(slack).length > 0) {
@@ -223,6 +225,7 @@ export function buildPolicyInputFromContinuation(input: {
         confidence: confidenceValue(operations.confidence),
         channelId: stringValue(asRecord(slack.input).channelId),
         source: "trello_scan",
+        metadata: asRecord(slack.metadata),
       };
     }
     return null;

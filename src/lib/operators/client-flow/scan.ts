@@ -44,9 +44,11 @@ import { normalizeEmailToSignalEvent } from "@/lib/signals/intake";
 import { routeSignalEvent } from "@/lib/signals/engine";
 import type { SignalEvent } from "@/lib/signals/types";
 import { buildClientFlowContext, publicClientFlowContext, type ClientFlowContext } from "@/lib/operators/client-flow/context";
+import { loadGovernedMemoryContext, type GovernedMemoryContext } from "@/lib/memory/reader";
 import { buildClientFlowCandidate, createClientFlowSupportingHandoffs, ensureClientFlowWorkflow, linkClientFlowApprovalWorkflow, persistCanonicalClientFlowSignal, persistClientFlowCandidate } from "@/lib/operators/client-flow/workflow";
 import { observeClientFlowCustomerReply, observeClientFlowHandoff } from "@/lib/workflows/outcome-observers";
 import { recordObservedWorkflowOutcome } from "@/lib/workflows/store";
+import { connectorObservationsFromTruth, materializeConnectorObservations } from "@/lib/memory/materialize";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 type ClientFlowScanSourceMode = "scheduled" | "manual" | "event_ready";
@@ -647,6 +649,7 @@ async function createZendeskClientFlowApproval(input: {
   policySettings: PolicyWorkspaceSettings;
   signal: ZendeskClientFlowSignal;
   subdomain: string;
+  workspaceMemory: GovernedMemoryContext;
 }): Promise<{ runId: string; approvalId: string; action: PreparedAction; workflowId: string; stepId: string; existingApprovalId: string | null }> {
   const { ticket, signalType } = input.signal;
   const dedupeKey = `client_flow:zendesk:ticket:${ticket.ticketId}:${signalType}`;
@@ -666,9 +669,9 @@ async function createZendeskClientFlowApproval(input: {
     confidence: input.signal.confidence,
     riskLevel: "high",
     normalizedTarget: ticket.ticketId,
-    metadata: { operatorKey: "client_flow", zendeskSubdomain: input.subdomain, zendeskTicketId: ticket.ticketId, payloadIdentity: `${ticket.ticketId}:${signalType}`, signalType },
+    metadata: { operatorKey: "client_flow", zendeskSubdomain: input.subdomain, zendeskTicketId: ticket.ticketId, payloadIdentity: `${ticket.ticketId}:${signalType}`, signalType, memoryDependencies: input.workspaceMemory.dependencies },
   }, { policySettings: input.policySettings });
-  const context = buildClientFlowContext({ provider: "zendesk", messageId: ticket.ticketId, customerName: ticket.requesterName, company: ticket.organizationName, subject: ticket.subject, request: ticket.commentPreview, signalType, confidence: input.signal.confidence, supportingOperators: [], support: { ticketId: ticket.ticketId, openIssue: ticket.commentPreview, escalationState: ticket.priority ?? null } });
+  const context = buildClientFlowContext({ provider: "zendesk", messageId: ticket.ticketId, customerName: ticket.requesterName, company: ticket.organizationName, subject: ticket.subject, request: ticket.commentPreview, signalType, confidence: input.signal.confidence, supportingOperators: [], support: { ticketId: ticket.ticketId, openIssue: ticket.commentPreview, escalationState: ticket.priority ?? null }, workspaceMemory: input.workspaceMemory });
   const workflow = await prepareExternalClientFlowWorkflow({ supabase: input.supabase, workspaceId: input.workspaceId, provider: "zendesk", sourceId: ticket.ticketId, subject: ticket.subject, snippet: ticket.commentPreview ?? "", signalType, priority: context.priority, confidence: input.signal.confidence, action, context });
   if (workflow.existingApprovalId) return { runId: "", approvalId: workflow.existingApprovalId, action, workflowId: workflow.workflowId, stepId: workflow.stepId, existingApprovalId: workflow.existingApprovalId };
   const runId = operatorRuntimeId("oprun-client-flow-zendesk");
@@ -691,6 +694,7 @@ async function createIntercomClientFlowApproval(input: {
   readiness: OperatorReadiness;
   policySettings: PolicyWorkspaceSettings;
   signal: IntercomClientFlowSignal;
+  workspaceMemory: GovernedMemoryContext;
 }): Promise<{ runId: string; approvalId: string; action: PreparedAction; workflowId: string; stepId: string; existingApprovalId: string | null }> {
   const { conversation, signalType } = input.signal;
   const dedupeKey = `client_flow:intercom:conversation:${conversation.region}:${conversation.conversationId}:${signalType}`;
@@ -710,9 +714,9 @@ async function createIntercomClientFlowApproval(input: {
     confidence: input.signal.confidence,
     riskLevel: "high",
     normalizedTarget: conversation.conversationId,
-    metadata: { operatorKey: "client_flow", intercomRegion: conversation.region, intercomConversationId: conversation.conversationId, payloadIdentity: `${conversation.region}:${conversation.conversationId}:${signalType}`, signalType },
+    metadata: { operatorKey: "client_flow", intercomRegion: conversation.region, intercomConversationId: conversation.conversationId, payloadIdentity: `${conversation.region}:${conversation.conversationId}:${signalType}`, signalType, memoryDependencies: input.workspaceMemory.dependencies },
   }, { policySettings: input.policySettings });
-  const context = buildClientFlowContext({ provider: "intercom", messageId: conversation.conversationId, threadId: conversation.conversationId, customerName: conversation.contactName, company: conversation.companyName, subject: conversation.subjectOrPreview, request: conversation.parts.map((part) => part.preview ?? "").filter(Boolean).slice(-3).join(" "), signalType, confidence: input.signal.confidence, supportingOperators: [] });
+  const context = buildClientFlowContext({ provider: "intercom", messageId: conversation.conversationId, threadId: conversation.conversationId, customerName: conversation.contactName, company: conversation.companyName, subject: conversation.subjectOrPreview, request: conversation.parts.map((part) => part.preview ?? "").filter(Boolean).slice(-3).join(" "), signalType, confidence: input.signal.confidence, supportingOperators: [], workspaceMemory: input.workspaceMemory });
   const workflow = await prepareExternalClientFlowWorkflow({ supabase: input.supabase, workspaceId: input.workspaceId, provider: "intercom", sourceId: conversation.conversationId, threadId: conversation.conversationId, subject: conversation.subjectOrPreview ?? "", snippet: conversation.parts.map((part) => part.preview ?? "").filter(Boolean).slice(-3).join(" "), signalType, priority: context.priority, confidence: input.signal.confidence, action, context });
   if (workflow.existingApprovalId) return { runId: "", approvalId: workflow.existingApprovalId, action, workflowId: workflow.workflowId, stepId: workflow.stepId, existingApprovalId: workflow.existingApprovalId };
   const runId = operatorRuntimeId("oprun-client-flow-intercom");
@@ -891,6 +895,7 @@ export async function scanClientFlowSignals(input: {
       ? normalizeEmail((gmailCredential as StoredConnectorCredential).provider_email)
       : normalizeEmail((microsoftCredential as StoredMicrosoftCredential).provider_email);
     const connectorTruth = await getConnectorTruth({ workspaceId, supabase });
+    await materializeConnectorObservations({ supabase, workspaceId, observations: connectorObservationsFromTruth(connectorTruth, "client_flow"), trigger: "client_flow_scan" });
     const hubspotConnected = connectorTruth.some((connector) =>
       connector.connectorKey === "hubspot" && connector.executable === true);
     const trelloConnected = connectorTruth.some((connector) =>
@@ -915,6 +920,7 @@ export async function scanClientFlowSignals(input: {
 
     const workspacePolicy = await loadWorkspacePolicySettings({ supabase, workspaceId });
     const policySettings = await loadPolicyWorkspaceSettings({ supabase, workspaceId });
+    const workspaceMemory = await loadGovernedMemoryContext({ supabase, workspaceId, operatorKey: "client_flow" });
     const workspaceRow = await supabase.from("os_workspaces").select("name").eq("id", workspaceId).maybeSingle();
     const signoffName = (typeof workspaceRow.data?.name === "string" && workspaceRow.data.name.trim()) ? workspaceRow.data.name.trim() : "The team";
 
@@ -1079,7 +1085,7 @@ export async function scanClientFlowSignals(input: {
         skipped.push({ messageId: signal.message.id, subject: signal.message.subject, from: signal.message.from, reason: "canonical_candidate_unavailable", dedupeKey: dedupe.dedupeKey });
         continue;
       }
-      const clientFlowContext = buildClientFlowContext({ provider: emailConnector, messageId: signal.message.id, threadId: signal.message.threadId, customerEmail: signal.message.fromEmail, customerName: personalization.contactName, subject: signal.message.subject, request: signal.message.bodyText || signal.message.snippet, receivedAt: signal.message.date || signal.message.internalDate, signalType: signal.signalType, matchedSignals: signal.matchedKeywords, confidence: signal.confidence, supportingOperators: canonical.candidate.supportingOperators, delivery: { projectId: workspacePolicy.trello.defaultBoardId, projectName: workspacePolicy.trello.defaultBoardName, handoffStatus: workspacePolicy.trello.defaultBoardId ? "project_context_available" : "project_context_missing" } });
+      const clientFlowContext = buildClientFlowContext({ provider: emailConnector, messageId: signal.message.id, threadId: signal.message.threadId, customerEmail: signal.message.fromEmail, customerName: personalization.contactName, subject: signal.message.subject, request: signal.message.bodyText || signal.message.snippet, receivedAt: signal.message.date || signal.message.internalDate, signalType: signal.signalType, matchedSignals: signal.matchedKeywords, confidence: signal.confidence, supportingOperators: canonical.candidate.supportingOperators, delivery: { projectId: workspacePolicy.trello.defaultBoardId, projectName: workspacePolicy.trello.defaultBoardName, handoffStatus: workspacePolicy.trello.defaultBoardId ? "project_context_available" : "project_context_missing" }, workspaceMemory });
 
       const slackEnabled = Boolean(workspacePolicy.slack.slackNotificationsEnabled && workspacePolicy.slack.slackApprovalAlertsEnabled);
       const preparedActions = ["send_client_email", ...(trelloPrepared ? ["create_trello_task"] : []), ...(slackEnabled ? ["slack_internal_alert"] : [])];
@@ -1109,12 +1115,13 @@ export async function scanClientFlowSignals(input: {
         rejectedNameCandidates: personalization.rejectedNameCandidates,
         clientFlowContext: publicClientFlowContext(clientFlowContext),
         businessContext: clientFlowContext.businessContext,
+        memoryDependencies: clientFlowContext.workspaceMemory.dependencies,
         preparationState: clientFlowContext.preparationState,
         priority: clientFlowContext.priority,
         priorityReasons: clientFlowContext.priorityReasons,
       };
 
-      const clientFlowWorkflow = await ensureClientFlowWorkflow({ supabase, workspaceId, signalId: canonical.signalId, candidate: canonical.candidate, entityId: signal.message.threadId || signal.message.id, action: prepareAction({ workspaceId, operatorKey: "client_flow", actionType: emailConnector === "microsoft" ? "send_email" : "send_email", connectorKey: emailConnector, capability: "email.send_after_approval", title: approvalTitleFor(signal.signalType), summary: `Prepare an approval-gated Client Flow update for ${signal.message.subject || "the customer request"}.`, input: { to: signal.message.fromEmail, subject: draft.subject, body: draft.body, subjectType: "customer_thread", subjectId: signal.message.threadId || signal.message.id, businessContext: clientFlowContext.businessContext }, dedupeKey: dedupe.dedupeKey, source: `${emailConnector}_scan`, destinationType: "customer", confidence: signal.confidence, riskLevel: "high", normalizedTarget: signal.message.threadId || signal.message.id, metadata: { clientFlowContext: publicClientFlowContext(clientFlowContext), preparationState: clientFlowContext.preparationState } }, { policySettings }), context: clientFlowContext });
+      const clientFlowWorkflow = await ensureClientFlowWorkflow({ supabase, workspaceId, signalId: canonical.signalId, candidate: canonical.candidate, entityId: signal.message.threadId || signal.message.id, action: prepareAction({ workspaceId, operatorKey: "client_flow", actionType: emailConnector === "microsoft" ? "send_email" : "send_email", connectorKey: emailConnector, capability: "email.send_after_approval", title: approvalTitleFor(signal.signalType), summary: `Prepare an approval-gated Client Flow update for ${signal.message.subject || "the customer request"}.`, input: { to: signal.message.fromEmail, subject: draft.subject, body: draft.body, subjectType: "customer_thread", subjectId: signal.message.threadId || signal.message.id, businessContext: clientFlowContext.businessContext }, dedupeKey: dedupe.dedupeKey, source: `${emailConnector}_scan`, destinationType: "customer", confidence: signal.confidence, riskLevel: "high", normalizedTarget: signal.message.threadId || signal.message.id, metadata: { clientFlowContext: publicClientFlowContext(clientFlowContext), memoryDependencies: clientFlowContext.workspaceMemory.dependencies, preparationState: clientFlowContext.preparationState } }, { policySettings }), context: clientFlowContext });
       await createClientFlowSupportingHandoffs({ supabase, workspaceId, parentWorkflowId: clientFlowWorkflow.workflowId, signalId: canonical.signalId, candidate: canonical.candidate, context: clientFlowContext });
       if (clientFlowWorkflow.existingApprovalId) {
         skipped.push({ messageId: signal.message.id, subject: signal.message.subject, from: signal.message.from, reason: "existing_client_flow_workflow", dedupeKey: dedupe.dedupeKey });
@@ -1328,7 +1335,7 @@ export async function scanClientFlowSignals(input: {
       const credential = await getStoredZendeskCredential(workspaceId, supabase);
       const subdomain = typeof credential?.metadata?.subdomain === "string" ? credential.metadata.subdomain : null;
       if (!subdomain) { zendeskSkipped += 1; continue; }
-      const createdZendesk = await createZendeskClientFlowApproval({ supabase, workspaceId, readiness, policySettings, signal, subdomain });
+      const createdZendesk = await createZendeskClientFlowApproval({ supabase, workspaceId, readiness, policySettings, signal, subdomain, workspaceMemory });
       if (createdZendesk.existingApprovalId) { zendeskSkipped += 1; continue; }
       zendeskActionCount += 1;
       setDedupeReason(handled, dedupeKey, "existing_pending_approval");
@@ -1339,7 +1346,7 @@ export async function scanClientFlowSignals(input: {
       const dedupeKey = `client_flow:intercom:conversation:${signal.conversation.region}:${signal.conversation.conversationId}:${signal.signalType}`;
       const duplicateReason = findDuplicateReason({ dedupeKey, contactEmail: "", normalizedSubject: signal.conversation.subjectOrPreview ?? signal.conversation.conversationId, sourceProvider: "gmail", operatorKey: "client_flow", gmailMessageId: "" }, handled);
       if (duplicateReason || !intercomExecutable) { intercomSkipped += 1; continue; }
-      const createdIntercom = await createIntercomClientFlowApproval({ supabase, workspaceId, readiness, policySettings, signal });
+      const createdIntercom = await createIntercomClientFlowApproval({ supabase, workspaceId, readiness, policySettings, signal, workspaceMemory });
       if (createdIntercom.existingApprovalId) { intercomSkipped += 1; continue; }
       intercomActionCount += 1;
       setDedupeReason(handled, dedupeKey, "existing_pending_approval");

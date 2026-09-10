@@ -45,6 +45,7 @@ import { recordObservedWorkflowOutcome } from "@/lib/workflows/store";
 import { observeRevenueDealState, observeRevenueFollowUp } from "@/lib/workflows/outcome-observers";
 import { createRevenueSupportingHandoff, ensureRevenueWorkflow, linkRevenueApprovalWorkflow } from "@/lib/operators/revenue/workflow";
 import { returnSupportingOutcome } from "@/lib/workflows/workforce";
+import { connectorObservationsFromTruth, materializeConnectorObservations } from "@/lib/memory/materialize";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 type RevenueScanSourceMode = "scheduled" | "manual" | "event_ready";
@@ -1294,6 +1295,7 @@ export async function scanRevenueOpportunities(input: {
       ? normalizeEmail((gmailCredential as StoredConnectorCredential).provider_email)
       : normalizeEmail((microsoftCredential as StoredMicrosoftCredential).provider_email);
     const connectorTruth = await getConnectorTruth({ workspaceId, supabase });
+    await materializeConnectorObservations({ supabase, workspaceId, observations: connectorObservationsFromTruth(connectorTruth, "revenue"), trigger: "revenue_scan" });
     const hubspotConnected = connectorTruth.some((connector) =>
       connector.connectorKey === "hubspot" && connector.executable === true
     );
@@ -1507,6 +1509,7 @@ export async function scanRevenueOpportunities(input: {
         directSignals: opportunity.directSignals,
         requestSignals: opportunity.requestSignals,
         contextSignals: opportunity.contextSignals,
+        workspaceMemory: companyGraphContext.governedMemory,
       });
       const canonical = await persistCanonicalRevenueSignal({
         supabase,
@@ -1636,6 +1639,7 @@ export async function scanRevenueOpportunities(input: {
         revenueCrmContext: revenueCrmContextMeta,
         commercialContext: publicRevenueContext(commercialContext),
         businessContext: commercialContext.businessContext,
+        memoryDependencies: companyGraphContext.governedMemory.dependencies,
         preparationState: commercialContext.preparationState,
         contextQuality: {
           contact: commercialContext.contact.reliability,

@@ -1,4 +1,5 @@
 import type { PolicyBusinessContext, PolicyContextValue } from "@/lib/policies/types";
+import type { GovernedMemoryContext } from "@/lib/memory/reader";
 
 export type SupportPreparationState =
   | "ready_to_answer"
@@ -34,6 +35,7 @@ export type SupportContext = {
   priorityReasons: string[];
   preparationState: SupportPreparationState;
   businessContext: PolicyBusinessContext;
+  workspaceMemory: GovernedMemoryContext;
 };
 
 type SupportContextInput = {
@@ -53,6 +55,7 @@ type SupportContextInput = {
   slaPriority?: string | null;
   priorReplies?: string[];
   productArea?: string | null;
+  workspaceMemory?: GovernedMemoryContext;
 };
 
 function safeText(value: unknown, max: number): string | null {
@@ -136,6 +139,7 @@ export function buildSupportContext(input: SupportContextInput): SupportContext 
     priorityReasons: priority.reasons,
     preparationState: preparationFor(input, text, priority.score),
     businessContext: businessContextFor(input),
+    workspaceMemory: input.workspaceMemory ?? { items: [], dependencies: [], keysUsed: [], attentionCount: 0 },
   };
 }
 
@@ -171,5 +175,6 @@ export function publicSupportContext(context: SupportContext): Record<string, un
       ticket: context.ticket.subject || context.ticket.request ? "observed" : "missing",
       service: context.service.slaPriority || context.service.priorReplies.length ? "observed" : "missing",
     },
+    workspaceMemory: context.workspaceMemory,
   };
 }

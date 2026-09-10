@@ -1,6 +1,8 @@
 import type { PolicyBusinessContext, PolicyContextReliability } from "@/lib/policies/types";
 import type { RevenueCrmCompany, RevenueCrmOpportunity, RevenueCrmPerson } from "@/lib/operators/revenue/crm";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { loadGovernedMemoryContext } from "@/lib/memory/reader";
+import type { GovernedMemoryContext } from "@/lib/memory/reader";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
@@ -25,6 +27,7 @@ export type RevenueCompanyGraphContext = {
   recentSuccessfulApprovalLearnings: RevenueMemoryExample[];
   recentRejectionLearnings: RevenueMemoryExample[];
   memoryKeysUsed: string[];
+  governedMemory: GovernedMemoryContext;
 };
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -54,11 +57,12 @@ function compactExample(row: Record<string, unknown>): RevenueMemoryExample {
 
 export async function loadRevenueCompanyGraphContext(input: { supabase: SupabaseAdmin; workspaceId: string }): Promise<RevenueCompanyGraphContext> {
   const memoryKeysUsed = new Set<string>();
-  const [workspaceRes, settingsRes, snapshotRes, memoryRes] = await Promise.all([
+  const [workspaceRes, settingsRes, snapshotRes, memoryRes, governedMemory] = await Promise.all([
     input.supabase.from("os_workspaces").select("id,name").eq("id", input.workspaceId).maybeSingle(),
     input.supabase.from("os_workspace_settings").select("approval_policy,notifications").eq("workspace_id", input.workspaceId).maybeSingle(),
     input.supabase.from("os_state_snapshots").select("state").eq("workspace_id", input.workspaceId).maybeSingle(),
     input.supabase.from("os_operator_memory").select("id,memory_type,title,content,metadata,approval_status,created_at").eq("workspace_id", input.workspaceId).eq("operator_key", "revenue").order("created_at", { ascending: false }).limit(40),
+    loadGovernedMemoryContext({ supabase: input.supabase, workspaceId: input.workspaceId, operatorKey: "revenue" }),
   ]);
   const snapshotState = asRecord(snapshotRes.data?.state);
   const onboarding = asRecord(snapshotState.onboarding);
@@ -79,6 +83,7 @@ export async function loadRevenueCompanyGraphContext(input: { supabase: Supabase
   if (settingsRes.data) memoryKeysUsed.add("os_workspace_settings:approval_policy");
   if (snapshotRes.data) memoryKeysUsed.add("os_state_snapshots:onboarding_profile");
   if (workspaceRes.data) memoryKeysUsed.add("os_workspaces:name");
+  governedMemory.keysUsed.forEach((key) => memoryKeysUsed.add(key));
   const approvedExamples = approvedRows.slice(0, 5).map(compactExample);
   const rejectedExamples = rejectedRows.slice(0, 5).map(compactExample);
   const profile = asRecord(onboarding.profile);
@@ -88,7 +93,7 @@ export async function loadRevenueCompanyGraphContext(input: { supabase: Supabase
   const toneOfVoice = firstString(onboarding.toneOfVoice, brand.toneOfVoice, memoryMetadata.find((item) => asString(item.toneOfVoice))?.toneOfVoice);
   const pricingRules = [...asStringArray(onboarding.pricingRules), ...asStringArray(profile.pricingRules), ...memoryMetadata.flatMap((item) => asStringArray(item.pricingRules))].slice(0, 8);
   const bannedClaims = [...asStringArray(approvalPolicy.bannedClaims), ...asStringArray(profile.bannedClaims), ...memoryMetadata.flatMap((item) => asStringArray(item.bannedClaims))].slice(0, 12);
-  return { workspaceId: input.workspaceId, companyName, website, offerSummary, toneOfVoice, pricingRules, policies: { approvalPolicy, bannedClaims }, approvedExamples, rejectedExamples, recentSuccessfulApprovalLearnings: approvedExamples, recentRejectionLearnings: rejectedExamples, memoryKeysUsed: Array.from(memoryKeysUsed).slice(0, 30) };
+  return { workspaceId: input.workspaceId, companyName, website, offerSummary, toneOfVoice, pricingRules, policies: { approvalPolicy, bannedClaims }, approvedExamples, rejectedExamples, recentSuccessfulApprovalLearnings: approvedExamples, recentRejectionLearnings: rejectedExamples, memoryKeysUsed: Array.from(memoryKeysUsed).slice(0, 30), governedMemory };
 }
 
 export type RevenuePreparationState =
@@ -135,6 +140,7 @@ export type RevenueContext = {
   priorityReasons: string[];
   supportingOperators: string[];
   businessContext: PolicyBusinessContext;
+  workspaceMemory?: GovernedMemoryContext;
 };
 
 function value<T>(input: T | null | undefined, reliability: PolicyContextReliability): { value: T | null; reliability: PolicyContextReliability } {
@@ -185,6 +191,7 @@ export function buildRevenueContext(input: {
   directSignals?: string[];
   requestSignals?: string[];
   contextSignals?: string[];
+  workspaceMemory?: GovernedMemoryContext;
 }): RevenueContext {
   const person = input.person ?? null;
   const company = input.company ?? null;
@@ -236,6 +243,7 @@ export function buildRevenueContext(input: {
     priorityReasons,
     supportingOperators: feasibilityDependency ? ["operations"] : [],
     businessContext,
+    workspaceMemory: input.workspaceMemory,
   };
 }
 
@@ -251,5 +259,6 @@ export function publicRevenueContext(context: RevenueContext): Record<string, un
     priority: context.priority,
     priorityReasons: context.priorityReasons,
     supportingOperators: context.supportingOperators,
+    workspaceMemory: context.workspaceMemory,
   };
 }

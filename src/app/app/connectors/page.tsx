@@ -1242,7 +1242,7 @@ export default function ConnectorsPage() {
       {/* Add connector modal */}
       {addOpen && (
         <div className="scrim" onClick={() => returnToOnboardingOrClose(() => { setAddOpen(false); selectSetupConnector(null); })}>
-          <div className="modal wide connector-finder-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+          <div className="modal wide connector-finder-modal" data-view={upgradeOpen ? "upgrade-gate" : setupConnector ? "connector-setup" : "connector-picker"} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             {!setupConnector ? (
               <>
                 <div className="modal-head">
@@ -1303,23 +1303,31 @@ export default function ConnectorsPage() {
               // stacking a second independent dialog on top of it. One
               // foreground dialog, one focus trap, no z-index competition.
               <>
-                <div className="modal-head">
+                <div className="modal-head upgrade-gate-head">
                   <div className="tt"><h3>{trialEligible ? "Start your 3-day trial" : "Choose a plan to connect real accounts"}</h3></div>
                   <button className="btn btn-ghost btn-sm" onClick={() => setUpgradeOpen(false)}>Back</button>
                 </div>
-                <div className="modal-body" style={{ display: "grid", gap: 12 }}>
-                  <p style={{ color: "var(--text-dim)", fontSize: 13, lineHeight: 1.6 }}>
+                <div className="modal-body upgrade-gate-body">
+                  <div className="upgrade-gate-kicker"><span>Real account access</span><span className="upgrade-gate-state">{trialEligible ? "Trial available" : "Plan required"}</span></div>
+                  <p className="upgrade-gate-message">
                     {trialEligible
                       ? "Connect real systems and activate your workforce when you're ready."
                       : entitlements.trialEndsAt
                         ? "Your trial has ended, so real connections need a plan to continue."
                         : "This workspace's trial has already been used, so real connections need a plan to continue."}
                   </p>
-                  <div style={{ borderRadius: 10, background: "rgba(77,232,225,0.06)", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.2)", padding: "10px 12px", fontSize: 12.5, color: "#9DEFEA" }}>
-                    {trialEligible ? "Your 3-day Foundation trial includes 3 operators and 3 connected systems - no card required." : "Foundation includes 3 operators and 3 connected systems."}
+                  <div className="upgrade-gate-plan">
+                    <div className="upgrade-gate-plan-head">
+                      <span className="upgrade-gate-plan-mark" aria-hidden="true">A</span>
+                      <span><small>Auterim Foundation</small><strong>{trialEligible ? "A controlled start for your workforce" : "Reconnect your workspace"}</strong></span>
+                    </div>
+                    <div className="upgrade-gate-plan-copy">
+                      {trialEligible ? "Your 3-day Foundation trial includes 3 operators and 3 connected systems - no card required." : "Foundation includes 3 operators and 3 connected systems."}
+                    </div>
+                    <div className="upgrade-gate-plan-facts"><span>3 operators</span><span>3 connected systems</span><span>Approval-first controls</span></div>
                   </div>
                 </div>
-                <div className="modal-foot">
+                <div className="modal-foot upgrade-gate-foot">
                   <button type="button" className="btn btn-ghost btn-sm" onClick={() => setUpgradeOpen(false)}>{trialEligible ? "Not now" : "View plans"}</button>
                   {trialEligible ? (
                     <button type="button" className="btn btn-primary btn-sm" onClick={() => void startTrialAndContinue()} disabled={startingTrial}>{startingTrial ? "Starting…" : "Start 3-day trial"}</button>

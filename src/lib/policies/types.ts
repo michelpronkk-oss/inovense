@@ -1,5 +1,6 @@
 import type { ActionType } from "@/lib/actions/types";
 import type { Capability } from "@/lib/connectors/capabilities";
+import type { MemoryDependency } from "@/lib/memory/model";
 
 export type PolicyDecisionKind = "allow_auto" | "approval_required" | "draft_only" | "blocked";
 export type PolicyRiskLevel = "low" | "medium" | "high";
@@ -90,6 +91,8 @@ export type PolicyEvidence = {
   } | null;
   requiredApproverRoles: string[];
   approvalExpiresAfterMinutes?: number | null;
+  memoryDependencies?: MemoryDependency[];
+  memoryFingerprint?: string | null;
 };
 
 export type DestinationType = "internal" | "external" | "customer" | "crm" | "project_tool" | "system";

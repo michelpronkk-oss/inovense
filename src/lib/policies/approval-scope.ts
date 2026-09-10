@@ -1,4 +1,5 @@
 import { businessContextFingerprint } from "@/lib/policies/context";
+import { memoryDependencyFingerprint, type MemoryDependency } from "@/lib/memory/model";
 import type { PolicyDecision, PolicyInput } from "@/lib/policies/types";
 
 export type ApprovalScope = {
@@ -22,6 +23,8 @@ export type ApprovalScope = {
   matchedPolicyRuleIds: string[];
   policyVersion: number;
   contextFingerprint: string | null;
+  memoryDependencies: MemoryDependency[];
+  memoryFingerprint: string | null;
 };
 
 /** Stable identity for the exact customer-facing payload a reviewer saw. */
@@ -36,6 +39,7 @@ export function emailPayloadIdentity(subject: string, body: string): string {
 }
 
 export function buildApprovalScope(input: PolicyInput, decision: PolicyDecision): ApprovalScope {
+  const memoryDependencies = decision.evidence.memoryDependencies ?? (Array.isArray(input.metadata?.memoryDependencies) ? input.metadata.memoryDependencies as MemoryDependency[] : []);
   return {
     workspaceId: input.workspaceId,
     operatorId: input.operatorKey,
@@ -57,6 +61,8 @@ export function buildApprovalScope(input: PolicyInput, decision: PolicyDecision)
     matchedPolicyRuleIds: decision.matchedRuleIds,
     policyVersion: decision.policyVersion,
     contextFingerprint: businessContextFingerprint(input.businessContext),
+    memoryDependencies,
+    memoryFingerprint: decision.evidence.memoryFingerprint ?? memoryDependencyFingerprint(memoryDependencies),
   };
 }
 

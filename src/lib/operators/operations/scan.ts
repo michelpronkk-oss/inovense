@@ -39,10 +39,12 @@ import { normalizeDriveSignal, normalizeProjectTaskSignal, normalizeZendeskSigna
 import { ingestSignalBatch } from "@/lib/signals/store";
 import type { SignalEvent } from "@/lib/signals/types";
 import { buildOperationsContext, operationsActionMetadata, type OperationsContext } from "@/lib/operators/operations/context";
+import { loadGovernedMemoryContext } from "@/lib/memory/reader";
 import { buildOperationsCandidate, ensureOperationsWorkflow, linkOperationsApprovalWorkflow, persistOperationsCandidate } from "@/lib/operators/operations/workflow";
 import { observeOperationsNoProgress, observeOperationsProviderState, type OperationsProviderSnapshot } from "@/lib/workflows/outcome-observers";
 import { recordObservedWorkflowOutcome } from "@/lib/workflows/store";
 import { returnSupportingOutcome } from "@/lib/workflows/workforce";
+import { connectorObservationsFromTruth, materializeConnectorObservations } from "@/lib/memory/materialize";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 type OperationsScanSourceMode = "scheduled" | "manual" | "event_ready";
@@ -422,7 +424,9 @@ export async function scanOperationsSignals(input: {
     getConnectorTruth({ workspaceId, supabase }),
     loadWorkspacePolicySettings({ supabase, workspaceId }),
   ]);
+  await materializeConnectorObservations({ supabase, workspaceId, observations: connectorObservationsFromTruth(truth, "operations"), trigger: "operations_scan" });
   const policySettings = await loadPolicyWorkspaceSettings({ supabase, workspaceId });
+  const workspaceMemory = await loadGovernedMemoryContext({ supabase, workspaceId, operatorKey: "operations" });
   const isConnected = (key: string) => truth.some((c) =>
     c.connectorKey === key
     && (c.status === "healthy" || c.status === "connected")
@@ -501,7 +505,7 @@ export async function scanOperationsSignals(input: {
         const signalType = overdue ? "overdue_card" : "stuck_card";
         const dedupeKey = `operations:asana:task:${candidate.gid}:${signalType}:${new Date().toISOString().slice(0, 10)}`;
         if (handled.has(dedupeKey)) return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: "The Asana signal was already handled for today.", sourceMode, cardsChecked: tasks.length, signalsFound: 1, approvalsCreated: 0, outcomesObserved: asanaOutcomes.observed, setup, skipped: [{ reason: handled.get(dedupeKey) ?? "already_handled", count: 1 }] } };
-        const asanaContext = buildOperationsContext({ provider: "asana", project: { id: asanaProjectId, name: "Selected Asana project" }, task: { id: candidate.gid, title: candidate.name, status: candidate.completed ? "completed" : "open", assignee: candidate.assignee?.name ?? null, dueAt: candidate.due_on ?? candidate.due_at ?? null, lastActivityAt: candidate.modified_at ?? null }, signalType, score: overdue ? 6 : 5, priorityReasons: [overdue ? "The task is overdue." : "The task has had no recent activity."], supportingOperators: [] });
+        const asanaContext = buildOperationsContext({ provider: "asana", project: { id: asanaProjectId, name: "Selected Asana project" }, task: { id: candidate.gid, title: candidate.name, status: candidate.completed ? "completed" : "open", assignee: candidate.assignee?.name ?? null, dueAt: candidate.due_on ?? candidate.due_at ?? null, lastActivityAt: candidate.modified_at ?? null }, signalType, score: overdue ? 6 : 5, priorityReasons: [overdue ? "The task is overdue." : "The task has had no recent activity."], supportingOperators: [], workspaceMemory });
         const preparedAsanaAction = prepareAction({ workspaceId, operatorKey: "operations", actionType: "create_asana_task", connectorKey: "asana", capability: "pm.tasks.create_after_approval", title: "Create an Asana follow-up task", summary: `Prepare a follow-up for ${candidate.name} because it is ${overdue ? "overdue" : "stale"}.`, input: { projectId: asanaProjectId, name: `Follow up: ${candidate.name}`, notes: `Auterim detected ${overdue ? "an overdue" : "a stale"} task during Operations monitoring. Review the source task before execution.`, dueOn: null, businessContext: asanaContext.businessContext }, dedupeKey, source: "asana_scan", destinationType: "project_tool", normalizedTarget: candidate.gid, metadata: { asanaProjectId, asanaTaskId: candidate.gid, payloadIdentity: `${candidate.gid}:${signalType}`, signalType, ...operationsActionMetadata(asanaContext, null) } }, { policySettings });
         const canonical = await prepareCanonicalOperationsWork({ supabase, workspaceId, provider: "asana", sourceId: candidate.gid, title: candidate.name, status: candidate.completed ? "completed" : "open", dueAt: candidate.due_on ?? candidate.due_at ?? null, updatedAt: candidate.modified_at ?? null, signalType, decision: { confidence: "high", priorityReasons: asanaContext.priorityReasons }, context: asanaContext, action: preparedAsanaAction });
         if (canonical.existingApprovalId) return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: "The Asana blocker is already awaiting review.", sourceMode, cardsChecked: tasks.length, signalsFound: 1, approvalsCreated: 0, outcomesObserved: asanaOutcomes.observed, setup, skipped: [{ reason: "existing_pending_approval", count: 1 }] } };
@@ -540,7 +544,7 @@ export async function scanOperationsSignals(input: {
         const signalType: OperationsSignalType = explicitBlocked ? "blocked_work" : candidate.dueAt && new Date(candidate.dueAt).getTime() < now ? "overdue_card" : "stuck_card";
         const dedupeKey = `operations:jira:issue:${candidate.issueKey}:${signalType}:${new Date().toISOString().slice(0, 10)}`;
         if (handled.has(dedupeKey)) return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: "The Jira signal was already handled for today.", sourceMode, cardsChecked: issues.length, signalsFound: 1, approvalsCreated: 0, outcomesObserved: jiraOutcomes.observed, setup, skipped: [{ reason: handled.get(dedupeKey) ?? "already_handled", count: 1 }] } };
-        const jiraContext = buildOperationsContext({ provider: "jira", project: { id: project.id, name: project.name, priority: candidate.priority, status: "active" }, task: { id: candidate.issueKey, title: candidate.summary, status: candidate.status, assignee: candidate.assigneeAccountId, dueAt: candidate.dueAt, labels: candidate.labels, blockerIndicators: explicitBlocked ? [signalType] : [], lastActivityAt: candidate.updatedAt }, signalType, score: explicitBlocked ? 7 : 5, priorityReasons: [explicitBlocked ? "A blocker label or blocker phrase is present." : `${signalType.replace("_", " ")} requires review.`] });
+        const jiraContext = buildOperationsContext({ provider: "jira", project: { id: project.id, name: project.name, priority: candidate.priority, status: "active" }, task: { id: candidate.issueKey, title: candidate.summary, status: candidate.status, assignee: candidate.assigneeAccountId, dueAt: candidate.dueAt, labels: candidate.labels, blockerIndicators: explicitBlocked ? [signalType] : [], lastActivityAt: candidate.updatedAt }, signalType, score: explicitBlocked ? 7 : 5, priorityReasons: [explicitBlocked ? "A blocker label or blocker phrase is present." : `${signalType.replace("_", " ")} requires review.`], workspaceMemory });
         const prepared = prepareAction({ workspaceId, operatorKey: "operations", actionType: "add_jira_comment", connectorKey: "jira", capability: "pm.comments.write_after_approval", title: "Add a Jira blocker follow-up comment", summary: `Prepare a follow-up for ${candidate.issueKey} because it is ${signalType.replace("_", " ")}.`, input: { issueKey: candidate.issueKey, text: `Auterim detected ${signalType.replace("_", " ")} during Operations monitoring. Review the issue and confirm the next step.`, businessContext: jiraContext.businessContext }, dedupeKey, source: "jira_scan", destinationType: "project_tool", normalizedTarget: candidate.issueKey, metadata: { jiraCloudId: cloudId, jiraProjectId: project.id, jiraIssueKey: candidate.issueKey, payloadIdentity: `${candidate.issueKey}:${signalType}`, signalType, ...operationsActionMetadata(jiraContext, null) } }, { policySettings });
         const canonical = await prepareCanonicalOperationsWork({ supabase, workspaceId, provider: "jira", sourceId: candidate.issueKey, title: candidate.summary, status: candidate.status, priority: candidate.priority, dueAt: candidate.dueAt, updatedAt: candidate.updatedAt, signalType, decision: { confidence: "high", priorityReasons: jiraContext.priorityReasons }, context: jiraContext, action: prepared });
         if (canonical.existingApprovalId) return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: "The Jira blocker is already awaiting review.", sourceMode, cardsChecked: issues.length, signalsFound: 1, approvalsCreated: 0, outcomesObserved: jiraOutcomes.observed, setup, skipped: [{ reason: "existing_pending_approval", count: 1 }] } };
@@ -784,6 +788,7 @@ export async function scanOperationsSignals(input: {
         signalType: decision.signalType,
         score: decision.score,
         priorityReasons: decision.priorityReasons,
+        workspaceMemory,
       });
 
       // Prepared actions through the Shared Action Layer. Both stay approval-gated.

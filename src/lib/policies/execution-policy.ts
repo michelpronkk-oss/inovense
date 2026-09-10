@@ -7,6 +7,8 @@ import { getOperatorDefinition } from "@/lib/operators/registry";
 import { getWorkspaceExecutionEligibility } from "@/lib/os/execution-eligibility";
 import { evaluatePolicy } from "@/lib/policies/evaluate";
 import { loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
+import { loadCurrentMemoryDependencies } from "@/lib/memory/reader";
+import { memoryDependencyFingerprint, type MemoryDependency } from "@/lib/memory/model";
 import type { PolicyDecision, PolicyInput } from "@/lib/policies/types";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
@@ -34,6 +36,7 @@ function hashAction(input: PolicyInput): string {
     subjectType: input.subjectType ?? null,
     subjectId: input.subjectId ?? null,
     contextFingerprint: businessContextFingerprint(input.businessContext),
+    memoryDependencies: input.metadata?.memoryDependencies ?? [],
     asanaProjectId: input.metadata?.asanaProjectId ?? null,
     asanaTaskId: input.metadata?.asanaTaskId ?? null,
     jiraCloudId: input.metadata?.jiraCloudId ?? null,
@@ -48,7 +51,7 @@ function hashAction(input: PolicyInput): string {
   return crypto.createHash("sha256").update(canonical).digest("hex");
 }
 
-function deny(input: PolicyInput, reasonCode: string, reason: string, actionHash: string, pause = false): RuntimePolicyDecision {
+function deny(input: PolicyInput, reasonCode: string, reason: string, actionHash: string, pause = false, memoryDependencies: MemoryDependency[] = []): RuntimePolicyDecision {
   return {
     decision: "blocked", executionDecision: pause ? "pause_operator" : "deny", reasonCode, reason,
     riskLevel: input.riskLevel, matchedRuleId: reasonCode, matchedPolicyIds: [reasonCode],
@@ -68,6 +71,8 @@ function deny(input: PolicyInput, reasonCode: string, reason: string, actionHash
       threshold: null,
       requiredApproverRoles: [],
       approvalExpiresAfterMinutes: null,
+      memoryDependencies,
+      memoryFingerprint: memoryDependencyFingerprint(memoryDependencies),
     },
   };
 }
@@ -147,31 +152,43 @@ async function persistIntent(input: { supabase: SupabaseAdmin; policyInput: Poli
  */
 export async function evaluateExecutionPolicy(input: { supabase?: SupabaseAdmin; policyInput: PolicyInput; approvalId?: string | null; persistIntent?: boolean }): Promise<RuntimePolicyDecision> {
   const supabase = input.supabase ?? createSupabaseAdmin();
-  const actionHash = hashAction(input.policyInput);
+  const requestedDependencies = Array.isArray(input.policyInput.metadata?.memoryDependencies) ? input.policyInput.metadata.memoryDependencies as MemoryDependency[] : [];
+  let policyInput = input.policyInput;
+  let memoryDependencies = requestedDependencies;
+  try {
+    memoryDependencies = await loadCurrentMemoryDependencies({ supabase, workspaceId: input.policyInput.workspaceId, dependencies: requestedDependencies });
+    policyInput = { ...input.policyInput, metadata: { ...(input.policyInput.metadata ?? {}), memoryDependencies } };
+  } catch {
+    if (requestedDependencies.length) return deny(input.policyInput, "memory_context_unavailable", "Execution was blocked because policy-relevant business context could not be verified.", hashAction(input.policyInput), false, requestedDependencies);
+  }
+  const actionHash = hashAction(policyInput);
   let result: RuntimePolicyDecision;
   try {
-    const action = getActionDefinition(input.policyInput.actionType as ActionType);
-    if (!action) return deny(input.policyInput, "unsupported_action", "This action is not implemented by an authorized adapter.", actionHash);
-    if (action.permanentlyBlocked || !action.allowedExecutionAdapters.includes(input.policyInput.connectorKey)) {
-      return deny(input.policyInput, "unsupported_connector_write", "This connector cannot perform this write action.", actionHash);
+    const action = getActionDefinition(policyInput.actionType as ActionType);
+    if (!action) return deny(policyInput, "unsupported_action", "This action is not implemented by an authorized adapter.", actionHash, false, memoryDependencies);
+    if (action.permanentlyBlocked || !action.allowedExecutionAdapters.includes(policyInput.connectorKey)) {
+      return deny(policyInput, "unsupported_connector_write", "This connector cannot perform this write action.", actionHash, false, memoryDependencies);
     }
-    if (!operatorSupportsAction(input.policyInput.operatorKey, input.policyInput.actionType)) {
-      return deny(input.policyInput, "operator_action_unsupported", "This operator is not allowed to perform that action.", actionHash);
+    if (!operatorSupportsAction(policyInput.operatorKey, policyInput.actionType)) {
+      return deny(policyInput, "operator_action_unsupported", "This operator is not allowed to perform that action.", actionHash, false, memoryDependencies);
     }
-    if (await operatorIsExplicitlyPaused(supabase, input.policyInput.workspaceId, input.policyInput.operatorKey)) {
-      return deny(input.policyInput, "operator_paused", "This operator is paused by workspace policy.", actionHash, true);
+    if (await operatorIsExplicitlyPaused(supabase, policyInput.workspaceId, policyInput.operatorKey)) {
+      return deny(policyInput, "operator_paused", "This operator is paused by workspace policy.", actionHash, true, memoryDependencies);
     }
     const [eligibility, connectors, policy] = await Promise.all([
-      getWorkspaceExecutionEligibility(input.policyInput.workspaceId, supabase),
-      getConnectorTruth({ workspaceId: input.policyInput.workspaceId, supabase }),
-      loadPolicyWorkspaceSettings({ workspaceId: input.policyInput.workspaceId, supabase }),
+      getWorkspaceExecutionEligibility(policyInput.workspaceId, supabase),
+      getConnectorTruth({ workspaceId: policyInput.workspaceId, supabase }),
+      loadPolicyWorkspaceSettings({ workspaceId: policyInput.workspaceId, supabase }),
     ]);
-    if (!eligibility.eligible) return deny(input.policyInput, "workspace_execution_ineligible", eligibility.reason, actionHash);
-    const connector = connectors.find((row) => row.connectorKey === input.policyInput.connectorKey);
+    if (!eligibility.eligible) return deny(input.policyInput, "workspace_execution_ineligible", eligibility.reason, actionHash, false, memoryDependencies);
+    const connector = connectors.find((row) => row.connectorKey === policyInput.connectorKey);
     if (!connector || !["connected", "healthy"].includes(connector.status) || connector.reconnectRequired || connector.executable === false) {
-      return deny(input.policyInput, "connector_not_ready", "The required connector is not healthy and ready for execution.", actionHash);
+      return deny(policyInput, "connector_not_ready", "The required connector is not healthy and ready for execution.", actionHash, false, memoryDependencies);
     }
-    const evaluated = evaluatePolicy(input.policyInput, policy, { canRunRealActions: eligibility.canRunRealActions, billingStatus: eligibility.billingStatus });
+    if (memoryDependencies.some((dependency) => dependency.conflict || dependency.freshness === "stale" || dependency.reliability === "missing")) {
+      return deny(policyInput, "memory_context_unavailable", "Execution was blocked because a policy-relevant business context fact is stale or conflicting.", actionHash, false, memoryDependencies);
+    }
+    const evaluated = evaluatePolicy(policyInput, policy, { canRunRealActions: eligibility.canRunRealActions, billingStatus: eligibility.billingStatus });
     result = {
       ...evaluated,
       executionDecision: evaluated.decision === "allow_auto" ? "allow_auto" : evaluated.decision === "approval_required" ? "require_approval" : "deny",
@@ -179,16 +196,17 @@ export async function evaluateExecutionPolicy(input: { supabase?: SupabaseAdmin;
       matchedPolicyIds: [evaluated.matchedRuleId],
       evaluatedAt: new Date().toISOString(), actionHash,
     };
+    result.evidence = { ...result.evidence, memoryDependencies, memoryFingerprint: memoryDependencyFingerprint(memoryDependencies) };
     if (result.executionDecision === "allow_auto") {
-      const limits = await withinAutonomyLimits({ supabase, policy, action: input.policyInput, actionHash });
-      if (!limits.ok) result = deny(input.policyInput, limits.reason!, "Autonomous execution is unavailable until its safety limit can be verified.", actionHash);
+      const limits = await withinAutonomyLimits({ supabase, policy, action: policyInput, actionHash });
+      if (!limits.ok) result = deny(policyInput, limits.reason!, "Autonomous execution is unavailable until its safety limit can be verified.", actionHash, false, memoryDependencies);
     }
   } catch {
-    result = deny(input.policyInput, "policy_evaluation_failed", "Execution was blocked because policy could not be evaluated safely.", actionHash);
+    result = deny(policyInput, "policy_evaluation_failed", "Execution was blocked because policy could not be evaluated safely.", actionHash, false, memoryDependencies);
   }
   if (input.persistIntent !== false) {
     try {
-      const intent = await persistIntent({ supabase, policyInput: input.policyInput, actionHash, decision: result, approvalId: input.approvalId });
+      const intent = await persistIntent({ supabase, policyInput, actionHash, decision: result, approvalId: input.approvalId });
       result.intentId = intent.id;
       if (intent.duplicate) {
         result = deny(input.policyInput, "duplicate_execution", "An identical action is already executing or has completed.", actionHash);
@@ -196,7 +214,7 @@ export async function evaluateExecutionPolicy(input: { supabase?: SupabaseAdmin;
         result.duplicateExecution = true;
       }
     }
-    catch { return deny(input.policyInput, "execution_intent_unavailable", "Execution was blocked because its durable audit intent could not be recorded.", actionHash); }
+    catch { return deny(policyInput, "execution_intent_unavailable", "Execution was blocked because its durable audit intent could not be recorded.", actionHash, false, memoryDependencies); }
   }
   return result;
 }

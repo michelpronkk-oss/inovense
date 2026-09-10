@@ -3394,7 +3394,71 @@ select.os-input option {
 .os-root .os-filter-option[aria-checked="true"] .os-filter-check::before { content: ""; width: 7px; height: 3.5px; border-left: 1.6px solid #04222b; border-bottom: 1.6px solid #04222b; transform: translateY(-1px) rotate(-45deg); }
 .os-root .memory-index-detail { background: rgba(0,0,0,.08); }
 .os-root .memory-index-reference { color: var(--text-mute) !important; font-family: var(--font-sans); }
+.os-root .memory-history-panel { overflow: hidden; }
+.os-root .memory-history-panel .row { min-height: 52px; padding: 10px 16px; }
 .os-root .memory-index-empty { min-height: 130px; display: grid; place-items: center; }
+
+/* Governed context surface: the row remains compact, while provenance and
+   owner controls are available without turning Memory into a document CMS. */
+.os-root .memory-summary-rail { grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; }
+.os-root .memory-summary-rail > div { min-width: 0; }
+.os-root .memory-summary-rail aside { min-width: 0; border-right: 0; }
+.os-root .memory-summary-rail aside strong { color: var(--text); font-weight: 650; }
+.os-root .memory-profile { padding: 0; overflow: hidden; }
+.os-root .memory-profile .card-head { padding: 16px 18px 13px; }
+.os-root .memory-profile-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; border-top: 1px solid var(--line); }
+.os-root .memory-profile-grid > div { min-width: 0; padding: 13px 18px 15px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.os-root .memory-profile-grid > div:nth-child(3n) { border-right: 0; }
+.os-root .memory-profile-grid > div:nth-last-child(-n + 3) { border-bottom: 0; }
+.os-root .memory-profile-grid dt, .os-root .memory-definition-grid dt { color: var(--text-faint); font: 9px var(--font-mono); letter-spacing: .07em; text-transform: uppercase; }
+.os-root .memory-profile-grid dd { margin: 6px 0 0; overflow-wrap: anywhere; color: var(--text-dim); font-size: 12px; line-height: 1.45; }
+.os-root .memory-index-head { align-items: flex-start; gap: 16px; padding: 16px 18px 13px; }
+.os-root .memory-controls { display: flex; align-items: center; justify-content: flex-end; gap: 7px; flex-wrap: wrap; min-width: min(100%, 510px); }
+.os-root .memory-controls select { min-height: 38px; max-width: 155px; padding: 0 10px; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: rgba(255,255,255,.025); color: var(--text-dim); font: 12px var(--font-sans); }
+.os-root .memory-search { min-width: 180px; flex: 1 1 210px; min-height: 38px; }
+.os-root .memory-index-trigger { min-height: 68px; padding: 13px 18px; }
+.os-root .memory-entry-meta { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex: none; }
+.os-root .memory-entry-meta .badge { min-width: 66px; justify-content: center; }
+.os-root .memory-index-detail { display: grid; gap: 14px; border-top: 1px solid var(--line); }
+.os-root .memory-detail-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.os-root .memory-detail-top > div:first-child { min-width: 0; }
+.os-root .memory-detail-top .t-compact { max-width: 82ch; margin: 7px 0 0; color: var(--text-dim); line-height: 1.55; white-space: pre-line; }
+.os-root .memory-detail-actions { display: flex; flex: none; gap: 7px; }
+.os-root .memory-detail-actions .btn { min-height: 34px; }
+.os-root .memory-content-fields { margin-top: 0; }
+.os-root .memory-attention-note { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; border-left: 2px solid var(--amber); background: var(--amber-soft); color: var(--text-dim); font-size: 12px; line-height: 1.5; }
+.os-root .memory-attention-note .dot { margin-top: 5px; flex: none; }
+.os-root .memory-more { border-top: 1px solid var(--line); }
+.os-root .memory-action-notice { margin: -4px 0 0; color: var(--cyan); font-size: 12px; }
+.os-root .memory-correction-action { display: flex; justify-content: flex-end; margin: -6px 0 0; }
+.os-root .memory-page .badge { white-space: nowrap; }
+@media (max-width: 760px) {
+  .os-root .memory-summary-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .os-root .memory-summary-rail aside { grid-column: 1 / -1; border-top: 1px solid var(--line); }
+  .os-root .memory-profile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .os-root .memory-profile-grid > div:nth-child(3n) { border-right: 1px solid var(--line); }
+  .os-root .memory-profile-grid > div:nth-child(2n) { border-right: 0; }
+  .os-root .memory-profile-grid > div:nth-last-child(-n + 3) { border-bottom: 1px solid var(--line); }
+  .os-root .memory-profile-grid > div:nth-last-child(-n + 2) { border-bottom: 0; }
+  .os-root .memory-index-head { display: grid; }
+  .os-root .memory-controls { justify-content: stretch; min-width: 0; }
+  .os-root .memory-controls select { flex: 1 1 130px; max-width: none; }
+  .os-root .memory-search { flex-basis: 100%; }
+  .os-root .memory-index-trigger { align-items: flex-start; gap: 10px; }
+  .os-root .memory-entry-meta { gap: 5px; }
+  .os-root .memory-entry-meta .t-meta { display: none; }
+  .os-root .memory-detail-top { display: grid; gap: 10px; }
+  .os-root .memory-detail-actions { flex-wrap: wrap; }
+}
+@media (max-width: 460px) {
+  .os-root .memory-summary-rail { grid-template-columns: 1fr 1fr; }
+  .os-root .memory-profile-grid { grid-template-columns: 1fr; }
+  .os-root .memory-profile-grid > div, .os-root .memory-profile-grid > div:nth-child(3n), .os-root .memory-profile-grid > div:nth-child(2n) { border-right: 0; border-bottom: 1px solid var(--line); }
+  .os-root .memory-profile-grid > div:last-child { border-bottom: 0; }
+  .os-root .memory-index-trigger { padding-inline: 12px; }
+  .os-root .memory-index-trigger .sub { display: -webkit-box; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .os-root .memory-entry-meta .badge { min-width: 0; }
+}
 
 /* Product recomposition: shared operational rows keep the prototype's
    hierarchy while all values and actions continue to come from production. */
@@ -4728,4 +4792,66 @@ select.os-input option {
   .os-root .workflow-empty-variant .btn { align-self: flex-start; }
   .os-root .workflow-how-work { overflow-x: auto; padding: 16px; }
   .os-root .workflow-how-work .os-loop-rail { min-width: 520px; }
+}
+
+/* ---- Real-account entitlement gate: compact, premium decision surface ---- */
+.os-root .connector-finder-modal[data-view="upgrade-gate"] {
+  min-height: 0 !important;
+  max-height: min(620px, 86vh) !important;
+  background: linear-gradient(145deg, #10161e, #0d1117 62%);
+  box-shadow: inset 0 0 0 1px rgba(151,177,198,.2), 0 36px 90px -34px rgba(0,0,0,.9);
+}
+.os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-head {
+  align-items: center;
+  padding: 22px 24px 19px;
+  border-bottom-color: rgba(151,177,198,.13);
+}
+.os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-head .tt { display: grid; gap: 5px; }
+.os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-head .tt::before {
+  content: "Workspace access";
+  color: var(--cyan);
+  font: 600 9px/1.2 var(--font-mono);
+  letter-spacing: .17em;
+  text-transform: uppercase;
+}
+.os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-head h3 { font-size: 18px; font-weight: 620; letter-spacing: -.02em; }
+.os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-head .btn { flex: none; }
+.os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-body {
+  display: grid;
+  gap: 14px;
+  padding: 20px 24px 22px;
+  overflow: visible;
+}
+.os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-kicker { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-faint); font: 600 9.5px/1.3 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
+.os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-state { color: var(--amber); letter-spacing: .08em; }
+.os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-message { max-width: 62ch; margin: 0; color: var(--text-dim); font-size: 13px; line-height: 1.6; }
+.os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-plan {
+  display: grid;
+  gap: 15px;
+  padding: 17px;
+  border: 1px solid rgba(77,232,225,.22);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(77,232,225,.085), rgba(255,255,255,.025) 68%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.045);
+}
+.os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-plan-head { display: flex; align-items: center; gap: 11px; }
+.os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-plan-mark { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid rgba(77,232,225,.35); border-radius: 9px; background: rgba(77,232,225,.11); color: var(--cyan); font: 600 13px/1 var(--font-mono); }
+.os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-plan-head > span:last-child { display: grid; gap: 3px; min-width: 0; }
+.os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-plan-head small { color: var(--cyan); font: 600 9px/1.2 var(--font-mono); letter-spacing: .13em; text-transform: uppercase; }
+.os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-plan-head strong { color: var(--text); font-size: 14px; font-weight: 600; }
+.os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-plan-copy { color: #a8e9e5; font-size: 12px; line-height: 1.5; }
+.os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-plan-facts { display: flex; flex-wrap: wrap; gap: 7px 18px; padding-top: 12px; border-top: 1px solid rgba(77,232,225,.14); color: var(--text-mute); font-size: 11px; }
+.os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-plan-facts span { display: inline-flex; align-items: center; gap: 6px; }
+.os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-plan-facts span::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--cyan); }
+.os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-foot { justify-content: flex-end; padding: 16px 24px 20px; border-top-color: rgba(151,177,198,.13); background: rgba(0,0,0,.1); }
+.os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-foot .btn { min-height: 38px; padding-inline: 16px; }
+
+@media (max-width: 600px) {
+  .os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-head { padding: 18px 16px 16px; }
+  .os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-head h3 { font-size: 16px; }
+  .os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-body { padding: 17px 16px 18px; }
+  .os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-plan { padding: 15px; }
+  .os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-plan-facts { display: grid; gap: 8px; }
+  .os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-foot { padding: 14px 16px 16px; }
+  .os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-foot .btn { flex: 1; }
 }

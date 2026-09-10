@@ -68,10 +68,22 @@ export async function completeOnboardingAction(input: OnboardingDraft): Promise<
   // server-written with a stable ID so retries update this brief rather than
   // multiplying memory entries.
   const priorityLabel = { revenue: "Sales and revenue", client_flow: "Customer communication", operations: "Project delivery", support: "Customer support" }[draft.priority];
+  const confirmedAt = new Date().toISOString();
   const memory = await access.admin.from("os_memory_entries").upsert({
     id: `mem-onboarding-${access.workspaceId}`,
     workspace_id: access.workspaceId,
     type: "process",
+    canonical_key: "business.operating_profile",
+    category: "business",
+    source_type: "owner_confirmed",
+    source_label: "Owner-confirmed onboarding",
+    source_ref: `onboarding:${access.workspaceId}`,
+    reliability: "verified",
+    first_observed_at: confirmedAt,
+    last_confirmed_at: confirmedAt,
+    operator_relevance: [draft.priority, "revenue", "client_flow", "operations", "support"],
+    policy_relevant: true,
+    evidence: ["owner-confirmed onboarding form"],
     label: `${draft.workspaceName} operating brief`,
     summary: `${priorityLabel} is the first operating priority.`,
     content: [
@@ -86,7 +98,7 @@ export async function completeOnboardingAction(input: OnboardingDraft): Promise<
     tags: ["onboarding", draft.priority, ...draft.systems],
     agent_scope: [draft.priority],
     field_count: 6,
-    updated_at: new Date().toISOString(),
+    updated_at: confirmedAt,
   }, { onConflict: "id" });
   if (memory.error) return { ok: false, error: memory.error.message };
 

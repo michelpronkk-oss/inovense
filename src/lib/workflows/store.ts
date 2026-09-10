@@ -7,6 +7,7 @@ import { getWorkspaceExecutionEligibility } from "@/lib/os/execution-eligibility
 import { planCandidateWorkflow, validateWorkflowPlan } from "@/lib/workflows/engine";
 import type { SignalCandidate } from "@/lib/signals/types";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { appendMemoryVersion } from "@/lib/memory/materialize";
 import { materializeWorkflowStep } from "@/lib/workflows/materialize";
 import { explicitBusinessProblemKey } from "@/lib/workflows/identity";
 
@@ -81,4 +82,54 @@ export async function recordObservedWorkflowOutcome(input: {
   const id = `outcome-${input.workspaceId}-${input.workflowId || input.signalId || input.outcomeType}-${input.outcomeType}-${evidenceKey}`.replace(/[^a-zA-Z0-9_-]+/g, "-").slice(0, 180);
   const result = await supabase.from("os_workflow_outcomes").upsert({ id, workspace_id: input.workspaceId, operator_key: input.operatorKey, workflow_id: input.workflowId ?? null, signal_id: input.signalId ?? null, execution_intent_id: input.executionIntentId ?? null, outcome_type: input.outcomeType, attribution_level: input.attributionLevel, confidence: input.confidence, evidence_refs: input.evidenceRefs.slice(0, 20).map((ref) => ref.slice(0, 240)), observed_at: input.observedAt }, { onConflict: "id", ignoreDuplicates: true });
   if (result.error) throw new Error(`Outcome persistence failed: ${result.error.message}`);
+  await promoteRepeatedOutcomePattern({ ...input, supabase });
+}
+
+const PROMOTION_RULES: Record<string, { threshold: number; windowDays: number; label: string; category: "commercial" | "delivery" | "support" }> = {
+  revenue_no_response: { threshold: 3, windowDays: 30, label: "Recurring revenue follow-up no-response pattern", category: "commercial" },
+  operations_no_progress: { threshold: 3, windowDays: 30, label: "Recurring delivery no-progress pattern", category: "delivery" },
+  support_request_resolved: { threshold: 3, windowDays: 30, label: "Recurring support resolution pattern", category: "support" },
+};
+
+async function promoteRepeatedOutcomePattern(input: {
+  workspaceId: string; operatorKey: string; outcomeType: string; confidence: "low" | "medium" | "high"; evidenceRefs: string[]; supabase: SupabaseAdmin;
+}) {
+  const rule = PROMOTION_RULES[input.outcomeType];
+  if (!rule || input.confidence === "low") return;
+  const since = new Date(Date.now() - rule.windowDays * 86_400_000).toISOString();
+  const rows = await input.supabase.from("os_workflow_outcomes")
+    .select("id,evidence_refs,observed_at,confidence")
+    .eq("workspace_id", input.workspaceId)
+    .eq("operator_key", input.operatorKey)
+    .eq("outcome_type", input.outcomeType)
+    .gte("observed_at", since)
+    .order("observed_at", { ascending: false })
+    .limit(50);
+  if (rows.error) return;
+  const qualified = (rows.data ?? []).filter((row) => row.confidence !== "low");
+  const evidence = Array.from(new Set(qualified.flatMap((row) => Array.isArray(row.evidence_refs) ? row.evidence_refs.filter((ref): ref is string => typeof ref === "string").slice(0, 3) : []))).slice(0, 10);
+  if (qualified.length < rule.threshold || evidence.length < rule.threshold) return;
+  try {
+    await appendMemoryVersion({ supabase: input.supabase, memory: {
+      workspaceId: input.workspaceId,
+      canonicalKey: `pattern.${input.operatorKey}.${input.outcomeType}`,
+      category: rule.category,
+      label: rule.label,
+      summary: `Observed across ${qualified.length} independent workflow outcomes in the last ${rule.windowDays} days.`,
+      content: `${rule.label}. This is derived evidence, not an owner-confirmed rule.`,
+      sourceType: "derived",
+      sourceLabel: "Repeated workflow outcomes",
+      sourceRef: `outcome-promotion:${input.operatorKey}:${input.outcomeType}`,
+      sourceEntityId: input.operatorKey,
+      evidence,
+      observedAt: new Date().toISOString(),
+      operatorRelevance: [input.operatorKey],
+      policyRelevant: false,
+      confidence: qualified.length >= rule.threshold + 2 ? "high" : "medium",
+      reliability: "derived",
+    } });
+  } catch {
+    // Learning is non-critical. The outcome itself remains durable even if
+    // the bounded derived-memory projection cannot be written.
+  }
 }

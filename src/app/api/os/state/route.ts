@@ -7,6 +7,7 @@ import { resolveWorkspaceContext, type WorkspaceContext } from "@/lib/os/workspa
 import { APP_SESSION_COOKIE, createSessionToken, SESSION_MAX_AGE_SEC } from "@/lib/session";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { roleLabel } from "@/lib/workspace-permissions";
+import { normalizeMemoryRow, resolveMemoryEntries, type MemoryRow } from "@/lib/memory/model";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -94,6 +95,25 @@ function isLegacySeedIdentity(value: string | null | undefined) {
 
 function roleLabelFor(roleKey: string | null | undefined, legacyRole: string | null | undefined) {
   return roleLabel(roleKey, legacyRole);
+}
+
+async function loadWorkspaceMemory(supabase: ReturnType<typeof createSupabaseAdmin>, workspaceId: string): Promise<{ data: MemoryRow[]; error: unknown }> {
+  const extended = await supabase
+    .from("os_memory_entries")
+    .select("id,type,category,canonical_key,label,summary,content,tags,agent_scope,field_count,source_type,source_label,source_ref,source_connector,source_entity_id,reliability,confidence,first_observed_at,last_observed_at,last_confirmed_at,stale_after,operator_relevance,policy_relevant,evidence,supersedes_id,updated_at")
+    .eq("workspace_id", workspaceId)
+    .order("updated_at", { ascending: false });
+  if (!extended.error) return { data: (extended.data ?? []) as MemoryRow[], error: null };
+
+  // Keep rollout safe when the application is deployed before the additive
+  // migration reaches a database replica. The legacy row still renders, but
+  // the governed fields are supplied by the adapter defaults.
+  const legacy = await supabase
+    .from("os_memory_entries")
+    .select("id,type,label,summary,content,tags,agent_scope,field_count,updated_at")
+    .eq("workspace_id", workspaceId)
+    .order("updated_at", { ascending: false });
+  return { data: (legacy.data ?? []) as MemoryRow[], error: legacy.error ?? extended.error };
 }
 
 async function buildStateFromDatabase(workspaceId: string, supabase: ReturnType<typeof createSupabaseAdmin>): Promise<OSState> {
@@ -185,8 +205,8 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
     supabase.from("os_workspaces").select("*").eq("id", workspaceId).single(),
     supabase.from("os_state_snapshots").select("state").eq("workspace_id", workspaceId).maybeSingle(),
     supabase.from("os_workspace_settings").select("approval_policy,notifications").eq("workspace_id", workspaceId).maybeSingle(),
-    supabase.from("os_memory_entries").select("id,type,label,summary,content,tags,agent_scope,field_count,updated_at").eq("workspace_id", workspaceId).order("updated_at", { ascending: false }),
-    supabase.from("os_operator_memory").select("id,operator_key,memory_type,title,content,updated_at").eq("workspace_id", workspaceId).eq("approval_status", "approved").order("updated_at", { ascending: false }).limit(100),
+    loadWorkspaceMemory(supabase, workspaceId),
+    supabase.from("os_operator_memory").select("id,operator_key,memory_type,title,content,metadata,source_run_id,created_at,updated_at").eq("workspace_id", workspaceId).eq("approval_status", "approved").order("updated_at", { ascending: false }).limit(100),
     memberQuery.maybeSingle(),
     supabase.from("os_workspace_members").select("id,user_id,email,full_name,role,role_key,access,status,active").eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
     getConnectorTruth({ workspaceId, supabase }),
@@ -246,7 +266,7 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
   // a browser snapshot. This makes the onboarding brief and approved
   // operator learnings durable across sessions and devices.
   if (!memoryResult.error) {
-    let memoryEntries = memoryResult.data ?? [];
+    let memoryEntries = (memoryResult.data ?? []).map((entry) => normalizeMemoryRow(entry));
     const onboardingData = db.onboarding_data && typeof db.onboarding_data === "object"
       ? db.onboarding_data as Record<string, unknown>
       : null;
@@ -265,6 +285,17 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
         id: `mem-onboarding-${workspaceId}`,
         workspace_id: workspaceId,
         type: "process",
+        canonical_key: "business.operating_profile",
+        category: "business",
+        source_type: "owner_confirmed",
+        source_label: "Owner-confirmed onboarding",
+        source_ref: `onboarding:${workspaceId}`,
+        reliability: "verified",
+        first_observed_at: new Date().toISOString(),
+        last_confirmed_at: new Date().toISOString(),
+        operator_relevance: ["revenue", "client_flow", "operations", "support"],
+        policy_relevant: true,
+        evidence: ["owner-confirmed onboarding form"],
         label: `${state.workspace.name} operating brief`,
         summary: `${priority} is the first operating priority.`,
         content: [
@@ -281,38 +312,36 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
         field_count: 6,
         updated_at: new Date().toISOString(),
       };
-      const insertedBrief = await supabase.from("os_memory_entries").upsert(brief, { onConflict: "id" }).select("id,type,label,summary,content,tags,agent_scope,field_count,updated_at").maybeSingle();
-      if (!insertedBrief.error && insertedBrief.data) memoryEntries = [insertedBrief.data];
+      const insertedBrief = await supabase.from("os_memory_entries").upsert(brief, { onConflict: "id" }).select("id,type,category,canonical_key,label,summary,content,tags,agent_scope,field_count,source_type,source_label,source_ref,source_connector,source_entity_id,reliability,confidence,first_observed_at,last_observed_at,last_confirmed_at,stale_after,operator_relevance,policy_relevant,evidence,supersedes_id,updated_at").maybeSingle();
+      if (!insertedBrief.error && insertedBrief.data) memoryEntries = [normalizeMemoryRow(insertedBrief.data as MemoryRow)];
     }
-    state.memory = memoryEntries.map((entry) => ({
-      id: entry.id,
-      type: entry.type as OSState["memory"][number]["type"],
-      label: entry.label,
-      summary: entry.summary,
-      content: entry.content,
-      tags: Array.isArray(entry.tags) ? entry.tags.filter((tag): tag is string => typeof tag === "string") : [],
-      agentScope: Array.isArray(entry.agent_scope) ? entry.agent_scope.filter((scope): scope is string => typeof scope === "string") : [],
-      fieldCount: entry.field_count,
-      updatedAt: entry.updated_at,
-    }));
+    state.memory = resolveMemoryEntries(memoryEntries);
   }
 
   // Operator learning is append-only audit data. Only approved learnings may
   // influence future work; rejected decisions remain in the audit trail.
   if (!operatorMemoryResult.error && operatorMemoryResult.data?.length) {
-    const approvedLearnings = operatorMemoryResult.data.map((learning) => ({
+    const approvedLearnings = operatorMemoryResult.data.map((learning) => normalizeMemoryRow({
       id: learning.id,
-      type: "agent" as const,
+      type: "agent",
+      category: "operating_rules",
+      canonical_key: `operator-learning:${learning.operator_key}:${learning.memory_type}:${learning.title}`,
       label: learning.title,
       summary: `Approved learning from ${learning.operator_key.replace(/_/g, " ")} operator.`,
       content: learning.content,
       tags: ["approved-learning", learning.memory_type],
-      agentScope: [learning.operator_key],
-      fieldCount: 2,
-      updatedAt: learning.updated_at,
+      agent_scope: [learning.operator_key],
+      field_count: 2,
+      source_type: "derived",
+      source_label: "Approved operator outcome",
+      source_ref: learning.source_run_id ? `os_operator_runs:${learning.source_run_id}` : null,
+      reliability: "derived",
+      confidence: "medium",
+      evidence: learning.source_run_id ? [`os_operator_runs:${learning.source_run_id}`] : [],
+      metadata: learning.metadata,
+      updated_at: learning.updated_at,
     }));
-    state.memory = [...state.memory, ...approvedLearnings]
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    state.memory = resolveMemoryEntries([...state.memory, ...approvedLearnings]);
   }
 
   // A snapshot is workspace data, never an identity source. Always project

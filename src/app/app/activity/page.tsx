@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { WorkforceActivityItem, WorkforceActivityPage } from "@/lib/activity/types";
-import { EmptyState } from "@/components/product-ui/page-primitives";
+import { EmptyState, MetricStrip } from "@/components/product-ui/page-primitives";
 import { ActivityAvatar } from "@/components/activity/activity-avatar";
 import { operatorDisplayName, withoutLeadingOperatorName } from "@/lib/activity/presentation";
 
@@ -69,14 +69,14 @@ export default function ActivityPage() {
     </header>
 
     {summary && (
-      <section className="sec panel card-pad inline" aria-label={`Activity totals for the last ${range}`} style={{ justifyContent: "flex-start", gap: 40 }}>
-        {[["Runs", summary.runs], ["Approvals", summary.approvals], ["Actions", summary.actions], ["Issues", summary.issues]].map(([label, value]) => (
-          <div key={String(label)}>
-            <div className="t-eyebrow">{label}</div>
-            <div className="t-num" style={label === "Issues" && Number(value) > 0 ? { color: "var(--amber)" } : undefined}>{Number(value)}</div>
-          </div>
-        ))}
-      </section>
+      <div aria-label={`Activity totals for the last ${range}`}>
+        <MetricStrip items={[
+          { label: "Runs", value: summary.runs, detail: "operator activity" },
+          { label: "Approvals", value: summary.approvals, detail: "review activity" },
+          { label: "Actions", value: summary.actions, detail: "executed work" },
+          { label: "Issues", value: summary.issues, detail: summary.issues > 0 ? "needs attention" : "no issues recorded", tone: summary.issues > 0 ? "attention" : "default" },
+        ]} />
+      </div>
     )}
 
     <section className="sec card activity-feed" aria-labelledby="activity-feed-title">

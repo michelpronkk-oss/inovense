@@ -2144,6 +2144,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const gmailPolicyDecision = gmailPolicyInput ? await evaluateExecutionPolicy({ supabase, policyInput: gmailPolicyInput, approvalId: id }) : null;
 
   if (gmailPolicyDecision && gmailPolicyInput) {
+    const storedEmailScope = approvalScopeFor({ continuation: continuation as Record<string, unknown>, approvalRow: approvalRow as Record<string, unknown> }, "email");
+    if (storedEmailScope && !approvalScopesEqual(storedEmailScope, buildApprovalScope(gmailPolicyInput, gmailPolicyDecision))) return reapprovalRequiredResponse();
     if (gmailPolicyDecision.decision === "blocked") {
       await logPolicyDecision({ supabase, workspaceId: context.workspaceId, runId: gmailPayload.operatorRunId ?? (typeof approvalRow.run_id === "string" ? approvalRow.run_id : null), approvalId: id, decision: gmailPolicyDecision, policyInput: gmailPolicyInput, live: true });
       return markGmailBlockedByPolicy({

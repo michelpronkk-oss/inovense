@@ -15,6 +15,8 @@ assert.match(activity, /role="menuitemcheckbox"/, "Activity filters expose check
 assert.match(activity, /Filter\{selectedFilters\.length/, "Activity shows the active filter count");
 assert.match(activity, /setSelectedFilters\(\[\]\)/, "Activity can clear selected filters");
 assert.doesNotMatch(activity, /key: "all", label: "All"/, "All is the empty filter state, not another button");
+assert.match(activity, /MetricStrip items=\{\[/, "Activity uses the shared metric rail");
+for (const metric of ["Runs", "Approvals", "Actions", "Issues"]) assert.match(activity, new RegExp(`label: "${metric}"`), `${metric} remains in the Activity metric rail`);
 
 assert.match(connectors, /connector-finder-category/, "Connector picker has a category select");
 assert.match(connectors, /prioritizedAvailable/, "Connector picker prioritizes its inventory");

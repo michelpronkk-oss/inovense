@@ -1,5 +1,6 @@
 import type { PolicyBusinessContext, PolicyContextReliability, PolicyContextValue } from "@/lib/policies/types";
 import type { ClientFlowSignalType } from "@/lib/operators/client-flow/scan";
+import type { GovernedMemoryContext } from "@/lib/memory/reader";
 
 export type ClientFlowPreparationState =
   | "ready_to_respond"
@@ -22,6 +23,7 @@ export type ClientFlowContext = {
   priorityReasons: string[];
   supportingOperators: string[];
   businessContext: PolicyBusinessContext;
+  workspaceMemory: GovernedMemoryContext;
 };
 
 function bounded(value: string | null | undefined, max: number): string | null {
@@ -56,6 +58,7 @@ export function buildClientFlowContext(input: {
   delivery?: { projectId?: string | null; projectName?: string | null; taskId?: string | null; owner?: string | null; dueAt?: string | null; milestone?: string | null; blocker?: string | null; dependency?: string | null; handoffStatus?: string | null };
   support?: { ticketId?: string | null; openIssue?: string | null; escalationState?: string | null; impact?: string | null };
   commercial?: { revenueWorkflowId?: string | null; accountContext?: string | null };
+  workspaceMemory?: GovernedMemoryContext;
 }): ClientFlowContext {
   const subject = bounded(input.subject, 240);
   const request = bounded(input.request, 900);
@@ -112,6 +115,7 @@ export function buildClientFlowContext(input: {
     priorityReasons: Array.from(new Set(reasons)).slice(0, 12),
     supportingOperators,
     businessContext,
+    workspaceMemory: input.workspaceMemory ?? { items: [], dependencies: [], keysUsed: [], attentionCount: 0 },
   };
 }
 

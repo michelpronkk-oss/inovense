@@ -20,6 +20,14 @@ function businessContextFingerprint(context) {
   for (let index = 0; index < value.length; index += 1) { hash ^= value.charCodeAt(index); hash = Math.imul(hash, 16777619); }
   return \`ctx-\${(hash >>> 0).toString(16).padStart(8, "0")}\`;
 }`);
+    source = source.replace('import { memoryDependencyFingerprint, type MemoryDependency } from "@/lib/memory/model";', `
+function memoryDependencyFingerprint(dependencies) {
+  if (!dependencies.length) return null;
+  const value = JSON.stringify(dependencies.slice().sort((a, b) => a.canonicalKey.localeCompare(b.canonicalKey)));
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) { hash ^= value.charCodeAt(index); hash = Math.imul(hash, 16777619); }
+  return \`mem-\${(hash >>> 0).toString(16).padStart(8, "0")}\`;
+}`);
   }
   const { code } = esbuild.transformSync(source, { loader: "ts", format: "esm", target: "node18" });
   const outfile = path.join(tmp, `${path.basename(relPath, path.extname(relPath))}-${Math.random().toString(36).slice(2)}.mjs`);

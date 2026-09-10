@@ -4,6 +4,7 @@ import { buildApprovalScope, emailPayloadIdentity, type ApprovalScope } from "@/
 import { evaluatePolicy } from "@/lib/policies/evaluate";
 import { loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
 import type { PolicyDecision, PolicyEvidence } from "@/lib/policies/types";
+import type { MemoryDependency } from "@/lib/memory/model";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
@@ -37,6 +38,7 @@ export async function buildBundledApprovalGovernance(input: {
   body: string;
   dedupeKey?: string;
   preparedHubSpotActions?: Record<string, unknown> | null;
+  memoryDependencies?: MemoryDependency[];
 }): Promise<BundledApprovalGovernance> {
   const policy = await loadPolicyWorkspaceSettings({ supabase: input.supabase, workspaceId: input.workspaceId });
   const emailInput = {
@@ -53,6 +55,7 @@ export async function buildBundledApprovalGovernance(input: {
     metadata: {
       dedupeKey: input.dedupeKey ?? null,
       payloadIdentity: emailPayloadIdentity(input.subject, input.body),
+      memoryDependencies: input.memoryDependencies ?? [],
     },
   };
   const emailDecision = evaluatePolicy(emailInput, policy);
@@ -79,7 +82,7 @@ export async function buildBundledApprovalGovernance(input: {
       subjectId: typeof dealId === "string" ? dealId : undefined,
       businessContext: hubSpotBusinessContext(input.preparedHubSpotActions),
       source: `${input.emailConnector}_scan`,
-      metadata: { dedupeKey: input.dedupeKey ?? null },
+      metadata: { dedupeKey: input.dedupeKey ?? null, memoryDependencies: input.memoryDependencies ?? [] },
     };
     const hubspotDecision = evaluatePolicy(hubspotInput, policy);
     approvalScopes.hubspot = buildApprovalScope(hubspotInput, hubspotDecision);

@@ -12,6 +12,7 @@ try {
     .replace('import type { PolicyBusinessContext, PolicyContextReliability } from "@/lib/policies/types";\n', "")
     .replace('import type { RevenueCrmCompany, RevenueCrmOpportunity, RevenueCrmPerson } from "@/lib/operators/revenue/crm";\n', "")
     .replace('import { createSupabaseAdmin } from "@/lib/server/supabase-admin";\n', "")
+    .replace('import { loadGovernedMemoryContext } from "@/lib/memory/reader";\n', "")
     .replace(/type SupabaseAdmin =[^\n]+\n/, "")
   const { code } = esbuild.transformSync(source, { loader: "ts", format: "esm", target: "node18" });
   const file = path.join(temp, "context.mjs");

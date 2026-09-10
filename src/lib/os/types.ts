@@ -171,6 +171,9 @@ export interface Approval {
 
 // ── Memory entry ───────────────────────────────────────────
 export type MemoryType = "client" | "brand" | "process" | "market" | "product" | "agent";
+export type MemoryCategory = "business" | "commercial" | "customers" | "delivery" | "support" | "operating_rules";
+export type MemorySourceType = "owner_confirmed" | "connector_observed" | "derived";
+export type MemoryFreshness = "fresh" | "stale" | "unknown";
 
 export interface MemoryEntry {
   id: string;
@@ -182,6 +185,26 @@ export interface MemoryEntry {
   agentScope: string[];
   fieldCount: number;
   updatedAt: string;
+  /** Governed context metadata. Legacy entries may omit these until re-materialized. */
+  canonicalKey?: string;
+  category?: MemoryCategory;
+  sourceType?: MemorySourceType;
+  sourceLabel?: string;
+  sourceRef?: string | null;
+  sourceConnector?: string | null;
+  sourceEntityId?: string | null;
+  reliability?: "verified" | "observed" | "derived" | "missing" | "stale";
+  confidence?: "low" | "medium" | "high" | null;
+  firstObservedAt?: string | null;
+  lastObservedAt?: string | null;
+  lastConfirmedAt?: string | null;
+  staleAfter?: string | null;
+  freshness?: MemoryFreshness;
+  operatorRelevance?: string[];
+  policyRelevant?: boolean;
+  evidence?: string[];
+  conflict?: boolean;
+  supersedesId?: string | null;
 }
 
 // ── Connector ──────────────────────────────────────────────

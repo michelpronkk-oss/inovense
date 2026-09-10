@@ -1,5 +1,6 @@
 import type { PreparedAction } from "@/lib/actions/types";
 import type { PolicyBusinessContext, PolicyContextReliability, PolicyContextValue } from "@/lib/policies/types";
+import type { GovernedMemoryContext } from "@/lib/memory/reader";
 
 export type OperationsPreparationState =
   | "ready_to_resolve"
@@ -51,6 +52,7 @@ export type OperationsContext = {
   priority: number;
   priorityReasons: string[];
   businessContext: PolicyBusinessContext;
+  workspaceMemory: GovernedMemoryContext;
 };
 
 function bounded(value: string | null | undefined, max: number): string | null {
@@ -79,6 +81,7 @@ export function buildOperationsContext(input: {
   score: number;
   priorityReasons?: string[];
   supportingOperators?: string[];
+  workspaceMemory?: GovernedMemoryContext;
 }): OperationsContext {
   const project = input.project ?? {};
   const dependency = input.dependency ?? {};
@@ -135,6 +138,7 @@ export function buildOperationsContext(input: {
     priority,
     priorityReasons: Array.from(new Set(reasons)).slice(0, 10),
     businessContext,
+    workspaceMemory: input.workspaceMemory ?? { items: [], dependencies: [], keysUsed: [], attentionCount: 0 },
   };
 }
 
@@ -146,5 +150,6 @@ export function operationsActionMetadata(context: OperationsContext, action: Pre
     businessContext: context.businessContext,
     expectedOutcome: "The provider task state changes in a way that reduces or removes the detected blocker.",
     actionConnector: action?.connectorKey ?? null,
+    memoryDependencies: context.workspaceMemory.dependencies,
   };
 }
