@@ -816,7 +816,7 @@ export function OSTopbar() {
           onClick={() => setPaletteOpen(true)}
         >
           <SearchIcon size={13} />
-          <span style={{ flex: 1, textAlign: "left" }}>
+          <span className="top-search-label">
             Search operators, workflows, memory...
           </span>
           <kbd>&#8984;K</kbd>
