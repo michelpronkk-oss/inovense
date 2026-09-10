@@ -61,13 +61,20 @@ function TrialBanner({ trialEndsAt, planTier }: { trialEndsAt?: string; planTier
   );
 }
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, onboardingCompletedAt }: { children: React.ReactNode; onboardingCompletedAt: string | null }) {
   const pathname = usePathname();
   const { state, bootstrapStatus, workspaceLoadError } = useOS();
   // The browser keeps the canonical URL while middleware rewrites to the
   // internal `/app/*` segment. Accept both during client navigation, but do
   // not redirect here: the server layout + gateway are the sole authority.
   const isOnboardingRoute = pathname === "/onboarding" || pathname === "/app/onboarding";
+  // /connectors is allowlisted by the server guard so onboarding can resume a
+  // real OAuth flow there, but it must never render as a normal, fully
+  // navigable product page while onboarding is incomplete - that sidebar is
+  // a live escape hatch into the rest of the app. onboardingCompletedAt comes
+  // from the server gateway (layout.tsx), never from client/local state.
+  const isConnectorsRoute = pathname === "/connectors" || pathname === "/app/connectors";
+  const onboardingChrome = isOnboardingRoute || (isConnectorsRoute && !onboardingCompletedAt);
   const isPublicBareRoute = Boolean(pathname && (
     pathname === "/login" || pathname === "/register" ||
     pathname === "/forgot-password" || pathname === "/reset-password" ||
@@ -107,7 +114,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (isOnboardingRoute) {
+  if (onboardingChrome) {
     return (
       <div className="os-main" style={{ width: "100%", minHeight: "100dvh" }}>
         {children}

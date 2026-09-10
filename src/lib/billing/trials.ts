@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CheckoutPlanTier } from "@/lib/pricing";
+import { getBillingEntitlementsForPlan, type CheckoutPlanTier } from "@/lib/pricing";
 
 export type TrialStatus = "active" | "consumed" | "converted" | "expired";
 
@@ -105,6 +105,71 @@ export async function recordTrialStarted(input: {
     trial_status: "active",
   }).select("*").maybeSingle();
   return { entitlement: asEntitlement(result.data as Row | null), created: !result.error, error: result.error };
+}
+
+const ORGANIC_TRIAL_PLAN: CheckoutPlanTier = "starter";
+const ORGANIC_TRIAL_DAYS = 3;
+
+export type OrganicTrialOutcome = "granted" | "not_preview" | "not_eligible" | "workspace_unavailable";
+
+/**
+ * Grants the existing 3-day Foundation trial automatically, without a Dodo
+ * checkout or card details, so a fresh workspace can reach onboarding's
+ * connector step with real entitlement instead of a plan gate. Safe to call
+ * on every request while the workspace is still `preview`: it is a no-op the
+ * moment billing_status moves off `preview` (trial granted, or genuinely
+ * blocked), and getTrialEligibility's owner/customer/workspace checks plus
+ * the unique constraints on os_trial_entitlements prevent a second trial for
+ * the same owner or workspace.
+ */
+export async function ensureOrganicTrial(input: {
+  supabase: Supabase; workspaceId: string; ownerUserId: string;
+}): Promise<{ granted: boolean; outcome: OrganicTrialOutcome }> {
+  const workspace = await input.supabase
+    .from("os_workspaces")
+    .select("plan_tier, billing_status")
+    .eq("id", input.workspaceId)
+    .maybeSingle();
+  if (workspace.error || !workspace.data) return { granted: false, outcome: "workspace_unavailable" };
+  const row = workspace.data as Row;
+  if (row.plan_tier !== "preview" || row.billing_status !== "preview") {
+    return { granted: false, outcome: "not_preview" };
+  }
+
+  const eligibility = await getTrialEligibility({ supabase: input.supabase, workspaceId: input.workspaceId, ownerUserId: input.ownerUserId });
+  if (!eligibility.eligible) return { granted: false, outcome: "not_eligible" };
+
+  const trialEndsAt = new Date(Date.now() + ORGANIC_TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const entitlements = getBillingEntitlementsForPlan(ORGANIC_TRIAL_PLAN);
+
+  const trial = await recordTrialStarted({
+    supabase: input.supabase,
+    workspaceId: input.workspaceId,
+    ownerUserId: input.ownerUserId,
+    plan: ORGANIC_TRIAL_PLAN,
+    trialEndsAt,
+  });
+  // A concurrent request may have won the insert first (unique workspace_id /
+  // owner_user_id constraints) - treat that as "already handled", not an error.
+  if (trial.error || !trial.created) return { granted: false, outcome: "not_eligible" };
+
+  const updated = await input.supabase.from("os_workspaces").update({
+    plan: "Foundation",
+    plan_tier: entitlements.planTier,
+    billing_status: "trialing",
+    trial_ends_at: trialEndsAt,
+    operators_limit: entitlements.operatorsLimit,
+    connectors_limit: String(entitlements.connectorsLimit),
+    actions_limit: entitlements.actionsLimit,
+    log_retention_days: entitlements.logRetentionDays,
+    can_use_real_connectors: entitlements.canUseRealConnectors,
+    can_run_real_actions: entitlements.canRunRealActions,
+    support_level: entitlements.supportLevel,
+    billing_updated_at: new Date().toISOString(),
+  }).eq("id", input.workspaceId);
+  if (updated.error) return { granted: false, outcome: "workspace_unavailable" };
+
+  return { granted: true, outcome: "granted" };
 }
 
 export async function updateTrialStatus(input: {

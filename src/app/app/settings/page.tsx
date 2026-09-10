@@ -437,7 +437,7 @@ export default function SettingsPage() {
                 <dl className="kv">
                   <div><dt>Workspace access</dt><dd>{workspacePlanLabel}</dd></div>
                 </dl>
-                <p className="hint">{entitlements.billingStatus === "preview" ? "Choose a plan when you are ready. A trial starts only after checkout is completed." : "Billing changes are managed securely in the billing portal."}</p>
+                <p className="hint">{entitlements.billingStatus === "preview" ? (entitlements.trialEndsAt ? "Your trial has ended. Choose a plan to reactivate real execution." : "This workspace's trial has already been used. Choose a plan to activate real execution.") : "Billing changes are managed securely in the billing portal."}</p>
               </div>
             )}
 

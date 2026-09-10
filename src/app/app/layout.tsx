@@ -51,6 +51,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const headerList = await headers();
   const pathname = normalizeExternalAppPath(headerList.get("x-pathname"));
   let initialContext: AppInitialContext | undefined;
+  // Server-authoritative onboarding state for the client shell (AppShell).
+  // Defaults to "incomplete" for any non-ready gateway status so the shell
+  // never assumes full chrome is safe without a verified completion marker.
+  let onboardingCompletedAt: string | null = null;
 
   if (AUTH_ENTRY_PATHS.has(pathname)) {
     const user = await getVerifiedSupabaseUser();
@@ -73,6 +77,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         email: gateway.email,
       };
       const onboardingDone = Boolean(gateway.onboardingCompletedAt);
+      onboardingCompletedAt = gateway.onboardingCompletedAt;
       if (!onboardingDone && pathname !== "/onboarding" && pathname !== ONBOARDING_CONNECTOR_PATH) {
         redirect("/onboarding");
       }
@@ -89,7 +94,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <AppProvider initialContext={initialContext}>
       <div className="os-root">
-        <AppShell>{children}</AppShell>
+        <AppShell onboardingCompletedAt={onboardingCompletedAt}>{children}</AppShell>
       </div>
     </AppProvider>
   );

@@ -7,13 +7,17 @@ import esbuild from "esbuild";
 
 const root = process.cwd();
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
-const trialsSource = read("src/lib/billing/trials.ts");
 const checkout = read("src/app/api/billing/dodo/checkout/route.ts");
 const webhook = read("src/app/api/billing/dodo/webhook/route.ts");
 const scheduler = read("src/trigger/trial-lifecycle.ts");
 const migration = read("supabase/migrations/20260907_os_trial_lifecycle.sql");
 const entitlements = read("src/lib/os/entitlements.ts");
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "auterim-trial-lifecycle-"));
+// Next.js provides "server-only" as a framework-internal marker module; it
+// isn't a resolvable npm package outside Next's build, so alias it to a
+// no-op stub for this Node test.
+const serverOnlyStub = path.join(tmpDir, "server-only-stub.mjs");
+fs.writeFileSync(serverOnlyStub, "export {};\n");
 
 function mockDb({ workspace = {}, workspaceTrial = null, ownerTrial = null, customerTrial = null, error = null } = {}) {
   return {
@@ -34,9 +38,18 @@ function mockDb({ workspace = {}, workspaceTrial = null, ownerTrial = null, cust
 }
 
 try {
-  const compiled = esbuild.transformSync(trialsSource.replace('import "server-only";\n\n', ""), { loader: "ts", format: "esm", target: "node18" }).code;
   const target = path.join(tmpDir, "trials.mjs");
-  fs.writeFileSync(target, compiled);
+  await esbuild.build({
+    entryPoints: [path.join(root, "src/lib/billing/trials.ts")],
+    outfile: target,
+    bundle: true,
+    platform: "node",
+    format: "esm",
+    target: "node18",
+    alias: { "@": path.join(root, "src"), "server-only": serverOnlyStub },
+    external: ["@supabase/supabase-js"],
+    logLevel: "silent",
+  });
   const trials = await import(`${pathToFileURL(target).href}?v=${Math.random()}`);
   const eligible = await trials.getTrialEligibility({ supabase: mockDb({ workspace: { dodo_customer_id: "cus-new" } }), workspaceId: "ws-new", ownerUserId: "owner-new" });
   assert.equal(eligible.eligible, true, "a first workspace is eligible");

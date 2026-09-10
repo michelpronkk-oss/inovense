@@ -11,6 +11,7 @@ import { UsageBanner } from "@/components/upgrade-prompt";
 import { getEntitlements } from "@/lib/os/entitlements";
 import { UpgradeModal } from "@/components/upgrade-modal";
 import { isRealConnectedConnector } from "@/lib/os/truth";
+import { clearOnboardingReturn, hasPendingOnboardingReturn, isOnboardingLaunch } from "@/lib/onboarding/return-contract";
 import {
   isConnectorAvailableForAuth,
   getConnectorDefinition,
@@ -216,6 +217,10 @@ export default function ConnectorsPage() {
 
   const router = useRouter();
   const searchParams = useSearchParams();
+  // Whether this visit was launched from the onboarding wizard - changes
+  // what "close"/"cancel" on a connector flow should do (see
+  // returnToOnboardingOrClose below and the onboarding return contract).
+  const isOnboarding = isOnboardingLaunch(searchParams);
 
   const [addOpen, setAddOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -353,6 +358,18 @@ export default function ConnectorsPage() {
   const atConnectorLimit = connectorLimit !== null && realConnectedCount >= connectorLimit;
   const planLabel = entitlements.planTier.charAt(0).toUpperCase() + entitlements.planTier.slice(1);
 
+  // Abandoning a connector flow that onboarding launched must hand the user
+  // back to onboarding, never leave them standing on a bare /connectors page
+  // with full app navigation while onboarding is still incomplete.
+  const returnToOnboardingOrClose = (fallback: () => void) => {
+    if (isOnboarding && hasPendingOnboardingReturn()) {
+      clearOnboardingReturn();
+      router.push("/onboarding");
+      return;
+    }
+    fallback();
+  };
+
   const startRealGmailOAuth = () => {
     const qs = new URLSearchParams({
       workspaceId: state.workspace.id,
@@ -480,12 +497,12 @@ export default function ConnectorsPage() {
   // the onboarding CTA before it navigates here; credentials and connector
   // truth still come exclusively from the server-side OAuth callback.
   useEffect(() => {
-    if (window.sessionStorage.getItem("auterim.onboarding.return") !== "/onboarding") return;
+    if (!hasPendingOnboardingReturn()) return;
     const connectedKey = searchParams.get("connected");
     const failedKey = ["gmail", "microsoft", "hubspot", "slack", "trello", "asana", "jira", "zendesk", "intercom", "salesforce"]
       .find((key) => Boolean(searchParams.get(key)));
     if (!connectedKey && !failedKey) return;
-    window.sessionStorage.removeItem("auterim.onboarding.return");
+    clearOnboardingReturn();
     window.location.assign(`/onboarding?connector=${encodeURIComponent(connectedKey || failedKey || "system")}&connector_status=${connectedKey ? "connected" : "failed"}`);
   }, [searchParams]);
 
@@ -612,7 +629,7 @@ export default function ConnectorsPage() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         if (setupConnectorId) setSetupConnectorId(null);
-        else if (addOpen) setAddOpen(false);
+        else if (addOpen) returnToOnboardingOrClose(() => setAddOpen(false));
         else setDrawerConnectorId(null);
       }
     };
@@ -1157,7 +1174,7 @@ export default function ConnectorsPage() {
 
       {/* Add connector modal */}
       {addOpen && (
-        <div className="scrim" onClick={() => { setAddOpen(false); setSetupConnectorId(null); }}>
+        <div className="scrim" onClick={() => returnToOnboardingOrClose(() => { setAddOpen(false); setSetupConnectorId(null); })}>
           <div className="modal wide connector-finder-modal" onClick={(e) => e.stopPropagation()}>
             {!setupConnector ? (
               <>
@@ -1166,7 +1183,7 @@ export default function ConnectorsPage() {
                     <h3>Find a connector</h3>
                     <p className="connector-finder-intro">Add context to the work your operators already handle.</p>
                   </div>
-                  <button type="button" className="btn btn-icon btn-ghost connector-finder-close" aria-label="Close connector finder" onClick={() => setAddOpen(false)}><XIcon size={15} /></button>
+                  <button type="button" className="btn btn-icon btn-ghost connector-finder-close" aria-label="Close connector finder" onClick={() => returnToOnboardingOrClose(() => setAddOpen(false))}><XIcon size={15} /></button>
                 </div>
                 <div className="modal-body connector-finder-body">
                   <div className="connector-finder-controls">
@@ -1681,9 +1698,15 @@ export default function ConnectorsPage() {
 
       <UpgradeModal
         open={upgradeOpen}
-        onClose={() => setUpgradeOpen(false)}
-        title="Activate real connectors"
-        body="Preview connectors let you model your stack. Choose a plan to connect real accounts and run operators live."
+        onClose={() => returnToOnboardingOrClose(() => setUpgradeOpen(false))}
+        title={isOnboarding ? "This workspace needs a plan to connect real accounts" : "Activate real connectors"}
+        body={
+          isOnboarding
+            ? entitlements.trialEndsAt
+              ? "Your trial has ended, so real connections need a plan to continue. Choose a plan, then come back to finish connecting your systems."
+              : "This workspace's trial has already been used, so real connections need a plan to continue. Choose a plan, then come back to finish connecting your systems."
+            : "Preview connectors let you model your stack. Choose a plan to connect real accounts and run operators live."
+        }
       />
     </div>
   );
