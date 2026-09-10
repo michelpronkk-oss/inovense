@@ -2,6 +2,7 @@ import { getActionDefinition } from "@/lib/actions/registry";
 import { renderActionPreview } from "@/lib/actions/preview";
 import type { ActionExecutionResult, ActionIntent, PreparedAction, WorkspaceActionPolicy } from "@/lib/actions/types";
 import { DEFAULT_POLICY_WORKSPACE_SETTINGS, defaultRiskForAction, destinationTypeForAction } from "@/lib/policies/defaults";
+import { normalizeBusinessContext } from "@/lib/policies/context";
 import { evaluatePolicy } from "@/lib/policies/evaluate";
 import type { DestinationType, PolicyInput } from "@/lib/policies/types";
 import {
@@ -34,6 +35,9 @@ function buildPolicyInput(intent: ActionIntent, prepared: Omit<PreparedAction, "
     channelId: typeof rawInput.channelId === "string" ? rawInput.channelId.trim() : undefined,
     cardId: typeof rawInput.cardId === "string" ? rawInput.cardId.trim() : undefined,
     listId: typeof rawInput.listId === "string" ? rawInput.listId.trim() : undefined,
+    subjectType: typeof rawInput.subjectType === "string" ? rawInput.subjectType.trim() : typeof intent.metadata?.subjectType === "string" ? intent.metadata.subjectType.trim() : undefined,
+    subjectId: typeof rawInput.subjectId === "string" ? rawInput.subjectId.trim() : typeof intent.metadata?.subjectId === "string" ? intent.metadata.subjectId.trim() : undefined,
+    businessContext: normalizeBusinessContext(rawInput.businessContext ?? intent.metadata?.businessContext),
     source: intent.source ?? undefined,
     metadata: intent.metadata ?? {},
   };

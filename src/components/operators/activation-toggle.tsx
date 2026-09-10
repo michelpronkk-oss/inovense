@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useState } from "react";
 import Link from "next/link";
+import { getOperatorDefinition } from "@/lib/operators/registry";
 
 export type ActivationEligibility = {
   eligible: boolean;
@@ -58,6 +59,8 @@ export function OperatorActivationToggle({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [confirmPause, setConfirmPause] = useState(false);
+  const [activationNotice, setActivationNotice] = useState(false);
+  const operatorName = getOperatorDefinition(operatorKey)?.name ?? `${operatorKey.replace(/_/g, " ")} Operator`;
 
   const load = useCallback(async () => {
     if (!workspaceId) return;
@@ -94,6 +97,7 @@ export function OperatorActivationToggle({
       const json = await res.json().catch(() => ({})) as { state?: ActivationState; error?: string };
       if (!res.ok) throw new Error(json.error || "Could not update activation.");
       setState(json.state ?? { activated: nextActivated, activatedAt: null, updatedAt: null });
+      setActivationNotice(nextActivated);
       setConfirmPause(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update activation.");
@@ -151,6 +155,18 @@ export function OperatorActivationToggle({
         {confirmPause && activated && <div style={{ marginTop: 7, display: "grid", gap: 6, fontSize: 12, color: "var(--text-dim)" }}><span>Pausing stops scheduled monitoring. Your configuration, approvals, workflow history, and recorded outcomes stay available.</span><span style={{ display: "flex", gap: 6 }}><button type="button" className="appr-btn deny" disabled={saving} onClick={() => void toggle()}>Pause monitoring</button><button type="button" className="appr-btn edit" disabled={saving} onClick={() => setConfirmPause(false)}>Keep active</button></span></div>}
         {error && <div role="alert" style={{ marginTop: 4, fontSize: 12, color: "var(--rose)" }}>{error} <button type="button" className="btn btn-ghost btn-sm" disabled={loading || saving} onClick={() => void load()}>Retry</button></div>}
       </div>
+      {activationNotice && activated && (
+        <div className="operator-activation-confirmation" role="status" aria-live="polite">
+          <span className="operator-activation-confirmation-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 12 4 4 8-8" /></svg>
+          </span>
+          <span className="operator-activation-confirmation-copy">
+            <strong>{operatorName} has been activated</strong>
+            <span>Scheduled monitoring is now on. Consequential actions will still wait for your approval.</span>
+          </span>
+          <button type="button" className="operator-activation-confirmation-dismiss" aria-label={`Dismiss activation confirmation for ${operatorName}`} onClick={() => setActivationNotice(false)}>Dismiss</button>
+        </div>
+      )}
       {!executionEligibility.eligible && (
         <Link href="/plans" className="btn btn-primary btn-sm" style={{ textDecoration: "none", flexShrink: 0 }}>
           {executionEligibility.status === "billing_attention" ? "Update billing" : "Choose a plan"}

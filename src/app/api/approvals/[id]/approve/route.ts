@@ -14,7 +14,10 @@ import { ZendeskExecutionError } from "@/lib/connectors/zendesk";
 import { IntercomExecutionError } from "@/lib/connectors/intercom";
 import { sendSlackApprovalNotification } from "@/lib/notifications/slack";
 import { evaluateExecutionPolicy } from "@/lib/policies/execution-policy";
+import { approvalScopesEqual, buildApprovalScope, emailPayloadIdentity, type ApprovalScope } from "@/lib/policies/approval-scope";
 import { buildPolicyInputFromContinuation } from "@/lib/policies/workspace-policy";
+import { hubSpotBusinessContext } from "@/lib/policies/context";
+import { businessContextFingerprint } from "@/lib/policies/context";
 import { logPolicyDecision } from "@/lib/policies/audit";
 import type { PolicyDecision } from "@/lib/policies/types";
 import { logOperatorEvent, recordOperatorUsage } from "@/lib/operators/logging";
@@ -69,6 +72,9 @@ type GmailContinuationPayload = {
     trelloTask?: string;
     slackAlert?: string;
   } | null;
+  approvalScope?: ApprovalScope | null;
+  approvalScopes?: { email?: ApprovalScope; hubspot?: ApprovalScope } | null;
+  policyEvidence?: Record<string, unknown> | null;
 };
 
 type SlackContinuationPayload = PreparedSlackMessageAction;
@@ -97,6 +103,44 @@ function isEmail(value: string): boolean {
 
 function stringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function approvalScopeFor(input: { continuation: Record<string, unknown>; approvalRow: Record<string, unknown> }, key: "email" | "hubspot" | "slack" | "trello"): ApprovalScope | null {
+  const grouped = input.continuation.approvalScopes;
+  if (grouped && typeof grouped === "object") {
+    const scope = (grouped as Record<string, unknown>)[key];
+    if (scope && typeof scope === "object") return scope as ApprovalScope;
+  }
+  if (key === "email") {
+    const scope = input.continuation.approvalScope ?? input.approvalRow.approval_scope;
+    return scope && typeof scope === "object" ? scope as ApprovalScope : null;
+  }
+  return null;
+}
+
+function reapprovalRequiredResponse(): NextResponse {
+  return NextResponse.json({
+    status: "reapproval_required",
+    error: "approval_scope_changed",
+    message: "The approved action or its business context changed after approval. Review the updated action before execution.",
+  }, { status: 409 });
+}
+
+function bundledApprovalScopeChanged(input: {
+  continuation: Record<string, unknown>;
+  approvalRow: Record<string, unknown>;
+  subject: string;
+  body: string;
+  preparedHubSpotActions?: PreparedHubSpotActions | null;
+}): boolean {
+  const emailScope = approvalScopeFor(input, "email");
+  if (emailScope?.parameters.payloadIdentity && emailScope.parameters.payloadIdentity !== emailPayloadIdentity(input.subject, input.body)) return true;
+  const hubspotScope = approvalScopeFor(input, "hubspot");
+  if (hubspotScope) {
+    const currentFingerprint = businessContextFingerprint(hubSpotBusinessContext(input.preparedHubSpotActions));
+    if (hubspotScope.contextFingerprint !== currentFingerprint) return true;
+  }
+  return false;
 }
 
 function effectiveDraft(payload: GmailContinuationPayload): {
@@ -687,6 +731,18 @@ async function executeSharedActionApproval(input: {
   const policyDecision = policyInput ? await evaluateExecutionPolicy({ supabase: input.supabase, policyInput, approvalId: input.approvalId }) : null;
   if (policyInput) {
     const decision = policyDecision!;
+    const storedScope = continuation.approvalScope && typeof continuation.approvalScope === "object"
+      ? continuation.approvalScope as ApprovalScope
+      : null;
+    if (storedScope && !approvalScopesEqual(storedScope, buildApprovalScope(policyInput, decision))) {
+      return NextResponse.json({
+        ok: false,
+        status: "reapproval_required",
+        error: "approval_scope_changed",
+        message: "The connector action or its business context changed after approval. Review and approve the updated action.",
+        policyDecision: decision,
+      }, { status: 409 });
+    }
     if (decision.decision === "blocked") {
       await logPolicyDecision({ supabase: input.supabase, workspaceId: input.payload.workspaceId, runId: typeof input.approvalRow.run_id === "string" ? input.approvalRow.run_id : null, approvalId: input.approvalId, decision, policyInput, live: true });
       await input.supabase.from("os_approvals").update({
@@ -932,6 +988,14 @@ async function executeOperationsApproval(input: {
     : null;
   const slackPolicyDecision = slackPolicyInput ? await evaluateExecutionPolicy({ supabase: input.supabase, policyInput: slackPolicyInput, approvalId: input.approvalId }) : null;
   const trelloPolicyDecision = trelloPolicyInput ? await evaluateExecutionPolicy({ supabase: input.supabase, policyInput: trelloPolicyInput, approvalId: input.approvalId }) : null;
+  const storedSlackScope = approvalScopeFor({ continuation, approvalRow: input.approvalRow }, "slack");
+  const storedTrelloScope = approvalScopeFor({ continuation, approvalRow: input.approvalRow }, "trello");
+  const slackScopeChanged = storedSlackScope && slackPolicyInput && !approvalScopesEqual(storedSlackScope, buildApprovalScope(slackPolicyInput, slackPolicyDecision!));
+  const trelloScopeChanged = storedTrelloScope && trelloPolicyInput && !approvalScopesEqual(storedTrelloScope, buildApprovalScope(trelloPolicyInput, trelloPolicyDecision!));
+  if (slackScopeChanged || trelloScopeChanged) {
+    await input.supabase.from("os_approvals").update({ status: "pending", resolved_by: null }).eq("id", input.approvalId).eq("workspace_id", input.payload.workspaceId).eq("status", "executing");
+    return reapprovalRequiredResponse();
+  }
   const slackBlocked = slackPolicyDecision?.decision === "blocked";
   const trelloBlocked = trelloPolicyDecision?.decision === "blocked";
 
@@ -1412,6 +1476,13 @@ async function executeMicrosoftApproval(input: {
   }
 
   const finalDraft = effectiveDraft(payload);
+  if (bundledApprovalScopeChanged({
+    continuation,
+    approvalRow: approvalRow as Record<string, unknown>,
+    subject: finalDraft.subject,
+    body: finalDraft.body,
+    preparedHubSpotActions: payload.preparedHubSpotActions,
+  })) return reapprovalRequiredResponse();
   const ws = await supabase
     .from("os_workspaces")
     .select("billing_status, can_run_real_actions")
@@ -1600,12 +1671,12 @@ async function executeMicrosoftApproval(input: {
     const hubspotPolicy = await evaluateExecutionPolicy({
       supabase,
       approvalId,
-      policyInput: { workspaceId: payload.workspaceId, operatorKey: payload.operatorKey || "revenue", actionType: "update_crm_record", connectorKey: "hubspot", capability: "crm.contacts.write", destinationType: "crm", riskLevel: "medium", source: "microsoft_approval" },
+      policyInput: { workspaceId: payload.workspaceId, operatorKey: payload.operatorKey || "revenue", actionType: "update_crm_record", connectorKey: "hubspot", capability: "crm.contacts.write", destinationType: "crm", riskLevel: "medium", subjectType: "deal", businessContext: hubSpotBusinessContext(payload.preparedHubSpotActions), source: "microsoft_approval" },
     });
     if (hubspotPolicy.executionDecision === "deny" || hubspotPolicy.executionDecision === "pause_operator") {
       hubspotResult = { status: "skipped", error: { code: hubspotPolicy.reasonCode, message: hubspotPolicy.reason } };
       warnings.push("hubspot_blocked_by_policy");
-      await logPolicyDecision({ supabase, workspaceId: payload.workspaceId, runId: runId || null, approvalId, decision: hubspotPolicy, policyInput: { workspaceId: payload.workspaceId, operatorKey: payload.operatorKey || "revenue", actionType: "update_crm_record", connectorKey: "hubspot", capability: "crm.contacts.write", destinationType: "crm", riskLevel: "medium", source: "microsoft_approval" }, live: true });
+      await logPolicyDecision({ supabase, workspaceId: payload.workspaceId, runId: runId || null, approvalId, decision: hubspotPolicy, policyInput: { workspaceId: payload.workspaceId, operatorKey: payload.operatorKey || "revenue", actionType: "update_crm_record", connectorKey: "hubspot", capability: "crm.contacts.write", destinationType: "crm", riskLevel: "medium", subjectType: "deal", businessContext: hubSpotBusinessContext(payload.preparedHubSpotActions), source: "microsoft_approval" }, live: true });
     } else try {
       hubspotResult = await executeHubSpotRevenueActions(payload.workspaceId, {
         to: payload.to,
@@ -2046,6 +2117,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ error: "Workspace mismatch for approval payload." }, { status: 403 });
   }
   const finalDraft = effectiveDraft(gmailPayload);
+  if (bundledApprovalScopeChanged({
+    continuation: continuation as Record<string, unknown>,
+    approvalRow: approvalRow as Record<string, unknown>,
+    subject: finalDraft.subject,
+    body: finalDraft.body,
+    preparedHubSpotActions: gmailPayload.preparedHubSpotActions,
+  })) return reapprovalRequiredResponse();
 
   const ws = await supabase
     .from("os_workspaces")
@@ -2245,12 +2323,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const hubspotPolicy = await evaluateExecutionPolicy({
       supabase,
       approvalId: id,
-      policyInput: { workspaceId: context.workspaceId, operatorKey: gmailPayload.operatorKey || "revenue", actionType: "update_crm_record", connectorKey: "hubspot", capability: "crm.contacts.write", destinationType: "crm", riskLevel: "medium", source: "gmail_approval" },
+      policyInput: { workspaceId: context.workspaceId, operatorKey: gmailPayload.operatorKey || "revenue", actionType: "update_crm_record", connectorKey: "hubspot", capability: "crm.contacts.write", destinationType: "crm", riskLevel: "medium", subjectType: "deal", businessContext: hubSpotBusinessContext(gmailPayload.preparedHubSpotActions), source: "gmail_approval" },
     });
     if (hubspotPolicy.executionDecision === "deny" || hubspotPolicy.executionDecision === "pause_operator") {
       hubspotResult = { status: "skipped", error: { code: hubspotPolicy.reasonCode, message: hubspotPolicy.reason } };
       warnings.push("hubspot_blocked_by_policy");
-      await logPolicyDecision({ supabase, workspaceId: context.workspaceId, runId: gmailPayload.operatorRunId ?? (typeof approvalRow.run_id === "string" ? approvalRow.run_id : null), approvalId: id, decision: hubspotPolicy, policyInput: { workspaceId: context.workspaceId, operatorKey: gmailPayload.operatorKey || "revenue", actionType: "update_crm_record", connectorKey: "hubspot", capability: "crm.contacts.write", destinationType: "crm", riskLevel: "medium", source: "gmail_approval" }, live: true });
+      await logPolicyDecision({ supabase, workspaceId: context.workspaceId, runId: gmailPayload.operatorRunId ?? (typeof approvalRow.run_id === "string" ? approvalRow.run_id : null), approvalId: id, decision: hubspotPolicy, policyInput: { workspaceId: context.workspaceId, operatorKey: gmailPayload.operatorKey || "revenue", actionType: "update_crm_record", connectorKey: "hubspot", capability: "crm.contacts.write", destinationType: "crm", riskLevel: "medium", subjectType: "deal", businessContext: hubSpotBusinessContext(gmailPayload.preparedHubSpotActions), source: "gmail_approval" }, live: true });
     } else try {
       console.info("[approval] hubspot.execution.starting", {
         approvalId: id,

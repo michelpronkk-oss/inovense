@@ -5,6 +5,7 @@ import { logOperatorEvent, operatorRuntimeId } from "@/lib/operators/logging";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
 import { evaluateExecutionPolicy } from "@/lib/policies/execution-policy";
+import { buildApprovalScope } from "@/lib/policies/approval-scope";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 
@@ -105,6 +106,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const approvalScope = buildApprovalScope(policyInput, runtimeDecision);
   const approvalId = operatorRuntimeId("appr-action");
   const insert = await supabase.from("os_approvals").insert({
     id: approvalId,
@@ -124,10 +126,17 @@ export async function POST(req: NextRequest) {
       workspaceId: context.workspaceId,
       operatorKey: preparedAction.operatorKey,
       preparedAction,
+      approvalScope,
+      policyEvidence: runtimeDecision.evidence,
     },
+    approval_scope: approvalScope,
+    policy_evidence: runtimeDecision.evidence,
     policy_reason: runtimeDecision.reason,
   });
   if (insert.error) return NextResponse.json({ error: insert.error.message }, { status: 500 });
+  if (runtimeDecision.intentId) {
+    await supabase.from("os_execution_intents").update({ status: "awaiting_approval", approval_id: approvalId }).eq("id", runtimeDecision.intentId).eq("workspace_id", context.workspaceId);
+  }
 
   await logOperatorEvent({
     supabase,

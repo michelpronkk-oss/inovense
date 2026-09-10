@@ -61,6 +61,9 @@ type GmailContinuationPayload = {
   executionResult?: Record<string, unknown> | null;
   preparedSlackAction?: Record<string, unknown> | null;
   preparedTrelloAction?: Record<string, unknown> | null;
+  approvalScope?: Record<string, unknown> | null;
+  approvalScopes?: Record<string, unknown> | null;
+  policyEvidence?: Record<string, unknown> | null;
   operations?: Record<string, unknown> | null;
   policy?: Record<string, unknown> | null;
   preparedAction?: {
@@ -194,6 +197,11 @@ function mapApproval(row: Record<string, unknown>, livePolicy: PolicyWorkspaceSe
   const detectedSignal = stringValue(sourceMetadata.detectedSignalSummary) ?? sourceSubject ?? continuation.subject ?? null;
   const policyReason = typeof row.policy_reason === "string" ? row.policy_reason : null;
   const draft = effectiveDraft(continuation);
+  const storedPolicyEvidence = continuation.policyEvidence ?? row.policy_evidence ?? null;
+  const groupedPolicyEvidence = storedPolicyEvidence && typeof storedPolicyEvidence === "object"
+    && ("email" in storedPolicyEvidence || "hubspot" in storedPolicyEvidence || "slack" in storedPolicyEvidence || "trello" in storedPolicyEvidence)
+    ? storedPolicyEvidence as Record<string, unknown>
+    : null;
 
   // Live policy decision (evaluated against current workspace policy, never the
   // stored snapshot) so the card always shows what would happen right now.
@@ -201,6 +209,11 @@ function mapApproval(row: Record<string, unknown>, livePolicy: PolicyWorkspaceSe
     ? buildPolicyInputFromContinuation({ workspaceId: String(row.workspace_id ?? ""), kind: continuation.kind, continuation: (row.continuation_payload as Record<string, unknown>) ?? {} })
     : null;
   const livePolicyDecision = policyInput ? evaluatePolicy(policyInput, livePolicy) : null;
+  const primaryPolicyEvidence = groupedPolicyEvidence?.email ?? groupedPolicyEvidence?.slack ?? groupedPolicyEvidence?.trello ?? storedPolicyEvidence ?? livePolicyDecision?.evidence ?? null;
+  const approvalScopes = continuation.approvalScopes
+    && typeof continuation.approvalScopes === "object"
+    ? continuation.approvalScopes
+    : continuation.approvalScope ?? row.approval_scope ?? null;
 
   return {
     id: String(row.id),
@@ -251,6 +264,10 @@ function mapApproval(row: Record<string, unknown>, livePolicy: PolicyWorkspaceSe
       crmPreparation: continuation.crmPreparation ?? null,
       preparedHubSpotActions: continuation.preparedHubSpotActions ?? null,
       executionResult: continuation.executionResult ?? null,
+      approvalScope: approvalScopes,
+      approvalScopes,
+      policyEvidence: primaryPolicyEvidence,
+      policyEvidenceByAction: groupedPolicyEvidence,
       preparedAction: continuation.preparedAction ?? null,
       preparedSlackAction: continuation.preparedSlackAction ?? null,
       preparedTrelloAction: continuation.preparedTrelloAction ?? null,
@@ -303,7 +320,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from("os_approvals")
-    .select("id,workspace_id,type,title,body,agent_id,agent_mark,agent_color,run_id,status,created_at,resolved_at,resolved_by,continuation_payload,policy_reason")
+    .select("id,workspace_id,type,title,body,agent_id,agent_mark,agent_color,run_id,status,created_at,resolved_at,resolved_by,continuation_payload,policy_reason,approval_scope,policy_evidence")
     .eq("workspace_id", context.workspaceId)
     .order("created_at", { ascending: false })
     .limit(100);

@@ -58,6 +58,7 @@
     "test:activity-copy": "node tests/activity-capability-copy-smoke.mjs",
     "test:notifications": "node tests/notifications-smoke.mjs",
     "test:execution-policy": "node tests/execution-policy-smoke.mjs",
+    "test:contextual-policy": "node tests/contextual-policy-smoke.mjs",
     "test:settings-controls": "node tests/settings-controls-smoke.mjs",
     "test:workspace-identity-shell": "node tests/workspace-identity-shell-smoke.mjs",
     "test:release-candidate-ui": "node tests/release-candidate-ui-smoke.mjs",

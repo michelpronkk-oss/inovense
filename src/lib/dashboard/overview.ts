@@ -348,7 +348,14 @@ function buildOperators(input: { approvals: Row[]; runs: Row[]; productStates: O
     { key: "support" as const, description: "Monitors support work, prepares controlled customer responses, and observes resolution." },
   ];
 
-  return specs.filter((spec) => !input.operatorKeys || input.operatorKeys.includes(spec.key)).map((spec) => {
+  return specs.filter((spec) => {
+    const productState = input.productStates.find((item) => item.operatorKey === spec.key);
+    const active = productState?.state === "active" || productState?.state === "active_limited" || productState?.state === "enhanced";
+    // Keep the first-priority focus for setup, but always surface every
+    // operator that is actually running so the dashboard cannot under-report
+    // the live workforce.
+    return !input.operatorKeys || input.operatorKeys.includes(spec.key) || active;
+  }).map((spec) => {
     const def = getOperatorDefinition(spec.key);
     const productState = input.productStates.find((item) => item.operatorKey === spec.key);
     const pending = input.approvals.filter((row) => stringValue(row.status) === "pending" && (stringValue(row.agent_id) === spec.key || stringValue(asRecord(row.continuation_payload).operatorKey) === spec.key)).length;

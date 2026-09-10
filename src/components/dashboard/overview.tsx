@@ -110,12 +110,19 @@ function DashboardMetrics({ overview }: { overview: DashboardOverview }) {
   const pending = overview.approvals.pendingCount;
   const oldestApproval = overview.approvals.latest[0];
   const attentionConnectors = overview.connectors.length - counts.connected;
+  const activeOperatorNames = overview.operatorProductStates
+    .filter((operator) => operator.state === "active" || operator.state === "active_limited" || operator.state === "enhanced")
+    .map((operator) => operator.operatorName);
+  // The dashboard can intentionally focus its detail list on the workspace's
+  // first operator. Never let that filtered list produce an impossible value
+  // such as "2 of 1" when another operator is already active.
+  const workforceTotal = Math.max(overview.operators.length, activeOperatorNames.length);
 
   const metrics = [
     {
       label: "Live workforce",
-      value: <>{counts.active}<em>of {overview.operators.length} operator{overview.operators.length === 1 ? "" : "s"}</em></>,
-      detail: counts.active ? overview.operators.filter((o) => (overview.operatorProductStates.find((p) => p.operatorKey === o.key)?.state ?? "") !== "needs_setup").slice(0, 2).map((o) => o.name).join(", ") : "None monitoring yet",
+      value: <>{counts.active}<em>of {workforceTotal} operator{workforceTotal === 1 ? "" : "s"}</em></>,
+      detail: activeOperatorNames.length ? activeOperatorNames.slice(0, 2).join(", ") : "None monitoring yet",
     },
     {
       label: "Awaiting approval",
@@ -319,6 +326,18 @@ export function OSOverview() {
     setError("");
     void loadOverview(controller.signal);
     return () => controller.abort();
+  }, [loadOverview]);
+
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void loadOverview();
+    };
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
   }, [loadOverview]);
 
   const runManualCheck = async (key: ScanKey) => {

@@ -1,4 +1,6 @@
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { DEFAULT_ACTION_RULES } from "@/lib/policies/defaults";
+import type { PolicyActionRule, PolicyCondition, PolicyConditionField, PolicyConditionOperator } from "@/lib/policies/types";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
@@ -25,11 +27,16 @@ export type TrelloProjectSettings = {
 export const DEFAULT_CUSTOMER_EMAIL_MODE: CustomerEmailMode = "approval_required";
 
 export const DEFAULT_APPROVAL_POLICY = {
+  version: 2,
   outboundComms: "Always require approval",
   proposals: "Always require approval",
   internalReports: "Auto-approve within policy",
-  crmWrites: "Auto-approve",
+  // Legacy display field. The centralized policy evaluator remains authoritative
+  // and CRM writes stay approval-required until a separately reviewed adapter is
+  // enabled. Existing rows are read compatibly but never used to loosen safety.
+  crmWrites: "Always require approval",
   customerEmailMode: DEFAULT_CUSTOMER_EMAIL_MODE,
+  actionRules: DEFAULT_ACTION_RULES,
 };
 
 export const DEFAULT_SLACK_NOTIFICATION_SETTINGS: SlackNotificationSettings = {
@@ -67,6 +74,51 @@ function customerEmailMode(value: unknown): CustomerEmailMode {
   return DEFAULT_CUSTOMER_EMAIL_MODE;
 }
 
+const CONDITION_FIELDS = new Set<PolicyConditionField>([
+  "deal.amount", "deal.currency", "deal.stage", "deal.discount_percent",
+  "customer.tier", "customer.region", "customer.sentiment", "customer.sla_priority",
+  "refund.amount", "project.priority", "project.due_date_impact", "task.type",
+  "task.external_collaborator", "campaign.spend", "campaign.audience_size",
+  "document.sensitivity", "workspace.risk_level",
+]);
+const CONDITION_OPERATORS = new Set<PolicyConditionOperator>(["eq", "neq", "gt", "gte", "lt", "lte", "in", "not_in", "exists", "missing"]);
+
+function parseActionRules(value: unknown): PolicyActionRule[] {
+  if (!Array.isArray(value)) return DEFAULT_ACTION_RULES.map((rule) => ({ ...rule, conditions: rule.conditions.map((condition) => ({ ...condition })) }));
+  const rules: PolicyActionRule[] = [];
+  for (const candidate of value) {
+    const rec = asRecord(candidate);
+    if (typeof rec.id !== "string" || typeof rec.reason !== "string") continue;
+    const conditions: PolicyCondition[] = Array.isArray(rec.conditions)
+      ? rec.conditions.flatMap((condition) => {
+        const item = asRecord(condition);
+        const field = item.field;
+        const operator = item.operator;
+        if (typeof field !== "string" || !CONDITION_FIELDS.has(field as PolicyConditionField) || typeof operator !== "string" || !CONDITION_OPERATORS.has(operator as PolicyConditionOperator)) return [];
+        return [{ field: field as PolicyConditionField, operator: operator as PolicyConditionOperator, value: item.value as PolicyCondition["value"] }];
+      })
+      : [];
+    const decision = rec.decision;
+    if (decision !== "allow_auto" && decision !== "approval_required" && decision !== "draft_only" && decision !== "blocked") continue;
+    rules.push({
+      id: rec.id,
+      enabled: rec.enabled !== false,
+      operator: typeof rec.operator === "string" ? rec.operator : null,
+      domain: typeof rec.domain === "string" ? rec.domain : null,
+      connector: typeof rec.connector === "string" ? rec.connector : null,
+      action: typeof rec.action === "string" ? rec.action : null,
+      subjectType: typeof rec.subjectType === "string" ? rec.subjectType : null,
+      conditions,
+      decision,
+      approverRoles: Array.isArray(rec.approverRoles) ? rec.approverRoles.filter((role): role is string => typeof role === "string" && role.trim().length > 0) : [],
+      expiresAfterMinutes: typeof rec.expiresAfterMinutes === "number" && Number.isFinite(rec.expiresAfterMinutes) ? Math.max(1, Math.round(rec.expiresAfterMinutes)) : null,
+      priority: typeof rec.priority === "number" && Number.isFinite(rec.priority) ? Math.round(rec.priority) : 0,
+      reason: rec.reason,
+    });
+  }
+  return rules.length ? rules : DEFAULT_ACTION_RULES.map((rule) => ({ ...rule, conditions: rule.conditions.map((condition) => ({ ...condition })) }));
+}
+
 export function parseSlackNotificationSettings(value: unknown): SlackNotificationSettings {
   const rec = asRecord(value);
   return {
@@ -99,6 +151,8 @@ export async function loadWorkspacePolicySettings(input: {
 }): Promise<{
   approvalPolicy: Record<string, unknown>;
   notifications: Record<string, unknown>;
+  version: number;
+  actionRules: PolicyActionRule[];
   customerEmailMode: CustomerEmailMode;
   slack: SlackNotificationSettings;
   trello: TrelloProjectSettings;
@@ -111,11 +165,24 @@ export async function loadWorkspacePolicySettings(input: {
     .maybeSingle();
 
   if (settings.error) throw new Error(settings.error.message);
-  const approvalPolicy = { ...DEFAULT_APPROVAL_POLICY, ...asRecord(settings.data?.approval_policy) };
+  const storedApprovalPolicy = asRecord(settings.data?.approval_policy);
+  const actionRules = parseActionRules(storedApprovalPolicy.actionRules);
+  // Normalize the legacy display-only CRM flag at the existing persistence
+  // boundary. The runtime evaluator has always remained the authority, but
+  // returning the old "Auto-approve" value would make the policy UI lie.
+  const approvalPolicy = {
+    ...DEFAULT_APPROVAL_POLICY,
+    ...storedApprovalPolicy,
+    version: 2,
+    crmWrites: "Always require approval",
+    actionRules,
+  };
   const notifications = asRecord(settings.data?.notifications);
   return {
     approvalPolicy,
     notifications,
+    version: 2,
+    actionRules,
     customerEmailMode: customerEmailMode(approvalPolicy.customerEmailMode),
     slack: parseSlackNotificationSettings(notifications),
     trello: parseTrelloProjectSettings(notifications),

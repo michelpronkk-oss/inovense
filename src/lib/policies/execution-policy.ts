@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { getActionDefinition } from "@/lib/actions/registry";
+import { businessContextFingerprint } from "@/lib/policies/context";
 import type { ActionType } from "@/lib/actions/types";
 import { getConnectorTruth } from "@/lib/connectors/truth";
 import { getOperatorDefinition } from "@/lib/operators/registry";
@@ -30,6 +31,9 @@ function hashAction(input: PolicyInput): string {
     recipient: input.recipient ?? null, channelId: input.channelId ?? null, teamId: input.teamId ?? null,
     cardId: input.cardId ?? null,
     listId: input.listId ?? null, metadata: input.metadata?.dedupeKey ?? null,
+    subjectType: input.subjectType ?? null,
+    subjectId: input.subjectId ?? null,
+    contextFingerprint: businessContextFingerprint(input.businessContext),
     asanaProjectId: input.metadata?.asanaProjectId ?? null,
     asanaTaskId: input.metadata?.asanaTaskId ?? null,
     jiraCloudId: input.metadata?.jiraCloudId ?? null,
@@ -50,6 +54,21 @@ function deny(input: PolicyInput, reasonCode: string, reason: string, actionHash
     riskLevel: input.riskLevel, matchedRuleId: reasonCode, matchedPolicyIds: [reasonCode],
     requiresHumanReview: false, canExecuteNow: false, auditLabel: `policy.${pause ? "pause_operator" : "deny"}.${reasonCode}`,
     userFacingLabel: pause ? "Operator paused" : "Blocked", evaluatedAt: new Date().toISOString(), actionHash,
+    matchedRuleIds: [reasonCode],
+    policyVersion: 2,
+    evidence: {
+      policyVersion: 2,
+      matchedRuleIds: [reasonCode],
+      connector: input.connectorKey,
+      action: input.actionType,
+      subjectType: input.subjectType ?? null,
+      subjectId: input.subjectId ?? null,
+      contextSummary: {},
+      contextFingerprint: businessContextFingerprint(input.businessContext),
+      threshold: null,
+      requiredApproverRoles: [],
+      approvalExpiresAfterMinutes: null,
+    },
   };
 }
 
@@ -99,7 +118,15 @@ async function persistIntent(input: { supabase: SupabaseAdmin; policyInput: Poli
     reason_code: input.decision.reasonCode, risk_level: input.decision.riskLevel,
     status: input.decision.executionDecision === "deny" || input.decision.executionDecision === "pause_operator" ? "denied" : "policy_evaluated",
     approval_id: input.approvalId ?? null,
-    metadata: { destinationType: input.policyInput.destinationType, matchedPolicyIds: input.decision.matchedPolicyIds },
+    metadata: {
+      destinationType: input.policyInput.destinationType,
+      subjectType: input.policyInput.subjectType ?? null,
+      subjectId: input.policyInput.subjectId ?? null,
+      contextFingerprint: businessContextFingerprint(input.policyInput.businessContext),
+      matchedPolicyIds: input.decision.matchedPolicyIds,
+      policyVersion: input.decision.policyVersion,
+      evidence: input.decision.evidence,
+    },
   });
   if (!saved.error) return { id, duplicate: false };
   if (saved.error.code !== "23505") throw new Error(saved.error.message);

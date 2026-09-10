@@ -19,6 +19,8 @@ import { sendSlackApprovalNotification } from "@/lib/notifications/slack";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { getWorkspaceExecutionEligibility } from "@/lib/os/execution-eligibility";
 import { loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
+import { evaluatePolicy } from "@/lib/policies/evaluate";
+import { buildApprovalScope } from "@/lib/policies/approval-scope";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 import { getAppUrl } from "@/lib/urls";
 import {
@@ -43,6 +45,12 @@ type OperationsScanSourceMode = "scheduled" | "manual" | "event_ready";
 const OPERATIONS_AGENT_ID = "operations";
 const OPERATIONS_AGENT_MARK = "OP";
 const OPERATIONS_AGENT_COLOR = "#66D0E0";
+
+function actionGovernance(action: PreparedAction | null, policySettings: Awaited<ReturnType<typeof loadPolicyWorkspaceSettings>>) {
+  if (!action?.policyInput) return null;
+  const decision = evaluatePolicy(action.policyInput, policySettings);
+  return { scope: buildApprovalScope(action.policyInput, decision), evidence: decision.evidence };
+}
 
 const MAX_LISTS = 12;
 const MAX_CARDS_PER_LIST = 40;
@@ -718,6 +726,10 @@ export async function scanOperationsSignals(input: {
       });
 
       const approvalId = operatorRuntimeId("appr-operations");
+      const slackGovernance = actionGovernance(preparedSlackAction, policySettings);
+      const trelloGovernance = actionGovernance(preparedTrelloAction, policySettings);
+      const approvalScopes = { slack: slackGovernance?.scope ?? null, trello: trelloGovernance?.scope ?? null };
+      const policyEvidence = { slack: slackGovernance?.evidence ?? null, trello: trelloGovernance?.evidence ?? null };
       const approvalInsert = await supabase.from("os_approvals").insert({
         id: approvalId,
         workspace_id: workspaceId,
@@ -739,6 +751,8 @@ export async function scanOperationsSignals(input: {
           dedupeKey,
           preparedSlackAction,
           preparedTrelloAction,
+          approvalScopes,
+          policyEvidence,
           operations: operationsMeta,
           policy: {
             slackMessage: preparedSlackAction ? "Approval required" : "Not prepared",
@@ -746,6 +760,8 @@ export async function scanOperationsSignals(input: {
             humanReview: "Required",
           },
         },
+        approval_scope: slackGovernance?.scope ?? trelloGovernance?.scope ?? null,
+        policy_evidence: slackGovernance?.evidence ?? trelloGovernance?.evidence ?? null,
         policy_reason: "Operations actions require human approval before any Slack message or Trello change.",
       });
       if (approvalInsert.error) throw new Error(approvalInsert.error.message);

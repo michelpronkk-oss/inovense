@@ -1144,54 +1144,55 @@ export default function ConnectorsPage() {
       {/* Add connector modal */}
       {addOpen && (
         <div className="scrim" onClick={() => { setAddOpen(false); setSetupConnectorId(null); }}>
-          <div className="modal wide" onClick={(e) => e.stopPropagation()}>
+          <div className="modal wide connector-finder-modal" onClick={(e) => e.stopPropagation()}>
             {!setupConnector ? (
               <>
                 <div className="modal-head">
                   <div className="tt">
                     <h3>Find a connector</h3>
-                    <p>Choose the systems that give your workforce more context and useful actions.</p>
+                    <p className="connector-finder-intro">Add context to the work your operators already handle.</p>
                   </div>
-                  <button type="button" className="btn btn-icon btn-ghost" aria-label="Close connector finder" onClick={() => setAddOpen(false)}><XIcon size={15} /></button>
+                  <button type="button" className="btn btn-icon btn-ghost connector-finder-close" aria-label="Close connector finder" onClick={() => setAddOpen(false)}><XIcon size={15} /></button>
                 </div>
-                <div className="modal-body">
-                  <div className="inline" style={{ marginBottom: 16 }}>
+                <div className="modal-body connector-finder-body">
+                  <div className="connector-finder-controls">
                     <span className="search" style={{ flex: 1 }}>
                       <input placeholder="Search systems…" aria-label="Search connector systems" value={search} onChange={(e) => setSearch(e.target.value)} />
                     </span>
-                    <label><span className="sr-only">Connector category</span><select className="select" aria-label="Connector category" value={discoveryCategory} onChange={(event) => setDiscoveryCategory(event.target.value as ConnectorDiscoveryCategory)}>{CONNECTOR_DISCOVERY_CATEGORIES.map((category) => <option key={category.key} value={category.key}>{category.label}</option>)}</select></label>
+                    <label className="connector-finder-category"><span className="sr-only">Connector category</span><select className="select" aria-label="Connector category" value={discoveryCategory} onChange={(event) => setDiscoveryCategory(event.target.value as ConnectorDiscoveryCategory)}>{CONNECTOR_DISCOVERY_CATEGORIES.map((category) => <option key={category.key} value={category.key}>{category.label}</option>)}</select></label>
                   </div>
                   {prioritizedAvailable.length > 0 ? (
                     // Already-connected systems are grouped and labelled apart from
                     // the ones still available. In a single flat list a connected
                     // provider carries the same weight as ten unconnected ones,
                     // which is what made this read as a pile of boxes.
-                    <div className="stack" aria-label="Connector results">
-                      {([
+                    <div className="connector-finder-results" aria-label="Connector results">
+                      <div className="stack">
+                        {([
                         ["Connected", prioritizedAvailable.filter((c) => isRealConnectedConnector(c))],
                         ["Available", prioritizedAvailable.filter((c) => !isRealConnectedConnector(c))],
-                      ] as const).filter(([, group]) => group.length > 0).map(([groupLabel, group]) => (
-                        <div key={groupLabel}>
-                          <div className="sec-head" style={{ marginBottom: 6 }}><span className="t-eyebrow">{groupLabel}</span><span className="t-meta">{group.length}</span></div>
-                          <div className="rows">
-                            {group.map((c) => {
-                              const connectorKey = normalizeConnectorKey(c.id);
-                              const definition = getConnectorDefinition(connectorKey);
-                              const discoveryState = connectorDiscoveryState(c);
-                              const operators = connectorOperatorNames(connectorKey).map(shortOperatorLabel);
-                              return (
-                                <div className="row link" key={c.id} role="button" tabIndex={0} onClick={() => { if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); } }}>
-                                  <span className="cn">
-                                    <span className="cn-mark" style={{ color: c.color }}>{IntegrationLogos[c.name] ?? c.letter}</span>
-                                    <span className="nm"><b>{c.name}</b><span>{definition ? connectorCategoryLabel(definition) : CONNECTOR_CATEGORY_LABELS.custom_api} · {connectorCapabilities(connectorKey)[0] ?? "Useful workspace context"}{operators.length > 0 ? ` · Useful for ${operators.join(" · ")}` : ""}</span></span>
-                                  </span>
-                                  <span className="rt"><span className="t-meta" style={{ color: discoveryState.color }}>{discoveryState.status}</span><span className="badge cyan">{discoveryState.action}</span></span>
-                                </div>
-                              );
-                            })}
+                        ] as const).filter(([, group]) => group.length > 0).map(([groupLabel, group]) => (
+                          <div key={groupLabel}>
+                            <div className="sec-head" style={{ marginBottom: 6 }}><span className="t-eyebrow">{groupLabel}</span><span className="t-meta">{group.length}</span></div>
+                            <div className="rows">
+                              {group.map((c) => {
+                                const connectorKey = normalizeConnectorKey(c.id);
+                                const definition = getConnectorDefinition(connectorKey);
+                                const discoveryState = connectorDiscoveryState(c);
+                                return (
+                                  <div className="row link" key={c.id} role="button" tabIndex={0} onClick={() => { if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); } }}>
+                                    <span className="cn">
+                                      <span className="cn-mark" style={{ color: c.color }}>{IntegrationLogos[c.name] ?? c.letter}</span>
+                                      <span className="nm"><b>{c.name}</b><span className="connector-finder-row-meta">{definition ? connectorCategoryLabel(definition) : CONNECTOR_CATEGORY_LABELS.custom_api} · {connectorCapabilities(connectorKey)[0] ?? "Useful workspace context"}</span></span>
+                                    </span>
+                                    <span className="rt"><span className="t-meta" style={{ color: discoveryState.color }}>{discoveryState.status}</span><span className="badge cyan">{discoveryState.action}</span></span>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   ) : (
                     <div className="card-pad"><p className="t-meta" style={{ margin: 0 }}>No live connectors match this search.</p></div>

@@ -1,5 +1,5 @@
 import type { ActionType } from "@/lib/actions/types";
-import type { DestinationType, PolicyRiskLevel, PolicyWorkspaceSettings } from "@/lib/policies/types";
+import type { DestinationType, PolicyActionRule, PolicyRiskLevel, PolicyWorkspaceSettings } from "@/lib/policies/types";
 
 export const POLICY_ENGINE_VERSION = "policy-v2";
 
@@ -8,7 +8,29 @@ export const POLICY_ENGINE_VERSION = "policy-v2";
 // approval/execution time. Flip this on only after auto-execution is verified.
 export const policyEngineAutoExecuteLowRiskActions = true;
 
+export const DEFAULT_ACTION_RULES: PolicyActionRule[] = [
+  {
+    id: "hubspot.deal.eur_10000.approval",
+    enabled: true,
+    connector: "hubspot",
+    action: null,
+    subjectType: "deal",
+    conditions: [
+      { field: "deal.amount", operator: "gte", value: 10000 },
+      { field: "deal.currency", operator: "eq", value: "EUR" },
+    ],
+    decision: "approval_required",
+    // These are the existing server-authorized approval roles. The evaluator
+    // records them as evidence; the approval route remains the final authority.
+    approverRoles: ["owner", "admin", "reviewer"],
+    expiresAfterMinutes: 60,
+    priority: 100,
+    reason: "HubSpot deals of €10,000 or more in EUR require approval.",
+  },
+];
+
 export const DEFAULT_POLICY_WORKSPACE_SETTINGS: PolicyWorkspaceSettings = {
+  version: 2,
   autonomyMode: "approval_first",
   emergencyStopEnabled: false,
   customerEmailMode: "approval_required",
@@ -21,6 +43,7 @@ export const DEFAULT_POLICY_WORKSPACE_SETTINGS: PolicyWorkspaceSettings = {
   customerFacingActionsRequireApproval: true,
   maxAutonomousActionsPerHour: 10,
   maxAutonomousActionsPerDay: 50,
+  actionRules: DEFAULT_ACTION_RULES,
 };
 
 // Stable destination classification per action type. Falls back to "system".

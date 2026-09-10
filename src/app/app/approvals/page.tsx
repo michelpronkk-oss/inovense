@@ -58,6 +58,49 @@ type ApprovalRow = {
     approvalReason?: string | null;
     whatHappensAfterApproval?: string | null;
     executionResult?: Record<string, unknown> | null;
+    approvalScope?: {
+      workspaceId?: string;
+      operatorId?: string;
+      connector?: string;
+      action?: string;
+      subjectType?: string | null;
+      subjectId?: string | null;
+      destinationType?: string;
+      matchedPolicyRuleIds?: string[];
+      policyVersion?: number;
+      contextFingerprint?: string | null;
+    } | null;
+    approvalScopes?: Record<string, {
+      connector?: string;
+      action?: string;
+      subjectType?: string | null;
+      subjectId?: string | null;
+      contextFingerprint?: string | null;
+    }> | null;
+    policyEvidence?: {
+      policyVersion?: number;
+      matchedRuleIds?: string[];
+      connector?: string;
+      action?: string;
+      subjectType?: string | null;
+      subjectId?: string | null;
+      contextSummary?: Record<string, string | number | boolean | null>;
+      contextFingerprint?: string | null;
+      threshold?: { field?: string; operator?: string; configuredValue?: string | number | boolean | null; observedValue?: string | number | boolean | null; result?: string } | null;
+      requiredApproverRoles?: string[];
+      approvalExpiresAfterMinutes?: number | null;
+    } | null;
+    policyEvidenceByAction?: Record<string, {
+      connector?: string;
+      action?: string;
+      subjectType?: string | null;
+      subjectId?: string | null;
+      contextSummary?: Record<string, string | number | boolean | null>;
+      contextFingerprint?: string | null;
+      threshold?: { field?: string; operator?: string; configuredValue?: string | number | boolean | null; observedValue?: string | number | boolean | null; result?: string } | null;
+      requiredApproverRoles?: string[];
+      approvalExpiresAfterMinutes?: number | null;
+    }> | null;
     preparedAction?: {
       id?: string;
       actionType?: string;
@@ -208,6 +251,12 @@ function textValue(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function formatContextValue(value: string | number | boolean | null | undefined): string {
+  if (value === null || value === undefined || value === "") return "Not available";
+  if (typeof value === "number") return new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value);
+  return String(value);
+}
+
 function confidenceLabel(value: string | null | undefined): string {
   return value?.trim() ? value.trim().toUpperCase() : "UNKNOWN";
 }
@@ -262,7 +311,8 @@ export default function ApprovalsPage() {
   }, [state.currentUser.email, state.currentUser.id, state.workspace.id]);
 
   useEffect(() => {
-    void loadApprovals();
+    const handle = window.setTimeout(() => { void loadApprovals(); }, 0);
+    return () => window.clearTimeout(handle);
   }, [loadApprovals]);
 
   const pending = useMemo(() => approvals.filter((a) => a.status === "pending"), [approvals]);
@@ -485,6 +535,40 @@ export default function ApprovalsPage() {
                   </header>
                   <div className="t-object" style={{ marginTop: 12 }}>{item.title}</div>
                   <p className="t-compact" style={{ marginTop: 4 }}>{item.description}</p>
+
+                  {item.payload_preview.policyEvidence && (
+                    <div className="panel card-pad approval-policy-evidence" style={{ marginTop: 14 }}>
+                      <div className="inline" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div>
+                          <div className="t-eyebrow">Policy evidence</div>
+                          <div className="t-object" style={{ marginTop: 4 }}>This approval is scoped to one prepared action.</div>
+                        </div>
+                        <span className="badge cyan">v{item.payload_preview.policyEvidence.policyVersion ?? 1}</span>
+                      </div>
+                      <dl className="kv" style={{ marginTop: 12 }}>
+                        <div><dt>Connector</dt><dd>{valueOrDash(item.payload_preview.policyEvidence.connector)}</dd></div>
+                        <div><dt>Exact action</dt><dd>{valueOrDash(item.payload_preview.policyEvidence.action?.replace(/_/g, " ") ?? null)}</dd></div>
+                        <div><dt>Subject</dt><dd>{valueOrDash(item.payload_preview.policyEvidence.subjectType ? `${item.payload_preview.policyEvidence.subjectType}${item.payload_preview.policyEvidence.subjectId ? ` · ${item.payload_preview.policyEvidence.subjectId}` : ""}` : null)}</dd></div>
+                        <div><dt>Matched policy</dt><dd>{item.payload_preview.policyEvidence.matchedRuleIds?.join(", ") || "Platform safety baseline"}</dd></div>
+                        <div><dt>Approval authority</dt><dd>{item.payload_preview.policyEvidence.requiredApproverRoles?.join(", ") || "Workspace reviewer"}</dd></div>
+                      </dl>
+                      {item.payload_preview.policyEvidence.threshold && (
+                        <div className="attn info" style={{ padding: "9px 10px", marginTop: 12 }}>
+                          <span className="t-compact"><strong className="ink">Threshold:</strong> {item.payload_preview.policyEvidence.threshold.field} {item.payload_preview.policyEvidence.threshold.operator} {formatContextValue(item.payload_preview.policyEvidence.threshold.configuredValue)} · observed {formatContextValue(item.payload_preview.policyEvidence.threshold.observedValue)} · {item.payload_preview.policyEvidence.threshold.result}</span>
+                        </div>
+                      )}
+                      {item.payload_preview.policyEvidence.contextSummary && Object.keys(item.payload_preview.policyEvidence.contextSummary).length > 0 && (
+                        <div className="t-meta" style={{ marginTop: 10 }}>Context: {Object.entries(item.payload_preview.policyEvidence.contextSummary).map(([key, value]) => `${key} ${formatContextValue(value)}`).join(" · ")}</div>
+                      )}
+                      {item.payload_preview.policyEvidenceByAction && Object.entries(item.payload_preview.policyEvidenceByAction).filter(([key]) => key !== "email").map(([key, evidence]) => (
+                        <div key={key} className="attn info" style={{ padding: "9px 10px", marginTop: 10 }}>
+                          <span className="t-compact"><strong className="ink">Independent child scope:</strong> {evidence.connector ?? key} Â· {evidence.action?.replace(/_/g, " ") ?? "action"}{evidence.subjectType ? ` Â· ${evidence.subjectType}${evidence.subjectId ? ` ${evidence.subjectId}` : ""}` : ""}</span>
+                          {evidence.contextSummary && Object.keys(evidence.contextSummary).length > 0 && <div className="t-meta" style={{ marginTop: 4 }}>Context: {Object.entries(evidence.contextSummary).map(([contextKey, value]) => `${contextKey} ${formatContextValue(value)}`).join(" Â· ")}</div>}
+                        </div>
+                      ))}
+                      <div className="t-meta" style={{ marginTop: 8 }}>Reapproval is required if the connector, target, action, or business context changes.</div>
+                    </div>
+                  )}
 
                   <div style={{ marginTop: 14 }}>
                     {revenueApproval && (

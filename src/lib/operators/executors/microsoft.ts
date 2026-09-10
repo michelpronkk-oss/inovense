@@ -21,6 +21,7 @@ import {
 import { operatorRuntimeId } from "@/lib/operators/logging";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import type { CustomerEmailMode, SlackNotificationSettings } from "@/lib/settings/workspace-policy";
+import { buildBundledApprovalGovernance } from "@/lib/policies/approval-governance";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
@@ -97,6 +98,17 @@ export async function createMicrosoftSendApproval(input: {
 }) {
   const approvalId = operatorRuntimeId("appr-revenue-microsoft");
   const customerEmailMode = input.customerEmailMode ?? "approval_required";
+  const governance = await buildBundledApprovalGovernance({
+    supabase: input.supabase,
+    workspaceId: input.workspaceId,
+    operatorKey: "revenue",
+    emailConnector: "microsoft",
+    to: input.to,
+    subject: input.subject,
+    body: input.body,
+    dedupeKey: input.dedupeKey,
+    preparedHubSpotActions: input.preparedHubSpotActions,
+  });
   const insert = await input.supabase.from("os_approvals").insert({
     id: approvalId,
     workspace_id: input.workspaceId,
@@ -134,6 +146,9 @@ export async function createMicrosoftSendApproval(input: {
       crmPreparation: input.crmPreparation ?? null,
       crmPreparationStatus: input.crmPreparationStatus ?? null,
       preparedHubSpotActions: input.preparedHubSpotActions ?? null,
+      approvalScope: governance.approvalScopes.email,
+      approvalScopes: governance.approvalScopes,
+      policyEvidence: governance.policyEvidence,
       customerEmailPolicy: {
         mode: customerEmailMode,
         customerEmail: customerEmailMode === "draft_only"
@@ -146,6 +161,8 @@ export async function createMicrosoftSendApproval(input: {
           : "Disabled",
       },
     },
+    approval_scope: governance.approvalScopes.email,
+    policy_evidence: governance.policyEvidence.email,
     policy_reason: input.policyReason,
   });
 

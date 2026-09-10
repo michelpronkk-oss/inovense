@@ -1,6 +1,8 @@
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 import { DEFAULT_POLICY_WORKSPACE_SETTINGS, destinationTypeForAction, defaultRiskForAction } from "@/lib/policies/defaults";
+import { normalizeBusinessContext } from "@/lib/policies/context";
+import { emailPayloadIdentity } from "@/lib/policies/approval-scope";
 import type { PolicyConfidence, PolicyInput, PolicyRiskLevel, PolicyWorkspaceSettings, WorkspaceAutonomyMode } from "@/lib/policies/types";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
@@ -37,6 +39,7 @@ export async function loadPolicyWorkspaceSettings(input: {
   const dailyBriefAllowed = approvalPolicy.dailyBriefAllowed === false ? false : DEFAULT_POLICY_WORKSPACE_SETTINGS.dailyBriefAllowed;
 
   return {
+    version: base.version,
     autonomyMode: mode,
     emergencyStopEnabled,
     customerEmailMode: base.customerEmailMode,
@@ -49,6 +52,7 @@ export async function loadPolicyWorkspaceSettings(input: {
     customerFacingActionsRequireApproval: true,
     maxAutonomousActionsPerHour: DEFAULT_POLICY_WORKSPACE_SETTINGS.maxAutonomousActionsPerHour,
     maxAutonomousActionsPerDay: DEFAULT_POLICY_WORKSPACE_SETTINGS.maxAutonomousActionsPerDay,
+    actionRules: base.actionRules,
   };
 }
 
@@ -64,6 +68,8 @@ export async function savePolicyWorkspaceSettings(input: {
 
   const nextApprovalPolicy = {
     ...approvalPolicy,
+    version: 2,
+    actionRules: base.actionRules,
     ...(input.patch.autonomyMode !== undefined ? { autonomyMode: input.patch.autonomyMode } : {}),
     ...(input.patch.emergencyStopEnabled !== undefined ? { emergencyStopEnabled: input.patch.emergencyStopEnabled } : {}),
     ...(input.patch.customerEmailMode !== undefined ? { customerEmailMode: input.patch.customerEmailMode } : {}),
@@ -139,7 +145,13 @@ export function buildPolicyInputFromContinuation(input: {
       recipient: to,
       domain: to ? to.split("@")[1] : undefined,
       source: stringValue(c.source) ?? `${connectorKey}_scan`,
-      metadata: { dedupeKey: stringValue(c.dedupeKey) },
+      metadata: {
+        dedupeKey: stringValue(c.dedupeKey),
+        payloadIdentity: emailPayloadIdentity(
+          stringValue(c.editedDraftSubject) ?? stringValue(c.draftSubject) ?? stringValue(c.subject) ?? "",
+          stringValue(c.editedDraftBody) ?? stringValue(c.draftBody) ?? stringValue(c.body) ?? "",
+        ),
+      },
     };
   }
 
@@ -155,6 +167,9 @@ export function buildPolicyInputFromContinuation(input: {
       destinationType: destinationTypeForAction(actionType),
       riskLevel: riskValue(action.riskLevel, defaultRiskForAction(actionType)),
       confidence: confidenceValue(asRecord(action.metadata).confidence),
+      subjectType: stringValue(asRecord(action.policyInput).subjectType) ?? stringValue(asRecord(action.input).subjectType),
+      subjectId: stringValue(asRecord(action.policyInput).subjectId) ?? stringValue(asRecord(action.input).subjectId),
+      businessContext: normalizeBusinessContext(asRecord(action.policyInput).businessContext ?? asRecord(action.metadata).businessContext ?? asRecord(action.input).businessContext),
       cardId: stringValue(asRecord(action.input).cardId),
       listId: stringValue(asRecord(action.input).listId),
       source: stringValue(action.source) ?? "shared_action",
