@@ -4158,6 +4158,7 @@ select.os-input option {
 .os-root .metric:first-child { border-left: 0; }
 .os-root .metric .k { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--text-faint); }
 .os-root .metric .v { margin-top: 10px; font-size: 25px; font-weight: 500; letter-spacing: -.026em; font-variant-numeric: tabular-nums; color: var(--text); display: flex; align-items: baseline; gap: 7px; }
+.os-root .metric .metric-value-content { display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; }
 .os-root .metric .v em { font-style: normal; font-size: 13px; font-weight: 400; letter-spacing: -.004em; color: var(--text-mute); position: relative; top: -1px; }
 .os-root .metric .n { margin-top: 8px; font-size: 12.5px; color: var(--text-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .os-root .metric.attn-v .v { color: var(--amber); }

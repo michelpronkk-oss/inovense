@@ -73,7 +73,7 @@ export function MetricStrip({ items, className = "" }: { items: Array<{ id?: str
       {items.map((item, index) => (
         <div className={`metric os-metric-strip-item${item.tone === "attention" ? " attn-v" : ""}`} data-tone={item.tone ?? "default"} key={item.id ?? index}>
           <span className="k">{item.label}</span>
-          <div className="v"><strong>{item.value}</strong></div>
+          <div className="v"><strong className="metric-value-content">{item.value}</strong></div>
           <div className="n">{item.detail}</div>
         </div>
       ))}
