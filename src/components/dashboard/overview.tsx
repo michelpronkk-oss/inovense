@@ -9,6 +9,7 @@ import type { DashboardOverview, DashboardOperator } from "@/lib/dashboard/overv
 import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-grid";
 import { DashboardLoadingState } from "@/components/dashboard/loading-state";
 import { MetricStrip, PageHeader } from "@/components/product-ui/page-primitives";
+import { operatorDisplayName, operatorInitials, withoutLeadingOperatorName } from "@/lib/activity/presentation";
 
 type ScanKey = DashboardOperator["key"];
 type OverviewResponse = DashboardOverview & { error?: string; message?: string };
@@ -90,18 +91,6 @@ function customerEmailLabel(mode: DashboardOverview["policy"]["customerEmailMode
   if (mode === "draft_only") return "Customer emails draft only";
   if (mode === "auto_send_low_risk") return "Customer emails auto-send low risk";
   return "Customer emails require approval";
-}
-
-function operatorMark(operatorKey: string | null | undefined): { mark: string; color: string } {
-  if (operatorKey && operatorKey in operatorMeta) return operatorMeta[operatorKey as ScanKey];
-  return { mark: "OS", color: "#4DE8E1" };
-}
-
-function activityColor(severity: string): string {
-  if (severity === "success") return "#51D88A";
-  if (severity === "danger") return "#F2767C";
-  if (severity === "warning") return "#F5C26B";
-  return "#4DE8E1";
 }
 
 function dashboardCounts(overview: DashboardOverview) {
@@ -561,6 +550,30 @@ export function OSOverview() {
               </div>
             )}
           </div>
+
+          <div className="card">
+            <div className="card-head"><div className="t-section">Business context</div><Link className="btn btn-sm btn-ghost" href="/connectors">Connectors</Link></div>
+            <div className="rows">
+              {overview.connectors.map((connector) => {
+                const meta = connectorMeta[connector.key] ?? { letter: connector.name.slice(0, 2), color: "#4DE8E1" };
+                return (
+                  <Link key={connector.key} href={connector.href} className="row link">
+                    <span className="cn">
+                      <span className="cn-mark" style={{ color: meta.color }}>{IntegrationLogos[connector.name] ?? meta.letter}</span>
+                      <span className="nm"><b>{connector.name}</b><span>{connector.connected ? "Connected" : "Needs setup"}</span></span>
+                    </span>
+                    <span className="rt inline" style={{ gap: 7 }}>
+                      <span className={`dot ${connector.connected ? "dot-green" : "dot-amber"}`} />
+                      <span className="t-meta">{connector.connected ? (connector.lastCheckedAt ? timeAgo(connector.lastCheckedAt) : "connected") : "needs setup"}</span>
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+            <div className="card-pad" style={{ padding: "12px 18px", borderTop: "1px solid var(--line)" }}>
+              <span className="t-meta">{healthyConnectors}/{overview.connectors.length} healthy</span>
+            </div>
+          </div>
         </div>
 
         <div className="stack">
@@ -587,48 +600,27 @@ export function OSOverview() {
           </div>
 
           <div className="card">
-            <div className="card-head"><div className="t-section">Business context</div><Link className="btn btn-sm btn-ghost" href="/connectors">Connectors</Link></div>
-            <div className="rows">
-              {overview.connectors.map((connector) => {
-                const meta = connectorMeta[connector.key] ?? { letter: connector.name.slice(0, 2), color: "#4DE8E1" };
-                return (
-                  <Link key={connector.key} href={connector.href} className="row link">
-                    <span className="cn">
-                      <span className="cn-mark" style={{ color: meta.color }}>{IntegrationLogos[connector.name] ?? meta.letter}</span>
-                      <span className="nm"><b>{connector.name}</b><span>{connector.connected ? "Connected" : "Needs setup"}</span></span>
-                    </span>
-                    <span className="rt inline" style={{ gap: 7 }}>
-                      <span className={`dot ${connector.connected ? "dot-green" : "dot-amber"}`} />
-                      <span className="t-meta">{connector.connected ? (connector.lastCheckedAt ? timeAgo(connector.lastCheckedAt) : "connected") : "needs setup"}</span>
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-            <div className="card-pad" style={{ padding: "12px 18px", borderTop: "1px solid var(--line)" }}>
-              <span className="t-meta">{healthyConnectors}/{overview.connectors.length} healthy</span>
-            </div>
-          </div>
-
-          <div className="card">
             <div className="card-head"><div className="t-section">Recent activity</div><Link className="btn btn-sm btn-ghost" href="/activity">All activity</Link></div>
-            <div className="card-pad" style={{ padding: "14px 18px" }}>
-              {overview.activity.length === 0 ? (
-                <p className="t-meta" style={{ margin: 0 }}>No activity yet. Operator runs will appear here.</p>
-              ) : (
-                <div className="stack" style={{ gap: 13 }}>
-                  {overview.activity.slice(0, 7).map((item) => {
-                    const mark = operatorMark(item.operatorKey);
-                    return (
-                      <div className="inline" style={{ gap: 11, alignItems: "baseline", flexWrap: "nowrap" }} key={item.id}>
-                        <span className="t-mono" style={{ fontSize: 11.5, color: "var(--text-faint)", flex: "none" }}>{clockTime(item.time)}</span>
-                        <span className="t-compact" style={{ minWidth: 0 }}><b style={{ color: mark.color, fontWeight: 400 }}>{titleCase(item.operatorKey)}</b> {item.description || titleCase(item.title)}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            {overview.activity.length === 0 ? (
+              <p className="t-meta card-pad" style={{ margin: 0 }}>No activity yet. Operator runs will appear here.</p>
+            ) : (
+              <div className="rows">
+                {overview.activity.slice(0, 6).map((item) => {
+                  const name = operatorDisplayName(item.operatorKey);
+                  const action = withoutLeadingOperatorName(name, item.description || titleCase(item.title));
+                  return (
+                    <div className="row activity-row dense" key={item.id}>
+                      <time className="activity-row-time t-mono">{clockTime(item.time)}</time>
+                      <span className="activity-row-avatar" aria-hidden="true">{operatorInitials(item.operatorKey)}</span>
+                      <span className="grow activity-row-body">
+                        <b className="activity-row-name">{name}</b>
+                        <span className="activity-row-action">{action}</span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="card">

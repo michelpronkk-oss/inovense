@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties } from "react";
 import Link from "next/link";
 import type { WorkforceActivityItem, WorkforceActivityPage } from "@/lib/activity/types";
 import { EmptyState } from "@/components/product-ui/page-primitives";
+import { operatorDisplayName, operatorInitials, withoutLeadingOperatorName } from "@/lib/activity/presentation";
 
 type Range = "24h" | "7d" | "30d";
 type Filter = "workflow" | "operator_run" | "approval" | "execution" | "attention" | "failure";
@@ -17,14 +17,6 @@ const ranges: Array<{ key: Range; label: string }> = [{ key: "24h", label: "24H"
 
 function timeLabel(value: string) { return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(value)); }
 function routeLabel(item: WorkforceActivityItem) { return item.relatedRoute === "/approvals" ? "View approval" : item.relatedRoute === "/agents" ? "View operator" : item.relatedRoute?.startsWith("/workflows") ? "View workflow" : item.relatedRoute === "/connectors" ? "View connector" : item.relatedRoute === "/logs" ? "Technical details" : null; }
-function operatorLabel(key: string | null): string { return key ? key.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "Auterim system"; }
-function operatorInitials(key: string | null): string {
-  if (!key) return "A";
-  return key.split("_").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "A";
-}
-// No generic letter-avatar primitive exists in dashboard.css yet; this small
-// inline style is a stopgap until one is added there.
-const avatarStyle: CSSProperties = { width: 26, height: 26, borderRadius: "50%", flex: "none", display: "grid", placeItems: "center", fontSize: 10, fontWeight: 700, color: "var(--text-dim)", background: "rgba(255,255,255,.06)", boxShadow: "inset 0 0 0 1px var(--line)" };
 
 export default function ActivityPage() {
   const [range, setRange] = useState<Range>("7d");
@@ -109,18 +101,24 @@ export default function ActivityPage() {
       ) : (
         <div className="rows">
           {items.slice(0, visible).map((item) => {
-            const action = routeLabel(item);
+            const routeText = routeLabel(item);
+            const name = operatorDisplayName(item.operatorKey);
+            const action = withoutLeadingOperatorName(name, item.title);
+            const supporting = withoutLeadingOperatorName(name, item.description);
             return (
-              <div key={item.id} className={`row${action && item.relatedRoute ? " link" : ""}`}>
-                <time className="t-mono" dateTime={item.occurredAt} style={{ flex: "none", width: 118 }}>{timeLabel(item.occurredAt)}</time>
-                <span aria-hidden="true" style={avatarStyle}>{operatorInitials(item.operatorKey)}</span>
-                <span className="grow">
-                  <span className="ttl">{operatorLabel(item.operatorKey)} <span className="dim" style={{ fontWeight: 400 }}>{item.title}</span></span>
-                  <span className="sub">{item.description}</span>
+              <div key={item.id} className={`row activity-row${routeText && item.relatedRoute ? " link" : ""}`}>
+                <time className="activity-row-time t-mono" dateTime={item.occurredAt}>{timeLabel(item.occurredAt)}</time>
+                <span className="activity-row-avatar" aria-hidden="true">{operatorInitials(item.operatorKey)}</span>
+                <span className="grow activity-row-body">
+                  <span className="activity-row-primary">
+                    <b className="activity-row-name">{name}</b>
+                    <span className="activity-row-action">{action}</span>
+                  </span>
+                  <span className="activity-row-sub">{supporting}</span>
                 </span>
-                <span className="rt">
+                <span className="rt activity-row-meta">
                   <span className={`badge ${item.severity === "failure" ? "red" : item.severity === "attention" ? "amber" : "muted"}`}>{item.category.replace(/_/g, " ")}</span>
-                  {action && item.relatedRoute ? <Link className="t-meta" href={item.relatedRoute} aria-label={`${action}: ${item.title}`}>{action}<span className="os-caret" aria-hidden="true" /></Link> : null}
+                  {routeText && item.relatedRoute ? <Link className="t-meta" href={item.relatedRoute} aria-label={`${routeText}: ${item.title}`}>{routeText}<span className="os-caret" aria-hidden="true" /></Link> : null}
                 </span>
               </div>
             );
