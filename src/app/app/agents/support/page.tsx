@@ -65,24 +65,103 @@ export default function SupportOperatorPage() {
     ...runs.slice(0, 5).map((item) => ({ id: item.id, title: item.output?.title || "Support check", status: item.status, createdAt: item.created_at })),
   ];
 
-  return <div className="os-page operator-detail-page support-operator-page">
-    <div className="os-page-head"><div className="operator-page-heading"><OperatorRuntimeAvatar operatorKey="support" /><div><span className="os-greet"><Link href="/app/agents" style={{ color: "inherit", textDecoration: "none" }}>Operators</Link> / Support</span><h1>Support Operator</h1><div className="os-page-sub">Keeps support requests moving, prepares reviewable responses, and makes unresolved customer issues visible.</div></div></div>{briefing && <span className="os-status" data-state={briefing.state}>{briefing.label}</span>}</div>
-    <OperatorWorkforceBriefing operatorKey="support" onStateChange={setBriefing} runtime={{ pendingApprovals: monitoring?.recentPendingApprovals.length ?? 0, monitoringLabel: monitoring?.status === "monitoring_active" ? "Active" : "Scheduled", nextCheckLabel: monitoring?.nextScanLabel ?? "Daily support check" }} />
-    {error && <div role="alert" className="os-attention" style={{ borderLeftColor: "var(--rose)" }}><div><strong>Support needs attention</strong><p>{error}</p></div></div>}
+  return (
+    <div className="os-page operator-detail-page support-operator-page">
+      <div className="page-head" style={{ marginBottom: 8 }}>
+        <div className="inline" style={{ gap: 16, alignItems: "flex-start" }}>
+          <OperatorRuntimeAvatar operatorKey="support" />
+          <div>
+            <div className="inline" style={{ gap: 11 }}>
+              <h1 className="t-title" style={{ fontSize: 24 }}>Support Operator</h1>
+              {briefing && <span className="os-status" data-state={briefing.state}>{briefing.label}</span>}
+            </div>
+            <p className="t-sub" style={{ marginTop: 7 }}>Keeps support requests moving, prepares reviewable responses, and makes unresolved customer issues visible.</p>
+          </div>
+        </div>
+      </div>
 
-    {active && <>
-      <section className="operator-live-state" aria-labelledby="support-live-state">
-        <div className="operator-live-state-copy"><span id="support-live-state">Live state</span><strong>{loading ? "Loading support monitoring" : monitoring?.lastRunAt ? `Last checked ${relativeTime(monitoring.lastRunAt)}` : "No support signals detected today."}</strong><small>{monitoring?.nextScanLabel ?? "Daily support check"}</small></div>
-        <div className="operator-live-state-rail"><State label="Customer support" value={briefing?.connectedCoreSystems.length ? `Available via ${briefing.connectedCoreSystems.join(" · ")}` : "Checking connection"} /><State label="Approvals" value={(monitoring?.recentPendingApprovals.length ?? 0) ? `${monitoring?.recentPendingApprovals.length} waiting` : "All clear"} /><State label="Monitoring" value={monitoring?.status === "monitoring_active" ? "Active" : "Scheduled"} /><State label="Context" value={briefing?.missingOptionalCapabilities.length ? "Core path active" : "Expanded"} /></div>
-        <button className="btn btn-primary btn-sm" type="button" onClick={runScan} disabled={running || !coreAvailable}>{running ? "Checking…" : "Check now"}</button>
-      </section>
-      {result && <div className="operator-run-result">{String(result.message || `${result.approvalsCreated ?? 0} approvals prepared from ${result.signalsFound ?? 0} support signals.`)}</div>}
-      <section className="operator-current-work operator-workspace" aria-labelledby="support-current-work"><div className="p-head"><div><h3 id="support-current-work">Current work</h3><span className="p-meta">Prepared support work and recent checks</span></div><Link href="/app/approvals" className="lnk-open">Approval inbox</Link></div>{pendingWork.length === 0 ? <div className="operator-compact-empty"><strong>No support work needs attention.</strong><span>Last check: {monitoring?.lastRunAt ? relativeTime(monitoring.lastRunAt) : "—"} · Next check: {monitoring?.nextScanLabel ?? "Daily support check"}</span></div> : <div className="operator-work-list">{pendingWork.map((item) => <div key={item.id}><strong>{item.title}</strong><span>{item.status} · {relativeTime(item.createdAt)}</span></div>)}</div>}</section>
-      <div className="operator-lower-grid"><section><div className="p-head"><h3>Monitoring</h3></div><div className="operator-row-list"><Row label="Signals found" value={String(monitoring?.signalsFound ?? 0)} /><Row label="Items checked" value={String(monitoring?.scanned ?? 0)} /><Row label="Approvals prepared" value={String(monitoring?.approvalsCreated ?? 0)} /></div></section><section><div className="p-head"><h3>Control boundary</h3></div><div className="operator-row-list"><Row label="Customer replies" value="Approval required" tone="amber" /><Row label="Ticket updates" value="Approval required" tone="amber" /><Row label="Optional context" value={capability.optional.join(" · ") || "None"} /></div></section></div>
-    </>}
-    {controlsAvailable && status?.readiness?.executionEligibility && <section className="operator-control-row"><div><strong>Operator control</strong><span>Turn continuous monitoring on only when the workspace is ready.</span></div><OperatorActivationToggle operatorKey="support" workspaceId={state.workspace.id} userId={state.currentUser.id} userEmail={state.currentUser.email} executionEligibility={status.readiness.executionEligibility as never} configured={coreAvailable} canManage={state.currentUser.roleLabel === "Owner" || state.currentUser.roleLabel === "Admin"} runtimeControl /></section>}
-  </div>;
+      <OperatorWorkforceBriefing operatorKey="support" onStateChange={setBriefing} runtime={{ pendingApprovals: monitoring?.recentPendingApprovals.length ?? 0, monitoringLabel: monitoring?.status === "monitoring_active" ? "Active" : "Scheduled", nextCheckLabel: monitoring?.nextScanLabel ?? "Daily support check" }} />
+
+      {error && <section className="attn crit"><div className="card-pad" style={{ padding: "10px 14px", fontSize: 12.5 }}>{error}</div></section>}
+
+      {active && (
+        <div className="sec split">
+          <div className="stack">
+            <div className="card">
+              <div className="card-head">
+                <div>
+                  <div className="t-section">Live state</div>
+                  <div className="t-meta" style={{ marginTop: 3 }}>{loading ? "Loading support monitoring" : monitoring?.lastRunAt ? `Last checked ${relativeTime(monitoring.lastRunAt)}` : "No support signals detected today."} · {monitoring?.nextScanLabel ?? "Daily support check"}</div>
+                </div>
+                <button className="btn btn-primary btn-sm" type="button" onClick={runScan} disabled={running || !coreAvailable}>{running ? "Checking…" : "Check now"}</button>
+              </div>
+              <div className="grid4 card-pad">
+                <Stat label="Customer support" value={briefing?.connectedCoreSystems.length ? `Via ${briefing.connectedCoreSystems.join(" · ")}` : "Checking"} />
+                <Stat label="Approvals" value={(monitoring?.recentPendingApprovals.length ?? 0) ? `${monitoring?.recentPendingApprovals.length} waiting` : "All clear"} />
+                <Stat label="Monitoring" value={monitoring?.status === "monitoring_active" ? "Active" : "Scheduled"} />
+                <Stat label="Context" value={briefing?.missingOptionalCapabilities.length ? "Core path active" : "Expanded"} />
+              </div>
+              {result && <div className="card-pad t-compact" style={{ borderTop: "1px solid var(--line)" }}>{String(result.message || `${result.approvalsCreated ?? 0} approvals prepared from ${result.signalsFound ?? 0} support signals.`)}</div>}
+            </div>
+
+            <div className="card">
+              <div className="card-head"><div className="t-section">Current work</div><Link href="/app/approvals" className="btn btn-sm btn-ghost">Approval inbox</Link></div>
+              {pendingWork.length === 0 ? (
+                <div className="card-pad t-meta">No support work needs attention. Last check: {monitoring?.lastRunAt ? relativeTime(monitoring.lastRunAt) : "—"} · Next check: {monitoring?.nextScanLabel ?? "Daily support check"}.</div>
+              ) : (
+                <div className="rows">
+                  {pendingWork.map((item) => (
+                    <div className="row" key={item.id}>
+                      <span className="grow"><span className="ttl">{item.title}</span><span className="sub">{relativeTime(item.createdAt)}</span></span>
+                      <span className="badge amber">{item.status.toUpperCase()}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="stack">
+            <div className="card">
+              <div className="card-head"><div className="t-section">Monitoring</div></div>
+              <div className="rows">
+                <div className="row"><span className="grow t-compact">Signals found</span><span className="t-compact ink">{monitoring?.signalsFound ?? 0}</span></div>
+                <div className="row"><span className="grow t-compact">Items checked</span><span className="t-compact ink">{monitoring?.scanned ?? 0}</span></div>
+                <div className="row"><span className="grow t-compact">Approvals prepared</span><span className="t-compact ink">{monitoring?.approvalsCreated ?? 0}</span></div>
+              </div>
+            </div>
+            <div className="card">
+              <div className="card-head"><div className="t-section">Control boundary</div></div>
+              <div className="rows">
+                <div className="row"><span className="grow t-compact">Customer replies</span><span className="badge amber">APPROVAL</span></div>
+                <div className="row"><span className="grow t-compact">Ticket updates</span><span className="badge amber">APPROVAL</span></div>
+                <div className="row"><span className="grow t-compact">Optional context</span><span className="t-meta">{capability.optional.join(" · ") || "None"}</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {controlsAvailable && status?.readiness?.executionEligibility && (
+        <div className="sec">
+          <div className="card">
+            <div className="card-head"><div className="t-section">Operator control</div></div>
+            <div className="card-pad">
+              <p className="t-meta" style={{ margin: "0 0 12px" }}>Turn continuous monitoring on only when the workspace is ready.</p>
+              <OperatorActivationToggle operatorKey="support" workspaceId={state.workspace.id} userId={state.currentUser.id} userEmail={state.currentUser.email} executionEligibility={status.readiness.executionEligibility as never} configured={coreAvailable} canManage={state.currentUser.roleLabel === "Owner" || state.currentUser.roleLabel === "Admin"} runtimeControl />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
-function State({ label, value }: { label: string; value: string }) { return <div><span>{label}</span><strong>{value}</strong></div>; }
-function Row({ label, value, tone }: { label: string; value: string; tone?: "amber" }) { return <div><span>{label}</span><strong data-tone={tone}>{value}</strong></div>; }
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="panel" style={{ padding: "12px 13px" }}>
+      <div className="t-eyebrow">{label}</div>
+      <div className="t-object" style={{ marginTop: 6 }}>{value}</div>
+    </div>
+  );
+}

@@ -119,14 +119,8 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function PolicyRow({ label, value, tone }: { label: string; value: string; tone: "amber" | "green" | "neutral" }) {
-  const color = tone === "amber" ? "var(--amber)" : tone === "green" ? "var(--green)" : "var(--text-dim)";
-  return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 0" }}>
-      <span style={{ fontSize: 13, color: "var(--text-dim)" }}>{label}</span>
-      <span style={{ fontSize: 12.5, fontWeight: 600, color }}>{value}</span>
-    </div>
-  );
+function PolicyBadge({ value, tone }: { value: string; tone: "amber" | "green" | "neutral" }) {
+  return <span className={`badge ${tone === "neutral" ? "muted" : tone}`}>{value.toUpperCase()}</span>;
 }
 
 export default function ClientFlowOperatorPage() {
@@ -227,15 +221,20 @@ export default function ClientFlowOperatorPage() {
 
   return (
     <div className="os-page operator-detail-page">
-      <div className="os-page-head">
-        <div className="operator-page-heading">
+      <div className="page-head" style={{ marginBottom: 8 }}>
+        <div className="inline" style={{ gap: 16, alignItems: "flex-start" }}>
           <OperatorRuntimeAvatar operatorKey="client_flow" />
-          <span className="os-greet"><Link href="/app/agents" style={{ color: "inherit", textDecoration: "none" }}>Operators</Link> / Client Flow</span>
-          <h1>Client Flow Operator</h1>
-          <div className="os-page-sub">Monitors client communication, prepares follow-ups, and turns requests into approved project actions.</div>
+          <div>
+            <div className="inline" style={{ gap: 11 }}>
+              <h1 className="t-title" style={{ fontSize: 24 }}>Client Flow Operator</h1>
+              {presentationState && <span className="os-status" data-state={presentationState.state}>{presentationState.label}</span>}
+            </div>
+            <p className="t-sub" style={{ marginTop: 7 }}>Monitors client communication, prepares follow-ups, and turns requests into approved project actions.</p>
+          </div>
         </div>
-        {presentationState && <span className="os-status" data-state={presentationState.state}>{presentationState.label}</span>}
       </div>
+
+      {error && <section className="attn crit"><div className="card-pad" style={{ padding: "10px 14px", fontSize: 12.5 }}>{error}</div></section>}
 
       <OperatorWorkforceBriefing
         operatorKey="client_flow"
@@ -247,165 +246,132 @@ export default function ClientFlowOperatorPage() {
         }}
       />
 
-      {error && <div role="alert" style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>{error}</div>}
-
-      {showRuntime && (<>
-      {/* Monitoring summary + policy */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 14 }}>
-        <div className="p" style={{ gap: 0 }}>
-          <div className="p-head">
-            <div>
-              <h3>Monitoring</h3>
-              <div className="p-meta" style={{ marginTop: 4 }}>{loading ? "Loading…" : monitoringActive ? "Daily monitoring active" : "Scheduled monitoring"}{lastCheckAt ? ` · Last check ${relativeTime(lastCheckAt)}` : ""}</div>
-            </div>
-          </div>
-          <div style={{ padding: "18px 20px" }}>
-            {!hasRunScan ? (
-              <div style={{ display: "grid", gap: 12, justifyItems: "start" }}>
-                <div style={{ fontSize: 13, color: "var(--text-dim)" }}>Monitoring is active. The first scheduled check has not run yet.</div>
-                <button className="btn btn-ghost btn-sm" type="button" onClick={submitScan} disabled={!canRun || scanSubmitting} style={{ opacity: !canRun || scanSubmitting ? 0.45 : 1 }}>{scanSubmitting ? "Checking…" : "Run manual check"}</button>
-              </div>
-            ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
-                <Stat label="Emails checked" value={String(monitoring?.emailsChecked ?? 0)} />
-                <Stat label="Client requests" value={String(monitoring?.signalsFound ?? 0)} />
-                <Stat label="Approvals created" value={String(monitoring?.approvalsCreated ?? 0)} />
-              </div>
-            )}
-            {scanResult && (
-              <div style={{ marginTop: 14, padding: "12px 14px", borderRadius: 12, background: scanNeedsReconnect ? "rgba(245,194,107,0.06)" : "rgba(95,211,168,0.06)", boxShadow: scanNeedsReconnect ? "inset 0 0 0 1px rgba(245,194,107,0.2)" : "inset 0 0 0 1px rgba(95,211,168,0.18)", display: "grid", gap: 5 }}>
-                <div style={{ fontSize: 12.8, fontWeight: 600 }}>{scanNeedsReconnect ? `Reconnect ${activeProviderLabel} required` : `Manual check ${scanResult.status ?? "completed"}`}</div>
-                {scanResult.message && <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{scanResult.message}</div>}
-                {!scanNeedsReconnect && <div style={{ fontSize: 12, color: "var(--text-mute)" }}>{scanResult.scanned ?? 0} checked · {scanResult.signalsFound ?? 0} client requests · {scanResult.approvalsCreated ?? 0} approvals · {scanResult.routedToRevenueCount ?? 0} routed to Revenue.</div>}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="p" style={{ gap: 0 }}>
-          <div className="p-head"><h3>Policy</h3></div>
-          <div style={{ padding: "8px 20px 16px" }}>
-            <PolicyRow label="Customer-facing messages" value={emailMode} tone="amber" />
-            <div style={{ borderTop: "1px solid var(--line)" }} />
-            <PolicyRow label="Project updates" value="Approval required" tone="amber" />
-            <div style={{ borderTop: "1px solid var(--line)" }} />
-            <PolicyRow label="Internal alerts" value={setup?.slackAlertsReady ? "Enabled" : "Disabled"} tone={setup?.slackAlertsReady ? "green" : "neutral"} />
-            <div style={{ borderTop: "1px solid var(--line)" }} />
-            <PolicyRow label="Human review" value="Required" tone="green" />
-          </div>
-        </div>
-      </div>
-
-      {/* Current work */}
-      <div className="p operator-current-work" style={{ gap: 0 }}>
-        <div className="p-head">
-          <h3>Current work</h3>
-          {(monitoring?.recentPendingApprovals?.length ?? 0) > 0
-            ? <Link href="/app/approvals" className="btn btn-primary btn-sm">{pendingApprovals} awaiting review</Link>
-            : <Link href="/app/approvals" className="lnk-open">Approval inbox</Link>}
-        </div>
-        {pendingApprovals === 0 && runs.length === 0 ? (
-          <div className="operator-compact-empty">No issues need attention right now. Next scheduled check: {monitoring?.nextScanLabel ?? "daily"}.</div>
-        ) : <div style={{ padding: "14px 20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-          <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Pending approvals</div>
-            {(monitoring?.recentPendingApprovals?.length ?? 0) === 0 ? <div style={{ color: "var(--text-mute)", fontSize: 12.5 }}>No pending Client Flow approvals.</div> : monitoring?.recentPendingApprovals.map((approval) => (
-              <div key={approval.id} style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>{approval.subject || approval.title}</div>
-                <div style={{ marginTop: 3, fontSize: 11.5, color: "var(--text-mute)" }}>{approval.to || "Unknown recipient"} · {approval.created_at ? relativeTime(approval.created_at) : "unknown time"}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Recent runs</div>
-            {runs.length === 0 ? <div style={{ color: "var(--text-mute)", fontSize: 12.5 }}>No Client Flow checks have run yet.</div> : runs.slice(0, 5).map((run) => (
-              <div key={run.id} style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}><div style={{ fontSize: 13, fontWeight: 500 }}>{run.output?.title || run.output?.type || "Client Flow run"}</div><div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: run.status === "completed" ? "var(--green)" : run.status === "failed" ? "var(--rose)" : "var(--amber)" }}>{run.status}</div></div>
-                <div style={{ marginTop: 3, fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)" }}>{relativeTime(run.created_at)} · Approval: {run.approval_id || "none"}</div>
-              </div>
-            ))}
-          </div>
-        </div>}
-      </div>
-      </>)}
-
-      {/* Activation */}
-      {showControls && (() => {
-        const upgrades = (status?.optionalUpsellConnectors ?? []).filter((c) => c.status === "available");
-        const configured = Boolean(readiness?.canRunManual);
-        const eligibility = readiness?.executionEligibility;
-        return (
-          <section className="p operator-context-section" style={{ gap: 0 }}>
-            <div className="p-head"><h3>Context & controls</h3><Link href="/app/connectors" className="lnk-open">Manage context</Link></div>
-            <div className="operator-context-controls" style={{ padding: "14px 20px", display: "grid", gap: 14 }}>
-              {showRuntime && upgrades.length > 0 && (
+      {(showRuntime || showControls) && (
+        <div className="sec split">
+          {showRuntime && <div className="stack">
+            <div className="card">
+              <div className="card-head">
                 <div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Add more context</div>
-                  <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-mute)" }}>
-                    {optionalContext.join(" · ")}
+                  <div className="t-section">Monitoring</div>
+                  <div className="t-meta" style={{ marginTop: 3 }}>{loading ? "Loading…" : monitoringActive ? "Daily monitoring active" : "Scheduled monitoring"}{lastCheckAt ? ` · Last check ${relativeTime(lastCheckAt)}` : ""}</div>
+                </div>
+              </div>
+              <div className="card-pad">
+                {!hasRunScan ? (
+                  <div className="stack" style={{ gap: 12, alignItems: "flex-start" }}>
+                    <div className="t-compact">Monitoring is active. The first scheduled check has not run yet.</div>
+                    <button className="btn btn-ghost btn-sm" type="button" onClick={submitScan} disabled={!canRun || scanSubmitting}>{scanSubmitting ? "Checking…" : "Run manual check"}</button>
                   </div>
+                ) : (
+                  <div className="grid3">
+                    <Stat label="Emails checked" value={String(monitoring?.emailsChecked ?? 0)} />
+                    <Stat label="Client requests" value={String(monitoring?.signalsFound ?? 0)} />
+                    <Stat label="Approvals created" value={String(monitoring?.approvalsCreated ?? 0)} />
+                  </div>
+                )}
+              </div>
+              {scanResult && (
+                <div className="card-pad" style={{ borderTop: "1px solid var(--line)" }}>
+                  <div className="t-object" style={{ fontSize: 13 }}>{scanNeedsReconnect ? `Reconnect ${activeProviderLabel} required` : `Manual check ${scanResult.status ?? "completed"}`}</div>
+                  {scanResult.message && <div className="t-compact" style={{ marginTop: 4 }}>{scanResult.message}</div>}
+                  {!scanNeedsReconnect && <div className="t-meta" style={{ marginTop: 4 }}>{scanResult.scanned ?? 0} checked · {scanResult.signalsFound ?? 0} client requests · {scanResult.approvalsCreated ?? 0} approvals · {scanResult.routedToRevenueCount ?? 0} routed to Revenue</div>}
                 </div>
               )}
-              {eligibility && state.workspace.id && (
-                <OperatorActivationToggle
-                  operatorKey="client_flow"
-                  workspaceId={state.workspace.id}
-                  userId={state.currentUser.id}
-                  userEmail={state.currentUser.email}
-                  executionEligibility={eligibility}
-                  configured={configured}
-                  canManage={state.currentUser.roleLabel === "Owner" || state.currentUser.roleLabel === "Admin"}
-                  runtimeControl
-                />
+            </div>
+
+            <div className="card">
+              <div className="card-head"><div className="t-section">Current work</div>
+                {(monitoring?.recentPendingApprovals?.length ?? 0) > 0
+                  ? <Link href="/app/approvals" className="btn btn-primary btn-sm">{pendingApprovals} awaiting review</Link>
+                  : <Link href="/app/approvals" className="btn btn-sm btn-ghost">Approval inbox</Link>}
+              </div>
+              {pendingApprovals === 0 && runs.length === 0 ? (
+                <div className="card-pad t-meta">No issues need attention right now. Next scheduled check: {monitoring?.nextScanLabel ?? "daily"}.</div>
+              ) : (
+                <div className="rows">
+                  {(monitoring?.recentPendingApprovals ?? []).map((approval) => (
+                    <div className="row" key={approval.id}>
+                      <span className="grow"><span className="ttl">{approval.subject || approval.title}</span><span className="sub">{approval.to || "Unknown recipient"} · {approval.created_at ? relativeTime(approval.created_at) : "unknown time"}</span></span>
+                      <span className="badge amber">APPROVAL NEEDED</span>
+                    </div>
+                  ))}
+                  {runs.slice(0, 5).map((run) => (
+                    <div className="row" key={run.id}>
+                      <span className="grow"><span className="ttl">{run.output?.title || run.output?.type || "Client Flow run"}</span><span className="sub">{relativeTime(run.created_at)} · Approval: {run.approval_id || "none"}</span></span>
+                      <span className={`badge ${run.status === "completed" ? "green" : run.status === "failed" ? "red" : "amber"}`}>{run.status.toUpperCase()}</span>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
-          </section>
-        );
-      })()}
 
-      {/* Advanced details */}
-      {showRuntime && <details className="p operator-advanced" style={{ gap: 0 }}>
-        <summary style={{ listStyle: "none", cursor: "pointer", padding: "14px 20px", fontSize: 13, fontWeight: 600, color: "var(--text-dim)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          Advanced details
-          <span style={{ fontSize: 11, color: "var(--text-faint)" }}>readiness, schedule, skipped reasons, connector ids</span>
-        </summary>
-        <div style={{ padding: "0 20px 20px", display: "grid", gap: 14 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-faint)" }}>Schedule</div>
-              <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Cadence: {monitoring?.cadence ?? "daily"}</div>
-              <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Source mode: {monitoring?.sourceMode ?? "scheduled"}</div>
-              <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Last run status: {monitoring?.lastRunStatus ?? "none"}</div>
-              <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Next run: {monitoring?.nextRunAt ?? "not scheduled"}</div>
-            </div>
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-faint)" }}>Connectors</div>
-              <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Gmail: {status?.gmail?.status ?? "missing"}{status?.gmail?.accountEmail ? ` (${status.gmail.accountEmail})` : ""}</div>
-              <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Microsoft 365: {status?.microsoft?.status ?? "missing"}{status?.microsoft?.accountEmail ? ` (${status.microsoft.accountEmail})` : ""}</div>
-              <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Slack: {status?.slack?.status ?? "not_connected"} · channel {status?.slack?.defaultChannelName || "none"}</div>
-              <div style={{ fontSize: 12, color: "var(--text-mute)" }}>Trello: {status?.trello?.status ?? "not_connected"} · list {status?.trello?.defaultListName || "none"}</div>
-            </div>
-          </div>
-          {scanResult?.skipped && scanResult.skipped.length > 0 && (
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-faint)" }}>Skipped reasons (last manual check)</div>
-              <div style={{ fontSize: 12, color: "var(--text-mute)" }}>
-                {Object.entries(scanResult.skipped.reduce<Record<string, number>>((counts, item) => { counts[item.reason] = (counts[item.reason] ?? 0) + 1; return counts; }, {})).map(([reason, count]) => `${reason}: ${count}`).join(" · ")}
+            <details className="card">
+              <summary style={{ cursor: "pointer", listStyle: "none", padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}><span className="t-object">Advanced details</span><span className="t-meta">Readiness, schedule, skipped reasons, connector ids</span></summary>
+              <div className="card-pad" style={{ borderTop: "1px solid var(--line)", display: "grid", gap: 14 }}>
+                <dl className="kv">
+                  <dt>Cadence</dt><dd>{monitoring?.cadence ?? "daily"} · source {monitoring?.sourceMode ?? "scheduled"}</dd>
+                  <dt>Last run</dt><dd>{monitoring?.lastRunStatus ?? "none"} · next {monitoring?.nextRunAt ?? "not scheduled"}</dd>
+                  <dt>Gmail</dt><dd>{status?.gmail?.status ?? "missing"}{status?.gmail?.accountEmail ? ` (${status.gmail.accountEmail})` : ""}</dd>
+                  <dt>Microsoft 365</dt><dd>{status?.microsoft?.status ?? "missing"}{status?.microsoft?.accountEmail ? ` (${status.microsoft.accountEmail})` : ""}</dd>
+                  <dt>Slack</dt><dd>{status?.slack?.status ?? "not_connected"} · channel {status?.slack?.defaultChannelName || "none"}</dd>
+                  <dt>Trello</dt><dd>{status?.trello?.status ?? "not_connected"} · list {status?.trello?.defaultListName || "none"}</dd>
+                </dl>
+                {scanResult?.skipped && scanResult.skipped.length > 0 && (
+                  <div>
+                    <div className="t-eyebrow">Skipped reasons (last manual check)</div>
+                    <div className="t-meta" style={{ marginTop: 6 }}>
+                      {Object.entries(scanResult.skipped.reduce<Record<string, number>>((counts, item) => { counts[item.reason] = (counts[item.reason] ?? 0) + 1; return counts; }, {})).map(([reason, count]) => `${reason}: ${count}`).join(" · ")}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
-          <div style={{ display: "grid", gap: 6 }}>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-faint)" }}>Readiness object</div>
-            <pre style={{ margin: 0, padding: "12px 14px", borderRadius: 10, background: "rgba(0,0,0,0.25)", boxShadow: "inset 0 0 0 1px var(--line)", fontSize: 11, color: "var(--text-mute)", overflowX: "auto", whiteSpace: "pre-wrap" }}>{JSON.stringify(readiness ?? {}, null, 2)}</pre>
+            </details>
+          </div>}
+
+          <div className="stack">
+            {showRuntime && <div className="card">
+              <div className="card-head"><div className="t-section">Policy</div></div>
+              <div className="rows">
+                <div className="row"><span className="grow t-compact">Customer-facing messages</span><PolicyBadge value={emailMode} tone="amber" /></div>
+                <div className="row"><span className="grow t-compact">Project updates</span><PolicyBadge value="Approval required" tone="amber" /></div>
+                <div className="row"><span className="grow t-compact">Internal alerts</span><PolicyBadge value={setup?.slackAlertsReady ? "Enabled" : "Disabled"} tone={setup?.slackAlertsReady ? "green" : "neutral"} /></div>
+                <div className="row"><span className="grow t-compact">Human review</span><PolicyBadge value="Required" tone="green" /></div>
+              </div>
+            </div>}
+
+            {showControls && (() => {
+              const upgrades = (status?.optionalUpsellConnectors ?? []).filter((c) => c.status === "available");
+              const configured = Boolean(readiness?.canRunManual);
+              const eligibility = readiness?.executionEligibility;
+              return (
+                <div className="card">
+                  <div className="card-head"><div className="t-section">Context & controls</div><Link href="/app/connectors" className="btn btn-sm btn-ghost">Manage context</Link></div>
+                  <div className="card-pad" style={{ display: "grid", gap: 14 }}>
+                    {upgrades.length > 0 && (
+                      <div>
+                        <div className="t-eyebrow">Add more context</div>
+                        <div className="t-compact" style={{ marginTop: 6 }}>{optionalContext.join(" · ")}</div>
+                      </div>
+                    )}
+                    {eligibility && state.workspace.id && (
+                      <OperatorActivationToggle
+                        operatorKey="client_flow"
+                        workspaceId={state.workspace.id}
+                        userId={state.currentUser.id}
+                        userEmail={state.currentUser.email}
+                        executionEligibility={eligibility}
+                        configured={configured}
+                        canManage={state.currentUser.roleLabel === "Owner" || state.currentUser.roleLabel === "Admin"}
+                        runtimeControl
+                      />
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
-          {monitoring?.lastRunSummary && (
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-faint)" }}>Last run summary</div>
-              <pre style={{ margin: 0, padding: "12px 14px", borderRadius: 10, background: "rgba(0,0,0,0.25)", boxShadow: "inset 0 0 0 1px var(--line)", fontSize: 11, color: "var(--text-mute)", overflowX: "auto", whiteSpace: "pre-wrap" }}>{JSON.stringify(monitoring.lastRunSummary, null, 2)}</pre>
-            </div>
-          )}
         </div>
-      </details>}
+      )}
     </div>
   );
 }

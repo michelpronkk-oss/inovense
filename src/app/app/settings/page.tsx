@@ -12,6 +12,7 @@ import { saveProfileSettings } from "@/app/app/profile/actions";
 import { getEntitlements } from "@/lib/os/entitlements";
 import { getPlanLabel } from "@/lib/os/truth";
 import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-grid";
+import { PageHeader } from "@/components/product-ui/page-primitives";
 
 type SectionKey = "workspace" | "notifications";
 
@@ -253,217 +254,216 @@ export default function SettingsPage() {
 
   return (
     <div className="os-page settings-page">
-      <div className="os-page-head">
-        <div>
-          <span className="os-greet">Workspace control</span>
-          <h1>Settings</h1>
-          <div className="os-page-sub">Manage your workspace, connected accounts and notifications.</div>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Workspace control"
+        title="Settings"
+        description="Manage your workspace, connected accounts and notifications."
+      />
 
       {searchParams.get("billing") === "returned" && (
-        <div style={{ color: "#64ffd7", fontSize: 12 }}>Billing settings updated.</div>
+        <p className="t-meta" style={{ color: "#64ffd7" }}>Billing settings updated.</p>
       )}
 
-      <div className="p">
-        <div className="p-head">
-          <h3><SettingsIcon size={13} /> Billing</h3>
+      <section className="card sec">
+        <div className="card-head">
+          <h3 className="t-section"><SettingsIcon size={13} /> Billing</h3>
           {showManageBilling && canManageWorkspace ? (
-            <button className="btn btn-ghost btn-sm" onClick={openBillingPortal} disabled={billingBusy} style={{ opacity: billingBusy ? 0.7 : 1 }}>
+            <button className="btn btn-ghost btn-sm" onClick={openBillingPortal} disabled={billingBusy}>
               {billingBusy ? "Opening…" : "Manage billing"}
             </button>
           ) : canManageWorkspace ? (
-            <a className="btn btn-primary btn-sm" href="/plans">Choose a plan</a>
+            <Link className="btn btn-primary btn-sm" href="/plans">Choose a plan</Link>
           ) : (
-            <span className="p-meta">Owner or admin access required</span>
+            <span className="t-meta">Owner or admin access required</span>
           )}
         </div>
-        <div style={{ padding: "12px 18px", fontSize: 12.5, color: "var(--text-dim)" }}>
+        <div className="card-pad t-compact">
           {!canManageWorkspace
             ? "Only the workspace owner or an admin can manage billing."
             : showManageBilling
             ? "Manage your subscription, invoices and payment details in the billing portal."
             : "No active billing profile found. Activate a plan first."}
         </div>
-      </div>
+      </section>
 
-      <div className="p">
-        <div className="p-head">
-          <h3><LinkIcon size={13} /> Connected accounts</h3>
-          <div className="p-meta" style={{ fontSize: 10.5, color: "var(--text-mute)" }}>
-            Accounts operators use for approved actions
-          </div>
+      <section className="card sec">
+        <div className="card-head">
+          <h3 className="t-section"><LinkIcon size={13} /> Connected accounts</h3>
+          <span className="t-meta">Accounts operators use for approved actions</span>
         </div>
         {accountsLoading ? (
-          <div className="settings-account-skeleton" aria-label="Loading connected accounts"><span /><span /><span /></div>
+          <div className="card-pad t-meta" aria-label="Loading connected accounts">Loading connected accounts…</div>
         ) : visibleConnectedAccounts.length === 0 ? (
-          <div className="settings-accounts-empty" style={{ padding: "16px 18px", fontSize: 12.5, color: "var(--text-faint)" }}>
-            <span>No accounts connected.</span>
-            <Link className="lnk-open" href="/connectors">Connect an account</Link>
+          <div className="card-pad" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <span className="t-meta">No accounts connected.</span>
+            <Link className="btn btn-ghost btn-sm" href="/connectors">Connect an account</Link>
           </div>
         ) : (
-          visibleConnectedAccounts.map((acct) => {
-            const color = acct.connectorKey === "gmail" ? "#EA4335" : "#FF7A59";
-            const letter = acct.connectorKey === "gmail" ? "G" : "Hs";
-            const authLabel = acct.authType === "native" ? "Native connector" : "Secure connector";
-            const isConnected = acct.status === "connected" || acct.status === "healthy";
-            const reconnectRequired = acct.status === "reconnect_required" || acct.reconnectRequired;
-            const statusColor = isConnected ? "var(--green)" : reconnectRequired ? "var(--amber)" : acct.status === "error" ? "var(--red, #F2767C)" : "var(--text-faint)";
-            const statusLabel = isConnected ? "Connected" : reconnectRequired ? "Reconnect required" : acct.status === "error" ? "Error" : "Not connected";
-            const connectedDate = acct.connectedAt
-              ? new Date(acct.connectedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
-              : null;
-            return (
-              <div
-                key={acct.connectorKey}
-                className="settings-account-row"
-                style={{ display: "grid", gridTemplateColumns: "40px 1fr auto", alignItems: "center", gap: 14, padding: "14px 18px", borderBottom: "1px solid var(--line)" }}
-              >
-                <div className="connector-brand-logo" style={{ width: 34, height: 34, borderRadius: 10, color, flexShrink: 0 }}>
-                  {IntegrationLogos[acct.displayName] ?? letter}
+          <div className="rows">
+            {visibleConnectedAccounts.map((acct) => {
+              const color = acct.connectorKey === "gmail" ? "#EA4335" : "#FF7A59";
+              const letter = acct.connectorKey === "gmail" ? "G" : "Hs";
+              const authLabel = acct.authType === "native" ? "Native connector" : "Secure connector";
+              const isConnected = acct.status === "connected" || acct.status === "healthy";
+              const reconnectRequired = acct.status === "reconnect_required" || acct.reconnectRequired;
+              const statusColor = isConnected ? "var(--green)" : reconnectRequired ? "var(--amber)" : acct.status === "error" ? "var(--red, #F2767C)" : "var(--text-faint)";
+              const statusLabel = isConnected ? "Connected" : reconnectRequired ? "Reconnect required" : acct.status === "error" ? "Error" : "Not connected";
+              const connectedDate = acct.connectedAt
+                ? new Date(acct.connectedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+                : null;
+              return (
+                <div className="row" key={acct.connectorKey}>
+                  <span className="cn grow">
+                    <span className="cn-mark lg" style={{ color }}>{IntegrationLogos[acct.displayName] ?? letter}</span>
+                    <span className="nm">
+                      <b>{acct.displayName}</b>
+                      <span>
+                        {(isConnected || reconnectRequired) && acct.accountEmail
+                          ? acct.accountEmail
+                          : isConnected || reconnectRequired
+                            ? "Connected account"
+                            : statusLabel}
+                        {" · "}{authLabel}
+                        {connectedDate && isConnected ? ` · Since ${connectedDate}` : ""}
+                      </span>
+                      <span>{acct.permissionsLabel.join(" · ")}</span>
+                    </span>
+                  </span>
+                  <span className="rt">
+                    <span className="t-mono" style={{ color: statusColor }}>{statusLabel}</span>
+                    {/* Disconnecting revokes a real credential, so it keeps
+                        negative weight rather than reading as a neutral action. */}
+                    {canManageWorkspace && <button className="btn btn-ghost btn-sm" onClick={() => reconnectAccount(acct.connectorKey)}>{isConnected ? "Reconnect" : "Connect"}</button>}
+                    {canManageWorkspace && <button className="btn btn-danger btn-sm" disabled={!isConnected || disconnectingAccount === acct.connectorKey} onClick={() => void disconnectAccount(acct.connectorKey)}>{disconnectingAccount === acct.connectorKey ? "Disconnecting…" : "Disconnect"}</button>}
+                  </span>
                 </div>
-                <div>
-                  <div style={{ fontSize: 13.5, fontWeight: 500 }}>{acct.displayName}</div>
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)", marginTop: 2 }}>
-                    {(isConnected || reconnectRequired) && acct.accountEmail
-                      ? acct.accountEmail
-                      : isConnected || reconnectRequired
-                        ? "Connected account"
-                        : statusLabel}
-                    {" · "}{authLabel}
-                    {connectedDate && isConnected ? ` · Since ${connectedDate}` : ""}
-                  </div>
-                  <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 3 }}>
-                    {acct.permissionsLabel.join(" · ")}
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: statusColor, marginRight: 4 }}>{statusLabel}</span>
-                  {canManageWorkspace && <button
-                    className="appr-btn edit"
-                    style={{ fontSize: 11 }}
-                    onClick={() => reconnectAccount(acct.connectorKey)}
-                  >
-                    {isConnected ? "Reconnect" : "Connect"}
-                  </button>}
-                  {/* Disconnecting revokes a real credential, so it keeps
-                      negative weight rather than reading as a neutral action. */}
-                  {canManageWorkspace && <button
-                    className="appr-btn deny is-negative"
-                    style={{ fontSize: 11, opacity: disconnectingAccount === acct.connectorKey ? 0.6 : 1 }}
-                    disabled={!isConnected || disconnectingAccount === acct.connectorKey}
-                    onClick={() => void disconnectAccount(acct.connectorKey)}
-                  >
-                    {disconnectingAccount === acct.connectorKey ? "Disconnecting…" : "Disconnect"}
-                  </button>}
-                </div>
-              </div>
-            );
-          })
+              );
+            })}
+          </div>
         )}
+      </section>
+
+      <div className="grid3 sec">
+        <section className="card">
+          <div className="card-head">
+            <h3 className="t-section"><SettingsIcon size={13} /> Workspace identity</h3>
+            {canManageWorkspace ? <button className="btn btn-ghost btn-sm" onClick={() => startEdit("workspace")}>Edit</button> : <span className="t-meta">Owner or admin access required</span>}
+          </div>
+          <div className="rows">
+            <div className="row">
+              <span className="grow"><span className="ttl">Name</span></span>
+              <span className="rt t-compact">{state.workspace.name}</span>
+            </div>
+            <div className="row">
+              <span className="grow"><span className="ttl">Workspace ID</span></span>
+              <span className="rt t-mono">{state.workspace.id}</span>
+            </div>
+            <div className="row">
+              <span className="grow"><span className="ttl">Access</span></span>
+              <span className="rt t-compact">{workspacePlanLabel}</span>
+            </div>
+          </div>
+        </section>
+
+        <section className="card">
+          <div className="card-head">
+            <h3 className="t-section"><SettingsIcon size={13} /> Control boundary</h3>
+            <Link className="btn btn-ghost btn-sm" href="/policies">Open</Link>
+          </div>
+          <div className="rows">
+            <div className="row">
+              <span className="grow"><span className="ttl"><span className="dot dot-cyan" style={{ marginRight: 8 }} />Execution policy</span><span className="sub">Open policy controls for the current live boundary.</span></span>
+            </div>
+            <div className="row">
+              <span className="grow"><span className="ttl">Safety check</span><span className="sub">Each action is re-evaluated immediately before execution.</span></span>
+            </div>
+          </div>
+        </section>
+
+        <section className="card">
+          <div className="card-head">
+            <h3 className="t-section"><SettingsIcon size={13} /> Notifications</h3>
+            <button className="btn btn-ghost btn-sm" onClick={() => startEdit("notifications")}>Edit</button>
+          </div>
+          <div className="rows">
+            <div className="row">
+              <span className="grow"><span className="ttl">Approval requests</span></span>
+              <span className="rt t-compact">{state.currentUser.notifications.approvals ? `On · ${state.currentUser.email}` : "Off"}</span>
+            </div>
+            <div className="row">
+              <span className="grow"><span className="ttl">Control alerts</span></span>
+              <span className="rt t-compact">{state.currentUser.notifications.alerts ? `On · ${state.currentUser.email}` : "Off"}</span>
+            </div>
+          </div>
+        </section>
       </div>
 
-      <div className="settings-studio">
-        <section className="p settings-workspace-surface">
-          <div className="p-head">
-            <h3><SettingsIcon size={13} /> Workspace identity</h3>
-            {canManageWorkspace ? <button className="appr-btn edit" onClick={() => startEdit("workspace")}>Edit workspace</button> : <span className="p-meta">Owner or admin access required</span>}
-          </div>
-          <div className="settings-workspace-body">
-            <div className="settings-workspace-mark" style={state.workspace.logoUrl ? { backgroundImage: `url(${state.workspace.logoUrl})` } : undefined}>
-              {!state.workspace.logoUrl && state.workspace.name.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <div className="settings-workspace-name">{state.workspace.name}</div>
-              <div className="settings-workspace-id">{state.workspace.id}</div>
-            </div>
-            <div className="settings-workspace-meta">
-              <span>{workspacePlanLabel}</span>
-            </div>
-          </div>
-          <div className="settings-workspace-foot">Your workspace name and logo appear across Auterim.</div>
-        </section>
-
-        <section className="p settings-policy-surface">
-          <div className="p-head">
-            <h3><SettingsIcon size={13} /> Control boundary</h3>
-            <Link className="appr-btn edit" href="/policies">Open policy controls</Link>
-          </div>
-          <div className="settings-boundary-lead"><span className="dot dot-cyan" /> Live enforcement, checked again at execution</div>
-          <div className="settings-policy-list">
-            <div><span>Execution policy</span><strong>Open policy controls for the current live boundary.</strong></div>
-            <div><span>Safety check</span><strong>Each action is re-evaluated immediately before execution.</strong></div>
-          </div>
-        </section>
-
-        <section className="p settings-notifications-surface">
-          <div className="p-head">
-            <h3><SettingsIcon size={13} /> Notifications</h3>
-            <button className="appr-btn edit" onClick={() => startEdit("notifications")}>Email delivery</button>
-          </div>
-          <div className="settings-notification-list">
-            <div><span>Approval requests</span><strong>{state.currentUser.notifications.approvals ? `Email on: ${state.currentUser.email}` : "Email off"}</strong></div>
-            <div><span>Control alerts</span><strong>{state.currentUser.notifications.alerts ? `Email on: ${state.currentUser.email}` : "Email off"}</strong></div>
-          </div>
-        </section>
-      </div>
-
-      {feedback && <div role="status" style={{ color: "#64ffd7", fontSize: 12 }}>{feedback}</div>}
-      {error && <div role="alert" style={{ color: "#ff8f8f", fontSize: 12 }}>{error}</div>}
+      {feedback && <p role="status" className="t-meta" style={{ color: "#64ffd7" }}>{feedback}</p>}
+      {error && <p role="alert" className="t-meta" style={{ color: "#ff8f8f" }}>{error}</p>}
 
       {editing && (
-        <OSModal label={`Edit ${editing}`} className="os-modal-backdrop settings-edit-backdrop" onClose={() => setEditing(null)}>
-          <div className="os-modal settings-edit-modal" style={{ maxWidth: 680, width: "92%" }} onClick={(e) => e.stopPropagation()}>
-            {/* Icon close in the header; Cancel stays in the footer. Same
-                modal language as the team and connector dialogs. */}
-            <div className="os-modal-head">
-              <h3>Edit {editing}</h3>
-              <button className="os-iconbtn" onClick={() => setEditing(null)} aria-label="Close">
+        <OSModal label={`Edit ${editing}`} className="os-modal-backdrop" onClose={() => setEditing(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <div className="tt"><h3>Edit {editing === "workspace" ? "workspace" : "notifications"}</h3></div>
+              <button className="btn-icon" onClick={() => setEditing(null)} aria-label="Close">
                 <XIcon size={13} />
               </button>
             </div>
 
             {editing === "workspace" && (
-              <div style={{ display: "grid", gap: 12 }}>
-                <div className="workspace-identity-editor">
-                  <div className="workspace-logo-preview" style={workspaceLogoPreview ? { backgroundImage: `url(${workspaceLogoPreview})` } : undefined}>
-                    {!workspaceLogoPreview && workspaceDraft.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <div className="workspace-identity-title">Workspace emblem</div>
-                    <div className="workspace-identity-copy">
-                      {workspaceLogoFile ? `${workspaceLogoFile.name} selected. Save workspace to apply it.` : "Use a square PNG, JPG, WebP, or SVG. Maximum 2 MB."}
+              <div className="modal-body stack">
+                <div className="field">
+                  <label className="label">Workspace emblem</label>
+                  <div className="inline">
+                    <div className="workspace-logo-preview" style={workspaceLogoPreview ? { backgroundImage: `url(${workspaceLogoPreview})` } : undefined}>
+                      {!workspaceLogoPreview && workspaceDraft.name.charAt(0).toUpperCase()}
                     </div>
-                    <label className="btn btn-ghost btn-sm workspace-logo-upload">
-                      {workspaceLogoPreview ? "Replace logo" : "Upload logo"}
-                      <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={(event) => selectWorkspaceLogo(event.target.files?.[0])} />
-                    </label>
+                    <div>
+                      <p className="hint" style={{ marginTop: 0 }}>
+                        {workspaceLogoFile ? `${workspaceLogoFile.name} selected. Save workspace to apply it.` : "Use a square PNG, JPG, WebP, or SVG. Maximum 2 MB."}
+                      </p>
+                      <label className="btn btn-ghost btn-sm workspace-logo-upload">
+                        {workspaceLogoPreview ? "Replace logo" : "Upload logo"}
+                        <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={(event) => selectWorkspaceLogo(event.target.files?.[0])} />
+                      </label>
+                    </div>
                   </div>
                 </div>
-                <input value={workspaceDraft.name} onChange={(e) => setWorkspaceDraft((p) => ({ ...p, name: e.target.value }))} className="os-input" aria-label="Workspace name" placeholder="Workspace name" />
-                <div className="workspace-plan-note"><span>Workspace access</span><strong>{workspacePlanLabel}</strong><small>{entitlements.billingStatus === "preview" ? "Choose a plan when you are ready. A trial starts only after checkout is completed." : "Billing changes are managed securely in the billing portal."}</small></div>
+                <div className="field">
+                  <label className="label">Workspace name</label>
+                  <input value={workspaceDraft.name} onChange={(e) => setWorkspaceDraft((p) => ({ ...p, name: e.target.value }))} className="input" aria-label="Workspace name" placeholder="Workspace name" />
+                </div>
+                <dl className="kv">
+                  <div><dt>Workspace access</dt><dd>{workspacePlanLabel}</dd></div>
+                </dl>
+                <p className="hint">{entitlements.billingStatus === "preview" ? "Choose a plan when you are ready. A trial starts only after checkout is completed." : "Billing changes are managed securely in the billing portal."}</p>
               </div>
             )}
 
             {editing === "notifications" && (
-              <div style={{ display: "grid", gap: 10 }}>
-                <div style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(77,232,225,0.06)", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.2)", fontSize: 12.5, color: "var(--text-dim)", lineHeight: 1.55 }}>
-                  Optional email delivery is sent to <strong style={{ color: "var(--text)" }}>{state.currentUser.email}</strong>. Billing, security and legal messages remain required when applicable.
+              <div className="modal-body stack">
+                <div className="attn info" style={{ padding: "12px 14px" }}>
+                  <p className="t-meta" style={{ margin: 0 }}>Optional email delivery is sent to <strong className="ink">{state.currentUser.email}</strong>. Billing, security and legal messages remain required when applicable.</p>
                 </div>
-                {([
-                  ["approvals", "Approval requests", "When work is ready for your decision."],
-                  ["alerts", "Control alerts", "When execution needs attention."],
-                ] as const).map(([key, label, detail]) => (
-                  <button key={key} type="button" aria-pressed={emailPreferences[key]} onClick={() => setEmailPreferences((current) => ({ ...current, [key]: !current[key] }))} style={{ textAlign: "left", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, padding: "14px", borderRadius: 12, color: "inherit", background: emailPreferences[key] ? "rgba(77,232,225,0.055)" : "rgba(255,255,255,0.02)", boxShadow: `inset 0 0 0 1px ${emailPreferences[key] ? "rgba(77,232,225,0.28)" : "var(--line)"}`, cursor: "pointer" }}>
-                    <span><strong style={{ display: "block", fontSize: 13 }}>{label}</strong><small style={{ display: "block", marginTop: 3, color: "var(--text-mute)", fontSize: 11.5 }}>{detail}</small></span>
-                    <span className={`pill ${emailPreferences[key] ? "pill-cyan" : ""}`}>{emailPreferences[key] ? "Email on" : "Off"}</span>
-                  </button>
-                ))}
+                <div className="rows">
+                  {([
+                    ["approvals", "Approval requests", "When work is ready for your decision."],
+                    ["alerts", "Control alerts", "When execution needs attention."],
+                  ] as const).map(([key, label, detail]) => (
+                    <div className="row" key={key}>
+                      <span className="grow"><span className="ttl">{label}</span><span className="sub">{detail}</span></span>
+                      <span className="rt">
+                        <button type="button" className={`swi${emailPreferences[key] ? " on" : ""}`} aria-pressed={emailPreferences[key]} aria-label={label} onClick={() => setEmailPreferences((current) => ({ ...current, [key]: !current[key] }))} />
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
-            <div className="settings-edit-actions" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
-              <button className="btn btn-primary btn-sm" onClick={save} disabled={saving} style={{ opacity: saving ? 0.7 : 1 }}>
+            <div className="modal-foot">
+              <button className="btn btn-primary btn-sm" onClick={save} disabled={saving}>
                 {saving ? "Saving…" : "Save"}
               </button>
             </div>

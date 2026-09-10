@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -8,7 +8,7 @@ import { useOS } from "@/lib/os/app-provider";
 import type { DashboardOverview, DashboardOperator } from "@/lib/dashboard/overview";
 import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-grid";
 import { DashboardLoadingState } from "@/components/dashboard/loading-state";
-import { MetricStrip } from "@/components/product-ui/page-primitives";
+import { MetricStrip, PageHeader } from "@/components/product-ui/page-primitives";
 
 type ScanKey = DashboardOperator["key"];
 type OverviewResponse = DashboardOverview & { error?: string; message?: string };
@@ -33,6 +33,28 @@ const connectorMeta: Record<string, { letter: string; color: string }> = {
   slack: { letter: "Sl", color: "#A77FBC" },
   trello: { letter: "Tr", color: "#4BA3E8" },
 };
+
+function rgba(hex: string, a: number): string {
+  const n = parseInt(hex.replace("#", ""), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
+function OperatorAvatar({ operatorKey, size }: { operatorKey: ScanKey; size: number }) {
+  const meta = operatorMeta[operatorKey];
+  const style = {
+    "--rc": meta.color,
+    "--rc-a": rgba(meta.color, 0.15),
+    "--rc-b": rgba(meta.color, 0.03),
+    "--rc-ring": rgba(meta.color, 0.33),
+    width: size,
+    height: size,
+  } as React.CSSProperties;
+  return (
+    <span className="op-av" style={style}>
+      <Image src={meta.avatar} alt="" width={size} height={size} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+    </span>
+  );
+}
 
 function titleCase(value: string | null | undefined): string {
   if (!value) return "-";
@@ -91,30 +113,39 @@ function dashboardCounts(overview: DashboardOverview) {
   };
 }
 
+/** Four-tile KPI row. Every value/detail is read straight off the fetched
+ * DashboardOverview payload - nothing here is a fabricated trend or count. */
 function DashboardMetrics({ overview }: { overview: DashboardOverview }) {
   const counts = dashboardCounts(overview);
-  // The marker reports state rather than decorating the tile: geometric
-  // glyphs ("◎ ↗ ◌ !") rendered inconsistently across fonts and carried no
-  // meaning. Tone is derived from the same real counts shown beside it.
+  const pending = overview.approvals.pendingCount;
+  const oldestApproval = overview.approvals.latest[0];
+  const attentionConnectors = overview.connectors.length - counts.connected;
+
   const metrics = [
-    { label: "Systems connected", value: counts.connected, detail: counts.connected ? "Live context available" : "Connect a first system", tone: counts.connected ? "on" : "idle" },
-    { label: "Operators ready", value: counts.ready, detail: counts.ready ? "Ready to deploy" : "No operator waiting", tone: counts.ready ? "on" : "idle" },
-    { label: "Active operators", value: counts.active, detail: counts.active ? "Monitoring now" : "Nothing running yet", tone: counts.active ? "live" : "idle" },
-    { label: "Needs attention", value: counts.attention, detail: counts.attention ? "A review is needed" : "All systems clear", attention: counts.attention > 0, tone: counts.attention ? "warn" : "clear" },
+    {
+      label: "Live workforce",
+      value: <>{counts.active}<em>of {overview.operators.length} operator{overview.operators.length === 1 ? "" : "s"}</em></>,
+      detail: counts.active ? overview.operators.filter((o) => (overview.operatorProductStates.find((p) => p.operatorKey === o.key)?.state ?? "") !== "needs_setup").slice(0, 2).map((o) => o.name).join(", ") : "None monitoring yet",
+    },
+    {
+      label: "Awaiting approval",
+      value: pending,
+      detail: pending > 0 && oldestApproval ? `Oldest waiting ${timeAgo(oldestApproval.createdAt)}` : "All clear",
+      tone: pending > 0 ? "attention" as const : "default" as const,
+    },
+    {
+      label: "Connected systems",
+      value: counts.connected,
+      detail: attentionConnectors > 0 ? `${attentionConnectors} need${attentionConnectors === 1 ? "s" : ""} attention` : "All healthy",
+    },
+    {
+      label: "Actions executed",
+      value: overview.activitySummary.executed,
+      detail: "Last 7 days, all logged",
+    },
   ];
 
-  return (
-    <section className="dashboard-metrics" aria-labelledby="auterim-overview-title">
-      <div className="dashboard-section-label" id="auterim-overview-title">Auterim overview</div>
-      <MetricStrip className="dashboard-metric-grid" items={metrics.map((metric) => ({
-        id: metric.label,
-        label: <><span className="dashboard-metric-symbol" data-tone={metric.tone} aria-hidden="true" />{metric.label}</>,
-        value: metric.value,
-        detail: metric.detail,
-        tone: metric.attention ? "attention" : "default",
-      }))} />
-    </section>
-  );
+  return <MetricStrip items={metrics} />;
 }
 
 function WorkforceActivity({ overview }: { overview: DashboardOverview }) {
@@ -131,37 +162,43 @@ function WorkforceActivity({ overview }: { overview: DashboardOverview }) {
   const heldPoints = pointString("held");
 
   return (
-    <section className="p dashboard-workforce-activity" aria-labelledby="workforce-activity-title">
-      <div className="p-head">
+    <div className="card" aria-labelledby="workforce-activity-title">
+      <div className="card-head">
         <div>
-          <h3 id="workforce-activity-title">Workforce activity</h3>
-          <span>Prepared, executed, and held work across the last 7 days</span>
+          <div className="t-section" id="workforce-activity-title">Workforce activity</div>
+          <div className="t-meta" style={{ marginTop: 3 }}>Prepared against executed, last 7 days</div>
         </div>
-        <Link className="lnk-open" href="/activity">View activity</Link>
+        <div className="inline" style={{ gap: 18 }}>
+          <span className="inline" style={{ gap: 7 }}><span className="dot dot-cyan" /><span className="t-meta">Prepared</span></span>
+          <span className="inline" style={{ gap: 7 }}><span className="dot dot-green" /><span className="t-meta">Executed</span></span>
+          <span className="inline" style={{ gap: 7 }}><span className="dot dot-amber" /><span className="t-meta">Held at approval</span></span>
+        </div>
       </div>
-      <div className="dashboard-activity-counts" aria-label={`${summary.prepared} prepared, ${summary.executed} executed, and ${summary.held} held at approval across the last seven days`}>
-        <span data-series="prepared"><b>{summary.prepared}</b> Prepared</span><span data-series="executed"><b>{summary.executed}</b> Executed</span><span data-series="held"><b>{summary.held}</b> Held at approval</span>
+      <div className="card-pad" style={{ paddingTop: 18 }}>
+        <div className="dashboard-activity-counts" aria-label={`${summary.prepared} prepared, ${summary.executed} executed, and ${summary.held} held at approval across the last seven days`}>
+          <span data-series="prepared"><b>{summary.prepared}</b> Prepared</span><span data-series="executed"><b>{summary.executed}</b> Executed</span><span data-series="held"><b>{summary.held}</b> Held at approval</span>
+        </div>
+        <div className="dashboard-telemetry-frame">
+          <svg viewBox="0 0 720 190" role="img" aria-label={hasActivity ? `${summary.prepared} prepared actions, ${summary.executed} executed actions, and ${summary.held} actions held at approval across seven days.` : "No prepared, executed, or held workforce activity recorded yet"}>
+            {[38, 76, 114, 152].map((y) => <line key={y} x1="40" x2="680" y1={y} y2={y} />)}
+            {summary.daily.map((item, index) => { const x = 40 + index * (640 / Math.max(summary.daily.length - 1, 1)); return <g key={item.day}><line className="dashboard-telemetry-day" x1={x} x2={x} y1="28" y2="152" /><text className="dashboard-telemetry-axis" x={x} y="178" textAnchor={index === 0 ? "start" : index === summary.daily.length - 1 ? "end" : "middle"}>{new Date(`${item.day}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "short" })}</text></g>; })}
+            {hasActivity && <>
+              <polygon points={`40,152 ${preparedPoints} 680,152`} fill="rgba(77,232,225,.10)" />
+              <polyline points={preparedPoints} fill="none" stroke="#4DE8E1" strokeWidth="2" />
+              <polyline points={executedPoints} fill="none" stroke="#51D88A" strokeWidth="1.8" />
+              <polyline points={heldPoints} fill="none" stroke="#F5C26B" strokeWidth="1.8" strokeDasharray="4 4" />
+              {summary.daily.map((item, index) => { const x = 40 + index * (640 / Math.max(summary.daily.length - 1, 1)); const y = 150 - (item.prepared / max) * 112; return <circle key={item.day} cx={x} cy={y} r="3.5" fill="#4DE8E1"><title>{`${item.day}: ${item.prepared} prepared, ${item.executed} executed, ${item.held} held at approval`}</title></circle>; })}
+            </>}
+          </svg>
+          {!hasActivity && (
+            <div className="dashboard-telemetry-empty">
+              <strong>Activity is still building.</strong>
+              <span>Prepared, executed, and held work will appear here after operators begin monitoring.</span>
+            </div>
+          )}
+        </div>
       </div>
-      <div className="dashboard-telemetry-frame">
-        <svg viewBox="0 0 720 190" role="img" aria-label={hasActivity ? `${summary.prepared} prepared actions, ${summary.executed} executed actions, and ${summary.held} actions held at approval across seven days.` : "No prepared, executed, or held workforce activity recorded yet"}>
-          {[38, 76, 114, 152].map((y) => <line key={y} x1="40" x2="680" y1={y} y2={y} />)}
-          {summary.daily.map((item, index) => { const x = 40 + index * (640 / Math.max(summary.daily.length - 1, 1)); return <g key={item.day}><line className="dashboard-telemetry-day" x1={x} x2={x} y1="28" y2="152" /><text className="dashboard-telemetry-axis" x={x} y="178" textAnchor={index === 0 ? "start" : index === summary.daily.length - 1 ? "end" : "middle"}>{new Date(`${item.day}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "short" })}</text></g>; })}
-          {hasActivity && <>
-            <polygon points={`40,152 ${preparedPoints} 680,152`} fill="rgba(77,232,225,.10)" />
-            <polyline points={preparedPoints} fill="none" stroke="#4DE8E1" strokeWidth="2" />
-            <polyline points={executedPoints} fill="none" stroke="#51D88A" strokeWidth="1.8" />
-            <polyline points={heldPoints} fill="none" stroke="#F5C26B" strokeWidth="1.8" strokeDasharray="4 4" />
-            {summary.daily.map((item, index) => { const x = 40 + index * (640 / Math.max(summary.daily.length - 1, 1)); const y = 150 - (item.prepared / max) * 112; return <circle key={item.day} cx={x} cy={y} r="3.5" fill="#4DE8E1"><title>{`${item.day}: ${item.prepared} prepared, ${item.executed} executed, ${item.held} held at approval`}</title></circle>; })}
-          </>}
-        </svg>
-        {!hasActivity && (
-          <div className="dashboard-telemetry-empty">
-            <strong>Activity is still building.</strong>
-            <span>Prepared, executed, and held work will appear here after operators begin monitoring.</span>
-          </div>
-        )}
-      </div>
-    </section>
+    </div>
   );
 }
 
@@ -185,14 +222,16 @@ function DashboardReadinessSummary({ overview }: { overview: DashboardOverview }
             : { state: "active", label: "Workforce active", message: `${counts.active} operator${counts.active === 1 ? " is" : "s are"} monitoring your workspace.`, primary: overview.approvals.pendingCount > 0 ? "Open approvals" : "View operators", href: overview.approvals.pendingCount > 0 ? "/approvals" : "/agents" };
 
   return (
-    <section className="p dashboard-readiness-summary" data-state={lifecycle} aria-labelledby="readiness-summary-title">
-      <div className="dashboard-readiness-copy">
-        <StatusBadge state={summary.state}>{summary.label}</StatusBadge>
-        <h2 id="readiness-summary-title">{summary.message}</h2>
-      </div>
-      <div className="dashboard-readiness-actions">
-        <Link className="btn btn-primary btn-sm" href={summary.href}>{summary.primary}</Link>
-        <Link className="btn btn-ghost btn-sm" href={summary.href === "/connectors" ? "/agents" : "/connectors"}>{summary.href === "/connectors" ? "View operators" : "Manage connections"}</Link>
+    <section className="attn info" data-state={lifecycle} aria-labelledby="readiness-summary-title" style={{ padding: "16px 18px" }}>
+      <div className="inline" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 14 }}>
+        <div className="inline" style={{ gap: 12 }}>
+          <StatusBadge state={summary.state}>{summary.label}</StatusBadge>
+          <span className="t-object" id="readiness-summary-title">{summary.message}</span>
+        </div>
+        <div className="inline" style={{ flex: "none" }}>
+          <Link className="btn btn-primary btn-sm" href={summary.href}>{summary.primary}</Link>
+          <Link className="btn btn-ghost btn-sm" href={summary.href === "/connectors" ? "/agents" : "/connectors"}>{summary.href === "/connectors" ? "View operators" : "Manage connections"}</Link>
+        </div>
       </div>
     </section>
   );
@@ -201,14 +240,14 @@ function DashboardReadinessSummary({ overview }: { overview: DashboardOverview }
 function WhatAuterimCanDo({ overview }: { overview: DashboardOverview }) {
   const capabilities = Array.from(new Set(overview.operatorProductStates.flatMap((operator) => operator.availableNow))).slice(0, 6);
   return (
-    <section className="p dashboard-capabilities" aria-labelledby="dashboard-capabilities-title">
-      <div className="p-head"><h3 id="dashboard-capabilities-title">What Auterim can do now</h3><span className="p-meta">From connected systems</span></div>
+    <div className="card" aria-labelledby="dashboard-capabilities-title">
+      <div className="card-head"><div className="t-section" id="dashboard-capabilities-title">What Auterim can do now</div><span className="t-meta">From connected systems</span></div>
       {capabilities.length > 0 ? (
-        <ul>{capabilities.map((capability) => <li key={capability}><span aria-hidden="true">✓</span>{capability}</li>)}</ul>
+        <div className="rows">{capabilities.map((capability) => <div className="row" key={capability}><span className="dot dot-green" /><span className="grow t-compact">{capability}</span></div>)}</div>
       ) : (
-        <div className="dashboard-compact-empty">Capabilities will appear here as systems connect.</div>
+        <div className="card-pad t-meta">Capabilities will appear here as systems connect.</div>
       )}
-    </section>
+    </div>
   );
 }
 
@@ -216,36 +255,33 @@ function ReadyToDeploy({ overview }: { overview: DashboardOverview }) {
   const deployable = overview.operatorProductStates.filter((operator) => operator.state === "ready_to_activate" || operator.state === "plan_required" || operator.state === "billing_attention");
   if (deployable.length === 0) return null;
   return (
-    <section className="p dashboard-ready-panel" aria-labelledby="dashboard-ready-title">
-      <div className="p-head"><h3 id="dashboard-ready-title">Ready to deploy</h3><span className="p-meta">{deployable.length} operator{deployable.length === 1 ? "" : "s"}</span></div>
-      <div className="dashboard-ready-list">
+    <div className="card" aria-labelledby="dashboard-ready-title">
+      <div className="card-head"><div className="t-section" id="dashboard-ready-title">Ready to deploy</div><span className="t-meta">{deployable.length} operator{deployable.length === 1 ? "" : "s"}</span></div>
+      <div className="rows">
         {deployable.map((operator) => (
-          <div className="dashboard-ready-row" key={operator.operatorKey}>
-            <div>
-              <strong>{operator.operatorName}</strong>
-              <span>{operator.connectedSystems.join(" · ") || operator.label}</span>
-              <p>{operator.availableNow[0] ?? "Ready for activation"}</p>
-            </div>
+          <div className="row" key={operator.operatorKey}>
+            <span className="grow">
+              <span className="ttl">{operator.operatorName}</span>
+              <span className="sub">{operator.connectedSystems.join(" · ") || operator.label} · {operator.availableNow[0] ?? "Ready for activation"}</span>
+            </span>
             {operator.nextAction && <Link className="btn btn-ghost btn-sm" href={operator.nextAction.href}>{operator.nextAction.label}</Link>}
           </div>
         ))}
       </div>
-    </section>
+    </div>
   );
 }
 
 function UnlockMore({ overview }: { overview: DashboardOverview }) {
   if (!overview.connectors.some((connector) => connector.status === "needs_setup")) return null;
   return (
-    <section className="p dashboard-unlock-panel" aria-labelledby="dashboard-unlock-title">
-      <div className="dashboard-unlock-copy">
-        <div>
-          <h3 id="dashboard-unlock-title">Unlock more</h3>
-          <p>Connect another system to expand what your operators can understand and do.</p>
-        </div>
-        <Link className="btn btn-ghost btn-sm" href="/connectors?discover=1">Find a connector</Link>
+    <div className="card card-pad" aria-labelledby="dashboard-unlock-title" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+      <div>
+        <div className="t-section" id="dashboard-unlock-title">Unlock more</div>
+        <p className="t-compact" style={{ margin: "4px 0 0" }}>Connect another system to expand what your operators can understand and do.</p>
       </div>
-    </section>
+      <Link className="btn btn-ghost btn-sm" href="/connectors?discover=1">Find a connector</Link>
+    </div>
   );
 }
 
@@ -345,14 +381,8 @@ export function OSOverview() {
   if (!overview) {
     return (
       <div className="os-page">
-        <div className="os-page-head">
-          <div>
-            <span className="os-greet">Auterim OS</span>
-            <h1>We couldn’t load your dashboard.</h1>
-            <div className="os-page-sub">{error || "Refresh to try again."}</div>
-            <button className="btn btn-primary btn-sm" type="button" style={{ marginTop: 16 }} onClick={() => { setLoading(true); void loadOverview(); }}>Try again</button>
-          </div>
-        </div>
+        <PageHeader eyebrow="Auterim OS" title="We couldn’t load your dashboard." description={error || "Refresh to try again."}
+          actions={<button className="btn btn-primary btn-sm" type="button" onClick={() => { setLoading(true); void loadOverview(); }}>Try again</button>} />
       </div>
     );
   }
@@ -366,32 +396,29 @@ export function OSOverview() {
   const mode = autonomyLabel(overview.policy.autonomyMode);
   const busy = busyScan !== null || busyApproval !== null;
 
+  const headerActions = (
+    <>
+      <Link className="btn btn-secondary" href="/connectors">Connect a system</Link>
+      <Link className="btn btn-primary" href="/agents">Manage workforce</Link>
+    </>
+  );
+
   // State A remains an explicit server-backed first-run branch, but uses the
   // same control-center frame as later states so the dashboard stays familiar.
   if (overview.lifecycleState === "A") {
     const hasOnboardingPriorities = overview.workspace.onboardingSystems.length > 0;
     return (
       <div className="os-page dashboard-overview dashboard-first-run">
-        <div className="os-page-head">
-          <div>
-            <span className="os-greet">Auterim workspace</span>
-            <h1>{greet}, {firstName}.</h1>
-            <div className="os-page-sub">See what Auterim understands, what is ready, and what happens next.</div>
-          </div>
-        </div>
+        <PageHeader eyebrow="Auterim workspace" title={`${greet}, ${firstName}.`} description="See what Auterim understands, what is ready, and what happens next." />
 
-        {error && (
-          <div className="dashboard-alert" style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>
-            {error}
-          </div>
-        )}
+        {error && <section className="attn crit"><div className="card-pad" style={{ padding: "10px 14px", fontSize: 12.5 }}>{error}</div></section>}
 
-        <DashboardReadinessSummary overview={overview} />
-        <DashboardMetrics overview={overview} />
-        <WorkforceActivity overview={overview} />
-        <div className="dashboard-value-grid" data-onboarding-priorities={hasOnboardingPriorities || undefined}>
+        <div className="sec"><DashboardReadinessSummary overview={overview} /></div>
+        <div className="sec"><DashboardMetrics overview={overview} /></div>
+        <div className="sec"><WorkforceActivity overview={overview} /></div>
+        <div className="sec split" data-onboarding-priorities={hasOnboardingPriorities || undefined}>
           <WhatAuterimCanDo overview={overview} />
-          <div className="dashboard-value-stack">
+          <div className="stack">
             <ReadyToDeploy overview={overview} />
             <UnlockMore overview={overview} />
           </div>
@@ -432,217 +459,197 @@ export function OSOverview() {
   const eligibility = overview.executionEligibility;
   const showEligibilityBanner = !eligibility.eligible;
 
+  const topApproval = overview.approvals.latest[0];
+  const moreApprovals = overview.approvals.latest.slice(1, 4);
+
   return (
     <div className="os-page dashboard-overview">
-      {/* Header */}
-      <div className="os-page-head">
-        <div>
-          <span className="os-greet">
-            <span className="desktop-only">{overview.systemStatus.label} · updated {timeAgo(overview.lastUpdatedAt)}</span>
-            <span className="mobile-only">{overview.systemStatus.label}</span>
-          </span>
-          <h1>{greet}, {firstName}.</h1>
-          <div className="os-page-sub">See what Auterim understands, what is ready, and what happens next.</div>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow={`${overview.systemStatus.label} · updated ${timeAgo(overview.lastUpdatedAt)}`}
+        title={`${greet}, ${firstName}.`}
+        description={pending > 0 ? `${pending} action${pending === 1 ? "" : "s"} need${pending === 1 ? "s" : ""} your review. Everything else is running inside policy.` : "See what Auterim understands, what is ready, and what happens next."}
+        actions={headerActions}
+      />
 
-      {error && (
-        <div className="dashboard-alert" style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>
-          {error}
+      {error && <section className="attn crit"><div className="card-pad" style={{ padding: "10px 14px", fontSize: 12.5 }}>{error}</div></section>}
+
+      {attentionStates[0] && (
+        <div className="sec" style={{ marginTop: 22 }}>
+          <section className="attn" style={{ padding: "16px 18px" }}>
+            <div className="inline" style={{ gap: 14, alignItems: "flex-start", flexWrap: "nowrap" }}>
+              <span className="dot dot-amber" style={{ marginTop: 6 }} />
+              <div className="grow" style={{ flex: 1, minWidth: 0 }}>
+                <div className="t-object">{attentionStates[0].operatorName} · {attentionStates[0].label}</div>
+                <div className="t-meta" style={{ marginTop: 4 }}>{attentionStates[0].requiredActions[0]?.reason ?? attentionStates[0].description}</div>
+              </div>
+              {attentionStates[0].nextAction && <Link className="btn btn-sm btn-amber" href={attentionStates[0].nextAction.href} style={{ flex: "none" }}>{attentionStates[0].nextAction.label}</Link>}
+            </div>
+          </section>
         </div>
       )}
 
-      <DashboardReadinessSummary overview={overview} />
-      {/* KPI row (real metrics, no fabricated trends) */}
-      <DashboardMetrics overview={overview} />
-      <WorkforceActivity overview={overview} />
+      <div className="sec"><DashboardMetrics overview={overview} /></div>
 
-      <div className="dashboard-value-grid">
-        <WhatAuterimCanDo overview={overview} />
-        <div className="dashboard-value-stack">
-          <ReadyToDeploy overview={overview} />
-          <UnlockMore overview={overview} />
-        </div>
-      </div>
+      <div className="sec"><WorkforceActivity overview={overview} /></div>
 
       {showEligibilityBanner && (
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap", padding: "12px 16px", borderRadius: 12, background: "rgba(245,194,107,0.07)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.2)" }}>
-          <div style={{ fontSize: 12.8, color: "var(--text-dim)" }}>
-            <strong style={{ color: "var(--amber)" }}>{eligibility.status === "plan_required" ? "Plan required" : eligibility.status === "billing_attention" ? "Billing needs attention" : "Execution paused"}.</strong> {eligibility.reason} You can still connect systems and configure operators now.
-          </div>
-          <Link className="btn btn-primary btn-sm" href="/plans" style={{ textDecoration: "none" }}>{eligibility.status === "billing_attention" ? "Update billing" : "Choose a plan"}</Link>
-        </div>
-      )}
-
-      {/* Needs-attention section: surfaced inside the normal operational
-          dashboard rather than replacing it, so an operator that is degraded
-          (optional connector unhealthy) or needs_attention (required
-          connector broke) never hides the rest of the product once
-          something else is actively running. */}
-      {attentionStates.length > 0 && (
-        <div className="p" style={{ borderRadius: 14, background: "rgba(245,194,107,0.05)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.18)" }}>
-          <div className="p-head"><h3>Operator attention</h3><span className="p-meta">{attentionStates.length} actionable</span></div>
-          <div style={{ padding: "12px 18px", display: "grid", gap: 10 }}>
-            {attentionStates.map((item) => (
-              <div key={item.operatorKey} style={{ display: "flex", justifyContent: "space-between", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
-                <div>
-                  <div style={{ fontSize: 12.8, fontWeight: 600 }}>{item.operatorName} <span style={{ color: item.state === "needs_attention" ? "var(--amber)" : "var(--blue)", fontWeight: 500 }}>· {item.label}</span></div>
-                  {item.requiredActions[0] && <div style={{ marginTop: 3, fontSize: 12, color: "var(--text-dim)" }}>{item.requiredActions[0].reason}</div>}
-                  <div style={{ marginTop: 3, fontSize: 11.5, color: "var(--text-mute)" }}>{item.description}</div>
-                </div>
-                {item.nextAction && <Link className="btn btn-ghost btn-sm" href={item.nextAction.href} style={{ textDecoration: "none", flexShrink: 0 }}>{item.nextAction.label}</Link>}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Operators + Approvals */}
-      <div className="os-grid-2 dashboard-focus-grid">
-        <div className="p dashboard-operators-panel">
-          <div className="p-head">
-            <h3>{overview.operators.length === 1 ? "Your first operator" : "Your operators"}</h3>
-            <span className="p-meta"><span className="desktop-only">{overview.operators.length} configured · no actions run without approval</span><span className="mobile-only">{overview.operators.length} operators</span></span>
-          </div>
-          <div className="ops-grid">
-            {overview.operators.map((operator) => {
-              const meta = operatorMeta[operator.key];
-              const needsSetup = operator.status === "needs_setup";
-              const productState = overview.operatorProductStates.find((item) => item.operatorKey === operator.key);
-              return (
-                <div className="ops-card" key={operator.key}>
-                  <div className="ops-card-head">
-                    <Image className="ops-card-avatar" src={meta.avatar} alt="" width={34} height={34} style={{ width: 34, height: 34, objectFit: "contain" }} />
-                    <div style={{ minWidth: 0 }}>
-                      <div className="ops-card-name">{operator.name}</div>
-                      <div className="ops-card-tag">{meta.tag}</div>
-                    </div>
-                    <StatusBadge state={productState?.state ?? operator.status}>
-                      {productState?.label ?? (needsSetup ? "Needs setup" : "Monitoring")}
-                    </StatusBadge>
-                  </div>
-                  <div className="ops-task">
-                    <span>{operator.pendingApprovals} pending · {operator.signalsToday} signals today · checked {timeAgo(operator.lastRunAt)}</span>
-                  </div>
-                  <div className="ops-foot">
-                    <span className="ops-metric"><strong>{operator.actionsToday}</strong> actions today</span>
-                    <div className="ops-actions">
-                      <button
-                        type="button"
-                        className="lnk cyan"
-                        disabled={busy || needsSetup}
-                        onClick={() => { if (!busy && !needsSetup) void runManualCheck(operator.key); }}
-                        style={{ opacity: busy || needsSetup ? 0.45 : 1, cursor: busy || needsSetup ? "default" : "pointer" }}
-                      >
-                        {busyScan === operator.key ? "Checking…" : "Run check"}
-                      </button>
-                      <Link className="lnk" href={operator.href}>Open</Link>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="p dashboard-approvals-panel">
-          <div className="p-head">
-            <h3>Approval inbox</h3>
-            <span className="p-meta">{pending > 0 && <span className="dot dot-cyan pulsing" />} {pending} waiting</span>
-          </div>
-          <div>
-            {pending === 0 ? (
-              <div className="appr-row">
-                <div className="appr-row-body" style={{ padding: "8px 0", color: "var(--text-mute)" }}>Nothing needs your review.</div>
-              </div>
-            ) : overview.approvals.latest.slice(0, 4).map((approval) => {
-              const isBusy = busyApproval === approval.id;
-              return (
-                <div className="appr-row" key={approval.id}>
-                  <div className="appr-row-top">
-                    <span className={`pill ${approval.riskLevel === "high" ? "pill-rose" : "pill-cyan"}`}>{operatorMark(approval.operatorKey).mark}</span>
-                    <span className="appr-row-title">{approval.title}</span>
-                  </div>
-                  <div className="appr-row-from">{titleCase(approval.operatorKey)} · {timeAgo(approval.createdAt)}</div>
-                  <div className="appr-row-body">Risk: {approval.riskLevel || "medium"} · {titleCase(approval.policyDecision) || "Approval required"} · rechecked before execution</div>
-                  <div className="appr-row-actions">
-                    <button type="button" className="appr-btn approve" disabled={busy} onClick={() => void actOnApproval(approval.id, "approve")}>
-                      {isBusy ? "..." : "Approve"}
-                    </button>
-                    <Link className="appr-btn edit" href={approval.href}>Open</Link>
-                    <button type="button" className="appr-btn deny" disabled={busy} onClick={() => void actOnApproval(approval.id, "reject")} title="Dismiss this approval without sending or executing anything">
-                      {isBusy ? "..." : "Skip"}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Activity + Policy */}
-      <div className="os-grid-2 dashboard-activity-grid">
-        <div className="p">
-          <div className="p-head">
-            <h3>Activity</h3>
-            <Link className="lnk-open" href="/activity">View activity</Link>
-          </div>
-          <div>
-            {overview.activity.length === 0 ? (
-              <div className="act-row" style={{ color: "var(--text-mute)" }}><span /><span /><span>No activity yet. Operator runs will appear here.</span><span /></div>
-            ) : overview.activity.slice(0, 7).map((item) => {
-              const mark = operatorMark(item.operatorKey);
-              return (
-                <div className="act-row" key={item.id}>
-                  <span className="act-time">{clockTime(item.time)}</span>
-                  <span className="act-mark" style={{ color: activityColor(item.severity), background: `${activityColor(item.severity)}18`, boxShadow: `inset 0 0 0 1px ${activityColor(item.severity)}55` }}>{mark.mark}</span>
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.description || titleCase(item.title)}</span>
-                  <span className="act-target">{timeAgo(item.time)}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="p">
-          <div className="p-head">
-            <h3>Policy</h3>
-            <Link className="lnk-open" href="/policies">Manage policies</Link>
-          </div>
-          <div style={{ padding: "14px 18px", display: "grid", gap: 8 }}>
-            <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
-              <span className="pill pill-cyan">{mode}</span>
-              <span className={`pill ${overview.policy.emergencyStopEnabled ? "pill-rose" : ""}`}>{overview.policy.emergencyStopEnabled ? "Emergency stop on" : "Emergency stop off"}</span>
+        <div className="sec">
+          <section className="attn" style={{ padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+            <div className="t-compact">
+              <strong style={{ color: "var(--amber)" }}>{eligibility.status === "plan_required" ? "Plan required" : eligibility.status === "billing_attention" ? "Billing needs attention" : "Execution paused"}.</strong> {eligibility.reason} You can still connect systems and configure operators now.
             </div>
-            <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.5 }}>{customerEmailLabel(overview.policy.customerEmailMode)}.</div>
-            <div style={{ fontSize: 11.8, color: "var(--text-mute)" }}>Approval-first where risk matters. Rechecked before execution.</div>
+            <Link className="btn btn-primary btn-sm" href="/plans">{eligibility.status === "billing_attention" ? "Update billing" : "Choose a plan"}</Link>
+          </section>
+        </div>
+      )}
+
+      {attentionStates.length > 1 && (
+        <div className="sec">
+          <div className="card">
+            <div className="card-head"><div className="t-section">Operator attention</div><span className="badge amber">{attentionStates.length} ACTIONABLE</span></div>
+            <div className="rows">
+              {attentionStates.slice(1).map((item) => (
+                <div className="row" key={item.operatorKey}>
+                  <span className="grow">
+                    <span className="ttl">{item.operatorName} · {item.label}</span>
+                    <span className="sub">{item.requiredActions[0]?.reason ?? item.description}</span>
+                  </span>
+                  {item.nextAction && <Link className="btn btn-ghost btn-sm" href={item.nextAction.href}>{item.nextAction.label}</Link>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="sec split">
+        <div className="stack">
+          <div className="card">
+            <div className="card-head"><div className="t-section">Needs your review</div><Link className="btn btn-sm btn-ghost" href="/approvals">Open approvals</Link></div>
+            <div className="card-pad" style={{ paddingTop: 16 }}>
+              {!topApproval ? (
+                <p className="t-meta" style={{ margin: 0 }}>Nothing needs your review.</p>
+              ) : (
+                <>
+                  <div className="inline" style={{ gap: 11, marginBottom: 14 }}>
+                    <OperatorAvatar operatorKey={(topApproval.operatorKey as ScanKey) ?? "revenue"} size={28} />
+                    <span className="t-compact ink">{titleCase(topApproval.operatorKey)}</span>
+                    <span className="badge amber">AWAITING APPROVAL</span>
+                  </div>
+                  <div className="t-object" style={{ fontSize: 16 }}>{topApproval.title}</div>
+                  <dl className="kv" style={{ marginTop: 16 }}>
+                    <dt>Waiting</dt><dd>{timeAgo(topApproval.createdAt)}</dd>
+                    <dt>Risk</dt><dd>{titleCase(topApproval.riskLevel) || "Medium"}</dd>
+                    <dt>Policy</dt><dd>{titleCase(topApproval.policyDecision) || "Approval required"}</dd>
+                  </dl>
+                  <div className="inline" style={{ marginTop: 18, gap: 9 }}>
+                    <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void actOnApproval(topApproval.id, "approve")}>{busyApproval === topApproval.id ? "…" : "Approve and send"}</button>
+                    <Link className="btn btn-secondary" href={topApproval.href}>Open</Link>
+                    <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => void actOnApproval(topApproval.id, "reject")}>{busyApproval === topApproval.id ? "…" : "Reject"}</button>
+                  </div>
+                </>
+              )}
+            </div>
+            {moreApprovals.length > 0 && (
+              <div className="rows">
+                {moreApprovals.map((approval) => (
+                  <div className="row link" key={approval.id}>
+                    <span className="grow"><span className="ttl">{approval.title}</span><span className="sub">{titleCase(approval.operatorKey)} · updated {timeAgo(approval.createdAt)}</span></span>
+                    <span className="rt"><span className="badge amber">WAITING</span><Link className="btn btn-sm btn-ghost" href={approval.href}>Open</Link></span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="stack">
+          <div className="card">
+            <div className="card-head"><div className="t-section">{overview.operators.length === 1 ? "Your first operator" : "Workforce"}</div><Link className="btn btn-sm btn-ghost" href="/agents">Manage</Link></div>
+            <div className="rows">
+              {overview.operators.map((operator) => {
+                const needsSetup = operator.status === "needs_setup";
+                const productState = overview.operatorProductStates.find((item) => item.operatorKey === operator.key);
+                return (
+                  <div className="row" key={operator.key}>
+                    <span className="op-id">
+                      <OperatorAvatar operatorKey={operator.key} size={34} />
+                      <span className="nm"><b>{operator.name}</b><span>{operator.pendingApprovals} pending · checked {timeAgo(operator.lastRunAt)}</span></span>
+                    </span>
+                    <span className="rt">
+                      <StatusBadge state={productState?.state ?? operator.status}>{productState?.label ?? (needsSetup ? "Needs setup" : "Monitoring")}</StatusBadge>
+                      <button type="button" className="btn btn-sm btn-ghost" disabled={busy || needsSetup} onClick={() => { if (!busy && !needsSetup) void runManualCheck(operator.key); }}>{busyScan === operator.key ? "…" : "Check"}</button>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-head"><div className="t-section">Business context</div><Link className="btn btn-sm btn-ghost" href="/connectors">Connectors</Link></div>
+            <div className="rows">
+              {overview.connectors.map((connector) => {
+                const meta = connectorMeta[connector.key] ?? { letter: connector.name.slice(0, 2), color: "#4DE8E1" };
+                return (
+                  <Link key={connector.key} href={connector.href} className="row link">
+                    <span className="cn">
+                      <span className="cn-mark" style={{ color: meta.color }}>{IntegrationLogos[connector.name] ?? meta.letter}</span>
+                      <span className="nm"><b>{connector.name}</b><span>{connector.connected ? "Connected" : "Needs setup"}</span></span>
+                    </span>
+                    <span className="rt inline" style={{ gap: 7 }}>
+                      <span className={`dot ${connector.connected ? "dot-green" : "dot-amber"}`} />
+                      <span className="t-meta">{connector.connected ? (connector.lastCheckedAt ? timeAgo(connector.lastCheckedAt) : "connected") : "needs setup"}</span>
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+            <div className="card-pad" style={{ padding: "12px 18px", borderTop: "1px solid var(--line)" }}>
+              <span className="t-meta">{healthyConnectors}/{overview.connectors.length} healthy</span>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-head"><div className="t-section">Recent activity</div><Link className="btn btn-sm btn-ghost" href="/activity">All activity</Link></div>
+            <div className="card-pad" style={{ padding: "14px 18px" }}>
+              {overview.activity.length === 0 ? (
+                <p className="t-meta" style={{ margin: 0 }}>No activity yet. Operator runs will appear here.</p>
+              ) : (
+                <div className="stack" style={{ gap: 13 }}>
+                  {overview.activity.slice(0, 7).map((item) => {
+                    const mark = operatorMark(item.operatorKey);
+                    return (
+                      <div className="inline" style={{ gap: 11, alignItems: "baseline", flexWrap: "nowrap" }} key={item.id}>
+                        <span className="t-mono" style={{ fontSize: 11.5, color: "var(--text-faint)", flex: "none" }}>{clockTime(item.time)}</span>
+                        <span className="t-compact" style={{ minWidth: 0 }}><b style={{ color: mark.color, fontWeight: 400 }}>{titleCase(item.operatorKey)}</b> {item.description || titleCase(item.title)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-head"><div className="t-section">Policy</div><Link className="btn btn-sm btn-ghost" href="/policies">Manage</Link></div>
+            <div className="card-pad" style={{ padding: "14px 18px", display: "grid", gap: 8 }}>
+              <div className="inline" style={{ gap: 7 }}>
+                <span className="badge cyan">{mode.toUpperCase()}</span>
+                {overview.policy.emergencyStopEnabled && <span className="badge red">EMERGENCY STOP ON</span>}
+              </div>
+              <div className="t-compact">{customerEmailLabel(overview.policy.customerEmailMode)}.</div>
+              <div className="t-meta">Approval-first where risk matters. Rechecked before execution.</div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Connectors */}
-      <div className="p dashboard-connectors-panel">
-        <div className="p-head">
-          <h3>Connectors</h3>
-          <span className="p-meta">{healthyConnectors}/{overview.connectors.length} healthy</span>
-        </div>
-        <div className="conn-strip" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))" }}>
-          {overview.connectors.map((connector) => {
-            const meta = connectorMeta[connector.key] ?? { letter: connector.name.slice(0, 2), color: "#4DE8E1" };
-            return (
-              <Link key={connector.key} href={connector.href} className="conn-tile" style={{ textDecoration: "none", color: "inherit" }}>
-                <div className="conn-logo connector-brand-logo" style={{ color: meta.color }}>
-                  {IntegrationLogos[connector.name] ?? meta.letter}
-                </div>
-                <div className="conn-name">{connector.name}</div>
-                <div className="conn-meta">
-                  <span className={`dot ${connector.connected ? "dot-green" : "dot-amber"}`} />
-                  {connector.connected ? (connector.lastCheckedAt ? timeAgo(connector.lastCheckedAt) : "connected") : "needs setup"}
-                </div>
-              </Link>
-            );
-          })}
+      <div className="sec split">
+        <WhatAuterimCanDo overview={overview} />
+        <div className="stack">
+          <ReadyToDeploy overview={overview} />
+          <UnlockMore overview={overview} />
         </div>
       </div>
     </div>
@@ -674,45 +681,36 @@ function LifecyclePreOperationalState({
 
   return (
     <div className="os-page dashboard-overview">
-      <div className="os-page-head">
-        <div>
-          <span className="os-greet">Auterim workspace</span>
-          <h1>{greet}, {firstName}.</h1>
-          <div className="os-page-sub">See what Auterim understands, what is ready, and what happens next.</div>
-        </div>
-      </div>
+      <PageHeader eyebrow="Auterim workspace" title={`${greet}, ${firstName}.`} description="See what Auterim understands, what is ready, and what happens next." />
 
-      {error && (
-        <div className="dashboard-alert" style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>
-          {error}
-        </div>
-      )}
+      {error && <section className="attn crit"><div className="card-pad" style={{ padding: "10px 14px", fontSize: 12.5 }}>{error}</div></section>}
 
-      <DashboardReadinessSummary overview={overview} />
-      <DashboardMetrics overview={overview} />
-      <WorkforceActivity overview={overview} />
+      <div className="sec"><DashboardReadinessSummary overview={overview} /></div>
+      <div className="sec"><DashboardMetrics overview={overview} /></div>
+      <div className="sec"><WorkforceActivity overview={overview} /></div>
 
       {lifecycleState === "F" && attentionStates.length > 0 && (
-        <section className="p dashboard-attention-panel" aria-labelledby="dashboard-attention-title">
-          <div className="p-head"><h3 id="dashboard-attention-title">Needs attention</h3><span className="p-meta">Restore full coverage</span></div>
-          <div className="dashboard-attention-list">
-            {attentionStates.map((item) => (
-              <div className="dashboard-attention-row" key={item.operatorKey}>
-                <div>
-                  <strong>{item.operatorName} · {item.label}</strong>
-                  {item.requiredActions[0] && <span>{item.requiredActions[0].reason}</span>}
-                  <p>{item.description}</p>
+        <div className="sec">
+          <div className="card" aria-labelledby="dashboard-attention-title">
+            <div className="card-head"><div className="t-section" id="dashboard-attention-title">Needs attention</div><span className="t-meta">Restore full coverage</span></div>
+            <div className="rows">
+              {attentionStates.map((item) => (
+                <div className="row" key={item.operatorKey}>
+                  <span className="grow">
+                    <span className="ttl">{item.operatorName} · {item.label}</span>
+                    <span className="sub">{item.requiredActions[0]?.reason ?? item.description}</span>
+                  </span>
+                  {item.nextAction && <Link className="btn btn-ghost btn-sm" href={item.nextAction.href}>{item.nextAction.label}</Link>}
                 </div>
-                {item.nextAction && <Link className="btn btn-ghost btn-sm" href={item.nextAction.href}>{item.nextAction.label}</Link>}
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </section>
+        </div>
       )}
 
-      <div className="dashboard-value-grid">
+      <div className="sec split">
         <WhatAuterimCanDo overview={overview} />
-        <div className="dashboard-value-stack">
+        <div className="stack">
           <ReadyToDeploy overview={overview} />
           <UnlockMore overview={overview} />
         </div>

@@ -800,10 +800,10 @@ export function OSTopbar() {
   return (
     <>
       <div className="os-top">
-        <div className="os-crumb">
-          <span style={{ color: "var(--text-mute)" }}>{state.workspace.name}</span>
+        <div className="crumbs">
+          <span>{state.workspace.name}</span>
           <span className="sep">/</span>
-          <span className="cur">{pageName}</span>
+          <b>{pageName}</b>
         </div>
 
         <span className="os-env">
@@ -811,18 +811,15 @@ export function OSTopbar() {
         </span>
 
         <button
-          className="os-top-search"
+          className="top-search"
           aria-label="Search"
-          style={{ cursor: "text", border: "none" }}
           onClick={() => setPaletteOpen(true)}
         >
           <SearchIcon size={13} />
-          <span style={{ color: "var(--text-mute)", fontSize: 12.5, flex: 1, textAlign: "left" }}>
+          <span style={{ flex: 1, textAlign: "left" }}>
             Search operators, workflows, memory...
           </span>
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-faint)", background: "rgba(255,255,255,0.04)", padding: "2px 7px", borderRadius: 5 }}>
-            âŒ˜K
-          </span>
+          <kbd>&#8984;K</kbd>
         </button>
 
         <div className="os-top-actions" style={{ position: "relative" }}>

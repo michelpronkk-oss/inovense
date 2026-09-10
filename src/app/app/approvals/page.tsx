@@ -1,9 +1,9 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { PageHeader } from "@/components/product-ui/page-primitives";
+import { EmptyState, MetricStrip, PageHeader } from "@/components/product-ui/page-primitives";
 import { useOS } from "@/lib/os/app-provider";
 import { InboxIcon, CheckIcon } from "@/components/dashboard/icons";
 
@@ -150,11 +150,11 @@ type ApprovalsResponse = {
   error?: string;
 };
 
-function tagClass(type: string): string {
-  if (type === "proposal") return "pill-cyan";
-  if (type === "campaign") return "pill-rose";
-  if (type === "email" || type === "follow-up") return "pill-amber";
-  return "pill-cyan";
+function categoryTone(type: string): "cyan" | "red" | "amber" {
+  if (type === "proposal") return "cyan";
+  if (type === "campaign") return "red";
+  if (type === "email" || type === "follow-up") return "amber";
+  return "cyan";
 }
 
 function timeAgo(createdAt: string | null): string {
@@ -200,12 +200,6 @@ function valueOrDash(value: string | null | undefined): string {
   return value && value.trim() ? value : "-";
 }
 
-function shortPreview(value: string | null | undefined, max = 420): string {
-  if (!value) return "-";
-  const trimmed = value.trim();
-  return trimmed.length > max ? `${trimmed.slice(0, max)}...` : trimmed;
-}
-
 function recordValue(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" ? value as Record<string, unknown> : {};
 }
@@ -216,12 +210,6 @@ function textValue(value: unknown): string | null {
 
 function confidenceLabel(value: string | null | undefined): string {
   return value?.trim() ? value.trim().toUpperCase() : "UNKNOWN";
-}
-
-function executionTone(status: "ready" | "prepared" | "blocked") {
-  if (status === "ready") return { color: "#8df5cf", border: "rgba(81,216,138,0.24)", background: "rgba(81,216,138,0.07)" };
-  if (status === "blocked") return { color: "#f5c26b", border: "rgba(245,194,107,0.24)", background: "rgba(245,194,107,0.07)" };
-  return { color: "#b8c5c8", border: "rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.035)" };
 }
 
 function isRevenueApproval(item: ApprovalRow): boolean {
@@ -242,7 +230,7 @@ export default function ApprovalsPage() {
   const [error, setError] = useState("");
   const [rejectReasons, setRejectReasons] = useState<Record<string, string>>({});
   const [detailsOpen, setDetailsOpen] = useState<Record<string, boolean>>({});
-  const [fullEmailOpen, setFullEmailOpen] = useState<Record<string, boolean>>({});
+  const [, setFullEmailOpen] = useState<Record<string, boolean>>({});
   const [editingDrafts, setEditingDrafts] = useState<Record<string, { subject: string; body: string }>>({});
   const [savingEditId, setSavingEditId] = useState<string | null>(null);
 
@@ -372,7 +360,7 @@ export default function ApprovalsPage() {
   };
 
   return (
-    <div className={`os-page approvals-page ${pending.length === 0 ? "no-approvals" : "has-approvals"}`}>
+    <div className="os-page approvals-page">
       <PageHeader
         eyebrow={`Approval inbox · ${pending.length} waiting`}
         title="Approvals"
@@ -390,500 +378,440 @@ export default function ApprovalsPage() {
         </>}
       />
 
-      <div className="approval-stats" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-        {[
-          { label: "Pending", val: String(pending.length), sub: "Waiting for your review" },
-          { label: "Approved today", val: String(approvedToday), sub: "Reviewed today" },
-          { label: "Avg. review time", val: "-", sub: "not tracked yet" },
-          { label: "Auto-approved (7d)", val: "-", sub: "not enabled" },
-        ].map((s) => (
-          <div className="kpi" key={s.label}>
-            <div className="kpi-top"><span className="lab">{s.label}</span></div>
-            <div className="kpi-val">{s.val}</div>
-            <div className="kpi-meta"><span className="kpi-delta">{s.sub}</span></div>
-          </div>
-        ))}
-      </div>
+      <MetricStrip items={[
+        { label: "Pending", value: pending.length, detail: "Waiting for your review" },
+        { label: "Approved today", value: approvedToday, detail: "Reviewed today" },
+        { label: "Avg. review time", value: "-", detail: "not tracked yet" },
+        { label: "Auto-approved (7d)", value: "-", detail: "not enabled" },
+      ]} />
 
-      <div className="approval-filters" style={{ display: "flex", gap: 4 }}>
-        {FILTER_TABS.map((t) => (
-          <button key={t} aria-pressed={filter === t} onClick={() => setFilter(t)} className={`appr-btn${filter === t ? " approve" : " edit"}`} style={{ fontSize: 11.5, padding: "5px 12px" }}>
-            {t}
-          </button>
-        ))}
+      <div className="sec-head">
+        <div className="inline">
+          {FILTER_TABS.map((t) => (
+            <button key={t} aria-pressed={filter === t} onClick={() => setFilter(t)} className={`filter${filter === t ? " on" : ""}`}>
+              {t}
+            </button>
+          ))}
+        </div>
+        <Link className="btn btn-ghost btn-sm" href="/policies">Manage policies</Link>
       </div>
 
       {error && (
-        <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>
-          {error}
+        <div role="alert" className="attn crit" style={{ padding: "12px 14px" }}>
+          <span className="t-compact">{error}</span>
         </div>
       )}
 
-      <div className="p">
-        <div className="p-head">
-          <h3><InboxIcon size={13} /> Pending review</h3>
-          <div className="p-meta">
+      <div className="card">
+        <div className="card-head">
+          <div className="t-section"><InboxIcon size={13} /> Pending review</div>
+          <div className="t-meta inline">
             {pending.length > 0
               ? <><span className="dot dot-cyan pulsing" /> {pending.length} waiting</>
-              : <><span className="dot" style={{ background: "var(--green)" }} /> All clear</>
+              : <><span className="dot dot-green" /> All clear</>
             }
           </div>
         </div>
         {loading ? (
-          <div style={{ padding: "40px 24px", textAlign: "center", color: "var(--text-mute)", fontSize: 13 }}>
-            Loading approvals...
-          </div>
+          <div className="card-pad"><p className="t-meta" style={{ margin: 0 }}>Loading approvals...</p></div>
         ) : visible.length === 0 ? (
-          <div className="approvals-all-clear">
-            <div className="approvals-clear-mark"><CheckIcon size={18} /></div>
-            <div><span className="approvals-clear-kicker">Review inbox</span><strong>All clear</strong><p>0 actions waiting{filter !== "All" ? ` in ${filter.toLowerCase()}` : ""}. Consequential work will return here before it runs.</p></div>
-            <Link className="btn btn-ghost btn-sm" href="/logs">Recent history</Link>
+          <div className="card-pad">
+            <EmptyState title="All clear" action={<Link className="btn btn-ghost btn-sm" href="/logs">Recent history</Link>}>
+              {`0 actions waiting${filter !== "All" ? ` in ${filter.toLowerCase()}` : ""}. Consequential work will return here before it runs.`}
+            </EmptyState>
           </div>
         ) : (
-          visible.map((item) => {
-            const category = displayCategory(item);
-            const operatorName = item.payload_preview.operatorKey === "revenue" || item.agent_id === "revenue"
-              ? "Revenue Operator"
-              : item.agent_mark || "Operator";
-            const isBusy = busyId === item.id;
-            const revenueApproval = isRevenueApproval(item);
-            const sharedActionApproval = isSharedActionApproval(item);
-            const operationsApproval = item.continuation_kind === "operations.execute_after_approval";
-            const operations = item.payload_preview.operations ?? null;
-            const operationsExecution = recordValue(item.payload_preview.executionResult);
-            const preparedActions = item.payload_preview.preparedActions ?? [];
-            const workflow = item.payload_preview.workflow;
-            const crmStatus = item.payload_preview.crmStatusText
-              ?? (item.payload_preview.crmPreparationStatus === "hubspot_not_connected"
-                ? "CRM update not prepared because HubSpot is not connected."
-                : item.payload_preview.crmPreparationStatus === "hubspot_execution_not_ready"
-                  ? "HubSpot actions are prepared but not executed yet."
-                  : item.payload_preview.crmPreparationStatus === "hubspot_execution_enabled"
-                    ? "HubSpot contact and deal updates will execute after approval. Notes and tasks remain prepared only."
-                  : null);
-            const rejectionReason = rejectReasons[item.id] ?? (revenueApproval ? "False positive - not a commercial inquiry" : "Needs manual review");
-            const hubspotPreview = item.payload_preview.preparedHubSpotActions;
-            const showDetails = Boolean(detailsOpen[item.id]);
-            const showFullEmail = Boolean(fullEmailOpen[item.id]);
-            const draftEdit = editingDrafts[item.id];
-            const isSavingEdit = savingEditId === item.id;
-            const sourceMetadata = item.payload_preview.sourceMetadata ?? {};
-            const executionResult = recordValue(item.payload_preview.executionResult);
-            const sharedActionExecution = recordValue(executionResult.action);
-            const sharedActionResult = recordValue(sharedActionExecution.result);
-            const hubspotExecution = recordValue(executionResult.hubspot);
-            const originalSubject = typeof sourceMetadata.subject === "string"
-              ? sourceMetadata.subject
-              : item.payload_preview.crmPreparation?.sourceSubject ?? item.payload_preview.subject ?? "-";
-            const contactNameSource = item.payload_preview.crmPreparation?.personalizationSource
-              || (typeof sourceMetadata.personalizationSource === "string" ? sourceMetadata.personalizationSource : "fallback");
-            const hubspotSetupText = (() => {
-              const status = textValue(hubspotExecution.propertySetupStatus);
-              if (status === "custom_properties_ready") return "Full attribution ready";
-              if (status === "custom_properties_partial") return "Partial attribution properties";
-              if (status === "custom_properties_missing") return "Standard fields only";
-              if (status === "property_check_failed") return "Property check failed";
-              return null;
-            })();
-            const hubspotActionSummary = item.payload_preview.crmPreparationStatus === "hubspot_not_connected"
-              ? "not prepared because HubSpot is not connected"
-              : item.payload_preview.crmPreparationStatus === "hubspot_execution_enabled"
-                ? "contact/deal will be created or updated after approval"
-                : "prepared only";
-            const executionItems = [
-              { label: "Gmail", text: "Reply sends after approval", status: "ready" as const },
-              {
-                label: "HubSpot",
-                text: hubspotActionSummary,
-                status: item.payload_preview.crmPreparationStatus === "hubspot_execution_enabled"
-                  ? "ready" as const
-                  : item.payload_preview.crmPreparationStatus === "hubspot_not_connected"
-                    ? "blocked" as const
-                    : "prepared" as const,
-              },
-              { label: "Note", text: "Prepared only", status: "prepared" as const },
-              { label: "Task", text: "Prepared only", status: "prepared" as const },
-            ];
-            const customerEmailMode = item.payload_preview.customerEmailPolicy?.mode ?? "approval_required";
-            const policyItems = [
-              { label: "Customer email", value: customerEmailMode === "draft_only" ? "Draft only" : "Approval required" },
-              { label: "Slack alert", value: item.payload_preview.customerEmailPolicy?.slackAlert ?? "Disabled" },
-              { label: "CRM update", value: item.payload_preview.customerEmailPolicy?.crmUpdate ?? "Approval required" },
-              { label: "Human review", value: item.payload_preview.customerEmailPolicy?.humanReview ?? "Required" },
-            ];
+          <div className="card-pad stack">
+            {visible.map((item) => {
+              const category = displayCategory(item);
+              const operatorName = item.payload_preview.operatorKey === "revenue" || item.agent_id === "revenue"
+                ? "Revenue Operator"
+                : item.agent_mark || "Operator";
+              const isBusy = busyId === item.id;
+              const revenueApproval = isRevenueApproval(item);
+              const sharedActionApproval = isSharedActionApproval(item);
+              const operationsApproval = item.continuation_kind === "operations.execute_after_approval";
+              const operations = item.payload_preview.operations ?? null;
+              const operationsExecution = recordValue(item.payload_preview.executionResult);
+              const preparedActions = item.payload_preview.preparedActions ?? [];
+              const workflow = item.payload_preview.workflow;
+              const rejectionReason = rejectReasons[item.id] ?? (revenueApproval ? "False positive - not a commercial inquiry" : "Needs manual review");
+              const hubspotPreview = item.payload_preview.preparedHubSpotActions;
+              const showDetails = Boolean(detailsOpen[item.id]);
+              const draftEdit = editingDrafts[item.id];
+              const isSavingEdit = savingEditId === item.id;
+              const sourceMetadata = item.payload_preview.sourceMetadata ?? {};
+              const executionResult = recordValue(item.payload_preview.executionResult);
+              const sharedActionExecution = recordValue(executionResult.action);
+              const sharedActionResult = recordValue(sharedActionExecution.result);
+              const hubspotExecution = recordValue(executionResult.hubspot);
+              const originalSubject = typeof sourceMetadata.subject === "string"
+                ? sourceMetadata.subject
+                : item.payload_preview.crmPreparation?.sourceSubject ?? item.payload_preview.subject ?? "-";
+              const contactNameSource = item.payload_preview.crmPreparation?.personalizationSource
+                || (typeof sourceMetadata.personalizationSource === "string" ? sourceMetadata.personalizationSource : "fallback");
+              const hubspotSetupText = (() => {
+                const status = textValue(hubspotExecution.propertySetupStatus);
+                if (status === "custom_properties_ready") return "Full attribution ready";
+                if (status === "custom_properties_partial") return "Partial attribution properties";
+                if (status === "custom_properties_missing") return "Standard fields only";
+                if (status === "property_check_failed") return "Property check failed";
+                return null;
+              })();
+              const customerEmailMode = item.payload_preview.customerEmailPolicy?.mode ?? "approval_required";
+              const policyItems = [
+                { label: "Customer email", value: customerEmailMode === "draft_only" ? "Draft only" : "Approval required" },
+                { label: "Slack alert", value: item.payload_preview.customerEmailPolicy?.slackAlert ?? "Disabled" },
+                { label: "CRM update", value: item.payload_preview.customerEmailPolicy?.crmUpdate ?? "Approval required" },
+                { label: "Human review", value: item.payload_preview.customerEmailPolicy?.humanReview ?? "Required" },
+              ];
 
-            return (
-              <article key={item.id} className="appr-row approval-review-card">
-                <header className="approval-case-head">
-                {workflow?.id && (
-                  <div className="approval-workflow-context" style={{ marginBottom: 10, padding: "8px 10px", borderRadius: 10, background: "rgba(77,232,225,0.06)", border: "1px solid rgba(77,232,225,0.14)", fontSize: 11.5, color: "var(--text-dim)" }}>
-                    <strong style={{ color: "var(--cyan)" }}>{workflow.objective || "Workflow action"}</strong>
-                    {workflow.stepOrder && workflow.stepCount ? ` · Step ${workflow.stepOrder} of ${workflow.stepCount}` : ""}
-                    {workflow.stepReason ? <div style={{ marginTop: 3 }}>{workflow.stepReason}</div> : null}
-                  </div>
-                )}
-                <div className="appr-row-top">
-                  <span className={`pill ${tagClass(category)}`}>{category}</span>
-                  <span className="appr-row-title">{item.title}</span>
-                </div>
-                <div className="appr-row-from">{operatorName} - {timeAgo(item.created_at)}</div>
-                <div className="appr-row-body">{item.description}</div>
-                </header>
-                <div style={{ marginTop: 12, padding: revenueApproval ? "0" : "9px 10px", borderRadius: revenueApproval ? 18 : 8, background: revenueApproval ? "linear-gradient(145deg, rgba(255,255,255,0.055), rgba(77,232,225,0.025) 45%, rgba(0,0,0,0.12))" : "rgba(255,255,255,0.025)", boxShadow: revenueApproval ? "inset 0 0 0 1px rgba(255,255,255,0.09), 0 18px 60px rgba(0,0,0,0.22)" : "inset 0 0 0 1px var(--line)", overflow: "hidden", display: "grid", gap: revenueApproval ? 0 : 4 }}>
-                  {revenueApproval && (
-                    <>
-                      <div style={{ padding: "12px 18px", borderBottom: "1px solid rgba(255,255,255,0.075)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                          <span style={{ width: 7, height: 7, borderRadius: 999, background: "#4DE8E1", boxShadow: "0 0 18px rgba(77,232,225,0.72)" }} />
-                          <span style={{ fontSize: 11.5, color: "var(--text-dim)", fontWeight: 650 }}>{operatorName}</span>
-                          <span style={{ color: "var(--text-mute)", fontSize: 11 }}>prepared an email for approval</span>
-                          {item.payload_preview.wasEdited && <span className="pill pill-amber" style={{ fontSize: 10.5 }}>Edited</span>}
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
-                          <span className="pill pill-cyan" style={{ fontSize: 10.5 }}>Gmail send after approval</span>
-                          {item.payload_preview.crmPreparationStatus === "hubspot_execution_enabled" && <span className="pill pill-cyan" style={{ fontSize: 10.5 }}>HubSpot contact/deal after approval</span>}
-                          <span style={{ fontSize: 10.5, color: "#8df5cf", fontWeight: 700, letterSpacing: "0.08em" }}>{confidenceLabel(item.payload_preview.confidence)}</span>
-                        </div>
-                      </div>
+              return (
+                <article key={item.id} className="panel card-pad">
+                  {workflow?.id && (
+                    <div className="attn info" style={{ padding: "8px 10px", marginBottom: 10 }}>
+                      <span className="t-compact"><strong className="ink">{workflow.objective || "Workflow action"}</strong>
+                        {workflow.stepOrder && workflow.stepCount ? ` · Step ${workflow.stepOrder} of ${workflow.stepCount}` : ""}
+                      </span>
+                      {workflow.stepReason ? <div className="t-meta" style={{ marginTop: 3 }}>{workflow.stepReason}</div> : null}
+                    </div>
+                  )}
+                  <header className="inline" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <span className="op-id">
+                      <span className="cn-mark lg" aria-hidden>{operatorName.slice(0, 2).toUpperCase()}</span>
+                      <span className="nm"><b>{operatorName}</b><span>{timeAgo(item.created_at)}</span></span>
+                    </span>
+                    <span className={`badge ${categoryTone(category)}`}>{category}</span>
+                  </header>
+                  <div className="t-object" style={{ marginTop: 12 }}>{item.title}</div>
+                  <p className="t-compact" style={{ marginTop: 4 }}>{item.description}</p>
 
-                      <div style={{ margin: "14px 18px 12px", borderRadius: 16, background: "linear-gradient(180deg, rgba(255,255,255,0.052), rgba(255,255,255,0.024))", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.09), 0 12px 36px rgba(0,0,0,0.16)", overflow: "hidden" }}>
-                        <div style={{ padding: "12px 14px", borderBottom: "1px solid rgba(255,255,255,0.075)", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-                          <div>
-                            <div style={{ fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 4 }}>Email draft</div>
-                            <div style={{ fontSize: 12.5, color: "var(--text-dim)" }}>Review and edit the full email before approving.</div>
+                  <div style={{ marginTop: 14 }}>
+                    {revenueApproval && (
+                      <div className="stack">
+                        <div className="inline" style={{ justifyContent: "space-between" }}>
+                          <div className="inline">
+                            <span className="dot dot-cyan" />
+                            <span className="t-meta ink">{operatorName}</span>
+                            <span className="t-meta">prepared an email for approval</span>
+                            {item.payload_preview.wasEdited && <span className="badge amber">Edited</span>}
                           </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                            {item.payload_preview.wasEdited && <span className="pill pill-amber" style={{ fontSize: 10.5 }}>Edited</span>}
-                            {!draftEdit && (
-                              <button className="appr-btn edit" type="button" onClick={() => startEditingDraft(item)}>Edit draft</button>
-                            )}
+                          <div className="inline">
+                            <span className="badge cyan">Gmail send after approval</span>
+                            {item.payload_preview.crmPreparationStatus === "hubspot_execution_enabled" && <span className="badge cyan">HubSpot contact/deal after approval</span>}
+                            <span className="badge green">{confidenceLabel(item.payload_preview.confidence)}</span>
                           </div>
                         </div>
-                        <div style={{ padding: "14px 16px" }}>
-                        {draftEdit ? (
-                          <div style={{ display: "grid", gap: 8 }}>
-                            <label style={{ display: "grid", gap: 5 }}>
-                              <span style={{ fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Subject</span>
-                            <input
-                              value={draftEdit.subject}
-                              onChange={(event) => setEditingDrafts((current) => ({ ...current, [item.id]: { ...draftEdit, subject: event.target.value } }))}
-                              disabled={isSavingEdit}
-                                style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(255,255,255,0.11)", background: "rgba(0,0,0,0.24)", color: "var(--text)", padding: "10px 11px", fontSize: 13 }}
-                            />
-                            </label>
-                            <label style={{ display: "grid", gap: 5 }}>
-                              <span style={{ fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Body</span>
-                            <textarea
-                              value={draftEdit.body}
-                              onChange={(event) => setEditingDrafts((current) => ({ ...current, [item.id]: { ...draftEdit, body: event.target.value } }))}
-                              disabled={isSavingEdit}
-                              rows={12}
-                                style={{ width: "100%", resize: "vertical", borderRadius: 12, border: "1px solid rgba(255,255,255,0.11)", background: "rgba(0,0,0,0.24)", color: "var(--text)", padding: "12px 13px", fontSize: 13, lineHeight: 1.62 }}
-                            />
-                            </label>
-                            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                              <button className="appr-btn approve" type="button" disabled={isSavingEdit} onClick={() => saveDraftEdit(item)}>{isSavingEdit ? "Saving…" : "Save changes"}</button>
-                              <button className="appr-btn edit" type="button" disabled={isSavingEdit} onClick={() => cancelEditingDraft(item.id)}>Cancel</button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            {item.payload_preview.subject && (
-                              <div style={{ fontSize: 13.5, color: "var(--text)", fontWeight: 650, marginBottom: 10, letterSpacing: "-0.01em" }}>{item.payload_preview.subject}</div>
-                            )}
-                            <div style={{ fontSize: 13, color: "var(--text-dim)", whiteSpace: "pre-wrap", lineHeight: 1.65 }}>
-                              {item.payload_preview.fullBody || item.payload_preview.body || "-"}
-                            </div>
-                          </>
-                        )}
-                        </div>
-                      </div>
 
-                      <div style={{ margin: "0 18px 14px", display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8 }}>
-                        {policyItems.map((policy) => (
-                          <div key={policy.label} style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(0,0,0,0.14)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
-                            <div style={{ fontSize: 10, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>{policy.label}</div>
-                            <div style={{ fontSize: 12.5, color: "var(--text)", fontWeight: 600 }}>{policy.value}</div>
-                          </div>
-                        ))}
-                      </div>
-                      {customerEmailMode === "draft_only" && (
-                        <div style={{ margin: "0 18px 14px", padding: "9px 10px", borderRadius: 10, background: "rgba(245,194,107,0.08)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.22)", color: "var(--amber)", fontSize: 12 }}>
-                          Draft only mode. This email will not be sent automatically.
-                        </div>
-                      )}
-
-                      <button
-                        className="appr-btn edit"
-                        type="button"
-                        onClick={() => setDetailsOpen((current) => ({ ...current, [item.id]: !current[item.id] }))}
-                        style={{ width: "fit-content", fontSize: 11.5, margin: "0 18px 16px" }}
-                      >
-                        {showDetails ? "Hide full details" : "View full details"}
-                      </button>
-
-                      {showDetails && (
-                        <div style={{ margin: "0 18px 16px", padding: "13px", borderRadius: 14, background: "rgba(0,0,0,0.14)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)", display: "grid", gap: 10 }}>
-                          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
-                            {[
-                              { label: "Prepared by", value: "Auterim Revenue Operator" },
-                              { label: "Signal source", value: "Gmail" },
-                              { label: "Operator", value: "Revenue Operator" },
-                              { label: "Source email", value: valueOrDash(item.payload_preview.sourceEmail) },
-                              { label: "Original subject", value: valueOrDash(originalSubject) },
-                              { label: "Contact name source", value: contactNameSource },
-                              { label: "HubSpot setup", value: hubspotSetupText ?? "Pending execution" },
-                              { label: "Pipeline", value: textValue(hubspotExecution.pipelineLabel) ?? "-" },
-                              { label: "Stage", value: textValue(hubspotExecution.dealstageLabel) ?? "-" },
-                              { label: "Dedupe key", value: valueOrDash(item.payload_preview.dedupeKey) },
-                              { label: "Classification", value: valueOrDash(item.payload_preview.classification) },
-                              { label: "Approval reason", value: item.payload_preview.approvalReason || item.policy_reason || "-" },
-                            ].map((field) => (
-                              <div key={field.label} style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(0,0,0,0.16)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)", minWidth: 0 }}>
-                                <div style={{ fontSize: 10, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>{field.label}</div>
-                                <div style={{ fontSize: 12.5, color: "var(--text)", overflowWrap: "anywhere" }}>{field.value}</div>
+                        <div className="split">
+                          <div className="panel card-pad">
+                            <div className="inline" style={{ justifyContent: "space-between" }}>
+                              <div>
+                                <div className="t-eyebrow">Email draft</div>
+                                <p className="t-meta" style={{ margin: "4px 0 0" }}>Review and edit the full email before approving.</p>
                               </div>
+                              <div className="inline">
+                                {item.payload_preview.wasEdited && <span className="badge amber">Edited</span>}
+                                {!draftEdit && (
+                                  <button className="btn btn-ghost btn-sm" type="button" onClick={() => startEditingDraft(item)}>Edit draft</button>
+                                )}
+                              </div>
+                            </div>
+                            <div style={{ marginTop: 14 }}>
+                              {draftEdit ? (
+                                <div className="stack">
+                                  <label className="field">
+                                    <span className="label">Subject</span>
+                                    <input
+                                      className="input"
+                                      value={draftEdit.subject}
+                                      onChange={(event) => setEditingDrafts((current) => ({ ...current, [item.id]: { ...draftEdit, subject: event.target.value } }))}
+                                      disabled={isSavingEdit}
+                                    />
+                                  </label>
+                                  <label className="field">
+                                    <span className="label">Body</span>
+                                    <textarea
+                                      className="input"
+                                      value={draftEdit.body}
+                                      onChange={(event) => setEditingDrafts((current) => ({ ...current, [item.id]: { ...draftEdit, body: event.target.value } }))}
+                                      disabled={isSavingEdit}
+                                      rows={12}
+                                      style={{ height: "auto", padding: "10px 11px", lineHeight: 1.6 }}
+                                    />
+                                  </label>
+                                  <div className="inline" style={{ justifyContent: "flex-end" }}>
+                                    <button className="btn btn-primary btn-sm" type="button" disabled={isSavingEdit} onClick={() => saveDraftEdit(item)}>{isSavingEdit ? "Saving…" : "Save changes"}</button>
+                                    <button className="btn btn-ghost btn-sm" type="button" disabled={isSavingEdit} onClick={() => cancelEditingDraft(item.id)}>Cancel</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  {item.payload_preview.subject && <div className="t-object" style={{ marginBottom: 10 }}>{item.payload_preview.subject}</div>}
+                                  <div className="t-compact" style={{ whiteSpace: "pre-wrap", lineHeight: 1.65 }}>
+                                    {item.payload_preview.fullBody || item.payload_preview.body || "-"}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          <dl className="kv" style={{ gridTemplateColumns: "minmax(0,1fr)", gap: "10px 0" }}>
+                            {policyItems.map((policy) => (
+                              <div key={policy.label}><dt>{policy.label}</dt><dd>{policy.value}</dd></div>
                             ))}
-                          </div>
+                          </dl>
+                        </div>
 
-                          {hubspotPreview && (
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
-                          <div style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(0,0,0,0.16)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
-                            <div style={{ fontSize: 10, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>HubSpot contact</div>
-                            <div style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.5 }}>
-                              <strong style={{ color: "var(--text)" }}>{valueOrDash([hubspotPreview.contact?.firstname, hubspotPreview.contact?.lastname].filter(Boolean).join(" ") || null)}</strong><br />
-                              {valueOrDash(hubspotPreview.contact?.email)}<br />
-                              Source: {valueOrDash(hubspotPreview.contact?.source)}
-                            </div>
+                        {customerEmailMode === "draft_only" && (
+                          <div className="attn" role="status" style={{ padding: "9px 10px" }}>
+                            <span className="t-compact">Draft only mode. This email will not be sent automatically.</span>
                           </div>
-                          <div style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(0,0,0,0.16)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
-                            <div style={{ fontSize: 10, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>HubSpot deal</div>
-                            <div style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.5 }}>
-                              <strong style={{ color: "var(--text)" }}>{valueOrDash(hubspotPreview.deal?.dealname)}</strong><br />
-                              Stage: {valueOrDash(hubspotPreview.deal?.stageLabel)}<br />
-                              Pipeline: {valueOrDash(hubspotPreview.deal?.pipelineLabel)}
-                            </div>
-                          </div>
-                          <div style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(0,0,0,0.16)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
-                            <div style={{ fontSize: 10, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>CRM note</div>
-                            <div style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.5 }}>{valueOrDash(hubspotPreview.note?.body)}</div>
-                            <div style={{ marginTop: 4, fontSize: 11, color: "var(--text-mute)" }}>Prepared only in this version.</div>
-                          </div>
-                          <div style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(0,0,0,0.16)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
-                            <div style={{ fontSize: 10, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>Follow-up task</div>
-                            <div style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.5 }}>
-                              <strong style={{ color: "var(--text)" }}>{valueOrDash(hubspotPreview.task?.title)}</strong><br />
-                              Due: {valueOrDash(hubspotPreview.task?.dueSuggestion)}<br />
-                              Type: {valueOrDash(hubspotPreview.task?.type)}
-                            </div>
-                            <div style={{ marginTop: 4, fontSize: 11, color: "var(--text-mute)" }}>Prepared only in this version.</div>
-                          </div>
-                        </div>
-                          )}
+                        )}
 
-                          {item.payload_preview.crmPreparation && (
-                        <div style={{ fontSize: 12, color: "var(--text-dim)", display: "grid", gap: 4, paddingTop: 2 }}>
-                          {item.payload_preview.crmPreparation.suggestedNextStep && (
-                            <div><strong style={{ color: "var(--text)" }}>Suggested next step:</strong> {item.payload_preview.crmPreparation.suggestedNextStep}</div>
-                          )}
-                          {item.payload_preview.crmPreparation.suggestedDealStage && (
-                            <div><strong style={{ color: "var(--text)" }}>Suggested deal stage:</strong> {item.payload_preview.crmPreparation.suggestedDealStage}</div>
-                          )}
-                          {item.payload_preview.crmPreparation.suggestedFollowUpTask && (
-                            <div><strong style={{ color: "var(--text)" }}>Suggested task:</strong> {item.payload_preview.crmPreparation.suggestedFollowUpTask}</div>
-                          )}
-                        </div>
-                          )}
-                        </div>
-                      )}
-                    </>
-                  )}
-                  {sharedActionApproval && item.payload_preview.preparedAction && (
-                    <div style={{ padding: "12px 14px", display: "grid", gap: 10 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                        <div>
-                          <div style={{ fontSize: 13.5, fontWeight: 650 }}>{item.payload_preview.preparedAction.preview?.label || item.payload_preview.preparedAction.title || "Prepared action"}</div>
-                          <div style={{ fontSize: 11.5, color: "var(--text-mute)", marginTop: 2 }}>
-                            Trello - Risk: {item.payload_preview.preparedAction.riskLevel || "medium"} - Requires approval
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          type="button"
+                          onClick={() => setDetailsOpen((current) => ({ ...current, [item.id]: !current[item.id] }))}
+                          style={{ width: "fit-content" }}
+                        >
+                          {showDetails ? "Hide full details" : "View full details"}
+                        </button>
+
+                        {showDetails && (
+                          <div className="panel card-pad stack">
+                            <dl className="kv">
+                              {[
+                                { label: "Prepared by", value: "Auterim Revenue Operator" },
+                                { label: "Signal source", value: "Gmail" },
+                                { label: "Operator", value: "Revenue Operator" },
+                                { label: "Source email", value: valueOrDash(item.payload_preview.sourceEmail) },
+                                { label: "Original subject", value: valueOrDash(originalSubject) },
+                                { label: "Contact name source", value: contactNameSource },
+                                { label: "HubSpot setup", value: hubspotSetupText ?? "Pending execution" },
+                                { label: "Pipeline", value: textValue(hubspotExecution.pipelineLabel) ?? "-" },
+                                { label: "Stage", value: textValue(hubspotExecution.dealstageLabel) ?? "-" },
+                                { label: "Dedupe key", value: valueOrDash(item.payload_preview.dedupeKey) },
+                                { label: "Classification", value: valueOrDash(item.payload_preview.classification) },
+                                { label: "Approval reason", value: item.payload_preview.approvalReason || item.policy_reason || "-" },
+                              ].map((field) => (
+                                <div key={field.label}><dt>{field.label}</dt><dd style={{ overflowWrap: "anywhere" }}>{field.value}</dd></div>
+                              ))}
+                            </dl>
+
+                            {hubspotPreview && (
+                              <div className="grid2">
+                                <div className="panel card-pad">
+                                  <div className="t-eyebrow">HubSpot contact</div>
+                                  <p className="t-compact" style={{ margin: "5px 0 0" }}>
+                                    <strong className="ink">{valueOrDash([hubspotPreview.contact?.firstname, hubspotPreview.contact?.lastname].filter(Boolean).join(" ") || null)}</strong><br />
+                                    {valueOrDash(hubspotPreview.contact?.email)}<br />
+                                    Source: {valueOrDash(hubspotPreview.contact?.source)}
+                                  </p>
+                                </div>
+                                <div className="panel card-pad">
+                                  <div className="t-eyebrow">HubSpot deal</div>
+                                  <p className="t-compact" style={{ margin: "5px 0 0" }}>
+                                    <strong className="ink">{valueOrDash(hubspotPreview.deal?.dealname)}</strong><br />
+                                    Stage: {valueOrDash(hubspotPreview.deal?.stageLabel)}<br />
+                                    Pipeline: {valueOrDash(hubspotPreview.deal?.pipelineLabel)}
+                                  </p>
+                                </div>
+                                <div className="panel card-pad">
+                                  <div className="t-eyebrow">CRM note</div>
+                                  <p className="t-compact" style={{ margin: "5px 0 0" }}>{valueOrDash(hubspotPreview.note?.body)}</p>
+                                  <div className="t-meta" style={{ marginTop: 4 }}>Prepared only in this version.</div>
+                                </div>
+                                <div className="panel card-pad">
+                                  <div className="t-eyebrow">Follow-up task</div>
+                                  <p className="t-compact" style={{ margin: "5px 0 0" }}>
+                                    <strong className="ink">{valueOrDash(hubspotPreview.task?.title)}</strong><br />
+                                    Due: {valueOrDash(hubspotPreview.task?.dueSuggestion)}<br />
+                                    Type: {valueOrDash(hubspotPreview.task?.type)}
+                                  </p>
+                                  <div className="t-meta" style={{ marginTop: 4 }}>Prepared only in this version.</div>
+                                </div>
+                              </div>
+                            )}
+
+                            {item.payload_preview.crmPreparation && (
+                              <div className="t-compact stack" style={{ gap: 4 }}>
+                                {item.payload_preview.crmPreparation.suggestedNextStep && (
+                                  <div><strong className="ink">Suggested next step:</strong> {item.payload_preview.crmPreparation.suggestedNextStep}</div>
+                                )}
+                                {item.payload_preview.crmPreparation.suggestedDealStage && (
+                                  <div><strong className="ink">Suggested deal stage:</strong> {item.payload_preview.crmPreparation.suggestedDealStage}</div>
+                                )}
+                                {item.payload_preview.crmPreparation.suggestedFollowUpTask && (
+                                  <div><strong className="ink">Suggested task:</strong> {item.payload_preview.crmPreparation.suggestedFollowUpTask}</div>
+                                )}
+                              </div>
+                            )}
                           </div>
-                        </div>
-                        <span className="pill pill-cyan" style={{ fontSize: 10.5 }}>{item.payload_preview.preparedAction.actionType?.replace(/_/g, " ") || "task action"}</span>
+                        )}
                       </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
-                        {(item.payload_preview.preparedAction.preview?.fields ?? []).map((field) => (
-                          <div key={field.label} style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(0,0,0,0.14)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
-                            <div style={{ fontSize: 10, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>{field.label}</div>
-                            <div style={{ fontSize: 12.5, color: "var(--text)", overflowWrap: "anywhere" }}>{field.value}</div>
+                    )}
+                    {sharedActionApproval && item.payload_preview.preparedAction && (
+                      <div className="panel card-pad stack">
+                        <div className="inline" style={{ justifyContent: "space-between" }}>
+                          <div>
+                            <div className="t-object">{item.payload_preview.preparedAction.preview?.label || item.payload_preview.preparedAction.title || "Prepared action"}</div>
+                            <div className="t-meta" style={{ marginTop: 2 }}>
+                              Trello - Risk: {item.payload_preview.preparedAction.riskLevel || "medium"} - Requires approval
+                            </div>
                           </div>
-                        ))}
-                      </div>
-                      {item.payload_preview.preparedAction.preview?.bodyPreview && (
-                        <div style={{ fontSize: 12.5, color: "var(--text-dim)", whiteSpace: "pre-wrap", lineHeight: 1.55 }}>
-                          {item.payload_preview.preparedAction.preview.bodyPreview}
+                          <span className="badge cyan">{item.payload_preview.preparedAction.actionType?.replace(/_/g, " ") || "task action"}</span>
                         </div>
-                      )}
-                      {executionResult.status === "executed" && (
-                        <div style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(81,216,138,0.08)", boxShadow: "inset 0 0 0 1px rgba(81,216,138,0.22)", color: "#8df5cf", fontSize: 12 }}>
-                          Trello card created{typeof sharedActionResult.cardUrl === "string" && sharedActionResult.cardUrl ? (
-                            <> - <a className="lnk-open" href={sharedActionResult.cardUrl} target="_blank" rel="noreferrer">Open card</a></>
-                          ) : "."}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {operationsApproval && operations && (
-                    <div style={{ padding: "12px 14px", display: "grid", gap: 10 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                        <div>
-                          <div style={{ fontSize: 13.5, fontWeight: 650 }}>{operations.cardName || operations.listName || "Operational signal"}</div>
-                          <div style={{ fontSize: 11.5, color: "var(--text-mute)", marginTop: 2 }}>
-                            {operations.boardName ? `${operations.boardName} / ` : ""}{operations.listName || "-"} · {(operations.signalType || "signal").replace(/_/g, " ")}
+                        <dl className="kv">
+                          {(item.payload_preview.preparedAction.preview?.fields ?? []).map((field) => (
+                            <div key={field.label}><dt>{field.label}</dt><dd style={{ overflowWrap: "anywhere" }}>{field.value}</dd></div>
+                          ))}
+                        </dl>
+                        {item.payload_preview.preparedAction.preview?.bodyPreview && (
+                          <p className="t-compact" style={{ whiteSpace: "pre-wrap" }}>{item.payload_preview.preparedAction.preview.bodyPreview}</p>
+                        )}
+                        {executionResult.status === "executed" && (
+                          <div className="attn" role="status" style={{ padding: "9px 10px" }}>
+                            <span className="t-compact">Trello card created{typeof sharedActionResult.cardUrl === "string" && sharedActionResult.cardUrl ? (
+                              <> - <a className="lnk-open" href={sharedActionResult.cardUrl} target="_blank" rel="noreferrer">Open card</a></>
+                            ) : "."}</span>
                           </div>
-                        </div>
-                        <span className="pill pill-cyan" style={{ fontSize: 10.5 }}>Severity: {operations.severity || "medium"}</span>
+                        )}
                       </div>
-                      {operations.plainEnglishSummary && (
-                        <div style={{ fontSize: 12.5, color: "var(--text-dim)" }}>{operations.plainEnglishSummary}</div>
-                      )}
-                      {operations.recommendedAction && (
-                        <div style={{ fontSize: 12, color: "var(--text-dim)" }}><strong style={{ color: "var(--text)" }}>Recommended:</strong> {operations.recommendedAction}</div>
-                      )}
-                      {operations.preparedSlackMessage && (
-                        <div style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(0,0,0,0.14)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
-                          <div style={{ fontSize: 10, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>Prepared Slack message</div>
-                          <div style={{ fontSize: 12.5, color: "var(--text)", whiteSpace: "pre-wrap" }}>{operations.preparedSlackMessage}</div>
+                    )}
+                    {operationsApproval && operations && (
+                      <div className="panel card-pad stack">
+                        <div className="inline" style={{ justifyContent: "space-between" }}>
+                          <div>
+                            <div className="t-object">{operations.cardName || operations.listName || "Operational signal"}</div>
+                            <div className="t-meta" style={{ marginTop: 2 }}>
+                              {operations.boardName ? `${operations.boardName} / ` : ""}{operations.listName || "-"} · {(operations.signalType || "signal").replace(/_/g, " ")}
+                            </div>
+                          </div>
+                          <span className="badge cyan">Severity: {operations.severity || "medium"}</span>
                         </div>
-                      )}
-                      {item.payload_preview.preparedTrelloAction && (
-                        <div style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(0,0,0,0.14)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.055)" }}>
-                          <div style={{ fontSize: 10, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>Prepared Trello action</div>
-                          <div style={{ fontSize: 12.5, color: "var(--text)" }}>{(item.payload_preview.preparedTrelloAction.actionType || "task action").replace(/_/g, " ")}: {item.payload_preview.preparedTrelloAction.preview?.bodyPreview || item.payload_preview.preparedTrelloAction.title || operations.cardName}</div>
+                        {operations.plainEnglishSummary && <p className="t-compact">{operations.plainEnglishSummary}</p>}
+                        {operations.recommendedAction && <p className="t-compact"><strong className="ink">Recommended:</strong> {operations.recommendedAction}</p>}
+                        {operations.preparedSlackMessage && (
+                          <div className="panel card-pad">
+                            <div className="t-eyebrow">Prepared Slack message</div>
+                            <p className="t-compact" style={{ margin: "4px 0 0", whiteSpace: "pre-wrap" }}>{operations.preparedSlackMessage}</p>
+                          </div>
+                        )}
+                        {item.payload_preview.preparedTrelloAction && (
+                          <div className="panel card-pad">
+                            <div className="t-eyebrow">Prepared Trello action</div>
+                            <p className="t-compact" style={{ margin: "4px 0 0" }}>{(item.payload_preview.preparedTrelloAction.actionType || "task action").replace(/_/g, " ")}: {item.payload_preview.preparedTrelloAction.preview?.bodyPreview || item.payload_preview.preparedTrelloAction.title || operations.cardName}</p>
+                          </div>
+                        )}
+                        <div className="inline">
+                          <span className="badge muted">Slack message: {item.payload_preview.operationsPolicy?.slackMessage || "Approval required"}</span>
+                          <span className="badge muted">Trello update: {item.payload_preview.operationsPolicy?.trelloUpdate || "Approval required"}</span>
+                          <span className="badge muted">Human review: {item.payload_preview.operationsPolicy?.humanReview || "Required"}</span>
                         </div>
-                      )}
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        <span className="pill" style={{ fontSize: 10 }}>Slack message: {item.payload_preview.operationsPolicy?.slackMessage || "Approval required"}</span>
-                        <span className="pill" style={{ fontSize: 10 }}>Trello update: {item.payload_preview.operationsPolicy?.trelloUpdate || "Approval required"}</span>
-                        <span className="pill" style={{ fontSize: 10 }}>Human review: {item.payload_preview.operationsPolicy?.humanReview || "Required"}</span>
+                        {operations.cardUrl && <a className="lnk-open" href={operations.cardUrl} target="_blank" rel="noreferrer">Open Trello card</a>}
+                        {(operationsExecution.slackStatus === "sent" || operationsExecution.trelloStatus === "executed") && (
+                          <div className="attn" role="status" style={{ padding: "9px 10px" }}>
+                            <span className="t-compact">
+                              {operationsExecution.slackStatus === "sent" ? "Slack update sent. " : ""}{operationsExecution.trelloStatus === "executed" ? "Trello action applied." : ""}
+                              {typeof operationsExecution.cardUrl === "string" && operationsExecution.cardUrl ? (
+                                <> <a className="lnk-open" href={operationsExecution.cardUrl} target="_blank" rel="noreferrer">Open card</a></>
+                              ) : ""}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                      {operations.cardUrl && (
-                        <a className="lnk-open" href={operations.cardUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12 }}>Open Trello card</a>
-                      )}
-                      {(operationsExecution.slackStatus === "sent" || operationsExecution.trelloStatus === "executed") && (
-                        <div style={{ padding: "9px 10px", borderRadius: 10, background: "rgba(81,216,138,0.08)", boxShadow: "inset 0 0 0 1px rgba(81,216,138,0.22)", color: "#8df5cf", fontSize: 12 }}>
-                          {operationsExecution.slackStatus === "sent" ? "Slack update sent. " : ""}{operationsExecution.trelloStatus === "executed" ? "Trello action applied." : ""}
-                          {typeof operationsExecution.cardUrl === "string" && operationsExecution.cardUrl ? (
-                            <> <a className="lnk-open" href={operationsExecution.cardUrl} target="_blank" rel="noreferrer">Open card</a></>
-                          ) : ""}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {!revenueApproval && !operationsApproval && item.payload_preview.to && (
-                    <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
-                      <strong style={{ color: "var(--text)" }}>{revenueApproval ? "Recipient:" : "To:"}</strong> {item.payload_preview.to}
-                    </div>
-                  )}
-                  {!revenueApproval && item.payload_preview.subject && (
-                    <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
-                      <strong style={{ color: "var(--text)" }}>{revenueApproval ? "Draft subject:" : "Subject:"}</strong> {item.payload_preview.subject}
-                    </div>
-                  )}
-                  {!revenueApproval && item.payload_preview.body && (
-                    <div style={{ fontSize: 11.5, color: "var(--text-dim)", whiteSpace: "pre-wrap" }}>
-                      <strong style={{ color: "var(--text)" }}>{revenueApproval ? "Draft body:" : "Body:"}</strong> {item.payload_preview.body}
-                    </div>
-                  )}
-                  {!revenueApproval && (item.payload_preview.approvalReason || item.policy_reason) && (
-                    <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
-                      <strong style={{ color: "var(--text)" }}>Approval reason:</strong> {item.payload_preview.approvalReason || item.policy_reason}
-                    </div>
-                  )}
-                  {!revenueApproval && preparedActions.length > 0 && (
-                    <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
-                      <strong style={{ color: "var(--text)" }}>Prepared actions:</strong> {preparedActions.map(actionLabel).join(" / ")}
-                    </div>
-                  )}
-                  {!revenueApproval && item.payload_preview.crmPreparationStatus === "hubspot_not_connected" && (
-                    <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
-                      CRM update not prepared because HubSpot is not connected.
-                    </div>
-                  )}
-                  {!revenueApproval && item.payload_preview.crmPreparationStatus === "hubspot_execution_not_ready" && (
-                    <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
-                      <strong style={{ color: "var(--text)" }}>CRM:</strong> HubSpot update prepared, execution not implemented yet.
-                    </div>
-                  )}
-                  {!revenueApproval && item.payload_preview.crmPreparation && (
-                    <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>
-                      <strong style={{ color: "var(--text)" }}>CRM summary:</strong> {item.payload_preview.crmPreparation.summary}
-                    </div>
-                  )}
-                  {revenueApproval && showDetails && item.payload_preview.whatHappensAfterApproval && (
-                    <div style={{ fontSize: 11.5, color: "var(--text-dim)", paddingTop: 2 }}>
-                      <strong style={{ color: "var(--text)" }}>What happens after approval:</strong> {item.payload_preview.whatHappensAfterApproval}
-                    </div>
-                  )}
-                  {item.linked_run_id && (!revenueApproval || showDetails) && (
-                    <div style={{ fontSize: 11.5, color: "var(--text-dim)", fontFamily: "var(--font-mono)" }}>
-                      Run: {item.linked_run_id}
-                    </div>
-                  )}
-                </div>
-                {item.payload_preview.livePolicyDecision && (() => {
-                  const d = item.payload_preview.livePolicyDecision;
-                  const exec = recordValue(item.payload_preview.executionResult);
-                  const tone = d.decision === "blocked" ? "var(--rose)" : d.decision === "allow_auto" ? "var(--green)" : "var(--amber)";
-                  const postExec = exec.policyDecision || exec.gmailStatus === "blocked_by_policy" || exec.slackStatus === "blocked_by_policy" || exec.trelloStatus === "blocked_by_policy";
-                  const execNote = item.status === "pending"
-                    ? "Rechecked live before execution."
-                    : exec.gmailStatus === "blocked_by_policy" || exec.slackStatus === "blocked_by_policy" || exec.trelloStatus === "blocked_by_policy" || exec.status === "blocked_by_policy"
-                      ? "Blocked by updated policy."
-                      : exec.gmailStatus === "draft_only_not_sent"
-                        ? "Draft-only due to policy. Not sent."
-                        : "Executed under live policy.";
-                  return (
-                    <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 12, background: "rgba(255,255,255,0.025)", boxShadow: `inset 0 0 0 1px ${tone === "var(--green)" ? "rgba(81,216,138,0.22)" : tone === "var(--rose)" ? "rgba(242,118,124,0.22)" : "rgba(245,194,107,0.22)"}`, display: "grid", gap: 4 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Policy</span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: tone }}>{d.userFacingLabel}</span>
-                        <span className="pill" style={{ fontSize: 10 }}>Risk: {d.riskLevel}</span>
-                        {d.requiresHumanReview && <span className="pill" style={{ fontSize: 10 }}>Human review required</span>}
-                        <span style={{ fontSize: 10.5, color: postExec && item.status !== "pending" ? tone : "var(--text-mute)" }}>{execNote}</span>
-                      </div>
-                      <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>{d.reason} <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-faint)" }}>({d.matchedRuleId})</span></div>
-                    </div>
-                  );
-                })()}
-                <div className="approval-decision-bar" style={{ marginTop: 12, padding: "11px 12px", borderRadius: 14, background: "rgba(0,0,0,0.16)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.065)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                  <label className="approval-reject-reason" style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 280 }}>
-                    <span style={{ fontSize: 10.5, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.1em", whiteSpace: "nowrap" }}>Reject reason</span>
-                    <select
-                      aria-label="Reason for rejection"
-                      value={rejectionReason}
-                      onChange={(event) => setRejectReasons((current) => ({ ...current, [item.id]: event.target.value }))}
-                      style={{ minWidth: 190, background: "rgba(255,255,255,0.045)", color: "var(--text-dim)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "8px 10px", fontSize: 12 }}
-                    >
-                      {REJECTION_REASONS.map((reason) => (
-                        <option key={reason} value={reason}>{reason}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <div className="appr-row-actions" style={{ marginTop: 0 }}>
-                    <button className="appr-btn deny is-negative" disabled={isBusy || isSavingEdit} onClick={() => actOnApproval(item, "reject", rejectionReason)}>Reject</button>
-                    <button className="appr-btn edit" disabled={isBusy || isSavingEdit} onClick={() => startEditingDraft(item)}>Edit draft</button>
-                    <button className="appr-btn approve" disabled={isBusy || isSavingEdit} onClick={() => actOnApproval(item, "approve")}>
-                      {customerEmailMode === "draft_only" ? "Mark reviewed" : item.approval_type === "email" ? "Approve and send" : "Approve"}
-                    </button>
+                    )}
+                    {!revenueApproval && !operationsApproval && (
+                      <dl className="kv">
+                        {item.payload_preview.to && <div><dt>{revenueApproval ? "Recipient" : "To"}</dt><dd>{item.payload_preview.to}</dd></div>}
+                        {item.payload_preview.subject && <div><dt>{revenueApproval ? "Draft subject" : "Subject"}</dt><dd>{item.payload_preview.subject}</dd></div>}
+                        {item.payload_preview.body && <div><dt>{revenueApproval ? "Draft body" : "Body"}</dt><dd style={{ whiteSpace: "pre-wrap" }}>{item.payload_preview.body}</dd></div>}
+                        {(item.payload_preview.approvalReason || item.policy_reason) && <div><dt>Approval reason</dt><dd>{item.payload_preview.approvalReason || item.policy_reason}</dd></div>}
+                        {preparedActions.length > 0 && <div><dt>Prepared actions</dt><dd>{preparedActions.map(actionLabel).join(" / ")}</dd></div>}
+                        {item.payload_preview.crmPreparationStatus === "hubspot_not_connected" && <div><dt>CRM</dt><dd>CRM update not prepared because HubSpot is not connected.</dd></div>}
+                        {item.payload_preview.crmPreparationStatus === "hubspot_execution_not_ready" && <div><dt>CRM</dt><dd>HubSpot update prepared, execution not implemented yet.</dd></div>}
+                        {item.payload_preview.crmPreparation && <div><dt>CRM summary</dt><dd>{item.payload_preview.crmPreparation.summary}</dd></div>}
+                      </dl>
+                    )}
+                    {revenueApproval && showDetails && item.payload_preview.whatHappensAfterApproval && (
+                      <p className="t-compact" style={{ marginTop: 10 }}><strong className="ink">What happens after approval:</strong> {item.payload_preview.whatHappensAfterApproval}</p>
+                    )}
+                    {item.linked_run_id && (!revenueApproval || showDetails) && (
+                      <p className="t-mono" style={{ marginTop: 10 }}>Run: {item.linked_run_id}</p>
+                    )}
                   </div>
-                </div>
-              </article>
-            );
-          })
+                  {item.payload_preview.livePolicyDecision && (() => {
+                    const d = item.payload_preview.livePolicyDecision;
+                    const exec = recordValue(item.payload_preview.executionResult);
+                    const tone = d.decision === "blocked" ? "red" : d.decision === "allow_auto" ? "green" : "amber";
+                    const postExec = exec.policyDecision || exec.gmailStatus === "blocked_by_policy" || exec.slackStatus === "blocked_by_policy" || exec.trelloStatus === "blocked_by_policy";
+                    const execNote = item.status === "pending"
+                      ? "Rechecked live before execution."
+                      : exec.gmailStatus === "blocked_by_policy" || exec.slackStatus === "blocked_by_policy" || exec.trelloStatus === "blocked_by_policy" || exec.status === "blocked_by_policy"
+                        ? "Blocked by updated policy."
+                        : exec.gmailStatus === "draft_only_not_sent"
+                          ? "Draft-only due to policy. Not sent."
+                          : "Executed under live policy.";
+                    return (
+                      <div className={`attn ${tone === "red" ? "crit" : tone === "green" ? "info" : ""}`} role="status" style={{ marginTop: 12, padding: "10px 12px" }}>
+                        <div className="inline">
+                          <span className="t-eyebrow">Policy</span>
+                          <span className={`badge ${tone}`}>{d.userFacingLabel}</span>
+                          <span className="badge muted">Risk: {d.riskLevel}</span>
+                          {d.requiresHumanReview && <span className="badge muted">Human review required</span>}
+                          <span className={postExec && item.status !== "pending" ? "t-compact ink" : "t-meta"}>{execNote}</span>
+                        </div>
+                        <p className="t-meta" style={{ margin: "4px 0 0" }}>{d.reason} <span className="t-mono">({d.matchedRuleId})</span></p>
+                      </div>
+                    );
+                  })()}
+                  <div className="inline" style={{ marginTop: 14, justifyContent: "space-between" }}>
+                    <label className="field" style={{ minWidth: 260 }}>
+                      <span className="label">Reject reason</span>
+                      <select
+                        className="select"
+                        aria-label="Reason for rejection"
+                        value={rejectionReason}
+                        onChange={(event) => setRejectReasons((current) => ({ ...current, [item.id]: event.target.value }))}
+                        style={{ width: "100%" }}
+                      >
+                        {REJECTION_REASONS.map((reason) => (
+                          <option key={reason} value={reason}>{reason}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <div className="inline">
+                      <button className="btn btn-danger btn-sm" disabled={isBusy || isSavingEdit} onClick={() => actOnApproval(item, "reject", rejectionReason)}>Reject</button>
+                      <button className="btn btn-ghost btn-sm" disabled={isBusy || isSavingEdit} onClick={() => startEditingDraft(item)}>Edit draft</button>
+                      <button className="btn btn-primary btn-sm" disabled={isBusy || isSavingEdit} onClick={() => actOnApproval(item, "approve")}>
+                        {customerEmailMode === "draft_only" ? "Mark reviewed" : item.approval_type === "email" ? "Approve and send" : "Approve"}
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         )}
       </div>
 
-      <div className="approval-policy-note" style={{ padding: "14px 18px", borderRadius: 12, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)", fontSize: 12.5, color: "var(--text-mute)", lineHeight: 1.6 }}>
-        <span><strong style={{ color: "var(--text-dim)" }}>Protected by default.</strong> Outbound actions require approval.<button className="lnk-open approval-policy-link" onClick={() => router.push("/policies")}>Manage policies</button></span>
+      {resolved.length > 0 && (
+        <div className="card">
+          <div className="card-head"><div className="t-section">Recent decisions</div><span className="t-meta">{resolved.length} resolved</span></div>
+          <div className="rows">
+            {resolved.slice(0, 20).map((item) => (
+              <div className="row" key={item.id}>
+                <span className="grow"><span className="ttl">{item.title}</span><span className="sub">{item.agent_mark || "Operator"} · {timeAgo(item.resolved_at)}</span></span>
+                <span className="rt"><span className={`badge ${item.status === "approved" || item.status === "partially_completed" ? "green" : "red"}`}>{item.status.replace(/_/g, " ")}</span></span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="panel card-pad">
+        <span className="t-meta"><strong className="ink">Protected by default.</strong> Outbound actions require approval. <button className="lnk-open" onClick={() => router.push("/policies")}>Manage policies</button></span>
       </div>
     </div>
   );

@@ -1,22 +1,23 @@
-import { KeyIcon } from "@/components/dashboard/icons";
+import Link from "next/link";
+import { PageHeader } from "@/components/product-ui/page-primitives";
 
 /** API-key issuance is intentionally absent until a secure runtime exists. */
 export default function ApiKeysPage() {
   return (
     <div className="os-page">
-      <div className="os-page-head">
-        <div>
-          <span className="os-greet">API access</span>
-          <h1>API keys</h1>
-          <div className="os-page-sub">Programmatic API access is not enabled for this workspace.</div>
+      <PageHeader
+        eyebrow="API access"
+        title="API keys"
+        description="Programmatic API access is not enabled for this workspace."
+      />
+      <section className="empty sec">
+        <span className="badge muted">NOT AVAILABLE</span>
+        <h4 style={{ marginTop: 14 }}>API key management</h4>
+        <p>Auterim does not create, display, or accept workspace API keys yet. There are no active keys to revoke. This avoids presenting local-only credentials that would not secure a real integration.</p>
+        <div className="acts">
+          <Link href="/roadmap" className="btn btn-secondary btn-sm">See roadmap</Link>
         </div>
-      </div>
-      <div className="p" style={{ maxWidth: 760 }}>
-        <div className="p-head"><h3><KeyIcon size={13} /> API key management</h3><span className="p-meta">Unavailable</span></div>
-        <div style={{ padding: "16px 18px", fontSize: 12.5, lineHeight: 1.65, color: "var(--text-dim)" }}>
-          Auterim does not create, display, or accept workspace API keys yet. There are no active keys to revoke. This avoids presenting local-only credentials that would not secure a real integration.
-        </div>
-      </div>
+      </section>
     </div>
   );
 }

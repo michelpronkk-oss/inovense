@@ -13,6 +13,8 @@ function relative(value: string) {
   return hours < 1 ? "Just now" : hours < 24 ? `${hours}h ago` : `${Math.floor(hours / 24)}d ago`;
 }
 
+const ATTRIBUTION_TONE: Record<string, string> = { observed: "cyan", influenced: "amber", direct: "green" };
+
 export default function InsightsPage() {
   const { state } = useOS();
   const entitlements = getEntitlements(state.workspace);
@@ -40,12 +42,52 @@ export default function InsightsPage() {
   const direct = outcomes.filter((outcome) => outcome.attribution === "direct").length;
   return <div className="os-page insights-page">
     <PageHeader eyebrow="Measured outcomes" title="Insights" description="Evidence Auterim has observed after work completed. Activity and technical logs remain separate views." actions={<Link className="btn btn-ghost btn-sm" href="/app/workflows">Open workflows</Link>} />
-    {error && <div className="p" style={{ padding: 12, color: "var(--rose)" }}>{error} <button className="btn btn-ghost btn-sm" onClick={() => void load()} style={{ marginLeft: 8 }}>Retry</button></div>}
-    {loading ? <div className="p insights-loading">Loading outcome evidence…</div> : outcomes.length === 0 ? <section className="p insights-empty"><div><span>Evidence status</span><strong>Not enough evidence yet</strong><p>Auterim records an insight only after a connected system confirms that completed work changed something.</p></div><div><Link className="btn btn-primary btn-sm" href="/app/workflows">View workflows</Link><Link className="btn btn-ghost btn-sm" href="/app/approvals">Review approvals</Link></div></section> : <>
-      <MetricStrip className="insights-metric-rail" items={[{ label: "Observed", value: observed, detail: "Recorded by a connected system" }, { label: "Influenced", value: influenced, detail: "Evidence linked to completed work" }, { label: "Direct", value: direct, detail: "Only where attribution supports it" }]} />
-      <div className="os-grid-2 insights-evidence-grid">
-        <section className="p insights-evidence-list"><div className="p-head"><div><h3>Latest evidence</h3><div className="p-meta">No estimates or unverified impact claims.</div></div></div><div>{outcomes.slice(0, 12).map((outcome) => <div key={outcome.id} className="insights-evidence-row"><div><strong>{outcome.label}</strong><small>{outcome.workflow.objective} · {outcome.workflow.operatorName}</small></div><span data-attribution={outcome.attribution}>{outcome.attribution}</span><time>{relative(outcome.observedAt)}</time></div>)}</div></section>
-        <section className="p insights-by-operator"><div className="p-head"><div><h3>Where evidence appears</h3><div className="p-meta">By responsible operator</div></div></div><div>{byOperator.map(([name, count]) => <div key={name}><span>{name}</span><strong>{count} observed</strong></div>)}</div></section>
+    {error && <div className="sec card card-pad" style={{ color: "var(--rose)" }}>{error} <button className="btn btn-ghost btn-sm" onClick={() => void load()} style={{ marginLeft: 8 }}>Retry</button></div>}
+    {loading ? (
+      <div className="sec card card-pad t-compact dim">Loading outcome evidence…</div>
+    ) : outcomes.length === 0 ? (
+      <section className="sec empty">
+        <h4>Not enough evidence yet</h4>
+        <p>Auterim records an insight only after a connected system confirms that completed work changed something.</p>
+        <div className="acts"><Link className="btn btn-primary btn-sm" href="/app/workflows">View workflows</Link><Link className="btn btn-ghost btn-sm" href="/app/approvals">Review approvals</Link></div>
+      </section>
+    ) : <>
+      <div className="sec">
+        <MetricStrip items={[{ label: "Observed", value: observed, detail: "Recorded by a connected system" }, { label: "Influenced", value: influenced, detail: "Evidence linked to completed work" }, { label: "Direct", value: direct, detail: "Only where attribution supports it" }]} />
+      </div>
+      <div className="sec split">
+        <section className="card insights-evidence-list">
+          <div className="card-head">
+            <div><h3 className="t-section">Latest evidence</h3><p className="t-meta" style={{ margin: "3px 0 0" }}>No estimates or unverified impact claims.</p></div>
+          </div>
+          <div className="rows">
+            {outcomes.slice(0, 12).map((outcome) => (
+              <div key={outcome.id} className="row">
+                <span className="grow">
+                  <span className="ttl">{outcome.label}</span>
+                  <span className="sub">{outcome.workflow.objective} · {outcome.workflow.operatorName}</span>
+                </span>
+                <span className="rt">
+                  <span className={`badge ${ATTRIBUTION_TONE[outcome.attribution] ?? "muted"}`}>{outcome.attribution}</span>
+                  <span className="t-meta">{relative(outcome.observedAt)}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section className="card insights-by-operator">
+          <div className="card-head">
+            <div><h3 className="t-section">Where evidence appears</h3><p className="t-meta" style={{ margin: "3px 0 0" }}>By responsible operator</p></div>
+          </div>
+          <div className="rows">
+            {byOperator.map(([name, count]) => (
+              <div key={name} className="row">
+                <span className="grow ttl">{name}</span>
+                <span className="rt t-meta">{count} observed</span>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     </>}
   </div>;

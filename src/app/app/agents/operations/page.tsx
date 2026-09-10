@@ -176,15 +176,20 @@ export default function OperationsOperatorPage() {
 
   return (
     <div className="os-page operator-detail-page">
-      <div className="os-page-head">
-        <div className="operator-page-heading">
+      <div className="page-head" style={{ marginBottom: 8 }}>
+        <div className="inline" style={{ gap: 16, alignItems: "flex-start" }}>
           <OperatorRuntimeAvatar operatorKey="operations" />
-          <span className="os-greet"><Link href="/app/agents" style={{ color: "inherit", textDecoration: "none" }}>Operators</Link> / Operations</span>
-          <h1>Operations Operator</h1>
-          <div className="os-page-sub">Monitors internal work, finds stalled tasks, and prepares approved operational updates.</div>
+          <div>
+            <div className="inline" style={{ gap: 11 }}>
+              <h1 className="t-title" style={{ fontSize: 24 }}>Operations Operator</h1>
+              {presentationState && <span className="os-status" data-state={presentationState.state}>{presentationState.label}</span>}
+            </div>
+            <p className="t-sub" style={{ marginTop: 7 }}>Monitors internal work, finds stalled tasks, and prepares approved operational updates.</p>
+          </div>
         </div>
-        {presentationState && <span className="os-status" data-state={presentationState.state}>{presentationState.label}</span>}
       </div>
+
+      {error && <section className="attn crit"><div className="card-pad" style={{ padding: "10px 14px", fontSize: 12.5 }}>{error}</div></section>}
 
       <OperatorWorkforceBriefing
         operatorKey="operations"
@@ -196,132 +201,120 @@ export default function OperationsOperatorPage() {
         }}
       />
 
-      {error && <div role="alert" style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>{error}</div>}
-
-      {showRuntime && <div className="p" style={{ gap: 0 }}>
-        <div className="p-head">
-          <div>
-            <h3>Monitoring</h3>
-            <div className="p-meta" style={{ marginTop: 4 }}>{loading ? "Loading…" : monitoring?.status === "monitoring_active" ? "Daily monitoring active" : "Scheduled monitoring"}{lastCheckAt ? ` · Last check ${relativeTime(lastCheckAt)}` : ""}</div>
-          </div>
-        </div>
-        <div style={{ padding: "18px 20px" }}>
-          {!hasRunScan ? (
-            <div style={{ display: "grid", gap: 12, justifyItems: "start" }}>
-              <div style={{ fontSize: 13, color: "var(--text-dim)" }}>Monitoring is active. The first scheduled check has not run yet.</div>
-              <button className="btn btn-ghost btn-sm" type="button" onClick={submitScan} disabled={!canRun || scanSubmitting} style={{ opacity: !canRun || scanSubmitting ? 0.45 : 1 }}>{scanSubmitting ? "Checking…" : "Run manual check"}</button>
-            </div>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12 }}>
-              <Stat label="Cards checked" value={String(monitoring?.cardsChecked ?? 0)} />
-              <Stat label="Signals found" value={String(monitoring?.signalsFound ?? 0)} />
-              <Stat label="Approvals created" value={String(monitoring?.approvalsCreated ?? 0)} />
-              <Stat label="Stale / overdue" value={String(monitoring?.staleOverdueCount ?? 0)} />
-            </div>
-          )}
-          {scanResult && (
-            <div style={{ marginTop: 14, padding: "12px 14px", borderRadius: 12, background: scanResult.status === "setup_incomplete" ? "rgba(245,194,107,0.06)" : "rgba(102,208,224,0.06)", boxShadow: scanResult.status === "setup_incomplete" ? "inset 0 0 0 1px rgba(245,194,107,0.2)" : "inset 0 0 0 1px rgba(102,208,224,0.18)", display: "grid", gap: 6 }}>
-              <div style={{ fontSize: 12.8, fontWeight: 600 }}>{scanResult.status === "setup_incomplete" ? "Check could not start" : `Manual check ${scanResult.status ?? "completed"}`}</div>
-              {scanResult.message && <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{scanResult.message}</div>}
-              {scanResult.status === "completed" && <div style={{ fontSize: 12, color: "var(--text-mute)" }}>{scanResult.cardsChecked ?? 0} cards checked · {scanResult.signalsFound ?? 0} signals · {scanResult.approvalsCreated ?? 0} approvals.</div>}
-              {scanResult.suggestions && scanResult.suggestions.length > 0 && (
-                <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>
-                  No signals yet. To see it work: {scanResult.suggestions.join(" · ")}
+      {(showRuntime || showControls) && (
+        <div className="sec split">
+          {showRuntime && <div className="stack">
+            <div className="card">
+              <div className="card-head">
+                <div>
+                  <div className="t-section">Monitoring</div>
+                  <div className="t-meta" style={{ marginTop: 3 }}>{loading ? "Loading…" : monitoring?.status === "monitoring_active" ? "Daily monitoring active" : "Scheduled monitoring"}{lastCheckAt ? ` · Last check ${relativeTime(lastCheckAt)}` : ""}</div>
+                </div>
+              </div>
+              <div className="card-pad">
+                {!hasRunScan ? (
+                  <div className="stack" style={{ gap: 12, alignItems: "flex-start" }}>
+                    <div className="t-compact">Monitoring is active. The first scheduled check has not run yet.</div>
+                    <button className="btn btn-ghost btn-sm" type="button" onClick={submitScan} disabled={!canRun || scanSubmitting}>{scanSubmitting ? "Checking…" : "Run manual check"}</button>
+                  </div>
+                ) : (
+                  <div className="grid4">
+                    <Stat label="Cards checked" value={String(monitoring?.cardsChecked ?? 0)} />
+                    <Stat label="Signals found" value={String(monitoring?.signalsFound ?? 0)} />
+                    <Stat label="Approvals created" value={String(monitoring?.approvalsCreated ?? 0)} />
+                    <Stat label="Stale / overdue" value={String(monitoring?.staleOverdueCount ?? 0)} />
+                  </div>
+                )}
+              </div>
+              {scanResult && (
+                <div className="card-pad" style={{ borderTop: "1px solid var(--line)" }}>
+                  <div className="t-object" style={{ fontSize: 13 }}>{scanResult.status === "setup_incomplete" ? "Check could not start" : `Manual check ${scanResult.status ?? "completed"}`}</div>
+                  {scanResult.message && <div className="t-compact" style={{ marginTop: 4 }}>{scanResult.message}</div>}
+                  {scanResult.status === "completed" && <div className="t-meta" style={{ marginTop: 4 }}>{scanResult.cardsChecked ?? 0} cards checked · {scanResult.signalsFound ?? 0} signals · {scanResult.approvalsCreated ?? 0} approvals</div>}
+                  {scanResult.suggestions && scanResult.suggestions.length > 0 && <div className="t-meta" style={{ marginTop: 4 }}>No signals yet. To see it work: {scanResult.suggestions.join(" · ")}</div>}
                 </div>
               )}
             </div>
-          )}
-        </div>
-      </div>}
 
-      {showRuntime && (
-        <section className="p operator-policy-strip">
-          <div className="p-head"><h3>Policy</h3></div>
-          <div>
-            <span><small>Project updates</small><strong>Approval required</strong></span>
-            <span><small>Internal alerts</small><strong>{setup?.slackAlertsReady ? "Enabled" : "Disabled"}</strong></span>
-            <span><small>Human review</small><strong>{setup?.approvalFlowActive === false ? "Review configuration" : "Required"}</strong></span>
-          </div>
-        </section>
-      )}
+            <div className="card">
+              <div className="card-head"><div className="t-section">Current work</div>
+                {(monitoring?.recentPendingApprovals?.length ?? 0) > 0
+                  ? <Link href="/app/approvals" className="btn btn-primary btn-sm">{pendingApprovals} awaiting review</Link>
+                  : <Link href="/app/approvals" className="btn btn-sm btn-ghost">Approval inbox</Link>}
+              </div>
+              {pendingApprovals === 0 && runs.length === 0 ? (
+                <div className="card-pad t-meta">No issues need attention right now. Next scheduled check: {monitoring?.nextScanLabel ?? "daily"}.</div>
+              ) : (
+                <div className="rows">
+                  {(monitoring?.recentPendingApprovals ?? []).map((approval) => (
+                    <div className="row" key={approval.id}>
+                      <span className="grow"><span className="ttl">{approval.cardName || approval.title}</span><span className="sub">{(approval.signalType || "signal").replace(/_/g, " ")}{approval.severity ? ` · ${approval.severity}` : ""}{approval.listName ? ` · ${approval.listName}` : ""} · {approval.created_at ? relativeTime(approval.created_at) : "unknown time"}</span></span>
+                      <span className="badge amber">APPROVAL NEEDED</span>
+                    </div>
+                  ))}
+                  {runs.slice(0, 5).map((run) => (
+                    <div className="row" key={run.id}>
+                      <span className="grow"><span className="ttl">{run.output?.title || run.output?.type || "Operations run"}</span><span className="sub">{relativeTime(run.created_at)} · Approval: {run.approval_id || "none"}</span></span>
+                      <span className={`badge ${run.status === "completed" ? "green" : run.status === "failed" ? "red" : "amber"}`}>{run.status.toUpperCase()}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-      {showControls && (() => {
-        const upgrades = (status?.optionalUpsellConnectors ?? []).filter((c) => c.status === "available");
-        const configured = Boolean(status?.readiness?.canRunManual ?? setup?.canRunManual);
-        const eligibility = status?.readiness?.executionEligibility;
-        return (
-          <div className="p operator-context-section" style={{ gap: 0 }}>
-            <div className="p-head"><h3>Context & controls</h3><Link href="/app/connectors" className="lnk-open">Manage context</Link></div>
-            <div className="operator-context-controls" style={{ padding: "14px 20px", display: "grid", gap: 14 }}>
-              {showRuntime && upgrades.length > 0 && (
-                <div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Add more context</div>
-                  <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--text-mute)" }}>
-                    {optionalContext.join(" · ")}
+            <details className="card">
+              <summary style={{ cursor: "pointer", listStyle: "none", padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}><span className="t-object">Advanced details</span><span className="t-meta">Schedule, provider state, readiness</span></summary>
+              <dl className="kv card-pad" style={{ borderTop: "1px solid var(--line)" }}>
+                <dt>Cadence</dt><dd>{monitoring?.cadence ?? "daily"}</dd>
+                <dt>Next run</dt><dd>{monitoring?.nextRunAt ?? "not scheduled"}</dd>
+                <dt>Project providers</dt><dd>Trello {status?.trello?.status ?? "missing"} · Asana {status?.asana?.status ?? "missing"} · Jira {status?.jira?.status ?? "missing"}</dd>
+                <dt>Readiness</dt><dd>{status?.readiness?.status ?? "unknown"}</dd>
+              </dl>
+            </details>
+          </div>}
+
+          <div className="stack">
+            {showRuntime && <div className="card">
+              <div className="card-head"><div className="t-section">Policy</div></div>
+              <div className="rows">
+                <div className="row"><span className="grow t-compact">Project updates</span><span className="badge amber">APPROVAL</span></div>
+                <div className="row"><span className="grow t-compact">Internal alerts</span><span className={`badge ${setup?.slackAlertsReady ? "green" : "muted"}`}>{setup?.slackAlertsReady ? "ENABLED" : "DISABLED"}</span></div>
+                <div className="row"><span className="grow t-compact">Human review</span><span className="badge">{setup?.approvalFlowActive === false ? "REVIEW CONFIG" : "REQUIRED"}</span></div>
+              </div>
+            </div>}
+
+            {showControls && (() => {
+              const upgrades = (status?.optionalUpsellConnectors ?? []).filter((c) => c.status === "available");
+              const configured = Boolean(status?.readiness?.canRunManual ?? setup?.canRunManual);
+              const eligibility = status?.readiness?.executionEligibility;
+              return (
+                <div className="card">
+                  <div className="card-head"><div className="t-section">Context & controls</div><Link href="/app/connectors" className="btn btn-sm btn-ghost">Manage context</Link></div>
+                  <div className="card-pad" style={{ display: "grid", gap: 14 }}>
+                    {upgrades.length > 0 && (
+                      <div>
+                        <div className="t-eyebrow">Add more context</div>
+                        <div className="t-compact" style={{ marginTop: 6 }}>{optionalContext.join(" · ")}</div>
+                      </div>
+                    )}
+                    {eligibility && state.workspace.id && (
+                      <OperatorActivationToggle
+                        operatorKey="operations"
+                        workspaceId={state.workspace.id}
+                        userId={state.currentUser.id}
+                        userEmail={state.currentUser.email}
+                        executionEligibility={eligibility}
+                        configured={configured}
+                        canManage={state.currentUser.roleLabel === "Owner" || state.currentUser.roleLabel === "Admin"}
+                        runtimeControl
+                      />
+                    )}
                   </div>
                 </div>
-              )}
-              {eligibility && state.workspace.id && (
-                <OperatorActivationToggle
-                  operatorKey="operations"
-                  workspaceId={state.workspace.id}
-                  userId={state.currentUser.id}
-                  userEmail={state.currentUser.email}
-                  executionEligibility={eligibility}
-                  configured={configured}
-                  canManage={state.currentUser.roleLabel === "Owner" || state.currentUser.roleLabel === "Admin"}
-                  runtimeControl
-                />
-              )}
-            </div>
+              );
+            })()}
           </div>
-        );
-      })()}
-
-      {showRuntime && <div className="p operator-current-work" style={{ gap: 0 }}>
-        <div className="p-head">
-          <h3>Current work</h3>
-          {(monitoring?.recentPendingApprovals?.length ?? 0) > 0
-            ? <Link href="/app/approvals" className="btn btn-primary btn-sm">{pendingApprovals} awaiting review</Link>
-            : <Link href="/app/approvals" className="lnk-open">Approval inbox</Link>}
         </div>
-        {pendingApprovals === 0 && runs.length === 0 ? (
-          <div className="operator-compact-empty">No issues need attention right now. Next scheduled check: {monitoring?.nextScanLabel ?? "daily"}.</div>
-        ) : <div style={{ padding: "14px 20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-          <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Pending approvals</div>
-            {(monitoring?.recentPendingApprovals?.length ?? 0) === 0 ? <div style={{ color: "var(--text-mute)", fontSize: 12.5 }}>No pending Operations approvals.</div> : monitoring?.recentPendingApprovals.map((approval) => (
-              <div key={approval.id} style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>{approval.cardName || approval.title}</div>
-                <div style={{ marginTop: 3, fontSize: 11.5, color: "var(--text-mute)" }}>{(approval.signalType || "signal").replace(/_/g, " ")}{approval.severity ? ` · ${approval.severity}` : ""}{approval.listName ? ` · ${approval.listName}` : ""} · {approval.created_at ? relativeTime(approval.created_at) : "unknown time"}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-dim)" }}>Recent runs</div>
-            {runs.length === 0 ? <div style={{ color: "var(--text-mute)", fontSize: 12.5 }}>No Operations checks have run yet.</div> : runs.slice(0, 5).map((run) => (
-              <div key={run.id} style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}><div style={{ fontSize: 13, fontWeight: 500 }}>{run.output?.title || run.output?.type || "Operations run"}</div><div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: run.status === "completed" ? "var(--green)" : run.status === "failed" ? "var(--rose)" : "var(--amber)" }}>{run.status}</div></div>
-                <div style={{ marginTop: 3, fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-mute)" }}>{relativeTime(run.created_at)} · Approval: {run.approval_id || "none"}</div>
-              </div>
-            ))}
-          </div>
-        </div>}
-      </div>}
-
-      {showRuntime && (
-        <details className="p operator-advanced" style={{ gap: 0 }}>
-          <summary style={{ listStyle: "none", cursor: "pointer", padding: "14px 20px", fontSize: 13, fontWeight: 600, color: "var(--text-dim)", display: "flex", justifyContent: "space-between" }}>
-            Advanced details
-            <span style={{ color: "var(--text-faint)", fontSize: 11 }}>schedule, provider state, readiness</span>
-          </summary>
-          <div style={{ padding: "0 20px 18px", display: "grid", gap: 7, color: "var(--text-mute)", fontSize: 12 }}>
-            <span>Cadence: {monitoring?.cadence ?? "daily"}</span>
-            <span>Next run: {monitoring?.nextRunAt ?? "not scheduled"}</span>
-            <span>Project providers: Trello {status?.trello?.status ?? "missing"} · Asana {status?.asana?.status ?? "missing"} · Jira {status?.jira?.status ?? "missing"}</span>
-            <span>Readiness: {status?.readiness?.status ?? "unknown"}</span>
-          </div>
-        </details>
       )}
     </div>
   );

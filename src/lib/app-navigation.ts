@@ -1,14 +1,12 @@
 import { canManageBilling, canManageMembers, canManagePolicies, type WorkspaceRole } from "@/lib/workspace-permissions";
 
-export type AppNavigationAction = "support" | "feedback";
 export type AppNavigationIcon = "dashboard" | "operators" | "workflows" | "approvals" | "connectors" | "memory" | "activity" | "logs" | "insights" | "team" | "policies" | "apiKeys" | "plans" | "settings" | "support" | "roadmap";
 
 export type AppNavigationItem = {
   id: string;
   label: string;
   icon: AppNavigationIcon;
-  href?: string;
-  action?: AppNavigationAction;
+  href: string;
   mobilePrimary?: boolean;
   badge?: "pendingApprovals";
 };
@@ -44,8 +42,8 @@ export const APP_NAVIGATION_SECTIONS: readonly AppNavigationSection[] = [
   {
     label: "Support",
     items: [
-      { id: "support", label: "Support", icon: "support", action: "support" },
-      { id: "feedback", label: "Feedback", icon: "support", action: "feedback" },
+      { id: "support", label: "Support", icon: "support", href: "/support" },
+      { id: "feedback", label: "Feedback", icon: "support", href: "/feedback" },
       { id: "roadmap", label: "Roadmap", icon: "roadmap", href: "/roadmap" },
     ],
   },

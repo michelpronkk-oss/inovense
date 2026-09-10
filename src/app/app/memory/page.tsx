@@ -2,16 +2,17 @@
 
 import { useMemo, useState } from "react";
 import { useOS } from "@/lib/os/app-provider";
-import { DatabaseIcon, SearchIcon } from "@/components/dashboard/icons";
+import { SearchIcon } from "@/components/dashboard/icons";
 import { getEntitlements } from "@/lib/os/entitlements";
+import { PageHeader } from "@/components/product-ui/page-primitives";
 
-const TYPE_COLORS: Record<string, string> = {
-  client: "#4DE8E1",
-  brand: "#A78BFA",
-  process: "#5B8DEF",
-  market: "#F5C26B",
-  product: "#51D88A",
-  agent: "#F2767C",
+const TYPE_TONE: Record<string, string> = {
+  client: "cyan",
+  brand: "plan",
+  process: "muted",
+  market: "amber",
+  product: "green",
+  agent: "red",
 };
 
 const CONTEXT_FIELDS = ["Workspace", "Industry", "Team size", "Website", "First priority", "Relevant systems", "Source"];
@@ -58,104 +59,108 @@ export default function MemoryPage() {
       e.tags.some((t) => t.includes(q.toLowerCase()))
   );
   const visibleEntries = filtered.slice(0, visibleCount);
+  const expandedEntry = expanded ? entries.find((e) => e.id === expanded) : undefined;
+  const expandedFields = expandedEntry ? contextFields(expandedEntry.content) : [];
 
   return (
     <div className="os-page memory-page">
-      <div className="os-page-head">
-        <div>
-          <span className="os-greet">Business context</span>
-          <h1>Memory</h1>
-          <div className="os-page-sub">What Auterim knows about your business. Operators use this context before they act.</div>
-          <div className="memory-enrichment-note">{isPreview ? "Your owner-confirmed brief is ready. Connected systems and approved work can enrich it after activation." : "Connected systems and approved work enrich this context over time."}</div>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Business context"
+        title="Memory"
+        description="What Auterim knows about your business. Operators use this context before they act."
+      />
+      <p className="t-meta" style={{ marginTop: -6 }}>
+        {isPreview ? "Your owner-confirmed brief is ready. Connected systems and approved work can enrich it after activation." : "Connected systems and approved work enrich this context over time."}
+      </p>
 
-      <section className="memory-summary-rail" aria-label="Memory summary">
-        {/* Two metrics that carry real weight. Category count is genuine but
-            sparse (typically three or four), so it rides along as detail
-            rather than claiming an equal-sized slot next to them. */}
-        <div><span>Entries</span><strong>{entries.length}</strong><small>{totalFields} structured fields · {new Set(entries.map((e) => e.type)).size} categories</small></div>
-        <div><span>Last updated</span><strong>{mostRecent ? relativeTime(mostRecent.updatedAt) : "Not yet"}</strong><small>{mostRecent?.label ?? "Awaiting workspace context"}</small></div>
-        <aside><span className="dot dot-cyan" /> Sources and safe operator use remain visible in each record.</aside>
+      <section className="sec panel card-pad" aria-label="Workspace facts">
+        <div className="grid4">
+          <div><span className="t-eyebrow">Workspace</span><div className="t-object">{state.workspace.name}</div></div>
+          <div><span className="t-eyebrow">Industry</span><div className="t-object">{state.onboarding.industry || "Not provided"}</div></div>
+          <div><span className="t-eyebrow">Team size</span><div className="t-object">{state.onboarding.companySize || "Not provided"}</div></div>
+          <div><span className="t-eyebrow">Website</span><div className="t-object">{state.onboarding.websiteUrl || "Not provided"}</div></div>
+        </div>
       </section>
 
-      <div className="memory-search">
-        <SearchIcon size={15} aria-hidden="true" />
-        <input
-          value={q}
-          onChange={(e) => { setQ(e.target.value); setVisibleCount(5); }}
-          placeholder="Search memory, tags, or content…"
-          aria-label="Search memory"
-        />
-        {q && <button type="button" onClick={() => setQ("")}>Clear</button>}
-      </div>
-
-      <div className="p memory-index">
-        <div className="p-head">
-          <h3><DatabaseIcon size={13} /> Memory index</h3>
-          <div className="p-meta">{visibleEntries.length} of {filtered.length} entries</div>
+      <section className="sec card memory-index">
+        <div className="card-head">
+          <div>
+            <h3 className="t-section">Memory index</h3>
+            <p className="t-meta" style={{ margin: "3px 0 0" }}>
+              {visibleEntries.length} of {filtered.length} entries · {totalFields} structured fields · Last updated {mostRecent ? relativeTime(mostRecent.updatedAt) : "not yet"}
+            </p>
+          </div>
+          <div className="search" style={{ minWidth: 240 }}>
+            <SearchIcon size={15} aria-hidden="true" />
+            <input
+              value={q}
+              onChange={(e) => { setQ(e.target.value); setVisibleCount(5); }}
+              placeholder="Search memory, tags, or content…"
+              aria-label="Search memory"
+            />
+            {q && <button type="button" className="btn btn-ghost btn-sm" onClick={() => setQ("")}>Clear</button>}
+          </div>
         </div>
-        {visibleEntries.map((e) => {
-          const color = TYPE_COLORS[e.type] ?? "#4DE8E1";
-          const isOpen = expanded === e.id;
-          const fields = contextFields(e.content);
-          return (
-            <div key={e.id} className={`memory-index-row${isOpen ? " is-open" : ""}`}>
-              <button
-                onClick={() => setExpanded(isOpen ? null : e.id)}
+        <div className="rows">
+          {visibleEntries.map((e) => {
+            const isOpen = expanded === e.id;
+            return (
+              <div
+                key={e.id}
+                className={`row link${isOpen ? " is-open" : ""}`}
+                role="button"
+                tabIndex={0}
                 aria-expanded={isOpen}
                 aria-label={`${isOpen ? "Close" : "Open"} ${e.label}`}
-                className="memory-index-trigger"
-                style={{ width: "100%", textAlign: "left", padding: "13px 16px", background: isOpen ? "rgba(255,255,255,0.014)" : "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 11 }}
+                onClick={() => setExpanded(isOpen ? null : e.id)}
+                onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setExpanded(isOpen ? null : e.id); } }}
               >
-                <div style={{ width: 28, height: 28, borderRadius: 8, background: `${color}10`, boxShadow: `inset 0 0 0 1px ${color}30`, display: "grid", placeItems: "center", flexShrink: 0 }}>
-                  <DatabaseIcon size={12} style={{ color }} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2 }}>
-                    <span style={{ fontSize: 13, fontWeight: 560, letterSpacing: "-0.01em", color: "var(--text)" }}>{e.label}</span>
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 8.5, padding: "2px 5px", borderRadius: 4, background: `${color}12`, color, textTransform: "uppercase", letterSpacing: "0.05em" }}>{e.type}</span>
-                  </div>
-                  <div style={{ fontSize: 11.5, color: "var(--text-mute)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.summary} <span style={{ color: "var(--text-faint)" }}>· {e.fieldCount} fields · {relativeTime(e.updatedAt)}</span></div>
-                </div>
-                <div className="memory-entry-tags">
-                  {e.tags.slice(0, 2).map((t) => (
-                    <span key={t}>
-                      {t}
-                    </span>
-                  ))}
-                </div>
-                <span className="memory-entry-chevron" aria-hidden="true" />
-              </button>
-              {isOpen && (
-                <div className="memory-index-detail" style={{ padding: "0 16px 15px 55px" }}>
-                  {fields.length > 0 ? (
-                    <dl className="memory-definition-grid">
-                      {fields.map((field) => (
-                        <div key={field.label}>
-                          <dt>{field.label}</dt>
-                          <dd>{field.value}</dd>
-                        </div>
-                      ))}
-                    </dl>
-                  ) : (
-                    <div style={{ padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.018)", boxShadow: "inset 0 0 0 1px var(--line)", fontSize: 12.5, color: "var(--text-dim)", lineHeight: 1.6 }}>{e.content}</div>
-                  )}
-                  <div className="memory-provenance">Workspace context · Available to approved operators</div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-        {filtered.length === 0 && (
-          <div style={{ padding: "32px 18px", textAlign: "center", color: "var(--text-mute)", fontSize: 13 }}>No entries match your search.</div>
-        )}
+                <span className="grow">
+                  <span className="ttl">{e.label}</span>
+                  <span className="sub">{e.summary} · {e.fieldCount} fields</span>
+                </span>
+                <span className="rt">
+                  <span className="t-meta">{relativeTime(e.updatedAt)}</span>
+                  <span className={`badge ${TYPE_TONE[e.type] ?? "cyan"}`}>{e.type}</span>
+                  <span className="os-caret" aria-hidden="true" />
+                </span>
+              </div>
+            );
+          })}
+          {filtered.length === 0 && (
+            <div className="row"><span className="grow t-meta">No entries match your search.</span></div>
+          )}
+        </div>
         {visibleEntries.length < filtered.length && (
-          <div style={{ padding: "10px 18px", borderTop: "1px solid var(--line)" }}>
-            <button className="appr-btn edit" onClick={() => setVisibleCount((count) => count + 5)}>Show 5 more</button>
+          <div className="card-pad" style={{ paddingTop: 12, paddingBottom: 12, borderTop: "1px solid var(--line)" }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => setVisibleCount((count) => count + 5)}>Show 5 more</button>
           </div>
         )}
-      </div>
+      </section>
+
+      {expandedEntry && (
+        <section className="sec card memory-expanded-entry">
+          <div className="card-head">
+            <div>
+              <h3 className="t-section">{expandedEntry.label}</h3>
+              <p className="t-meta" style={{ margin: "3px 0 0" }}>{expandedEntry.summary}</p>
+            </div>
+            <span className={`badge ${TYPE_TONE[expandedEntry.type] ?? "cyan"}`}>{expandedEntry.type}</span>
+          </div>
+          <div className="card-pad">
+            {expandedFields.length > 0 ? (
+              <dl className="kv">
+                {expandedFields.map((field) => (
+                  <div key={field.label}><dt>{field.label}</dt><dd>{field.value}</dd></div>
+                ))}
+              </dl>
+            ) : (
+              <p className="t-compact dim">{expandedEntry.content}</p>
+            )}
+            <p className="t-meta" style={{ marginTop: 16 }}>Workspace context · Available to approved operators</p>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

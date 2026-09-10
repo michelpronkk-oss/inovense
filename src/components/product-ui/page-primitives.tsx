@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
 type PageHeaderProps = {
   eyebrow?: string;
@@ -10,44 +10,50 @@ type PageHeaderProps = {
 /** Shared hierarchy for authenticated product pages. */
 export function PageHeader({ eyebrow, title, description, actions }: PageHeaderProps) {
   return (
-    <header className="os-page-head product-page-header">
+    <header className="page-head product-page-header">
       <div>
-        {eyebrow && <span className="os-greet">{eyebrow}</span>}
-        <h1>{title}</h1>
-        <p className="os-page-sub">{description}</p>
+        {eyebrow && <span className="t-eyebrow" style={{ display: "block", marginBottom: 8 }}>{eyebrow}</span>}
+        <h1 className="t-title">{title}</h1>
+        <p className="t-sub">{description}</p>
       </div>
-      {actions && <div className="os-page-actions">{actions}</div>}
+      {actions && <div className="acts">{actions}</div>}
     </header>
   );
 }
 
 export function SectionHeader({ title, detail, action }: { title: string; detail?: string; action?: ReactNode }) {
   return (
-    <div className="p-head product-section-header">
+    <div className="sec-head product-section-header">
       <div>
-        <h3>{title}</h3>
-        {detail && <p className="p-meta">{detail}</p>}
+        <h3 className="t-section">{title}</h3>
+        {detail && <p className="t-meta" style={{ margin: "3px 0 0" }}>{detail}</p>}
       </div>
-      {action}
+      {action && <div className="r">{action}</div>}
     </div>
   );
 }
 
 export function AttentionPanel({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   return (
-    <section className="os-attention" role="status">
-      <div><strong>{title}</strong><p>{children}</p></div>
-      {action && <div className="os-attention-action">{action}</div>}
+    <section className="attn" role="status" style={{ padding: "16px 18px" }}>
+      <div className="inline" style={{ gap: 14, alignItems: "flex-start", flexWrap: "nowrap" }}>
+        <span className="dot amber" style={{ marginTop: 6 }} />
+        <div className="grow" style={{ flex: 1, minWidth: 0 }}>
+          <div className="t-object">{title}</div>
+          <p className="t-meta" style={{ margin: "4px 0 0" }}>{children}</p>
+        </div>
+        {action && <div className="inline" style={{ flex: "none" }}>{action}</div>}
+      </div>
     </section>
   );
 }
 
 export function EmptyState({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   return (
-    <section className="os-empty-state">
-      <strong>{title}</strong>
+    <section className="empty">
+      <h4>{title}</h4>
       <p>{children}</p>
-      {action && <div>{action}</div>}
+      {action && <div className="acts">{action}</div>}
     </section>
   );
 }
@@ -63,12 +69,12 @@ export function CapabilityList({ items }: { items: string[] }) {
 /** Data-only metric rail. Callers keep ownership of aggregation and labels. */
 export function MetricStrip({ items, className = "" }: { items: Array<{ id?: string; label: ReactNode; value: ReactNode; detail: ReactNode; tone?: "default" | "attention" }>; className?: string }) {
   return (
-    <div className={`os-metric-strip ${className}`.trim()}>
+    <div className={`metrics os-metric-strip ${className}`.trim()}>
       {items.map((item, index) => (
-        <div className="os-metric-strip-item" data-tone={item.tone ?? "default"} key={item.id ?? index}>
-          <span>{item.label}</span>
-          <strong>{item.value}</strong>
-          <small>{item.detail}</small>
+        <div className={`metric os-metric-strip-item${item.tone === "attention" ? " attn-v" : ""}`} data-tone={item.tone ?? "default"} key={item.id ?? index}>
+          <span className="k">{item.label}</span>
+          <div className="v"><strong>{item.value}</strong></div>
+          <div className="n">{item.detail}</div>
         </div>
       ))}
     </div>
@@ -79,16 +85,24 @@ export function MetricStrip({ items, className = "" }: { items: Array<{ id?: str
 export function LoopRail({ stages, current, className = "" }: { stages: ReadonlyArray<{ label: string; detail?: string }>; current?: string; className?: string }) {
   const activeIndex = current ? stages.findIndex((stage) => stage.label === current) : -1;
   return (
-    <ol className={`os-loop-rail ${className}`.trim()}>
+    <div className={`loop os-loop-rail ${className}`.trim()}>
       {stages.map((stage, index) => {
-        const state = activeIndex < 0 ? "next" : index < activeIndex ? "done" : index === activeIndex ? "current" : "next";
-        return <li data-state={state} key={stage.label}><span aria-hidden="true" /><strong>{stage.label}</strong>{stage.detail && <small>{stage.detail}</small>}</li>;
+        const state = activeIndex < 0 ? "next" : index < activeIndex ? "done" : index === activeIndex ? "now" : "next";
+        return (
+          <Fragment key={stage.label}>
+            <span className={`st ${state}`} title={stage.detail}>
+              <i />
+              <span>{stage.label}</span>
+            </span>
+            {index < stages.length - 1 && <span className="ln" />}
+          </Fragment>
+        );
       })}
-    </ol>
+    </div>
   );
 }
 
 /** Compact definition-list pattern for capability-first product surfaces. */
 export function CapabilityDefinitionList({ items }: { items: Array<{ label: string; value: ReactNode }> }) {
-  return <dl className="os-capability-definition-list">{items.map((item) => <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>;
+  return <dl className="kv os-capability-definition-list">{items.map((item) => <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>;
 }

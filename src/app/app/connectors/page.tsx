@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useOS } from "@/lib/os/app-provider";
+import { MetricStrip, PageHeader } from "@/components/product-ui/page-primitives";
 import { LinkIcon, PlusIcon, XIcon } from "@/components/dashboard/icons";
 import type { Connector } from "@/lib/os/types";
 import { UsageBanner } from "@/components/upgrade-prompt";
@@ -962,35 +963,27 @@ export default function ConnectorsPage() {
 
   return (
     <div className="os-page connectors-page">
-      <div className="os-page-head">
-        <div>
-          <span className="os-greet">Auterim workspace</span>
-          <h1>Connect your business</h1>
-          <div className="os-page-sub">
-            Connect your systems. See what your operators can do.
-          </div>
-          {isPreview && (
-            <div style={{ marginTop: 8, color: "#9DEFEA", fontSize: 12.5 }}>
-              Preview connections use sample data. Choose a plan to connect real accounts.
-            </div>
-          )}
-        </div>
-        <div className="os-page-actions">
-          {atConnectorLimit ? (
-            <Link
-              href="/plans"
-              className="btn btn-sm"
-              style={{ background: "rgba(77,232,225,0.08)", color: "#4DE8E1", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.22)" }}
-            >
-              <PlusIcon size={12} /> Upgrade to add more
-            </Link>
-          ) : (
-            <button className="btn btn-primary btn-sm" onClick={() => { setAddOpen(true); setSetupConnectorId(null); setSearch(""); setDiscoveryCategory("all"); }}>
-              <PlusIcon size={12} /> Add connector
-            </button>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Auterim workspace"
+        title="Connectors"
+        description={`Connect your systems. See what your operators can do.${isPreview ? " Preview connections use sample data. Choose a plan to connect real accounts." : ""}`}
+        actions={atConnectorLimit ? (
+          <Link href="/plans" className="btn btn-sm" style={{ background: "rgba(77,232,225,0.08)", color: "#4DE8E1", boxShadow: "inset 0 0 0 1px rgba(77,232,225,0.22)", textDecoration: "none" }}>
+            <PlusIcon size={12} /> Upgrade to add more
+          </Link>
+        ) : (
+          <button className="btn btn-primary btn-sm" onClick={() => { setAddOpen(true); setSetupConnectorId(null); setSearch(""); setDiscoveryCategory("all"); }}>
+            <PlusIcon size={12} /> Add connector
+          </button>
+        )}
+      />
+
+      <MetricStrip items={[
+        { label: "Connected", value: realConnectedCount, detail: connectorLimit !== null ? `of ${connectorLimit} on ${planLabel}` : "systems" },
+        { label: "Healthy", value: healthyCount, detail: "of connected systems" },
+        { label: "Live capabilities", value: whatAuterimCanDoNow.length, detail: "things operators can do now" },
+        { label: "Suggested workflows", value: suggestedWorkflows.length, detail: "ready to set up" },
+      ]} />
 
       {connectorLimit !== null && (
         <UsageBanner used={realConnectedCount} max={connectorLimit} label="connectors" planLabel={planLabel} />
@@ -1112,111 +1105,106 @@ export default function ConnectorsPage() {
       )}
 
       {/* Connected tools */}
-      <div className="p connectors-list" style={{ borderRadius: 16 }}>
-        <div className="p-head">
-          <h3><LinkIcon size={13} /> Connected tools</h3>
-          <div className="p-meta">
+      <div className="card">
+        <div className="card-head">
+          <div className="t-section"><LinkIcon size={13} /> Connected</div>
+          <span className="t-meta">
             {realConnectedCount > 0 ? <><span className="dot dot-green" /> {healthyCount}/{realConnectedCount} healthy</> : "None yet"}
-          </div>
+          </span>
         </div>
         {realConnectedConnectors.length === 0 ? (
-          <div className="os-empty-state">
-            <div style={{ color: "var(--text)", fontSize: 17, fontWeight: 600, marginBottom: 7 }}>Connect your first business tool</div>
-            <div style={{ marginBottom: 18 }}>Add the systems Auterim should understand and work with.</div>
+          <div className="card-pad">
+            <div className="t-object" style={{ marginBottom: 7 }}>Connect your first business tool</div>
+            <p className="t-meta" style={{ margin: "0 0 18px" }}>Add the systems Auterim should understand and work with.</p>
             <button className="btn btn-primary btn-sm" onClick={() => { setAddOpen(true); setSetupConnectorId(null); setSearch(""); setDiscoveryCategory("all"); }}><PlusIcon size={12} /> Add connector</button>
           </div>
         ) : (
-          <>
-            <div style={{ display: "none" }}>
-              <div />
-              <div>Connector</div>
-              <div>Purpose</div>
-              <div>Setup</div>
-              <div>Last checked</div>
-              <div>Manage</div>
-            </div>
-            {realConnectedConnectors.map((c) => (
-              <button
-                key={c.id}
-                className="connector-list-row"
-                onClick={() => setDrawerConnectorId(c.id)}
-                style={{ width: "100%", textAlign: "left", border: "none", background: "none", borderBottom: "1px solid var(--line)", padding: "17px 18px", display: "grid", gridTemplateColumns: "40px 1fr auto", alignItems: "center", gap: 14, cursor: "pointer" }}
-              >
-                <div className="connector-brand-logo" style={{ width: 34, height: 34, borderRadius: 10 }}>
-                  {IntegrationLogos[c.name] ?? <span style={{ color: c.color, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{c.letter}</span>}
+          <div className="rows">
+            {realConnectedConnectors.map((c) => {
+              const rowState = connectorDiscoveryState(c);
+              return (
+                <div className="row link" key={c.id} role="button" tabIndex={0} onClick={() => setDrawerConnectorId(c.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setDrawerConnectorId(c.id); } }}>
+                  <span className="cn">
+                    <span className="cn-mark lg" style={{ color: c.color }}>{IntegrationLogos[c.name] ?? c.letter}</span>
+                    <span className="nm"><b>{c.name}</b><span>{connectorCapabilities(c.id)[0]}</span></span>
+                  </span>
+                  <span className="rt">
+                    <span className="inline"><span className={`dot ${c.health === "healthy" ? "dot-green" : "dot-amber"}`} />
+                      <span className="t-meta">{rowState.status}</span>
+                    </span>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={(event) => { event.stopPropagation(); setDrawerConnectorId(c.id); }}>{rowState.action === "Connect" ? "Manage" : rowState.action}</button>
+                  </span>
                 </div>
-                <div className="connector-list-copy">
-                  <div style={{ fontSize: 13.5, fontWeight: 500 }}>{c.name}</div>
-                  <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>{connectorCapabilities(c.id)[0]}</div>
-                </div>
-                <div className="connector-manage">Manage</div>
-              </button>
-            ))}
-          </>
+              );
+            })}
+          </div>
         )}
       </div>
 
       {/* Add connector modal */}
       {addOpen && (
-        <div className="os-modal-backdrop" onClick={() => { setAddOpen(false); setSetupConnectorId(null); }}>
-          <div className={`os-modal ${!setupConnector ? "connector-finder-modal" : ""}`} style={{ width: "min(820px, 94vw)", maxHeight: "88vh", overflow: setupConnector ? "auto" : "hidden" }} onClick={(e) => e.stopPropagation()}>
+        <div className="scrim" onClick={() => { setAddOpen(false); setSetupConnectorId(null); }}>
+          <div className="modal wide" onClick={(e) => e.stopPropagation()}>
             {!setupConnector ? (
               <>
-                <div className="os-modal-head">
-                  <h3>Find a connector</h3>
-                  <button type="button" className="os-iconbtn connector-finder-close" aria-label="Close connector finder" onClick={() => setAddOpen(false)}><XIcon size={15} /></button>
+                <div className="modal-head">
+                  <div className="tt">
+                    <h3>Find a connector</h3>
+                    <p>Choose the systems that give your workforce more context and useful actions.</p>
+                  </div>
+                  <button type="button" className="btn btn-icon btn-ghost" aria-label="Close connector finder" onClick={() => setAddOpen(false)}><XIcon size={15} /></button>
                 </div>
-                <div className="connector-finder-intro">Choose the systems that give your workforce more context and useful actions.</div>
-                <div className="connector-finder-body">
-                  <div className="connector-finder-controls">
-                    <input className="os-input" placeholder="Search systems…" aria-label="Search connector systems" value={search} onChange={(e) => setSearch(e.target.value)} />
-                    <label className="connector-finder-category"><span className="sr-only">Connector category</span><select className="os-input" aria-label="Connector category" value={discoveryCategory} onChange={(event) => setDiscoveryCategory(event.target.value as ConnectorDiscoveryCategory)}>{CONNECTOR_DISCOVERY_CATEGORIES.map((category) => <option key={category.key} value={category.key}>{category.label}</option>)}</select></label>
+                <div className="modal-body">
+                  <div className="inline" style={{ marginBottom: 16 }}>
+                    <span className="search" style={{ flex: 1 }}>
+                      <input placeholder="Search systems…" aria-label="Search connector systems" value={search} onChange={(e) => setSearch(e.target.value)} />
+                    </span>
+                    <label><span className="sr-only">Connector category</span><select className="select" aria-label="Connector category" value={discoveryCategory} onChange={(event) => setDiscoveryCategory(event.target.value as ConnectorDiscoveryCategory)}>{CONNECTOR_DISCOVERY_CATEGORIES.map((category) => <option key={category.key} value={category.key}>{category.label}</option>)}</select></label>
                   </div>
                   {prioritizedAvailable.length > 0 ? (
                     // Already-connected systems are grouped and labelled apart from
-                    // the ones still available. In a single flat grid a connected
+                    // the ones still available. In a single flat list a connected
                     // provider carries the same weight as ten unconnected ones,
                     // which is what made this read as a pile of boxes.
-                    <div className="connector-finder-results" aria-label="Connector results">
+                    <div className="stack" aria-label="Connector results">
                       {([
                         ["Connected", prioritizedAvailable.filter((c) => isRealConnectedConnector(c))],
                         ["Available", prioritizedAvailable.filter((c) => !isRealConnectedConnector(c))],
                       ] as const).filter(([, group]) => group.length > 0).map(([groupLabel, group]) => (
-                        <section className="connector-finder-group" data-group={groupLabel.toLowerCase()} key={groupLabel}>
-                          <h4 className="connector-finder-group-label">{groupLabel}<span>{group.length}</span></h4>
-                          <div className="connector-finder-grid">
+                        <div key={groupLabel}>
+                          <div className="sec-head" style={{ marginBottom: 6 }}><span className="t-eyebrow">{groupLabel}</span><span className="t-meta">{group.length}</span></div>
+                          <div className="rows">
                             {group.map((c) => {
                               const connectorKey = normalizeConnectorKey(c.id);
                               const definition = getConnectorDefinition(connectorKey);
                               const discoveryState = connectorDiscoveryState(c);
                               const operators = connectorOperatorNames(connectorKey).map(shortOperatorLabel);
                               return (
-                                <button className="connector-finder-card" data-connected={isRealConnectedConnector(c) || undefined} key={c.id} onClick={() => { if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); }}>
-                                  <div className="connector-finder-card-head">
-                                    <div className="connector-brand-logo" style={{ width: 30, height: 30, borderRadius: 9 }}>{IntegrationLogos[c.name] ?? <span style={{ color: c.color, fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{c.letter}</span>}</div>
-                                    <div><strong>{c.name}</strong><span>{definition ? connectorCategoryLabel(definition) : CONNECTOR_CATEGORY_LABELS.custom_api}</span></div>
-                                  </div>
-                                  <p>{connectorCapabilities(connectorKey)[0] ?? "Useful workspace context"}</p>
-                                  {operators.length > 0 && <small>Useful for {operators.join(" · ")}</small>}
-                                  <div className="connector-finder-card-foot" style={{ color: discoveryState.color }}><span>{discoveryState.status}</span><span>{discoveryState.action} →</span></div>
-                                </button>
+                                <div className="row link" key={c.id} role="button" tabIndex={0} onClick={() => { if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); } }}>
+                                  <span className="cn">
+                                    <span className="cn-mark" style={{ color: c.color }}>{IntegrationLogos[c.name] ?? c.letter}</span>
+                                    <span className="nm"><b>{c.name}</b><span>{definition ? connectorCategoryLabel(definition) : CONNECTOR_CATEGORY_LABELS.custom_api} · {connectorCapabilities(connectorKey)[0] ?? "Useful workspace context"}{operators.length > 0 ? ` · Useful for ${operators.join(" · ")}` : ""}</span></span>
+                                  </span>
+                                  <span className="rt"><span className="t-meta" style={{ color: discoveryState.color }}>{discoveryState.status}</span><span className="badge cyan">{discoveryState.action}</span></span>
+                                </div>
                               );
                             })}
                           </div>
-                        </section>
+                        </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="os-empty-state" style={{ padding: "24px 16px" }}>No live connectors match this search.</div>
+                    <div className="card-pad"><p className="t-meta" style={{ margin: 0 }}>No live connectors match this search.</p></div>
                   )}
                 </div>
               </>
             ) : (
               <>
-                <div className="os-modal-head">
-                  <h3>Setup connector</h3>
-                  <button className="appr-btn deny" onClick={() => setSetupConnectorId(null)}>Back</button>
+                <div className="modal-head">
+                  <div className="tt"><h3>Setup connector</h3></div>
+                  <button className="btn btn-ghost btn-sm" onClick={() => setSetupConnectorId(null)}>Back</button>
                 </div>
+                <div className="modal-body">
                 <ConnectorSetupView connector={setupConnector} isRealConnected={false} isPreview={isPreview} />
                 {setupConnector.id === "gmail" && (
                   <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>Connect securely with Google</div>
@@ -1230,14 +1218,15 @@ export default function ConnectorsPage() {
                   </div>
                 )}
                 {setupConnector.id === "zendesk" && (
-                  <div style={{ display: "grid", gap: 7, marginTop: 8 }}>
-                    <label style={{ fontSize: 11.5, color: "var(--text-mute)" }} htmlFor="zendesk-subdomain">Zendesk workspace</label>
-                    <input id="zendesk-subdomain" className="os-input" placeholder="yourcompany.zendesk.com" value={zendeskSubdomain} onChange={(event) => { setZendeskSubdomain(event.target.value); setZendeskSetupError(""); }} />
-                    <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>Use the standard *.zendesk.com workspace hostname. Auterim validates it before redirecting to Zendesk.</div>
+                  <div className="field" style={{ marginTop: 8 }}>
+                    <label className="label" htmlFor="zendesk-subdomain">Zendesk workspace</label>
+                    <input id="zendesk-subdomain" className="input" placeholder="yourcompany.zendesk.com" value={zendeskSubdomain} onChange={(event) => { setZendeskSubdomain(event.target.value); setZendeskSetupError(""); }} />
+                    <div className="hint">Use the standard *.zendesk.com workspace hostname. Auterim validates it before redirecting to Zendesk.</div>
                     {zendeskSetupError && <div style={{ fontSize: 11.5, color: "#ffaaaa" }}>{zendeskSetupError}</div>}
                   </div>
                 )}
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+                </div>
+                <div className="modal-foot">
                   <button className="btn btn-ghost btn-sm" onClick={() => setSetupConnectorId(null)}>Cancel</button>
                   {isConnectorAvailableForAuth(normalizeConnectorKey(setupConnector.id)) ? (
                     <button className="btn btn-primary btn-sm" onClick={() => {

@@ -2,13 +2,11 @@
 
 import Link from "next/link";
 import { OSModal } from "@/components/dashboard/modal";
-import { openFeedback } from "@/components/dashboard/feedback-dialog";
-import { openSupport } from "@/components/dashboard/support-dialog";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useOS } from "@/lib/os/app-provider";
-import { visibleNavigationSections, isAppNavigationActive, mobileMoreSections, type AppNavigationAction, type AppNavigationIcon } from "@/lib/app-navigation";
+import { visibleNavigationSections, isAppNavigationActive, mobileMoreSections, type AppNavigationIcon } from "@/lib/app-navigation";
 import { normalizeWorkspaceRole } from "@/lib/workspace-permissions";
 import { saveProfileSettings } from "@/app/app/profile/actions";
 import {
@@ -60,10 +58,6 @@ export function OSSidebar() {
     || draft.dashboard.viewMode !== state.dashboard.viewMode
   ), [draft, state]);
 
-  const runNavigationAction = (action: AppNavigationAction) => {
-    if (action === "support") openSupport();
-    if (action === "feedback") openFeedback();
-  };
   const avatarStyle = state.currentUser.avatarUrl ? { backgroundImage: `url(${state.currentUser.avatarUrl})`, backgroundSize: "cover", backgroundPosition: "center", color: "transparent" } : undefined;
 
   const uploadAvatar = async (file: File | undefined) => {
@@ -97,53 +91,56 @@ export function OSSidebar() {
         <span>AUTERIM</span>
       </Link>
 
-      <div className="os-side-ws">
-        <div className="os-side-ws-mark" style={state.workspace.logoUrl ? { backgroundImage: `url(${state.workspace.logoUrl})` } : undefined}>
-          {!state.workspace.logoUrl && state.workspace.name.charAt(0)}
+      <div className="rail-top">
+        <div className="ws">
+          <div className="ws-mark" style={state.workspace.logoUrl ? { backgroundImage: `url(${state.workspace.logoUrl})` } : undefined}>
+            {!state.workspace.logoUrl && state.workspace.name.charAt(0)}
+          </div>
+          <span className="ws-txt">
+            <b>{state.workspace.name}</b>
+            <i>{state.workspace.environment}</i>
+          </span>
+          <span className="ws-caret"><SwapIcon size={12} /></span>
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="os-side-ws-name">{state.workspace.name}</div>
-          <div className="os-side-ws-sub">{state.workspace.environment}</div>
-        </div>
-        <SwapIcon size={12} style={{ color: "var(--text-mute)" }} />
       </div>
 
-      <nav className="os-side-nav" aria-label="App navigation">
+      <nav className="rail-scroll" aria-label="App navigation">
         {navigationSections.map((section) => (
           <section className="os-side-section" data-nav-section={section.label.toLowerCase()} key={section.label}>
-            <div className="os-side-label">{section.label}</div>
+            <div className="nav-k">{section.label}</div>
             {section.items.map((item) => {
               const Icon = NAVIGATION_ICONS[item.icon];
               const active = Boolean(item.href && isAppNavigationActive(pathname, item.href));
               const badge = item.badge === "pendingApprovals" && pendingApprovals > 0 ? String(pendingApprovals) : undefined;
-              const content = <><span className="ico"><Icon size={14} /></span><span>{item.label}</span>{badge && <span className="badge">{badge}</span>}</>;
-              return item.href
-                ? <Link key={item.id} href={item.href} data-nav-item={item.id} className={`os-nav${active ? " active" : ""}`} aria-current={active ? "page" : undefined}>{content}</Link>
-                : <button key={item.id} type="button" data-nav-item={item.id} className={`os-nav os-nav-utility${item.id === "support" ? " is-primary-utility" : ""}`} onClick={() => runNavigationAction(item.action!)}>{content}</button>;
+              const content = <><span className="ico"><Icon size={14} /></span><span>{item.label}</span>{badge && <span className="count">{badge}</span>}</>;
+              const utilityClass = item.id === "feedback" ? " os-nav-utility" : item.id === "support" ? " os-nav-utility is-primary-utility" : "";
+              return <Link key={item.id} href={item.href} data-nav-item={item.id} className={`nav-i${utilityClass}${active ? " active" : ""}`} aria-current={active ? "page" : undefined}>{content}</Link>;
             })}
           </section>
         ))}
       </nav>
 
-      <button className="os-side-bottom" style={{ border: "none", width: "100%", background: "transparent", cursor: "pointer", textAlign: "left" }} onClick={() => {
-        setDraft({
-          name: state.currentUser.name,
-          email: state.currentUser.email,
-          roleLabel: state.currentUser.roleLabel,
-          notifications: { ...state.currentUser.notifications },
-          dashboard: { ...state.dashboard },
-        });
-        setProfileTab("profile");
-        setProfileFeedback("");
-        setProfileOpen(true);
-      }}>
-        <div className="os-avatar" style={avatarStyle}>{state.currentUser.initials}</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 500 }}>{state.currentUser.name}</div>
-          <div style={{ fontSize: 10.5, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>{state.currentUser.roleLabel}</div>
-        </div>
-        <SettingsIcon size={13} style={{ color: "var(--text-mute)" }} />
-      </button>
+      <div className="rail-foot">
+        <button className="me" type="button" onClick={() => {
+          setDraft({
+            name: state.currentUser.name,
+            email: state.currentUser.email,
+            roleLabel: state.currentUser.roleLabel,
+            notifications: { ...state.currentUser.notifications },
+            dashboard: { ...state.dashboard },
+          });
+          setProfileTab("profile");
+          setProfileFeedback("");
+          setProfileOpen(true);
+        }}>
+          <div className="os-avatar" style={avatarStyle}>{state.currentUser.initials}</div>
+          <span className="nm">
+            <b>{state.currentUser.name}</b>
+            <i>{state.currentUser.roleLabel}</i>
+          </span>
+          <SettingsIcon size={13} style={{ color: "var(--text-mute)", flexShrink: 0 }} />
+        </button>
+      </div>
 
       {profileOpen && (
         <OSModal label="Profile settings" onClose={() => setProfileOpen(false)}>
@@ -276,11 +273,6 @@ export function OSMobileNav() {
   const sheetTouchStartY = useRef<number | null>(null);
   const primary = navigationSections[0]?.items.filter((item) => item.mobilePrimary) ?? [];
   const groups = mobileMoreSections(currentRole);
-  const runNavigationAction = (action: AppNavigationAction) => {
-    setOpen(false);
-    if (action === "support") openSupport();
-    if (action === "feedback") openFeedback();
-  };
 
   useEffect(() => {
     if (!open) return;
@@ -334,9 +326,7 @@ export function OSMobileNav() {
                       const Icon = NAVIGATION_ICONS[item.icon];
                       const active = Boolean(item.href && isAppNavigationActive(pathname, item.href));
                       const content = <><span><Icon size={17} /></span><strong>{item.label}</strong><i aria-hidden="true">›</i></>;
-                      return item.href
-                        ? <Link key={item.id} href={item.href} data-nav-item={item.id} className={active ? "active" : ""} aria-current={active ? "page" : undefined} onClick={() => setOpen(false)}>{content}</Link>
-                        : <button key={item.id} type="button" data-nav-item={item.id} className="os-mobile-menu-feedback" onClick={() => runNavigationAction(item.action!)}>{content}</button>;
+                      return <Link key={item.id} href={item.href} data-nav-item={item.id} className={active ? "active" : ""} aria-current={active ? "page" : undefined} onClick={() => setOpen(false)}>{content}</Link>;
                     })}
                   </div>
                 </section>

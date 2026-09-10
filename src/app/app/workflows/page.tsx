@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import type { WorkflowPresentation } from "@/lib/workflows/presentation";
+import type { WorkflowPresentation, WorkflowStepPresentation } from "@/lib/workflows/presentation";
 import { EmptyState, LoopRail, MetricStrip, PageHeader } from "@/components/product-ui/page-primitives";
 import { useOS } from "@/lib/os/app-provider";
 import { getRealConnectedConnectors } from "@/lib/os/truth";
+
+const LOOP_STAGES = [["Detect", "Meaningful change found"], ["Prepare", "Response assembled"], ["Approve", "Human review"], ["Execute", "Action taken"], ["Measure", "Outcome observed"]] as const;
 
 function relativeTime(value: string) {
   const minutes = Math.floor(Math.max(0, Date.now() - new Date(value).getTime()) / 60000);
@@ -16,7 +18,20 @@ function relativeTime(value: string) {
   return `${Math.floor(minutes / 1440)}d ago`;
 }
 function label(value: string) { return value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }
-function color(status: string) { return status === "completed" ? "var(--green)" : status === "blocked" || status === "failed" ? "var(--rose)" : status.includes("approval") || status === "planned" ? "var(--amber)" : "var(--cyan)"; }
+function badgeTone(status: string): "green" | "red" | "amber" | "cyan" {
+  if (status === "completed") return "green";
+  if (status === "blocked" || status === "failed") return "red";
+  if (status.includes("approval") || status === "planned") return "amber";
+  return "cyan";
+}
+/** Maps the real workflow status onto the fixed Detect/Prepare/Approve/Execute/Measure loop for LoopRail. */
+function loopStageForStatus(status: string): string {
+  if (["completed", "partially_completed"].includes(status)) return "Measure";
+  if (status === "executing") return "Execute";
+  if (["awaiting_approval", "partially_approved"].includes(status)) return "Approve";
+  if (["blocked", "failed"].includes(status)) return "Execute";
+  return "Prepare";
+}
 
 export default function WorkflowsPage() {
   const { state } = useOS();
@@ -41,15 +56,18 @@ export default function WorkflowsPage() {
   const waiting = workflows.filter((workflow) => workflow.steps.some((step) => step.status === "awaiting_approval" || (step.approvalRequired && step.status === "proposed"))).length;
   return <div className="os-page workflows-page">
     <PageHeader eyebrow="Coordinated work" title="Workflows" description="The plans Auterim is handling across your connected systems. You stay in control of every consequential action." actions={<Link href="/app/approvals" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>Review approvals</Link>} />
-    {error && <div role="alert" className="p" style={{ padding: "12px 14px", color: "var(--rose)" }}>{error} <button className="btn btn-ghost btn-sm" onClick={() => void load()} style={{ marginLeft: 8 }}>Retry</button></div>}
-    {loading ? <div className="p" style={{ padding: 20, color: "var(--text-mute)" }}>Loading real workflow activity…</div> : workflows.length === 0 ? <EmptyWorkflows connectedSystemCount={getRealConnectedConnectors(state.connectors).length} hasActiveOperator={state.agents.some((agent) => agent.status === "running")} /> : <>
+    {error && <div role="alert" className="attn crit" style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}><span className="t-compact">{error}</span><button className="btn btn-ghost btn-sm" onClick={() => void load()}>Retry</button></div>}
+    {loading ? <div className="t-meta" style={{ padding: 20 }}>Loading real workflow activity…</div> : workflows.length === 0 ? <EmptyWorkflows connectedSystemCount={getRealConnectedConnectors(state.connectors).length} hasActiveOperator={state.agents.some((agent) => agent.status === "running")} /> : <>
       <MetricStrip className="workflow-metric-strip" items={[
         { label: "Open workflows", value: active, detail: "Need attention or are moving forward" },
         { label: "Ready for review", value: waiting, detail: "Have a safe next action prepared" },
         { label: "Observed outcomes", value: workflows.reduce((sum, workflow) => sum + workflow.outcomes.length, 0), detail: "Evidence recorded after work completed" },
       ]} />
-      <div style={{ display: "grid", gridTemplateColumns: selected ? "minmax(0, 1fr) minmax(340px, .86fr)" : "minmax(0, 1fr)", gap: 14, alignItems: "start" }}>
-        <section className="p" style={{ padding: 0, overflow: "hidden" }}><div className="p-head"><div><h3>Active and recent work</h3><div className="p-meta" style={{ marginTop: 3 }}>Each row is a real plan assembled from a connected-system signal.</div></div></div><div>{workflows.map((workflow) => <WorkflowRow key={workflow.id} workflow={workflow} selected={selectedId === workflow.id} onSelect={() => setSelectedId(workflow.id)} />)}</div></section>
+      <div className={selected ? "sec split" : "sec"}>
+        <div className="card">
+          <div className="card-head"><div className="t-section">Open workflows</div><span className="t-meta">Each row is a real plan assembled from a connected-system signal.</span></div>
+          <div className="rows">{workflows.map((workflow) => <WorkflowRow key={workflow.id} workflow={workflow} selected={selectedId === workflow.id} onSelect={() => setSelectedId(workflow.id)} />)}</div>
+        </div>
         {selected && <WorkflowDetail workflow={selected} onClose={() => setSelectedId(null)} />}
       </div>
     </>}
@@ -57,52 +75,144 @@ export default function WorkflowsPage() {
 }
 
 function EmptyWorkflows({ connectedSystemCount, hasActiveOperator }: { connectedSystemCount: number; hasActiveOperator: boolean }) {
-  const stages = [["Detect", "Meaningful change found"], ["Prepare", "Response assembled"], ["Approve", "Human review"], ["Execute", "Action taken"], ["Measure", "Outcome observed"]] as const;
   const noConnectedSystems = connectedSystemCount === 0;
   // One truthful state drives the status line, the description and the single
   // call to action together -- never a CTA that contradicts the status.
-  const state = noConnectedSystems
-    ? { tone: "idle" as const, status: "No systems connected", description: "Connect a system so an operator can detect meaningful work and coordinate the next safe steps.", action: { href: "/app/connectors", label: "Connect a system" } }
+  const workflowState = noConnectedSystems
+    ? { tone: "muted" as const, status: "No systems connected", description: "Connect a system so an operator can detect meaningful work and coordinate the next safe steps.", action: { href: "/app/connectors", label: "Connect a system" } }
     : hasActiveOperator
-      ? { tone: "live" as const, status: "Operators monitoring", description: "Your operators are monitoring. Coordinated work will appear here when action is needed.", action: null }
-      : { tone: "waiting" as const, status: "Waiting for an operator", description: "When an operator detects something that needs coordinated action, the plan will appear here.", action: { href: "/app/agents", label: "Activate an operator" } };
-  return <section className="workflows-page-empty workflow-empty-workspace" aria-label="Workflow workspace is empty">
-    <header className="workflow-empty-head">
-      <span className="workflow-empty-kicker">Workflow workspace</span>
-      <span className={`workflow-empty-state tone-${state.tone}`}><i aria-hidden />{state.status}</span>
-    </header>
-    <div className="workflow-empty-copy">
-      <EmptyState title="No workflows in progress">{state.description}</EmptyState>
+      ? { tone: "green" as const, status: "Operators monitoring", description: "Your operators are monitoring. Coordinated work will appear here when action is needed.", action: null }
+      : { tone: "amber" as const, status: "Waiting for an operator", description: "When an operator detects something that needs coordinated action, the plan will appear here.", action: { href: "/app/agents", label: "Activate an operator" } };
+  return <section className="stack" aria-label="Workflow workspace is empty">
+    <div className="inline" style={{ justifyContent: "space-between" }}>
+      <span className="t-eyebrow">Workflow workspace</span>
+      <span className={`badge ${workflowState.tone}`}>{workflowState.status}</span>
     </div>
-    <LoopRail className="workflow-empty-lifecycle" stages={stages.map(([label, detail]) => ({ label, detail }))} />
-    <footer className="workflow-empty-foot">
-      <p>Workflows bring together context, approvals, execution, and outcome tracking.</p>
-      {state.action && <Link href={state.action.href} className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>{state.action.label}</Link>}
-    </footer>
+    <EmptyState title="No workflows in progress" action={workflowState.action ? <Link href={workflowState.action.href} className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>{workflowState.action.label}</Link> : undefined}>
+      {workflowState.description}
+    </EmptyState>
+    <div className="panel card-pad">
+      <p className="t-meta" style={{ margin: "0 0 14px" }}>Workflows bring together context, approvals, execution, and outcome tracking.</p>
+      <LoopRail stages={LOOP_STAGES.map(([stageLabel, detail]) => ({ label: stageLabel, detail }))} />
+    </div>
   </section>;
 }
+
 function WorkflowRow({ workflow, selected, onSelect }: { workflow: WorkflowPresentation; selected: boolean; onSelect: () => void }) {
   const completed = workflow.steps.filter((step) => ["completed", "skipped"].includes(step.status)).length;
   const blocker = workflow.steps.find((step) => step.blocker)?.blocker ?? workflow.nextAttention;
-  return <button type="button" className="workflow-operational-row" data-selected={selected || undefined} onClick={onSelect}>
-    <span className="workflow-row-primary"><strong>{workflow.objective}</strong><small>{workflow.operatorName}{workflow.source ? ` · ${workflow.source.label}` : ""}</small></span>
-    <span className="workflow-row-meta"><small>Priority</small><strong>{label(workflow.priority)}</strong></span>
-    <span className="workflow-row-meta"><small>Progress</small><strong>{completed} of {workflow.steps.length}</strong></span>
-    <span className="workflow-row-attention"><small>{blocker ? "Next attention" : "Updated"}</small><strong>{blocker || relativeTime(workflow.createdAt)}</strong></span>
-    <span className="workflow-status" style={{ color: color(workflow.status) }}>{label(workflow.status)}</span>
-  </button>;
+  return <div className={`row link${selected ? " selected" : ""}`} role="button" tabIndex={0} aria-pressed={selected} onClick={onSelect} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect(); } }}>
+    <span className="grow"><span className="ttl">{workflow.objective}</span><span className="sub">{workflow.operatorName}{workflow.source ? ` · ${workflow.source.label}` : ""} · {blocker ? blocker : `Updated ${relativeTime(workflow.createdAt)}`}</span></span>
+    <span className="rt">
+      <span className="t-meta">{label(workflow.priority)}</span>
+      <span className="t-meta">{completed} of {workflow.steps.length}</span>
+      <span className={`badge ${badgeTone(workflow.status)}`}>{label(workflow.status)}</span>
+    </span>
+  </div>;
 }
 
 function WorkflowDetail({ workflow, onClose }: { workflow: WorkflowPresentation; onClose: () => void }) {
   const completed = workflow.steps.filter((step) => ["completed", "skipped"].includes(step.status)).length;
-  return <aside className="p workflow-detail" aria-label={`Workflow detail: ${workflow.objective}`}>
-    <div className="p-head workflow-detail-head"><div><span className="p-meta">Workflow detail</span><h3>{workflow.objective}</h3></div><button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button></div>
-    <div className="workflow-detail-body">
-      <dl className="workflow-facts"><div><dt>Owner</dt><dd>{workflow.operatorName}</dd></div><div><dt>Source</dt><dd>{workflow.source?.label ?? "Workspace signal"}</dd></div><div><dt>Priority</dt><dd>{label(workflow.priority)}</dd></div><div><dt>Progress</dt><dd>{completed} of {workflow.steps.length} steps</dd></div></dl>
-      <section className="workflow-detail-section"><h4>Why this started</h4><p>{workflow.whyStarted.length ? workflow.whyStarted.join(" ") : "Auterim identified a meaningful signal and prepared the next safe steps."}</p>{workflow.source?.detail && <small>{workflow.source.detail}</small>}</section>
-      <section className="workflow-next-attention"><span>Next attention</span><strong>{workflow.nextAttention}</strong></section>
-      <section className="workflow-detail-section"><h4>Prepared response plan</h4><ol className="workflow-step-list">{workflow.steps.length ? workflow.steps.map((step) => <li key={step.id} data-status={step.status}><span>{step.order}</span><div><strong>{step.label}</strong><small>{step.destination} · {label(step.status)}</small>{step.blocker && <em>{step.blocker}</em>}{step.approvalId && <Link href="/app/approvals">Open approval</Link>}</div></li>) : <li className="workflow-no-steps">No steps have been recorded for this workflow.</li>}</ol></section>
-      <section className="workflow-detail-section"><h4>Outcome evidence</h4>{workflow.outcomes.length ? <ul className="workflow-outcomes">{workflow.outcomes.map((outcome) => <li key={outcome.id}><strong>{outcome.label}</strong><small>{outcome.attribution} · {relativeTime(outcome.observedAt)}</small></li>)}</ul> : <p>No outcome has been observed yet. Evidence appears after a connected system confirms it.</p>}</section>
+  const firstIncompleteStep = workflow.steps.find((step) => !["completed", "skipped"].includes(step.status));
+  const stepState = (step: WorkflowStepPresentation): "done" | "now" | "next" => {
+    if (["completed", "skipped"].includes(step.status)) return "done";
+    return step.id === firstIncompleteStep?.id ? "now" : "next";
+  };
+  const approvalStep = workflow.steps.find((step) => step.status === "awaiting_approval" || (step.approvalRequired && step.status === "proposed"));
+  const blockedSteps = workflow.steps.filter((step) => Boolean(step.blocker));
+  return <aside className="card workflow-detail" aria-label={`Workflow detail: ${workflow.objective}`}>
+    <div className="card-head workflow-detail-head">
+      <div>
+        <span className="t-meta">Workflow detail</span>
+        <div className="inline" style={{ marginTop: 4 }}><span className={`badge ${badgeTone(workflow.status)}`}>{label(workflow.status)}</span><span className="t-meta">{workflow.operatorName} · {relativeTime(workflow.createdAt)}</span></div>
+        <h3 className="t-section" style={{ marginTop: 8 }}>{workflow.objective}</h3>
+      </div>
+      <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
+    </div>
+    <div className="card-pad stack">
+      <div className="panel card-pad">
+        <LoopRail stages={LOOP_STAGES.map(([stageLabel, detail]) => ({ label: stageLabel, detail }))} current={loopStageForStatus(workflow.status)} />
+      </div>
+      <div className="split">
+        <div className="stack">
+          <div className="card">
+            <div className="card-head"><div className="t-section">Why this started</div></div>
+            <div className="card-pad">
+              <p className="t-compact" style={{ margin: 0 }}>{workflow.whyStarted.length ? workflow.whyStarted.join(" ") : "Auterim identified a meaningful signal and prepared the next safe steps."}</p>
+              <dl className="kv" style={{ marginTop: 14 }}>
+                <div><dt>Owner</dt><dd>{workflow.operatorName}</dd></div>
+                <div><dt>Source</dt><dd>{workflow.source?.label ?? "Workspace signal"}{workflow.source?.detail ? ` · ${workflow.source.detail}` : ""}</dd></div>
+                <div><dt>Priority</dt><dd>{label(workflow.priority)}</dd></div>
+                <div><dt>Progress</dt><dd>{completed} of {workflow.steps.length} steps</dd></div>
+              </dl>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-head"><div className="t-section">Plan</div><span className="t-meta">Prepared response steps</span></div>
+            <div className="rows">
+              {workflow.steps.length ? workflow.steps.map((step) => {
+                const dotState = stepState(step);
+                return <div className="row" key={step.id}>
+                  <span className={`dot${dotState === "done" ? " dot-green" : dotState === "now" ? " dot-amber" : ""}`} />
+                  <span className="grow">
+                    <span className="ttl">{step.label}</span>
+                    <span className="sub">{step.destination}{step.blocker ? ` · ${step.blocker}` : ""}</span>
+                  </span>
+                  <span className="rt">
+                    {step.approvalId && <Link className="btn btn-ghost btn-sm" href="/app/approvals">Open approval</Link>}
+                    <span className={`badge ${badgeTone(step.status)}`}>{label(step.status)}</span>
+                  </span>
+                </div>;
+              }) : <div className="row"><span className="t-meta">No steps have been recorded for this workflow.</span></div>}
+            </div>
+          </div>
+
+          {approvalStep && (
+            <section className="attn" role="status" style={{ padding: "16px 18px" }}>
+              <div className="t-object">Approval required</div>
+              <dl className="kv" style={{ marginTop: 12 }}>
+                <div><dt>Step</dt><dd>{approvalStep.label}</dd></div>
+                <div><dt>Destination</dt><dd>{approvalStep.destination}</dd></div>
+                <div><dt>Reason</dt><dd>{workflow.nextAttention}</dd></div>
+              </dl>
+              <div className="inline" style={{ marginTop: 14 }}><Link className="btn btn-primary btn-sm" href="/app/approvals" style={{ textDecoration: "none" }}>Review in approvals</Link></div>
+            </section>
+          )}
+        </div>
+
+        <div className="stack">
+          <div className="card">
+            <div className="card-head"><div className="t-section">Ownership</div></div>
+            <div className="rows">
+              <div className="row">
+                <span className="op-id">
+                  <span className="cn-mark lg" aria-hidden>{workflow.operatorName.slice(0, 2).toUpperCase()}</span>
+                  <span className="nm"><b>{workflow.operatorName}</b><span>Owns this workflow</span></span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {blockedSteps.length > 0 && (
+            <div className="card">
+              <div className="card-head"><div className="t-section">Blockers</div><span className="badge amber">{blockedSteps.length}</span></div>
+              <div className="rows">
+                {blockedSteps.map((step) => <div className="row" key={step.id}><span className="grow"><span className="ttl">{step.label}</span><span className="sub">{step.blocker}</span></span></div>)}
+              </div>
+            </div>
+          )}
+
+          <div className="card">
+            <div className="card-head"><div className="t-section">Observed outcome</div></div>
+            {workflow.outcomes.length ? (
+              <div className="rows">
+                {workflow.outcomes.map((outcome) => <div className="row" key={outcome.id}><span className="grow"><span className="ttl">{outcome.label}</span><span className="sub">{outcome.attribution} · {relativeTime(outcome.observedAt)}</span></span></div>)}
+              </div>
+            ) : <div className="card-pad"><p className="t-meta" style={{ margin: 0 }}>No outcome has been observed yet. Evidence appears after a connected system confirms it.</p></div>}
+          </div>
+        </div>
+      </div>
     </div>
   </aside>;
 }

@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import type { WorkforceActivityItem, WorkforceActivityPage } from "@/lib/activity/types";
+import { EmptyState } from "@/components/product-ui/page-primitives";
 
 type Range = "24h" | "7d" | "30d";
 type Filter = "workflow" | "operator_run" | "approval" | "execution" | "attention" | "failure";
@@ -15,6 +17,14 @@ const ranges: Array<{ key: Range; label: string }> = [{ key: "24h", label: "24H"
 
 function timeLabel(value: string) { return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(value)); }
 function routeLabel(item: WorkforceActivityItem) { return item.relatedRoute === "/approvals" ? "View approval" : item.relatedRoute === "/agents" ? "View operator" : item.relatedRoute?.startsWith("/workflows") ? "View workflow" : item.relatedRoute === "/connectors" ? "View connector" : item.relatedRoute === "/logs" ? "Technical details" : null; }
+function operatorLabel(key: string | null): string { return key ? key.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "Auterim system"; }
+function operatorInitials(key: string | null): string {
+  if (!key) return "A";
+  return key.split("_").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "A";
+}
+// No generic letter-avatar primitive exists in dashboard.css yet; this small
+// inline style is a stopgap until one is added there.
+const avatarStyle: CSSProperties = { width: 26, height: 26, borderRadius: "50%", flex: "none", display: "grid", placeItems: "center", fontSize: 10, fontWeight: 700, color: "var(--text-dim)", background: "rgba(255,255,255,.06)", boxShadow: "inset 0 0 0 1px var(--line)" };
 
 export default function ActivityPage() {
   const [range, setRange] = useState<Range>("7d");
@@ -48,13 +58,77 @@ export default function ActivityPage() {
   function toggleFilter(filter: Filter) { setSelectedFilters((current) => current.includes(filter) ? current.filter((item) => item !== filter) : [...current, filter]); setVisible(20); }
 
   return <div className="os-page activity-page">
-    <header className="os-page-head activity-page-head"><div><span className="os-greet">Workforce / activity</span><h1>Activity</h1><div className="os-page-sub">A clear history of what Auterim has seen, prepared, approved, and executed.</div></div><div className="os-page-actions activity-range-control">{ranges.map((item) => <button key={item.key} type="button" onClick={() => changeRange(item.key)} className={`appr-btn ${range === item.key ? "approve" : "edit"}`}>{item.label}</button>)}</div></header>
-    {summary && <section className="dashboard-metrics" aria-label={`Activity totals for the last ${range}`}><div className="dashboard-metric-grid">{[["Runs", summary.runs], ["Approvals", summary.approvals], ["Actions", summary.actions], ["Issues", summary.issues]].map(([label, value]) => <div className="dashboard-metric" key={String(label)} data-attention={label === "Issues" && Number(value) > 0 ? true : undefined}><span>{label}</span><strong>{Number(value)}</strong></div>)}</div></section>}
-    <section className="p activity-feed" aria-labelledby="activity-feed-title">
-      <div className="p-head activity-feed-head"><div className="activity-feed-heading"><h3 id="activity-feed-title">Workforce history</h3><span>{data ? data.summary.total === 0 ? "No events recorded in this window" : `${data.summary.total} event${data.summary.total === 1 ? "" : "s"} recorded in this window` : "Loading activity"}</span></div><div className="os-filter-wrap" ref={filterMenuRef}><button type="button" className="btn btn-ghost btn-sm os-filter-trigger" aria-expanded={filterOpen} aria-haspopup="menu" onClick={() => setFilterOpen((open) => !open)}>Filter{selectedFilters.length ? ` · ${selectedFilters.length}` : ""}<span className="os-caret" aria-hidden="true" /></button>{filterOpen && <div className="os-filter-popover" role="menu" aria-label="Filter activity"><div className="os-filter-popover-head"><span>Event type</span><button type="button" onClick={() => { setSelectedFilters([]); setVisible(20); }}>Clear</button></div>{filters.map((item) => <button type="button" role="menuitemcheckbox" aria-checked={selectedFilters.includes(item.key)} key={item.key} className="os-filter-option" onClick={() => toggleFilter(item.key)}><span className="os-filter-check" aria-hidden="true" />{item.label}</button>)}</div>}</div></div>
-      {error ? <div className="dashboard-telemetry-empty"><strong>Activity could not be loaded.</strong><span>{error}</span></div> : !data ? <div className="dashboard-telemetry-empty"><strong>Loading workforce activity…</strong></div> : items.length === 0 ? <div className="dashboard-telemetry-empty"><strong>{selectedFilters.length === 0 ? "No workforce activity yet." : "No matching activity in this window."}</strong><span>{selectedFilters.length === 0 ? "Once operators begin monitoring, preparing, approving, or executing work, their activity will appear here." : "Try another filter or time range."}</span>{selectedFilters.length === 0 && <Link className="btn btn-primary btn-sm" href="/agents" style={{ width: "fit-content", marginTop: 8 }}>Activate an operator</Link>}</div> : <ol className="activity-feed-list">{items.slice(0, visible).map((item) => { const action = routeLabel(item); return <li key={item.id} className="activity-feed-row"><time dateTime={item.occurredAt}>{timeLabel(item.occurredAt)}</time><div className="activity-feed-event"><div className="activity-feed-title"><strong>{item.title}</strong>{item.operatorKey && <span>{item.operatorKey.replace(/_/g, " ")}</span>}</div><p>{item.description}</p></div><span className={`activity-event-marker ${item.severity === "failure" ? "is-failure" : item.severity === "attention" ? "is-attention" : ""}`}>{item.category.replace(/_/g, " ")}</span>{action && item.relatedRoute ? <Link className="lnk-open" href={item.relatedRoute} aria-label={`${action}: ${item.title}`}>{action}</Link> : null}</li>; })}</ol>}
-      {data && items.length > visible && <div className="activity-feed-more"><button type="button" className="appr-btn edit" onClick={() => setVisible((count) => count + 20)}>Show more</button></div>}
-      {data?.hasMore && items.length <= visible && <div className="activity-feed-more activity-feed-note">Showing the most recent available activity for this window.</div>}
+    <header className="page-head">
+      <div>
+        <span className="t-eyebrow" style={{ display: "block", marginBottom: 8 }}>Workforce / activity</span>
+        <h1 className="t-title">Activity</h1>
+        <p className="t-sub">A clear history of what Auterim has seen, prepared, approved, and executed.</p>
+      </div>
+      <div className="acts">
+        <div className="seg">{ranges.map((item) => <button key={item.key} type="button" onClick={() => changeRange(item.key)} className={range === item.key ? "on" : ""}>{item.label}</button>)}</div>
+        <div className="os-filter-wrap" ref={filterMenuRef} style={{ position: "relative" }}>
+          <button type="button" className={`filter${filterOpen || selectedFilters.length ? " on" : ""}`} aria-expanded={filterOpen} aria-haspopup="menu" onClick={() => setFilterOpen((open) => !open)}>
+            Filter{selectedFilters.length > 0 && <span className="n">{selectedFilters.length}</span>}
+          </button>
+          {filterOpen && <div className="os-filter-popover" role="menu" aria-label="Filter activity"><div className="os-filter-popover-head"><span>Event type</span><button type="button" onClick={() => { setSelectedFilters([]); setVisible(20); }}>Clear</button></div>{filters.map((item) => <button type="button" role="menuitemcheckbox" aria-checked={selectedFilters.includes(item.key)} key={item.key} className="os-filter-option" onClick={() => toggleFilter(item.key)}><span className="os-filter-check" aria-hidden="true" />{item.label}</button>)}</div>}
+        </div>
+      </div>
+    </header>
+
+    {summary && (
+      <section className="sec panel card-pad inline" aria-label={`Activity totals for the last ${range}`} style={{ justifyContent: "flex-start", gap: 40 }}>
+        {[["Runs", summary.runs], ["Approvals", summary.approvals], ["Actions", summary.actions], ["Issues", summary.issues]].map(([label, value]) => (
+          <div key={String(label)}>
+            <div className="t-eyebrow">{label}</div>
+            <div className="t-num" style={label === "Issues" && Number(value) > 0 ? { color: "var(--amber)" } : undefined}>{Number(value)}</div>
+          </div>
+        ))}
+      </section>
+    )}
+
+    <section className="sec card activity-feed" aria-labelledby="activity-feed-title">
+      <div className="card-head">
+        <div>
+          <h3 className="t-section" id="activity-feed-title">Workforce history</h3>
+          <p className="t-meta" style={{ margin: "3px 0 0" }}>{data ? data.summary.total === 0 ? "No events recorded in this window" : `${data.summary.total} event${data.summary.total === 1 ? "" : "s"} recorded in this window` : "Loading activity"}</p>
+        </div>
+      </div>
+      {error ? (
+        <div className="card-pad"><EmptyState title="Activity could not be loaded.">{error}</EmptyState></div>
+      ) : !data ? (
+        <div className="card-pad t-compact dim">Loading workforce activity…</div>
+      ) : items.length === 0 ? (
+        <div className="card-pad">
+          <EmptyState
+            title={selectedFilters.length === 0 ? "No workforce activity yet." : "No matching activity in this window."}
+            action={selectedFilters.length === 0 ? <Link className="btn btn-primary btn-sm" href="/agents">Activate an operator</Link> : undefined}
+          >
+            {selectedFilters.length === 0 ? "Once operators begin monitoring, preparing, approving, or executing work, their activity will appear here." : "Try another filter or time range."}
+          </EmptyState>
+        </div>
+      ) : (
+        <div className="rows">
+          {items.slice(0, visible).map((item) => {
+            const action = routeLabel(item);
+            return (
+              <div key={item.id} className={`row${action && item.relatedRoute ? " link" : ""}`}>
+                <time className="t-mono" dateTime={item.occurredAt} style={{ flex: "none", width: 118 }}>{timeLabel(item.occurredAt)}</time>
+                <span aria-hidden="true" style={avatarStyle}>{operatorInitials(item.operatorKey)}</span>
+                <span className="grow">
+                  <span className="ttl">{operatorLabel(item.operatorKey)} <span className="dim" style={{ fontWeight: 400 }}>{item.title}</span></span>
+                  <span className="sub">{item.description}</span>
+                </span>
+                <span className="rt">
+                  <span className={`badge ${item.severity === "failure" ? "red" : item.severity === "attention" ? "amber" : "muted"}`}>{item.category.replace(/_/g, " ")}</span>
+                  {action && item.relatedRoute ? <Link className="t-meta" href={item.relatedRoute} aria-label={`${action}: ${item.title}`}>{action}<span className="os-caret" aria-hidden="true" /></Link> : null}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {data && items.length > visible && <div className="card-pad" style={{ paddingTop: 12, paddingBottom: 12, borderTop: "1px solid var(--line)" }}><button type="button" className="btn btn-ghost btn-sm" onClick={() => setVisible((count) => count + 20)}>Show more</button></div>}
+      {data?.hasMore && items.length <= visible && <div className="card-pad t-meta" style={{ borderTop: "1px solid var(--line)" }}>Showing the most recent available activity for this window.</div>}
     </section>
   </div>;
 }

@@ -19,7 +19,10 @@
       "Bash(claude mcp *)",
       "Bash(npx -y playwright install chromium)",
       "Bash(ls \"C:\\\\Users\\\\miche\\\\Desktop\\\\runtrim\" 2>&1 | head -20; echo \"---browsers---\"; ls \"C:\\\\Users\\\\miche\\\\AppData\\\\Local\\\\ms-playwright\" 2>&1 | head -20)",
-      "Read(//c/Users/miche/AppData/Local/ms-playwright/**)"
+      "Read(//c/Users/miche/AppData/Local/ms-playwright/**)",
+      "Bash(sed -i 's/className=\"btn-icon\"/className=\"os-iconbtn\"/g' src/app/app/team/page.tsx src/app/app/settings/page.tsx)",
+      "Bash(sed -i 's/btn btn-sm \\\\${stop ? \"btn-secondary\" : \"btn-danger\"}/btn btn-sm ${stop ? \"btn-ghost\" : \"btn-danger\"}/' src/app/app/policies/page.tsx)",
+      "Bash(sed -i 's/className=\"btn btn-secondary btn-sm\"/className=\"btn btn-ghost btn-sm\"/' src/app/app/api-keys/page.tsx src/app/app/plans/page.tsx)"
     ]
   }
 }
