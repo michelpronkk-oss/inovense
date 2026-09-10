@@ -36,6 +36,8 @@
     "test:revenue-operator": "node tests/revenue-operator-smoke.mjs && node tests/revenue-context-smoke.mjs && node tests/revenue-runtime-path-smoke.mjs && node tests/ai-drafting-runtime-smoke.mjs",
     "test:ai-drafting": "node tests/ai-drafting-runtime-smoke.mjs",
     "test:signup-auth": "node tests/signup-auth-regression.mjs",
+    "test:signup-confirmation-flow": "node tests/signup-confirmation-flow-smoke.mjs",
+    "test:fresh-workspace": "node tests/fresh-workspace-behavior-smoke.mjs",
     "test:product-routing": "node tests/product-routing-regression.mjs",
     "test:onboarding": "node tests/onboarding-regression.mjs",
     "test:app-loading": "node tests/app-loading-regression.mjs",

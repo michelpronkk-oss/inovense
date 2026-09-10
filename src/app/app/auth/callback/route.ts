@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createSupabaseServerActionClient } from "@/lib/supabase/server";
-import { appHref } from "@/lib/urls";
+import { appHref, safeAppPath } from "@/lib/urls";
 
 /**
  * Handles Supabase email-link redirects: signup verification, password
@@ -25,8 +25,16 @@ export async function GET(req: NextRequest) {
     // Token-hash verification does not depend on a browser-local PKCE
     // verifier. This makes a signup confirmation safe to open from an email
     // client, another browser, or another device.
-    const type: EmailOtpType = requestedType === "recovery" || requestedType === "invite" || requestedType === "email_change"
-      ? requestedType
+    const supportedTypes = new Set<EmailOtpType>([
+      "signup",
+      "invite",
+      "magiclink",
+      "recovery",
+      "email_change",
+      "email",
+    ]);
+    const type: EmailOtpType = requestedType && supportedTypes.has(requestedType as EmailOtpType)
+      ? requestedType as EmailOtpType
       : "email";
     const supabase = await createSupabaseServerActionClient();
     const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
@@ -47,12 +55,15 @@ export async function GET(req: NextRequest) {
       });
       return NextResponse.redirect(new URL(`${appHref("/login")}?error=invalid_or_expired_link`));
     }
+  } else {
+    console.warn("[auth.callback] missing verification code");
+    return NextResponse.redirect(new URL(`${appHref("/login")}?error=invalid_or_expired_link`));
   }
 
   // Always enter through the app gateway after verification. The gateway
   // provisions exactly one owner workspace when needed and then decides
   // whether this account belongs in onboarding or the product. Sending every
   // callback straight to onboarding could otherwise revive an old draft.
-  const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+  const safeNext = safeAppPath(next) ?? "/";
   return NextResponse.redirect(new URL(appHref(safeNext)));
 }

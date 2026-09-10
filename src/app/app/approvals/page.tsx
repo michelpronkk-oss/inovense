@@ -517,7 +517,7 @@ export default function ApprovalsPage() {
               ];
 
               return (
-                <article key={item.id} className="panel card-pad">
+                <article key={item.id} className="panel card-pad approval-review-card">
                   {workflow?.id && (
                     <div className="attn info" style={{ padding: "8px 10px", marginBottom: 10 }}>
                       <span className="t-compact"><strong className="ink">{workflow.objective || "Workflow action"}</strong>

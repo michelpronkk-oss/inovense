@@ -5,18 +5,13 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { authErrorDiagnostics, authErrorMessage } from "@/lib/supabase/auth-errors";
-import { appHref } from "@/lib/urls";
+import { authCallbackHref, safeAppPath } from "@/lib/urls";
 import { AuthBackdrop, AuthBrand, AuthCardBadge } from "@/app/app/_auth/auth-chrome";
 import "@/app/app/_auth/auth.css";
 
 function passwordIssue(password: string): string | null {
   if (password.length < 8) return "Password must be at least 8 characters.";
   return null;
-}
-
-// Only ever redirect to a same-origin app path -- never an external URL.
-function safeAppPath(value: string | null): string | null {
-  return value && value.startsWith("/") && !value.startsWith("//") ? value : null;
 }
 
 export default function RegisterPage() {
@@ -76,7 +71,7 @@ export default function RegisterPage() {
         password,
         options: {
           data: { full_name: trimmedName, company_name: companyName.trim() || undefined },
-          emailRedirectTo: appHref(`/auth/callback${from ? `?next=${encodeURIComponent(from)}` : ""}`),
+          emailRedirectTo: authCallbackHref(from),
         },
       });
 
@@ -117,7 +112,7 @@ export default function RegisterPage() {
       const { error: resendError } = await createSupabaseBrowserClient().auth.resend({
         type: "signup",
         email: email.trim().toLowerCase(),
-        options: { emailRedirectTo: appHref(`/auth/callback${from ? `?next=${encodeURIComponent(from)}` : ""}`) },
+        options: { emailRedirectTo: authCallbackHref(from) },
       });
       if (resendError) {
         console.warn("[auth.signup.resend] failed", authErrorDiagnostics(resendError));

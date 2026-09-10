@@ -22,7 +22,7 @@ assert.match(settings, /router\.refresh\(\);/, "the route also refreshes server-
 assert.ok(settings.indexOf("updateWorkspace(workspaceToSave)") > settings.indexOf("if (!saveResult.success)"), "local workspace identity only updates after the server save succeeds");
 assert.match(sidebar, /state\.workspace\.logoUrl \? \{ backgroundImage/, "the persistent sidebar reads the canonical workspace logo");
 assert.match(sidebar, /!state\.workspace\.logoUrl && state\.workspace\.name\.charAt\(0\)/, "the intentional workspace fallback remains when no logo exists");
-assert.match(connectors, /data-connected=\{isRealConnectedConnector\(c\) \|\| undefined\}/, "connector picker preserves real connected-state truth");
+assert.match(connectors, /state\.connectors\.filter\(\(c\) => isRealConnectedConnector\(c\)\)/, "connector picker preserves real connected-state truth");
 assert.match(memory, /state\.memory/, "Memory index remains backed by real workspace state");
 assert.match(memory, /Search memory, tags, or content/, "Memory uses the product search language");
 

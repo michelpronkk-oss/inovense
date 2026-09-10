@@ -12,7 +12,7 @@
  *
  * Fires from: `supabase.auth.signUp(...)` in
  * `src/app/app/register/page.tsx`, which passes
- * `emailRedirectTo: appHref("/auth/callback")`. The email CTA must use a
+ * `emailRedirectTo: authCallbackHref(from)`. The email CTA must use a
  * token hash rather than `{{ .ConfirmationURL }}`: a PKCE code can only be
  * exchanged by the originating browser, while email confirmation commonly
  * opens in a different browser or device. The callback verifies the token
@@ -37,7 +37,10 @@ const content = {
     "You're one step away from setting up your Auterim workspace. Confirm your email address to continue.",
   ],
   ctaText: "Confirm email",
-  ctaHref: "{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=email",
+  // authCallbackHref() always includes `?next=...`, so token parameters must
+  // be appended with `&`. A second `?` makes token_hash invisible to the
+  // callback's URLSearchParams parser.
+  ctaHref: "{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=email",
   securityNote: "If you didn't create an Auterim account, you can safely ignore this email.",
   logoUrl: "https://auterim.com/brand/auterim-icon-32.png",
 };

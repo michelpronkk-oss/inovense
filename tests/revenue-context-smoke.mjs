@@ -23,7 +23,9 @@ try {
     threadId: "thread-1",
     subject: "Proposal and pricing for expansion",
     body: "The active opportunity is ready for negotiation. Can we schedule a call?",
-    receivedAt: "2026-09-08T10:00:00.000Z",
+    // Keep the commercial context case below the follow-up aging threshold so
+    // this contract remains deterministic as the blueprint date advances.
+    receivedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
     person: { id: "p1", email: "buyer@example.com", firstName: "Buyer", lastName: "Person", companyName: "Acme", title: "VP", ownerName: null },
     company: { id: "a1", name: "Acme", website: null, industry: null, ownerId: null, ownerName: "Owner" },
     opportunity: { id: "d1", name: "Acme Expansion", stage: "Negotiation", isClosed: false, amount: 17500, currency: "EUR", closeDate: null, ownerId: null, ownerName: "Owner" },

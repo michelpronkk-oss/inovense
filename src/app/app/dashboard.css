@@ -4081,6 +4081,13 @@ select.os-input option {
 .os-root .os-status[data-state="active_limited"] { color: var(--amber); background: var(--s-amber); }
 
 @media (max-width: 700px) {
+  /* The operator loop becomes a compact vertical sequence on phones. Keeping
+     the connector inside the rail prevents the five-stage row from creating
+     page-level horizontal overflow at narrow widths. */
+  .os-root .os-loop-rail { display: flex; align-items: flex-start; flex-direction: column; width: 100%; }
+  .os-root .os-loop-rail .st { width: 100%; min-height: 26px; }
+  .os-root .os-loop-rail .ln { width: 1px; height: 12px; min-width: 1px; margin: 0 0 0 3px; flex: none; }
+
   .os-root .workflow-empty-lifecycle { grid-template-columns: 1fr; }
   .os-root .workflow-empty-lifecycle li > span { grid-area: dot; margin-top: 4px; }
 }

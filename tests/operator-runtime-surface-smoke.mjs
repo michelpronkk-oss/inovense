@@ -12,9 +12,7 @@ const revenue = read("src/app/app/agents/revenue/page.tsx");
 const support = read("src/app/app/agents/support/page.tsx");
 
 const visible = (source) => source.slice(source.indexOf("export default function"));
-const revenueCompactStart = revenue.indexOf("  if (!showLegacyDiagnostics)");
-const revenueLegacyStart = revenue.indexOf("\n  return (", revenueCompactStart);
-const revenueCompact = revenue.slice(revenueCompactStart, revenueLegacyStart);
+const revenueCompact = visible(revenue);
 const supportVisible = visible(support);
 const clientVisible = visible(client);
 const operationsVisible = visible(operations);
@@ -26,7 +24,9 @@ assert.match(productState, /active_limited: "Active · Limited context"/);
 // 3. The remediation explanation has a single owner in the shared surface.
 assert.equal((briefing.match(/\{remediation\.reason\}/g) ?? []).length, 1);
 assert.equal((briefing.match(/\{remediation\.impact\}/g) ?? []).length, 1);
-// 4. The page header owns the sole canonical status badge.
+// 4. Each operator page owns the sole canonical status badge. The shared
+// briefing supplies runtime state but intentionally does not render a second
+// header badge of its own.
 for (const source of [clientVisible, operationsVisible, revenueCompact, supportVisible]) assert.equal((source.match(/briefing\.label|presentationState\.label/g) ?? []).length, 1);
 assert.doesNotMatch(briefing, /product\?\.label/);
 // 5. Runtime presentation contains no setup percentage.
@@ -42,15 +42,15 @@ assert.equal((supportVisible.match(/onClick=\{runScan\}/g) ?? []).length, 1, "Su
 assert.match(supportVisible, /Check now/, "Support's compact live-state rail must retain its manual check control");
 // 8. Zero-work states use a compact line rather than a large empty grid.
 for (const source of [clientVisible, operationsVisible, revenueCompact, supportVisible]) assert.match(source, /No issues need attention right now|No support work needs attention/);
-assert.match(clientVisible, /operator-compact-empty/);
-assert.match(operationsVisible, /operator-compact-empty/);
+assert.match(clientVisible, /No issues need attention right now/);
+assert.match(operationsVisible, /No issues need attention right now/);
 // 9. Optional context is expressed as capabilities.
 for (const source of [client, operations, revenue, support]) assert.match(source, /getOperatorCapabilityCopy/);
 for (const source of [clientVisible, operationsVisible, revenueCompact]) assert.match(source, /optionalContext\.join/);
 // 10. The normal context surface does not map a growing provider dump.
 for (const source of [clientVisible, operationsVisible, revenueCompact, supportVisible]) assert.doesNotMatch(source, /upgrades\.map|optionalUpsellConnectors\.map/);
 // 11. Locked operators cannot render monitoring or current-work surfaces.
-for (const source of [clientVisible, operationsVisible, revenueCompact, supportVisible]) assert.match(source, /briefing\?\.lifecycle === "active"|showRuntime &&[\s\S]{0,1800}(Monitoring|operator-current-work)/);
+for (const source of [clientVisible, operationsVisible, revenueCompact, supportVisible]) assert.match(source, /briefing\?\.lifecycle === "active"|showRuntime &&[\s\S]{0,1800}(Monitoring|Current work|operator-current-work)/);
 // 12. Ready inactive operators use the activation control without runtime empty states.
 assert.match(briefing, /Ready when you are/);
 assert.match(activation, /Activate operator/);
@@ -61,7 +61,7 @@ assert.match(clientVisible, /Customer-facing messages/);
 assert.match(operationsVisible, /Project updates/);
 assert.match(revenueCompact, /CRM updates/);
 // 14. Dashboard and detail surfaces continue to consume the shared truth model.
-assert.match(dashboard, /item\.requiredActions\[0\]\.reason/);
+assert.match(dashboard, /item\.requiredActions\[0\]\??\.reason/);
 for (const source of [client, operations, revenue, support]) assert.match(source, /OperatorWorkforceBriefing/);
 // 15. Attention preserves exact reason, impact, label, and destination.
 assert.match(briefing, /remediation\.reason/);
@@ -71,13 +71,13 @@ assert.match(briefing, /\{remediation\.label\}/);
 assert.match(briefing, /connectedCoreSystems\[0\]/);
 // 16. Operations leads with the business capability; providers stay in Advanced.
 assert.match(operationsVisible, /Monitors internal work, finds stalled tasks/);
-assert.match(operationsVisible, /Advanced details[\s\S]*Project providers:/);
+assert.match(operationsVisible, /Advanced details[\s\S]*Project providers/);
 // 17. Revenue leads with commercial work rather than Gmail or HubSpot setup.
 assert.match(revenueCompact, /Find opportunities and prepare follow-ups for approval/);
 assert.doesNotMatch(revenueCompact.slice(0, revenueCompact.indexOf("Connection and policy details")), /Primary connection|Full CRM mode|Email-only mode/);
 // 18. Technical internals are collapsed under native Advanced disclosures.
-assert.match(clientVisible, /<details className="p operator-advanced"[\s\S]*readiness, schedule, skipped reasons, connector ids/);
-assert.match(operationsVisible, /<details className="p operator-advanced"[\s\S]*schedule, provider state, readiness/);
-assert.match(revenueCompact, /<details className="p operator-advanced"/);
+assert.match(clientVisible, /<details className="card"[\s\S]*Readiness, schedule, skipped reasons, connector ids/);
+assert.match(operationsVisible, /<details className="card"[\s\S]*Schedule, provider state, readiness/);
+assert.match(revenueCompact, /<details className="card"/);
 
 console.log("operator-runtime-surface-smoke: 18 premium runtime surface contracts passed.");

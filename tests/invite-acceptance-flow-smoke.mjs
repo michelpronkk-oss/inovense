@@ -36,7 +36,7 @@ assert.match(teamActions, /const acceptUrl = `\$\{getAppUrl\(\)\}\/invite\/accep
 // ── 2. New-user signup preserves the invite token through auth ───────────
 assert.match(registerPage, /useSearchParams/);
 assert.match(registerPage, /searchParams\.get\("from"\)/);
-assert.match(registerPage, /emailRedirectTo: appHref\(`\/auth\/callback\$\{from \? `\?next=\$\{encodeURIComponent\(from\)\}` : ""\}`\)/);
+assert.match(registerPage, /emailRedirectTo: authCallbackHref\(from\)/, "signup must preserve the invite destination through the canonical callback helper");
 assert.match(registerPage, /router\.replace\(from \|\| "\/"\)/, "an immediate-session signup must land on `from` (e.g. the invite accept page), not always \"/\"");
 
 // ── 3. Both auth entry points cross-link with `from` preserved ───────────
@@ -54,7 +54,7 @@ assert.match(acceptPage, /Create an account to accept/);
 // ── 5. /auth/callback forwards `next` safely after either flow completes,
 //      and /invite/accept is public (never intercepted by the onboarding
 //      gateway before the token can be checked) ──────────────────────────
-assert.match(authCallback, /next\.startsWith\("\/"\) && !next\.startsWith\("\/\/"\)/);
+assert.match(authCallback, /const safeNext = safeAppPath\(next\) \?\? "\/"/);
 assert.match(appLayout, /"\/invite\/accept"/);
 
 // ── 6. Acceptance itself: authenticated, server-derived workspace/role,

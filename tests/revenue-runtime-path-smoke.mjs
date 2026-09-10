@@ -27,7 +27,7 @@ assert.match(crm, /findOpenDealsForContact/);
 assert.match(hubspot, /deal_currency_code/);
 assert.match(policyContext, /root.businessContext/);
 assert.match(approval, /approvalScopes.hubspot/);
-assert.match(lifecycle, /\["support", "revenue"\]/);
+assert.match(lifecycle, /const customerFacingOperators = \["support", "revenue", "client_flow"\]/);
 assert.match(observers, /revenue_positive_reply/);
 assert.match(observers, /revenue_no_response/);
 assert.match(observers, /revenue_deal_stage_advanced/);

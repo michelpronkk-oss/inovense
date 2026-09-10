@@ -85,6 +85,32 @@ export function appHref(path: string = "/"): string {
   return join(appBase, appPath);
 }
 
+/**
+ * Accept only an internal app path as an auth destination. URL parsing is
+ * intentional here: a backslash-prefixed value can otherwise be normalized
+ * by browsers into a different-origin URL even when it starts with `/`.
+ */
+export function safeAppPath(value: string | null | undefined): string | null {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return null;
+  try {
+    const base = new URL(getAppUrl());
+    const candidate = new URL(value, base);
+    return candidate.origin === base.origin ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Signup confirmation uses a server-side token-hash template. Keep `next` in
+ * the callback URL even for the default destination so the template can
+ * safely append `&token_hash=...` without guessing whether a query exists.
+ */
+export function authCallbackHref(next?: string | null): string {
+  const safeNext = safeAppPath(next) ?? "/";
+  return appHref(`/auth/callback?next=${encodeURIComponent(safeNext)}`);
+}
+
 export function marketingHref(path: string = "/"): string {
   return join(getMarketingUrl(), path);
 }

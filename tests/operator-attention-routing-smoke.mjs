@@ -31,9 +31,9 @@ for (const mapping of [
 ]) assert.ok(connectors.includes(mapping), `missing exact connector remediation mapping: ${mapping}`);
 
 assert.match(dashboard, /item\.nextAction\.href/);
-assert.match(dashboard, /item\.requiredActions\[0\]\.reason/);
-assert.match(briefing, /action\.href/);
-assert.match(briefing, /action\.impact/);
+assert.match(dashboard, /item\.requiredActions\[0\]\??\.reason/);
+assert.match(briefing, /remediation\.href/);
+assert.match(briefing, /remediation\.impact/);
 assert.doesNotMatch(dashboard, /Unavailable: \{item\.degraded/);
 
 console.log("operator-attention-routing-smoke: exact connector routing and actionable attention contracts passed.");

@@ -25,7 +25,7 @@ assert.match(layout, /redirect\("\/"\)/, "completed onboarding must return to th
 
 assert.doesNotMatch(shell, /router\.replace\(/, "client shell must not compete with the server routing authority");
 assert.match(urls, /if \(normalized === "\/app"\) return "\/"/, "production helpers must remove legacy prefix");
-assert.match(callback, /\? next : "\/"/, "verified auth links must default into the app gateway, which alone decides onboarding vs. product");
+assert.match(callback, /const safeNext = safeAppPath\(next\) \?\? "\/"/, "verified auth links must default into the app gateway, which alone decides onboarding vs. product");
 // Invite emails link straight to /invite/accept?token=... (no /auth/callback
 // hop, no /app prefix) -- workspace invites are never routed through a
 // Supabase-generated auth link, so existing users are never forced through

@@ -122,7 +122,7 @@ export default function MemoryPage() {
                 <span className="rt">
                   <span className="t-meta">{relativeTime(e.updatedAt)}</span>
                   <span className={`badge ${TYPE_TONE[e.type] ?? "cyan"}`}>{e.type}</span>
-                  <span className="os-caret" aria-hidden="true" />
+                  <span className="memory-entry-chevron" aria-hidden="true" />
                 </span>
               </div>
             );
@@ -149,7 +149,7 @@ export default function MemoryPage() {
           </div>
           <div className="card-pad">
             {expandedFields.length > 0 ? (
-              <dl className="kv">
+              <dl className="memory-definition-grid">
                 {expandedFields.map((field) => (
                   <div key={field.label}><dt>{field.label}</dt><dd>{field.value}</dd></div>
                 ))}

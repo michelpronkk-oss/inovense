@@ -17,7 +17,8 @@ assert.match(register, /\.auth\.signUp\(/, "signup must make one explicit Supaba
 assert.match(register, /\.auth\.resend\(/, "verification resend must be explicit");
 assert.match(register, /type: "signup"/, "resend must use the supported signup flow");
 assert.match(register, /setResendCooldown\(60\)/, "resend must throttle repeated requests");
-assert.match(register, /emailRedirectTo: appHref\(`\/auth\/callback/, "signup must use the canonical callback");
+assert.match(register, /emailRedirectTo: authCallbackHref\(from\)/, "signup must use the canonical callback helper");
+assert.match(register, /options: \{ emailRedirectTo: authCallbackHref\(from\) \}/, "resend must use the same canonical callback helper");
 assert.match(register, /searchParams\.get\("from"\)/, "signup must preserve a `from` redirect (e.g. an invite accept link) across email verification");
 
 assert.match(client, /configuredUrl !== url/, "configuration must reject surrounding URL whitespace");

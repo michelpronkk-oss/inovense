@@ -29,7 +29,7 @@ assert.match(graph, /revenue:[\s\S]*required: \["email\.read", "email\.send_afte
 assert.match(graph, /client_flow:[\s\S]*required: \["email\.read", "email\.send_after_approval"\]/);
 assert.match(graph, /operations:[\s\S]*required: \["pm\.tasks\.read"\]/);
 
-assert.match(dashboard, /item\.requiredActions\[0\]\.reason/);
+assert.match(dashboard, /item\.requiredActions\[0\]\??\.reason/);
 assert.match(dashboardData, /productStates: operatorProductStates/);
 assert.match(lifecycle, /item\.state === "active_limited"/);
 
@@ -47,6 +47,6 @@ assert.match(briefing, /Core work continues/);
 assert.match(state, /readiness\.operatorKey === "support"[\s\S]*readiness\.connectedRequiredConnectors/, "Support core context must come from its real OR-path readiness result");
 assert.match(state, /state === "plan_required" \|\| state === "billing_attention" \|\| state === "suspended"[\s\S]*"blocked"/, "billing-gated operators must not present as active runtimes");
 assert.match(briefing, /!active && !remediation && product\?\.lifecycle !== "ready_to_activate" && product\?\.nextAction/, "a plan-gated operator must expose its canonical next action while ready operators keep one activation control");
-assert.match(support, /Available via \$\{briefing\.connectedCoreSystems\.join/, "Support must name its live core provider instead of showing customer support as unavailable");
+assert.match(support, /briefing\?\.connectedCoreSystems\.length \? `Via \$\{briefing\.connectedCoreSystems\.join/, "Support must name its live core provider instead of showing customer support as unavailable");
 
 console.log("operator-presentation-truth-smoke: canonical state, capability, dashboard, and detail UX contracts passed.");
