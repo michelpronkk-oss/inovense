@@ -1,5 +1,7 @@
 import type { SignalCandidate, SignalCategory, SignalEvent, SignalPriority } from "@/lib/signals/types";
 import { classifyInboundSignalEvent, type InboundActionability, type InboundClassification, type InboundOperatorKey } from "@/lib/signals/inbound";
+import { arbitrateSignalOwnership } from "@/lib/workforce/ownership";
+import { explicitBusinessProblemKey } from "@/lib/workflows/identity";
 
 export const SIGNAL_ENGINE_VERSION = "2026-09-08";
 
@@ -164,7 +166,9 @@ export function classifySignalEvent(event: SignalEvent, now = new Date()): Signa
 }
 
 function candidateFor(event: SignalEvent, decision: SignalDecision, operatorKey: string, inbound?: InboundClassification, inboundDedupeKey?: string): SignalCandidate {
-  const dedupeKey = inboundDedupeKey || bounded([event.workspaceId, operatorKey, event.connectorKey || event.source, event.sourceId, decision.category].join(":"), 480);
+  const problemKey = explicitBusinessProblemKey(event.metadata);
+  const identityAnchor = problemKey ? `business_problem:${problemKey}` : `${event.connectorKey || event.source}:${event.sourceId}`;
+  const dedupeKey = problemKey ? bounded([event.workspaceId, operatorKey, identityAnchor, "business_work"].join(":"), 480) : inboundDedupeKey || bounded([event.workspaceId, operatorKey, identityAnchor, decision.category].join(":"), 480);
   return {
     id: `candidate_${bounded(dedupeKey, 170)}`,
     signalId: event.id,
@@ -184,6 +188,7 @@ function candidateFor(event: SignalEvent, decision: SignalDecision, operatorKey:
       sourceId: event.sourceId,
       sourceType: event.sourceType,
       sourceParentId: event.sourceParentId ?? null,
+      businessProblemKey: problemKey,
       ...(inbound ? {
         primaryIntent: inbound.primaryIntent,
         secondaryIntents: inbound.secondaryIntents,
@@ -199,7 +204,7 @@ function candidateFor(event: SignalEvent, decision: SignalDecision, operatorKey:
     routeReason: `Central signal routing: ${decision.reasonCodes.join(", ")}.`,
     status: "candidate",
     createdAt: event.observedAt ?? undefined,
-    metadata: { category: decision.category, connectorKey: event.connectorKey, trustLevel: event.trustLevel },
+    metadata: { category: decision.category, connectorKey: event.connectorKey, trustLevel: event.trustLevel, ...(problemKey ? { businessProblemKey: problemKey } : {}) },
     actionability: decision.actionability,
     primaryIntent: decision.primaryIntent,
     supportingOperators: decision.supportingOperators,
@@ -280,12 +285,17 @@ export function routeSignalEvent(input: SignalEvent, now = new Date()): RoutedSi
       candidates: [candidateFor(event, decision, decision.primaryOperator, inbound.classification, inbound.dedupeKey)],
     };
   }
-  const decision = classifySignalEvent(event, now);
-  if (decision.suppressed) return { event, decision, candidates: [] };
+  const classified = classifySignalEvent(event, now);
+  if (classified.suppressed) return { event, decision: classified, candidates: [] };
+  const ownership = arbitrateSignalOwnership(event, classified);
+  const decision: SignalDecision = { ...classified, primaryOperator: ownership.primaryOperator, supportingOperators: ownership.supportingOperators, customerFacing: ownership.customerFacing };
+  if (!ownership.primaryOperator) return { event, decision, candidates: [] };
   const operatorKeys: string[] = [];
-  if (["sales_opportunity", "commercial_intent"].includes(decision.category)) operatorKeys.push("revenue");
-  if (["customer_request", "follow_up_needed", "unanswered_message", "escalation"].includes(decision.category)) operatorKeys.push("client_flow");
-  if (["stalled_work", "overdue_work", "blocked_work", "delivery_risk", "support_risk", "internal_coordination"].includes(decision.category)) operatorKeys.push("operations");
+  if (decision.category === "support_risk" && ownership.primaryOperator === "support") operatorKeys.push("support");
+  if (["sales_opportunity", "commercial_intent"].includes(decision.category) && ownership.primaryOperator === "revenue") operatorKeys.push("revenue");
+  if (["customer_request", "follow_up_needed", "unanswered_message", "escalation"].includes(decision.category) && ownership.primaryOperator === "client_flow") operatorKeys.push("client_flow");
+  if (["stalled_work", "overdue_work", "blocked_work", "delivery_risk", "internal_coordination"].includes(decision.category) && ownership.primaryOperator === "operations") operatorKeys.push("operations");
+  if (operatorKeys.length === 0) operatorKeys.push(ownership.primaryOperator);
   // A Drive change is retained as an awareness event, not turned into work by itself.
-  return { event, decision, candidates: operatorKeys.map((operatorKey) => candidateFor(event, decision, operatorKey)) };
+  return { event, decision, candidates: [candidateFor(event, decision, operatorKeys[0])] };
 }

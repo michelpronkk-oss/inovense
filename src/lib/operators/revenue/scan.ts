@@ -32,14 +32,19 @@ import { logOperatorEvent, operatorRuntimeId } from "@/lib/operators/logging";
 import { getOperatorReadiness, type OperatorReadiness } from "@/lib/operators/readiness";
 import { getWorkspaceExecutionEligibility } from "@/lib/os/execution-eligibility";
 import { draftRevenueFollowUpWithAI } from "@/lib/operators/revenue/ai-drafting";
-import { loadRevenueCompanyGraphContext } from "@/lib/operators/revenue/context";
+import { buildRevenueContext, loadRevenueCompanyGraphContext, publicRevenueContext, type RevenueContext } from "@/lib/operators/revenue/context";
 import { sendSlackApprovalNotification } from "@/lib/notifications/slack";
 import { normalizeEmailToSignalEvent } from "@/lib/signals/intake";
 import { routeSignalEvent } from "@/lib/signals/engine";
 import type { SignalCandidate } from "@/lib/signals/types";
+import { ingestSignalBatch } from "@/lib/signals/store";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 import { getAppUrl } from "@/lib/urls";
+import { recordObservedWorkflowOutcome } from "@/lib/workflows/store";
+import { observeRevenueDealState, observeRevenueFollowUp } from "@/lib/workflows/outcome-observers";
+import { createRevenueSupportingHandoff, ensureRevenueWorkflow, linkRevenueApprovalWorkflow } from "@/lib/operators/revenue/workflow";
+import { returnSupportingOutcome } from "@/lib/workflows/workforce";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 type RevenueScanSourceMode = "scheduled" | "manual" | "event_ready";
@@ -291,6 +296,7 @@ export type RevenueScanSummary = {
   scanned?: number;
   opportunitiesFound?: number;
   approvalsCreated?: number;
+  outcomesObserved?: number;
   deferredCount?: number;
   routedItemCount?: number;
   missingScopes?: string[];
@@ -810,6 +816,7 @@ function buildCrmPreparation(opportunity: Opportunity, personalization: Personal
 function buildPreparedHubSpotActions(input: {
   crmPreparation: CrmPreparation;
   hubspotConnected: boolean;
+  commercialContext?: RevenueContext | null;
 }): PreparedHubSpotActions {
   const contactLabel = input.crmPreparation.contactName || input.crmPreparation.contactEmail;
   return {
@@ -821,10 +828,12 @@ function buildPreparedHubSpotActions(input: {
       source: input.crmPreparation.source,
     },
     deal: {
-      dealname: `New inbound opportunity: ${contactLabel}`,
-      stageLabel: input.crmPreparation.suggestedDealStage,
+      id: input.commercialContext?.deal.id ?? null,
+      dealname: input.commercialContext?.deal.name ?? `New inbound opportunity: ${contactLabel}`,
+      stageLabel: input.commercialContext?.deal.stage ?? input.crmPreparation.suggestedDealStage,
       pipelineLabel: "Default HubSpot pipeline",
-      amount: null,
+      amount: input.commercialContext?.deal.amount ?? null,
+      currency: input.commercialContext?.deal.currency ?? null,
     },
     note: {
       body: [
@@ -845,7 +854,19 @@ function buildPreparedHubSpotActions(input: {
       type: "follow_up",
     },
     executionStatus: input.hubspotConnected ? "execution_enabled" : "prepared_not_enabled",
+    businessContext: input.commercialContext?.businessContext ?? null,
   };
+}
+
+async function persistCanonicalRevenueSignal(input: {
+  supabase: SupabaseAdmin;
+  event: ReturnType<typeof normalizeEmailToSignalEvent>;
+}): Promise<{ candidate: SignalCandidate; signalId: string } | null> {
+  const routed = routeSignalEvent(input.event);
+  const candidate = routed.candidates.find((item) => item.operatorKey === "revenue");
+  if (!candidate || !routed.event.id) return null;
+  await ingestSignalBatch({ workspaceId: routed.event.workspaceId, events: [routed.event], supabase: input.supabase, materializeWorkflows: false });
+  return { candidate, signalId: routed.event.id };
 }
 
 async function insertStep(input: {
@@ -901,6 +922,70 @@ async function upsertRevenueMonitoringConfig(input: {
       sourceMode: input.sourceMode,
     },
   });
+}
+
+async function observeRevenueWorkflows(input: {
+  supabase: SupabaseAdmin;
+  workspaceId: string;
+  emailMessages: SafeGmailMessage[];
+  crm: RevenueCrmAdapter | null;
+}): Promise<number> {
+  const workflowsResult = await input.supabase.from("os_workflow_runs").select("id,originating_signal_id,status,parent_workflow_id").eq("workspace_id", input.workspaceId).eq("operator_key", "revenue").eq("status", "executing").limit(100);
+  if (workflowsResult.error || !workflowsResult.data?.length) return 0;
+  const workflows = workflowsResult.data as Array<Record<string, unknown>>;
+  const workflowIds = workflows.map((row) => String(row.id));
+  const signalIds = workflows.map((row) => String(row.originating_signal_id ?? "")).filter(Boolean);
+  const [stepsResult, signalsResult] = await Promise.all([
+    input.supabase.from("os_workflow_steps").select("id,workflow_id,execution_intent_id,status,updated_at").eq("workspace_id", input.workspaceId).in("workflow_id", workflowIds).eq("status", "executing"),
+    input.supabase.from("os_signal_events").select("id,source,source_id,source_parent_id,observed_at,metadata").eq("workspace_id", input.workspaceId).in("id", signalIds),
+  ]);
+  if (stepsResult.error || signalsResult.error) return 0;
+  const steps = new Map((stepsResult.data ?? []).map((row) => [String(row.workflow_id), row as Record<string, unknown>]));
+  const signals = new Map((signalsResult.data ?? []).map((row) => [String(row.id), row as Record<string, unknown>]));
+  let observed = 0;
+  for (const workflow of workflows) {
+    const workflowId = String(workflow.id);
+    const step = steps.get(workflowId);
+    const signal = signals.get(String(workflow.originating_signal_id ?? ""));
+    if (!step || !signal) continue;
+    const metadata = signal.metadata && typeof signal.metadata === "object" ? signal.metadata as Record<string, unknown> : {};
+    const threadId = String(signal.source_parent_id ?? "");
+    const sourceId = String(signal.source_id ?? "");
+    const sentAt = String(step.updated_at ?? signal.observed_at ?? "");
+    const reply = input.emailMessages.find((message) => Boolean(threadId && message.threadId === threadId && message.id !== sourceId && Date.parse(message.date || message.internalDate || "") >= (Date.parse(sentAt) || 0)));
+    const observation = ["gmail", "microsoft"].includes(String(signal.source)) && threadId
+      ? observeRevenueFollowUp({ workflowId, threadId, sentAt, reply: reply ? { id: reply.id, subject: reply.subject, snippet: reply.snippet || reply.bodyText } : null, linkedActionExecuted: true })
+      : null;
+    let dealObservation = observation;
+    let commercial: Record<string, unknown> = {};
+    if (typeof metadata.commercialContextJson === "string") {
+      try { commercial = JSON.parse(metadata.commercialContextJson) as Record<string, unknown>; } catch { commercial = {}; }
+    }
+    const previousDeal = commercial.deal && typeof commercial.deal === "object" ? commercial.deal as Record<string, unknown> : {};
+    const previousDealId = typeof previousDeal.id === "string" ? previousDeal.id : null;
+    if (!dealObservation && previousDealId && input.crm) {
+      const email = typeof metadata.fromEmail === "string" ? metadata.fromEmail : null;
+      if (email) {
+        const current = await resolveRevenueCrmContext({ workspaceId: input.workspaceId, email, crm: input.crm });
+        const deal = current.opportunities.find((item) => item.id === previousDealId) ?? current.opportunities[0];
+        if (deal) dealObservation = observeRevenueDealState({ workflowId, dealId: deal.id, previousStage: typeof previousDeal.stage === "string" ? previousDeal.stage : null, currentStage: deal.stage, isClosed: deal.isClosed, linkedActionExecuted: true });
+      }
+    }
+    if (!dealObservation) continue;
+    await recordObservedWorkflowOutcome({ workspaceId: input.workspaceId, operatorKey: "revenue", workflowId, signalId: String(signal.id), executionIntentId: step.execution_intent_id ? String(step.execution_intent_id) : null, outcomeType: dealObservation.outcomeType, attributionLevel: dealObservation.attributionLevel, confidence: dealObservation.confidence, evidenceRefs: dealObservation.evidenceRefs, observedAt: new Date().toISOString(), supabase: input.supabase });
+    // A no-response observation is follow-through state, not completion. It
+    // stays visible for another bounded review cycle instead of pretending the
+    // commercial work is finished.
+    if (dealObservation.outcomeType !== "revenue_no_response") {
+      await input.supabase.from("os_workflow_steps").update({ status: "completed", result_ref: dealObservation.evidenceRefs[0] ?? "revenue_outcome_observed", safe_error_code: null }).eq("id", String(step.id)).eq("workspace_id", input.workspaceId);
+      await input.supabase.from("os_workflow_runs").update({ status: "completed" }).eq("id", workflowId).eq("workspace_id", input.workspaceId);
+      if (typeof workflow.parent_workflow_id === "string") {
+        await returnSupportingOutcome({ supabase: input.supabase, workspaceId: input.workspaceId, childWorkflowId: workflowId, outcomeType: dealObservation.outcomeType, evidence: { provider: "revenue", evidenceRefs: dealObservation.evidenceRefs }, evidenceRefs: dealObservation.evidenceRefs });
+      }
+    }
+    observed += 1;
+  }
+  return observed;
 }
 
 function normalizeSubjectForDedupe(subject: string | undefined | null): string {
@@ -1239,11 +1324,13 @@ export async function scanRevenueOpportunities(input: {
     const skipped: NonNullable<RevenueScanSummary["skipped"]> = [];
     const opportunities: Opportunity[] = [];
     const signalCandidates: SignalCandidate[] = [];
+    const observedEmailMessages: SafeGmailMessage[] = [];
 
     for (const item of listed) {
       const message = emailConnector === "gmail"
         ? await getMessageDetails(accessToken, item.id)
         : fromMicrosoftMessage(await getMicrosoftMessage(accessToken, item.id));
+      observedEmailMessages.push(message);
       const dedupe = buildDedupeMetadata(message, emailConnector);
       const duplicate = findDuplicateReason(dedupe, handled);
       const isReactivation = Boolean(duplicate && duplicate.scope === "thread");
@@ -1408,6 +1495,27 @@ export async function scanRevenueOpportunities(input: {
       }
 
       const revenueCrmContext = await resolveRevenueCrmContext({ workspaceId, email: opportunity.message.fromEmail, crm: revenueCrm });
+      const commercialContext = buildRevenueContext({
+        provider: emailConnector,
+        threadId: opportunity.message.threadId,
+        subject: opportunity.message.subject,
+        body: opportunity.message.bodyText || opportunity.message.snippet,
+        receivedAt: opportunity.message.date || opportunity.message.internalDate,
+        person: revenueCrmContext.person,
+        company: revenueCrmContext.company,
+        opportunity: revenueCrmContext.opportunities[0] ?? null,
+        directSignals: opportunity.directSignals,
+        requestSignals: opportunity.requestSignals,
+        contextSignals: opportunity.contextSignals,
+      });
+      const canonical = await persistCanonicalRevenueSignal({
+        supabase,
+        event: {
+          ...normalizeEmailToSignalEvent({ workspaceId, message: opportunity.message, provider: emailConnector, rawRef: `${emailConnector}:${opportunity.message.id}`, metadata: { sourceMode, fromEmail: opportunity.message.fromEmail, subject: opportunity.message.subject, commercialContextJson: JSON.stringify(publicRevenueContext(commercialContext)).slice(0, 4000) } }),
+        },
+      });
+      const canonicalCandidate = canonical?.candidate ?? signalCandidates.find((candidate) => candidate.sourceId === opportunity.message.id) ?? null;
+      const canonicalSignalId = canonical?.signalId ?? canonicalCandidate?.signalId ?? null;
       const personalization = await buildPersonalization({ workspaceId, message: opportunity.message, crmContext: revenueCrmContext });
       // A real CRM contact/lead match is a real relationship signal - boost
       // priority and record why, regardless of which CRM provider matched,
@@ -1436,7 +1544,7 @@ export async function scanRevenueOpportunities(input: {
       };
       crmPreparation.summary = aiDraft.detectedSignalSummary || crmPreparation.summary;
       crmPreparation.suggestedNextStep = aiDraft.suggestedAction || crmPreparation.suggestedNextStep;
-      const preparedHubSpotActions = buildPreparedHubSpotActions({ crmPreparation, hubspotConnected });
+      const preparedHubSpotActions = buildPreparedHubSpotActions({ crmPreparation, hubspotConnected, commercialContext });
       const crmPreparationStatus = hubspotConnected ? "hubspot_execution_enabled" : "hubspot_not_connected";
       const sendActionKey = emailConnector === "microsoft" ? "send_microsoft_follow_up" : "send_gmail_follow_up";
       const preparedActions = hubspotConnected
@@ -1479,6 +1587,13 @@ export async function scanRevenueOpportunities(input: {
         reactivationReason: opportunity.reactivationReason ?? null,
         personalization,
         revenueCrmContext: revenueCrmContextMeta,
+        commercialContext: publicRevenueContext(commercialContext),
+        preparationState: commercialContext.preparationState,
+        contextQuality: {
+          contact: commercialContext.contact.reliability,
+          account: commercialContext.account.reliability,
+          deal: commercialContext.deal.reliability,
+        },
         crmPreparationStatus,
         crmPreparation,
         preparedHubSpotActions,
@@ -1493,7 +1608,7 @@ export async function scanRevenueOpportunities(input: {
         },
       };
       const signalCandidate = signalCandidates.find((candidate) => candidate.sourceId === opportunity.message.id) ?? null;
-      const sourceMetadata = {
+      let sourceMetadata: Record<string, unknown> = {
         gmailMessageId: opportunity.message.id,
         gmailThreadId: opportunity.message.threadId,
         dedupeKey: dedupe.dedupeKey,
@@ -1519,6 +1634,14 @@ export async function scanRevenueOpportunities(input: {
         signatureCandidateAccepted: personalization.signatureCandidateAccepted ?? null,
         rejectedNameCandidates: personalization.rejectedNameCandidates ?? [],
         revenueCrmContext: revenueCrmContextMeta,
+        commercialContext: publicRevenueContext(commercialContext),
+        businessContext: commercialContext.businessContext,
+        preparationState: commercialContext.preparationState,
+        contextQuality: {
+          contact: commercialContext.contact.reliability,
+          account: commercialContext.account.reliability,
+          deal: commercialContext.deal.reliability,
+        },
         crmPreparationStatus,
         detectedSignalSummary: aiDraft.detectedSignalSummary,
         whyThisMatters: aiDraft.whyThisMatters,
@@ -1526,8 +1649,34 @@ export async function scanRevenueOpportunities(input: {
         expectedOutcome: aiDraft.expectedOutcome,
         riskNotes: aiDraft.riskNotes,
         draftingMetadata: aiDraft.draftingMetadata,
-        signalCandidate,
+        signalCandidate: canonicalCandidate,
       };
+
+      if (!canonicalCandidate || !canonicalSignalId) throw new Error("Revenue signal could not be persisted as canonical work.");
+      const revenueWorkflow = await ensureRevenueWorkflow({
+        supabase,
+        workspaceId,
+        signalId: canonicalSignalId,
+        candidate: canonicalCandidate,
+        connectorKey: emailConnector,
+        targetRef: opportunity.message.threadId || opportunity.message.id,
+        priority: commercialContext.priority,
+        contextRefs: [commercialContext.preparationState, ...commercialContext.priorityReasons],
+      });
+      if (revenueWorkflow.existingApprovalId) {
+        skipped.push({ messageId: opportunity.message.id, subject: opportunity.message.subject, from: opportunity.message.from, reason: "existing_revenue_workflow", dedupeKey: dedupe.dedupeKey });
+        continue;
+      }
+      await createRevenueSupportingHandoff({
+        supabase,
+        workspaceId,
+        parentWorkflowId: revenueWorkflow.workflowId,
+        signalId: canonicalSignalId,
+        candidate: canonicalCandidate,
+        priority: commercialContext.priority,
+        reason: "Delivery feasibility is needed before committing commercial scope.",
+      });
+      sourceMetadata = { ...sourceMetadata, workflowId: revenueWorkflow.workflowId, workflowStepId: revenueWorkflow.stepId };
 
       const runInsert = await supabase.from("os_operator_runs").insert({
         id: runId,
@@ -1647,6 +1796,15 @@ export async function scanRevenueOpportunities(input: {
           customerEmailMode: workspacePolicy.customerEmailMode,
           slackNotificationSettings: workspacePolicy.slack,
         });
+
+      await linkRevenueApprovalWorkflow({
+        supabase,
+        workspaceId,
+        workflowId: revenueWorkflow.workflowId,
+        stepId: revenueWorkflow.stepId,
+        approvalId: approval.approvalId,
+        sourceMetadata,
+      });
 
       await insertStep({ supabase, workspaceId, runId, stepKey: "create_approval", title: "Create approval request", output: { approvalId: approval.approvalId } });
 
@@ -1785,6 +1943,7 @@ export async function scanRevenueOpportunities(input: {
         .forEach((key) => setDedupeReason(handled, key, "existing_pending_approval"));
     }
 
+    const outcomesObserved = await observeRevenueWorkflows({ supabase, workspaceId, emailMessages: observedEmailMessages, crm: revenueCrm });
     const completedAt = new Date().toISOString();
     const scanSummary = {
       type: `${emailConnector}_scan_summary`,
@@ -1796,6 +1955,7 @@ export async function scanRevenueOpportunities(input: {
       scanned: listed.length,
       opportunitiesFound: opportunities.length,
       approvalsCreated: created.length,
+      outcomesObserved,
       deferredCount: deferred.length,
       skippedCount: skipped.length,
       skipped,
@@ -1863,6 +2023,7 @@ export async function scanRevenueOpportunities(input: {
         scanned: listed.length,
         opportunitiesFound: opportunities.length,
         approvalsCreated: created.length,
+        outcomesObserved,
         deferredCount: deferred.length,
         routedItemCount: created.length,
         opportunities: created,

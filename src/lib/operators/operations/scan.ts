@@ -38,6 +38,11 @@ import { loadSelectedGoogleDriveContext } from "@/lib/connectors/google-drive";
 import { normalizeDriveSignal, normalizeProjectTaskSignal, normalizeZendeskSignal } from "@/lib/signals/adapters";
 import { ingestSignalBatch } from "@/lib/signals/store";
 import type { SignalEvent } from "@/lib/signals/types";
+import { buildOperationsContext, operationsActionMetadata, type OperationsContext } from "@/lib/operators/operations/context";
+import { buildOperationsCandidate, ensureOperationsWorkflow, linkOperationsApprovalWorkflow, persistOperationsCandidate } from "@/lib/operators/operations/workflow";
+import { observeOperationsNoProgress, observeOperationsProviderState, type OperationsProviderSnapshot } from "@/lib/workflows/outcome-observers";
+import { recordObservedWorkflowOutcome } from "@/lib/workflows/store";
+import { returnSupportingOutcome } from "@/lib/workflows/workforce";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 type OperationsScanSourceMode = "scheduled" | "manual" | "event_ready";
@@ -87,6 +92,7 @@ export type OperationsScanSummary = {
   cardsChecked?: number;
   signalsFound?: number;
   approvalsCreated?: number;
+  outcomesObserved?: number;
   signals?: {
     signalType: OperationsSignalType;
     severity: string;
@@ -112,6 +118,8 @@ export type OperationsScanSummary = {
     cardsRecoveredSinceLastScan?: number;
     observedCount?: number;
     waitingExternalCount?: number;
+    outcomesObserved?: number;
+    noProgressCount?: number;
   };
   skipped?: { reason: string; count: number }[];
   /**
@@ -283,6 +291,124 @@ function scanFailure(error: unknown): OperationsScanResult {
   return { ok: false, status: 500, body: { error: "operations_scan_failed", message: error instanceof Error ? error.message : "Operations scan failed." } };
 }
 
+function operationsEntityDedupeKey(provider: string, entityId: string): string {
+  return `operations:${provider}:entity:${entityId}:blocker`;
+}
+
+async function prepareCanonicalOperationsWork(input: {
+  supabase: SupabaseAdmin;
+  workspaceId: string;
+  provider: string;
+  sourceId: string;
+  title: string;
+  status?: string | null;
+  priority?: string | null;
+  dueAt?: string | null;
+  updatedAt?: string | null;
+  isBlocked?: boolean;
+  signalType: string;
+  decision: { priority?: number; score?: number; confidence: "low" | "medium" | "high"; priorityReasons?: string[]; blockerReason?: string | null; supportingOperators?: string[] };
+  context: OperationsContext;
+  action: PreparedAction | null;
+}): Promise<{ workflowId: string; stepId: string | null; existingApprovalId: string | null; candidateId: string }> {
+  const dedupeKey = operationsEntityDedupeKey(input.provider, input.sourceId);
+  const event: SignalEvent = {
+    workspaceId: input.workspaceId,
+    connectorKey: input.provider,
+    provider: input.provider,
+    source: input.provider,
+    sourceType: "project_task",
+    eventType: "task.updated",
+    sourceId: input.sourceId,
+    occurredAt: input.updatedAt || input.dueAt || new Date().toISOString(),
+    subject: input.title,
+    snippet: input.context.task.blockerIndicators.join(" ") || input.title,
+    dedupeKey: `${dedupeKey}:${input.updatedAt || input.dueAt || "current"}`,
+    metadata: {
+      status: input.status ?? null,
+      priority: input.priority ?? null,
+      dueAt: input.dueAt ?? null,
+      updatedAt: input.updatedAt ?? null,
+      isBlocked: input.isBlocked === true,
+      operationsContextJson: JSON.stringify(input.context).slice(0, 6000),
+    },
+  };
+  const fallbackCandidate = buildOperationsCandidate({
+    workspaceId: input.workspaceId,
+    provider: input.provider,
+    sourceId: input.sourceId,
+    signalType: input.signalType,
+    priority: input.context.priority,
+    confidence: input.decision.confidence,
+    reasonCodes: input.decision.priorityReasons ?? [],
+    routeReason: input.context.priorityReasons.join(" ") || "Provider-derived operational signal.",
+    dedupeKey,
+    metadata: { operationsContext: input.context, preparationState: input.context.preparationState },
+    supportingOperators: input.decision.supportingOperators,
+  });
+  const persisted = await persistOperationsCandidate({ supabase: input.supabase, workspaceId: input.workspaceId, event, fallbackCandidate });
+  const workflow = await ensureOperationsWorkflow({
+    supabase: input.supabase,
+    workspaceId: input.workspaceId,
+    signalId: persisted.signalId,
+    candidate: persisted.candidate,
+    action: input.action,
+    objective: `Resolve ${input.title}`,
+    contextRefs: [input.context.preparationState, ...input.context.priorityReasons],
+  });
+  return { ...workflow, candidateId: persisted.candidate.id };
+}
+
+async function observeOperationsWorkflows(input: { supabase: SupabaseAdmin; workspaceId: string; snapshots: OperationsProviderSnapshot[] }): Promise<{ observed: number; noProgress: number }> {
+  if (input.snapshots.length === 0) return { observed: 0, noProgress: 0 };
+  const workflowsResult = await input.supabase.from("os_workflow_runs").select("id,originating_signal_id,status,parent_workflow_id").eq("workspace_id", input.workspaceId).eq("operator_key", "operations").eq("status", "executing").limit(100);
+  if (workflowsResult.error || !workflowsResult.data?.length) return { observed: 0, noProgress: 0 };
+  const workflowIds = workflowsResult.data.map((row) => String(row.id));
+  const signalIds = workflowsResult.data.map((row) => String(row.originating_signal_id ?? "")).filter(Boolean);
+  const [stepsResult, signalsResult] = await Promise.all([
+    input.supabase.from("os_workflow_steps").select("id,workflow_id,execution_intent_id,updated_at,status").eq("workspace_id", input.workspaceId).in("workflow_id", workflowIds).eq("status", "executing"),
+    input.supabase.from("os_signal_events").select("id,source,source_id,observed_at,metadata").eq("workspace_id", input.workspaceId).in("id", signalIds),
+  ]);
+  if (stepsResult.error || signalsResult.error) return { observed: 0, noProgress: 0 };
+  const steps = new Map((stepsResult.data ?? []).map((row) => [String(row.workflow_id), row as Record<string, unknown>]));
+  const signals = new Map((signalsResult.data ?? []).map((row) => [String(row.id), row as Record<string, unknown>]));
+  let observed = 0;
+  let noProgress = 0;
+  for (const workflow of workflowsResult.data) {
+    const workflowId = String(workflow.id);
+    const step = steps.get(workflowId);
+    const signal = signals.get(String(workflow.originating_signal_id ?? ""));
+    const entityId = String(signal?.source_id ?? "");
+    const after = input.snapshots.find((snapshot) => snapshot.entityId === entityId);
+    if (!step || !signal || !after) continue;
+    let before: OperationsProviderSnapshot = { provider: after.provider, entityId };
+    const metadata = signal.metadata && typeof signal.metadata === "object" ? signal.metadata as Record<string, unknown> : {};
+    if (typeof metadata.operationsContextJson === "string") {
+      try {
+        const context = JSON.parse(metadata.operationsContextJson) as Record<string, unknown>;
+        const task = context.task && typeof context.task === "object" ? context.task as Record<string, unknown> : {};
+        before = { provider: after.provider, entityId, status: typeof task.status === "string" ? task.status : typeof metadata.status === "string" ? metadata.status : null, assignee: typeof task.assignee === "string" ? task.assignee : null, dueAt: typeof task.dueAt === "string" ? task.dueAt : typeof metadata.dueAt === "string" ? metadata.dueAt : null, labels: Array.isArray(task.labels) ? task.labels.filter((item): item is string => typeof item === "string") : [], checklistCompleted: task.checklist && typeof task.checklist === "object" && typeof (task.checklist as Record<string, unknown>).completed === "number" ? (task.checklist as Record<string, unknown>).completed as number : null, updatedAt: typeof task.lastActivityAt === "string" ? task.lastActivityAt : null, blockerIndicators: Array.isArray(task.blockerIndicators) ? task.blockerIndicators.filter((item): item is string => typeof item === "string") : [] };
+      } catch { /* malformed context remains a safe no-outcome state */ }
+    }
+    const observation = observeOperationsProviderState({ workflowId, before, after, linkedActionExecuted: true });
+    const noProgressObservation = observation ? null : observeOperationsNoProgress({ workflowId, provider: after.provider, entityId, executingSince: String(step.updated_at ?? signal.observed_at ?? "") });
+    const chosen = observation ?? noProgressObservation;
+    if (!chosen) continue;
+    await recordObservedWorkflowOutcome({ workspaceId: input.workspaceId, operatorKey: "operations", workflowId, signalId: String(signal.id), executionIntentId: step.execution_intent_id ? String(step.execution_intent_id) : null, outcomeType: chosen.outcomeType, attributionLevel: chosen.attributionLevel, confidence: chosen.confidence, evidenceRefs: chosen.evidenceRefs, observedAt: new Date().toISOString(), supabase: input.supabase });
+    if (chosen.outcomeType === "operations_no_progress") {
+      noProgress += 1;
+    } else {
+      observed += 1;
+      await input.supabase.from("os_workflow_steps").update({ status: "completed", result_ref: chosen.evidenceRefs[0] ?? "operations_outcome_observed", safe_error_code: null }).eq("id", String(step.id)).eq("workspace_id", input.workspaceId);
+      await input.supabase.from("os_workflow_runs").update({ status: "completed" }).eq("id", workflowId).eq("workspace_id", input.workspaceId);
+      if (typeof workflow.parent_workflow_id === "string") {
+        await returnSupportingOutcome({ supabase: input.supabase, workspaceId: input.workspaceId, childWorkflowId: workflowId, outcomeType: chosen.outcomeType, evidence: { provider: after.provider, status: after.status, evidenceRefs: chosen.evidenceRefs }, evidenceRefs: chosen.evidenceRefs });
+      }
+    }
+  }
+  return { observed, noProgress };
+}
+
 export async function scanOperationsSignals(input: {
   workspaceId: string;
   sourceMode?: OperationsScanSourceMode;
@@ -364,24 +490,29 @@ export async function scanOperationsSignals(input: {
       try {
         const token = await resolveAsanaAccessToken({ workspaceId, credential: asanaCredential, supabase });
         const tasks: AsanaTask[] = await listAsanaTasks(token, asanaProjectId);
+        const asanaOutcomes = await observeOperationsWorkflows({ supabase, workspaceId, snapshots: tasks.map((task) => ({ provider: "asana", entityId: task.gid, status: task.completed ? "completed" : "open", completed: task.completed === true, assignee: task.assignee?.name ?? null, dueAt: task.due_on ?? task.due_at ?? null, updatedAt: task.modified_at ?? null })) });
         const overdue = tasks.find((task) => !task.completed && task.due_on && new Date(task.due_on).getTime() < Date.now());
         const stale = !overdue ? tasks.find((task) => !task.completed && task.modified_at && Date.now() - new Date(task.modified_at).getTime() > STUCK_DAYS * 86400000) : null;
         const candidate = overdue ?? stale;
         if (!candidate || !asanaExecutable) {
-          return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: `Read ${tasks.length} Asana tasks for Operations.${asanaExecutable ? " No follow-up signal met the launch threshold." : " Write permissions are not enabled, so no Asana action was proposed."}`, sourceMode, cardsChecked: tasks.length, signalsFound: candidate ? 1 : 0, approvalsCreated: 0, setup, skipped: [{ reason: asanaExecutable ? "no_action_threshold" : "asana_write_scope_missing", count: tasks.length }] } };
+          return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: `Read ${tasks.length} Asana tasks for Operations.${asanaExecutable ? " No follow-up signal met the launch threshold." : " Write permissions are not enabled, so no Asana action was proposed."}`, sourceMode, cardsChecked: tasks.length, signalsFound: candidate ? 1 : 0, approvalsCreated: 0, outcomesObserved: asanaOutcomes.observed, setup, skipped: [{ reason: asanaExecutable ? "no_action_threshold" : "asana_write_scope_missing", count: tasks.length }] } };
         }
         const handled = await loadOperationsDedupeState({ supabase, workspaceId });
         const signalType = overdue ? "overdue_card" : "stuck_card";
         const dedupeKey = `operations:asana:task:${candidate.gid}:${signalType}:${new Date().toISOString().slice(0, 10)}`;
-        if (handled.has(dedupeKey)) return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: "The Asana signal was already handled for today.", sourceMode, cardsChecked: tasks.length, signalsFound: 1, approvalsCreated: 0, setup, skipped: [{ reason: handled.get(dedupeKey) ?? "already_handled", count: 1 }] } };
-        const preparedAsanaAction = prepareAction({ workspaceId, operatorKey: "operations", actionType: "create_asana_task", connectorKey: "asana", capability: "pm.tasks.create_after_approval", title: "Create an Asana follow-up task", summary: `Prepare a follow-up for ${candidate.name} because it is ${overdue ? "overdue" : "stale"}.`, input: { projectId: asanaProjectId, name: `Follow up: ${candidate.name}`, notes: `Auterim detected ${overdue ? "an overdue" : "a stale"} task during Operations monitoring. Review the source task before execution.`, dueOn: null }, dedupeKey, source: "asana_scan", destinationType: "project_tool", normalizedTarget: candidate.gid, metadata: { asanaProjectId, asanaTaskId: candidate.gid, payloadIdentity: `${candidate.gid}:${signalType}`, signalType } }, { policySettings });
+        if (handled.has(dedupeKey)) return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: "The Asana signal was already handled for today.", sourceMode, cardsChecked: tasks.length, signalsFound: 1, approvalsCreated: 0, outcomesObserved: asanaOutcomes.observed, setup, skipped: [{ reason: handled.get(dedupeKey) ?? "already_handled", count: 1 }] } };
+        const asanaContext = buildOperationsContext({ provider: "asana", project: { id: asanaProjectId, name: "Selected Asana project" }, task: { id: candidate.gid, title: candidate.name, status: candidate.completed ? "completed" : "open", assignee: candidate.assignee?.name ?? null, dueAt: candidate.due_on ?? candidate.due_at ?? null, lastActivityAt: candidate.modified_at ?? null }, signalType, score: overdue ? 6 : 5, priorityReasons: [overdue ? "The task is overdue." : "The task has had no recent activity."], supportingOperators: [] });
+        const preparedAsanaAction = prepareAction({ workspaceId, operatorKey: "operations", actionType: "create_asana_task", connectorKey: "asana", capability: "pm.tasks.create_after_approval", title: "Create an Asana follow-up task", summary: `Prepare a follow-up for ${candidate.name} because it is ${overdue ? "overdue" : "stale"}.`, input: { projectId: asanaProjectId, name: `Follow up: ${candidate.name}`, notes: `Auterim detected ${overdue ? "an overdue" : "a stale"} task during Operations monitoring. Review the source task before execution.`, dueOn: null, businessContext: asanaContext.businessContext }, dedupeKey, source: "asana_scan", destinationType: "project_tool", normalizedTarget: candidate.gid, metadata: { asanaProjectId, asanaTaskId: candidate.gid, payloadIdentity: `${candidate.gid}:${signalType}`, signalType, ...operationsActionMetadata(asanaContext, null) } }, { policySettings });
+        const canonical = await prepareCanonicalOperationsWork({ supabase, workspaceId, provider: "asana", sourceId: candidate.gid, title: candidate.name, status: candidate.completed ? "completed" : "open", dueAt: candidate.due_on ?? candidate.due_at ?? null, updatedAt: candidate.modified_at ?? null, signalType, decision: { confidence: "high", priorityReasons: asanaContext.priorityReasons }, context: asanaContext, action: preparedAsanaAction });
+        if (canonical.existingApprovalId) return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: "The Asana blocker is already awaiting review.", sourceMode, cardsChecked: tasks.length, signalsFound: 1, approvalsCreated: 0, outcomesObserved: asanaOutcomes.observed, setup, skipped: [{ reason: "existing_pending_approval", count: 1 }] } };
         const runId = operatorRuntimeId("oprun-operations-asana"); const startedAt = new Date().toISOString();
         const runInsert = await supabase.from("os_operator_runs").insert({ id: runId, workspace_id: workspaceId, operator_key: "operations", trigger_type: "asana_scan", status: "waiting_for_approval", input: { source: "asana_scan", sourceMode, dedupeKey, signalType, taskId: candidate.gid }, output: {}, readiness: {}, risk_level: "medium", started_at: startedAt });
         if (runInsert.error) throw new Error(runInsert.error.message);
         const approvalId = operatorRuntimeId("appr-operations-asana");
         const approvalInsert = await supabase.from("os_approvals").insert({ id: approvalId, workspace_id: workspaceId, type: "action", title: preparedAsanaAction.title, body: preparedAsanaAction.summary, agent_id: OPERATIONS_AGENT_ID, agent_mark: OPERATIONS_AGENT_MARK, agent_color: OPERATIONS_AGENT_COLOR, run_id: runId, status: "pending", dedupe_key: dedupeKey, created_at: startedAt, continuation_payload: { kind: "shared_action.execute_after_approval", workspaceId, operatorKey: "operations", preparedAction: preparedAsanaAction }, policy_reason: "Asana writes require human approval before execution." });
         if (approvalInsert.error) throw new Error(approvalInsert.error.message);
-        return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: "Operations prepared an approval-gated Asana follow-up task.", sourceMode, cardsChecked: tasks.length, signalsFound: 1, approvalsCreated: 1, signals: [{ signalType, severity: "medium", cardName: candidate.name, listName: "Asana project", runId, approvalId, dedupeKey }], setup } };
+        if (canonical.stepId) await linkOperationsApprovalWorkflow({ supabase, workspaceId, workflowId: canonical.workflowId, stepId: canonical.stepId, approvalId, contextRefs: asanaContext.priorityReasons });
+        return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: "Operations prepared an approval-gated Asana follow-up task.", sourceMode, cardsChecked: tasks.length, signalsFound: 1, approvalsCreated: 1, outcomesObserved: asanaOutcomes.observed, signals: [{ signalType, severity: "medium", cardName: candidate.name, listName: "Asana project", runId, approvalId, dedupeKey }], setup } };
       } catch { return { ok: false, status: 502, body: { error: "asana_scan_failed", message: "Could not read the selected Asana project.", sourceMode, setup } }; }
     }
     if (jiraConnected && jiraProjectId && jiraCredential) {
@@ -393,6 +524,7 @@ export async function scanOperationsSignals(input: {
         const token = await resolveJiraAccessToken({ workspaceId, credential: jiraCredential, supabase });
         const project = await getJiraProject(token, cloudId, jiraProjectId);
         const issues = await searchJiraIssues(token, cloudId, project, { maxResults: 100 });
+        const jiraOutcomes = await observeOperationsWorkflows({ supabase, workspaceId, snapshots: issues.map((issue) => ({ provider: "jira", entityId: issue.issueKey, status: issue.status, completed: ["done", "closed", "resolved", "cancelled"].includes(issue.status.toLowerCase()), assignee: issue.assigneeAccountId, dueAt: issue.dueAt, labels: issue.labels, updatedAt: issue.updatedAt, blockerIndicators: issue.labels.filter((label) => /blocked|blocker|impediment/i.test(label)) })) });
         const terminal = new Set(["done", "closed", "resolved", "cancelled"]);
         const now = Date.now();
         const candidate = issues.find((issue) => {
@@ -402,19 +534,22 @@ export async function scanOperationsSignals(input: {
           const stale = Boolean(issue.updatedAt && now - new Date(issue.updatedAt).getTime() > STUCK_DAYS * 86400000 && /highest|high|critical|urgent/i.test(issue.priority ?? ""));
           return blocker || overdue || stale || (!issue.assigneeAccountId && /highest|high|critical|urgent/i.test(issue.priority ?? ""));
         });
-        if (!candidate || !jiraExecutable) return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: `Read ${issues.length} Jira issues for Operations.${jiraExecutable ? " No follow-up signal met the launch threshold." : " Write permissions are not enabled, so no Jira action was proposed."}`, sourceMode, cardsChecked: issues.length, signalsFound: candidate ? 1 : 0, approvalsCreated: 0, setup, skipped: [{ reason: jiraExecutable ? "no_action_threshold" : "jira_write_scope_missing", count: issues.length }] } };
+        if (!candidate || !jiraExecutable) return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: `Read ${issues.length} Jira issues for Operations.${jiraExecutable ? " No follow-up signal met the launch threshold." : " Write permissions are not enabled, so no Jira action was proposed."}`, sourceMode, cardsChecked: issues.length, signalsFound: candidate ? 1 : 0, approvalsCreated: 0, outcomesObserved: jiraOutcomes.observed, setup, skipped: [{ reason: jiraExecutable ? "no_action_threshold" : "jira_write_scope_missing", count: issues.length }] } };
         const handled = await loadOperationsDedupeState({ supabase, workspaceId });
         const explicitBlocked = candidate.labels.some((label) => /blocked|blocker|impediment/i.test(label)) || /\b(blocked|blocker|impediment|cannot proceed|can't proceed)\b/i.test(`${candidate.summary} ${candidate.description}`);
         const signalType: OperationsSignalType = explicitBlocked ? "blocked_work" : candidate.dueAt && new Date(candidate.dueAt).getTime() < now ? "overdue_card" : "stuck_card";
         const dedupeKey = `operations:jira:issue:${candidate.issueKey}:${signalType}:${new Date().toISOString().slice(0, 10)}`;
-        if (handled.has(dedupeKey)) return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: "The Jira signal was already handled for today.", sourceMode, cardsChecked: issues.length, signalsFound: 1, approvalsCreated: 0, setup, skipped: [{ reason: handled.get(dedupeKey) ?? "already_handled", count: 1 }] } };
-        const prepared = prepareAction({ workspaceId, operatorKey: "operations", actionType: "add_jira_comment", connectorKey: "jira", capability: "pm.comments.write_after_approval", title: "Add a Jira blocker follow-up comment", summary: `Prepare a follow-up for ${candidate.issueKey} because it is ${signalType.replace("_", " ")}.`, input: { issueKey: candidate.issueKey, text: `Auterim detected ${signalType.replace("_", " ")} during Operations monitoring. Review the issue and confirm the next step.` }, dedupeKey, source: "jira_scan", destinationType: "project_tool", normalizedTarget: candidate.issueKey, metadata: { jiraCloudId: cloudId, jiraProjectId: project.id, jiraIssueKey: candidate.issueKey, payloadIdentity: `${candidate.issueKey}:${signalType}`, signalType } }, { policySettings });
+        if (handled.has(dedupeKey)) return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: "The Jira signal was already handled for today.", sourceMode, cardsChecked: issues.length, signalsFound: 1, approvalsCreated: 0, outcomesObserved: jiraOutcomes.observed, setup, skipped: [{ reason: handled.get(dedupeKey) ?? "already_handled", count: 1 }] } };
+        const jiraContext = buildOperationsContext({ provider: "jira", project: { id: project.id, name: project.name, priority: candidate.priority, status: "active" }, task: { id: candidate.issueKey, title: candidate.summary, status: candidate.status, assignee: candidate.assigneeAccountId, dueAt: candidate.dueAt, labels: candidate.labels, blockerIndicators: explicitBlocked ? [signalType] : [], lastActivityAt: candidate.updatedAt }, signalType, score: explicitBlocked ? 7 : 5, priorityReasons: [explicitBlocked ? "A blocker label or blocker phrase is present." : `${signalType.replace("_", " ")} requires review.`] });
+        const prepared = prepareAction({ workspaceId, operatorKey: "operations", actionType: "add_jira_comment", connectorKey: "jira", capability: "pm.comments.write_after_approval", title: "Add a Jira blocker follow-up comment", summary: `Prepare a follow-up for ${candidate.issueKey} because it is ${signalType.replace("_", " ")}.`, input: { issueKey: candidate.issueKey, text: `Auterim detected ${signalType.replace("_", " ")} during Operations monitoring. Review the issue and confirm the next step.`, businessContext: jiraContext.businessContext }, dedupeKey, source: "jira_scan", destinationType: "project_tool", normalizedTarget: candidate.issueKey, metadata: { jiraCloudId: cloudId, jiraProjectId: project.id, jiraIssueKey: candidate.issueKey, payloadIdentity: `${candidate.issueKey}:${signalType}`, signalType, ...operationsActionMetadata(jiraContext, null) } }, { policySettings });
+        const canonical = await prepareCanonicalOperationsWork({ supabase, workspaceId, provider: "jira", sourceId: candidate.issueKey, title: candidate.summary, status: candidate.status, priority: candidate.priority, dueAt: candidate.dueAt, updatedAt: candidate.updatedAt, signalType, decision: { confidence: "high", priorityReasons: jiraContext.priorityReasons }, context: jiraContext, action: prepared });
+        if (canonical.existingApprovalId) return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: "The Jira blocker is already awaiting review.", sourceMode, cardsChecked: issues.length, signalsFound: 1, approvalsCreated: 0, outcomesObserved: jiraOutcomes.observed, setup, skipped: [{ reason: "existing_pending_approval", count: 1 }] } };
         const runId = operatorRuntimeId("oprun-operations-jira"); const startedAt = new Date().toISOString(); const runInsert = await supabase.from("os_operator_runs").insert({ id: runId, workspace_id: workspaceId, operator_key: "operations", trigger_type: "jira_scan", status: "waiting_for_approval", input: { source: "jira_scan", sourceMode, dedupeKey, signalType, issueKey: candidate.issueKey }, output: {}, readiness: {}, risk_level: "medium", started_at: startedAt }); if (runInsert.error) throw new Error(runInsert.error.message);
-        const approvalId = operatorRuntimeId("appr-operations-jira"); const approvalInsert = await supabase.from("os_approvals").insert({ id: approvalId, workspace_id: workspaceId, type: "action", title: prepared.title, body: prepared.summary, agent_id: OPERATIONS_AGENT_ID, agent_mark: OPERATIONS_AGENT_MARK, agent_color: OPERATIONS_AGENT_COLOR, run_id: runId, status: "pending", dedupe_key: dedupeKey, created_at: startedAt, continuation_payload: { kind: "shared_action.execute_after_approval", workspaceId, operatorKey: "operations", preparedAction: prepared }, policy_reason: "Jira writes require human approval before execution." }); if (approvalInsert.error) throw new Error(approvalInsert.error.message);
-        return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: "Operations prepared an approval-gated Jira follow-up comment.", sourceMode, cardsChecked: issues.length, signalsFound: 1, approvalsCreated: 1, signals: [{ signalType, severity: explicitBlocked ? "high" : "medium", cardName: candidate.summary, listName: project.name, runId, approvalId, dedupeKey }], setup } };
+        const approvalId = operatorRuntimeId("appr-operations-jira"); const approvalInsert = await supabase.from("os_approvals").insert({ id: approvalId, workspace_id: workspaceId, type: "action", title: prepared.title, body: prepared.summary, agent_id: OPERATIONS_AGENT_ID, agent_mark: OPERATIONS_AGENT_MARK, agent_color: OPERATIONS_AGENT_COLOR, run_id: runId, status: "pending", dedupe_key: dedupeKey, created_at: startedAt, continuation_payload: { kind: "shared_action.execute_after_approval", workspaceId, operatorKey: "operations", preparedAction: prepared, workflowId: canonical.workflowId, workflowStepId: canonical.stepId, operations: jiraContext }, policy_reason: "Jira writes require human approval before execution." }); if (approvalInsert.error) throw new Error(approvalInsert.error.message); if (canonical.stepId) await linkOperationsApprovalWorkflow({ supabase, workspaceId, workflowId: canonical.workflowId, stepId: canonical.stepId, approvalId, contextRefs: jiraContext.priorityReasons });
+        return { ok: true, status: 200, body: { status: "completed", setupComplete: true, message: "Operations prepared an approval-gated Jira follow-up comment.", sourceMode, cardsChecked: issues.length, signalsFound: 1, approvalsCreated: 1, outcomesObserved: jiraOutcomes.observed, signals: [{ signalType, severity: explicitBlocked ? "high" : "medium", cardName: candidate.summary, listName: project.name, runId, approvalId, dedupeKey }], setup } };
       } catch { return { ok: false, status: 502, body: { error: "jira_scan_failed", message: "Could not read the selected Jira project.", sourceMode, setup } }; }
     }
-    return { ok: true, status: 200, body: { status: "setup_incomplete", setupComplete: false, message: "Connect Trello, Asana, or Jira, then select a project destination to run Operations.", sourceMode, setup } };
+    return { ok: true, status: 200, body: { status: "setup_incomplete", setupComplete: false, message: "Connect one project-management system, then select a project destination to run Operations.", sourceMode, setup } };
   }
 
   // Real billing enforcement - see the matching check in revenue/scan.ts for
@@ -443,6 +578,7 @@ export async function scanOperationsSignals(input: {
 
     const candidates: { decision: OperationsDecision; card?: TrelloCardDetailed; listName: string; dedupeKey: string; isReactivation: boolean; ageAtDetectionDays: number | null }[] = [];
     const centralProjectEvents: SignalEvent[] = [];
+    const providerSnapshots: OperationsProviderSnapshot[] = [];
     const observed: NonNullable<OperationsScanSummary["observed"]> = [];
     const flaggedCardIds = new Set<string>();
     let cardsChecked = 0;
@@ -459,6 +595,8 @@ export async function scanOperationsSignals(input: {
         if (error instanceof TrelloExecutionError) { bump("trello_list_read_failed"); continue; }
         throw error;
       }
+
+      providerSnapshots.push(...cards.map((card) => ({ provider: "trello", entityId: card.id, status: card.closed ? "closed" : "open", completed: card.closed || card.dueComplete, assignee: card.idMembers[0] ?? null, dueAt: card.due, labels: card.labels.map((label) => label.name), checklistCompleted: card.badges.checklistItemsChecked, updatedAt: card.dateLastActivity, blockerIndicators: /\b(blocked|blocker|stuck|waiting|on hold)\b/i.test(`${card.name} ${card.desc}`) ? ["blocker"] : [] })));
 
       if (kind !== "done" && cards.length > TOO_MANY_OPEN) {
         const dedupeKey = `operations:trello:list:${list.id}:too_many_open_tasks:${new Date().toISOString().slice(0, 10)}`;
@@ -637,6 +775,17 @@ export async function scanOperationsSignals(input: {
       const { decision, card, listName, dedupeKey, isReactivation } = candidate;
       const runId = operatorRuntimeId("oprun-operations-scan");
 
+      const operationsContext = buildOperationsContext({
+        provider: "trello",
+        project: { id: boardId, name: boardName, priority: decision.severity, status: "active" },
+        task: { id: card?.id ?? `${listName}:list`, title: card?.name ?? listName, status: "open", assignee: card?.idMembers[0] ?? null, dueAt: card?.due ?? null, labels: card?.labels.map((label) => label.name) ?? [], blockerIndicators: decision.blockerReason ? [decision.blockerReason] : [], checklist: card ? { total: card.badges.checklistItems, completed: card.badges.checklistItemsChecked } : null, lastActivityAt: card?.dateLastActivity ?? null },
+        blockerReason: decision.blockerReason,
+        dependency: { state: decision.bestNextAction === "wait_external_dependency" ? "waiting_external" : null, external: decision.bestNextAction === "wait_external_dependency" },
+        signalType: decision.signalType,
+        score: decision.score,
+        priorityReasons: decision.priorityReasons,
+      });
+
       // Prepared actions through the Shared Action Layer. Both stay approval-gated.
       const preparedSlackAction: PreparedAction | null = slackConnected && slackChannelId
         ? prepareAction({
@@ -647,10 +796,10 @@ export async function scanOperationsSignals(input: {
           capability: "chat.messages.send_after_approval",
           title: "Internal operations update",
           summary: decision.plainEnglishSummary,
-          input: { channelId: slackChannelId, channelName: slackChannelName ?? "selected channel", text: decision.preparedSlackMessage },
+          input: { channelId: slackChannelId, channelName: slackChannelName ?? "selected channel", text: decision.preparedSlackMessage, businessContext: operationsContext.businessContext },
           dedupeKey: `${dedupeKey}:slack`,
           source: "trello",
-          metadata: { operatorKey: "operations", signalType: decision.signalType },
+          metadata: { operatorKey: "operations", signalType: decision.signalType, ...operationsActionMetadata(operationsContext, null) },
         }, { policySettings })
         : null;
 
@@ -659,10 +808,10 @@ export async function scanOperationsSignals(input: {
       if (plan) {
         const capability = trelloCapabilityFor(plan.actionType);
         const actionInput = plan.actionType === "add_task_comment"
-          ? { cardId: plan.cardId, text: plan.text }
+          ? { cardId: plan.cardId, text: plan.text, businessContext: operationsContext.businessContext }
           : plan.actionType === "move_task"
-            ? { cardId: plan.cardId, listId: plan.listId, listName: plan.listName }
-            : { boardId: plan.boardId, boardName, listId: plan.listId, listName: plan.listName, name: plan.name, description: plan.description };
+            ? { cardId: plan.cardId, listId: plan.listId, listName: plan.listName, businessContext: operationsContext.businessContext }
+            : { boardId: plan.boardId, boardName, listId: plan.listId, listName: plan.listName, name: plan.name, description: plan.description, businessContext: operationsContext.businessContext };
         preparedTrelloAction = prepareAction({
           workspaceId,
           operatorKey: "operations",
@@ -674,11 +823,28 @@ export async function scanOperationsSignals(input: {
           input: actionInput,
           dedupeKey: `${dedupeKey}:trello`,
           source: "trello",
-          metadata: { operatorKey: "operations", signalType: decision.signalType, cardUrl: card?.url ?? null },
+          metadata: { operatorKey: "operations", signalType: decision.signalType, cardUrl: card?.url ?? null, ...operationsActionMetadata(operationsContext, null) },
         }, { policySettings });
       }
 
       if (!preparedSlackAction && !preparedTrelloAction) { bump("not_actionable"); continue; }
+
+      const canonical = await prepareCanonicalOperationsWork({
+        supabase,
+        workspaceId,
+        provider: "trello",
+        sourceId: card?.id ?? `list:${candidate.dedupeKey}`,
+        title: card?.name ?? listName,
+        status: "open",
+        dueAt: card?.due ?? null,
+        updatedAt: card?.dateLastActivity ?? null,
+        isBlocked: decision.signalType === "blocked_work" || decision.bestNextAction === "wait_external_dependency",
+        signalType: decision.signalType,
+        decision,
+        context: operationsContext,
+        action: preparedTrelloAction ?? preparedSlackAction,
+      });
+      if (canonical.existingApprovalId) { bump("existing_pending_approval"); continue; }
 
       const operationsMeta = {
         operatorKey: "operations",
@@ -700,6 +866,11 @@ export async function scanOperationsSignals(input: {
         plainEnglishSummary: decision.plainEnglishSummary,
         recommendedAction: decision.recommendedAction,
         reasoning: decision.reasoning,
+        operationsContext,
+        preparationState: operationsContext.preparationState,
+        contextQuality: { project: operationsContext.project.reliability, task: operationsContext.task.reliability, dependency: operationsContext.dependency.reliability },
+        workflowId: canonical.workflowId,
+        workflowStepId: canonical.stepId,
         preparedSlackMessage: preparedSlackAction ? decision.preparedSlackMessage : null,
         slackChannelName: slackChannelName,
       };
@@ -751,6 +922,8 @@ export async function scanOperationsSignals(input: {
           dedupeKey,
           preparedSlackAction,
           preparedTrelloAction,
+          workflowId: canonical.workflowId,
+          workflowStepId: canonical.stepId,
           approvalScopes,
           policyEvidence,
           operations: operationsMeta,
@@ -765,6 +938,8 @@ export async function scanOperationsSignals(input: {
         policy_reason: "Operations actions require human approval before any Slack message or Trello change.",
       });
       if (approvalInsert.error) throw new Error(approvalInsert.error.message);
+
+      if (canonical.stepId) await linkOperationsApprovalWorkflow({ supabase, workspaceId, workflowId: canonical.workflowId, stepId: canonical.stepId, approvalId, contextRefs: operationsContext.priorityReasons });
 
       const output = {
         type: "operations_signal",
@@ -826,7 +1001,7 @@ export async function scanOperationsSignals(input: {
     // preparation, while its bounded provider observations also feed the
     // central engine. Ingestion failures never block the established scan.
     try {
-      await ingestSignalBatch({ workspaceId, events: centralProjectEvents, supabase });
+      await ingestSignalBatch({ workspaceId, events: centralProjectEvents, supabase, materializeWorkflows: false });
     } catch (error) {
       console.warn("[operations-scan] central Trello signal ingestion skipped", { workspaceId, error: error instanceof Error ? error.message : "Unknown signal ingestion error" });
     }
@@ -852,6 +1027,7 @@ export async function scanOperationsSignals(input: {
     const ageAtDetectionSamplesDays = candidates
       .map((c) => c.ageAtDetectionDays)
       .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+    const outcomeObservation = await observeOperationsWorkflows({ supabase, workspaceId, snapshots: providerSnapshots });
 
     // Optional Microsoft Teams read context. Guarded so a Teams outage,
     // revoked consent, or missing scope can never fail an Operations run that
@@ -914,6 +1090,8 @@ export async function scanOperationsSignals(input: {
       approvalsCreated: created.length,
       observedCount: observed.filter((o) => o.bestNextAction === "observe_low_severity").length,
       waitingExternalCount: observed.filter((o) => o.bestNextAction === "wait_external_dependency").length,
+      outcomesObserved: outcomeObservation.observed,
+      noProgressCount: outcomeObservation.noProgress,
       reactivatedCount: candidates.filter((c) => c.isReactivation).length,
       staleOverdueCount: candidates.filter((c) => ["overdue_card", "stuck_card", "no_recent_activity"].includes(c.decision.signalType)).length,
       flaggedCardIds: currentFlaggedCardIds,
@@ -970,6 +1148,7 @@ export async function scanOperationsSignals(input: {
         cardsChecked,
         signalsFound: candidates.length,
         approvalsCreated: created.length,
+        outcomesObserved: outcomeObservation.observed,
         signals: created,
         observed,
         outcomeMetrics: {
@@ -977,6 +1156,8 @@ export async function scanOperationsSignals(input: {
           cardsRecoveredSinceLastScan,
           observedCount: scanSummary.observedCount,
           waitingExternalCount: scanSummary.waitingExternalCount,
+          outcomesObserved: outcomeObservation.observed,
+          noProgressCount: outcomeObservation.noProgress,
         },
         skipped,
         setup,

@@ -31,7 +31,11 @@ export default function InsightsPage() {
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not load outcome evidence."); }
     finally { setLoading(false); }
   }, []);
-  useEffect(() => { if (entitlements.features.insights) void load(); }, [entitlements.features.insights, load]);
+  useEffect(() => {
+    if (!entitlements.features.insights) return;
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [entitlements.features.insights, load]);
   const outcomes = useMemo(() => workflows.flatMap((workflow) => workflow.outcomes.map((outcome) => ({ ...outcome, workflow }))).sort((a, b) => new Date(b.observedAt).getTime() - new Date(a.observedAt).getTime()), [workflows]);
   const byOperator = useMemo(() => Object.entries(outcomes.reduce<Record<string, number>>((all, outcome) => { all[outcome.workflow.operatorName] = (all[outcome.workflow.operatorName] ?? 0) + 1; return all; }, {})), [outcomes]);
 
@@ -53,7 +57,7 @@ export default function InsightsPage() {
       </section>
     ) : <>
       <div className="sec">
-        <MetricStrip items={[{ label: "Observed", value: observed, detail: "Recorded by a connected system" }, { label: "Influenced", value: influenced, detail: "Evidence linked to completed work" }, { label: "Direct", value: direct, detail: "Only where attribution supports it" }]} />
+        <MetricStrip items={[{ label: "Observed", value: observed, detail: "A connected system provides evidence" }, { label: "Influenced", value: influenced, detail: "Evidence linked to completed work" }, { label: "Direct", value: direct, detail: "Only where attribution supports it" }]} />
       </div>
       <div className="sec split">
         <section className="card insights-evidence-list">

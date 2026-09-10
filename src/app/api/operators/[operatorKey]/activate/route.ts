@@ -6,6 +6,7 @@ import { decideOperatorActivation } from "@/lib/operators/activation-readiness";
 import { getWorkspaceOperatorReadiness } from "@/lib/operators/readiness";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { requireWorkspaceRoleForIdentity, AuthorizationError } from "@/lib/server/workspace-access";
+import { recordOperatorUsage } from "@/lib/operators/logging";
 
 type ActivateBody = {
   workspaceId?: string;
@@ -81,6 +82,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ operatorKe
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 500 });
   }
+
+  // Workspace-scoped activation telemetry reuses the durable operator usage
+  // stream. It is written only after the activation trigger is persisted,
+  // so this records a real monitoring start rather than a UI intent.
+  await recordOperatorUsage({
+    supabase,
+    workspaceId: context.workspaceId,
+    operatorKey: operator.key,
+    eventType: "monitoring_started",
+    metadata: { source: "operator_activation", actor: context.memberEmail ?? context.userEmail ?? null },
+  }).catch(() => undefined);
 
   return NextResponse.json({ ok: true, state: result.state });
 }

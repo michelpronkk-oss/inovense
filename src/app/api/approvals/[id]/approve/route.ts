@@ -1098,6 +1098,11 @@ async function executeOperationsApproval(input: {
     }
   }
 
+  // Keep the canonical Operations workflow aligned with the provider result.
+  // The lifecycle marks an approved Operations step as executing; an outcome
+  // observer must later prove that the blocker actually changed.
+  await optionalStep(warnings, "operations.workflow.advance", () => advanceWorkflowForApproval({ approvalId: input.approvalId, workspaceId: input.payload.workspaceId, supabase: input.supabase }));
+
   await optionalStep(warnings, anyFailed ? "slack_notification.execution_failed" : "slack_notification.approval_approved", () => sendSlackApprovalNotification({
     supabase: input.supabase,
     workspaceId: input.payload.workspaceId,

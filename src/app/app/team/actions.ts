@@ -9,6 +9,7 @@ import { requireWorkspaceAdmin, AuthorizationError } from "@/lib/server/workspac
 import { renderTeamInviteEmail } from "@/lib/email/auth-emails";
 import { TRANSACTIONAL_FROM } from "@/lib/email/config";
 import { allowRateLimit } from "@/lib/server/request-guards";
+import { getPlanLimits } from "@/lib/os/plans";
 import { INVITABLE_WORKSPACE_ROLES, WORKSPACE_ROLE_CAPABILITIES, WORKSPACE_ROLE_LABELS, canManageTarget, legacyRoleLabel, normalizeWorkspaceRole, type WorkspaceRole } from "@/lib/workspace-permissions";
 
 // Simple in-memory attempt window, same idiom used by
@@ -157,18 +158,25 @@ export async function inviteWorkspaceMember(input: InviteInput): Promise<InviteR
   }
 
   const supabase = createClient(url, key, { auth: { persistSession: false } });
+  const [workspaceResult, membersResult] = await Promise.all([
+    supabase.from("os_workspaces").select("plan, plan_tier").eq("id", workspaceId).maybeSingle(),
+    supabase.from("os_workspace_members").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("active", true).neq("status", "pending"),
+  ]);
+  if (workspaceResult.error || membersResult.error || !workspaceResult.data) {
+    return { success: false, error: "Could not verify workspace seat availability." };
+  }
+  const planLimits = getPlanLimits(workspaceResult.data.plan_tier ?? workspaceResult.data.plan ?? "preview");
+  if (planLimits.maxTeamMembers !== -1 && (membersResult.count ?? 0) >= planLimits.maxTeamMembers) {
+    return { success: false, error: `This workspace has reached its ${planLimits.maxTeamMembers}-seat limit. Upgrade the plan to invite another member.` };
+  }
   const inviterUserId = verifiedUser.id;
   const permissions = WORKSPACE_ROLE_CAPABILITIES[input.role];
   const legacyRole = legacyRoleLabel(input.role);
 
-  // Ensure workspace and pending member row exist.
-  await supabase.from("os_workspaces").upsert({
-    id: workspaceId,
-    name: workspaceName,
-    environment: "production",
-    region: "eu-west-1",
-    plan: "Inovense OS - Growth",
-  });
+  // The workspace is already proven to exist by the admin check above. Update
+  // its display name without overwriting the authoritative billing plan.
+  const workspaceUpdate = await supabase.from("os_workspaces").update({ name: workspaceName }).eq("id", workspaceId);
+  if (workspaceUpdate.error) return { success: false, error: "Could not update workspace details." };
 
   // Reuse an existing pending/expired invite for this (workspace, email)
   // instead of inserting a duplicate row -- a repeated invitation attempt

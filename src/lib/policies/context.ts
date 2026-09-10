@@ -126,6 +126,7 @@ export function summarizeBusinessContext(context: PolicyBusinessContext | undefi
 
 export function hubSpotBusinessContext(preparedHubSpotActions: unknown): PolicyBusinessContext | undefined {
   const root = record(preparedHubSpotActions);
+  if (root.businessContext && typeof root.businessContext === "object") return normalizeBusinessContext(root.businessContext);
   const deal = record(root.deal);
   if (!Object.keys(deal).length) return undefined;
   return normalizeBusinessContext({
@@ -137,4 +138,3 @@ export function hubSpotBusinessContext(preparedHubSpotActions: unknown): PolicyB
     },
   });
 }
-

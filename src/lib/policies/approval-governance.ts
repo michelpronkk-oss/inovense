@@ -63,6 +63,10 @@ export async function buildBundledApprovalGovernance(input: {
   const decisions: BundledApprovalGovernance["decisions"] = { email: emailDecision };
 
   if (input.preparedHubSpotActions && Object.keys(input.preparedHubSpotActions).length > 0) {
+    const preparedDeal = input.preparedHubSpotActions.deal;
+    const dealId = preparedDeal && typeof preparedDeal === "object" && "id" in preparedDeal
+      ? (preparedDeal as { id?: unknown }).id
+      : undefined;
     const hubspotInput = {
       workspaceId: input.workspaceId,
       operatorKey: input.operatorKey,
@@ -72,6 +76,7 @@ export async function buildBundledApprovalGovernance(input: {
       destinationType: "crm" as const,
       riskLevel: "medium" as const,
       subjectType: "deal",
+      subjectId: typeof dealId === "string" ? dealId : undefined,
       businessContext: hubSpotBusinessContext(input.preparedHubSpotActions),
       source: `${input.emailConnector}_scan`,
       metadata: { dedupeKey: input.dedupeKey ?? null },

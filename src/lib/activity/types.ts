@@ -1,4 +1,4 @@
-export type WorkforceActivityCategory = "operator_run" | "workflow" | "approval" | "execution" | "connector" | "failure" | "system";
+export type WorkforceActivityCategory = "operator_run" | "workflow" | "approval" | "execution" | "outcome" | "connector" | "failure" | "system";
 export type WorkforceActivitySeverity = "info" | "success" | "attention" | "failure";
 
 export type WorkforceActivityItem = {

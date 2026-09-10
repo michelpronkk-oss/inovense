@@ -32,7 +32,8 @@ export async function logOperatorEvent(input: {
 export async function recordOperatorUsage(input: {
   supabase: SupabaseAdmin;
   workspaceId: string;
-  runId: string;
+  /** Activation and other lifecycle events precede an operator run. */
+  runId?: string | null;
   operatorKey: string;
   eventType: string;
   quantity?: number;
@@ -41,7 +42,7 @@ export async function recordOperatorUsage(input: {
   return input.supabase.from("os_operator_usage_events").insert({
     id: operatorRuntimeId("opusage"),
     workspace_id: input.workspaceId,
-    run_id: input.runId,
+    run_id: input.runId ?? null,
     operator_key: input.operatorKey,
     event_type: input.eventType,
     quantity: input.quantity ?? 1,

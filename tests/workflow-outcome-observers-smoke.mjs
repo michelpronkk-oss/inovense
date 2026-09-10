@@ -11,7 +11,21 @@ try {
   const observer = await import(pathToFileURL(path.resolve(file)).href);
   assert.equal(observer.observeProjectRecovery({ workflowId: "w", taskRef: "t", status: "open", linkedActionExecuted: true }), null);
   assert.equal(observer.observeProjectRecovery({ workflowId: "w", taskRef: "t", status: "completed", linkedActionExecuted: true })?.attributionLevel, "influenced");
+  assert.equal(observer.observeClientFlowCustomerReply({ workflowId: "cf-w", provider: "gmail", threadId: "t1", messageId: "m2", snippet: "Thanks, that works." , linkedActionExecuted: true })?.outcomeType, "clientflow_customer_confirmed");
+  assert.equal(observer.observeClientFlowCustomerReply({ workflowId: "cf-w", provider: "gmail", threadId: "t1", messageId: "m3", snippet: "Any update?", linkedActionExecuted: false })?.outcomeType, "clientflow_customer_still_waiting");
+  assert.equal(observer.observeClientFlowDeliveryProgress({ workflowId: "cf-w", provider: "trello", entityId: "card-1", previousStatus: "open", currentStatus: "done", linkedActionExecuted: true })?.outcomeType, "clientflow_change_completed");
+  assert.equal(observer.observeClientFlowHandoff({ workflowId: "cf-w", supportingOwner: "operations", childWorkflowId: "cf-w-supporting-operations", childStatus: "completed", linkedActionExecuted: true })?.outcomeType, "clientflow_handoff_completed");
+  const operationsBefore = { provider: "trello", entityId: "card-1", status: "open", completed: false, assignee: "owner-1", blockerIndicators: ["blocked"], checklistCompleted: 1, dueAt: "2026-09-01T00:00:00.000Z" };
+  const operationsAfter = { ...operationsBefore, status: "open", blockerIndicators: [], checklistCompleted: 2 };
+  assert.equal(observer.observeOperationsProviderState({ workflowId: "ops-w", before: operationsBefore, after: operationsAfter, linkedActionExecuted: true })?.outcomeType, "operations_blocker_resolved");
+  assert.equal(observer.observeOperationsProviderState({ workflowId: "ops-w", before: operationsBefore, after: { ...operationsBefore, assignee: "owner-2" }, linkedActionExecuted: false })?.attributionLevel, "observed");
+  assert.equal(observer.observeOperationsNoProgress({ workflowId: "ops-w", provider: "jira", entityId: "OPS-1", executingSince: "2026-09-08T10:00:00.000Z", now: "2026-09-10T10:00:00.000Z" })?.outcomeType, "operations_no_progress");
+  assert.equal(observer.observeOperationsNoProgress({ workflowId: "ops-w", provider: "jira", entityId: "OPS-1", executingSince: "2026-09-09T10:00:00.000Z", now: "2026-09-10T00:00:00.000Z" }), null);
   assert.equal(observer.observeZendeskResolution({ workflowId: "w", ticketId: "1", status: "solved", linkedActionExecuted: false })?.attributionLevel, "observed");
   assert.equal(observer.observeRevenueFollowUp(), null, "an email send cannot manufacture pipeline impact");
-  console.log("Workflow outcome observers: provider-state recovery/resolution and conservative revenue boundary verified.");
+  assert.equal(observer.observeRevenueFollowUp({ workflowId: "w", threadId: "thread", sentAt: "2026-09-08T10:00:00.000Z", now: "2026-09-08T12:00:00.000Z", reply: null, linkedActionExecuted: true }), null, "no-response must wait for the configured window");
+  assert.equal(observer.observeRevenueFollowUp({ workflowId: "w", threadId: "thread", sentAt: "2026-09-08T10:00:00.000Z", now: "2026-09-10T12:00:00.000Z", reply: null, linkedActionExecuted: true })?.outcomeType, "revenue_no_response");
+  assert.equal(observer.observeRevenueFollowUp({ workflowId: "w", threadId: "thread", sentAt: "2026-09-08T10:00:00.000Z", reply: { id: "m2", snippet: "Yes, let's schedule a call." }, linkedActionExecuted: true })?.outcomeType, "revenue_positive_reply");
+  assert.equal(observer.observeRevenueDealState({ workflowId: "w", dealId: "d", previousStage: "Proposal", currentStage: "Negotiation", linkedActionExecuted: true })?.outcomeType, "revenue_deal_stage_advanced");
+  console.log("Workflow outcome observers: provider-state recovery/resolution, Revenue reply/no-response/deal-state branches, and conservative attribution verified.");
 } finally { fs.rmSync(tmp, { recursive: true, force: true }); }

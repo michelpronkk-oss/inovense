@@ -79,6 +79,7 @@ function operatorSupportsAction(operatorKey: string, actionType: string): boolea
     revenue: ["send_email", "create_crm_contact", "create_crm_deal", "create_crm_note", "create_crm_task", "update_crm_record"],
     client_flow: ["send_email", "create_task", "send_teams_message", "reply_zendesk_ticket", "add_zendesk_internal_note", "update_zendesk_ticket", "reply_intercom_conversation", "update_intercom_conversation"],
     operations: ["send_slack_message", "send_teams_message", "create_task", "move_task", "add_task_comment", "create_asana_task", "update_asana_task", "add_asana_comment", "create_jira_issue", "update_jira_issue", "add_jira_comment", "add_zendesk_internal_note", "update_zendesk_ticket"],
+    support: ["send_email", "reply_zendesk_ticket", "add_zendesk_internal_note", "update_zendesk_ticket", "reply_intercom_conversation", "update_intercom_conversation"],
   };
   return support[operator.key]?.includes(actionType) ?? false;
 }

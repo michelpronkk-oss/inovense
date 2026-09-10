@@ -60,7 +60,10 @@ export function OperatorWorkforceBriefing({
     }
   }, [onStateChange, params, state.workspace.id]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const handle = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(handle);
+  }, [load]);
 
   const pending = runtime?.pendingApprovals ?? 0;
   const active = product?.lifecycle === "active";
@@ -93,10 +96,15 @@ export function OperatorWorkforceBriefing({
           </div>
         )}
         {!active && !remediation && product?.lifecycle !== "ready_to_activate" && product?.nextAction && (
-          <Link href={product.nextAction.href} className="btn btn-primary btn-sm operator-runtime-unlock">{product.nextAction.label}</Link>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginTop: 14 }}>
+            <Link href={product.nextAction.href} className="btn btn-primary btn-sm operator-runtime-unlock" style={{ marginTop: 0 }}>{product.nextAction.label}</Link>
+            {locked && product?.state === "needs_setup" && operatorKey === "operations" && (
+              <Link href="/app/agents" className="btn btn-ghost btn-sm operator-runtime-unlock" style={{ marginTop: 0 }}>View other operators</Link>
+            )}
+          </div>
         )}
-        {locked && product?.requiredActions.length === 0 && product?.state === "needs_setup" && (
-          <Link href={operatorKey === "operations" ? "/app/connectors?discover=1&category=project_management" : "/app/connectors?discover=1&category=email_calendar"} className="btn btn-primary btn-sm operator-runtime-unlock">Connect a system</Link>
+        {locked && product?.state === "needs_setup" && operatorKey === "operations" && (
+          <p className="operator-runtime-role" style={{ marginTop: 10 }}>Operations needs one project-management source. Trello, Asana, and Jira are options—not requirements.</p>
         )}
       </div>
 

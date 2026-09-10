@@ -116,6 +116,8 @@ export default function PoliciesPage() {
   const connectorIsActive = (key: string) => policy?.connectorState.some((connector) => connector.connectorKey === key && ["connected", "healthy"].includes(connector.status) && connector.executable) ?? false;
   const activeActionRules = (policy?.actionRules ?? []).filter((rule) => !rule.connector || connectorIsActive(rule.connector));
   const activeWriteConnectors = (policy?.connectorState ?? []).filter((connector) => connector.executable && ["connected", "healthy"].includes(connector.status));
+  const activeContextConnectors = (policy?.connectorState ?? []).filter((connector) => connector.connectorKey === "google_drive" && ["connected", "healthy"].includes(connector.status));
+  const activePolicyConnectors = [...activeWriteConnectors, ...activeContextConnectors];
   const effectiveEmailMode = (connectorKey: string) => policy?.connectorPolicies?.[connectorKey]?.customerEmailMode ?? policy?.customerEmailMode ?? "approval_required";
   const hasEmailOverride = (connectorKey: string) => Boolean(policy?.connectorPolicies?.[connectorKey]?.customerEmailMode);
 
@@ -168,17 +170,28 @@ export default function PoliciesPage() {
         </div>
       </section>
 
-      {/* Connector-local controls. Only executable, connected systems appear here. */}
-      {activeWriteConnectors.length > 0 && <section className="card sec">
+      {/* Connector-local controls and active read-only context sources. */}
+      {activePolicyConnectors.length > 0 && <section className="card sec">
         <div className="card-head">
           <div>
             <h3 className="t-section">Connected system controls</h3>
-            <p className="t-meta" style={{ margin: "4px 0 0" }}>Live controls for systems that can act in this workspace.</p>
+            <p className="t-meta" style={{ margin: "4px 0 0" }}>Live controls and context sources for this workspace.</p>
           </div>
-          <span className="badge green"><i />{activeWriteConnectors.length} live</span>
+          <span className="badge green"><i />{activeWriteConnectors.length} actionable{activeContextConnectors.length > 0 ? ` · ${activeContextConnectors.length} context` : ""}</span>
         </div>
         <div className="rows">
-          {activeWriteConnectors.map((connector) => {
+          {activePolicyConnectors.map((connector) => {
+            if (!connector.executable) {
+              return (
+                <div className="row" key={connector.connectorKey}>
+                  <span className="grow">
+                    <span className="ttl">{connector.displayName} · document context</span>
+                    <span className="sub">Read-only context source. No outbound actions or approval policy is required.</span>
+                  </span>
+                  <span className="rt"><span className="dot dot-green" />Context only</span>
+                </div>
+              );
+            }
             const isEmail = connector.connectorKey === "gmail" || connector.connectorKey === "microsoft";
             const emailMode = effectiveEmailMode(connector.connectorKey);
             if (isEmail) {

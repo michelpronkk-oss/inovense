@@ -22,9 +22,11 @@ export type HubSpotContactInput = {
 };
 
 export type HubSpotDealInput = {
+  id?: string | null;
   dealname: string;
   contactEmail?: string | null;
   amount?: number | null;
+  currency?: string | null;
   stageLabel?: string | null;
   pipelineLabel?: string | null;
   attribution?: HubSpotAttributionInput | null;
@@ -59,6 +61,7 @@ export type PreparedHubSpotActions = {
     type?: "follow_up" | string;
   };
   executionStatus?: "prepared" | "execution_enabled" | "prepared_not_enabled";
+  businessContext?: Record<string, unknown> | null;
 };
 
 export type HubSpotExecutionResult = {
@@ -220,6 +223,7 @@ function buildDealProperties(input: HubSpotDealInput): Record<string, string> {
   if (typeof input.amount === "number" && Number.isFinite(input.amount)) {
     properties.amount = String(input.amount);
   }
+  if (input.currency?.trim()) properties.deal_currency_code = input.currency.trim().toUpperCase();
   return properties;
 }
 
@@ -468,6 +472,30 @@ export async function findContactByEmail(workspaceId: string, email: string): Pr
   return data.results?.[0] ?? null;
 }
 
+export async function findOpenDealsForContact(workspaceId: string, contactId: string): Promise<Array<{ id: string; name: string | null; stage: string | null; isClosed: boolean; amount: number | null; currency: string | null; closeDate: string | null }>> {
+  const associations = await hubspotRequest<{ results?: Array<{ to?: { id?: string } }> }>(workspaceId, "GET", `/crm/v4/objects/contacts/${encodeURIComponent(contactId)}/associations/deals?limit=20`);
+  const ids = (associations.results ?? []).map((item) => item.to?.id).filter((id): id is string => Boolean(id)).slice(0, 20);
+  if (!ids.length) return [];
+  const result = await hubspotRequest<{ results?: Array<{ id?: string; properties?: Record<string, unknown> }> }>(workspaceId, "POST", "/crm/v3/objects/deals/batch/read", {
+    properties: ["dealname", "dealstage", "amount", "deal_currency_code", "closedate", "hs_is_closed"],
+    inputs: ids.map((id) => ({ id })),
+  });
+  return (result.results ?? []).map((deal) => {
+    const properties = deal.properties ?? {};
+    const amount = Number(properties.amount);
+    const isClosed = String(properties.hs_is_closed ?? "false").toLowerCase() === "true";
+    return {
+      id: String(deal.id ?? ""),
+      name: typeof properties.dealname === "string" ? properties.dealname : null,
+      stage: typeof properties.dealstage === "string" ? properties.dealstage : null,
+      isClosed,
+      amount: Number.isFinite(amount) ? amount : null,
+      currency: typeof properties.deal_currency_code === "string" ? properties.deal_currency_code : null,
+      closeDate: typeof properties.closedate === "string" ? properties.closedate : null,
+    };
+  }).filter((deal) => Boolean(deal.id) && !deal.isClosed);
+}
+
 async function writeHubSpotObject(input: {
   workspaceId: string;
   objectType: "contacts" | "deals";
@@ -557,11 +585,13 @@ export async function createOrUpdateDeal(workspaceId: string, input: HubSpotDeal
     description: buildDealAttributionDescription(input.attribution),
     ...customProperties,
   };
-  const existing = await findMatchingOpenDeal(workspaceId, {
-    dealname: baseProperties.dealname,
-    sourceSubject: input.attribution?.sourceSubject,
-    propertyReadiness: input.propertyReadiness,
-  });
+  const existing = input.id
+    ? { id: input.id }
+    : await findMatchingOpenDeal(workspaceId, {
+      dealname: baseProperties.dealname,
+      sourceSubject: input.attribution?.sourceSubject,
+      propertyReadiness: input.propertyReadiness,
+    });
   const write = await writeHubSpotObject({
     workspaceId,
     objectType: "deals",
@@ -726,9 +756,11 @@ export async function executeHubSpotRevenueActions(workspaceId: string, payload:
   });
 
   const deal = await createOrUpdateDeal(workspaceId, {
-    dealname: safeContactLabel ? `New inbound opportunity: ${safeContactLabel}` : safeDealName(prepared.deal?.dealname, contactEmail),
+    id: cleanString(prepared.deal?.id),
+    dealname: cleanString(prepared.deal?.dealname) ?? (safeContactLabel ? `New inbound opportunity: ${safeContactLabel}` : safeDealName(prepared.deal?.dealname, contactEmail)),
     contactEmail,
     amount: typeof prepared.deal?.amount === "number" ? prepared.deal.amount : null,
+    currency: prepared.deal?.currency ?? null,
     stageLabel: prepared.deal?.stageLabel ?? cleanString(crm.suggestedDealStage),
     pipelineLabel: prepared.deal?.pipelineLabel ?? "Default",
     pipelineId: pipelineMapping.pipelineId,

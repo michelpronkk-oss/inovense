@@ -475,6 +475,20 @@ export default function ConnectorsPage() {
     return { connector: c, connectorKey, impact };
   }).filter((entry) => entry.impact.affectedOperators.length > 0), [degradedConnectors, connectedConnectorKeys]);
 
+  // Onboarding uses this existing connector surface and every provider's
+  // existing OAuth callback. The browser-local return marker is set only by
+  // the onboarding CTA before it navigates here; credentials and connector
+  // truth still come exclusively from the server-side OAuth callback.
+  useEffect(() => {
+    if (window.sessionStorage.getItem("auterim.onboarding.return") !== "/onboarding") return;
+    const connectedKey = searchParams.get("connected");
+    const failedKey = ["gmail", "microsoft", "hubspot", "slack", "trello", "asana", "jira", "zendesk", "intercom", "salesforce"]
+      .find((key) => Boolean(searchParams.get(key)));
+    if (!connectedKey && !failedKey) return;
+    window.sessionStorage.removeItem("auterim.onboarding.return");
+    window.location.assign(`/onboarding?connector=${encodeURIComponent(connectedKey || failedKey || "system")}&connector_status=${connectedKey ? "connected" : "failed"}`);
+  }, [searchParams]);
+
   useEffect(() => {
     const connected = searchParams.get("connected");
     if (!connected) return;

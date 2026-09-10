@@ -4,12 +4,14 @@ import { getVerifiedSupabaseUser } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { requireWorkspaceAdmin, AuthorizationError, resolveActiveWorkspaceId } from "@/lib/server/workspace-access";
 
-export type OnboardingDraft = { fullName: string; workspaceName: string; websiteUrl: string; industry: string; teamSize: string; priority: "revenue" | "client_flow" | "operations" | ""; systems: string[]; step: number };
+export type OnboardingDraft = { fullName: string; workspaceName: string; websiteUrl: string; industry: string; teamSize: string; priority: "revenue" | "client_flow" | "operations" | "support" | ""; systems: string[]; step: number };
 export type OnboardingResult = { ok: true; workspaceId: string; ownerEmail: string; ownerName: string } | { ok: false; error: string };
-const ONBOARDING_VERSION = 2;
+const ONBOARDING_VERSION = 3;
+
+const ONBOARDING_CONNECTORS = ["gmail", "microsoft", "google_drive", "hubspot", "trello", "asana", "jira", "zendesk", "intercom", "slack"];
 
 function cleanDraft(input: Partial<OnboardingDraft>): OnboardingDraft {
-  return { fullName: input.fullName?.trim() ?? "", workspaceName: input.workspaceName?.trim() ?? "", websiteUrl: input.websiteUrl?.trim() ?? "", industry: input.industry?.trim() ?? "", teamSize: input.teamSize?.trim() ?? "", priority: input.priority === "revenue" || input.priority === "client_flow" || input.priority === "operations" ? input.priority : "", systems: Array.isArray(input.systems) ? input.systems.filter((item) => ["gmail", "hubspot", "slack", "trello"].includes(item)) : [], step: Math.min(5, Math.max(1, Number(input.step) || 1)) };
+  return { fullName: input.fullName?.trim() ?? "", workspaceName: input.workspaceName?.trim() ?? "", websiteUrl: input.websiteUrl?.trim() ?? "", industry: input.industry?.trim() ?? "", teamSize: input.teamSize?.trim() ?? "", priority: input.priority === "revenue" || input.priority === "client_flow" || input.priority === "operations" || input.priority === "support" ? input.priority : "", systems: Array.isArray(input.systems) ? input.systems.filter((item) => ONBOARDING_CONNECTORS.includes(item)) : [], step: Math.min(6, Math.max(1, Number(input.step) || 1)) };
 }
 
 async function authorizedWorkspace() {
@@ -41,7 +43,7 @@ export async function saveOnboardingDraftAction(input: Partial<OnboardingDraft>)
   const draft = cleanDraft(input);
   const current = await access.admin.from("os_workspaces").select("onboarding_data").eq("id", access.workspaceId).single();
   if (current.error) return { ok: false, error: current.error.message };
-  const onboardingData = { ...(current.data.onboarding_data ?? {}), website: draft.websiteUrl, industry: draft.industry, team_size: draft.teamSize, first_priority: draft.priority, recommended_operator: draft.priority ? ({ revenue: "Revenue Operator", client_flow: "Client Flow Operator", operations: "Operations Operator" }[draft.priority]) : "", systems: draft.systems, onboarding_step: draft.step };
+  const onboardingData = { ...(current.data.onboarding_data ?? {}), website: draft.websiteUrl, industry: draft.industry, team_size: draft.teamSize, first_priority: draft.priority, recommended_operator: draft.priority ? ({ revenue: "Revenue Operator", client_flow: "Client Flow Operator", operations: "Operations Operator", support: "Support Operator" }[draft.priority]) : "", systems: draft.systems, onboarding_step: draft.step };
   const workspaceUpdate = await access.admin.from("os_workspaces").update({ ...(draft.workspaceName ? { name: draft.workspaceName } : {}), onboarding_data: onboardingData }).eq("id", access.workspaceId);
   if (workspaceUpdate.error) return { ok: false, error: workspaceUpdate.error.message };
   if (draft.fullName) {
@@ -53,8 +55,8 @@ export async function saveOnboardingDraftAction(input: Partial<OnboardingDraft>)
 }
 
 export async function completeOnboardingAction(input: OnboardingDraft): Promise<OnboardingResult> {
-  const draft = cleanDraft({ ...input, step: 5 });
-  if (!draft.fullName || !draft.workspaceName || !draft.industry || !draft.teamSize || !draft.priority) return { ok: false, error: "Complete the required profile details before activating." };
+  const draft = cleanDraft({ ...input, step: 6 });
+  if (!draft.fullName || !draft.workspaceName || !draft.priority) return { ok: false, error: "Add your workspace details and choose what Auterim should watch before starting monitoring." };
   const saved = await saveOnboardingDraftAction(draft);
   if (!saved.ok) return saved;
   const access = await authorizedWorkspace();
@@ -65,7 +67,7 @@ export async function completeOnboardingAction(input: OnboardingDraft): Promise<
   // The onboarding brief is the first trusted company context. It is
   // server-written with a stable ID so retries update this brief rather than
   // multiplying memory entries.
-  const priorityLabel = { revenue: "New leads", client_flow: "Client handoffs", operations: "Operations" }[draft.priority];
+  const priorityLabel = { revenue: "Sales and revenue", client_flow: "Customer communication", operations: "Project delivery", support: "Customer support" }[draft.priority];
   const memory = await access.admin.from("os_memory_entries").upsert({
     id: `mem-onboarding-${access.workspaceId}`,
     workspace_id: access.workspaceId,

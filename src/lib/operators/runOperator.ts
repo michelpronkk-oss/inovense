@@ -4,6 +4,7 @@ import { createGmailSendApproval, prepareRevenueFollowUpEmail, type RevenueFollo
 import { createMicrosoftSendApproval } from "@/lib/operators/executors/microsoft";
 import { logOperatorEvent, operatorRuntimeId } from "@/lib/operators/logging";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { ensureRevenueWorkflow, linkRevenueApprovalWorkflow, persistManualRevenueCandidate } from "@/lib/operators/revenue/workflow";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
@@ -164,6 +165,30 @@ export async function runRevenueOperator(input: RunOperatorInput) {
     });
 
     const draft = prepareRevenueFollowUpEmail(input.input);
+    const manualDedupeKey = `revenue:manual:${input.input.leadEmail.trim().toLowerCase()}:${input.input.goal}:${input.input.context.trim()}`.replace(/[^a-zA-Z0-9:_-]+/g, "-").slice(0, 480);
+    const manualWork = await persistManualRevenueCandidate({
+      supabase,
+      workspaceId: input.workspaceId,
+      provider: emailConnector,
+      sourceId: `manual:${manualDedupeKey}`,
+      threadId: `manual:${manualDedupeKey}`,
+      fromEmail: input.input.leadEmail.trim().toLowerCase(),
+      subject: draft.subject,
+      snippet: input.input.context,
+      dedupeKey: manualDedupeKey,
+    });
+    const revenueWorkflow = await ensureRevenueWorkflow({
+      supabase,
+      workspaceId: input.workspaceId,
+      signalId: manualWork.signalId,
+      candidate: manualWork.candidate,
+      connectorKey: emailConnector,
+      targetRef: manualWork.candidate.sourceId,
+      contextRefs: ["manual_request", "context_quality:missing_deal_context"],
+    });
+    if (revenueWorkflow.existingApprovalId) {
+      return { ok: false as const, status: 409, error: "An equivalent Revenue follow-up is already awaiting review.", readiness, approvalId: revenueWorkflow.existingApprovalId, workflowId: revenueWorkflow.workflowId };
+    }
     await insertStep({
       supabase,
       workspaceId: input.workspaceId,
@@ -210,6 +235,8 @@ export async function runRevenueOperator(input: RunOperatorInput) {
         subject: draft.subject,
         body: draft.body,
         policyReason: policy.reason,
+        sourceMetadata: { workflowId: revenueWorkflow.workflowId, workflowStepId: revenueWorkflow.stepId, manual: true, subjectType: "commercial_thread", subjectId: manualWork.candidate.sourceId, businessContext: { deal: { amount: { value: null, reliability: "missing" }, currency: { value: null, reliability: "missing" }, stage: { value: null, reliability: "missing" } } } },
+        dedupeKey: manualDedupeKey,
       })
       : await createGmailSendApproval({
         supabase,
@@ -219,7 +246,10 @@ export async function runRevenueOperator(input: RunOperatorInput) {
         subject: draft.subject,
         body: draft.body,
         policyReason: policy.reason,
+        sourceMetadata: { workflowId: revenueWorkflow.workflowId, workflowStepId: revenueWorkflow.stepId, manual: true, subjectType: "commercial_thread", subjectId: manualWork.candidate.sourceId, businessContext: { deal: { amount: { value: null, reliability: "missing" }, currency: { value: null, reliability: "missing" }, stage: { value: null, reliability: "missing" } } } },
+        dedupeKey: manualDedupeKey,
       });
+    await linkRevenueApprovalWorkflow({ supabase, workspaceId: input.workspaceId, workflowId: revenueWorkflow.workflowId, stepId: revenueWorkflow.stepId, approvalId: approval.approvalId, sourceMetadata: { preparationState: "ready_to_follow_up", workflowId: revenueWorkflow.workflowId } });
     await insertStep({
       supabase,
       workspaceId: input.workspaceId,

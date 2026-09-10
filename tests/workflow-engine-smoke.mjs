@@ -7,7 +7,7 @@ import esbuild from "esbuild";
 const root = process.cwd(); const tmp = path.join(root, "tests", ".tmp-workflow-engine"); fs.mkdirSync(tmp, { recursive: true });
 try {
   let source = fs.readFileSync("src/lib/workflows/engine.ts", "utf8");
-  source = source.replace(/import \{ getActionDefinition \}[^\n]+\n/, "const getActionDefinition = () => null;\n").replace(/import \{ connectorHasCapability \}[^\n]+\n/, "const connectorHasCapability = () => false;\n");
+  source = source.replace(/import \{ getActionDefinition \}[^\n]+\n/, "const getActionDefinition = () => null;\n").replace(/import \{ connectorHasCapability \}[^\n]+\n/, "const connectorHasCapability = () => false;\n").replace(/import \{[^\n]+\} from \"@\/lib\/workflows\/identity\";\n/, "const canonicalWorkflowDedupeKey = (input) => `workflow:${[input.workspaceId, input.provider, input.entityId, input.intent, input.primaryOperator].join(\":\")}`;\nconst canonicalBusinessProblemWorkflowDedupeKey = (input) => canonicalWorkflowDedupeKey({ workspaceId: input.workspaceId, provider: \"business_problem\", entityId: input.problemKey, intent: input.intent, primaryOperator: input.primaryOperator });\nconst explicitBusinessProblemKey = () => null;\n");
   const { code } = esbuild.transformSync(source, { loader: "ts", format: "esm", target: "node18" });
   const file = path.join(tmp, "engine.mjs"); fs.writeFileSync(file, code);
   const { chooseProjectConnector, planCandidateWorkflow, conservativeAttribution } = await import(pathToFileURL(file).href);

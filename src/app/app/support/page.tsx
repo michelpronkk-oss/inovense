@@ -7,7 +7,7 @@ import { useOS } from "@/lib/os/app-provider";
 import { findSupportHelp, SUPPORT_HELP } from "@/lib/support/knowledge";
 import { getEntitlements } from "@/lib/os/entitlements";
 import { getPlanLabel } from "@/lib/os/truth";
-import { PageHeader, EmptyState, CapabilityDefinitionList } from "@/components/product-ui/page-primitives";
+import { PageHeader, CapabilityDefinitionList } from "@/components/product-ui/page-primitives";
 
 type Answer = { answer: string; action?: { label: string; href: string }; needsContact?: boolean };
 type Topic = "account" | "connector" | "operator" | "billing" | "bug" | "other";
@@ -34,6 +34,7 @@ export default function SupportPage() {
 
   const [topic, setTopic] = useState<Topic>("other");
   const [message, setMessage] = useState("");
+  const [contactOpen, setContactOpen] = useState(false);
   const [contactError, setContactError] = useState("");
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
@@ -67,6 +68,15 @@ export default function SupportPage() {
     finally { setSending(false); }
   }
 
+  function openContactForm() {
+    setSent(false);
+    setContactOpen(true);
+    window.setTimeout(() => {
+      messageFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      messageFieldRef.current?.focus();
+    }, 0);
+  }
+
   return (
     <div className="os-page support-page">
       <PageHeader
@@ -77,9 +87,7 @@ export default function SupportPage() {
             type="button"
             className="btn btn-primary btn-sm"
             onClick={() => {
-              setSent(false);
-              messageFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-              messageFieldRef.current?.focus();
+              openContactForm();
             }}
           >
             New request
@@ -97,18 +105,18 @@ export default function SupportPage() {
                 <input id="support-search" className="input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search connectors, approvals, plans…" />
               </div>
               <div className="rows" style={{ marginTop: 10 }}>
-                {help.length
+                {query.trim() && help.length
                   ? help.map((item) => (
                       <Link key={item.id} href={item.href} className="row link">
                         <span className="grow"><span className="ttl">{item.title}</span><span className="sub">{item.summary}</span></span>
                       </Link>
                     ))
-                  : <p className="hint">No matching help item. Ask a question below or send a request.</p>}
+                  : <p className="hint">Search for a workspace topic, or ask Auterim a specific question below.</p>}
               </div>
-              <form onSubmit={ask} style={{ marginTop: 16 }}>
+              <form onSubmit={ask} style={{ marginTop: 14 }}>
                 <div className="field">
                   <label className="label" htmlFor="support-question">Ask a specific question</label>
-                  <textarea id="support-question" className="input" rows={3} maxLength={1000} value={question} placeholder="Why is Revenue Operator not ready?" onChange={(event) => setQuestion(event.target.value)} />
+                  <textarea id="support-question" className="input" rows={2} maxLength={1000} value={question} placeholder="Why is Revenue Operator not ready?" onChange={(event) => setQuestion(event.target.value)} />
                   <p className="hint">Uses your verified workspace setup to point you to the next step.</p>
                 </div>
                 {askError && <p className="hint" role="alert" style={{ color: "var(--rose)" }}>{askError}</p>}
@@ -125,7 +133,7 @@ export default function SupportPage() {
                         type="button"
                         className="btn btn-ghost btn-sm"
                         style={{ marginTop: 10 }}
-                        onClick={() => { messageFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); messageFieldRef.current?.focus(); }}
+                        onClick={openContactForm}
                       >
                         Contact support →
                       </button>
@@ -136,13 +144,16 @@ export default function SupportPage() {
             </section>
 
             <section className="sec">
-              <div className="sec-head"><h3 className="t-section">Contact support</h3></div>
+              <div className="sec-head" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <h3 className="t-section">Contact support</h3>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => (contactOpen ? setContactOpen(false) : openContactForm())}>{contactOpen ? "Close" : "Open form"}</button>
+              </div>
               {sent ? (
                 <div className="panel" style={{ padding: "14px 16px" }}>
                   <p className="t-object">Support request received.</p>
                   <p className="t-compact" style={{ margin: "4px 0 0" }}>We&rsquo;ll follow up at {state.currentUser.email}.</p>
                 </div>
-              ) : (
+              ) : contactOpen ? (
                 <form className="stack" onSubmit={contact}>
                   <div className="field">
                     <label className="label" htmlFor="support-topic">Topic</label>
@@ -156,7 +167,7 @@ export default function SupportPage() {
                       id="support-message"
                       ref={messageFieldRef}
                       className="input"
-                      rows={5}
+                      rows={4}
                       maxLength={5000}
                       value={message}
                       onChange={(event) => setMessage(event.target.value)}
@@ -167,12 +178,21 @@ export default function SupportPage() {
                   {contactError && <p className="hint" role="alert" style={{ color: "var(--rose)" }}>{contactError}</p>}
                   <div><button className="btn btn-primary" type="submit" disabled={sending}>{sending ? "Sending…" : "Send request"}</button></div>
                 </form>
+              ) : (
+                <div className="panel" style={{ padding: "12px 14px" }}>
+                  <div className="inline" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                    <span className="grow"><span className="t-object">Need a human?</span><span className="sub">Send the workspace context and we&rsquo;ll follow up by email.</span></span>
+                    <button type="button" className="btn btn-primary btn-sm" onClick={openContactForm}>Start request</button>
+                  </div>
+                </div>
               )}
             </section>
 
             <section className="sec">
               <div className="sec-head"><h3 className="t-section">Open requests</h3></div>
-              <EmptyState title="No open requests">Requests you send appear here once support activity is available in this workspace.</EmptyState>
+              <div className="panel" style={{ padding: "12px 14px" }}>
+                <p className="t-compact" style={{ margin: 0, color: "var(--text-mute)" }}>No open requests. Requests appear here once support activity is available.</p>
+              </div>
             </section>
           </div>
         </div>

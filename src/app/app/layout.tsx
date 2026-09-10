@@ -29,6 +29,11 @@ const PUBLIC_APP_PATHS = new Set([
 // next step (onboarding vs. activate vs. dashboard).
 const AUTH_ENTRY_PATHS = new Set(["/login", "/register"]);
 
+// An incomplete workspace may use the existing Connectors surface while it
+// is onboarding. OAuth callbacks already return there, and this keeps the
+// real provider setup path resumable instead of inventing a second flow.
+const ONBOARDING_CONNECTOR_PATH = "/connectors";
+
 /**
  * Middleware sets `x-pathname` to the ORIGINAL (pre-rewrite) request path
  * for the app host surface, which may or may not already carry the `/app`
@@ -68,7 +73,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         email: gateway.email,
       };
       const onboardingDone = Boolean(gateway.onboardingCompletedAt);
-      if (!onboardingDone && pathname !== "/onboarding") {
+      if (!onboardingDone && pathname !== "/onboarding" && pathname !== ONBOARDING_CONNECTOR_PATH) {
         redirect("/onboarding");
       }
       if (onboardingDone && pathname === "/onboarding") {

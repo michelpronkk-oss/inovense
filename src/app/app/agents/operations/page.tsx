@@ -141,7 +141,10 @@ export default function OperationsOperatorPage() {
     }
   }, [identityParams, state.workspace.id]);
 
-  useEffect(() => { void loadRuntime(); }, [loadRuntime]);
+  useEffect(() => {
+    const handle = window.setTimeout(() => { void loadRuntime(); }, 0);
+    return () => window.clearTimeout(handle);
+  }, [loadRuntime]);
 
   const submitScan = async () => {
     setScanSubmitting(true);

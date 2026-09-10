@@ -6,7 +6,7 @@
  * is READ-ONLY (person/company/opportunity lookup) - no Salesforce mutation
  * of any kind exists here or anywhere else in the codebase today.
  */
-import { findContactByEmail } from "@/lib/operators/executors/hubspot";
+import { findContactByEmail, findOpenDealsForContact } from "@/lib/operators/executors/hubspot";
 import { getStoredSalesforceCredential } from "@/lib/connectors/salesforce";
 import {
   findSalesforcePersonByEmail,
@@ -56,6 +56,7 @@ export type RevenueCrmOpportunity = {
   stage: string | null;
   isClosed: boolean;
   amount: number | null;
+  currency: string | null;
   closeDate: string | null;
   ownerId: string | null;
   ownerName: string | null;
@@ -85,12 +86,25 @@ export interface RevenueCrmAdapter {
 
 const hubspotAdapter: RevenueCrmAdapter = {
   provider: "hubspot",
-  supports: (capability) => ["person.read", "contact.write", "opportunity.write", "note.create", "follow_up.create"].includes(capability),
+  supports: (capability) => ["person.read", "company.read", "opportunity.read", "contact.write", "opportunity.write", "note.create", "follow_up.create"].includes(capability),
   async findPersonByEmail(workspaceId, email) {
     const contact = await findContactByEmail(workspaceId, email);
     if (!contact) return null;
     const properties = contact.properties ?? {};
     return { id: contact.id ?? "", email: typeof properties.email === "string" ? properties.email : null, firstName: typeof properties.firstname === "string" ? properties.firstname : null, lastName: typeof properties.lastname === "string" ? properties.lastname : null, companyName: typeof properties.company === "string" ? properties.company : null };
+  },
+  async getOpportunityContext(workspaceId, person) {
+    if (!person.id) return { companyMatchStatus: "no_match", company: null, opportunityMatchStatus: "no_match", opportunities: [], fallbackReason: null };
+    const deals = await findOpenDealsForContact(workspaceId, person.id);
+    if (deals.length === 0) return { companyMatchStatus: "no_match", company: null, opportunityMatchStatus: "no_match", opportunities: [], fallbackReason: null };
+    const companyName = person.companyName;
+    return {
+      companyMatchStatus: companyName ? "matched" : "no_match",
+      company: companyName ? { id: null, name: companyName, website: null, industry: null, ownerId: null, ownerName: null } : null,
+      opportunityMatchStatus: "matched",
+      opportunities: deals.map((deal) => ({ ...deal, ownerId: null, ownerName: null })),
+      fallbackReason: null,
+    };
   },
 };
 
@@ -165,6 +179,7 @@ const salesforceAdapter: RevenueCrmAdapter = {
           stage: opportunity.stage,
           isClosed: opportunity.isClosed,
           amount: opportunity.amount,
+          currency: null,
           closeDate: opportunity.closeDate,
           ownerId: opportunity.ownerId,
           ownerName: opportunity.ownerName,

@@ -8,6 +8,7 @@ import { planCandidateWorkflow, validateWorkflowPlan } from "@/lib/workflows/eng
 import type { SignalCandidate } from "@/lib/signals/types";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { materializeWorkflowStep } from "@/lib/workflows/materialize";
+import { explicitBusinessProblemKey } from "@/lib/workflows/identity";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
@@ -37,6 +38,18 @@ export async function createWorkflowFromSignalCandidate(input: { workspaceId: st
     id: workflow.id, workspace_id: workflow.workspaceId, operator_key: workflow.operatorKey, originating_signal_id: workflow.originatingSignalId,
     objective: workflow.objective, entity_refs: workflow.entityRefs, context_refs: workflow.contextRefs, priority: workflow.priority,
     confidence: workflow.confidence, status: workflow.status, dedupe_key: workflow.dedupeKey,
+    primary_owner: workflow.operatorKey,
+    parent_primary_owner: null,
+    supporting_operator: null,
+    supporting_operators: input.candidate.supportingOperators ?? [],
+    requested_outcome: workflow.objective,
+    relevant_context: { source: input.candidate.source, signalType: input.candidate.signalType },
+    external_communication_allowed: ["revenue", "client_flow", "support"].includes(workflow.operatorKey),
+    external_communication_owner: ["revenue", "client_flow", "support"].includes(workflow.operatorKey) ? workflow.operatorKey : null,
+    return_condition: "provider_outcome_observed",
+    dependency_state: "none",
+    handoff_status: "none",
+    source_problem_key: explicitBusinessProblemKey(input.candidate.metadata),
   }, { onConflict: "workspace_id,dedupe_key", ignoreDuplicates: true });
   if (saved.error) throw new Error(`Workflow persistence failed: ${saved.error.message}`);
   if (workflow.steps.length) {
@@ -64,7 +77,8 @@ export async function recordObservedWorkflowOutcome(input: {
 }): Promise<void> {
   if (!input.evidenceRefs.length) throw new Error("Outcome evidence is required.");
   const supabase = input.supabase ?? createSupabaseAdmin();
-  const id = `outcome-${input.workspaceId}-${input.workflowId || input.signalId || input.outcomeType}-${input.observedAt}`.replace(/[^a-zA-Z0-9_-]+/g, "-").slice(0, 180);
+  const evidenceKey = input.evidenceRefs.slice(0, 3).join("|");
+  const id = `outcome-${input.workspaceId}-${input.workflowId || input.signalId || input.outcomeType}-${input.outcomeType}-${evidenceKey}`.replace(/[^a-zA-Z0-9_-]+/g, "-").slice(0, 180);
   const result = await supabase.from("os_workflow_outcomes").upsert({ id, workspace_id: input.workspaceId, operator_key: input.operatorKey, workflow_id: input.workflowId ?? null, signal_id: input.signalId ?? null, execution_intent_id: input.executionIntentId ?? null, outcome_type: input.outcomeType, attribution_level: input.attributionLevel, confidence: input.confidence, evidence_refs: input.evidenceRefs.slice(0, 20).map((ref) => ref.slice(0, 240)), observed_at: input.observedAt }, { onConflict: "id", ignoreDuplicates: true });
   if (result.error) throw new Error(`Outcome persistence failed: ${result.error.message}`);
 }

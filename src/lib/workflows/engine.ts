@@ -2,6 +2,7 @@ import { getActionDefinition } from "@/lib/actions/registry";
 import type { ActionType } from "@/lib/actions/types";
 import { connectorHasCapability } from "@/lib/connectors/capabilities";
 import type { SignalCandidate } from "@/lib/signals/types";
+import { canonicalBusinessProblemWorkflowDedupeKey, canonicalWorkflowDedupeKey, explicitBusinessProblemKey } from "@/lib/workflows/identity";
 
 export type WorkflowStatus = "planned" | "awaiting_approval" | "partially_approved" | "executing" | "completed" | "partially_completed" | "blocked" | "failed" | "cancelled";
 export type WorkflowStepStatus = "proposed" | "awaiting_approval" | "approved" | "executing" | "completed" | "blocked" | "rejected" | "failed" | "skipped";
@@ -59,8 +60,12 @@ export function planCandidateWorkflow(input: { candidate: SignalCandidate; signa
   if (!["revenue", "client_flow", "operations", "support"].includes(operatorKey)) return null;
   const now = input.now ?? new Date().toISOString();
   const connector = chooseProjectConnector(input.context.connectedConnectorKeys, input.context.executableConnectorKeys);
+  const problemKey = explicitBusinessProblemKey(candidate.metadata);
+  const workflowDedupe = problemKey
+    ? canonicalBusinessProblemWorkflowDedupeKey({ workspaceId: candidate.workspaceId, problemKey, intent: operatorKey === "operations" ? "operations_work" : candidate.signalType, primaryOperator: operatorKey })
+    : canonicalWorkflowDedupeKey({ workspaceId: candidate.workspaceId, provider: candidate.source, entityId: candidate.sourceId, intent: operatorKey === "operations" ? "operations_work" : candidate.signalType, primaryOperator: operatorKey });
   const base = {
-    id: `wf_${candidate.workspaceId}_${candidate.dedupeKey}`.replace(/[^a-zA-Z0-9_-]+/g, "-").slice(0, 180),
+    id: `wf_${workflowDedupe}`.replace(/[^a-zA-Z0-9_-]+/g, "-").slice(0, 180),
     workspaceId: candidate.workspaceId,
     operatorKey,
     originatingSignalId: input.signalId,
@@ -69,7 +74,7 @@ export function planCandidateWorkflow(input: { candidate: SignalCandidate; signa
     status: "planned" as WorkflowStatus,
     priority: candidate.priority ?? 0,
     confidence: candidate.confidence,
-    dedupeKey: `workflow:${candidate.dedupeKey}`.slice(0, 480),
+    dedupeKey: workflowDedupe,
     createdAt: now,
   };
   if (operatorKey === "client_flow" && ["support_risk", "escalation"].includes(candidate.signalType)) {

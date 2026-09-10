@@ -171,7 +171,7 @@ export default function RegisterPage() {
       <div className="auth-card">
         <AuthCardBadge />
         <h1 className="auth-title">Create your account</h1>
-        <p className="auth-sub">Set up the AI workforce for your business.</p>
+        <p className="auth-sub">Connect the systems Auterim needs to start watching the work that needs attention.</p>
 
         {error && <div className="auth-alert error" role="alert">{error}</div>}
 

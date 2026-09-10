@@ -97,6 +97,10 @@ export async function ingestSignalBatch(input: {
   workspaceId: string;
   events: SignalEvent[];
   supabase?: SupabaseAdmin;
+  /** Direct operator scans may persist canonical signals before they attach a
+   * provider-specific action/workflow. This prevents a second generic
+   * workflow from being materialized for the same signal. */
+  materializeWorkflows?: boolean;
 }): Promise<SignalIngestionResult> {
   if (!input.workspaceId.trim()) throw new Error("Signal ingestion requires a workspace.");
   if (input.events.some((event) => event.workspaceId !== input.workspaceId)) {
@@ -130,14 +134,15 @@ export async function ingestSignalBatch(input: {
   // A workflow is a durable, bounded response proposal. Its creation is
   // intentionally best-effort here: ingestion remains safe even if the
   // workflow migration has not reached a deployment yet. No step executes.
-  await Promise.all(eligibility.filter((item) => item.eligible && candidateCanProposeWorkflow(item.candidate) && (item.candidate.priority ?? 0) >= 65).map(async ({ candidate }) => {
+  const shouldMaterializeWorkflows = input.materializeWorkflows !== false;
+  await Promise.all(eligibility.filter((item) => shouldMaterializeWorkflows && item.eligible && candidateCanProposeWorkflow(item.candidate) && (item.candidate.priority ?? 0) >= 65).map(async ({ candidate }) => {
     try {
       await createWorkflowFromSignalCandidate({ workspaceId: input.workspaceId, signalId: candidate.signalId || "", candidate, supabase });
     } catch (error) {
       console.warn("[signal-engine] workflow planning skipped", { workspaceId: input.workspaceId, signalId: candidate.signalId, error: error instanceof Error ? error.message : "Unknown workflow planning error" });
     }
   }));
-  const workflowCandidates = eligibility.filter((item) => item.eligible && candidateCanProposeWorkflow(item.candidate) && (item.candidate.priority ?? 0) >= 65).length;
+  const workflowCandidates = shouldMaterializeWorkflows ? eligibility.filter((item) => item.eligible && candidateCanProposeWorkflow(item.candidate) && (item.candidate.priority ?? 0) >= 65).length : 0;
   return {
     received: input.events.length,
     classified: routed.length,

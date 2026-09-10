@@ -56,9 +56,13 @@ async function main() {
     const registryUrl = buildModule("src/lib/connectors/registry.ts");
     const capabilitiesUrl = buildModule("src/lib/connectors/capabilities.ts", [], [['from "@/lib/connectors/registry";', `from "${registryUrl}";`]]);
     const actionsUrl = buildModule("src/lib/actions/registry.ts");
+    const identityUrl = buildModule("src/lib/workflows/identity.ts");
+    const ownershipUrl = buildModule("src/lib/workforce/ownership.ts");
     const engineUrl = buildModule("src/lib/workflows/engine.ts", [], [
       ['from "@/lib/actions/registry";', `from "${actionsUrl}";`],
       ['from "@/lib/connectors/capabilities";', `from "${capabilitiesUrl}";`],
+      ['from="@/lib/workflows/identity";', `from "${identityUrl}";`],
+      ['import { canonicalBusinessProblemWorkflowDedupeKey, canonicalWorkflowDedupeKey, explicitBusinessProblemKey } from "@/lib/workflows/identity";', `import { canonicalBusinessProblemWorkflowDedupeKey, canonicalWorkflowDedupeKey, explicitBusinessProblemKey } from "${identityUrl}";`],
     ]);
     const { planCandidateWorkflow, deriveWorkflowStatus, conservativeAttribution } = await import(engineUrl);
     // Signal engine imports inbound classification as a runtime dependency.
@@ -67,6 +71,8 @@ async function main() {
     const inboundUrl = buildModule("src/lib/signals/inbound.ts");
     const signalEngineUrl = buildModule("src/lib/signals/engine.ts", [], [
       ['from "@/lib/signals/inbound";', `from "${inboundUrl}";`],
+      ['from "@/lib/workforce/ownership";', `from "${ownershipUrl}";`],
+      ['from "@/lib/workflows/identity";', `from "${identityUrl}";`],
     ]);
     const { routeSignalEvent } = await import(signalEngineUrl);
     const { evaluatePolicy } = await import(buildModule("src/lib/policies/evaluate.ts"));
@@ -95,7 +101,7 @@ async function main() {
 
     // ── 1. Controlled-beta end-to-end scenarios ──────────────────────────
 
-    await check(1, "Client flow: a Zendesk escalation becomes a bounded, fully gated plan", () => {
+    await check(1, "Support: a Zendesk escalation becomes a bounded, fully gated plan", () => {
       const routed = routeSignalEvent({
         id: "sig-1", workspaceId: "ws-1", source: "zendesk", connectorKey: "zendesk", provider: "zendesk",
         sourceType: "ticket", sourceId: "ticket-42", eventType: "zendesk.ticket.updated",
@@ -103,16 +109,16 @@ async function main() {
         actor: "customer@example.com", subject: "Urgent: outage is unacceptable, we cannot proceed",
         snippet: "This is an escalation, the outage is unacceptable and we cannot proceed.", dedupeKey: "zendesk:ticket-42",
       });
-      const candidate = routed.candidates.find((item) => item.operatorKey === "client_flow");
-      assert.ok(candidate, "an escalation must reach Client Flow");
+      const candidate = routed.candidates.find((item) => item.operatorKey === "support");
+      assert.ok(candidate, "a support escalation must have one Support primary owner");
       const plan = planCandidateWorkflow({
         candidate: { ...candidate, priority: 90, signalType: "escalation" }, signalId: "sig-1",
-        context: { activeOperatorKeys: ["client_flow"], connectedConnectorKeys: ["jira", "microsoft_teams", "zendesk"], executableConnectorKeys: ["jira", "microsoft_teams", "zendesk"], executionEligible: true },
+        context: { activeOperatorKeys: ["support"], connectedConnectorKeys: ["jira", "microsoft_teams", "zendesk"], executableConnectorKeys: ["jira", "microsoft_teams", "zendesk"], executionEligible: true },
       });
       assert.ok(plan, "an eligible escalation must produce a plan");
-      assert.deepEqual(plan.steps.map((step) => step.id), ["pm-follow-up", "internal-escalation", "customer-response"]);
-      assert.ok(plan.steps.every((step) => step.approvalRequired), "every step in a customer escalation stays approval gated");
-      assert.equal(plan.steps.find((step) => step.id === "customer-response").risk, "high");
+      assert.deepEqual(plan.steps.map((step) => step.id), ["support-ticket-response"]);
+      assert.ok(plan.steps.every((step) => step.approvalRequired), "every support escalation stays approval gated");
+      assert.equal(plan.steps[0].risk, "high");
       assert.equal(deriveWorkflowStatus(plan.steps), "planned");
     });
 

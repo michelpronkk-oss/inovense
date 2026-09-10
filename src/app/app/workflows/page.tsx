@@ -49,8 +49,16 @@ export default function WorkflowsPage() {
       setWorkflows(json.workflows ?? []);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not load workflows."); } finally { setLoading(false); }
   }, []);
-  useEffect(() => { void load(); }, [load]);
-  useEffect(() => { if (searchParams.get("workflow")) setSelectedId(searchParams.get("workflow")); }, [searchParams]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
+  useEffect(() => {
+    const requested = searchParams.get("workflow");
+    if (!requested) return;
+    const timer = window.setTimeout(() => setSelectedId(requested), 0);
+    return () => window.clearTimeout(timer);
+  }, [searchParams]);
   const selected = useMemo(() => workflows.find((workflow) => workflow.id === selectedId) ?? null, [selectedId, workflows]);
   const active = workflows.filter((workflow) => ["planned", "awaiting_approval", "partially_approved", "executing", "blocked"].includes(workflow.status)).length;
   const waiting = workflows.filter((workflow) => workflow.steps.some((step) => step.status === "awaiting_approval" || (step.approvalRequired && step.status === "proposed"))).length;
@@ -141,8 +149,10 @@ function WorkflowDetail({ workflow, onClose }: { workflow: WorkflowPresentation;
               <p className="t-compact" style={{ margin: 0 }}>{workflow.whyStarted.length ? workflow.whyStarted.join(" ") : "Auterim identified a meaningful signal and prepared the next safe steps."}</p>
               <dl className="kv" style={{ marginTop: 14 }}>
                 <div><dt>Owner</dt><dd>{workflow.operatorName}</dd></div>
+                <div><dt>External communication</dt><dd>{workflow.externalCommunicationOwner ? `${workflow.externalCommunicationOwner.replace(/_/g, " ")} only` : "Not allowed"}</dd></div>
                 <div><dt>Source</dt><dd>{workflow.source?.label ?? "Workspace signal"}{workflow.source?.detail ? ` · ${workflow.source.detail}` : ""}</dd></div>
                 <div><dt>Priority</dt><dd>{label(workflow.priority)}</dd></div>
+                <div><dt>Workforce state</dt><dd>{label(workflow.workforceState)}</dd></div>
                 <div><dt>Progress</dt><dd>{completed} of {workflow.steps.length} steps</dd></div>
               </dl>
             </div>
@@ -178,6 +188,19 @@ function WorkflowDetail({ workflow, onClose }: { workflow: WorkflowPresentation;
               </dl>
               <div className="inline" style={{ marginTop: 14 }}><Link className="btn btn-primary btn-sm" href="/app/approvals" style={{ textDecoration: "none" }}>Review in approvals</Link></div>
             </section>
+          )}
+
+          {workflow.supportingWork.length > 0 && (
+            <div className="card">
+              <div className="card-head"><div className="t-section">Supporting work</div><span className="t-meta">Internal dependencies return evidence to the owner</span></div>
+              <div className="rows">
+                {workflow.supportingWork.map((child) => <div className="row" key={child.id}>
+                  <span className={`dot${child.status === "completed" ? " dot-green" : child.status === "blocked" ? " dot-amber" : ""}`} />
+                  <span className="grow"><span className="ttl">{child.operatorName}</span><span className="sub">{child.requestedOutcome ?? "Linked internal work"}</span><span className="sub">{child.handoffReason ? `Why: ${child.handoffReason}` : "Internal work only"}{Object.keys(child.resultEvidence).length ? ` · Evidence: ${Object.keys(child.resultEvidence).slice(0, 3).join(", ")}` : ""}</span></span>
+                  <span className={`badge ${badgeTone(child.status)}`}>{label(child.status)}</span>
+                </div>)}
+              </div>
+            </div>
           )}
         </div>
 

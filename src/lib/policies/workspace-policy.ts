@@ -153,6 +153,9 @@ export function buildPolicyInputFromContinuation(input: {
       confidence: confidenceValue(sourceMetadata.confidence),
       recipient: to,
       domain: to ? to.split("@")[1] : undefined,
+      subjectType: stringValue(c.subjectType) ?? stringValue(sourceMetadata.subjectType),
+      subjectId: stringValue(c.subjectId) ?? stringValue(sourceMetadata.subjectId),
+      businessContext: normalizeBusinessContext(sourceMetadata.businessContext),
       source: stringValue(c.source) ?? `${connectorKey}_scan`,
       metadata: {
         dedupeKey: stringValue(c.dedupeKey),
@@ -160,6 +163,7 @@ export function buildPolicyInputFromContinuation(input: {
           stringValue(c.editedDraftSubject) ?? stringValue(c.draftSubject) ?? stringValue(c.subject) ?? "",
           stringValue(c.editedDraftBody) ?? stringValue(c.draftBody) ?? stringValue(c.body) ?? "",
         ),
+        ...(sourceMetadata.supportContext ? { supportContext: sourceMetadata.supportContext } : {}),
       },
     };
   }

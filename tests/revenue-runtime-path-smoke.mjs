@@ -1,0 +1,35 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+
+const read = (file) => fs.readFileSync(file, "utf8");
+const scan = read("src/lib/operators/revenue/scan.ts");
+const workflow = read("src/lib/operators/revenue/workflow.ts");
+const manual = read("src/lib/operators/runOperator.ts");
+const crm = read("src/lib/operators/revenue/crm.ts");
+const hubspot = read("src/lib/operators/executors/hubspot.ts");
+const policyContext = read("src/lib/policies/context.ts");
+const lifecycle = read("src/lib/workflows/lifecycle.ts");
+const observers = read("src/lib/workflows/outcome-observers.ts");
+const approval = read("src/lib/policies/approval-governance.ts");
+
+assert.match(scan, /persistCanonicalRevenueSignal/);
+assert.match(scan, /materializeWorkflows: false/);
+assert.match(scan, /ensureRevenueWorkflow/);
+assert.match(scan, /linkRevenueApprovalWorkflow/);
+assert.match(scan, /createRevenueSupportingHandoff/);
+assert.match(scan, /commercialContext.businessContext/);
+assert.match(scan, /commercialContextJson/);
+assert.match(workflow, /primary_owner: "revenue"/);
+assert.match(workflow, /canonicalWorkflowDedupeKey/);
+assert.match(manual, /persistManualRevenueCandidate/);
+assert.match(manual, /ensureRevenueWorkflow/);
+assert.match(crm, /findOpenDealsForContact/);
+assert.match(hubspot, /deal_currency_code/);
+assert.match(policyContext, /root.businessContext/);
+assert.match(approval, /approvalScopes.hubspot/);
+assert.match(lifecycle, /\["support", "revenue"\]/);
+assert.match(observers, /revenue_positive_reply/);
+assert.match(observers, /revenue_no_response/);
+assert.match(observers, /revenue_deal_stage_advanced/);
+assert.match(observers, /return null;/, "Revenue observers must retain a safe no-input/no-outcome path");
+console.log("revenue-runtime-path-smoke: canonical Revenue work, real CRM context, independent scopes, lifecycle waiting, and outcome wiring contracts passed.");

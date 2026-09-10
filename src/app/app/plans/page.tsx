@@ -7,9 +7,10 @@ import { getEntitlements } from "@/lib/os/entitlements";
 import { getPlanLabel } from "@/lib/os/truth";
 import { appHref } from "@/lib/urls";
 import { pricingPlans, type CheckoutPlanTier } from "@/lib/pricing";
+import { getPlanLimits } from "@/lib/os/plans";
 import { PageHeader, MetricStrip } from "@/components/product-ui/page-primitives";
 
-type PlanCard = { tier: CheckoutPlanTier; name: string; price: string; summary: string; limits: string[]; featured?: boolean };
+type PlanCard = { tier: CheckoutPlanTier; name: string; price: string; summary: string; limits: string[]; teamSeats: number; featured?: boolean };
 
 const PLANS: PlanCard[] = pricingPlans.map((plan) => ({
   tier: plan.plan_tier,
@@ -17,6 +18,7 @@ const PLANS: PlanCard[] = pricingPlans.map((plan) => ({
   price: plan.price,
   summary: plan.tagline,
   limits: plan.features.filter((feature) => feature !== "3 days free for first-time workspaces"),
+  teamSeats: getPlanLimits(plan.plan_tier).maxTeamMembers,
   featured: plan.featured,
 }));
 
@@ -30,6 +32,7 @@ export default function PlansPage() {
   const { state } = useOS();
   const searchParams = useSearchParams();
   const entitlements = getEntitlements(state.workspace);
+  const currentPlanLimits = getPlanLimits(state.workspace.planTier ?? state.workspace.plan);
   const [submitting, setSubmitting] = useState<CheckoutPlanTier | null>(null);
   const [trialState, setTrialState] = useState<{ eligible: boolean; status: string } | null>(null);
   const [billingBusy, setBillingBusy] = useState(false);
@@ -110,7 +113,7 @@ export default function PlansPage() {
         <MetricStrip items={[
           { label: "Operator capacity", value: entitlements.operatorsLimit, detail: "Included in this plan" },
           { label: "Connector capacity", value: entitlements.connectorsLimit === "custom" || entitlements.connectorsLimit === "standard_all" ? "Custom" : entitlements.connectorsLimit, detail: "Connected systems allowed" },
-          { label: "Team seats in use", value: teamSeatsInUse, detail: "Active workspace members" },
+          { label: "Team seats", value: currentPlanLimits.maxTeamMembers === -1 ? teamSeatsInUse : `${teamSeatsInUse} / ${currentPlanLimits.maxTeamMembers}`, detail: currentPlanLimits.maxTeamMembers === -1 ? "Active workspace members" : "Active / included seats" },
         ]} />
       </div>
     </section>
@@ -139,6 +142,10 @@ export default function PlansPage() {
                     <span className="t-compact">{limit}</span>
                   </div>
                 ))}
+                <div className="inline" style={{ flexWrap: "nowrap" }}>
+                  <span className="dot dot-cyan" />
+                  <span className="t-compact">Up to {plan.teamSeats === -1 ? "unlimited" : plan.teamSeats} team seats</span>
+                </div>
               </div>
               <div>
                 {current

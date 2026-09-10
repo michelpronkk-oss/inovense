@@ -208,7 +208,8 @@ export function mapApprovalToActivity(row: Row): DashboardActivity {
   const kind = stringValue(payload.kind);
   const operatorKey = stringValue(payload.operatorKey) ?? stringValue(row.agent_id);
   const title = status === "pending" ? "Approval created" : status === "approved" ? "Approval approved" : status === "failed" ? "Approval failed" : "Approval updated";
-  const connectorKey = kind?.includes("gmail") ? "gmail" : kind?.includes("microsoft") ? "microsoft" : kind?.includes("slack") ? "slack" : kind?.includes("shared_action") ? "trello" : null;
+  const preparedAction = asRecord(payload.preparedAction);
+  const connectorKey = kind?.includes("gmail") ? "gmail" : kind?.includes("microsoft") ? "microsoft" : kind?.includes("slack") ? "slack" : stringValue(preparedAction.connectorKey);
   return {
     id: `approval-${String(row.id)}`,
     time: timeValue(row),
@@ -243,6 +244,23 @@ export function mapRunLogToActivity(row: Row): DashboardActivity {
     connectorKey,
     severity,
     href: "/logs",
+  };
+}
+
+export function mapOutcomeToActivity(row: Row): DashboardActivity {
+  const outcomeType = stringValue(row.outcome_type) ?? "business_outcome";
+  const workflowId = stringValue(row.workflow_id);
+  const attribution = stringValue(row.attribution_level);
+  return {
+    id: `outcome-${String(row.id)}`,
+    time: stringValue(row.observed_at) ?? stringValue(row.created_at),
+    type: `outcome.${outcomeType}`,
+    title: `Observed ${outcomeType.replace(/_/g, " ")}`,
+    description: attribution ? `Provider evidence recorded with ${attribution} attribution.` : "Provider evidence recorded for this operator work.",
+    operatorKey: stringValue(row.operator_key),
+    connectorKey: null,
+    severity: "success",
+    href: workflowId ? `/workflows?workflow=${encodeURIComponent(workflowId)}` : "/activity",
   };
 }
 
@@ -479,13 +497,15 @@ export async function getDashboardOverview(input: {
     .single();
   if (workspace.error || !workspace.data) throw new Error(workspace.error?.message || "Workspace not found.");
 
-  const [truth, policy, workspaceSettings, approvalsRes, runsRes, logsRes, operatorProductStates] = await Promise.all([
+  const [truth, policy, workspaceSettings, approvalsRes, runsRes, logsRes, outcomesRes, workflowsRes, operatorProductStates] = await Promise.all([
     getConnectorTruth({ workspaceId: input.workspaceId, supabase }),
     loadPolicyWorkspaceSettings({ supabase, workspaceId: input.workspaceId }),
     loadWorkspacePolicySettings({ supabase, workspaceId: input.workspaceId }),
     supabase.from("os_approvals").select("id,workspace_id,type,title,status,created_at,resolved_at,agent_id,run_id,continuation_payload,policy_reason").eq("workspace_id", input.workspaceId).order("created_at", { ascending: false }).limit(150),
     supabase.from("os_operator_runs").select("id,workspace_id,operator_key,status,trigger_type,created_at,completed_at,output,approval_id").eq("workspace_id", input.workspaceId).order("created_at", { ascending: false }).limit(200),
     supabase.from("os_operator_run_logs").select("*").eq("workspace_id", input.workspaceId).order("created_at", { ascending: false }).limit(200),
+    supabase.from("os_workflow_outcomes").select("id,operator_key,workflow_id,outcome_type,attribution_level,observed_at,created_at").eq("workspace_id", input.workspaceId).order("observed_at", { ascending: false }).limit(100),
+    supabase.from("os_workflow_runs").select("id,operator_key,objective,status,created_at,parent_workflow_id,supporting_operators,dependency_state").eq("workspace_id", input.workspaceId).order("created_at", { ascending: false }).limit(200),
     // Single shared operator product-state model (product-state.ts) - drives
     // dashboard lifecycle states B-F. Never re-derived locally here.
     getWorkspaceOperatorProductStates({ workspaceId: input.workspaceId, supabase }),
@@ -494,6 +514,8 @@ export async function getDashboardOverview(input: {
   const approvals = approvalsRes.error ? [] : (approvalsRes.data ?? []).map((row) => row as Row);
   const runs = runsRes.error ? [] : (runsRes.data ?? []).map((row) => row as Row);
   const logs = logsRes.error ? [] : (logsRes.data ?? []).map((row) => row as Row);
+  const outcomes = outcomesRes.error ? [] : (outcomesRes.data ?? []).map((row) => row as Row);
+  const workflows = workflowsRes.error ? [] : (workflowsRes.data ?? []).map((row) => row as Row);
   const connectors = buildConnectors({ truth });
   const trelloDestinationSet = Boolean(workspaceSettings.trello.defaultBoardId && workspaceSettings.trello.defaultListId);
   const slackChannelSelected = Boolean(workspaceSettings.slack.slackDefaultChannelId);
@@ -533,6 +555,8 @@ export async function getDashboardOverview(input: {
     approvals,
     runs,
     logs,
+    workflows,
+    outcomes,
     rangeStart: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     limit: 80,
   });
@@ -549,7 +573,12 @@ export async function getDashboardOverview(input: {
     severity: stringValue(row.status) === "failed" ? "danger" : stringValue(row.status) === "completed" ? "success" : "info",
     href: "/logs",
   }));
-  const activity = [...approvalActivities, ...logActivities, ...runActivities]
+  const outcomeActivities = outcomes.slice(0, 20).map(mapOutcomeToActivity);
+  const workflowActivities = activityProjection.items.filter((item) => ["workflow", "failure"].includes(item.category)).map((item): DashboardActivity => ({
+    id: item.id, time: item.occurredAt, type: item.category, title: item.title, description: item.description, operatorKey: item.operatorKey, connectorKey: item.connectorKey,
+    severity: item.severity === "failure" ? "danger" : item.severity === "attention" ? "warning" : item.severity === "success" ? "success" : "info", href: item.relatedRoute ?? "/app/workflows",
+  }));
+  const activity = [...workflowActivities, ...approvalActivities, ...logActivities, ...runActivities, ...outcomeActivities]
     .sort((a, b) => new Date(b.time ?? 0).getTime() - new Date(a.time ?? 0).getTime())
     .slice(0, 12);
 

@@ -6,6 +6,7 @@ const asRecord = (value: unknown): Row => value && typeof value === "object" ? v
 const text = (value: unknown): string | null => typeof value === "string" && value.trim() ? value : null;
 const timestamp = (row: Row, fields: string[]) => fields.map((field) => text(row[field])).find((value): value is string => Boolean(value)) ?? null;
 const operatorName = (key: string | null) => key ? key.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()) : "Auterim";
+const outcomeName = (value: string | null) => value ? value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()) : "Business outcome";
 
 function actionState(row: Row) {
   const payload = asRecord(row.continuation_payload);
@@ -19,7 +20,7 @@ function actionState(row: Row) {
 }
 
 /** A read-time projection: no payload fields that can contain customer content are serialized. */
-export function normalizeWorkforceActivity(input: { approvals: Row[]; runs: Row[]; logs: Row[]; workflows?: Row[]; rangeStart: string; rangeEnd?: string; limit?: number }): WorkforceActivityPage {
+export function normalizeWorkforceActivity(input: { approvals: Row[]; runs: Row[]; logs: Row[]; workflows?: Row[]; outcomes?: Row[]; rangeStart: string; rangeEnd?: string; limit?: number }): WorkforceActivityPage {
   const start = new Date(input.rangeStart).getTime();
   const end = input.rangeEnd ? new Date(input.rangeEnd).getTime() : Date.now();
   const within = (value: string | null) => value !== null && Number.isFinite(new Date(value).getTime()) && new Date(value).getTime() >= start && new Date(value).getTime() <= end;
@@ -28,14 +29,17 @@ export function normalizeWorkforceActivity(input: { approvals: Row[]; runs: Row[
   for (const row of input.workflows ?? []) {
     const occurredAt = timestamp(row, ["created_at"]);
     if (!within(occurredAt)) continue;
+    if (text(row.parent_workflow_id)) continue;
     const operatorKey = text(row.operator_key);
     const status = text(row.status) ?? "planned";
     const objective = text(row.objective) ?? "A coordinated workflow";
+    const supporting = Array.isArray(row.supporting_operators) ? row.supporting_operators.filter((value): value is string => typeof value === "string") : [];
+    const supportingText = supporting.length ? ` Supporting ${supporting.map(operatorName).join(", ")} work is linked.` : "";
     const failed = status === "blocked" || status === "failed" || status === "cancelled";
     items.push({
       id: `workflow:${String(row.id)}`, occurredAt: occurredAt!, category: failed ? "failure" : "workflow",
-      title: failed ? `${objective} needs attention` : `${operatorName(operatorKey)} started a coordinated plan`,
-      description: failed ? "The plan needs review before Auterim can continue safely." : objective,
+      title: failed ? `${objective} needs attention` : `${operatorName(operatorKey)} owns coordinated work`,
+      description: failed ? "The primary workflow needs review before Auterim can continue safely." : `${objective}.${supportingText}`,
       operatorKey, connectorKey: null, severity: failed ? "attention" : "info", status,
       relatedRoute: `/workflows?workflow=${encodeURIComponent(String(row.id))}`, technicalEventId: String(row.id),
     });
@@ -47,6 +51,28 @@ export function normalizeWorkforceActivity(input: { approvals: Row[]; runs: Row[
     const operatorKey = text(row.operator_key);
     const failed = text(row.status) === "failed" || text(row.status) === "error";
     items.push({ id: `run:${String(row.id)}`, occurredAt: occurredAt!, category: failed ? "failure" : "operator_run", title: failed ? `${operatorName(operatorKey)} run failed` : `${operatorName(operatorKey)} completed a run`, description: failed ? "The operator run did not complete. Technical details are available if you need them." : "The operator checked its connected workstream.", operatorKey, connectorKey: null, severity: failed ? "failure" : "success", status: text(row.status) ?? "completed", relatedRoute: failed ? "/logs" : "/agents", technicalEventId: String(row.id) });
+  }
+
+  for (const row of input.outcomes ?? []) {
+    const occurredAt = timestamp(row, ["observed_at", "created_at"]);
+    if (!within(occurredAt)) continue;
+    const operatorKey = text(row.operator_key);
+    const outcomeType = text(row.outcome_type);
+    const attribution = text(row.attribution_level);
+    const workflowId = text(row.workflow_id);
+    items.push({
+      id: `outcome:${String(row.id)}`,
+      occurredAt: occurredAt!,
+      category: "outcome",
+      title: `${operatorName(operatorKey)} observed ${outcomeName(outcomeType).toLowerCase()}`,
+      description: attribution ? `Provider evidence recorded with ${attribution} attribution.` : "Provider evidence was recorded for this work.",
+      operatorKey,
+      connectorKey: null,
+      severity: "success",
+      status: "observed",
+      relatedRoute: workflowId ? `/workflows?workflow=${encodeURIComponent(workflowId)}` : "/activity",
+      technicalEventId: String(row.id),
+    });
   }
 
   for (const row of input.approvals) {

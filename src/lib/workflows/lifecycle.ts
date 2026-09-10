@@ -18,8 +18,14 @@ function dependencyIds(value: unknown): string[] {
  */
 export async function advanceWorkflow(input: { workflowId: string; workspaceId: string; supabase?: SupabaseAdmin }): Promise<{ status: string; updatedSteps: number }> {
   const supabase = input.supabase ?? createSupabaseAdmin();
-  const stepsResult = await supabase.from("os_workflow_steps").select("id,workflow_id,workspace_id,status,dependency_step_ids,approval_id").eq("workflow_id", input.workflowId).eq("workspace_id", input.workspaceId).order("step_order");
+  const [workflowResult, stepsResult] = await Promise.all([
+    supabase.from("os_workflow_runs").select("operator_key").eq("id", input.workflowId).eq("workspace_id", input.workspaceId).maybeSingle(),
+    supabase.from("os_workflow_steps").select("id,workflow_id,workspace_id,status,dependency_step_ids,approval_id").eq("workflow_id", input.workflowId).eq("workspace_id", input.workspaceId).order("step_order"),
+  ]);
+  if (workflowResult.error || !workflowResult.data) throw new Error("Workflow not found.");
   if (stepsResult.error) throw new Error(`Workflow steps could not be loaded: ${stepsResult.error.message}`);
+  const operator_key = String(workflowResult.data.operator_key);
+  const customerFacingOperators = ["support", "revenue", "client_flow"];
   const steps = (stepsResult.data ?? []) as StepRow[];
   const approvalIds = steps.flatMap((step) => step.approval_id ? [step.approval_id] : []);
   const approvalsResult = approvalIds.length ? await supabase.from("os_approvals").select("id,status").eq("workspace_id", input.workspaceId).in("id", approvalIds) : { data: [], error: null };
@@ -36,7 +42,10 @@ export async function advanceWorkflow(input: { workflowId: string; workspaceId: 
       next = "blocked"; blockReason = "dependency_unavailable";
     } else if (step.approval_id) {
       const decision = approvalStatus.get(step.approval_id);
-      if (decision === "approved") next = "completed";
+      // Customer-facing Support work remains open after the provider write.
+      // A later provider observation must prove a reply/resolution before the
+      // workflow is allowed to become completed.
+      if (decision === "approved") next = operator_key === "support" ? "executing" : customerFacingOperators.includes(operator_key) ? "executing" : operator_key === "operations" ? "executing" : "completed";
       else if (decision === "rejected") next = "rejected";
       else if (decision === "failed") { next = "blocked"; blockReason = "approval_execution_failed"; }
       else if (decision === "pending") next = dependencyStates.every((state) => state === "completed") ? "awaiting_approval" : "proposed";

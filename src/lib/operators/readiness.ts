@@ -1,4 +1,4 @@
-import { connectorHasCapability, type Capability } from "@/lib/connectors/capabilities";
+import { connectorHasCapability, getConnectorsForCapability, type Capability } from "@/lib/connectors/capabilities";
 import { getConnectorTruth, type SafeConnectorTruth } from "@/lib/connectors/truth";
 import { getOperatorConnectorReadiness, type OperatorConnectorReadiness } from "@/lib/operators/connector-requirements";
 import { getEntitlements, type Entitlements, type PlanTier } from "@/lib/os/entitlements";
@@ -403,8 +403,9 @@ function evaluateOperator(input: {
     // its canonical requiredConnectors entry for backwards compatibility,
     // while the capability graph and provider-specific status checks provide
     // the real alternative set (Trello, Asana, or Jira).
+    const projectManagementConnectorKeys = new Set(getConnectorsForCapability("pm.tasks.read").map((definition) => definition.connectorKey));
     const projectManagementConnectors = truth
-      .filter((connector) => ["trello", "asana", "jira"].includes(connector.connectorKey))
+      .filter((connector) => projectManagementConnectorKeys.has(connector.connectorKey))
       .filter((connector) => connector.status === "connected" || connector.status === "healthy")
       .map((connector) => connector.connectorKey as ConnectorKey);
     const operationsConnectedRequired = projectManagementConnectors.length > 0
@@ -421,7 +422,7 @@ function evaluateOperator(input: {
         entitlements,
         executionEligibility,
         reason: "Operations readiness requires a connected project-management workspace (Trello, Asana, or Jira).",
-        nextSetupStep: "Connect Trello, Asana, or Jira and select a board or project.",
+        nextSetupStep: "Connect one project-management system and select a board or project.",
       });
     }
     if (!runtimeSignals.hasApprovalActivity || !runtimeSignals.hasWorkspaceScopedLogs) {

@@ -19,7 +19,7 @@ assert.match(lifecycle, /materializeWorkflowStep/);
 
 const tmp = path.join("tests", ".tmp-launch-e2e"); fs.mkdirSync(tmp, { recursive: true });
 try {
-  let source = engine.replace(/import \{ getActionDefinition \}[^\n]+\n/, "const getActionDefinition = () => null;\n").replace(/import \{ connectorHasCapability \}[^\n]+\n/, "const connectorHasCapability = () => false;\n").replace(/import type[^\n]+\n/g, "");
+  let source = engine.replace(/import \{ getActionDefinition \}[^\n]+\n/, "const getActionDefinition = () => null;\n").replace(/import \{ connectorHasCapability \}[^\n]+\n/, "const connectorHasCapability = () => false;\n").replace(/import \{ canonicalBusinessProblemWorkflowDedupeKey, canonicalWorkflowDedupeKey, explicitBusinessProblemKey \}[^\n]+\n/, "const canonicalWorkflowDedupeKey = (input) => `workflow:${[input.workspaceId, input.provider, input.entityId, input.intent, input.primaryOperator].join(\":\")}`;\nconst canonicalBusinessProblemWorkflowDedupeKey = canonicalWorkflowDedupeKey;\nconst explicitBusinessProblemKey = () => null;\n").replace(/import type[^\n]+\n/g, "");
   const code = esbuild.transformSync(source, { loader: "ts", format: "esm", target: "node18" }).code;
   const file = path.join(tmp, "engine.mjs"); fs.writeFileSync(file, code);
   const { planCandidateWorkflow } = await import(`${pathToFileURL(file).href}?launch=${Math.random()}`);

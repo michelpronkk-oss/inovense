@@ -1,0 +1,32 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+
+const read = (file) => fs.readFileSync(file, "utf8");
+const scan = read("src/lib/operators/support/scan.ts");
+const policy = read("src/lib/policies/execution-policy.ts");
+const route = read("src/lib/policies/workspace-policy.ts");
+const lifecycle = read("src/lib/workflows/lifecycle.ts");
+const store = read("src/lib/signals/store.ts");
+const observers = read("src/lib/workflows/outcome-observers.ts");
+const ownershipMigration = read("supabase/migrations/20260910_support_workflow_ownership.sql");
+
+assert.match(policy, /support:\s*\["send_email"[\s\S]*"reply_zendesk_ticket"[\s\S]*"reply_intercom_conversation"/);
+assert.match(scan, /evaluateExecutionPolicy\(\{ supabase: input\.supabase, policyInput: input\.action\.policyInput \}\)/);
+assert.match(scan, /kind: input\.action\.connectorKey === "microsoft" \? "microsoft\.send_after_approval" : "gmail\.send_after_approval"/);
+assert.match(scan, /materializeWorkflows: false/);
+assert.match(store, /materializeWorkflows\?: boolean/);
+assert.match(scan, /canonicalWorkflowDedupeKey/);
+assert.match(scan, /originating_signal_id/);
+assert.match(scan, /approval_scope: approvalScope/);
+assert.match(scan, /execution_intents/);
+assert.match(lifecycle, /operator_key === "support" \? "executing"/);
+assert.match(scan, /observeSupportWorkflows/);
+assert.match(scan, /recordObservedWorkflowOutcome/);
+assert.match(scan, /createSupportingHandoff/);
+assert.match(ownershipMigration, /parent_workflow_id/);
+assert.match(ownershipMigration, /supporting_owner/);
+assert.match(ownershipMigration, /return_path/);
+assert.match(observers, /support_reply_received/);
+assert.doesNotMatch(scan, /SAFE_REPLY/);
+assert.match(route, /businessContext: normalizeBusinessContext\(sourceMetadata\.businessContext\)/);
+console.log("support-runtime-path-smoke: Support policy parity, canonical work, scoped approval, execution-intent, and outcome wiring contracts passed.");

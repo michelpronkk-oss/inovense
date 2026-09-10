@@ -42,6 +42,11 @@ import { getStoredIntercomCredential, listIntercomConversations, normalizeInterc
 import { buildUntrustedGoogleDrivePromptContext, loadSelectedGoogleDriveContext } from "@/lib/connectors/google-drive";
 import { normalizeEmailToSignalEvent } from "@/lib/signals/intake";
 import { routeSignalEvent } from "@/lib/signals/engine";
+import type { SignalEvent } from "@/lib/signals/types";
+import { buildClientFlowContext, publicClientFlowContext, type ClientFlowContext } from "@/lib/operators/client-flow/context";
+import { buildClientFlowCandidate, createClientFlowSupportingHandoffs, ensureClientFlowWorkflow, linkClientFlowApprovalWorkflow, persistCanonicalClientFlowSignal, persistClientFlowCandidate } from "@/lib/operators/client-flow/workflow";
+import { observeClientFlowCustomerReply, observeClientFlowHandoff } from "@/lib/workflows/outcome-observers";
+import { recordObservedWorkflowOutcome } from "@/lib/workflows/store";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 type ClientFlowScanSourceMode = "scheduled" | "manual" | "event_ready";
@@ -117,6 +122,7 @@ export type ClientFlowScanSummary = {
   scanned?: number;
   signalsFound?: number;
   approvalsCreated?: number;
+  outcomesObserved?: number;
   routedToRevenueCount?: number;
   missingScopes?: string[];
   reconnectRequired?: boolean;
@@ -624,6 +630,16 @@ function buildClientFlowTrelloAction(input: {
   }, { policySettings: input.policySettings });
 }
 
+async function prepareExternalClientFlowWorkflow(input: { supabase: SupabaseAdmin; workspaceId: string; provider: string; sourceId: string; threadId?: string | null; subject: string; snippet: string; signalType: string; priority: number; confidence: "low" | "medium" | "high"; action: PreparedAction; context: ClientFlowContext }): Promise<{ workflowId: string; stepId: string; existingApprovalId: string | null }> {
+  const dedupeKey = `client_flow:${input.provider}:${input.sourceId}:${input.signalType}`;
+  const event: SignalEvent = { id: `sig_${dedupeKey}`.replace(/[^a-zA-Z0-9_-]+/g, "-").slice(0, 180), workspaceId: input.workspaceId, connectorKey: input.provider, provider: input.provider, source: input.provider, sourceType: input.provider === "zendesk" ? "support_ticket" : "support_conversation", eventType: `${input.provider}.client_flow_observed`, sourceId: input.sourceId, sourceParentId: input.threadId ?? null, threadId: input.threadId ?? null, subject: input.subject, snippet: input.snippet, occurredAt: new Date().toISOString(), category: "customer_request", dedupeKey, metadata: { clientFlowContext: publicClientFlowContext(input.context), signalType: input.signalType } };
+  const candidate = buildClientFlowCandidate({ workspaceId: input.workspaceId, provider: input.provider, sourceId: input.sourceId, signalType: input.signalType, priority: input.priority, confidence: input.confidence, reasonCodes: input.context.priorityReasons, dedupeKey, supportingOperators: [] });
+  const persisted = await persistClientFlowCandidate({ supabase: input.supabase, workspaceId: input.workspaceId, event, candidate });
+  const workflow = await ensureClientFlowWorkflow({ supabase: input.supabase, workspaceId: input.workspaceId, signalId: persisted.signalId, candidate: persisted.candidate, entityId: input.threadId ?? input.sourceId, action: input.action, context: input.context });
+  await createClientFlowSupportingHandoffs({ supabase: input.supabase, workspaceId: input.workspaceId, parentWorkflowId: workflow.workflowId, signalId: persisted.signalId, candidate: persisted.candidate, context: input.context });
+  return workflow;
+}
+
 async function createZendeskClientFlowApproval(input: {
   supabase: SupabaseAdmin;
   workspaceId: string;
@@ -631,7 +647,7 @@ async function createZendeskClientFlowApproval(input: {
   policySettings: PolicyWorkspaceSettings;
   signal: ZendeskClientFlowSignal;
   subdomain: string;
-}): Promise<{ runId: string; approvalId: string; action: PreparedAction }> {
+}): Promise<{ runId: string; approvalId: string; action: PreparedAction; workflowId: string; stepId: string; existingApprovalId: string | null }> {
   const { ticket, signalType } = input.signal;
   const dedupeKey = `client_flow:zendesk:ticket:${ticket.ticketId}:${signalType}`;
   const body = "Thanks for reaching out. We’re reviewing this request and will follow up with the next update shortly.";
@@ -652,17 +668,21 @@ async function createZendeskClientFlowApproval(input: {
     normalizedTarget: ticket.ticketId,
     metadata: { operatorKey: "client_flow", zendeskSubdomain: input.subdomain, zendeskTicketId: ticket.ticketId, payloadIdentity: `${ticket.ticketId}:${signalType}`, signalType },
   }, { policySettings: input.policySettings });
+  const context = buildClientFlowContext({ provider: "zendesk", messageId: ticket.ticketId, customerName: ticket.requesterName, company: ticket.organizationName, subject: ticket.subject, request: ticket.commentPreview, signalType, confidence: input.signal.confidence, supportingOperators: [], support: { ticketId: ticket.ticketId, openIssue: ticket.commentPreview, escalationState: ticket.priority ?? null } });
+  const workflow = await prepareExternalClientFlowWorkflow({ supabase: input.supabase, workspaceId: input.workspaceId, provider: "zendesk", sourceId: ticket.ticketId, subject: ticket.subject, snippet: ticket.commentPreview ?? "", signalType, priority: context.priority, confidence: input.signal.confidence, action, context });
+  if (workflow.existingApprovalId) return { runId: "", approvalId: workflow.existingApprovalId, action, workflowId: workflow.workflowId, stepId: workflow.stepId, existingApprovalId: workflow.existingApprovalId };
   const runId = operatorRuntimeId("oprun-client-flow-zendesk");
   const startedAt = new Date().toISOString();
   const runInsert = await input.supabase.from("os_operator_runs").insert({ id: runId, workspace_id: input.workspaceId, operator_key: "client_flow", trigger_type: "zendesk_scan", status: "waiting_for_approval", input: { source: "zendesk_scan", ticketId: ticket.ticketId, signalType, dedupeKey }, output: {}, readiness: input.readiness, risk_level: "high", started_at: startedAt });
   if (runInsert.error) throw new Error(runInsert.error.message);
   const approvalId = operatorRuntimeId("appr-client-flow-zendesk");
-  const approvalInsert = await input.supabase.from("os_approvals").insert({ id: approvalId, workspace_id: input.workspaceId, type: "action", title: action.title, body: action.summary, agent_id: CLIENT_FLOW_AGENT_ID, agent_mark: CLIENT_FLOW_AGENT_MARK, agent_color: CLIENT_FLOW_AGENT_COLOR, run_id: runId, status: "pending", dedupe_key: dedupeKey, created_at: startedAt, continuation_payload: { kind: "shared_action.execute_after_approval", workspaceId: input.workspaceId, operatorKey: "client_flow", preparedAction: action }, policy_reason: "Zendesk customer replies require human approval before execution." });
+  const approvalInsert = await input.supabase.from("os_approvals").insert({ id: approvalId, workspace_id: input.workspaceId, type: "action", title: action.title, body: action.summary, agent_id: CLIENT_FLOW_AGENT_ID, agent_mark: CLIENT_FLOW_AGENT_MARK, agent_color: CLIENT_FLOW_AGENT_COLOR, run_id: runId, status: "pending", dedupe_key: dedupeKey, created_at: startedAt, continuation_payload: { kind: "shared_action.execute_after_approval", workspaceId: input.workspaceId, operatorKey: "client_flow", preparedAction: action, workflowId: workflow.workflowId, workflowStepId: workflow.stepId, clientFlowContext: publicClientFlowContext(context) }, policy_reason: "Zendesk customer replies require human approval before execution." });
   if (approvalInsert.error) throw new Error(approvalInsert.error.message);
+  await linkClientFlowApprovalWorkflow({ supabase: input.supabase, workspaceId: input.workspaceId, workflowId: workflow.workflowId, stepId: workflow.stepId, approvalId, context });
   const output = { type: "client_flow_zendesk_action", source: "zendesk_scan", ticketId: ticket.ticketId, subject: ticket.subject, signalType, approvalId, preparedAction: action };
   const outputInsert = await input.supabase.from("os_operator_outputs").insert({ id: operatorRuntimeId("opout"), workspace_id: input.workspaceId, run_id: runId, operator_key: "client_flow", output_type: "client_flow_zendesk_action", title: action.title, payload: output, requires_approval: true, approval_id: approvalId });
   if (outputInsert.error) throw new Error(outputInsert.error.message);
-  return { runId, approvalId, action };
+  return { runId, approvalId, action, workflowId: workflow.workflowId, stepId: workflow.stepId, existingApprovalId: null };
 }
 
 async function createIntercomClientFlowApproval(input: {
@@ -671,7 +691,7 @@ async function createIntercomClientFlowApproval(input: {
   readiness: OperatorReadiness;
   policySettings: PolicyWorkspaceSettings;
   signal: IntercomClientFlowSignal;
-}): Promise<{ runId: string; approvalId: string; action: PreparedAction }> {
+}): Promise<{ runId: string; approvalId: string; action: PreparedAction; workflowId: string; stepId: string; existingApprovalId: string | null }> {
   const { conversation, signalType } = input.signal;
   const dedupeKey = `client_flow:intercom:conversation:${conversation.region}:${conversation.conversationId}:${signalType}`;
   const body = "Thanks for reaching out. We’re reviewing this request and will follow up with the next update shortly.";
@@ -692,17 +712,69 @@ async function createIntercomClientFlowApproval(input: {
     normalizedTarget: conversation.conversationId,
     metadata: { operatorKey: "client_flow", intercomRegion: conversation.region, intercomConversationId: conversation.conversationId, payloadIdentity: `${conversation.region}:${conversation.conversationId}:${signalType}`, signalType },
   }, { policySettings: input.policySettings });
+  const context = buildClientFlowContext({ provider: "intercom", messageId: conversation.conversationId, threadId: conversation.conversationId, customerName: conversation.contactName, company: conversation.companyName, subject: conversation.subjectOrPreview, request: conversation.parts.map((part) => part.preview ?? "").filter(Boolean).slice(-3).join(" "), signalType, confidence: input.signal.confidence, supportingOperators: [] });
+  const workflow = await prepareExternalClientFlowWorkflow({ supabase: input.supabase, workspaceId: input.workspaceId, provider: "intercom", sourceId: conversation.conversationId, threadId: conversation.conversationId, subject: conversation.subjectOrPreview ?? "", snippet: conversation.parts.map((part) => part.preview ?? "").filter(Boolean).slice(-3).join(" "), signalType, priority: context.priority, confidence: input.signal.confidence, action, context });
+  if (workflow.existingApprovalId) return { runId: "", approvalId: workflow.existingApprovalId, action, workflowId: workflow.workflowId, stepId: workflow.stepId, existingApprovalId: workflow.existingApprovalId };
   const runId = operatorRuntimeId("oprun-client-flow-intercom");
   const startedAt = new Date().toISOString();
   const runInsert = await input.supabase.from("os_operator_runs").insert({ id: runId, workspace_id: input.workspaceId, operator_key: "client_flow", trigger_type: "intercom_scan", status: "waiting_for_approval", input: { source: "intercom_scan", conversationId: conversation.conversationId, signalType, dedupeKey }, output: {}, readiness: input.readiness, risk_level: "high", started_at: startedAt });
   if (runInsert.error) throw new Error(runInsert.error.message);
   const approvalId = operatorRuntimeId("appr-client-flow-intercom");
-  const approvalInsert = await input.supabase.from("os_approvals").insert({ id: approvalId, workspace_id: input.workspaceId, type: "action", title: action.title, body: action.summary, agent_id: CLIENT_FLOW_AGENT_ID, agent_mark: CLIENT_FLOW_AGENT_MARK, agent_color: CLIENT_FLOW_AGENT_COLOR, run_id: runId, status: "pending", dedupe_key: dedupeKey, created_at: startedAt, continuation_payload: { kind: "shared_action.execute_after_approval", workspaceId: input.workspaceId, operatorKey: "client_flow", preparedAction: action }, policy_reason: "Intercom customer replies require human approval before execution." });
+  const approvalInsert = await input.supabase.from("os_approvals").insert({ id: approvalId, workspace_id: input.workspaceId, type: "action", title: action.title, body: action.summary, agent_id: CLIENT_FLOW_AGENT_ID, agent_mark: CLIENT_FLOW_AGENT_MARK, agent_color: CLIENT_FLOW_AGENT_COLOR, run_id: runId, status: "pending", dedupe_key: dedupeKey, created_at: startedAt, continuation_payload: { kind: "shared_action.execute_after_approval", workspaceId: input.workspaceId, operatorKey: "client_flow", preparedAction: action, workflowId: workflow.workflowId, workflowStepId: workflow.stepId, clientFlowContext: publicClientFlowContext(context) }, policy_reason: "Intercom customer replies require human approval before execution." });
   if (approvalInsert.error) throw new Error(approvalInsert.error.message);
+  await linkClientFlowApprovalWorkflow({ supabase: input.supabase, workspaceId: input.workspaceId, workflowId: workflow.workflowId, stepId: workflow.stepId, approvalId, context });
   const output = { type: "client_flow_intercom_action", source: "intercom_scan", conversationId: conversation.conversationId, signalType, approvalId, preparedAction: action };
   const outputInsert = await input.supabase.from("os_operator_outputs").insert({ id: operatorRuntimeId("opout"), workspace_id: input.workspaceId, run_id: runId, operator_key: "client_flow", output_type: "client_flow_intercom_action", title: action.title, payload: output, requires_approval: true, approval_id: approvalId });
   if (outputInsert.error) throw new Error(outputInsert.error.message);
-  return { runId, approvalId, action };
+  return { runId, approvalId, action, workflowId: workflow.workflowId, stepId: workflow.stepId, existingApprovalId: null };
+}
+
+async function observeClientFlowWorkflows(input: { supabase: SupabaseAdmin; workspaceId: string; emailMessages: SafeGmailMessage[] }): Promise<number> {
+  const workflowsResult = await input.supabase.from("os_workflow_runs").select("id,originating_signal_id,status").eq("workspace_id", input.workspaceId).eq("operator_key", "client_flow").eq("status", "executing").limit(100);
+  if (workflowsResult.error || !workflowsResult.data?.length) return 0;
+  const workflows = workflowsResult.data as Array<Record<string, unknown>>;
+  const workflowIds = workflows.map((row) => String(row.id));
+  const signalIds = workflows.map((row) => String(row.originating_signal_id ?? "")).filter(Boolean);
+  const [stepsResult, signalsResult, childrenResult] = await Promise.all([
+    input.supabase.from("os_workflow_steps").select("id,workflow_id,execution_intent_id,status").eq("workspace_id", input.workspaceId).in("workflow_id", workflowIds).eq("status", "executing"),
+    signalIds.length ? input.supabase.from("os_signal_events").select("id,source,source_id,source_parent_id,observed_at").eq("workspace_id", input.workspaceId).in("id", signalIds) : Promise.resolve({ data: [], error: null }),
+    input.supabase.from("os_workflow_runs").select("id,parent_workflow_id,operator_key,status").eq("workspace_id", input.workspaceId).in("parent_workflow_id", workflowIds).in("status", ["completed", "partially_completed"]),
+  ]);
+  if (stepsResult.error || signalsResult.error || childrenResult.error) return 0;
+  const steps = new Map((stepsResult.data ?? []).map((row) => [String(row.workflow_id), row as Record<string, unknown>]));
+  const signals = new Map((signalsResult.data ?? []).map((row) => [String(row.id), row as Record<string, unknown>]));
+  const children = (childrenResult.data ?? []) as Array<Record<string, unknown>>;
+  let observed = 0;
+  for (const workflow of workflows) {
+    const workflowId = String(workflow.id);
+    const step = steps.get(workflowId);
+    if (!step) continue;
+    const signal = signals.get(String(workflow.originating_signal_id ?? ""));
+    const provider = String(signal?.source ?? "");
+    const sourceId = String(signal?.source_id ?? "");
+    const threadId = String(signal?.source_parent_id ?? sourceId);
+    const initialAt = Date.parse(String(signal?.observed_at ?? ""));
+    const reply = ["gmail", "microsoft"].includes(provider)
+      ? input.emailMessages.find((message) => Boolean(message.threadId === threadId && message.id !== sourceId && (!Number.isFinite(initialAt) || Date.parse(message.date || message.internalDate || "") >= initialAt)))
+      : null;
+    if (reply) {
+      const observation = observeClientFlowCustomerReply({ workflowId, provider, threadId, messageId: reply.id, subject: reply.subject, snippet: reply.snippet || reply.bodyText, linkedActionExecuted: true });
+      await recordObservedWorkflowOutcome({ workspaceId: input.workspaceId, operatorKey: "client_flow", workflowId, signalId: signal?.id ? String(signal.id) : null, executionIntentId: step.execution_intent_id ? String(step.execution_intent_id) : null, outcomeType: observation.outcomeType, attributionLevel: observation.attributionLevel, confidence: observation.confidence, evidenceRefs: observation.evidenceRefs, observedAt: new Date().toISOString(), supabase: input.supabase });
+      observed += 1;
+      if (observation.outcomeType === "clientflow_customer_confirmed") {
+        await input.supabase.from("os_workflow_steps").update({ status: "completed", result_ref: observation.evidenceRefs[0] ?? "clientflow_customer_confirmed", safe_error_code: null }).eq("id", String(step.id)).eq("workspace_id", input.workspaceId);
+        await input.supabase.from("os_workflow_runs").update({ status: "completed" }).eq("id", workflowId).eq("workspace_id", input.workspaceId);
+      }
+    }
+    for (const child of children.filter((item) => String(item.parent_workflow_id) === workflowId)) {
+      const observation = observeClientFlowHandoff({ workflowId, supportingOwner: String(child.operator_key ?? "unknown"), childWorkflowId: String(child.id), childStatus: String(child.status), linkedActionExecuted: true });
+      if (!observation) continue;
+      // The child operator has already returned its evidence through the
+      // shared return path. This row is presentation state, not a second win.
+      observed += 1;
+    }
+  }
+  return observed;
 }
 
 export async function scanClientFlowSignals(input: {
@@ -847,10 +919,11 @@ export async function scanClientFlowSignals(input: {
     const signoffName = (typeof workspaceRow.data?.name === "string" && workspaceRow.data.name.trim()) ? workspaceRow.data.name.trim() : "The team";
 
     const maxResults = Math.min(Math.max(Number(input.maxResults) || 15, 1), 20);
-    const listed = emailConnector === "gmail"
+  const listed = emailConnector === "gmail"
       ? await listRecentMessages(accessToken, { maxResults, query: "newer_than:30d" })
       : (await listRecentMicrosoftMessages(accessToken, maxResults)).map((message) => ({ id: message.id }));
     const handled = await loadClientFlowDedupeState({ supabase, workspaceId });
+    const emailObservations: SafeGmailMessage[] = [];
 
     const skipped: NonNullable<ClientFlowScanSummary["skipped"]> = [];
     const signals: ClientFlowSignal[] = [];
@@ -908,6 +981,7 @@ export async function scanClientFlowSignals(input: {
       const message = emailConnector === "gmail"
         ? await getMessageDetails(accessToken, item.id)
         : fromMicrosoftMessage(await getMicrosoftMessage(accessToken, item.id));
+      emailObservations.push(message);
       const dedupe = buildDedupeMetadata(message, emailConnector);
       const duplicateReason = findDuplicateReason(dedupe, handled);
       if (duplicateReason) {
@@ -993,6 +1067,20 @@ export async function scanClientFlowSignals(input: {
         : null;
       const trelloPrepared = Boolean(clientFlowTrelloAction);
 
+      const canonicalEvent = normalizeEmailToSignalEvent({
+        workspaceId,
+        message: signal.message,
+        provider: emailConnector,
+        rawRef: `${emailConnector}:${signal.message.id}`,
+        metadata: { sourceMode, senderName: signal.message.from, threadMessageCount: signal.message.threadId ? 2 : 1 },
+      });
+      const canonical = await persistCanonicalClientFlowSignal({ supabase, event: { ...canonicalEvent, id: canonicalEvent.id } });
+      if (!canonical) {
+        skipped.push({ messageId: signal.message.id, subject: signal.message.subject, from: signal.message.from, reason: "canonical_candidate_unavailable", dedupeKey: dedupe.dedupeKey });
+        continue;
+      }
+      const clientFlowContext = buildClientFlowContext({ provider: emailConnector, messageId: signal.message.id, threadId: signal.message.threadId, customerEmail: signal.message.fromEmail, customerName: personalization.contactName, subject: signal.message.subject, request: signal.message.bodyText || signal.message.snippet, receivedAt: signal.message.date || signal.message.internalDate, signalType: signal.signalType, matchedSignals: signal.matchedKeywords, confidence: signal.confidence, supportingOperators: canonical.candidate.supportingOperators, delivery: { projectId: workspacePolicy.trello.defaultBoardId, projectName: workspacePolicy.trello.defaultBoardName, handoffStatus: workspacePolicy.trello.defaultBoardId ? "project_context_available" : "project_context_missing" } });
+
       const slackEnabled = Boolean(workspacePolicy.slack.slackNotificationsEnabled && workspacePolicy.slack.slackApprovalAlertsEnabled);
       const preparedActions = ["send_client_email", ...(trelloPrepared ? ["create_trello_task"] : []), ...(slackEnabled ? ["slack_internal_alert"] : [])];
 
@@ -1019,7 +1107,19 @@ export async function scanClientFlowSignals(input: {
         riskNotes: aiDraft.riskNotes,
         draftingMetadata: aiDraft.draftingMetadata,
         rejectedNameCandidates: personalization.rejectedNameCandidates,
+        clientFlowContext: publicClientFlowContext(clientFlowContext),
+        businessContext: clientFlowContext.businessContext,
+        preparationState: clientFlowContext.preparationState,
+        priority: clientFlowContext.priority,
+        priorityReasons: clientFlowContext.priorityReasons,
       };
+
+      const clientFlowWorkflow = await ensureClientFlowWorkflow({ supabase, workspaceId, signalId: canonical.signalId, candidate: canonical.candidate, entityId: signal.message.threadId || signal.message.id, action: prepareAction({ workspaceId, operatorKey: "client_flow", actionType: emailConnector === "microsoft" ? "send_email" : "send_email", connectorKey: emailConnector, capability: "email.send_after_approval", title: approvalTitleFor(signal.signalType), summary: `Prepare an approval-gated Client Flow update for ${signal.message.subject || "the customer request"}.`, input: { to: signal.message.fromEmail, subject: draft.subject, body: draft.body, subjectType: "customer_thread", subjectId: signal.message.threadId || signal.message.id, businessContext: clientFlowContext.businessContext }, dedupeKey: dedupe.dedupeKey, source: `${emailConnector}_scan`, destinationType: "customer", confidence: signal.confidence, riskLevel: "high", normalizedTarget: signal.message.threadId || signal.message.id, metadata: { clientFlowContext: publicClientFlowContext(clientFlowContext), preparationState: clientFlowContext.preparationState } }, { policySettings }), context: clientFlowContext });
+      await createClientFlowSupportingHandoffs({ supabase, workspaceId, parentWorkflowId: clientFlowWorkflow.workflowId, signalId: canonical.signalId, candidate: canonical.candidate, context: clientFlowContext });
+      if (clientFlowWorkflow.existingApprovalId) {
+        skipped.push({ messageId: signal.message.id, subject: signal.message.subject, from: signal.message.from, reason: "existing_client_flow_workflow", dedupeKey: dedupe.dedupeKey });
+        continue;
+      }
 
       const runInput = {
         source: "gmail_scan",
@@ -1099,6 +1199,8 @@ export async function scanClientFlowSignals(input: {
           editedAt: null,
           editedBy: null,
           sourceMetadata,
+          workflowId: clientFlowWorkflow.workflowId,
+          workflowStepId: clientFlowWorkflow.stepId,
           preparedActions,
           clientFlowTrelloAction,
           clientFlow: {
@@ -1125,6 +1227,7 @@ export async function scanClientFlowSignals(input: {
           : "External client email send requires human approval before Gmail execution.",
       });
       if (approvalInsert.error) throw new Error(approvalInsert.error.message);
+      await linkClientFlowApprovalWorkflow({ supabase, workspaceId, workflowId: clientFlowWorkflow.workflowId, stepId: clientFlowWorkflow.stepId, approvalId, context: clientFlowContext });
 
       await insertStep({ supabase, workspaceId, runId, stepKey: "create_approval", title: "Create approval request", output: { approvalId } });
 
@@ -1226,6 +1329,7 @@ export async function scanClientFlowSignals(input: {
       const subdomain = typeof credential?.metadata?.subdomain === "string" ? credential.metadata.subdomain : null;
       if (!subdomain) { zendeskSkipped += 1; continue; }
       const createdZendesk = await createZendeskClientFlowApproval({ supabase, workspaceId, readiness, policySettings, signal, subdomain });
+      if (createdZendesk.existingApprovalId) { zendeskSkipped += 1; continue; }
       zendeskActionCount += 1;
       setDedupeReason(handled, dedupeKey, "existing_pending_approval");
       created.push({ messageId: `zendesk-${signal.ticket.ticketId}`, from: signal.ticket.requesterName ?? "Zendesk requester", subject: signal.ticket.subject, signalType: "issue_report", confidence: signal.confidence, trelloPrepared: false, dedupeKey, runId: createdZendesk.runId, approvalId: createdZendesk.approvalId, sourceProvider: "zendesk", ticketId: signal.ticket.ticketId });
@@ -1236,11 +1340,13 @@ export async function scanClientFlowSignals(input: {
       const duplicateReason = findDuplicateReason({ dedupeKey, contactEmail: "", normalizedSubject: signal.conversation.subjectOrPreview ?? signal.conversation.conversationId, sourceProvider: "gmail", operatorKey: "client_flow", gmailMessageId: "" }, handled);
       if (duplicateReason || !intercomExecutable) { intercomSkipped += 1; continue; }
       const createdIntercom = await createIntercomClientFlowApproval({ supabase, workspaceId, readiness, policySettings, signal });
+      if (createdIntercom.existingApprovalId) { intercomSkipped += 1; continue; }
       intercomActionCount += 1;
       setDedupeReason(handled, dedupeKey, "existing_pending_approval");
       created.push({ messageId: `intercom-${signal.conversation.conversationId}`, from: signal.conversation.contactName ?? "Intercom customer", subject: signal.conversation.subjectOrPreview ?? "Intercom conversation", signalType: "issue_report", confidence: signal.confidence, trelloPrepared: false, dedupeKey, runId: createdIntercom.runId, approvalId: createdIntercom.approvalId, sourceProvider: "intercom", ticketId: signal.conversation.conversationId });
     }
 
+    const outcomesObserved = await observeClientFlowWorkflows({ supabase, workspaceId, emailMessages: emailObservations });
     const completedAt = new Date().toISOString();
     // Optional Microsoft Teams read context. Guarded so a Teams outage or
     // revoked Teams consent can never fail an otherwise healthy email scan.
@@ -1262,6 +1368,7 @@ export async function scanClientFlowSignals(input: {
       scanned: listed.length,
       signalsFound: signals.length,
       approvalsCreated: created.length,
+      outcomesObserved,
       skippedCount: skipped.length,
       zendesk: { scanned: zendeskScanned, signalsFound: zendeskSignals.length, approvalsCreated: zendeskActionCount, skipped: zendeskSkipped },
       intercom: { scanned: intercomScanned, signalsFound: intercomSignals.length, approvalsCreated: intercomActionCount, skipped: intercomSkipped },
@@ -1328,6 +1435,7 @@ export async function scanClientFlowSignals(input: {
         scanned: listed.length,
         signalsFound: signals.length,
         approvalsCreated: created.length,
+        outcomesObserved,
         routedToRevenueCount,
         signals: created,
         skipped,

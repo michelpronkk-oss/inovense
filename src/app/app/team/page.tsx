@@ -22,7 +22,7 @@ import {
 
 export default function TeamPage() {
   const { state, inviteMember, updateMember, removeMember } = useOS();
-  const limits = getPlanLimits(state.workspace.plan);
+  const limits = getPlanLimits(state.workspace.planTier ?? state.workspace.plan);
   const activeMemberCount = state.teamMembers.filter((member) => member.active && member.status !== "pending").length;
   const atMemberLimit = isAtMemberLimit(state.workspace.plan, activeMemberCount);
   const [showInvite, setShowInvite] = useState(false);

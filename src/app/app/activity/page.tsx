@@ -8,11 +8,11 @@ import { ActivityAvatar } from "@/components/activity/activity-avatar";
 import { operatorDisplayName, withoutLeadingOperatorName } from "@/lib/activity/presentation";
 
 type Range = "24h" | "7d" | "30d";
-type Filter = "workflow" | "operator_run" | "approval" | "execution" | "attention" | "failure";
+type Filter = "workflow" | "operator_run" | "approval" | "execution" | "outcome" | "attention" | "failure";
 
 const filters: Array<{ key: Filter; label: string }> = [
   { key: "workflow", label: "Workflows" }, { key: "operator_run", label: "Runs" }, { key: "approval", label: "Approvals" },
-  { key: "execution", label: "Actions" }, { key: "attention", label: "Needs attention" }, { key: "failure", label: "Failures" },
+  { key: "execution", label: "Actions" }, { key: "outcome", label: "Outcomes" }, { key: "attention", label: "Needs attention" }, { key: "failure", label: "Failures" },
 ];
 const ranges: Array<{ key: Range; label: string }> = [{ key: "24h", label: "24H" }, { key: "7d", label: "7D" }, { key: "30d", label: "30D" }];
 

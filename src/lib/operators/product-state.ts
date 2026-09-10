@@ -215,7 +215,7 @@ function nextActionFor(state: OperatorProductState, operatorHref: string, remedi
   switch (state) {
     case "needs_setup":
       return operatorKey === "operations"
-        ? { label: "Add project management", href: "/connectors?discover=1&category=project_management" }
+        ? { label: "Choose a project system", href: "/connectors?discover=1&category=project_management" }
         : operatorKey === "support"
           ? { label: "Add customer support", href: "/connectors?discover=1&category=support" }
         : { label: "Add customer communication", href: "/connectors?discover=1&category=email_calendar" };

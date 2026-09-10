@@ -29,6 +29,7 @@ try {
   assert.match(normalize, /category === "operator_run"/);
   assert.match(normalize, /category === "approval"/);
   assert.match(normalize, /category === "execution"/);
+  assert.match(normalize, /category: "outcome"/);
   assert.match(normalize, /Action blocked by policy/);
   assert.match(normalize, /severity === "failure" \|\| item\.severity === "attention"/, "issues use only failed or attention states");
   assert.match(dashboard, /All activity/);
@@ -53,6 +54,7 @@ try {
     runs: [{ id: "run-1", operator_key: "revenue", status: "completed", created_at: "2026-09-07T10:00:00.000Z" }],
     approvals: [{ id: "approval-1", agent_id: "revenue", status: "approved", created_at: "2026-09-07T11:00:00.000Z", resolved_at: "2026-09-07T11:30:00.000Z", continuation_payload: { executionResult: { gmailStatus: "sent" } } }],
     logs: [],
+    outcomes: [{ id: "outcome-1", operator_key: "support", workflow_id: "wf-1", outcome_type: "support_reply_received", attribution_level: "observed", observed_at: "2026-09-07T12:00:00.000Z" }],
   });
   assert.equal(result.summary.runs, 1);
   assert.equal(result.summary.approvals, 1);
@@ -60,6 +62,7 @@ try {
   assert.equal(result.summary.prepared, 1, "dashboard preparation series is derived from real approval records");
   assert.equal(result.summary.executed, 1, "dashboard execution series is derived from completed actions");
   assert.equal(result.summary.held, 0, "only unresolved approvals appear in the held series");
+  assert.equal(result.items.some((item) => item.category === "outcome"), true, "observed business outcomes remain distinct from execution activity");
   assert.equal(result.items.some((item) => /sent/i.test(item.description)), false, "email content/status detail stays out of the human feed");
   assert.equal(result.summary.daily.length, 7, "seven-day dashboard timeline has one truthful bucket per day");
   console.log("Activity navigation, workspace safety, normalization, and dashboard contracts passed.");
