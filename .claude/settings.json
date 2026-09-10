@@ -23,7 +23,9 @@
       "Bash(sed -i 's/className=\"btn-icon\"/className=\"os-iconbtn\"/g' src/app/app/team/page.tsx src/app/app/settings/page.tsx)",
       "Bash(sed -i 's/btn btn-sm \\\\${stop ? \"btn-secondary\" : \"btn-danger\"}/btn btn-sm ${stop ? \"btn-ghost\" : \"btn-danger\"}/' src/app/app/policies/page.tsx)",
       "Bash(sed -i 's/className=\"btn btn-secondary btn-sm\"/className=\"btn btn-ghost btn-sm\"/' src/app/app/api-keys/page.tsx src/app/app/plans/page.tsx)",
-      "Bash(node tmp-shot.js)"
+      "Bash(node tmp-shot.js)",
+      "Bash(taskkill //PID 36336 //F)",
+      "Bash(git checkout *)"
     ]
   }
 }

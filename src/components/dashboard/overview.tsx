@@ -574,6 +574,8 @@ export function OSOverview() {
               <span className="t-meta">{healthyConnectors}/{overview.connectors.length} healthy</span>
             </div>
           </div>
+
+          <WhatAuterimCanDo overview={overview} />
         </div>
 
         <div className="stack">
@@ -634,12 +636,7 @@ export function OSOverview() {
               <div className="t-meta">Approval-first where risk matters. Rechecked before execution.</div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="sec split">
-        <WhatAuterimCanDo overview={overview} />
-        <div className="stack">
           <ReadyToDeploy overview={overview} />
           <UnlockMore overview={overview} />
         </div>
