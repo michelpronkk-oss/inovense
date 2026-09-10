@@ -9,7 +9,7 @@ import { OPERATOR_REGISTRY, isLiveOperator } from "@/lib/operators/registry";
 import { operatorAvatarPath } from "@/lib/operator-assets";
 import { getOperatorCapabilityCopy } from "@/lib/operators/capability-presentation";
 import { GLYPHS, OPERATORS, type Operator } from "@/data/operators";
-import { PageHeader } from "@/components/product-ui/page-primitives";
+import { LoopRail, PageHeader } from "@/components/product-ui/page-primitives";
 
 type OperatorReadiness = {
   operatorKey: string;
@@ -68,7 +68,13 @@ const REAL_OPERATOR_VALUE: Record<string, { owns: string; value: string; enhance
   },
 };
 
-const LOOP_STEPS = ["Detect", "Prepare", "Approve", "Execute", "Log"];
+const OPERATOR_LOOP_STAGES = [
+  ["Detect", "Meaningful work found"],
+  ["Prepare", "Response assembled"],
+  ["Approve", "Human review"],
+  ["Execute", "Action taken"],
+  ["Log", "Outcome recorded"],
+] as const;
 
 function Arrow() {
   return (
@@ -323,17 +329,9 @@ export default function AgentsRegistryPage() {
 
       {error && <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(242,118,124,0.08)", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.18)", color: "#ffaaaa", fontSize: 12.5 }}>{error}</div>}
 
-      <div className="ag-legend">
-        <span className="ag-legend-label">Every operator<strong>runs one loop</strong></span>
-        <span className="ag-loop-summary">One controlled loop · approval required</span>
-        <div className="ag-legend-flow">
-          {/* The connector between steps is drawn in CSS (.ag-loop-pill::after)
-              so the rail stays continuous instead of relying on a text arrow
-              that sits on its own baseline. */}
-          {LOOP_STEPS.map((s) => (
-            <span key={s} className={`ag-loop-pill ${s === "Approve" ? "gate" : ""}`}><span className="d" />{s}</span>
-          ))}
-        </div>
+      <div className="panel card-pad ag-operator-loop" aria-label="Operator operating loop">
+        <p className="t-meta" style={{ margin: "0 0 14px" }}>Operators detect meaningful work, prepare a response, pause for approval, execute safely, and log the outcome.</p>
+        <LoopRail stages={OPERATOR_LOOP_STAGES.map(([label, detail]) => ({ label, detail }))} />
       </div>
 
       <div className="ag-registry-toolbar" role="toolbar" aria-label="Operator views">

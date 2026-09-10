@@ -123,7 +123,7 @@ function reducer(state: OSState, action: OSAction): OSState {
           stats: { actionsThisWeek: 0, outputsThisWeek: 0, totalRuns: 0, metricLabel: "actions/wk", metricValue: "0" },
         }
         : null;
-      const onboardLog = logEntry(`Onboarding completed for ${action.workspace.name}`, "onboarding.completed", "ok");
+      const onboardLog = userActor(logEntry(`Onboarding completed for ${action.workspace.name}`, "onboarding.completed", "ok"), action.currentUser);
       const missingReqLog = missingRevenueRequirements.length
         ? logEntry(`Revenue Operator missing requirements: ${missingRevenueRequirements.join(", ")}`, "connector.missing", "warn")
         : null;
@@ -206,7 +206,7 @@ function reducer(state: OSState, action: OSAction): OSState {
           ...state.settings,
           activation: action.value,
         },
-        logs: action.log ? [action.log, ...state.logs].slice(0, 300) : state.logs,
+        logs: action.log ? [userActor(action.log, state.currentUser), ...state.logs].slice(0, 300) : state.logs,
       };
     case "DEPLOY_AGENT":
       return { ...state, agents: [...state.agents, action.agent] };
@@ -218,7 +218,7 @@ function reducer(state: OSState, action: OSAction): OSState {
           a.id === action.approvalId ? { ...a, status: "approved", resolvedAt: now, resolvedBy: state.currentUser.name } : a
         ),
         agents: state.agents.map((a) => (a.id === action.agentId ? { ...a, status: "running", currentTask: "Completed approved action" } : a)),
-        logs: [logEntry("Approval granted and action continued", "approval.approved"), ...state.logs].slice(0, 300),
+        logs: [userActor(logEntry("Approval granted and action continued", "approval.approved"), state.currentUser), ...state.logs].slice(0, 300),
       };
     }
     case "SKIP": {
@@ -229,7 +229,7 @@ function reducer(state: OSState, action: OSAction): OSState {
           a.id === action.approvalId ? { ...a, status: "skipped", resolvedAt: now, resolvedBy: state.currentUser.name } : a
         ),
         agents: state.agents.map((a) => (a.id === action.agentId ? { ...a, status: "running", currentTask: "Action skipped by operator" } : a)),
-        logs: [logEntry("Approval skipped, action canceled", "approval.skipped", "warn"), ...state.logs].slice(0, 300),
+        logs: [userActor(logEntry("Approval skipped, action canceled", "approval.skipped", "warn"), state.currentUser), ...state.logs].slice(0, 300),
       };
     }
     case "TOGGLE_AGENT_PAUSE": {
@@ -243,9 +243,13 @@ function reducer(state: OSState, action: OSAction): OSState {
         agentMark: agent?.mark ?? "OS",
         agentColor: agent?.color ?? "#4DE8E1",
         event: "agent_status",
-        message: nextPaused ? "Agent paused by operator" : "Agent resumed by operator",
+        message: nextPaused ? "Agent paused" : "Agent resumed",
         duration: "-",
         status: "ok",
+        actorType: "user",
+        actorUserId: state.currentUser.id,
+        actorDisplayName: state.currentUser.name,
+        actorEmail: state.currentUser.email,
       };
       return {
         ...state,
@@ -264,52 +268,52 @@ function reducer(state: OSState, action: OSAction): OSState {
       return {
         ...state,
         workflows: [action.workflow, ...state.workflows],
-        logs: [action.log, ...state.logs].slice(0, 300),
+        logs: [userActor(action.log, state.currentUser), ...state.logs].slice(0, 300),
       };
     case "UPSERT_POLICY": {
       const exists = state.policies.some((p) => p.id === action.policy.id);
       return {
         ...state,
         policies: exists ? state.policies.map((p) => (p.id === action.policy.id ? action.policy : p)) : [action.policy, ...state.policies],
-        logs: [action.log, ...state.logs].slice(0, 300),
+        logs: [userActor(action.log, state.currentUser), ...state.logs].slice(0, 300),
       };
     }
     case "SET_POLICY_ACTIVE":
       return {
         ...state,
         policies: state.policies.map((p) => (p.id === action.policyId ? { ...p, active: action.active, enabled: action.active, updatedAt: new Date().toISOString() } : p)),
-        logs: [action.log, ...state.logs].slice(0, 300),
+        logs: [userActor(action.log, state.currentUser), ...state.logs].slice(0, 300),
       };
     case "INVITE_MEMBER":
       return {
         ...state,
         teamMembers: [action.member, ...state.teamMembers],
-        logs: [action.log, ...state.logs].slice(0, 300),
+        logs: [userActor(action.log, state.currentUser), ...state.logs].slice(0, 300),
       };
     case "UPDATE_MEMBER":
       return {
         ...state,
         teamMembers: state.teamMembers.map((m) => (m.id === action.memberId ? { ...m, ...action.patch } : m)),
-        logs: [action.log, ...state.logs].slice(0, 300),
+        logs: [userActor(action.log, state.currentUser), ...state.logs].slice(0, 300),
       };
     case "REMOVE_MEMBER":
       return {
         ...state,
         teamMembers: state.teamMembers.filter((m) => m.id !== action.memberId),
-        logs: [action.log, ...state.logs].slice(0, 300),
+        logs: [userActor(action.log, state.currentUser), ...state.logs].slice(0, 300),
       };
     case "SET_SETTINGS_SECTION":
       return {
         ...state,
         settings: { ...state.settings, [action.section]: action.value } as OSSettings,
-        logs: [action.log, ...state.logs].slice(0, 300),
+        logs: [userActor(action.log, state.currentUser), ...state.logs].slice(0, 300),
       };
     case "SET_CURRENT_USER":
       return {
         ...state,
         currentUser: action.value,
         teamMembers: state.teamMembers.map((m) => (m.id === state.currentUser.id ? { ...m, name: action.value.name, role: action.value.roleLabel, initials: action.value.initials } : m)),
-        logs: [action.log, ...state.logs].slice(0, 300),
+        logs: [userActor(action.log, action.value), ...state.logs].slice(0, 300),
       };
     case "SET_DASHBOARD":
       return { ...state, dashboard: action.value };
@@ -318,7 +322,7 @@ function reducer(state: OSState, action: OSAction): OSState {
         ...state,
         workspace: action.value,
         settings: { ...state.settings, workspace: { ...action.value } },
-        logs: [action.log, ...state.logs].slice(0, 300),
+        logs: [userActor(action.log, state.currentUser), ...state.logs].slice(0, 300),
       };
     case "APPEND_LOG":
       return {
@@ -446,6 +450,16 @@ function logEntry(message: string, event: string, status: ExecutionLog["status"]
     duration: "-",
     status,
     actorType: "system",
+  };
+}
+
+function userActor(log: ExecutionLog, user: CurrentUser): ExecutionLog {
+  return {
+    ...log,
+    actorType: "user",
+    actorUserId: user.id,
+    actorDisplayName: user.name,
+    actorEmail: user.email,
   };
 }
 

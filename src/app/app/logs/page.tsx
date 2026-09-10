@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useOS } from "@/lib/os/app-provider";
-import type { Agent, ExecutionLog } from "@/lib/os/types";
+import type { Agent, CurrentUser, ExecutionLog } from "@/lib/os/types";
 import { FilterIcon } from "@/components/dashboard/icons";
 import { EmptyState, PageHeader } from "@/components/product-ui/page-primitives";
 
@@ -16,7 +16,41 @@ function initials(value: string): string {
   return value.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "A";
 }
 
-function actorFor(log: ExecutionLog, agents: Agent[]): { label: string; detail: string; initials: string; color: string } {
+function isHumanInitiatedLog(log: ExecutionLog): boolean {
+  const event = log.event.toLowerCase();
+  return [
+    "agent_status",
+    "approval.approved",
+    "approval.skipped",
+    "connector.connected",
+    "connector.disconnected",
+    "connector.tested",
+    "connector.resynced",
+    "connector.preview_connect_blocked",
+    "connector.real_connect_blocked",
+    "onboarding.completed",
+    "policy_updated",
+    "policy_toggled",
+    "team_invite",
+    "team_member_updated",
+    "member_removed",
+    "settings_updated",
+    "profile_updated",
+    "activation.updated",
+    "workflow.suggestion_installed",
+    "workspace_updated",
+  ].includes(event) || /\bby\s+(?:operator|workspace admin|[\w.+-]+@[\w.-]+)\b/i.test(log.message);
+}
+
+function humanActor(log: ExecutionLog, currentUser: CurrentUser) {
+  const recordedEmail = log.message.match(/\bby\s+([\w.+-]+@[\w.-]+)\b/i)?.[1];
+  const label = recordedEmail && recordedEmail.toLowerCase() !== currentUser.email.toLowerCase()
+    ? recordedEmail
+    : currentUser.name || currentUser.email || "Workspace member";
+  return { label, detail: recordedEmail || currentUser.email || label, initials: initials(label), color: "#A78BFA" };
+}
+
+function actorFor(log: ExecutionLog, agents: Agent[], currentUser: CurrentUser): { label: string; detail: string; initials: string; color: string } {
   if (log.actorType === "user" && (log.actorDisplayName || log.actorEmail)) {
     const label = log.actorDisplayName || log.actorEmail || "Workspace member";
     return { label, detail: log.actorEmail ?? label, initials: initials(label), color: "#A78BFA" };
@@ -25,6 +59,9 @@ function actorFor(log: ExecutionLog, agents: Agent[]): { label: string; detail: 
     const operator = agents.find((agent) => agent.id === log.agentId);
     const label = operator?.name ?? "Operator automation";
     return { label, detail: "Operator automation", initials: initials(label), color: operator?.color ?? "#5B8DEF" };
+  }
+  if (isHumanInitiatedLog(log)) {
+    return humanActor(log, currentUser);
   }
   if (log.agentId && log.agentId !== "system" && log.agentMark !== "OS") {
     const operator = agents.find((agent) => agent.id === log.agentId);
@@ -110,7 +147,7 @@ export default function LogsPage() {
               </thead>
               <tbody>
                 {visibleLogs.map((l) => {
-                  const actor = actorFor(l, state.agents);
+                  const actor = actorFor(l, state.agents, state.currentUser);
                   return (
                     <tr key={l.id}>
                       <td className="mono">{l.ts}</td>
