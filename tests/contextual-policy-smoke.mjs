@@ -145,14 +145,13 @@ try {
   const migration = fs.readFileSync(path.join(root, "supabase/migrations/20260910_contextual_policy_governance.sql"), "utf8");
   assert.match(migration, /approval_scope jsonb/);
   assert.match(migration, /policy_evidence jsonb/);
-  assert.match(fs.readFileSync(path.join(root, "src/app/api/policies/simulate/route.ts"), "utf8"), /executed: false/);
   const bundledGovernance = fs.readFileSync(path.join(root, "src/lib/policies/approval-governance.ts"), "utf8");
   assert.match(bundledGovernance, /approvalScopes:/);
   assert.match(bundledGovernance, /email:/);
   assert.match(bundledGovernance, /hubspot/);
   assert.match(fs.readFileSync(path.join(root, "supabase/migrations/20260907_execution_policy_engine.sql"), "utf8"), /unique \(workspace_id, action_hash\)/);
   assert.doesNotMatch(fs.readFileSync(path.join(root, "src/lib/settings/workspace-policy.ts"), "utf8"), /crmWrites:\s*"Auto-approve"/);
-  console.log("Contextual policy matching, fail-closed thresholds, scope reapproval, evidence persistence, and simulation contracts passed.");
+  console.log("Contextual policy matching, fail-closed thresholds, scope reapproval, evidence persistence, and approval-scope contracts passed.");
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
 }

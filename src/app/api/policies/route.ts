@@ -4,6 +4,7 @@ import { AuthorizationError, requireWorkspaceRoleForIdentity } from "@/lib/serve
 import { loadPolicyWorkspaceSettings, savePolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
 import type { WorkspaceAutonomyMode } from "@/lib/policies/types";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
+import { getConnectorTruth } from "@/lib/connectors/truth";
 
 type PatchBody = {
   workspaceId?: string;
@@ -40,8 +41,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: context.error, code: context.code }, { status: context.status });
   }
 
-  const policy = await loadPolicyWorkspaceSettings({ supabase, workspaceId: context.workspaceId });
-  return NextResponse.json({ policy });
+  const [policy, truth] = await Promise.all([
+    loadPolicyWorkspaceSettings({ supabase, workspaceId: context.workspaceId }),
+    getConnectorTruth({ supabase, workspaceId: context.workspaceId }),
+  ]);
+  return NextResponse.json({
+    policy,
+    connectorState: truth.map((connector) => ({
+      connectorKey: connector.connectorKey,
+      displayName: connector.displayName,
+      status: connector.status,
+      executable: Boolean(connector.executable),
+    })),
+  });
 }
 
 export async function PATCH(req: NextRequest) {
@@ -83,5 +95,14 @@ export async function PATCH(req: NextRequest) {
   if (typeof body.dailyBriefAllowed === "boolean") patch.dailyBriefAllowed = body.dailyBriefAllowed;
 
   const policy = await savePolicyWorkspaceSettings({ supabase, workspaceId: context.workspaceId, patch, actor: context.userEmail || context.userId || null });
-  return NextResponse.json({ policy });
+  const truth = await getConnectorTruth({ supabase, workspaceId: context.workspaceId });
+  return NextResponse.json({
+    policy,
+    connectorState: truth.map((connector) => ({
+      connectorKey: connector.connectorKey,
+      displayName: connector.displayName,
+      status: connector.status,
+      executable: Boolean(connector.executable),
+    })),
+  });
 }

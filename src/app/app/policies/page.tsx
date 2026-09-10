@@ -32,6 +32,7 @@ type PolicySettings = {
     priority: number;
     reason: string;
   }>;
+  connectorState: Array<{ connectorKey: string; displayName: string; status: string; executable: boolean }>;
 };
 
 const MODES: { key: AutonomyMode; label: string; help: string; locked?: boolean }[] = [
@@ -61,9 +62,6 @@ export default function PoliciesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [simulationLoading, setSimulationLoading] = useState(false);
-  const [simulation, setSimulation] = useState<{ decision: string; reason: string; matchedRuleIds: string[]; evidence?: { requiredApproverRoles?: string[]; threshold?: { field?: string; operator?: string; configuredValue?: string | number | boolean | null; observedValue?: string | number | boolean | null; result?: string } | null } } | null>(null);
-  const [simulationForm, setSimulationForm] = useState({ operatorKey: "revenue", connectorKey: "hubspot", actionType: "create_crm_deal", subjectType: "deal", amount: "10000", currency: "EUR" });
 
   const identityParams = useMemo(() => new URLSearchParams({
     workspaceId: state.workspace.id,
@@ -77,9 +75,9 @@ export default function PoliciesPage() {
     setError("");
     try {
       const res = await fetch(`/api/policies?${identityParams.toString()}`, { cache: "no-store" });
-      const json = await res.json().catch(() => ({})) as { policy?: PolicySettings; error?: string };
+      const json = await res.json().catch(() => ({})) as { policy?: PolicySettings; connectorState?: PolicySettings["connectorState"]; error?: string };
       if (!res.ok || !json.policy) throw new Error(json.error || "Could not load policy settings.");
-      setPolicy(json.policy);
+      setPolicy({ ...json.policy, connectorState: json.connectorState ?? [] });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load policy settings.");
     } finally {
@@ -101,9 +99,9 @@ export default function PoliciesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ workspaceId: state.workspace.id, userId: state.currentUser.id, userEmail: state.currentUser.email, ...body }),
       });
-      const json = await res.json().catch(() => ({})) as { policy?: PolicySettings; error?: string };
+      const json = await res.json().catch(() => ({})) as { policy?: PolicySettings; connectorState?: PolicySettings["connectorState"]; error?: string };
       if (!res.ok || !json.policy) throw new Error(json.error || "Could not save policy settings.");
-      setPolicy(json.policy);
+      setPolicy({ ...json.policy, connectorState: json.connectorState ?? policy?.connectorState ?? [] });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save policy settings.");
     } finally {
@@ -111,38 +109,12 @@ export default function PoliciesPage() {
     }
   };
 
-  const runSimulation = async () => {
-    setSimulationLoading(true);
-    setError("");
-    try {
-      const res = await fetch("/api/policies/simulate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workspaceId: state.workspace.id,
-          userId: state.currentUser.id,
-          userEmail: state.currentUser.email,
-          operatorKey: simulationForm.operatorKey,
-          connectorKey: simulationForm.connectorKey,
-          actionType: simulationForm.actionType,
-          subjectType: simulationForm.subjectType,
-          riskLevel: "high",
-          businessContext: { deal: { amount: simulationForm.amount === "" ? null : Number(simulationForm.amount), currency: simulationForm.currency } },
-        }),
-      });
-      const json = await res.json().catch(() => ({})) as { simulation?: { decision: string; reason: string; matchedRuleIds: string[]; evidence?: { requiredApproverRoles?: string[]; threshold?: { field?: string; operator?: string; configuredValue?: string | number | boolean | null; observedValue?: string | number | boolean | null; result?: string } | null } }; error?: string };
-      if (!res.ok || !json.simulation) throw new Error(json.error || "Could not simulate policy.");
-      setSimulation(json.simulation);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not simulate policy.");
-    } finally {
-      setSimulationLoading(false);
-    }
-  };
-
   const autonomousComments = policy?.autonomyMode === "guarded" || policy?.autonomyMode === "autonomous";
   const stop = Boolean(policy?.emergencyStopEnabled);
   const currentModeLabel = MODES.find((mode) => mode.key === policy?.autonomyMode)?.label ?? "Approval first";
+  const connectorIsActive = (key: string) => policy?.connectorState.some((connector) => connector.connectorKey === key && ["connected", "healthy"].includes(connector.status)) ?? false;
+  const connectedEmailConnectors = ["gmail", "microsoft"].filter(connectorIsActive);
+  const connectorLabel = (key: string) => policy?.connectorState.find((connector) => connector.connectorKey === key)?.displayName ?? key;
 
   return (
     <div className="os-page policy-page">
@@ -245,34 +217,10 @@ export default function PoliciesPage() {
                 <span className="ttl">{rule.connector || "Platform"} · {(rule.action || "all actions").replace(/_/g, " ")}</span>
                 <span className="sub">{rule.reason}</span>
               </span>
-              <span className="rt"><span className="dot dot-amber" />{rule.decision === "approval_required" ? "Approval required" : rule.decision}</span>
+              <span className="rt"><span className={`dot ${connectorIsActive(rule.connector || "") ? "dot-amber" : "dot"}`} />{rule.connector && !connectorIsActive(rule.connector) ? "Inactive · connect first" : rule.decision === "approval_required" ? "Approval required" : rule.decision}</span>
             </div>
           ))}
           {!loading && (policy?.actionRules ?? []).length === 0 && <div className="card-pad"><p className="t-meta" style={{ margin: 0 }}>No contextual rules configured. The platform baseline remains active.</p></div>}
-        </div>
-      </section>
-
-      <section className="card sec">
-        <div className="card-head">
-          <div>
-            <h3 className="t-section">Simulate a policy decision</h3>
-            <p className="t-meta" style={{ margin: "4px 0 0" }}>Preview only. This never contacts a connector or executes an action.</p>
-          </div>
-          <span className="badge muted">NO EXECUTION</span>
-        </div>
-        <div className="card-pad stack">
-          <div className="grid2">
-            <label className="field"><span className="label">Connector</span><select className="input" value={simulationForm.connectorKey} onChange={(event) => setSimulationForm((current) => ({ ...current, connectorKey: event.target.value }))}><option value="hubspot">HubSpot</option><option value="trello">Trello</option><option value="slack">Slack</option><option value="gmail">Gmail</option></select></label>
-            <label className="field"><span className="label">Action</span><select className="input" value={simulationForm.actionType} onChange={(event) => setSimulationForm((current) => ({ ...current, actionType: event.target.value }))}><option value="create_crm_deal">Create CRM deal</option><option value="update_crm_record">Update CRM record</option><option value="send_email">Send customer email</option><option value="send_slack_message">Send Slack message</option><option value="move_task">Move Trello card</option></select></label>
-            <label className="field"><span className="label">Subject type</span><input className="input" value={simulationForm.subjectType} onChange={(event) => setSimulationForm((current) => ({ ...current, subjectType: event.target.value }))} /></label>
-            <label className="field"><span className="label">Deal amount</span><input className="input" inputMode="decimal" value={simulationForm.amount} onChange={(event) => setSimulationForm((current) => ({ ...current, amount: event.target.value }))} placeholder="Leave empty to test missing context" /></label>
-            <label className="field"><span className="label">Currency</span><input className="input" value={simulationForm.currency} onChange={(event) => setSimulationForm((current) => ({ ...current, currency: event.target.value.toUpperCase() }))} /></label>
-          </div>
-          <div className="inline" style={{ justifyContent: "space-between", alignItems: "center" }}>
-            <button type="button" className="btn btn-primary btn-sm" disabled={simulationLoading || loading} onClick={() => void runSimulation()}>{simulationLoading ? "Evaluating…" : "Run simulation"}</button>
-            {simulation && <span className={`badge ${simulation.decision === "blocked" ? "red" : simulation.decision === "approval_required" ? "amber" : "green"}`}>{simulation.decision.replace(/_/g, " ")}</span>}
-          </div>
-          {simulation && <div className="attn info" style={{ padding: "11px 12px" }}><div className="t-object">{simulation.reason}</div><div className="t-meta" style={{ marginTop: 5 }}>Matched: {simulation.matchedRuleIds.join(", ") || "platform baseline"}{simulation.evidence?.requiredApproverRoles?.length ? ` · Approver roles: ${simulation.evidence.requiredApproverRoles.join(", ")}` : ""}</div>{simulation.evidence?.threshold && <div className="t-meta" style={{ marginTop: 4 }}>Threshold result: {simulation.evidence.threshold.result} ({simulation.evidence.threshold.field} {simulation.evidence.threshold.operator} {String(simulation.evidence.threshold.configuredValue ?? "-")}).</div>}</div>}
         </div>
       </section>
 
@@ -282,19 +230,20 @@ export default function PoliciesPage() {
           <div className="card-head"><h3 className="t-section">Allowed automatically</h3></div>
           <div className="rows">
             <Row label="Connector health checks" value={policy?.connectorHealthChecksAllowed ? "Auto" : "Off"} tone={policy?.connectorHealthChecksAllowed ? "green" : "neutral"} help="System checks, internal only." />
-            <Row label="Internal Slack notifications" value={policy?.internalSlackNotificationsAllowed ? "Auto (enabled)" : "Off"} tone={policy?.internalSlackNotificationsAllowed ? "green" : "neutral"} help="Controlled in Slack connector settings." />
-            <Row label="Daily brief" value={stop ? "Blocked (stop)" : policy?.dailyBriefAllowed ? "Auto" : "Off"} tone={stop ? "rose" : policy?.dailyBriefAllowed ? "green" : "neutral"} help="Internal summary to the default Slack channel." />
-            <Row label="Low-risk Trello comments" value={stop ? "Blocked (stop)" : autonomousComments ? "Auto within limits" : "Approval required"} tone={stop ? "rose" : autonomousComments ? "green" : "amber"} help="Requires high confidence, connector health and hourly/daily safety limits." />
+            <Row label="Internal Slack notifications" value={!connectorIsActive("slack") ? "Unavailable" : policy?.internalSlackNotificationsAllowed ? "Auto (enabled)" : "Off"} tone={!connectorIsActive("slack") ? "neutral" : policy?.internalSlackNotificationsAllowed ? "green" : "neutral"} help={!connectorIsActive("slack") ? "Connect Slack to enable this capability." : "Controlled in Slack connector settings."} />
+            <Row label="Daily brief" value={!connectorIsActive("slack") ? "Unavailable" : stop ? "Blocked (stop)" : policy?.dailyBriefAllowed ? "Auto" : "Off"} tone={!connectorIsActive("slack") ? "neutral" : stop ? "rose" : policy?.dailyBriefAllowed ? "green" : "neutral"} help={!connectorIsActive("slack") ? "Connect Slack to deliver the brief." : "Internal summary to the default Slack channel."} />
+            <Row label="Low-risk Trello comments" value={!connectorIsActive("trello") ? "Unavailable" : stop ? "Blocked (stop)" : autonomousComments ? "Auto within limits" : "Approval required"} tone={!connectorIsActive("trello") ? "neutral" : stop ? "rose" : autonomousComments ? "green" : "amber"} help={!connectorIsActive("trello") ? "Connect Trello to enable project comments." : "Requires high confidence, connector health and hourly/daily safety limits."} />
           </div>
         </section>
 
         <section className="card">
           <div className="card-head"><h3 className="t-section">Requires approval</h3></div>
           <div className="rows">
-            <Row label="Customer emails" value={stop ? "Blocked (stop)" : policy?.customerEmailMode === "draft_only" ? "Draft only" : "Approval required"} tone={stop ? "rose" : "amber"} />
-            <Row label="CRM writes (HubSpot)" value={stop ? "Blocked (stop)" : "Approval required"} tone={stop ? "rose" : "amber"} />
-            <Row label="Trello card create / move" value={stop ? "Blocked (stop)" : "Approval required"} tone={stop ? "rose" : "amber"} />
-            <Row label="Operator Slack messages" value={stop ? "Blocked (stop)" : "Approval required"} tone={stop ? "rose" : "amber"} />
+            {connectedEmailConnectors.length > 0 && <Row label={`Customer emails · ${connectedEmailConnectors.map(connectorLabel).join(" / ")}`} value={stop ? "Blocked (stop)" : policy?.customerEmailMode === "draft_only" ? "Draft only" : "Approval required"} tone={stop ? "rose" : "amber"} />}
+            {connectorIsActive("hubspot") && <Row label="CRM writes · HubSpot" value={stop ? "Blocked (stop)" : "Approval required"} tone={stop ? "rose" : "amber"} />}
+            {connectorIsActive("trello") && <Row label="Trello card create / move" value={stop ? "Blocked (stop)" : "Approval required"} tone={stop ? "rose" : "amber"} />}
+            {connectorIsActive("slack") && <Row label="Operator Slack messages" value={stop ? "Blocked (stop)" : "Approval required"} tone={stop ? "rose" : "amber"} />}
+            {connectedEmailConnectors.length === 0 && !connectorIsActive("hubspot") && !connectorIsActive("trello") && !connectorIsActive("slack") && <div className="card-pad"><p className="t-meta" style={{ margin: 0 }}>No connected write-capable systems currently require approval.</p></div>}
           </div>
         </section>
       </div>
