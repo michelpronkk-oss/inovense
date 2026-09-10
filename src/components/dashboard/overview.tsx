@@ -9,7 +9,8 @@ import type { DashboardOverview, DashboardOperator } from "@/lib/dashboard/overv
 import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-grid";
 import { DashboardLoadingState } from "@/components/dashboard/loading-state";
 import { MetricStrip, PageHeader } from "@/components/product-ui/page-primitives";
-import { operatorDisplayName, operatorInitials, withoutLeadingOperatorName } from "@/lib/activity/presentation";
+import { ActivityAvatar } from "@/components/activity/activity-avatar";
+import { operatorDisplayName, withoutLeadingOperatorName } from "@/lib/activity/presentation";
 
 type ScanKey = DashboardOperator["key"];
 type OverviewResponse = DashboardOverview & { error?: string; message?: string };
@@ -613,7 +614,7 @@ export function OSOverview() {
                   return (
                     <div className="row activity-row dense" key={item.id}>
                       <time className="activity-row-time t-mono">{clockTime(item.time)}</time>
-                      <span className="activity-row-avatar" aria-hidden="true">{operatorInitials(item.operatorKey)}</span>
+                      <ActivityAvatar operatorKey={item.operatorKey} />
                       <span className="grow activity-row-body">
                         <b className="activity-row-name">{name}</b>
                         <span className="activity-row-action">{action}</span>

@@ -31,13 +31,15 @@ try {
   assert.match(normalize, /category === "execution"/);
   assert.match(normalize, /Action blocked by policy/);
   assert.match(normalize, /severity === "failure" \|\| item\.severity === "attention"/, "issues use only failed or attention states");
-  assert.match(dashboard, /View activity/);
+  assert.match(dashboard, /All activity/);
+  assert.match(dashboard, /ActivityAvatar/);
   assert.match(dashboard, /Prepared/);
   assert.match(dashboard, /Held at approval/);
   assert.doesNotMatch(dashboard, /Open logs/);
   assert.match(dashboardSource, /normalizeWorkforceActivity/, "dashboard uses the shared activity definition");
   assert.match(dashboardSource, /activitySummary/);
   assert.match(page, /Show more/);
+  assert.match(page, /ActivityAvatar/);
   assert.match(page, /No workforce activity yet/);
   assert.ok(fs.existsSync(path.join(root, "src/app/app/logs/page.tsx")), "Execution Logs remains a separate technical surface");
 

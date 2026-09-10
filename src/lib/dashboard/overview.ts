@@ -115,7 +115,7 @@ export type DashboardOperator = {
 };
 
 export type DashboardConnector = {
-  key: "gmail" | "hubspot" | "slack" | "trello";
+  key: "gmail" | "google_drive" | "hubspot" | "slack" | "trello";
   name: string;
   status: "connected" | "needs_setup" | "error" | "coming_soon";
   connected: boolean;
@@ -373,11 +373,12 @@ function buildOperators(input: { approvals: Row[]; runs: Row[]; productStates: O
 function buildConnectors(input: { truth: SafeConnectorTruth[] }): DashboardConnector[] {
   const purpose: Record<DashboardConnector["key"], string> = {
     gmail: "Email follow-ups",
+    google_drive: "Document context",
     hubspot: "CRM execution",
     slack: "Team alerts",
     trello: "Project tasks",
   };
-  return (["gmail", "hubspot", "slack", "trello"] as const).map((key) => {
+  return (["gmail", "google_drive", "hubspot", "slack", "trello"] as const).map((key) => {
     const def = getConnectorDefinition(key);
     const truth = input.truth.find((item) => item.connectorKey === key);
     const connected = connectorIsConnected(truth);

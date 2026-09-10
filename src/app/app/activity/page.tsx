@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { WorkforceActivityItem, WorkforceActivityPage } from "@/lib/activity/types";
 import { EmptyState } from "@/components/product-ui/page-primitives";
-import { operatorDisplayName, operatorInitials, withoutLeadingOperatorName } from "@/lib/activity/presentation";
+import { ActivityAvatar } from "@/components/activity/activity-avatar";
+import { operatorDisplayName, withoutLeadingOperatorName } from "@/lib/activity/presentation";
 
 type Range = "24h" | "7d" | "30d";
 type Filter = "workflow" | "operator_run" | "approval" | "execution" | "attention" | "failure";
@@ -108,7 +109,7 @@ export default function ActivityPage() {
             return (
               <div key={item.id} className={`row activity-row${routeText && item.relatedRoute ? " link" : ""}`}>
                 <time className="activity-row-time t-mono" dateTime={item.occurredAt}>{timeLabel(item.occurredAt)}</time>
-                <span className="activity-row-avatar" aria-hidden="true">{operatorInitials(item.operatorKey)}</span>
+                <ActivityAvatar operatorKey={item.operatorKey} />
                 <span className="grow activity-row-body">
                   <span className="activity-row-primary">
                     <b className="activity-row-name">{name}</b>

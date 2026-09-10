@@ -47,13 +47,15 @@ function humanActor(log: ExecutionLog, currentUser: CurrentUser) {
   const label = recordedEmail && recordedEmail.toLowerCase() !== currentUser.email.toLowerCase()
     ? recordedEmail
     : currentUser.name || currentUser.email || "Workspace member";
-  return { label, detail: recordedEmail || currentUser.email || label, initials: initials(label), color: "#A78BFA" };
+  const isCurrentUser = !recordedEmail || recordedEmail.toLowerCase() === currentUser.email.toLowerCase();
+  return { label, detail: recordedEmail || currentUser.email || label, initials: initials(label), color: "#A78BFA", avatarUrl: isCurrentUser ? currentUser.avatarUrl : undefined };
 }
 
-function actorFor(log: ExecutionLog, agents: Agent[], currentUser: CurrentUser): { label: string; detail: string; initials: string; color: string } {
+function actorFor(log: ExecutionLog, agents: Agent[], currentUser: CurrentUser): { label: string; detail: string; initials: string; color: string; avatarUrl?: string } {
   if (log.actorType === "user" && (log.actorDisplayName || log.actorEmail)) {
     const label = log.actorDisplayName || log.actorEmail || "Workspace member";
-    return { label, detail: log.actorEmail ?? label, initials: initials(label), color: "#A78BFA" };
+    const isCurrentUser = log.actorUserId === currentUser.id || log.actorEmail === currentUser.email;
+    return { label, detail: log.actorEmail ?? label, initials: initials(label), color: "#A78BFA", avatarUrl: isCurrentUser ? currentUser.avatarUrl : undefined };
   }
   if (log.actorType === "operator") {
     const operator = agents.find((agent) => agent.id === log.agentId);
@@ -153,7 +155,7 @@ export default function LogsPage() {
                       <td className="mono">{l.ts}</td>
                       <td title={`${actor.label} · ${actor.detail}`}>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                          <span style={{ width: 22, height: 22, flex: "none", borderRadius: 7, background: `${actor.color}18`, boxShadow: `inset 0 0 0 1px ${actor.color}55`, display: "grid", placeItems: "center", fontSize: 9, fontWeight: 700, color: actor.color }}>{actor.initials}</span>
+                          <span style={{ width: 22, height: 22, flex: "none", borderRadius: 7, background: actor.avatarUrl ? "#0d141a" : `${actor.color}18`, backgroundImage: actor.avatarUrl ? `url(${actor.avatarUrl})` : undefined, backgroundSize: "cover", backgroundPosition: "center", boxShadow: `inset 0 0 0 1px ${actor.color}55`, display: "grid", placeItems: "center", fontSize: 9, fontWeight: 700, color: actor.avatarUrl ? "transparent" : actor.color }}>{actor.initials}</span>
                           <span className="ink">{actor.label}</span>
                         </span>
                       </td>
