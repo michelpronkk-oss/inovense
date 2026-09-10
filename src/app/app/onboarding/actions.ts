@@ -4,14 +4,14 @@ import { getVerifiedSupabaseUser } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { requireWorkspaceAdmin, AuthorizationError, resolveActiveWorkspaceId } from "@/lib/server/workspace-access";
 
-export type OnboardingDraft = { fullName: string; workspaceName: string; websiteUrl: string; industry: string; teamSize: string; priority: "revenue" | "client_flow" | "operations" | "support" | ""; systems: string[]; step: number };
+export type OnboardingDraft = { fullName: string; workspaceName: string; websiteUrl: string; industry: string; teamSize: string; priority: "revenue" | "client_flow" | "operations" | "support" | ""; systems: string[]; noSupportedConnector: boolean; step: number };
 export type OnboardingResult = { ok: true; workspaceId: string; ownerEmail: string; ownerName: string } | { ok: false; error: string };
 const ONBOARDING_VERSION = 3;
 
 const ONBOARDING_CONNECTORS = ["gmail", "microsoft", "google_drive", "hubspot", "trello", "asana", "jira", "zendesk", "intercom", "slack"];
 
 function cleanDraft(input: Partial<OnboardingDraft>): OnboardingDraft {
-  return { fullName: input.fullName?.trim() ?? "", workspaceName: input.workspaceName?.trim() ?? "", websiteUrl: input.websiteUrl?.trim() ?? "", industry: input.industry?.trim() ?? "", teamSize: input.teamSize?.trim() ?? "", priority: input.priority === "revenue" || input.priority === "client_flow" || input.priority === "operations" || input.priority === "support" ? input.priority : "", systems: Array.isArray(input.systems) ? input.systems.filter((item) => ONBOARDING_CONNECTORS.includes(item)) : [], step: Math.min(6, Math.max(1, Number(input.step) || 1)) };
+  return { fullName: input.fullName?.trim() ?? "", workspaceName: input.workspaceName?.trim() ?? "", websiteUrl: input.websiteUrl?.trim() ?? "", industry: input.industry?.trim() ?? "", teamSize: input.teamSize?.trim() ?? "", priority: input.priority === "revenue" || input.priority === "client_flow" || input.priority === "operations" || input.priority === "support" ? input.priority : "", systems: Array.isArray(input.systems) ? input.systems.filter((item) => ONBOARDING_CONNECTORS.includes(item)) : [], noSupportedConnector: Boolean(input.noSupportedConnector), step: Math.min(6, Math.max(1, Number(input.step) || 1)) };
 }
 
 async function authorizedWorkspace() {
@@ -34,7 +34,7 @@ export async function getOnboardingDraftAction(): Promise<{ ok: true; draft: Onb
   if (workspaceResult.error) return { ok: false, error: workspaceResult.error.message };
   const data = (workspaceResult.data.onboarding_data ?? {}) as Record<string, unknown>;
   const metadataName = (access.user.user_metadata?.full_name as string | undefined) ?? (access.user.user_metadata?.name as string | undefined) ?? "";
-  return { ok: true, draft: cleanDraft({ fullName: profileResult.data?.full_name ?? metadataName, workspaceName: workspaceResult.data.name, websiteUrl: typeof data.website === "string" ? data.website : typeof data.websiteUrl === "string" ? data.websiteUrl : "", industry: typeof data.industry === "string" ? data.industry : "", teamSize: typeof data.team_size === "string" ? data.team_size : "", priority: typeof data.first_priority === "string" ? data.first_priority as OnboardingDraft["priority"] : "", systems: Array.isArray(data.systems) ? data.systems.filter((v): v is string => typeof v === "string") : [], step: typeof data.onboarding_step === "number" ? data.onboarding_step : 1 }) };
+  return { ok: true, draft: cleanDraft({ fullName: profileResult.data?.full_name ?? metadataName, workspaceName: workspaceResult.data.name, websiteUrl: typeof data.website === "string" ? data.website : typeof data.websiteUrl === "string" ? data.websiteUrl : "", industry: typeof data.industry === "string" ? data.industry : "", teamSize: typeof data.team_size === "string" ? data.team_size : "", priority: typeof data.first_priority === "string" ? data.first_priority as OnboardingDraft["priority"] : "", systems: Array.isArray(data.systems) ? data.systems.filter((v): v is string => typeof v === "string") : [], noSupportedConnector: data.no_supported_connector === true, step: typeof data.onboarding_step === "number" ? data.onboarding_step : 1 }) };
 }
 
 export async function saveOnboardingDraftAction(input: Partial<OnboardingDraft>): Promise<OnboardingResult> {
@@ -43,7 +43,7 @@ export async function saveOnboardingDraftAction(input: Partial<OnboardingDraft>)
   const draft = cleanDraft(input);
   const current = await access.admin.from("os_workspaces").select("onboarding_data").eq("id", access.workspaceId).single();
   if (current.error) return { ok: false, error: current.error.message };
-  const onboardingData = { ...(current.data.onboarding_data ?? {}), website: draft.websiteUrl, industry: draft.industry, team_size: draft.teamSize, first_priority: draft.priority, recommended_operator: draft.priority ? ({ revenue: "Revenue Operator", client_flow: "Client Flow Operator", operations: "Operations Operator", support: "Support Operator" }[draft.priority]) : "", systems: draft.systems, onboarding_step: draft.step };
+  const onboardingData = { ...(current.data.onboarding_data ?? {}), website: draft.websiteUrl, industry: draft.industry, team_size: draft.teamSize, first_priority: draft.priority, recommended_operator: draft.priority ? ({ revenue: "Revenue Operator", client_flow: "Client Flow Operator", operations: "Operations Operator", support: "Support Operator" }[draft.priority]) : "", systems: draft.systems, no_supported_connector: draft.noSupportedConnector, onboarding_step: draft.step };
   const workspaceUpdate = await access.admin.from("os_workspaces").update({ ...(draft.workspaceName ? { name: draft.workspaceName } : {}), onboarding_data: onboardingData }).eq("id", access.workspaceId);
   if (workspaceUpdate.error) return { ok: false, error: workspaceUpdate.error.message };
   if (draft.fullName) {

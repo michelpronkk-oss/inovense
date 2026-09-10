@@ -6,7 +6,7 @@ import Image from "next/image";
 import { StatusBadge } from "@/components/operators/status-badge";
 import { useOS } from "@/lib/os/app-provider";
 import type { DashboardOverview, DashboardOperator } from "@/lib/dashboard/overview";
-import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-grid";
+import { ProviderLogo } from "@/components/connectors/provider-logo";
 import { DashboardLoadingState } from "@/components/dashboard/loading-state";
 import { MetricStrip, PageHeader } from "@/components/product-ui/page-primitives";
 import { ActivityAvatar } from "@/components/activity/activity-avatar";
@@ -579,7 +579,7 @@ export function OSOverview() {
                 return (
                   <Link key={connector.key} href={connector.href} className="row link">
                     <span className="cn">
-                      <span className="cn-mark" style={{ color: meta.color }}>{IntegrationLogos[connector.name] ?? meta.letter}</span>
+                      <ProviderLogo connectorKey={connector.key.replace(/-/g, "_")} name={connector.name} fallbackLetter={meta.letter} fallbackColor={meta.color} box={30} size={20} radius={7} />
                       <span className="nm"><b>{connector.name}</b><span>{connector.connected ? "Connected" : "Needs setup"}</span></span>
                     </span>
                     <span className="rt inline" style={{ gap: 7 }}>

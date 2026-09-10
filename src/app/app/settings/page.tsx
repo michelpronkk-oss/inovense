@@ -11,7 +11,7 @@ import { saveWorkspaceSettings } from "./actions";
 import { saveProfileSettings } from "@/app/app/profile/actions";
 import { getEntitlements } from "@/lib/os/entitlements";
 import { getPlanLabel } from "@/lib/os/truth";
-import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-grid";
+import { ProviderLogo } from "@/components/connectors/provider-logo";
 import { PageHeader } from "@/components/product-ui/page-primitives";
 
 type SectionKey = "workspace" | "notifications";
@@ -301,8 +301,6 @@ export default function SettingsPage() {
         ) : (
           <div className="rows">
             {visibleConnectedAccounts.map((acct) => {
-              const color = acct.connectorKey === "gmail" ? "#EA4335" : "#FF7A59";
-              const letter = acct.connectorKey === "gmail" ? "G" : "Hs";
               const authLabel = acct.authType === "native" ? "Native connector" : "Secure connector";
               const isConnected = acct.status === "connected" || acct.status === "healthy";
               const reconnectRequired = acct.status === "reconnect_required" || acct.reconnectRequired;
@@ -314,7 +312,7 @@ export default function SettingsPage() {
               return (
                 <div className="row" key={acct.connectorKey}>
                   <span className="cn grow">
-                    <span className="cn-mark lg" style={{ color }}>{IntegrationLogos[acct.displayName] ?? letter}</span>
+                    <ProviderLogo connectorKey={acct.connectorKey.replace(/-/g, "_")} name={acct.displayName} box={34} size={22} radius={7} />
                     <span className="nm">
                       <b>{acct.displayName}</b>
                       <span>

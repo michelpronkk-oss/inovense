@@ -12,6 +12,7 @@ import { getEntitlements } from "@/lib/os/entitlements";
 import { UpgradeModal } from "@/components/upgrade-modal";
 import { isRealConnectedConnector } from "@/lib/os/truth";
 import { clearOnboardingReturn, hasPendingOnboardingReturn, isOnboardingLaunch } from "@/lib/onboarding/return-contract";
+import { ProviderLogo } from "@/components/connectors/provider-logo";
 import {
   isConnectorAvailableForAuth,
   getConnectorDefinition,
@@ -19,7 +20,6 @@ import {
 import { getAvailableConnectors } from "@/lib/connectors/capabilities";
 import { CONNECTOR_CATEGORY_LABELS, connectorCategoryLabel } from "@/lib/connectors/registry";
 import { connectorDefinitionToSeedConnector } from "@/lib/os/seed";
-import { LOGOS as IntegrationLogos } from "@/components/home-v3/integrations-grid";
 import { getUnconnectedOnboardingSystems, unlockMessageForConnector } from "@/lib/operators/unlock-copy";
 import { humanizeOperatorActions } from "@/lib/operators/action-labels";
 import { humanizeCapabilities } from "@/lib/operators/capability-labels";
@@ -1040,7 +1040,7 @@ export default function ConnectorsPage() {
                 className="connector-priority-card"
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <div className="connector-brand-logo" style={{ width: 28, height: 28, borderRadius: 8 }}>{IntegrationLogos[c.name] ?? <span style={{ color: c.color, fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{c.letter}</span>}</div>
+                  <ProviderLogo connectorKey={normalizeConnectorKey(c.id)} name={c.name} fallbackLetter={c.letter} fallbackColor={c.color} box={28} size={18} radius={8} />
                   <div style={{ fontSize: 13, fontWeight: 500 }}>{c.name}</div>
                 </div>
                 <div style={{ fontSize: 11.5, color: "var(--text-dim)" }}>Connect it to bring your team’s work into Auterim.</div>
@@ -1065,7 +1065,7 @@ export default function ConnectorsPage() {
             {degradedConnectorImpacts.map(({ connector, impact }) => (
               <div key={connector.id}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <div className="connector-brand-logo" style={{ width: 24, height: 24, borderRadius: 7 }}>{IntegrationLogos[connector.name] ?? <span style={{ color: connector.color, fontSize: 9, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{connector.letter}</span>}</div>
+                  <ProviderLogo connectorKey={normalizeConnectorKey(connector.id)} name={connector.name} fallbackLetter={connector.letter} fallbackColor={connector.color} box={24} size={16} radius={7} />
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{connector.name}</div>
                   <span style={{ fontSize: 11, color: "var(--amber)" }}>Reconnect required</span>
                 </div>
@@ -1156,7 +1156,7 @@ export default function ConnectorsPage() {
               return (
                 <div className="row link" key={c.id} role="button" tabIndex={0} onClick={() => setDrawerConnectorId(c.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setDrawerConnectorId(c.id); } }}>
                   <span className="cn">
-                    <span className="cn-mark lg" style={{ color: c.color }}>{IntegrationLogos[c.name] ?? c.letter}</span>
+                    <ProviderLogo connectorKey={normalizeConnectorKey(c.id)} name={c.name} fallbackLetter={c.letter} fallbackColor={c.color} box={34} size={22} radius={7} />
                     <span className="nm"><b>{c.name}</b><span>{connectorCapabilities(c.id)[0]}</span></span>
                   </span>
                   <span className="rt">
@@ -1213,7 +1213,7 @@ export default function ConnectorsPage() {
                                 return (
                                   <div className="row link" key={c.id} role="button" tabIndex={0} onClick={() => { if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); if (isRealConnectedConnector(c)) { setAddOpen(false); setDrawerConnectorId(c.id); } else setSetupConnectorId(c.id); } }}>
                                     <span className="cn">
-                                      <span className="cn-mark" style={{ color: c.color }}>{IntegrationLogos[c.name] ?? c.letter}</span>
+                                      <ProviderLogo connectorKey={connectorKey} name={c.name} fallbackLetter={c.letter} fallbackColor={c.color} box={30} size={20} radius={7} />
                                       <span className="nm"><b>{c.name}</b><span className="connector-finder-row-meta">{definition ? connectorCategoryLabel(definition) : CONNECTOR_CATEGORY_LABELS.custom_api} · {connectorCapabilities(connectorKey)[0] ?? "Useful workspace context"}</span></span>
                                     </span>
                                     <span className="rt"><span className="t-meta" style={{ color: discoveryState.color }}>{discoveryState.status}</span><span className="badge cyan">{discoveryState.action}</span></span>
@@ -1743,7 +1743,7 @@ function ConnectorSetupView({
       <div style={{ display: "grid", gap: 16, paddingBottom: 18, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 13, background: `${connector.color}18`, boxShadow: `inset 0 0 0 1px ${connector.color}45`, display: "grid", placeItems: "center", color: connector.color, fontSize: 12, fontFamily: "var(--font-mono)", fontWeight: 800 }}>{connector.letter}</div>
+            <ProviderLogo connectorKey={normalizeConnectorKey(connector.id)} name={connector.name} fallbackLetter={connector.letter} fallbackColor={connector.color} box={44} size={26} radius={13} />
             <div>
               <div style={{ fontSize: 18, fontWeight: 700 }}>{connector.name}</div>
               <div style={{ fontSize: 12, color: "var(--text-mute)", marginTop: 3 }}>{connector.category}</div>
