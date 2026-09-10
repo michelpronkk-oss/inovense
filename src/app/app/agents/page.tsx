@@ -161,14 +161,6 @@ function LiveOperatorCard({ opKey, op, productState }: { opKey: OperatorKey; op:
   );
 }
 
-function RoadmapIcon({ color, glyph }: { color: string; glyph: string }) {
-  return (
-    <span className="ag-roadmap-glyph" style={{ color, background: `${color}12`, boxShadow: `inset 0 0 0 1px ${color}45` }}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden dangerouslySetInnerHTML={{ __html: GLYPHS[glyph] ?? "" }} />
-    </span>
-  );
-}
-
 export default function AgentsRegistryPage() {
   const { state } = useOS();
   const [productStates, setProductStates] = useState<ProductState[]>([]);
@@ -243,7 +235,9 @@ export default function AgentsRegistryPage() {
           <div className="ag-roadmap-list">
             {ROADMAP_OPERATOR_PRESENTATION.map((item) => (
               <div className="ag-roadmap-row" key={item.name}>
-                <span className="ag-roadmap-icon"><RoadmapIcon color={item.color} glyph={item.glyph} /></span>
+                <span className="ag-roadmap-icon">
+                  <Image src={operatorAvatarPath(item.avatarKey)} alt="" width={80} height={80} aria-hidden />
+                </span>
                 <div className="ag-roadmap-info">
                   <span className="ag-roadmap-name">{item.name}</span>
                   <span className="ag-roadmap-descriptor">{item.descriptor}</span>

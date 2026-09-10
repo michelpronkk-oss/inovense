@@ -51,11 +51,15 @@ export function getLiveOperatorCardPresentation(operatorKey: string): LiveOperat
   return LIVE_OPERATOR_CARD_PRESENTATION[operatorKey as LiveOperatorKey] ?? null;
 }
 
-export const ROADMAP_OPERATOR_PRESENTATION = [
-  { name: "Finance Operator", descriptor: "Billing and collections", color: "#5FD3A8", glyph: "dollar" },
-  { name: "Marketing Operator", descriptor: "Campaign and content", color: "#E0A35E", glyph: "mega" },
-  { name: "Recruiting Operator", descriptor: "Hiring pipeline", color: "#66D0E0", glyph: "hiring" },
-  { name: "Procurement Operator", descriptor: "Vendors and spend", color: "#C58BF0", glyph: "layout" },
-  { name: "Compliance Operator", descriptor: "Controls and evidence", color: "#7AA8FF", glyph: "shield" },
-  { name: "Data Operator", descriptor: "Reporting and quality", color: "#8B9DF7", glyph: "memory" },
+export const ROADMAP_OPERATOR_PRESENTATION: ReadonlyArray<{
+  name: string;
+  descriptor: string;
+  avatarKey: OperatorKey;
+}> = [
+  { name: "Finance Operator", descriptor: "Billing and collections", avatarKey: "finance_billing" },
+  { name: "Marketing Operator", descriptor: "Campaign and content", avatarKey: "marketing" },
+  { name: "Recruiting Operator", descriptor: "Hiring pipeline", avatarKey: "hiring_team" },
+  { name: "Procurement Operator", descriptor: "Vendors and spend", avatarKey: "proposal_quote" },
+  { name: "Compliance Operator", descriptor: "Controls and evidence", avatarKey: "approval_risk" },
+  { name: "Data Operator", descriptor: "Reporting and quality", avatarKey: "knowledge_memory" },
 ] as const;

@@ -22,6 +22,10 @@ assert.doesNotMatch(briefing, /readinessPercent/);
 assert.match(list, /getOperatorCapabilityCopy/);
 assert.match(list, /getLiveOperatorCardPresentation/);
 assert.match(list, /ROADMAP_OPERATOR_PRESENTATION/);
+assert.match(list, /operatorAvatarPath\(item\.avatarKey\)/);
+for (const avatarKey of ["finance_billing", "marketing", "hiring_team", "proposal_quote", "approval_risk", "knowledge_memory"]) {
+  assert.match(cardPresentation, new RegExp(`avatarKey: "${avatarKey}"`), `${avatarKey} must use its canonical roadmap portrait`);
+}
 assert.match(list, /id="live-workforce"/);
 assert.match(list, /id="operator-roadmap"/);
 assert.match(list, /href="#live-workforce"/);
