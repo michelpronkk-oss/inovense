@@ -308,7 +308,6 @@
 .os-root .top-search:focus-visible { outline: none; box-shadow: inset 0 0 0 1px var(--line-2), 0 0 0 2px rgba(77,232,225,.35); }
 .os-root .top-search svg { flex: none; color: var(--text-faint); }
 .os-root .top-search .top-search-label { flex: 1; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.os-root .top-search kbd { flex: none; margin-left: 2px; font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); padding: 2px 6px; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--line); }
 @media (max-width: 1400px) {
   .os-root .top-search { width: 328px; }
 }
@@ -2330,7 +2329,6 @@ select.os-input option {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .os-command-shortcuts { display: none !important; }
 
   /* Modal actions sit above the keyboard/safe area and above the tab bar. */
   .os-modal-backdrop { z-index: 80; height: 100dvh; }

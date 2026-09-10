@@ -320,6 +320,20 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const { state } = useOS();
 
+  const productDestinations = [
+    { icon: CpuIcon, label: "Revenue Operator", sub: "Operator runtime", href: "/agents/revenue" },
+    { icon: CpuIcon, label: "Client Flow Operator", sub: "Operator runtime", href: "/agents/client-flow" },
+    { icon: CpuIcon, label: "Operations Operator", sub: "Operator runtime", href: "/agents/operations" },
+    { icon: CpuIcon, label: "Support Operator", sub: "Operator runtime", href: "/agents/support" },
+    { icon: CpuIcon, label: "Operators", sub: "Workforce registry", href: "/agents" },
+    { icon: FlowIcon, label: "Workflows", sub: "Coordinated work", href: "/workflows" },
+    { icon: DocIcon, label: "Approvals", sub: "Review prepared work", href: "/approvals" },
+    { icon: DatabaseIcon, label: "Memory", sub: "Business context", href: "/memory" },
+    { icon: DatabaseIcon, label: "Connectors", sub: "Connected systems", href: "/connectors" },
+    { icon: DocIcon, label: "Execution logs", sub: "Technical audit trail", href: "/logs" },
+    { icon: DocIcon, label: "Insights", sub: "Observed outcomes", href: "/insights" },
+  ];
+
   const items = [
     ...state.agents.map((a) => ({
       icon: CpuIcon,
@@ -347,7 +361,10 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
     })),
   ];
 
-  const filtered = items.filter(
+  const searchableItems = q.trim()
+    ? Array.from(new Map([...productDestinations, ...items].map((item) => [`${item.label}:${item.href}`, item])).values())
+    : items;
+  const filtered = searchableItems.filter(
     (it) => !q || it.label.toLowerCase().includes(q.toLowerCase()) || it.sub.toLowerCase().includes(q.toLowerCase())
   );
 
@@ -411,8 +428,8 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
               color: "var(--text)", fontFamily: "var(--font-sans)",
             }}
           />
-          <button className="os-command-close" aria-label="Close search" onClick={onClose} style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-faint)", background: "rgba(255,255,255,0.04)", border: "none", padding: "3px 7px", borderRadius: 5, cursor: "pointer" }}>
-            <span className="desktop-only">esc</span><span className="mobile-only">Done</span>
+          <button className="os-command-close" aria-label="Close search" onClick={onClose} style={{ color: "var(--text-faint)", background: "rgba(255,255,255,0.04)", border: "none", padding: "6px", borderRadius: 5, cursor: "pointer" }}>
+            <XIcon size={13} />
           </button>
         </div>
         <div className="os-command-results" style={{ maxHeight: 360, overflowY: "auto" }}>
@@ -445,13 +462,6 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
               </button>
             );
           })}
-        </div>
-        <div className="os-command-shortcuts" style={{ padding: "8px 16px", borderTop: "1px solid var(--line)", display: "flex", gap: 16 }}>
-          {[["â†‘â†“", "navigate"], ["â†µ", "open"], ["esc", "close"]].map(([k, v]) => (
-            <span key={v} style={{ display: "flex", gap: 6, alignItems: "center", fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-faint)" }}>
-              <span style={{ background: "rgba(255,255,255,0.06)", padding: "2px 6px", borderRadius: 4 }}>{k}</span> {v}
-            </span>
-          ))}
         </div>
       </div>
     </div>
@@ -669,14 +679,6 @@ export function NotificationsPanel({ onClose }: { onClose: () => void }) {
 
 // â”€â”€ Help panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-const SHORTCUTS = [
-  { keys: ["âŒ˜", "K"], label: "Command palette" },
-  { keys: ["âŒ˜", "D"], label: "Deploy agent" },
-  { keys: ["â†‘", "â†“"], label: "Navigate lists" },
-  { keys: ["â†µ"], label: "Select / open" },
-  { keys: ["Esc"], label: "Close panel" },
-];
-
 const HELP_LINKS = [
   { label: "Getting started", sub: "Deploy your first operator" },
   { label: "Policy engine", sub: "Approval rules and permissions" },
@@ -694,20 +696,6 @@ function HelpPanel({ onClose }: { onClose: () => void }) {
         <div style={{ padding: "16px 18px 12px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ fontSize: 13.5, fontWeight: 600 }}>Help</div>
           <button onClick={onClose} className="os-iconbtn" style={{ width: 24, height: 24 }}><XIcon size={12} /></button>
-        </div>
-
-        <div style={{ padding: "12px 18px 6px" }}>
-          <div style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.09em", color: "var(--text-faint)", marginBottom: 10 }}>Keyboard shortcuts</div>
-          {SHORTCUTS.map((s) => (
-            <div key={s.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-              <span style={{ fontSize: 12.5, color: "var(--text-dim)" }}>{s.label}</span>
-              <div style={{ display: "flex", gap: 4 }}>
-                {s.keys.map((k) => (
-                  <kbd key={k} style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, padding: "2px 6px", borderRadius: 5, background: "rgba(255,255,255,0.06)", boxShadow: "inset 0 0 0 1px var(--line)", color: "var(--text-mute)" }}>{k}</kbd>
-                ))}
-              </div>
-            </div>
-          ))}
         </div>
 
         <div style={{ padding: "12px 18px 6px" }}>
@@ -817,9 +805,8 @@ export function OSTopbar() {
         >
           <SearchIcon size={13} />
           <span className="top-search-label">
-            Search operators, workflows, memory...
+            Search operators, workflows, approvals...
           </span>
-          <kbd>&#8984;K</kbd>
         </button>
 
         <div className="os-top-actions" style={{ position: "relative" }}>
