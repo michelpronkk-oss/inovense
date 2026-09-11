@@ -4825,6 +4825,8 @@ select.os-input option {
 .os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-kicker { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-faint); font: 600 9.5px/1.3 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
 .os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-state { color: var(--amber); letter-spacing: .08em; }
 .os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-message { max-width: 62ch; margin: 0; color: var(--text-dim); font-size: 13px; line-height: 1.6; }
+.os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-status { padding: 14px 16px; border: 1px solid rgba(151,177,198,.16); border-radius: 10px; color: var(--text-dim); font-size: 13px; line-height: 1.55; background: rgba(255,255,255,.018); }
+.os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-status-error { border-color: rgba(242,118,124,.24); color: #f3b5b8; background: rgba(242,118,124,.055); }
 .os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-plan {
   display: grid;
   gap: 15px;

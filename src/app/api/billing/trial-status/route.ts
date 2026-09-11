@@ -17,7 +17,7 @@ export async function GET() {
 
   const trial = await getTrialEligibility({ supabase: createSupabaseAdmin(), workspaceId, ownerUserId: user.id });
   if (trial.reason === "history_unavailable") {
-    return NextResponse.json({ eligible: false, status: "unavailable" }, { status: 503 });
+    return NextResponse.json({ eligible: false, status: "unavailable", reason: trial.reason, matchedBy: null }, { status: 503 });
   }
-  return NextResponse.json({ eligible: trial.eligible, status: trial.entitlement?.trialStatus ?? "eligible" });
+  return NextResponse.json({ eligible: trial.eligible, status: trial.entitlement?.trialStatus ?? "eligible", reason: trial.reason, matchedBy: trial.matchedBy });
 }

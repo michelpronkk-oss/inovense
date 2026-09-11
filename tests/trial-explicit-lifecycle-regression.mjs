@@ -31,7 +31,7 @@ const entitlements = read("src/lib/os/entitlements.ts");
 // trial-eligible workspaces are never told to "Choose a plan" while a free
 // trial is still on offer; once active, the same click continues real OAuth.
 // ─────────────────────────────────────────────────────────────────────────
-assert.match(connectorsPage, /const \[trialEligible, setTrialEligible\] = useState<boolean \| null>\(null\)/, "the connectors page must know real trial eligibility, not assume it");
+assert.match(connectorsPage, /const \[trialState, setTrialState\] = useState<TrialGateState \| null>\(null\)/, "the connectors page must know real trial eligibility, including unavailable history, not assume it");
 assert.match(connectorsPage, /fetch\("\/api\/billing\/trial-status", \{ cache: "no-store" \}\)/, "trial eligibility must come from the server, not be guessed client-side");
 assert.match(connectorsPage, /if \(isPreview \|\| atConnectorLimit\) \{\s*setUpgradeOpen\(true\);\s*return;\s*\}\s*beginRealOAuth\(setupConnector\.id\);/, "Preview must still block real OAuth before it ever starts, exactly as before");
 assert.match(connectorsPage, /const startTrialAndContinue = async \(\) => \{/, "there must be one authoritative trial-start handler on the connectors page");

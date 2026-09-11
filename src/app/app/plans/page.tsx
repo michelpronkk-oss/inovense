@@ -11,6 +11,7 @@ import { getPlanLimits } from "@/lib/os/plans";
 import { PageHeader, MetricStrip } from "@/components/product-ui/page-primitives";
 
 type PlanCard = { tier: CheckoutPlanTier; name: string; price: string; summary: string; limits: string[]; teamSeats: number; featured?: boolean };
+type TrialState = { eligible: boolean; status: string; reason: "eligible" | "already_consumed" | "history_unavailable"; matchedBy: "workspace" | "owner" | "billing_customer" | null };
 
 const PLANS: PlanCard[] = pricingPlans.map((plan) => ({
   tier: plan.plan_tier,
@@ -34,7 +35,7 @@ export default function PlansPage() {
   const entitlements = getEntitlements(state.workspace);
   const currentPlanLimits = getPlanLimits(state.workspace.planTier ?? state.workspace.plan);
   const [submitting, setSubmitting] = useState<CheckoutPlanTier | null>(null);
-  const [trialState, setTrialState] = useState<{ eligible: boolean; status: string } | null>(null);
+  const [trialState, setTrialState] = useState<TrialState | null>(null);
   const [billingBusy, setBillingBusy] = useState(false);
   const [portalError, setPortalError] = useState("");
   const [startingTrial, setStartingTrial] = useState(false);
@@ -51,11 +52,11 @@ export default function PlansPage() {
     let active = true;
     fetch(appHref("/api/billing/trial-status"), { cache: "no-store" })
       .then(async (response) => {
-        const result = await response.json().catch(() => null) as { eligible?: boolean; status?: string } | null;
-        if (!response.ok || !result || typeof result.eligible !== "boolean" || typeof result.status !== "string") throw new Error("Trial status unavailable");
-        if (active) setTrialState({ eligible: result.eligible, status: result.status });
+        const result = await response.json().catch(() => null) as Partial<TrialState> | null;
+        if (!result || typeof result.eligible !== "boolean" || typeof result.status !== "string" || (result.reason !== "eligible" && result.reason !== "already_consumed" && result.reason !== "history_unavailable")) throw new Error("Trial status unavailable");
+        if (active) setTrialState({ eligible: result.eligible, status: result.status, reason: result.reason, matchedBy: result.matchedBy === "workspace" || result.matchedBy === "owner" || result.matchedBy === "billing_customer" ? result.matchedBy : null });
       })
-      .catch(() => { if (active) setTrialState({ eligible: false, status: "unavailable" }); });
+      .catch(() => { if (active) setTrialState({ eligible: false, status: "unavailable", reason: "history_unavailable", matchedBy: null }); });
     return () => { active = false; };
   }, []);
 
@@ -129,7 +130,7 @@ export default function PlansPage() {
       <div className="card-pad">
         <span className="badge cyan"><i />Current plan</span>
         <div className="t-object" style={{ fontSize: 17, marginTop: 10 }}>{entitlements.billingStatus === "preview" ? "Preview: live systems are locked" : `${getPlanLabel(entitlements.planTier)} is ${entitlements.billingStatus}`}</div>
-        <p className="t-meta" style={{ marginTop: 6 }}>{trialEnd ? `Trial access ends ${trialEnd}.` : entitlements.billingStatus === "preview" ? trialState?.eligible ? "Your 3-day Foundation trial is available now - no card required." : "This account's trial has already been used. Choose a plan to connect real systems." : "Billing and cancellation are managed in the customer portal."}</p>
+        <p className="t-meta" style={{ marginTop: 6 }}>{trialEnd ? `Trial access ends ${trialEnd}.` : entitlements.billingStatus === "preview" ? trialState === null || trialState.reason === "history_unavailable" ? "We could not verify trial eligibility yet. Try again shortly." : trialState.eligible ? "Your 3-day Foundation trial is available now - no card required." : trialState.matchedBy === "billing_customer" ? "This Dodo billing profile has already used an Auterim trial. Choose a plan to connect real systems." : trialState.matchedBy === "owner" ? "This Auterim account has already used its trial. Choose a plan to connect real systems." : "This workspace's trial has already been used. Choose a plan to connect real systems." : "Billing and cancellation are managed in the customer portal."}</p>
         {entitlements.billingStatus === "preview" && trialState?.eligible && (
           <div style={{ marginTop: 14 }}>
             <button type="button" className="btn btn-primary btn-sm" onClick={() => void startTrial()} disabled={!canManageBilling || startingTrial || trialStarted}>
@@ -154,7 +155,7 @@ export default function PlansPage() {
       {PLANS.map((plan) => {
         const current = entitlements.planTier === plan.tier && entitlements.billingStatus !== "preview";
         const trialActive = trialState?.status === "active";
-        const trialReady = trialState !== null;
+        const trialReady = trialState !== null && trialState.reason !== "history_unavailable";
         const checkoutLabel = !trialReady ? "Checking eligibility…" : trialActive ? "Trial in progress" : trialState.eligible ? `Start ${plan.name} trial` : `Choose ${plan.name}`;
         return (
           <article key={plan.tier} className="card" style={current ? { boxShadow: "inset 0 0 0 1px rgba(77,232,225,.32)" } : undefined}>

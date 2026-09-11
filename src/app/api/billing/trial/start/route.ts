@@ -55,8 +55,10 @@ export async function POST() {
   if (!result.granted) {
     const error = result.outcome === "not_eligible"
       ? "This account has already used its Auterim trial. Choose a plan to continue."
+      : result.outcome === "history_unavailable"
+        ? "We could not verify trial eligibility. Please try again shortly."
       : "The trial could not be started. Please try again or choose a plan.";
-    return NextResponse.json({ ok: false, error, outcome: result.outcome }, { status: 409 });
+    return NextResponse.json({ ok: false, error, outcome: result.outcome }, { status: result.outcome === "history_unavailable" ? 503 : 409 });
   }
 
   const after = await admin

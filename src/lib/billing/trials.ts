@@ -23,6 +23,7 @@ export type TrialEligibility = {
   eligible: boolean;
   reason: "eligible" | "already_consumed" | "history_unavailable";
   entitlement: TrialEntitlement | null;
+  matchedBy: "workspace" | "owner" | "billing_customer" | null;
 };
 
 type Row = Record<string, unknown>;
@@ -63,11 +64,11 @@ export async function getTrialEligibility(input: { supabase: Supabase; workspace
   let customerId: string | undefined;
   try {
     const workspace = await input.supabase.from("os_workspaces").select("dodo_customer_id").eq("id", input.workspaceId).maybeSingle();
-    if (workspace.error) return { eligible: false, reason: "history_unavailable", entitlement: null };
+    if (workspace.error) return { eligible: false, reason: "history_unavailable", entitlement: null, matchedBy: null };
     const workspaceRow = workspace.data as Row | null;
     customerId = typeof workspaceRow?.dodo_customer_id === "string" ? workspaceRow.dodo_customer_id : undefined;
   } catch {
-    return { eligible: false, reason: "history_unavailable", entitlement: null };
+    return { eligible: false, reason: "history_unavailable", entitlement: null, matchedBy: null };
   }
 
   const matches = await Promise.all([
@@ -75,11 +76,13 @@ export async function getTrialEligibility(input: { supabase: Supabase; workspace
     lookupTrial(input.supabase, "owner_user_id", input.ownerUserId),
     lookupTrial(input.supabase, "billing_customer_id", customerId),
   ]);
-  if (matches.some((match) => match.error)) return { eligible: false, reason: "history_unavailable", entitlement: null };
-  const entitlement = matches.map((match) => match.data).find(Boolean) ?? null;
+  if (matches.some((match) => match.error)) return { eligible: false, reason: "history_unavailable", entitlement: null, matchedBy: null };
+  const matchIndex = matches.findIndex((match) => Boolean(match.data));
+  const entitlement = matchIndex >= 0 ? matches[matchIndex].data : null;
+  const matchedBy = matchIndex === 0 ? "workspace" : matchIndex === 1 ? "owner" : matchIndex === 2 ? "billing_customer" : null;
   return entitlement
-    ? { eligible: false, reason: "already_consumed", entitlement }
-    : { eligible: true, reason: "eligible", entitlement: null };
+    ? { eligible: false, reason: "already_consumed", entitlement, matchedBy }
+    : { eligible: true, reason: "eligible", entitlement: null, matchedBy: null };
 }
 
 export async function getWorkspaceTrialEntitlement(supabase: Supabase, workspaceId: string) {
@@ -110,7 +113,7 @@ export async function recordTrialStarted(input: {
 const ORGANIC_TRIAL_PLAN: CheckoutPlanTier = "starter";
 const ORGANIC_TRIAL_DAYS = 3;
 
-export type OrganicTrialOutcome = "granted" | "not_preview" | "not_eligible" | "workspace_unavailable";
+export type OrganicTrialOutcome = "granted" | "not_preview" | "not_eligible" | "history_unavailable" | "workspace_unavailable";
 
 /**
  * Grants the existing 3-day Foundation trial, without a Dodo checkout or
@@ -142,7 +145,7 @@ export async function ensureOrganicTrial(input: {
   }
 
   const eligibility = await getTrialEligibility({ supabase: input.supabase, workspaceId: input.workspaceId, ownerUserId: input.ownerUserId });
-  if (!eligibility.eligible) return { granted: false, outcome: "not_eligible" };
+  if (!eligibility.eligible) return { granted: false, outcome: eligibility.reason === "history_unavailable" ? "history_unavailable" : "not_eligible" };
 
   const trialEndsAt = new Date(Date.now() + ORGANIC_TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const entitlements = getBillingEntitlementsForPlan(ORGANIC_TRIAL_PLAN);

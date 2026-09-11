@@ -39,6 +39,31 @@ type SlackChannel = {
   isMember: boolean;
 };
 
+type TrialGateState = {
+  eligible: boolean;
+  status: string;
+  reason: "eligible" | "already_consumed" | "history_unavailable";
+  matchedBy: "workspace" | "owner" | "billing_customer" | null;
+};
+
+async function readTrialGateState(): Promise<TrialGateState> {
+  try {
+    const response = await fetch("/api/billing/trial-status", { cache: "no-store" });
+    const json = await response.json().catch(() => null) as Partial<TrialGateState> | null;
+    if (json && typeof json.eligible === "boolean" && typeof json.status === "string" && (json.reason === "eligible" || json.reason === "already_consumed" || json.reason === "history_unavailable")) {
+      return {
+        eligible: json.eligible,
+        status: json.status,
+        reason: json.reason,
+        matchedBy: json.matchedBy === "workspace" || json.matchedBy === "owner" || json.matchedBy === "billing_customer" ? json.matchedBy : null,
+      };
+    }
+  } catch {
+    // The gate must remain honest when eligibility cannot be verified.
+  }
+  return { eligible: false, status: "unavailable", reason: "history_unavailable", matchedBy: null };
+}
+
 type SlackAlertSettings = {
   slackNotificationsEnabled: boolean;
   slackApprovalAlertsEnabled: boolean;
@@ -235,11 +260,10 @@ export default function ConnectorsPage() {
   // must go through this so a gate left open for one connector can never
   // show up stale for a different one selected afterward.
   const selectSetupConnector = (id: string | null) => { setSetupConnectorId(id); setUpgradeOpen(false); };
-  // Whether this workspace still has an unused trial available - decides
-  // whether the gate offers "Start 3-day trial" or genuinely "Choose a
-  // plan". Server-authoritative (GET /api/billing/trial-status); null while
-  // unknown so the gate never claims a trial is available before it's sure.
-  const [trialEligible, setTrialEligible] = useState<boolean | null>(null);
+  // Server-authoritative trial state. `null` means the eligibility check is
+  // still loading; unavailable must never be presented as already consumed.
+  const [trialState, setTrialState] = useState<TrialGateState | null>(null);
+  const trialEligible = trialState?.eligible ?? null;
   const [startingTrial, setStartingTrial] = useState(false);
   const [slackChannels, setSlackChannels] = useState<SlackChannel[]>([]);
   const [slackChannelsLoading, setSlackChannelsLoading] = useState(false);
@@ -497,12 +521,14 @@ export default function ConnectorsPage() {
     }
   };
 
+  const refreshTrialState = async () => {
+    setTrialState(null);
+    setTrialState(await readTrialGateState());
+  };
+
   useEffect(() => {
     let active = true;
-    fetch("/api/billing/trial-status", { cache: "no-store" })
-      .then((response) => response.json())
-      .then((json) => { if (active && typeof json?.eligible === "boolean") setTrialEligible(json.eligible); })
-      .catch(() => { if (active) setTrialEligible(false); });
+    void readTrialGateState().then((result) => { if (active) setTrialState(result); });
     return () => { active = false; };
   }, []);
 
@@ -1304,35 +1330,52 @@ export default function ConnectorsPage() {
               // foreground dialog, one focus trap, no z-index competition.
               <>
                 <div className="modal-head upgrade-gate-head">
-                  <div className="tt"><h3>{trialEligible ? "Start your 3-day trial" : "Choose a plan to connect real accounts"}</h3></div>
+                  <div className="tt"><h3>{trialState === null ? "Checking trial access" : trialState.reason === "history_unavailable" ? "Trial access is temporarily unavailable" : trialEligible ? "Start your 3-day trial" : "Choose a plan to connect real accounts"}</h3></div>
                   <button className="btn btn-ghost btn-sm" onClick={() => setUpgradeOpen(false)}>Back</button>
                 </div>
                 <div className="modal-body upgrade-gate-body">
-                  <div className="upgrade-gate-kicker"><span>Real account access</span><span className="upgrade-gate-state">{trialEligible ? "Trial available" : "Plan required"}</span></div>
-                  <p className="upgrade-gate-message">
-                    {trialEligible
-                      ? "Connect real systems and activate your workforce when you're ready."
-                      : entitlements.trialEndsAt
-                        ? "Your trial has ended, so real connections need a plan to continue."
-                        : "This workspace's trial has already been used, so real connections need a plan to continue."}
-                  </p>
-                  <div className="upgrade-gate-plan">
-                    <div className="upgrade-gate-plan-head">
-                      <span className="upgrade-gate-plan-mark" aria-hidden="true">A</span>
-                      <span><small>Auterim Foundation</small><strong>{trialEligible ? "A controlled start for your workforce" : "Reconnect your workspace"}</strong></span>
-                    </div>
-                    <div className="upgrade-gate-plan-copy">
-                      {trialEligible ? "Your 3-day Foundation trial includes 3 operators and 3 connected systems - no card required." : "Foundation includes 3 operators and 3 connected systems."}
-                    </div>
-                    <div className="upgrade-gate-plan-facts"><span>3 operators</span><span>3 connected systems</span><span>Approval-first controls</span></div>
-                  </div>
+                  <div className="upgrade-gate-kicker"><span>Real account access</span><span className="upgrade-gate-state">{trialState === null ? "Checking" : trialState.reason === "history_unavailable" ? "Try again" : trialEligible ? "Trial available" : "Plan required"}</span></div>
+                  {trialState === null ? (
+                    <div className="upgrade-gate-status">Checking verified trial history for this workspace and account.</div>
+                  ) : trialState.reason === "history_unavailable" ? (
+                    <div className="upgrade-gate-status upgrade-gate-status-error">We could not verify trial history. Nothing has been charged or changed.</div>
+                  ) : (
+                    <>
+                      <p className="upgrade-gate-message">
+                        {trialEligible
+                          ? "Connect real systems and activate your workforce when you're ready."
+                          : entitlements.trialEndsAt
+                            ? "Your 3-day trial has ended, so real connections need a plan to continue."
+                            : trialState.matchedBy === "billing_customer"
+                              ? "This Dodo billing profile has already used an Auterim trial. A new workspace does not create a second trial."
+                              : trialState.matchedBy === "owner"
+                                ? "This Auterim account has already used its trial. A new workspace does not create a second trial."
+                                : "This workspace has already used its Auterim trial, so real connections need a plan to continue."}
+                      </p>
+                      <div className="upgrade-gate-plan">
+                        <div className="upgrade-gate-plan-head">
+                          <span className="upgrade-gate-plan-mark" aria-hidden="true">A</span>
+                          <span><small>Auterim Foundation</small><strong>{trialEligible ? "A controlled start for your workforce" : "Reconnect your workspace"}</strong></span>
+                        </div>
+                        <div className="upgrade-gate-plan-copy">
+                          {trialEligible ? "Your 3-day Foundation trial includes 3 operators and 3 connected systems - no card required." : "Foundation includes 3 operators and 3 connected systems."}
+                        </div>
+                        <div className="upgrade-gate-plan-facts"><span>3 operators</span><span>3 connected systems</span><span>Approval-first controls</span></div>
+                      </div>
+                    </>
+                  )}
                 </div>
                 <div className="modal-foot upgrade-gate-foot">
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setUpgradeOpen(false)}>{trialEligible ? "Not now" : "View plans"}</button>
+                  {trialState?.reason === "history_unavailable" ? <button type="button" className="btn btn-primary btn-sm" onClick={() => void refreshTrialState()}>Retry eligibility</button> : trialEligible ? <button type="button" className="btn btn-ghost btn-sm" onClick={() => setUpgradeOpen(false)}>Not now</button> : trialState === null ? <button type="button" className="btn btn-ghost btn-sm" onClick={() => setUpgradeOpen(false)}>Back</button> : <Link className="btn btn-ghost btn-sm" href="/plans">Compare plans</Link>}
                   {trialEligible ? (
                     <button type="button" className="btn btn-primary btn-sm" onClick={() => void startTrialAndContinue()} disabled={startingTrial}>{startingTrial ? "Starting…" : "Start 3-day trial"}</button>
-                  ) : (
-                    <Link className="btn btn-primary btn-sm" href="/plans">Choose Foundation</Link>
+                  ) : trialState?.reason === "already_consumed" ? (
+                    <a className="btn btn-primary btn-sm" href="/api/billing/dodo/checkout?plan=starter">Continue to Foundation</a>
+                  ) : trialState === null ? (
+                    <button type="button" className="btn btn-primary btn-sm" disabled>Continue to Foundation</button>
+                  ) : null}
+                  {trialState?.reason === "history_unavailable" && (
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setUpgradeOpen(false)}>Back</button>
                   )}
                 </div>
               </>
@@ -1769,7 +1812,7 @@ export default function ConnectorsPage() {
 
 function getConnectorSetupMessage({ isPreview, isConnected, trialEligible }: { isPreview: boolean; isConnected: boolean; trialEligible?: boolean | null }): string {
   if (isConnected) return "Account connected.";
-  if (isPreview) return trialEligible ? "Start your 3-day trial to connect real accounts." : "Choose a plan to connect real accounts.";
+  if (isPreview) return trialEligible === null ? "Checking trial eligibility..." : trialEligible ? "Start your 3-day trial to connect real accounts." : "Choose a plan to connect real accounts.";
   return "Connect your account to enable this connector.";
 }
 

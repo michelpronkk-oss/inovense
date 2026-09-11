@@ -52,16 +52,20 @@ assert.match(page, /role="dialog" aria-modal="true"/, "the single connector moda
 // 3. Copy matches the product spec exactly for an eligible, unused trial -
 // and "Choose a plan" must never appear on that path.
 // ─────────────────────────────────────────────────────────────────────────
-assert.match(page, /\{trialEligible \? "Start your 3-day trial" : "Choose a plan to connect real accounts"\}/, "the eligible-trial headline must be exact, and distinct from the plan-required headline");
+assert.match(page, /trialState === null \? "Checking trial access"/, "the gate must represent unknown trial state instead of treating it as plan-required");
+assert.match(page, /trialEligible \? "Start your 3-day trial" : "Choose a plan to connect real accounts"/, "the eligible-trial and plan-required headlines must remain distinct");
 assert.match(page, /Connect real systems and activate your workforce when you're ready\./, "the exact supporting copy must be present");
-assert.match(page, /\{trialEligible \? "Not now" : "View plans"\}/, "the secondary action must read 'Not now' while a trial is still available, not 'Choose a plan' language");
+assert.match(page, /trialEligible \? <button[\s\S]*>Not now<\/button> : trialState === null \?/, "the secondary action must remain a dismiss action while a trial is available or still loading");
+assert.match(page, /<Link className="btn btn-ghost btn-sm" href="\/plans">Compare plans<\/Link>/, "the secondary plan-required action must navigate to the plans page");
+assert.match(page, /Continue to Foundation/, "the primary plan-required action must continue directly to Foundation checkout");
+assert.match(page, /Retry eligibility/, "an unavailable trial-history lookup must offer a retry instead of a false plan gate");
 assert.match(page, /\{startingTrial \? "Starting…" : "Start 3-day trial"\}/, "the primary action must reflect real in-flight state");
 {
   const gateStart = page.indexOf(") : upgradeOpen ? (");
   const gateEnd = page.indexOf(") : (", gateStart + 10);
   const gateBody = page.slice(gateStart, gateEnd);
   assert.doesNotMatch(gateBody, /Choose a plan"[^:]*:[^"]*trialEligible/, "the eligible branch must never be reachable through plan-selection language");
-  assert.match(gateBody, /entitlements\.trialEndsAt/, "the genuinely-blocked branch must still explain an expired vs. never-used trial truthfully");
+  assert.match(page, /trial has ended|already used/, "the genuinely-blocked branch must still explain an expired vs. previously-used trial truthfully");
 }
 
 // ─────────────────────────────────────────────────────────────────────────
