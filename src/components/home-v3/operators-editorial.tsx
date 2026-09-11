@@ -60,10 +60,11 @@ export default function OperatorsEditorial() {
         </div>
         <Reveal>
           <div className="ops">
-            {operators.map(({ op, type, body, gate, status, tools }) => (
-              <details className="op" name="operator" key={op.name}>
+            {operators.map(({ op, type, body, gate, status, tools }, index) => (
+              <details className="op" name="operator" key={op.name} open={index === 0}>
                 <summary>
                   <div className="op-row">
+                    <span className="op-index">{String(index + 1).padStart(2, "0")}</span>
                     <span className="op-avatar"><OperatorAvatar color={op.color} glyph={GLYPHS[op.glyph]} size={42} /></span>
                     <div className="op-name">
                       <h3 style={{ color: "var(--auterim-v3-ink)" }}>{op.name}</h3>

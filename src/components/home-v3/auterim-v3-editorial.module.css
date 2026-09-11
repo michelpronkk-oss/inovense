@@ -49,3 +49,47 @@
   :global(.auterim-v3-editorial) .op-avatar { padding-top: 0; }
   :global(.auterim-v3-editorial) .op-say { font-size: 15px; }
 }
+
+/* Workforce roster: make the first live role a product surface, while the
+   remaining roles stay easy to scan without turning into feature cards. */
+:global(.auterim-v3-editorial) .ops { border-top-color: rgba(55, 230, 212, .22); }
+:global(.auterim-v3-editorial) .op { position: relative; padding: 31px 0; }
+:global(.auterim-v3-editorial) .op summary { position: relative; cursor: pointer; list-style: none; }
+:global(.auterim-v3-editorial) .op summary::-webkit-details-marker { display: none; }
+:global(.auterim-v3-editorial) .op-row { grid-template-columns: 30px 54px minmax(190px, .78fr) minmax(0, 1.22fr) auto; gap: 22px; }
+:global(.auterim-v3-editorial) .op-row .op-end { grid-column: auto; }
+:global(.auterim-v3-editorial) .op-index {
+  padding-top: 7px;
+  color: var(--auterim-v3-mute);
+  font-family: var(--auterim-v3-mono);
+  font-size: 10px;
+  letter-spacing: .13em;
+}
+:global(.auterim-v3-editorial) .op[open] { padding: 0 26px 0; border-color: rgba(55, 230, 212, .26); background: linear-gradient(100deg, rgba(55, 230, 212, .08), rgba(14, 25, 31, .7) 58%, rgba(9, 15, 20, .28)); }
+:global(.auterim-v3-editorial) .op[open] summary { padding-top: 33px; }
+:global(.auterim-v3-editorial) .op[open] .op-end { position: absolute; top: 33px; right: 48px; grid-column: auto !important; }
+:global(.auterim-v3-editorial) .op[open] .op-index { color: var(--auterim-v3-acc); }
+:global(.auterim-v3-editorial) .op[open] .op-name h3 { font-size: 26px; }
+:global(.auterim-v3-editorial) .op[open] .op-expand { display: grid; grid-template-columns: minmax(190px, .78fr) minmax(0, 1.22fr); gap: 22px; padding: 25px 0 31px 84px; }
+:global(.auterim-v3-editorial) .op[open] .op-mission { margin: 0; padding: 0; border: 0; color: #c2d3d9; }
+:global(.auterim-v3-editorial) .op[open] .op-loop { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; }
+:global(.auterim-v3-editorial) .op[open] .op-loop li { display: block; padding: 12px; border-left: 1px solid rgba(55, 230, 212, .24); background: rgba(8, 15, 20, .42); }
+:global(.auterim-v3-editorial) .op[open] .op-loop span { display: block; margin-top: 7px; font-size: 12px; }
+
+@media (max-width: 1080px) {
+  :global(.auterim-v3-editorial) .op-row { grid-template-columns: 28px 46px minmax(0, 1fr); gap: 16px 20px; }
+  :global(.auterim-v3-editorial) .op-say { grid-column: 3; }
+  :global(.auterim-v3-editorial) .op-end { grid-column: 3; }
+  :global(.auterim-v3-editorial) .op[open] .op-expand { grid-template-columns: 1fr; padding-left: 0; }
+  :global(.auterim-v3-editorial) .op[open] .op-end { position: static; grid-column: 3 !important; }
+}
+
+@media (max-width: 640px) {
+  :global(.auterim-v3-editorial) .op { padding: 26px 0; }
+  :global(.auterim-v3-editorial) .op-row { grid-template-columns: 24px 40px minmax(0, 1fr); gap: 14px; }
+  :global(.auterim-v3-editorial) .op-avatar svg { width: 36px; height: 36px; }
+  :global(.auterim-v3-editorial) .op[open] { padding: 0 18px; }
+  :global(.auterim-v3-editorial) .op[open] summary { padding-top: 27px; }
+  :global(.auterim-v3-editorial) .op[open] .op-name h3 { font-size: 21px; }
+  :global(.auterim-v3-editorial) .op[open] .op-loop { grid-template-columns: 1fr; }
+}

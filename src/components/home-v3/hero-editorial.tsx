@@ -110,7 +110,7 @@ export default function HeroEditorial() {
           <span className="note">Your trial begins when you start it in your workspace.</span>
         </div>
 
-        <div className="hero-artifact" aria-label="Auterim guarded Revenue Operator run">
+        <div className="hero-artifact sequence-in" aria-label="Auterim guarded Revenue Operator run">
           <div className="hero-artifact-panel">
             <div className="hero-artifact-top">
               <span className="hero-artifact-top-k">Auterim operating layer</span>
