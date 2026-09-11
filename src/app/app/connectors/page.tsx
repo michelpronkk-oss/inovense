@@ -237,7 +237,6 @@ export default function ConnectorsPage() {
     disconnectConnector,
     testConnector,
     resyncConnector,
-    refreshWorkspace,
   } = useOS();
 
   const router = useRouter();
@@ -264,7 +263,6 @@ export default function ConnectorsPage() {
   // still loading; unavailable must never be presented as already consumed.
   const [trialState, setTrialState] = useState<TrialGateState | null>(null);
   const trialEligible = trialState?.eligible ?? null;
-  const [startingTrial, setStartingTrial] = useState(false);
   const [slackChannels, setSlackChannels] = useState<SlackChannel[]>([]);
   const [slackChannelsLoading, setSlackChannelsLoading] = useState(false);
   const [slackSettingsLoading, setSlackSettingsLoading] = useState(false);
@@ -453,10 +451,8 @@ export default function ConnectorsPage() {
     window.location.href = `/api/connectors/zendesk/auth?workspaceId=${encodeURIComponent(state.workspace.id)}&subdomain=${encodeURIComponent(value)}`;
   };
 
-  // Shared by the "Connect real account" button and by the post-trial-start
-  // continuation below, so starting a trial from mid-connector-setup resumes
-  // the exact flow the user was already in instead of dropping them back to
-  // a bare connectors page.
+  // Shared by the "Connect real account" button and the connector setup
+  // detail view. Plan selection happens before any real OAuth is started.
   const beginRealOAuth = (connectorId: string) => {
     if (connectorId === "gmail") return startRealGmailOAuth();
     if (connectorId === "google_drive") return startGoogleDriveConsent();
@@ -468,31 +464,6 @@ export default function ConnectorsPage() {
     if (connectorId === "zendesk") return startRealZendeskOAuth();
     if (connectorId === "hubspot") return startDirectConnectorOAuth("hubspot");
     if (connectorId === "slack" || connectorId === "trello") return startDirectConnectorOAuth(connectorId);
-  };
-
-  // The one authoritative "Start 3-day trial" call (POST /api/billing/trial/start).
-  // On success, rehydrates the real workspace entitlement and - if the gate
-  // was opened while setting up a specific connector - continues straight
-  // into that connector's real OAuth flow instead of leaving the user to
-  // click "Connect real account" a second time.
-  const startTrialAndContinue = async () => {
-    setStartingTrial(true);
-    try {
-      const response = await fetch("/api/billing/trial/start", { method: "POST" });
-      const json = await response.json().catch(() => ({}));
-      if (!response.ok || !json.ok) throw new Error(json.error || "The trial could not be started. Please try again.");
-      await refreshWorkspace();
-      setUpgradeOpen(false);
-      if (setupConnector) {
-        beginRealOAuth(setupConnector.id);
-      } else {
-        setFeedback("Your 3-day trial is active. Real connections are unlocked.");
-      }
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "The trial could not be started. Please try again.");
-    } finally {
-      setStartingTrial(false);
-    }
   };
 
   const disconnectRealConnector = async (connector: Connector) => {
@@ -1368,7 +1339,7 @@ export default function ConnectorsPage() {
                 <div className="modal-foot upgrade-gate-foot">
                   {trialState?.reason === "history_unavailable" ? <button type="button" className="btn btn-primary btn-sm" onClick={() => void refreshTrialState()}>Retry eligibility</button> : trialEligible ? <button type="button" className="btn btn-ghost btn-sm" onClick={() => setUpgradeOpen(false)}>Not now</button> : trialState === null ? <button type="button" className="btn btn-ghost btn-sm" onClick={() => setUpgradeOpen(false)}>Back</button> : <Link className="btn btn-ghost btn-sm" href="/plans">Compare plans</Link>}
                   {trialEligible ? (
-                    <button type="button" className="btn btn-primary btn-sm" onClick={() => void startTrialAndContinue()} disabled={startingTrial}>{startingTrial ? "Starting…" : "Start 3-day trial"}</button>
+                    <Link className="btn btn-primary btn-sm" href="/plans">Choose a plan</Link>
                   ) : trialState?.reason === "already_consumed" ? (
                     <a className="btn btn-primary btn-sm" href="/api/billing/dodo/checkout?plan=starter">Continue to Foundation</a>
                   ) : trialState === null ? (

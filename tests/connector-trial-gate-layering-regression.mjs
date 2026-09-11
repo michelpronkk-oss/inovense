@@ -59,7 +59,7 @@ assert.match(page, /trialEligible \? <button[\s\S]*>Not now<\/button> : trialSta
 assert.match(page, /<Link className="btn btn-ghost btn-sm" href="\/plans">Compare plans<\/Link>/, "the secondary plan-required action must navigate to the plans page");
 assert.match(page, /Continue to Foundation/, "the primary plan-required action must continue directly to Foundation checkout");
 assert.match(page, /Retry eligibility/, "an unavailable trial-history lookup must offer a retry instead of a false plan gate");
-assert.match(page, /\{startingTrial \? "Starting…" : "Start 3-day trial"\}/, "the primary action must reflect real in-flight state");
+assert.match(page, /<Link className="btn btn-primary btn-sm" href="\/plans">Choose a plan<\/Link>/, "an eligible connector gate must route to plan selection before any trial or OAuth action");
 {
   const gateStart = page.indexOf(") : upgradeOpen ? (");
   const gateEnd = page.indexOf(") : (", gateStart + 10);
@@ -92,8 +92,8 @@ assert.match(page, /\}, \[addOpen, drawerConnectorId, setupConnectorId, upgradeO
 // setup flow (not just one).
 // ─────────────────────────────────────────────────────────────────────────
 assert.match(page, /onClick=\{\(\) => setUpgradeOpen\(false\)\}>Back<\/button>/, "closing the gate via its head control must return to the same connector's setup detail, not close the whole modal");
-assert.match(page, /const startTrialAndContinue = async \(\) => \{/, "trial start must remain one authoritative handler");
-assert.match(page, /await refreshWorkspace\(\);\s*setUpgradeOpen\(false\);\s*if \(setupConnector\) \{\s*beginRealOAuth\(setupConnector\.id\);/, "a successful trial start must close the gate and resume the exact connector that triggered it, whichever one it was");
+assert.doesNotMatch(page, /const startTrialAndContinue = async \(\) => \{/, "the connectors gate must not start or activate a trial before plan selection");
+assert.match(page, /href="\/plans">Choose a plan<\/Link>/, "the connector intent must pause at plan selection instead of continuing directly into provider OAuth");
 // Connector-agnostic: the gate branch itself must not special-case any one
 // provider - it must behave identically for Gmail, Microsoft 365, Google
 // Drive, HubSpot, Trello, Asana, Jira, Zendesk, Intercom, Slack, Teams, and
