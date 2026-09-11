@@ -1,0 +1,201 @@
+.auterim-v3-editorial {
+  --auterim-v3-ink: #f6f8fb;
+  --auterim-v3-dim: #a7b1be;
+  --auterim-v3-mute: #6f7c8c;
+  --auterim-v3-acc: #37e6d4;
+  --auterim-v3-acc-hi: #6ff2e5;
+  --auterim-v3-rule: rgba(255, 255, 255, .07);
+  --auterim-v3-mono: "Geist Mono", ui-monospace, monospace;
+}
+
+/* Roster: a profile-led row per operator. Identity, remit, approval
+   boundary and real connected systems are visible together; the toggle is
+   a normal grid column (never absolutely positioned), so it can't drift
+   or float loose from the row. Only the optional operating brief expands. */
+.auterim-v3-editorial .ops { border-top: 1px solid rgba(148, 164, 180, .18); }
+.auterim-v3-editorial .op {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid rgba(148, 164, 180, .13);
+  background: transparent;
+}
+.auterim-v3-editorial .op:first-child { border-top: 1px solid rgba(148, 164, 180, .17); }
+.auterim-v3-editorial .op summary {
+  display: block;
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  list-style: none;
+}
+.auterim-v3-editorial .op summary::-webkit-details-marker { display: none; }
+
+.auterim-v3-editorial .op-row {
+  display: grid;
+  grid-template-columns: 56px minmax(190px, .74fr) minmax(280px, 1.32fr) minmax(146px, .46fr) 26px;
+  gap: clamp(16px, 1.8vw, 28px);
+  align-items: center;
+  min-height: 150px;
+  padding: 26px 0;
+}
+.auterim-v3-editorial .op:hover .op-row,
+.auterim-v3-editorial .op[open] .op-row { background: linear-gradient(90deg, rgba(55, 230, 212, .05), transparent 72%); }
+
+.auterim-v3-editorial .op-avatar {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border: 1px solid rgba(148, 164, 180, .2);
+  border-radius: 50%;
+  background: #0b151b;
+  transition: border-color .2s ease;
+}
+.auterim-v3-editorial .op:hover .op-avatar,
+.auterim-v3-editorial .op[open] .op-avatar { border-color: rgba(55, 230, 212, .4); }
+
+.auterim-v3-editorial .op-name h3 { margin: 0; max-width: none; color: var(--auterim-v3-ink); font-size: clamp(20px, 1.65vw, 24px); font-weight: 520; letter-spacing: -.03em; line-height: 1.1; }
+.auterim-v3-editorial .op-name .t { margin-top: 9px; color: #738394; font-family: var(--auterim-v3-mono); font-size: 10px; letter-spacing: .13em; text-transform: uppercase; }
+
+.auterim-v3-editorial .op-say { margin: 0; color: #bdc9d2; font-size: 15px; line-height: 1.55; }
+.auterim-v3-editorial .op-say p { margin: 0; }
+.auterim-v3-editorial .op-say .gate {
+  display: block;
+  margin-top: 12px;
+  max-width: 46ch;
+  color: #7e8b98;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: 1.5;
+  text-transform: none;
+}
+
+.auterim-v3-editorial .op-end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  text-align: left;
+}
+.auterim-v3-editorial .op-end .tools-label { color: #728294; font-family: var(--auterim-v3-mono); font-size: 9px; letter-spacing: .11em; text-transform: uppercase; }
+.auterim-v3-editorial .op-end .tools { display: flex; align-items: center; gap: 8px; color: #a9b8c3; }
+.auterim-v3-editorial .op-end .tool-logo { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid rgba(148, 164, 180, .2); background: #0a1218; }
+.auterim-v3-editorial .op-end .tool-logo svg { width: 17px; height: 17px; }
+
+.auterim-v3-editorial .op-toggle {
+  position: relative;
+  top: auto;
+  right: auto;
+  transform: none;
+  justify-self: end;
+  width: 22px;
+  height: 22px;
+  opacity: .5;
+  transition: opacity .2s ease, box-shadow .2s ease;
+}
+.auterim-v3-editorial .op:hover .op-toggle,
+.auterim-v3-editorial .op[open] .op-toggle { opacity: 1; }
+
+/* Open state: a quiet highlighted row (left accent bar, no card growth)
+   that reveals the operating brief below on the same left edge as the
+   name column, never shifting or overlapping the row above it. */
+.auterim-v3-editorial .op[open] {
+  margin: 10px -20px;
+  padding: 0 20px;
+  border-top: 1px solid rgba(55, 230, 212, .4);
+  border-bottom: 1px solid rgba(55, 230, 212, .24);
+  background: #0a1519;
+  box-shadow: inset 2px 0 0 var(--auterim-v3-acc);
+}
+.auterim-v3-editorial .op[open] .op-row { background: transparent; }
+
+.auterim-v3-editorial .op-expand {
+  display: grid;
+  grid-template-columns: minmax(190px, .74fr) minmax(280px, 1.32fr);
+  gap: clamp(24px, 2.6vw, 44px);
+  margin: 6px 0 24px calc(56px + clamp(16px, 1.8vw, 28px));
+  padding: 32px 34px;
+  border: 1px solid rgba(55, 230, 212, .16);
+  background: rgba(9, 18, 22, .55);
+}
+.auterim-v3-editorial .op-mission {
+  padding-left: 18px;
+  border-left: 2px solid rgba(55, 230, 212, .35);
+}
+.auterim-v3-editorial .op-mission-label {
+  display: block;
+  margin-bottom: 12px;
+  color: #84d7ce;
+  font-family: var(--auterim-v3-mono);
+  font-size: 9px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.auterim-v3-editorial .op-mission p { margin: 0; color: #c2d3d9; font-size: 15px; line-height: 1.65; }
+
+.auterim-v3-editorial .op-loop { display: grid; gap: 15px; margin: 0; padding: 0; list-style: none; }
+.auterim-v3-editorial .op-loop li {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+  padding: 2px 0 15px;
+  border-bottom: 1px solid rgba(148, 164, 180, .1);
+}
+.auterim-v3-editorial .op-loop li:last-child { padding-bottom: 0; border-bottom: 0; }
+.auterim-v3-editorial .op-loop-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  padding: 4px 9px;
+  border: 1px solid rgba(55, 230, 212, .3);
+  background: rgba(55, 230, 212, .07);
+  color: #81ded3;
+  font-family: var(--auterim-v3-mono);
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.auterim-v3-editorial .op-loop li span:not(.op-loop-tag) { margin: 2px 0 0; color: #aebdc7; font-size: 13px; line-height: 1.5; }
+
+.auterim-v3-editorial .ops-more { display: inline-flex; align-items: center; gap: 10px; margin-top: 38px; color: var(--auterim-v3-dim); font-size: 15px; }
+.auterim-v3-editorial .ops-more:hover { color: var(--auterim-v3-acc-hi); }
+
+@media (max-width: 980px) {
+  .auterim-v3-editorial .op-row {
+    grid-template-columns: 48px minmax(0, 1fr) 22px;
+    grid-template-rows: auto auto auto;
+    row-gap: 12px;
+    min-height: 0;
+  }
+  .auterim-v3-editorial .op-avatar { grid-column: 1; grid-row: 1 / 4; align-self: start; }
+  .auterim-v3-editorial .op-name { grid-column: 2; grid-row: 1; }
+  .auterim-v3-editorial .op-say { grid-column: 2; grid-row: 2; }
+  .auterim-v3-editorial .op-end { grid-column: 2; grid-row: 3; align-items: flex-start; }
+  .auterim-v3-editorial .op-toggle { grid-column: 3; grid-row: 1 / 4; align-self: start; }
+  .auterim-v3-editorial .op-expand { grid-template-columns: 1fr; margin-left: calc(48px + 18px); padding-right: 20px; }
+}
+
+@media (max-width: 640px) {
+  .auterim-v3-editorial .op-row {
+    grid-template-columns: 42px minmax(0, 1fr) 22px;
+    grid-template-rows: auto auto auto;
+    row-gap: 14px;
+    min-height: 0;
+    padding: 24px 0;
+  }
+  .auterim-v3-editorial .op-avatar { width: 42px; height: 42px; }
+  .auterim-v3-editorial .op-name h3 { font-size: 20px; }
+  .auterim-v3-editorial .op-say { grid-column: 2 / 3; }
+  .auterim-v3-editorial .op-say .gate { max-width: none; }
+  .auterim-v3-editorial .op-end { grid-column: 2 / 3; }
+  .auterim-v3-editorial .op[open] { margin: 10px -14px; padding: 0 14px; }
+  .auterim-v3-editorial .op-expand { grid-template-columns: 1fr; margin-left: calc(42px + 16px); padding-right: 14px; }
+  .auterim-v3-editorial .op-loop li { grid-template-columns: 76px minmax(0, 1fr); }
+}

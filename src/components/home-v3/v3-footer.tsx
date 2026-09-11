@@ -20,7 +20,7 @@ export default function V3Footer() {
         <div className="foot-grid">
           <div className="foot-brand">
             <Link href="/" className="mark"><Mark /></Link>
-            <p><ResponsiveCopy desktop="Finds work across your business and moves it forward under your rules." mobile="Finds work and moves it forward under your rules." /></p>
+            <p><ResponsiveCopy desktop="Finds the work before your team has to." /></p>
           </div>
           <div>
             <h4>Platform</h4>

@@ -3,7 +3,7 @@ import Reveal from "@/components/reveal";
 import { OperatorAvatar } from "@/components/operators/avatar";
 import { GLYPHS, OPERATORS } from "@/data/operators";
 import { LOGOS } from "./integrations-grid";
-import "./auterim-v3-editorial.module.css";
+import "./auterim-v3-editorial.css";
 import { ResponsiveCopy } from "./responsive-copy";
 
 function operator(name: string) {
@@ -56,11 +56,11 @@ export default function OperatorsEditorial() {
         </div>
         <Reveal>
           <div className="ops">
-            {operators.map(({ op, type, body, gate, tools }, index) => (
+            {operators.map(({ op, type, body, gate, tools }) => (
               <details className="op" name="operator" key={op.name}>
                 <summary>
                   <div className="op-row">
-                    <div className="op-marker"><span className="op-index">{String(index + 1).padStart(2, "0")}</span><span className="op-avatar"><OperatorAvatar color={op.color} glyph={GLYPHS[op.glyph]} size={42} /></span></div>
+                    <span className="op-avatar"><OperatorAvatar color={op.color} glyph={GLYPHS[op.glyph]} size={44} /></span>
                     <div className="op-name">
                       <h3 style={{ color: "var(--auterim-v3-ink)" }}>{op.name}</h3>
                       <div className="t">{type}</div>
@@ -76,13 +76,16 @@ export default function OperatorsEditorial() {
                         ))}
                       </span>
                     </div>
+                    <span className="op-toggle" aria-hidden="true" />
                   </div>
-                  <span className="op-toggle" aria-hidden="true" />
                 </summary>
                 <div className="op-expand">
-                  <p className="op-mission">{op.mission}</p>
+                  <div className="op-mission">
+                    <span className="op-mission-label">Operator mandate</span>
+                    <p>{op.mission}</p>
+                  </div>
                   <ul className="op-loop">
-                    {op.loop.map((step) => <li key={step.k}><b>{step.k}</b><span>{step.t}</span></li>)}
+                    {op.loop.map((step) => <li key={step.k}><span className="op-loop-tag">{step.k}</span><span>{step.t}</span></li>)}
                   </ul>
                 </div>
               </details>

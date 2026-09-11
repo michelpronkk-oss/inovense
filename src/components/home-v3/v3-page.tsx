@@ -19,10 +19,10 @@ import "./responsive-copy.css";
 
 const PRODUCT_STORY = [
   ["01", "Connect", "Connect the tools your business already uses."],
-  ["02", "Understand", "Auterim uses the context you choose to provide."],
-  ["03", "Find", "Operators detect work, risks, blockers, and follow-ups."],
+  ["02", "Understand", "Auterim builds the context your operators need."],
+  ["03", "Find", "Operators detect work, risks, follow-ups, and blockers."],
   ["04", "Handle", "Auterim prepares or executes the next action under your rules."],
-  ["05", "Measure", "Outcomes are tracked so you can see what actually happened."],
+  ["05", "Measure", "Outcomes show what actually happened."],
 ] as const;
 
 const CONNECTOR_NODES = [
@@ -32,13 +32,13 @@ const CONNECTOR_NODES = [
   ["Slack", "Slack"],
   ["Trello", "Trello"],
   ["Microsoft 365", "Outlook"],
-  ["Asana", ""],
-  ["Jira", ""],
-  ["Zendesk", ""],
+  ["Asana", "Asana"],
+  ["Jira", "Jira"],
+  ["Zendesk", "Zendesk"],
 ] as const;
 
 const OUTCOME_GROUPS = [
-  ["Work stays visible", ["Less work to chase", "Fewer things slipping through", "Clear accountability"]],
+  ["Work stays visible", ["Fewer missed follow-ups", "Clearer ownership"]],
   ["The next move advances", ["Faster next actions", "Less manual monitoring", "Visible outcomes"]],
 ] as const;
 
@@ -49,7 +49,7 @@ export function Head({ label, title, body }: { label: string; title: string; bod
 export default function V3Page() {
   const userState = usePublicUserState();
   const workspaceCta = getPublicWorkspaceCta(userState);
-  const primaryCta = userState === "guest" ? { ...workspaceCta, label: "Set up 3-day trial" } : workspaceCta;
+  const primaryCta = userState === "guest" ? { ...workspaceCta, label: "Set up your workspace" } : workspaceCta;
 
   useEffect(() => {
     const root = document.querySelector<HTMLElement>(".auterim-v3-page");
@@ -68,7 +68,7 @@ export default function V3Page() {
     <HeroEditorial />
 
     <section className="sec homepage-story" id="how"><div className="wrap">
-      <Head label="How it works" title="Find the work before your team has to." body="Most AI tools wait for a prompt. Most automation tools wait for someone to build a workflow. Auterim starts by finding what needs attention." />
+      <Head label="How it works" title="From signal to next move." />
       <ol className="body homepage-loop rv" aria-label="How Auterim works">
         {PRODUCT_STORY.map(([number, title, body]) => <li key={number} className={title === "Find" ? "is-focus" : undefined}><span>{number}</span><h3>{title}</h3><p>{body}</p></li>)}
       </ol>
@@ -79,7 +79,7 @@ export default function V3Page() {
       <div className="body homepage-contrast rv">
         <div className="homepage-contrast-muted">
           <div><small>01 · Chatbots</small><p>Wait for you to ask.</p></div>
-          <div><small>02 · Automation builders</small><p>Wait for you to define workflows.</p></div>
+          <div><small>02 · Automation builders</small><p>Wait for you to define the workflow.</p></div>
           <div><small>03 · Project tools</small><p>Manage work you already know exists.</p></div>
         </div>
         <div className="homepage-contrast-auterim">
@@ -102,13 +102,14 @@ export default function V3Page() {
       <div className="body homepage-control-grid rv">
         <article><Icon name="check" size={16} /><h3>Prepare with context</h3><p>Approved memory and connected systems give operators the business context they need.</p></article>
         <article><Icon name="shield" size={16} /><h3>Pause for approval</h3><p>Sensitive actions wait for the owner you assign.</p></article>
-        <article><Icon name="artifactPipeline" size={16} /><h3>Keep boundaries clear</h3><p>Policies define what can run, what needs review, and what stays blocked.</p></article>
+        <article><Icon name="lock" size={16} /><h3>Keep boundaries clear</h3><p>Policies define what can run, what needs review, and what stays blocked.</p></article>
+        <article><Icon name="bolt" size={16} /><h3>Execute inside policy</h3><p>Approved actions run only inside the policy that governs them.</p></article>
         <article><Icon name="arrow" size={16} /><h3>Track the outcome</h3><p>Actions and outcomes remain visible after work moves forward.</p></article>
       </div>
     </div></section>
 
     <section className="sec homepage-connectors" id="connectors"><div className="wrap">
-      <Head label="Your existing stack" title="Keep the tools you trust. Add Auterim on top." body="Connect the systems that give your first operator useful evidence. Auterim stays on top of the software your business already runs on." />
+      <Head label="Your existing stack" title="Keep the tools you trust. Add Auterim on top." body="Auterim works across the systems your business already runs on, so your team does not have to replace its stack to add an AI workforce." />
       <div className="body homepage-connector-stage rv" aria-label="Connected systems flow into Auterim">
         <div className="homepage-connector-systems">
           {CONNECTOR_NODES.map(([label, logo]) => <span key={label}><i>{LOGOS[logo]}</i>{label}</span>)}
@@ -130,14 +131,17 @@ export default function V3Page() {
     </div></section>
 
     <section className="sec homepage-pricing" id="pricing"><div className="wrap">
-      <Head label="Start when you are ready" title="A controlled workforce, with a clear path to value." body="Set up your 3-day Foundation trial in the workspace, then choose the capacity that fits your operation." />
+      <Head label="Start when you are ready" title="Start controlled. Scale when the work proves its value." body="Set up your 3-day Foundation trial in the workspace, then choose the capacity that fits your operation." />
       <div className="body homepage-plan-teaser rv">
         {pricingPlans.map((plan) => {
           const cta = resolvePublicPlanCta(plan, userState);
           return <article key={plan.plan_tier} className={plan.featured ? "is-featured" : undefined} data-plan={plan.plan_tier}>
-            {plan.featured && <span className="homepage-plan-badge">Recommended</span>}
+            {plan.featured && <span className="homepage-plan-badge"><i />Recommended</span>}
             <h3>{plan.plan_name}</h3><p className="homepage-plan-price">{plan.price}<small>{plan.period}</small></p><p>{plan.tagline}</p>
-            <ul>{plan.features.slice(0, 3).map((feature) => <li key={feature}><Icon name="check" size={13} />{feature}</li>)}</ul>
+            <span className="homepage-plan-divider" aria-hidden="true" />
+            <ul>{plan.features.slice(0, 3).map((feature) => <li key={feature}><span className="homepage-plan-check"><Icon name="check" size={10} /></span>{feature}</li>)}</ul>
+            <span className="homepage-plan-spacer" aria-hidden="true" />
+            <span className="homepage-plan-divider" aria-hidden="true" />
             <Link href={cta.href}>{userState === "guest" ? "Set up trial" : cta.label} <span aria-hidden="true">→</span></Link>
           </article>;
         })}

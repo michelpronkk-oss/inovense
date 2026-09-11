@@ -119,6 +119,26 @@ export const LOGOS: Record<string, React.ReactNode> = {
       <path d="M9 14l2-6 1.5 4 1.5-1.5" stroke="#A78BFA" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
     </svg>
   ),
+  Asana: (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="6.2" r="3.2" fill="#F06A6A" />
+      <circle cx="6.4" cy="15.6" r="3.2" fill="#F06A6A" />
+      <circle cx="17.6" cy="15.6" r="3.2" fill="#F06A6A" />
+    </svg>
+  ),
+  Jira: (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M12 3 20.5 11.4a2 2 0 0 1 0 2.9L12 22.5 3.5 14.3a2 2 0 0 1 0-2.9L12 3Z" fill="#0052CC" opacity="0.32" />
+      <path d="M12 7.4 17 12.2a1.5 1.5 0 0 1 0 2.2L12 19.2l-5-4.8a1.5 1.5 0 0 1 0-2.2L12 7.4Z" fill="#0052CC" opacity="0.66" />
+      <path d="M12 11.6 13.8 13.3a1 1 0 0 1 0 1.4L12 16.4l-1.8-1.7a1 1 0 0 1 0-1.4L12 11.6Z" fill="#0052CC" />
+    </svg>
+  ),
+  Zendesk: (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
+      <rect x="3.5" y="4.5" width="17" height="4" rx="2" fill="#17494D" />
+      <path d="M4.5 19.5 19.5 6.5" stroke="#17494D" strokeWidth="3.6" strokeLinecap="round" />
+    </svg>
+  ),
 };
 
 const TILES = [

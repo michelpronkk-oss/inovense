@@ -1,4 +1,8 @@
 // Profile avatar = role-colored gradient circle + person silhouette + role-glyph badge.
+// Matches the canonical design in design_handoff_inovense/Operators.html (the same
+// source the official /public/operators/*.png portraits were exported from), with
+// the badge sized up slightly from that original 0.417 ratio for legibility at the
+// sizes this renders at across the product.
 // Shared between the Operators page and the homepage operators section.
 
 const PERSON_PATH =
@@ -13,7 +17,7 @@ export function OperatorAvatar({
   glyph: string;
   size?: number;
 }) {
-  const badgeSize = Math.round(size * 0.417);
+  const badgeSize = Math.round(size * 0.46);
   const badgeIconSize = Math.round(badgeSize * 0.55);
   const personSize = Math.round(size * 0.54);
 

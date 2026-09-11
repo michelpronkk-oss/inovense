@@ -28,7 +28,7 @@ const RAIL_PATHS = [
 export default function HeroEditorial() {
   const userState = usePublicUserState();
   const workspaceCta = getPublicWorkspaceCta(userState);
-  const primaryCta = userState === "guest" ? { ...workspaceCta, label: "Set up 3-day trial" } : workspaceCta;
+  const primaryCta = userState === "guest" ? { ...workspaceCta, label: "Set up your workspace" } : workspaceCta;
   /* Mouse-driven parallax intentionally removed: it caused perceptible shaking and soft text. */
   /* useEffect(() => {
     const section = sectionRef.current;
@@ -100,14 +100,15 @@ export default function HeroEditorial() {
       <div className="hero-editorial-aura" aria-hidden="true" />
       <div className="wrap hero-editorial-in">
         <div className="hero-editorial-copy">
-          <p className="hero-editorial-eyebrow">The operating layer for your business</p>
-          <h1>Your business has work hiding everywhere.<span><em className="hero-editorial-forward">Auterim finds it</em> and gets it handled.</span></h1>
-          <p className="say"><ResponsiveCopy desktop="Connect the tools your business already uses. Your AI workforce monitors what matters, prepares the next move, and acts under your rules." mobile="Connect your tools. Auterim finds work, prepares the next move, and acts under your rules." /></p>
+          <p className="hero-editorial-eyebrow hero-trial">
+            <span className="hero-trial-pill"><i />3-day trial</span>
+          </p>
+          <h1>Auterim <em className="hero-editorial-forward">finds the work</em> before your team has to.</h1>
+          <p className="say"><ResponsiveCopy desktop="Connect your tools. Auterim finds the work and acts under your rules." /></p>
           <div className="hero-cta">
             <Link href={primaryCta.href} className="btn btn-a">{primaryCta.label} <span className="arrow">→</span></Link>
             <a href="#how" className="btn btn-b">See how it works</a>
           </div>
-          <span className="note">Your trial begins when you start it in your workspace.</span>
         </div>
 
         <div className="hero-artifact sequence-in" aria-label="Auterim guarded Revenue Operator run">
