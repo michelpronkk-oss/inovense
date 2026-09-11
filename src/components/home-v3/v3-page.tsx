@@ -32,6 +32,9 @@ const CONNECTOR_NODES = [
   ["Slack", "Slack"],
   ["Trello", "Trello"],
   ["Microsoft 365", "Outlook"],
+  ["Asana", ""],
+  ["Jira", ""],
+  ["Zendesk", ""],
 ] as const;
 
 const OUTCOME_GROUPS = [
@@ -75,11 +78,16 @@ export default function V3Page() {
       <Head label="Why Auterim" title="It does not wait for instructions." body="Auterim is not a chatbot, an automation builder, or another place to manage work you already know about." />
       <div className="body homepage-contrast rv">
         <div className="homepage-contrast-muted">
-          <div><span>Chatbots</span><p>Wait for you to ask.</p></div>
-          <div><span>Automation builders</span><p>Wait for you to define workflows.</p></div>
-          <div><span>Project tools</span><p>Manage work you already know exists.</p></div>
+          <div><small>01 · Chatbots</small><p>Wait for you to ask.</p></div>
+          <div><small>02 · Automation builders</small><p>Wait for you to define workflows.</p></div>
+          <div><small>03 · Project tools</small><p>Manage work you already know exists.</p></div>
         </div>
-        <div className="homepage-contrast-auterim"><span>Auterim</span><p>Finds the work before your team has to.</p><small>Work does not wait for a prompt.</small></div>
+        <div className="homepage-contrast-auterim">
+          <img className="homepage-contrast-mark" src="/brand/auterim-mark-live.svg" width="26" height="26" alt="Auterim" />
+          <span className="homepage-contrast-kicker">The operating layer</span>
+          <p>Finds the work before your team has to.</p>
+          <small>Context in. Next move prepared.</small>
+        </div>
       </div>
     </div></section>
 
@@ -88,7 +96,7 @@ export default function V3Page() {
     <section className="sec homepage-control" id="control"><div className="wrap">
       <Head label="Control that stays yours" title="Your rules come first." body="Auterim can move work forward without becoming uncontrolled AI. Connected systems remain authoritative and every consequential action remains traceable." />
       <div className="homepage-control-model rv" aria-label="Governed work flow">
-        <div className="homepage-control-rail"><span>Context</span><i /><span>Policy</span><i /><span>Approval</span><i /><span>Outcome</span></div>
+        <div className="homepage-control-rail"><span>Context</span><i /><span>Policy</span><i /><span>Approval</span><i /><span>Execute</span><i /><span>Outcome</span></div>
         <div className="homepage-control-execution"><Icon name="check" size={15} /><span>Execution stays inside the rules you set.</span></div>
       </div>
       <div className="body homepage-control-grid rv">
@@ -105,7 +113,7 @@ export default function V3Page() {
         <div className="homepage-connector-systems">
           {CONNECTOR_NODES.map(([label, logo]) => <span key={label}><i>{LOGOS[logo]}</i>{label}</span>)}
         </div>
-        <div className="homepage-connector-layer"><span className="lbl">Auterim operating layer</span><b>A</b><strong>Prepared work</strong><p>Connected context becomes a clear next move.</p></div>
+        <div className="homepage-connector-layer"><span className="lbl">Auterim operating layer</span><img className="homepage-connector-mark" src="/brand/auterim-mark-live.svg" width="36" height="36" alt="Auterim" /><strong>Prepared work</strong><p>Connected context becomes a clear next move.</p></div>
         <div className="homepage-connector-output"><span>Signals</span><i>→</i><span>Context</span><i>→</i><span>Operator</span></div>
       </div>
       <Link className="homepage-text-link" href="/integrations">See supported connectors <span aria-hidden="true">→</span></Link>
@@ -116,7 +124,7 @@ export default function V3Page() {
       <div className="body homepage-outcome-stage rv">
         <div className="homepage-outcome-proof"><span className="lbl">Operational view</span><strong>One clear<br />next move.</strong><p><i />Work surfaced <b>Context ready</b><em>Approval held where needed</em></p></div>
         <div className="homepage-outcome-groups" aria-label="Operational outcomes">
-          {OUTCOME_GROUPS.map(([title, outcomes], index) => <section key={title}><span>{String(index + 1).padStart(2, "0")}</span><h3>{title}</h3><ul>{outcomes.map((outcome) => <li key={outcome}>{outcome}</li>)}</ul></section>)}
+          {OUTCOME_GROUPS.map(([title, outcomes], index) => <section key={title}><span>{String(index + 1).padStart(2, "0")}</span><h3>{title}</h3><ul>{outcomes.map((outcome) => <li key={outcome}><Icon name="check" size={13} />{outcome}</li>)}</ul></section>)}
         </div>
       </div>
     </div></section>
@@ -141,7 +149,7 @@ export default function V3Page() {
       <div className="body faq rv">{AUTERIM_HOME_FAQS.map(({ question, answer }, index) => <details key={question}><summary><span className="faq-index">{String(index + 1).padStart(2, "0")}</span><span className="faq-q">{question}</span><span className="faq-toggle" aria-hidden="true" /></summary><p>{answer}</p></details>)}</div>
     </div></section>
 
-    <section className="close homepage-final-cta"><div className="wrap close-in rv"><div className="close-main"><span className="lbl">Start with the work that matters most</span><h2>Find your first operator.</h2><p>Connect your business context. Auterim will show where your workforce can start.</p><div className="close-actions"><Link href={primaryCta.href} className="btn btn-a">{primaryCta.label} <span className="arrow">→</span></Link><a href="#how" className="close-run">See how it works <span>→</span></a></div></div><div className="homepage-final-proof" aria-label="Auterim starts with governed work"><span>FIRST OPERATOR</span><strong>Work found</strong><p><i />Context assembled</p><p><i />Approval boundary set</p><p><i />Next move prepared</p></div></div></section>
+    <section className="close homepage-final-cta"><div className="wrap close-in rv"><div className="close-main"><span className="lbl">Start with the work that matters most</span><h2>Find your first operator.</h2><p>Connect your business context. Auterim will show where your workforce can start.</p><div className="close-actions"><Link href={primaryCta.href} className="btn btn-a">{primaryCta.label} <span className="arrow">→</span></Link><a href="#how" className="close-run">See how it works <span>→</span></a></div></div><div className="homepage-final-proof" aria-label="Auterim starts with governed work"><span>First operator</span><strong>Revenue Operator ready</strong><p><i />Context connected</p><p><i />Approval boundary set</p><p><i />First signal ready</p></div></div></section>
     <V3Footer />
   </div>;
 }

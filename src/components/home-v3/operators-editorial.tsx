@@ -15,34 +15,30 @@ function operator(name: string) {
 const operators = [
   {
     op: operator("Revenue Operator"),
-    type: "Sales / Pipeline",
-    body: "Keeps pipeline and renewals moving by surfacing revenue risk and preparing the next move.",
-    gate: "Customer email and CRM changes",
-    status: "Live operator",
+    type: "Pipeline and renewals",
+    body: "Keeps revenue work moving by surfacing risk and preparing the next move.",
+    gate: "customer email and CRM changes",
     tools: ["Gmail", "HubSpot"],
   },
   {
     op: operator("Client Flow Operator"),
-    type: "Intake / Onboarding",
+    type: "Onboarding and delivery",
     body: "Moves each client from signature to first value without a dropped step.",
-    gate: "Customer email and project changes",
-    status: "Live operator",
+    gate: "customer email and project changes",
     tools: ["Gmail", "Drive"],
   },
   {
     op: operator("Operations Operator"),
-    type: "Reports / Internal",
+    type: "Delivery and project health",
     body: "Finds delivery risks and internal blockers before deadlines slip.",
-    gate: "Project changes and team updates",
-    status: "Live operator",
+    gate: "project changes and team updates",
     tools: ["Trello", "Slack"],
   },
   {
     op: operator("Support Operator"),
     type: "Customer support",
     body: "Triages inbound support, drafts the reply, and escalates what needs a human.",
-    gate: "Customer-facing replies and ticket changes",
-    status: "Live operator",
+    gate: "customer-facing replies and ticket changes",
     tools: ["Gmail", "Zendesk"],
   },
 ];
@@ -60,20 +56,19 @@ export default function OperatorsEditorial() {
         </div>
         <Reveal>
           <div className="ops">
-            {operators.map(({ op, type, body, gate, status, tools }, index) => (
-              <details className="op" name="operator" key={op.name} open={index === 0}>
+            {operators.map(({ op, type, body, gate, tools }, index) => (
+              <details className="op" name="operator" key={op.name}>
                 <summary>
                   <div className="op-row">
-                    <span className="op-index">{String(index + 1).padStart(2, "0")}</span>
-                    <span className="op-avatar"><OperatorAvatar color={op.color} glyph={GLYPHS[op.glyph]} size={42} /></span>
+                    <div className="op-marker"><span className="op-index">{String(index + 1).padStart(2, "0")}</span><span className="op-avatar"><OperatorAvatar color={op.color} glyph={GLYPHS[op.glyph]} size={42} /></span></div>
                     <div className="op-name">
                       <h3 style={{ color: "var(--auterim-v3-ink)" }}>{op.name}</h3>
                       <div className="t">{type}</div>
                     </div>
-                    <p className="op-say">{body}<span className="gate">Gate: {gate}</span></p>
+                    <div className="op-say"><p>{body}</p><span className="gate">Approval required for {gate}.</span></div>
                     <div className="op-end">
-                      <span className={`st ${status === "Preview" ? "preview" : ""}`}><i />{status}</span>
-                      <span className="tools">
+                      <span className="tools-label">Connected systems</span>
+                      <span className="tools" aria-label={`${op.name} connected systems`}>
                         {tools.map((tool) => (
                           LOGOS[tool]
                             ? <span className="tool-logo" key={tool} title={tool}>{LOGOS[tool]}</span>
