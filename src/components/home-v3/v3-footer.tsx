@@ -20,21 +20,21 @@ export default function V3Footer() {
         <div className="foot-grid">
           <div className="foot-brand">
             <Link href="/" className="mark"><Mark /></Link>
-            <p><ResponsiveCopy desktop="The operating layer between company context and AI execution." mobile="The operating layer for controlled AI work." /></p>
+            <p><ResponsiveCopy desktop="Finds work across your business and moves it forward under your rules." mobile="Finds work and moves it forward under your rules." /></p>
           </div>
           <div>
             <h4>Platform</h4>
             <ul>
-              <li><Link href="/#profile">Company profile</Link></li>
+              <li><Link href="/#how">How it works</Link></li>
               <li><Link href="/#operators">Operators</Link></li>
-              <li><Link href="/#run">Runs</Link></li>
-              <li><Link href="/#policy">Approvals</Link></li>
+              <li><Link href="/#control">Control</Link></li>
+              <li><Link href="/#connectors">Connectors</Link></li>
             </ul>
           </div>
           <div>
             <h4>Resources</h4>
             <ul>
-              <li><Link href="/#pricing">Piloting</Link></li>
+              <li><Link href="/#pricing">Pricing</Link></li>
               <li><Link href="/use-cases">Use cases</Link></li>
               <li><Link href="/getting-started">Getting started</Link></li>
               <li><Link href="/security">Security</Link></li>

@@ -62,10 +62,10 @@ const softwareSchema = {
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Auterim | AI Workforce Built Around Your Business",
+    absolute: "Auterim | Find the work before your team has to",
   },
   description:
-    "Auterim learns how your company works, recommends AI operators, and runs approved work across the systems your team already uses.",
+    "Auterim connects the tools you already use, finds work that needs attention, and prepares or executes the next action under your rules.",
   alternates: {
     canonical: "https://auterim.com",
     languages: {
@@ -75,29 +75,29 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "https://auterim.com",
-    title: "Auterim | AI Workforce Built Around Your Business",
+    title: "Auterim | Find the work before your team has to",
     description:
-      "Auterim learns how your company works, recommends AI operators, and runs approved work across the systems your team already uses.",
+      "Auterim connects the tools you already use, finds work that needs attention, and prepares or executes the next action under your rules.",
     images: [
       {
         url: "/og/og-home.png",
         width: 1200,
         height: 630,
-        alt: "Auterim | The AI workforce built around how your company works.",
+        alt: "Auterim | Find the work before your team has to.",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Auterim | AI Workforce Built Around Your Business",
+    title: "Auterim | Find the work before your team has to",
     description:
-      "Auterim learns how your company works, recommends AI operators, and runs approved work across the systems your team already uses.",
+      "Auterim connects the tools you already use, finds work that needs attention, and prepares or executes the next action under your rules.",
     images: [
       {
         url: "/og/og-home.png",
         width: 1200,
         height: 630,
-        alt: "Auterim | The AI workforce built around how your company works.",
+        alt: "Auterim | Find the work before your team has to.",
       },
     ],
   },
@@ -108,9 +108,9 @@ const homePageSchema = {
   "@type": "WebPage",
   "@id": `${AUTERIM_URL}/#home`,
   url: AUTERIM_URL,
-  name: "Auterim | AI Workforce Built Around Your Business",
+  name: "Auterim | Find the work before your team has to",
   description:
-    "Auterim learns how your company works, recommends AI operators, and runs approved work across the systems your team already uses.",
+    "Auterim connects the tools you already use, finds work that needs attention, and prepares or executes the next action under your rules.",
   isPartOf: {
     "@id": AUTERIM_WEBSITE_ID,
   },

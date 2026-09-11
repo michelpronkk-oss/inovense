@@ -10,7 +10,8 @@ export default function V3Header() {
   const menuRef = useRef<HTMLDetailsElement>(null);
   const userState = usePublicUserState();
   const signInHref = getPublicSignInHref();
-  const primaryCta = getPublicWorkspaceCta(userState);
+  const workspaceCta = getPublicWorkspaceCta(userState);
+  const primaryCta = userState === "guest" ? { ...workspaceCta, label: "Set up 3-day trial" } : workspaceCta;
   const showSignIn = userState === "guest";
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 14);
@@ -36,9 +37,9 @@ export default function V3Header() {
           Auterim
         </Link>
         <nav className="nav" aria-label="Main">
-          <Link href="/#platform">Platform</Link>
-          <Link href="/#operators">Operators</Link>
           <Link href="/#how">How it works</Link>
+          <Link href="/#operators">Operators</Link>
+          <Link href="/#control">Control</Link>
           <Link href="/#pricing">Pricing</Link>
         </nav>
         <div className="cta">
@@ -55,9 +56,9 @@ export default function V3Header() {
           </summary>
           <nav id="mobile-navigation" aria-label="Mobile navigation">
             <div className="mobile-menu-links">
-              <Link href="/#platform" onClick={closeMenu}>Platform</Link>
-              <Link href="/#operators" onClick={closeMenu}>Operators</Link>
               <Link href="/#how" onClick={closeMenu}>How it works</Link>
+              <Link href="/#operators" onClick={closeMenu}>Operators</Link>
+              <Link href="/#control" onClick={closeMenu}>Control</Link>
               <Link href="/#pricing" onClick={closeMenu}>Pricing</Link>
               {showSignIn && <Link href={signInHref} onClick={closeMenu}>Sign in</Link>}
             </div>

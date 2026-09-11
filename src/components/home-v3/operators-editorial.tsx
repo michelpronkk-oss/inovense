@@ -16,34 +16,34 @@ const operators = [
   {
     op: operator("Revenue Operator"),
     type: "Sales / Pipeline",
-    body: "Qualifies inbound demand, prepares follow-ups and keeps CRM next steps current from real revenue signals.",
-    gate: "External email, CRM contact and deal updates",
-    status: "Connector setup",
+    body: "Keeps pipeline and renewals moving by surfacing revenue risk and preparing the next move.",
+    gate: "Customer email and CRM changes",
+    status: "Live operator",
     tools: ["Gmail", "HubSpot"],
   },
   {
     op: operator("Client Flow Operator"),
     type: "Intake / Onboarding",
-    body: "Prepares client updates, onboarding messages, checklists and handoff summaries as requests arrive.",
-    gate: "Client-facing messages and calendar invites",
-    status: "Connector setup",
-    tools: ["Gmail", "Calendar"],
+    body: "Moves each client from signature to first value without a dropped step.",
+    gate: "Customer email and project changes",
+    status: "Live operator",
+    tools: ["Gmail", "Drive"],
   },
   {
     op: operator("Operations Operator"),
     type: "Reports / Internal",
-    body: "Monitors project work, finds stalled tasks and prepares approved internal updates before work becomes delayed.",
-    gate: "External email and Slack updates",
-    status: "Workspace setup",
+    body: "Finds delivery risks and internal blockers before deadlines slip.",
+    gate: "Project changes and team updates",
+    status: "Live operator",
     tools: ["Trello", "Slack"],
   },
   {
-    op: operator("Marketing Operator"),
-    type: "Content / Campaigns",
-    body: "Prepares campaign briefs, content drafts and brand-aware planning from your approved company context.",
-    gate: "Publishing and external email",
-    status: "Preview",
-    tools: ["Draft-only"],
+    op: operator("Support Operator"),
+    type: "Customer support",
+    body: "Triages inbound support, drafts the reply, and escalates what needs a human.",
+    gate: "Customer-facing replies and ticket changes",
+    status: "Live operator",
+    tools: ["Gmail", "Zendesk"],
   },
 ];
 
@@ -55,7 +55,7 @@ export default function OperatorsEditorial() {
           <div className="font-mono text-[10px] uppercase tracking-[.2em]" style={{ color: "var(--auterim-v3-mute)" }}>The workforce</div>
           <div>
             <h2 className="max-w-[22ch] font-medium" style={{ color: "var(--auterim-v3-ink)", fontSize: "clamp(30px,3.5vw,46px)", lineHeight: 1.1 }}>Operators are roles, not chatbots.</h2>
-            <p className="mt-[22px] max-w-[56ch] text-lg leading-[1.6]" style={{ color: "var(--auterim-v3-dim)" }}><ResponsiveCopy desktop="Each operator has a defined job, its own context, connected tools and clear execution boundaries. Four of fifteen are shown." mobile="Specialized roles work with your context, tools and boundaries." /></p>
+            <p className="mt-[22px] max-w-[56ch] text-lg leading-[1.6]" style={{ color: "var(--auterim-v3-dim)" }}><ResponsiveCopy desktop="Each live operator has a defined job, real connector requirements, and clear execution boundaries." mobile="Four live roles work with your context, tools and boundaries." /></p>
           </div>
         </div>
         <Reveal>

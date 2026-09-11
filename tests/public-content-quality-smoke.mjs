@@ -48,7 +48,33 @@ includes(useCases, "Available today", "use cases label live work");
 includes(useCases, "Expanding workforce", "use cases label future work");
 
 const home = read("src/app/page.tsx");
-includes(home, "AI Workforce Built Around Your Business", "homepage owns AI workforce positioning");
+includes(home, "Find the work before your team has to", "homepage owns clear operating-layer positioning");
+
+const homePage = read("src/components/home-v3/v3-page.tsx");
+const homeHero = read("src/components/home-v3/hero-editorial.tsx");
+const homeOperators = read("src/components/home-v3/operators-editorial.tsx");
+const publicState = read("src/lib/public-user-state.ts");
+const homepageFaqs = read("src/lib/geo.ts");
+includes(homeHero, "Your business has work hiding everywhere.", "homepage hero leads with the business problem");
+includes(homeHero, "Set up 3-day trial", "homepage hero gives guests a trial-setup path");
+includes(homeHero, "Your trial begins when you start it in your workspace.", "homepage does not imply that a visitor starts a trial passively");
+includes(publicState, 'appHref("/onboarding")', "guest trial setup keeps the existing onboarding entry point");
+includes(homePage, "pricingPlans.map", "homepage pricing resolves from canonical plans");
+assert.ok(!homePage.includes('"$99"'), "homepage does not duplicate plan prices");
+includes(homePage, "AUTERIM_HOME_FAQS", "visible homepage FAQs share the structured-data source");
+for (const question of ["What is Auterim?", "Do I have to build workflows?", "What can happen automatically?", "Does Auterim replace our existing tools?"]) {
+  includes(homepageFaqs, question, "homepage FAQ schema matches visible copy");
+}
+for (const stage of ["Connect", "Understand", "Find", "Handle", "Measure"]) includes(homePage, stage, "homepage explains the operator loop");
+for (const connector of ["Gmail", "Microsoft 365", "HubSpot", "Google Drive", "Slack", "Trello", "Asana", "Jira", "Zendesk"]) includes(homePage, connector, "homepage names a supported connector");
+for (const operator of ["Revenue Operator", "Client Flow Operator", "Operations Operator", "Support Operator"]) includes(homeOperators, operator, "homepage shows only a live operator");
+assert.ok(!homeOperators.includes('operator("Marketing Operator")'), "homepage does not present a roadmap operator as live");
+for (const anchor of ["how", "platform", "control", "connectors", "pricing", "faq"]) {
+  includes(homePage, `id="${anchor}"`, "homepage anchor has a live target");
+}
+for (const staleExample of ["Atlas Studio", "Vela Partners", "M. Keller"]) {
+  assert.ok(!homePage.includes(staleExample), `homepage does not use invented ${staleExample} product data`);
+}
 
 includes(operators, "Defined AI operators for real business work.", "operators targets business operator intent");
 for (const href of ["/integrations", "/approvals", "/workflows", "/getting-started", "/pricing"]) {

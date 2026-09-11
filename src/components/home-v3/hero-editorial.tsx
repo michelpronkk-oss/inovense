@@ -5,10 +5,6 @@ import { getPublicWorkspaceCta, usePublicUserState } from "@/lib/public-user-sta
 import { Icon } from "./icons";
 import { ResponsiveCopy } from "./responsive-copy";
 
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
 const CONTEXT_SOURCES = [
   { icon: "artifactWeb", label: "Website enquiry" },
   { icon: "artifactPipeline", label: "HubSpot history" },
@@ -30,7 +26,9 @@ const RAIL_PATHS = [
 ];
 
 export default function HeroEditorial() {
-  const workspaceCta = getPublicWorkspaceCta(usePublicUserState());
+  const userState = usePublicUserState();
+  const workspaceCta = getPublicWorkspaceCta(userState);
+  const primaryCta = userState === "guest" ? { ...workspaceCta, label: "Set up 3-day trial" } : workspaceCta;
   /* Mouse-driven parallax intentionally removed: it caused perceptible shaking and soft text. */
   /* useEffect(() => {
     const section = sectionRef.current;
@@ -102,21 +100,21 @@ export default function HeroEditorial() {
       <div className="hero-editorial-aura" aria-hidden="true" />
       <div className="wrap hero-editorial-in">
         <div className="hero-editorial-copy">
-          <p className="hero-editorial-eyebrow">Auterim / operating layer</p>
-          <h1>Work moves <em className="hero-editorial-forward">forward.</em><span>You stay in control.</span></h1>
-          <p className="say"><ResponsiveCopy desktop="Auterim gives operators the context and policies to run the right work across your tools." mobile="Operators use your context and policies to move the right work across your tools." /></p>
+          <p className="hero-editorial-eyebrow">The operating layer for your business</p>
+          <h1>Your business has work hiding everywhere.<span><em className="hero-editorial-forward">Auterim finds it</em> and gets it handled.</span></h1>
+          <p className="say"><ResponsiveCopy desktop="Connect the tools your business already uses. Your AI workforce monitors what matters, prepares the next move, and acts under your rules." mobile="Connect your tools. Auterim finds work, prepares the next move, and acts under your rules." /></p>
           <div className="hero-cta">
-            <Link href={workspaceCta.href} className="btn btn-a">{workspaceCta.label} <span className="arrow">→</span></Link>
+            <Link href={primaryCta.href} className="btn btn-a">{primaryCta.label} <span className="arrow">→</span></Link>
             <a href="#how" className="btn btn-b">See how it works</a>
           </div>
-          <span className="note">Preview first. Connect systems later.</span>
+          <span className="note">Your trial begins when you start it in your workspace.</span>
         </div>
 
         <div className="hero-artifact" aria-label="Auterim guarded Revenue Operator run">
           <div className="hero-artifact-panel">
             <div className="hero-artifact-top">
               <span className="hero-artifact-top-k">Auterim operating layer</span>
-              <span className="hero-artifact-run"><i />Run #0142 &middot; Live</span>
+              <span className="hero-artifact-run"><i />Prepared work</span>
             </div>
 
             <div className="hero-artifact-ctx">
@@ -137,7 +135,7 @@ export default function HeroEditorial() {
               <span className="hero-artifact-op-ic"><Icon name="trend" size={18} strokeWidth={1.4} /></span>
               <div>
                 <h2>Revenue Operator</h2>
-                <div className="hero-artifact-op-co">Vela Partners</div>
+                <div className="hero-artifact-op-co">Inbound opportunity</div>
               </div>
             </div>
             <p className="hero-artifact-task">Qualify the enquiry and prepare the first reply.</p>
@@ -153,11 +151,11 @@ export default function HeroEditorial() {
 
           <div className="hero-artifact-gate">
             <span className="hero-artifact-gate-k">Approval required</span>
-            <p>Send first reply to Elena at Vela Partners?</p>
+            <p>First reply is ready for review.</p>
             <div className="hero-artifact-gate-rdy">The reply and CRM update are ready.</div>
-            <div className="hero-artifact-gate-acts">
-              <button className="hero-artifact-mini hero-artifact-mini-go" type="button">Approve and send</button>
-              <button className="hero-artifact-mini hero-artifact-mini-ed" type="button">Edit</button>
+            <div className="hero-artifact-gate-acts" aria-label="Approval choices shown as product proof">
+              <span className="hero-artifact-mini hero-artifact-mini-go">Approve</span>
+              <span className="hero-artifact-mini hero-artifact-mini-ed">Edit first</span>
             </div>
           </div>
         </div>

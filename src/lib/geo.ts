@@ -25,10 +25,10 @@ export const AUTERIM_LANES = [
 export const INOVENSE_LANES = AUTERIM_LANES;
 
 export const AUTERIM_HOME_FAQS = [
-  { question: "What is an AI operator?", answer: "An AI operator is a role with a defined job, company context, connected tools and approval boundaries. It prepares and runs work rather than simply answering prompts." },
-  { question: "How is Auterim different from an AI chatbot?", answer: "Chatbots wait for an instruction. Auterim starts with company context, recommends the right operators and lets them work across the systems your team already uses." },
-  { question: "Can Auterim act without approval?", answer: "Only within the policies you define. Operators can prepare work automatically, while sensitive actions wait for a named approver or remain blocked." },
-  { question: "Can I preview Auterim before connecting tools?", answer: "Yes. Start with your website to see an operating profile and recommended workforce before you connect systems or enable external actions." },
+  { question: "What is Auterim?", answer: "Auterim is the operating layer between your business and the software it runs on. It finds work in the systems you already use, prepares the next move, and keeps the result traceable." },
+  { question: "Do I have to build workflows?", answer: "No. You connect the systems you use and choose where to begin. Auterim recommends the right operator and keeps work within the controls you set." },
+  { question: "What can happen automatically?", answer: "Safe internal work can run where your policy allows it. Sensitive external actions wait for approval, and blocked actions do not run." },
+  { question: "Does Auterim replace our existing tools?", answer: "No. Your connected systems remain the source of truth. Auterim adds a governed operating layer across them." },
 ] as const;
 
 export function toJsonLd(data: unknown) {
