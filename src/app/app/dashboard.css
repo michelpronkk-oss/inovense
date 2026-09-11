@@ -4857,3 +4857,156 @@ select.os-input option {
   .os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-foot { padding: 14px 16px 16px; }
   .os-root .connector-finder-modal[data-view="upgrade-gate"] .upgrade-gate-foot .btn { flex: 1; }
 }
+
+/* ---- Mobile composition contract -------------------------------------------------
+   This is intentionally the final responsive layer. Mature surfaces above use a
+   mix of early component rules and later page refinements; these scoped rules
+   settle their phone composition without changing data, state, or interaction.
+   The goal is a calm one-column reading order, 44px touch targets, and no
+   desktop control clusters squeezed into a narrow viewport. */
+@media (max-width: 700px) {
+  .os-root .os-page {
+    width: 100%;
+    max-width: none;
+  }
+
+  .os-root .product-page-header {
+    gap: 12px;
+    margin-bottom: 0;
+  }
+  .os-root .product-page-header .t-title { font-size: clamp(25px, 7.8vw, 30px); }
+  .os-root .product-page-header .t-sub { max-width: 40ch; line-height: 1.55; }
+  .os-root .product-page-header .product-page-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+    width: 100%;
+    gap: 8px;
+    padding-top: 2px;
+  }
+  .os-root .product-page-header .product-page-actions > :only-child { justify-self: start; }
+  .os-root .product-page-header .product-page-actions .btn {
+    min-height: 42px;
+    justify-content: center;
+  }
+
+  .os-root .product-attention-content {
+    display: grid !important;
+    grid-template-columns: 8px minmax(0, 1fr);
+    width: 100%;
+    gap: 11px !important;
+  }
+  .os-root .product-attention-content > .dot { grid-column: 1; }
+  .os-root .product-attention-content > .grow { grid-column: 2; }
+  .os-root .product-attention-content .product-attention-action {
+    grid-column: 2;
+    width: 100%;
+    margin-top: 2px;
+  }
+  .os-root .product-attention-content .product-attention-action > :is(.btn, a) {
+    width: 100%;
+    min-height: 42px;
+    justify-content: center;
+  }
+
+  .os-root .card-head {
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .os-root .card-head > :last-child:not(:first-child) { flex-shrink: 0; }
+  .os-root .row { align-items: flex-start; gap: 11px; padding: 14px; }
+  .os-root .row .ttl,
+  .os-root .row .sub { white-space: normal; overflow: visible; text-overflow: clip; }
+  .os-root .row .rt { align-self: center; }
+
+  /* Activity has two controls with different jobs. Each occupies a deliberate
+     full row rather than competing with the page title or each other. */
+  .os-root .activity-page > .page-head .acts {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+  .os-root .activity-page .seg,
+  .os-root .activity-page .filter { width: 100%; min-height: 42px; }
+  .os-root .activity-page .seg button { flex: 1; min-height: 36px; }
+  .os-root .activity-page .filter { justify-content: center; }
+  .os-root .activity-page .os-filter-popover { width: min(100%, calc(100vw - 32px)); }
+
+  /* Memory retains provenance while making search and trust filters easy to
+     scan and operate with a thumb. */
+  .os-root .memory-index-head { flex-direction: column; }
+  .os-root .memory-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 8px;
+  }
+  .os-root .memory-controls .memory-search { grid-column: 1 / -1; width: 100%; min-height: 42px; }
+  .os-root .memory-controls select { width: 100%; min-height: 42px; max-width: none; }
+  .os-root .memory-index-trigger { align-items: flex-start; }
+  .os-root .memory-index-trigger .memory-entry-meta { align-items: flex-end; flex-direction: column; gap: 5px; }
+  .os-root .memory-detail-top { display: grid; gap: 14px; }
+  .os-root .memory-detail-actions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+  .os-root .memory-detail-actions .btn { min-height: 40px; justify-content: center; }
+
+  /* Approvals, policies, team, and connector inventories use their existing
+     record rows but stop forcing secondary controls into a fragile side rail. */
+  .os-root .approval-review-card { padding: 16px !important; }
+  .os-root .approval-review-card .appr-row-actions,
+  .os-root .policy-page .row .inline { width: 100%; }
+  .os-root .policy-page .row { flex-wrap: wrap; }
+  .os-root .policy-page .row .rt { margin-left: 0; }
+  .os-root .policy-page .row .inline .btn { flex: 1 1 132px; min-height: 42px; justify-content: center; }
+  .os-root .connector-list-row,
+  .os-root .settings-account-row { margin-inline: 0; width: 100% !important; border-radius: 0; }
+  .os-root .team-member-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  .os-root .team-member-actions .btn { min-height: 40px; justify-content: center; }
+
+  .os-root .connectors-page .page-head .acts { width: 100%; }
+  .os-root .connectors-page .page-head .acts .btn { min-height: 42px; }
+  .os-root .connector-priority-grid,
+  .os-root .connector-workflows { grid-template-columns: 1fr; }
+  .os-root .connector-workflow + .connector-workflow { padding: 14px 0 0; border-top: 1px solid var(--line-2); border-left: 0; }
+
+  /* Tables remain horizontally scrollable only where audit columns are
+     meaningful. The viewport gets a contained edge instead of leaking past
+     the page. */
+  .os-root .logs-page .logs-viewport {
+    margin-inline: -2px;
+    border-radius: 9px;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .os-root .logs-page .logs-viewport::after {
+    content: "Swipe to view audit fields";
+    display: block;
+    padding: 8px 12px 10px;
+    color: var(--text-faint);
+    font: 9px/1.3 var(--font-mono);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+
+  .os-root .insights-empty { min-height: 0; padding: 24px 20px; }
+  .os-root .insights-empty > div:last-child { width: 100%; }
+  .os-root .insights-empty .btn { flex: 1 1 150px; min-height: 42px; justify-content: center; }
+  .os-root .insights-evidence-row { padding-block: 14px; }
+
+  .os-root .os-support-drawer,
+  .os-root .drawer { width: 100%; max-width: none; height: min(92dvh, 760px); top: auto; border-radius: 18px 18px 0 0; }
+  .os-root .scrim { align-items: end; padding: 0; }
+  .os-root .scrim .modal { max-height: min(90dvh, 760px); border-radius: 18px 18px 0 0; }
+  .os-root .scrim .modal-head { padding: 18px 16px 14px; }
+  .os-root .scrim .modal-body { padding: 16px; }
+  .os-root .scrim .modal-foot { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
+  .os-root .scrim .modal-foot .btn { min-height: 42px; flex: 1; justify-content: center; }
+}
+
+@media (max-width: 430px) {
+  .os-root .os-page { padding-inline: 14px; }
+  .os-root .product-page-header .product-page-actions { grid-template-columns: 1fr; }
+  .os-root .product-page-header .product-page-actions > :only-child { width: 100%; }
+  .os-root .memory-detail-actions { grid-template-columns: 1fr; }
+  .os-root .memory-index-trigger .memory-entry-meta .t-meta { font-size: 10.5px; }
+  .os-root .policy-page .row .inline { display: grid; grid-template-columns: 1fr; }
+  .os-root .team-member-actions { grid-template-columns: 1fr; }
+}

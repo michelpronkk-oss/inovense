@@ -14,6 +14,11 @@ const css = read("src/app/app/dashboard.css");
 for (const token of ["--surface:", "--radius-md:", "--space-4:", "--cyan:", "focus-visible", "prefers-reduced-motion", "@media (max-width: 700px)"]) {
   assert.match(css, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `authenticated design system must include ${token}`);
 }
+for (const selector of ["Mobile composition contract", ".product-page-actions", ".product-attention-content", ".memory-controls", ".activity-page .seg", ".logs-page .logs-viewport", ".scrim .modal"]) {
+  assert.match(css, new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `authenticated mobile composition must preserve ${selector}`);
+}
+assert.match(primitives, /product-page-actions/, "shared page actions need a stable responsive hook");
+assert.match(primitives, /product-attention-content/, "shared attention panels need a stable responsive hook");
 
 const appLayout = read("src/app/app/layout.tsx");
 assert.doesNotMatch(appLayout, /radial-gradient/, "the authenticated shell must not introduce decorative background gradients");

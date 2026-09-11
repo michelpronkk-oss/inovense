@@ -16,7 +16,7 @@ export function PageHeader({ eyebrow, title, description, actions }: PageHeaderP
         <h1 className="t-title">{title}</h1>
         <p className="t-sub">{description}</p>
       </div>
-      {actions && <div className="acts">{actions}</div>}
+      {actions && <div className="acts product-page-actions">{actions}</div>}
     </header>
   );
 }
@@ -36,13 +36,13 @@ export function SectionHeader({ title, detail, action }: { title: string; detail
 export function AttentionPanel({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   return (
     <section className="attn" role="status" style={{ padding: "16px 18px" }}>
-      <div className="inline" style={{ gap: 14, alignItems: "flex-start", flexWrap: "nowrap" }}>
+      <div className="inline product-attention-content" style={{ gap: 14, alignItems: "flex-start", flexWrap: "nowrap" }}>
         <span className="dot amber" style={{ marginTop: 6 }} />
         <div className="grow" style={{ flex: 1, minWidth: 0 }}>
           <div className="t-object">{title}</div>
           <p className="t-meta" style={{ margin: "4px 0 0" }}>{children}</p>
         </div>
-        {action && <div className="inline" style={{ flex: "none" }}>{action}</div>}
+        {action && <div className="inline product-attention-action" style={{ flex: "none" }}>{action}</div>}
       </div>
     </section>
   );
