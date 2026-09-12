@@ -5,7 +5,7 @@ import { logOperatorEvent, operatorRuntimeId } from "@/lib/operators/logging";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
 import { evaluateExecutionPolicy } from "@/lib/policies/execution-policy";
-import { buildApprovalScope } from "@/lib/policies/approval-scope";
+import { buildCanonicalApprovalScope } from "@/lib/policies/approval-scope";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const approvalScope = buildApprovalScope(policyInput, runtimeDecision);
+  const approvalScope = buildCanonicalApprovalScope(policyInput, runtimeDecision);
   const approvalId = operatorRuntimeId("appr-action");
   const insert = await supabase.from("os_approvals").insert({
     id: approvalId,

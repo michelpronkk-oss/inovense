@@ -96,10 +96,28 @@ function canonical(value: unknown): string {
   return `{${Object.keys(value as UnknownRecord).sort().map((key) => `${JSON.stringify(key)}:${canonical((value as UnknownRecord)[key])}`).join(",")}}`;
 }
 
+function approvalRelevantContext(context: PolicyBusinessContext): PolicyBusinessContext {
+  const stripObservedAt = (value: PolicyContextValue<unknown>): PolicyContextValue<unknown> => ({
+    value: value.value,
+    reliability: value.reliability,
+  });
+  const result: Record<string, Record<string, PolicyContextValue<unknown>>> = {};
+  for (const [group, fields] of Object.entries(context)) {
+    if (!fields || typeof fields !== "object") continue;
+    result[group] = {};
+    for (const [field, value] of Object.entries(fields)) {
+      result[group][field] = stripObservedAt(value as PolicyContextValue<unknown>);
+    }
+  }
+  return result as PolicyBusinessContext;
+}
+
 /** Stable, non-reversible fingerprint for reapproval and idempotency evidence. */
 export function businessContextFingerprint(context: PolicyBusinessContext | undefined): string | null {
   if (!context) return null;
-  const input = canonical(context);
+  // Observation timestamps describe freshness, not a business decision. They
+  // must not invalidate an otherwise identical approval.
+  const input = canonical(approvalRelevantContext(context));
   let hash = 2166136261;
   for (let index = 0; index < input.length; index += 1) {
     hash ^= input.charCodeAt(index);

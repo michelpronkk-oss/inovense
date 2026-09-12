@@ -92,7 +92,8 @@ const action = (businessContext) => ({
 
 try {
   const { evaluatePolicy } = await load("src/lib/policies/evaluate.ts");
-  const { approvalScopesEqual, buildApprovalScope, emailPayloadIdentity, refreshEmailApprovalScopePayload } = await load("src/lib/policies/approval-scope.ts");
+  const { approvalScopesEqual, buildApprovalScope, buildCanonicalApprovalScope, emailPayloadIdentity, refreshEmailApprovalScopePayload } = await load("src/lib/policies/approval-scope.ts");
+  const { businessContextFingerprint } = await load("src/lib/policies/context.ts");
 
   const below = evaluatePolicy(action(deal(9999)), policy());
   assert.equal(below.decision, "approval_required");
@@ -143,6 +144,7 @@ try {
   };
   const emailDecision = evaluatePolicy(scopeInput, policy({ actionRules: [] }));
   const scope = buildApprovalScope(scopeInput, emailDecision);
+  assert.equal(buildCanonicalApprovalScope(scopeInput, emailDecision).contextFingerprint, scope.contextFingerprint, "legacy callers and the canonical builder must produce the same scope");
   assert.equal(approvalScopesEqual(scope, { ...scope, contextFingerprint: "ctx-changed" }), false, "context changes must require reapproval");
   assert.equal(scope.parameters.payloadIdentity, emailPayloadIdentity("Subject", "Body"));
   const editedSubject = "Updated subject";
@@ -156,6 +158,10 @@ try {
   assert.notEqual(approvalScopesEqual(scope, editedScope), true, "the original approval snapshot must not authorize edited copy");
   assert.equal(approvalScopesEqual(scope, { ...scope, connector: "slack", action: "send_slack_message" }), false, "an approval scope must not authorize another connector action");
   assert.equal(approvalScopesEqual(scope, { ...scope, subjectId: "deal-2" }), false, "an approval scope must not authorize another subject");
+
+  const observedContext = { deal: { amount: { value: 25000, reliability: "verified", observedAt: "2026-09-10T08:00:00.000Z" } } };
+  const refreshedObservation = { deal: { amount: { value: 25000, reliability: "verified", observedAt: "2026-09-13T08:00:00.000Z" } } };
+  assert.equal(businessContextFingerprint(observedContext), businessContextFingerprint(refreshedObservation), "freshness timestamps must not invalidate an unchanged approval");
 
   const connectorDraft = evaluatePolicy(scopeInput, policy({ actionRules: [], connectorPolicies: { gmail: { customerEmailMode: "draft_only" } } }));
   assert.equal(connectorDraft.decision, "draft_only", "a live connector override must reach the evaluator");
@@ -175,6 +181,8 @@ try {
   assert.match(bundledGovernance, /approvalScopes:/);
   assert.match(bundledGovernance, /email:/);
   assert.match(bundledGovernance, /hubspot/);
+  assert.match(bundledGovernance, /businessContext: normalizeBusinessContext\(input\.businessContext\)/, "creation must scope the same relevant business context that execution evaluates");
+  assert.match(fs.readFileSync(path.join(root, "src/app/api/approvals/[id]/approve/route.ts"), "utf8"), /replaceWithRefreshedApproval/, "a stale approval must be replaced with a fresh pending approval, never retried in place");
   assert.match(fs.readFileSync(path.join(root, "supabase/migrations/20260907_execution_policy_engine.sql"), "utf8"), /unique \(workspace_id, action_hash\)/);
   assert.doesNotMatch(fs.readFileSync(path.join(root, "src/lib/settings/workspace-policy.ts"), "utf8"), /crmWrites:\s*"Auto-approve"/);
   console.log("Contextual policy matching, fail-closed thresholds, scope reapproval, evidence persistence, and approval-scope contracts passed.");

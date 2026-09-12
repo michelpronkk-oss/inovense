@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { DraftEdit } from "./types";
 
 export function EmailDraftPreview({
@@ -27,6 +28,7 @@ export function EmailDraftPreview({
   onSave: () => void;
   onCancel: () => void;
 }) {
+  const [showFullDraft, setShowFullDraft] = useState(false);
   if (draftEdit) {
     return (
       <section id={id} className="approval-email" aria-label="Edit prepared email">
@@ -73,7 +75,8 @@ export function EmailDraftPreview({
       <div className="approval-email-sheet">
         <div className="approval-email-field"><span>To</span><strong>{to || "Recipient not available"}</strong></div>
         {subject && <div className="approval-email-field"><span>Subject</span><strong>{subject}</strong></div>}
-        <div className="approval-email-body">{body || "Email body not available."}</div>
+        <div className={`approval-email-body${showFullDraft ? " is-expanded" : ""}`}>{body || "Email body not available."}</div>
+        {body.length > 900 && <button type="button" className="approval-email-show-more" onClick={() => setShowFullDraft((current) => !current)}>{showFullDraft ? "Show less" : "Show full draft"}</button>}
       </div>
     </section>
   );

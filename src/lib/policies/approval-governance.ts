@@ -1,6 +1,6 @@
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
-import { hubSpotBusinessContext } from "@/lib/policies/context";
-import { buildApprovalScope, emailPayloadIdentity, type ApprovalScope } from "@/lib/policies/approval-scope";
+import { hubSpotBusinessContext, normalizeBusinessContext } from "@/lib/policies/context";
+import { buildCanonicalApprovalScope, emailPayloadIdentity, type ApprovalScope } from "@/lib/policies/approval-scope";
 import { evaluatePolicy } from "@/lib/policies/evaluate";
 import { loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
 import type { PolicyDecision, PolicyEvidence } from "@/lib/policies/types";
@@ -39,6 +39,7 @@ export async function buildBundledApprovalGovernance(input: {
   dedupeKey?: string;
   preparedHubSpotActions?: Record<string, unknown> | null;
   memoryDependencies?: MemoryDependency[];
+  businessContext?: unknown;
 }): Promise<BundledApprovalGovernance> {
   const policy = await loadPolicyWorkspaceSettings({ supabase: input.supabase, workspaceId: input.workspaceId });
   const emailInput = {
@@ -52,6 +53,7 @@ export async function buildBundledApprovalGovernance(input: {
     recipient: input.to,
     domain: input.to.split("@")[1],
     source: `${input.emailConnector}_scan`,
+    businessContext: normalizeBusinessContext(input.businessContext),
     metadata: {
       dedupeKey: input.dedupeKey ?? null,
       payloadIdentity: emailPayloadIdentity(input.subject, input.body),
@@ -60,7 +62,7 @@ export async function buildBundledApprovalGovernance(input: {
   };
   const emailDecision = evaluatePolicy(emailInput, policy);
   const approvalScopes: BundledApprovalGovernance["approvalScopes"] = {
-    email: buildApprovalScope(emailInput, emailDecision),
+    email: buildCanonicalApprovalScope(emailInput, emailDecision),
   };
   const policyEvidence: BundledApprovalGovernance["policyEvidence"] = { email: emailDecision.evidence };
   const decisions: BundledApprovalGovernance["decisions"] = { email: emailDecision };
@@ -85,7 +87,7 @@ export async function buildBundledApprovalGovernance(input: {
       metadata: { dedupeKey: input.dedupeKey ?? null, memoryDependencies: input.memoryDependencies ?? [] },
     };
     const hubspotDecision = evaluatePolicy(hubspotInput, policy);
-    approvalScopes.hubspot = buildApprovalScope(hubspotInput, hubspotDecision);
+    approvalScopes.hubspot = buildCanonicalApprovalScope(hubspotInput, hubspotDecision);
     policyEvidence.hubspot = hubspotDecision.evidence;
     decisions.hubspot = hubspotDecision;
   }

@@ -28,7 +28,7 @@ import { getOperatorReadiness, type OperatorReadiness } from "@/lib/operators/re
 import { operatorRuntimeId } from "@/lib/operators/logging";
 import { getWorkspaceExecutionEligibility } from "@/lib/os/execution-eligibility";
 import { loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
-import { buildApprovalScope, emailPayloadIdentity } from "@/lib/policies/approval-scope";
+import { buildCanonicalApprovalScope, emailPayloadIdentity } from "@/lib/policies/approval-scope";
 import { evaluateExecutionPolicy } from "@/lib/policies/execution-policy";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { normalizeEmailToSignalEvent } from "@/lib/signals/intake";
@@ -284,7 +284,7 @@ async function createApproval(input: {
   });
   if (run.error) throw new Error(run.error.message);
   const approvalId = operatorRuntimeId("appr-support");
-  const approvalScope = buildApprovalScope(input.action.policyInput, policyDecision);
+  const approvalScope = buildCanonicalApprovalScope(input.action.policyInput, policyDecision);
   const isEmail = input.action.actionType === "send_email" && ["gmail", "microsoft"].includes(input.action.connectorKey);
   const actionInput = input.action.input;
   const continuation = isEmail

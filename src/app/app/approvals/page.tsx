@@ -85,9 +85,18 @@ export default function ApprovalsPage() {
           reason,
         }),
       });
-      const json = await res.json().catch(() => ({})) as { error?: string; message?: string };
+      const json = await res.json().catch(() => ({})) as { error?: string; message?: string; replacementApprovalId?: string };
       if (!res.ok) {
         if (json.error === "approval_scope_changed") {
+          // A real scope change creates a new pending approval. It is never
+          // silently approved; load it and put the reviewer directly on the
+          // fresh version instead of leaving them at a stale dead end.
+          if (json.replacementApprovalId) {
+            setError("The action changed, so Auterim prepared a new approval for review.");
+            await loadApprovals();
+            setExpandedApprovalId(json.replacementApprovalId);
+            return;
+          }
           setApprovalPresentationError({
             itemId: item.id,
             code: json.error,

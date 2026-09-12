@@ -124,8 +124,13 @@ export function ApprovalExpandedReview({
                 <span>{workflow.objective || "Workflow action"}{workflow.stepOrder && workflow.stepCount ? ` · Step ${workflow.stepOrder} of ${workflow.stepCount}` : ""}</span>
               </div>
             )}
+            <span className="approval-review-kicker">Review prepared {presentation.kind === "email" ? "follow-up" : "action"}</span>
             <h2 className="approval-review-title">{presentation.queueTitle}</h2>
-            {preview.confidence && <span className="badge green approval-review-confidence">{confidenceLabel(preview.confidence)}</span>}
+            <div className="approval-review-meta">
+              <span>{presentation.connectorLabel}</span><i>·</i><span>{presentation.kind === "email" ? "Customer email" : presentation.category}</span>
+              {presentation.riskLevel && <><i>·</i><strong>{presentation.riskLevel} risk</strong></>}
+              {preview.confidence && <span className="badge green approval-review-confidence">{confidenceLabel(preview.confidence)}</span>}
+            </div>
           </header>
 
           {(presentation.contextReason || presentation.detectedSignal || presentation.contextFacts.length > 0) && (
@@ -134,12 +139,12 @@ export function ApprovalExpandedReview({
                 <span className="t-eyebrow">Why this surfaced</span>
                 {presentation.detectedSignal && <span className="approval-why-signal">{presentation.detectedSignal}</span>}
               </div>
-              {presentation.contextReason && <p>{presentation.contextReason}</p>}
               {presentation.contextFacts.length > 0 && (
                 <div className="approval-why-facts" aria-label="Matched context">
                   {presentation.contextFacts.map((fact) => <span key={fact}>{fact}</span>)}
                 </div>
               )}
+              {presentation.contextReason && <p>{presentation.contextReason}</p>}
             </section>
           )}
 

@@ -14,10 +14,9 @@ import { ZendeskExecutionError } from "@/lib/connectors/zendesk";
 import { IntercomExecutionError } from "@/lib/connectors/intercom";
 import { sendSlackApprovalNotification } from "@/lib/notifications/slack";
 import { evaluateExecutionPolicy } from "@/lib/policies/execution-policy";
-import { approvalScopesEqual, buildApprovalScope, emailPayloadIdentity, type ApprovalScope } from "@/lib/policies/approval-scope";
+import { approvalScopeDiff, approvalScopesEqual, buildCanonicalApprovalScope, type ApprovalScope } from "@/lib/policies/approval-scope";
 import { buildPolicyInputFromContinuation } from "@/lib/policies/workspace-policy";
 import { hubSpotBusinessContext } from "@/lib/policies/context";
-import { businessContextFingerprint } from "@/lib/policies/context";
 import { logPolicyDecision } from "@/lib/policies/audit";
 import type { PolicyDecision } from "@/lib/policies/types";
 import { logOperatorEvent, recordOperatorUsage } from "@/lib/operators/logging";
@@ -126,21 +125,82 @@ function reapprovalRequiredResponse(): NextResponse {
   }, { status: 409 });
 }
 
-function bundledApprovalScopeChanged(input: {
-  continuation: Record<string, unknown>;
+async function replaceWithRefreshedApproval(input: {
+  supabase: ReturnType<typeof createSupabaseAdmin>;
+  approvalId: string;
   approvalRow: Record<string, unknown>;
-  subject: string;
-  body: string;
-  preparedHubSpotActions?: PreparedHubSpotActions | null;
-}): boolean {
-  const emailScope = approvalScopeFor(input, "email");
-  if (emailScope?.parameters.payloadIdentity && emailScope.parameters.payloadIdentity !== emailPayloadIdentity(input.subject, input.body)) return true;
-  const hubspotScope = approvalScopeFor(input, "hubspot");
-  if (hubspotScope) {
-    const currentFingerprint = businessContextFingerprint(hubSpotBusinessContext(input.preparedHubSpotActions));
-    if (hubspotScope.contextFingerprint !== currentFingerprint) return true;
+  workspaceId: string;
+  resolvedBy: string;
+  continuation: Record<string, unknown>;
+  currentEmailScope: ApprovalScope;
+  policyDecision: PolicyDecision;
+  changedFields: string[];
+}): Promise<NextResponse> {
+  const replacementApprovalId = `appr-refresh-${crypto.randomUUID()}`;
+  const approvalScopes = input.continuation.approvalScopes && typeof input.continuation.approvalScopes === "object"
+    ? input.continuation.approvalScopes as Record<string, unknown>
+    : {};
+  const policyEvidence = input.continuation.policyEvidence && typeof input.continuation.policyEvidence === "object"
+    ? input.continuation.policyEvidence as Record<string, unknown>
+    : {};
+  const refreshedPayload = {
+    ...input.continuation,
+    approvalScope: input.currentEmailScope,
+    approvalScopes: { ...approvalScopes, email: input.currentEmailScope },
+    policyEvidence: { ...policyEvidence, email: input.policyDecision.evidence },
+    replacesApprovalId: input.approvalId,
+  };
+
+  // Claim the old approval before creating a replacement. A racing request
+  // cannot produce two current approvals or execute the stale scope.
+  const stale = await input.supabase.from("os_approvals").update({
+    status: "stale",
+    resolved_at: new Date().toISOString(),
+    resolved_by: "system:scope_changed",
+  }).eq("id", input.approvalId).eq("workspace_id", input.workspaceId).eq("status", "pending").select("id").maybeSingle();
+  if (stale.error || !stale.data) return reapprovalRequiredResponse();
+
+  const replacement = await input.supabase.from("os_approvals").insert({
+    id: replacementApprovalId,
+    workspace_id: input.workspaceId,
+    type: input.approvalRow.type,
+    title: input.approvalRow.title,
+    body: input.approvalRow.body,
+    agent_id: input.approvalRow.agent_id,
+    agent_mark: input.approvalRow.agent_mark,
+    agent_color: input.approvalRow.agent_color,
+    run_id: input.approvalRow.run_id,
+    status: "pending",
+    dedupe_key: input.approvalRow.dedupe_key ?? null,
+    created_at: new Date().toISOString(),
+    continuation_payload: refreshedPayload,
+    approval_scope: input.currentEmailScope,
+    policy_evidence: input.policyDecision.evidence,
+    policy_reason: input.approvalRow.policy_reason,
+  });
+  if (replacement.error) {
+    await input.supabase.from("os_approvals").update({ status: "pending", resolved_at: null, resolved_by: null }).eq("id", input.approvalId).eq("workspace_id", input.workspaceId).eq("status", "stale");
+    return NextResponse.json({ error: "approval_refresh_failed", message: "Auterim could not prepare the updated approval. Nothing was sent." }, { status: 500 });
   }
-  return false;
+
+  const runId = typeof input.continuation.operatorRunId === "string" ? input.continuation.operatorRunId : input.approvalRow.run_id;
+  if (typeof runId === "string" && runId) {
+    await logOperatorEvent({
+      supabase: input.supabase,
+      workspaceId: input.workspaceId,
+      runId,
+      eventType: "approval.scope_refreshed",
+      message: "Approval scope changed; a replacement approval was prepared before execution.",
+      metadata: { approvalId: input.approvalId, replacementApprovalId, changedFields: input.changedFields },
+    });
+  }
+  return NextResponse.json({
+    status: "reapproval_required",
+    error: "approval_scope_changed",
+    message: "The action changed after this approval was prepared. Review the updated approval before execution.",
+    replacementApprovalId,
+    changedFields: input.changedFields,
+  }, { status: 409 });
 }
 
 function effectiveDraft(payload: GmailContinuationPayload): {
@@ -734,7 +794,7 @@ async function executeSharedActionApproval(input: {
     const storedScope = continuation.approvalScope && typeof continuation.approvalScope === "object"
       ? continuation.approvalScope as ApprovalScope
       : null;
-    if (storedScope && !approvalScopesEqual(storedScope, buildApprovalScope(policyInput, decision))) {
+    if (storedScope && !approvalScopesEqual(storedScope, buildCanonicalApprovalScope(policyInput, decision))) {
       return NextResponse.json({
         ok: false,
         status: "reapproval_required",
@@ -990,8 +1050,8 @@ async function executeOperationsApproval(input: {
   const trelloPolicyDecision = trelloPolicyInput ? await evaluateExecutionPolicy({ supabase: input.supabase, policyInput: trelloPolicyInput, approvalId: input.approvalId }) : null;
   const storedSlackScope = approvalScopeFor({ continuation, approvalRow: input.approvalRow }, "slack");
   const storedTrelloScope = approvalScopeFor({ continuation, approvalRow: input.approvalRow }, "trello");
-  const slackScopeChanged = storedSlackScope && slackPolicyInput && !approvalScopesEqual(storedSlackScope, buildApprovalScope(slackPolicyInput, slackPolicyDecision!));
-  const trelloScopeChanged = storedTrelloScope && trelloPolicyInput && !approvalScopesEqual(storedTrelloScope, buildApprovalScope(trelloPolicyInput, trelloPolicyDecision!));
+  const slackScopeChanged = storedSlackScope && slackPolicyInput && !approvalScopesEqual(storedSlackScope, buildCanonicalApprovalScope(slackPolicyInput, slackPolicyDecision!));
+  const trelloScopeChanged = storedTrelloScope && trelloPolicyInput && !approvalScopesEqual(storedTrelloScope, buildCanonicalApprovalScope(trelloPolicyInput, trelloPolicyDecision!));
   if (slackScopeChanged || trelloScopeChanged) {
     await input.supabase.from("os_approvals").update({ status: "pending", resolved_by: null }).eq("id", input.approvalId).eq("workspace_id", input.payload.workspaceId).eq("status", "executing");
     return reapprovalRequiredResponse();
@@ -1481,13 +1541,6 @@ async function executeMicrosoftApproval(input: {
   }
 
   const finalDraft = effectiveDraft(payload);
-  if (bundledApprovalScopeChanged({
-    continuation,
-    approvalRow: approvalRow as Record<string, unknown>,
-    subject: finalDraft.subject,
-    body: finalDraft.body,
-    preparedHubSpotActions: payload.preparedHubSpotActions,
-  })) return reapprovalRequiredResponse();
   const ws = await supabase
     .from("os_workspaces")
     .select("billing_status, can_run_real_actions")
@@ -1500,6 +1553,21 @@ async function executeMicrosoftApproval(input: {
   const runId = payload.operatorRunId || (typeof approvalRow.run_id === "string" ? approvalRow.run_id : "");
 
   if (policyDecision && policyInput) {
+    const storedEmailScope = approvalScopeFor({ continuation, approvalRow }, "email");
+    const currentEmailScope = buildCanonicalApprovalScope(policyInput, policyDecision);
+    if (storedEmailScope && !approvalScopesEqual(storedEmailScope, currentEmailScope)) {
+      return replaceWithRefreshedApproval({
+        supabase,
+        approvalId,
+        approvalRow,
+        workspaceId: payload.workspaceId,
+        resolvedBy,
+        continuation,
+        currentEmailScope,
+        policyDecision,
+        changedFields: approvalScopeDiff(storedEmailScope, currentEmailScope),
+      });
+    }
     if (policyDecision.decision === "blocked") {
       await logPolicyDecision({ supabase, workspaceId: payload.workspaceId, runId: runId || null, approvalId, decision: policyDecision, policyInput, live: true });
       const executionResult = { microsoftStatus: "blocked_by_policy", hubspotStatus: "not_attempted", policyDecision, blockedReason: policyDecision.reason };
@@ -2122,14 +2190,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ error: "Workspace mismatch for approval payload." }, { status: 403 });
   }
   const finalDraft = effectiveDraft(gmailPayload);
-  if (bundledApprovalScopeChanged({
-    continuation: continuation as Record<string, unknown>,
-    approvalRow: approvalRow as Record<string, unknown>,
-    subject: finalDraft.subject,
-    body: finalDraft.body,
-    preparedHubSpotActions: gmailPayload.preparedHubSpotActions,
-  })) return reapprovalRequiredResponse();
-
   const ws = await supabase
     .from("os_workspaces")
     .select("billing_status, can_run_real_actions")
@@ -2145,7 +2205,20 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   if (gmailPolicyDecision && gmailPolicyInput) {
     const storedEmailScope = approvalScopeFor({ continuation: continuation as Record<string, unknown>, approvalRow: approvalRow as Record<string, unknown> }, "email");
-    if (storedEmailScope && !approvalScopesEqual(storedEmailScope, buildApprovalScope(gmailPolicyInput, gmailPolicyDecision))) return reapprovalRequiredResponse();
+    const currentEmailScope = buildCanonicalApprovalScope(gmailPolicyInput, gmailPolicyDecision);
+    if (storedEmailScope && !approvalScopesEqual(storedEmailScope, currentEmailScope)) {
+      return replaceWithRefreshedApproval({
+        supabase,
+        approvalId: id,
+        approvalRow: approvalRow as Record<string, unknown>,
+        workspaceId: context.workspaceId,
+        resolvedBy: context.userEmail || context.userId || userEmail || userId,
+        continuation: continuation as Record<string, unknown>,
+        currentEmailScope,
+        policyDecision: gmailPolicyDecision,
+        changedFields: approvalScopeDiff(storedEmailScope, currentEmailScope),
+      });
+    }
     if (gmailPolicyDecision.decision === "blocked") {
       await logPolicyDecision({ supabase, workspaceId: context.workspaceId, runId: gmailPayload.operatorRunId ?? (typeof approvalRow.run_id === "string" ? approvalRow.run_id : null), approvalId: id, decision: gmailPolicyDecision, policyInput: gmailPolicyInput, live: true });
       return markGmailBlockedByPolicy({

@@ -27,9 +27,22 @@ export type ApprovalScope = {
   memoryFingerprint: string | null;
 };
 
+/**
+ * Normalizes only representation noise in an email payload.  In particular,
+ * it deliberately does not collapse body whitespace: paragraph spacing and
+ * signatures are part of what a reviewer is approving.
+ */
+export function canonicalEmailPayload(subject: string, body: string): { subject: string; body: string } {
+  return {
+    subject: subject.replace(/\r\n?/g, "\n").trim(),
+    body: body.replace(/\r\n?/g, "\n").trim(),
+  };
+}
+
 /** Stable identity for the exact customer-facing payload a reviewer saw. */
 export function emailPayloadIdentity(subject: string, body: string): string {
-  const input = `${subject}\n\u0000${body}`;
+  const canonical = canonicalEmailPayload(subject, body);
+  const input = `${canonical.subject}\n\u0000${canonical.body}`;
   let hash = 2166136261;
   for (let index = 0; index < input.length; index += 1) {
     hash ^= input.charCodeAt(index);
@@ -52,7 +65,11 @@ export function refreshEmailApprovalScopePayload(scope: ApprovalScope, subject: 
   };
 }
 
-export function buildApprovalScope(input: PolicyInput, decision: PolicyDecision): ApprovalScope {
+/**
+ * The one canonical approval-scope builder.  Creation, live execution,
+ * reapproval comparison and refreshed reviews must all use this function.
+ */
+export function buildCanonicalApprovalScope(input: PolicyInput, decision: PolicyDecision): ApprovalScope {
   const memoryDependencies = decision.evidence.memoryDependencies ?? (Array.isArray(input.metadata?.memoryDependencies) ? input.metadata.memoryDependencies as MemoryDependency[] : []);
   return {
     workspaceId: input.workspaceId,
@@ -80,6 +97,10 @@ export function buildApprovalScope(input: PolicyInput, decision: PolicyDecision)
   };
 }
 
+// Compatibility alias for existing action types. New approval code should use
+// the canonical name so scope creation and validation remain visibly coupled.
+export const buildApprovalScope = buildCanonicalApprovalScope;
+
 function stable(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stable).join(",")}]`;
   if (!value || typeof value !== "object") return JSON.stringify(value) ?? "null";
@@ -88,4 +109,21 @@ function stable(value: unknown): string {
 
 export function approvalScopesEqual(left: ApprovalScope | null | undefined, right: ApprovalScope): boolean {
   return Boolean(left) && stable(left) === stable(right);
+}
+
+/** Safe, field-name-only evidence for a reapproval explanation and audit log. */
+export function approvalScopeDiff(left: ApprovalScope | null | undefined, right: ApprovalScope): string[] {
+  if (!left) return ["approvalScope"];
+  const changes: string[] = [];
+  const visit = (before: unknown, after: unknown, path: string) => {
+    if (stable(before) === stable(after)) return;
+    if (before && after && typeof before === "object" && typeof after === "object" && !Array.isArray(before) && !Array.isArray(after)) {
+      const keys = new Set([...Object.keys(before as Record<string, unknown>), ...Object.keys(after as Record<string, unknown>)]);
+      for (const key of Array.from(keys).sort()) visit((before as Record<string, unknown>)[key], (after as Record<string, unknown>)[key], path ? `${path}.${key}` : key);
+      return;
+    }
+    changes.push(path || "approvalScope");
+  };
+  visit(left, right, "");
+  return changes;
 }

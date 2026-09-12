@@ -20,7 +20,7 @@ import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { getWorkspaceExecutionEligibility } from "@/lib/os/execution-eligibility";
 import { loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
 import { evaluatePolicy } from "@/lib/policies/evaluate";
-import { buildApprovalScope } from "@/lib/policies/approval-scope";
+import { buildCanonicalApprovalScope } from "@/lib/policies/approval-scope";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 import { getAppUrl } from "@/lib/urls";
 import {
@@ -56,7 +56,7 @@ const OPERATIONS_AGENT_COLOR = "#66D0E0";
 function actionGovernance(action: PreparedAction | null, policySettings: Awaited<ReturnType<typeof loadPolicyWorkspaceSettings>>) {
   if (!action?.policyInput) return null;
   const decision = evaluatePolicy(action.policyInput, policySettings);
-  return { scope: buildApprovalScope(action.policyInput, decision), evidence: decision.evidence };
+  return { scope: buildCanonicalApprovalScope(action.policyInput, decision), evidence: decision.evidence };
 }
 
 const MAX_LISTS = 12;

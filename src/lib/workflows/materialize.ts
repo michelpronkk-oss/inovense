@@ -8,7 +8,7 @@ import { readMicrosoftTeamsSettings } from "@/lib/connectors/microsoft-teams";
 import { getConnectorTruth } from "@/lib/connectors/truth";
 import { prepareRevenueFollowUpEmail } from "@/lib/operators/executors/gmail";
 import { evaluateExecutionPolicy } from "@/lib/policies/execution-policy";
-import { buildApprovalScope } from "@/lib/policies/approval-scope";
+import { buildCanonicalApprovalScope } from "@/lib/policies/approval-scope";
 import { loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
@@ -184,7 +184,7 @@ export async function materializeWorkflowStep(input: { workflowId: string; stepI
     return missing("policy_blocked", "Current workspace policy does not allow this action.");
   }
   const approvalId = `appr-workflow-${input.workflowId}-${input.stepId}`.replace(/[^a-zA-Z0-9_-]+/g, "-").slice(0, 200);
-  const approvalScope = buildApprovalScope(policyInput, decision);
+  const approvalScope = buildCanonicalApprovalScope(policyInput, decision);
   const continuation = { ...materialized.continuation, workspaceId: input.workspaceId, operatorKey: workflowResult.data.operator_key, preparedAction: materialized.action, workflowId: input.workflowId, workflowObjective: workflowResult.data.objective, workflowStepId: input.stepId, workflowStepOrder: stepResult.data.step_order, workflowStepReason: "Prepared from verified workflow evidence.", approvalScope, policyEvidence: decision.evidence };
   const insert = await supabase.from("os_approvals").insert({ id: approvalId, workspace_id: input.workspaceId, type: "action", title: materialized.action.title, body: materialized.action.summary, agent_id: workflowResult.data.operator_key, agent_mark: "WF", agent_color: "#4DE8E1", run_id: null, status: "pending", dedupe_key: `workflow:${input.workflowId}:${input.stepId}`, continuation_payload: continuation, approval_scope: approvalScope, policy_evidence: decision.evidence, policy_reason: decision.reason });
   if (insert.error && insert.error.code !== "23505") throw new Error(`Workflow approval creation failed: ${insert.error.message}`);

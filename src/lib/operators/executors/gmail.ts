@@ -83,6 +83,7 @@ export async function createGmailSendApproval(input: {
     dedupeKey: input.dedupeKey,
     preparedHubSpotActions: input.preparedHubSpotActions,
     memoryDependencies: Array.isArray(input.sourceMetadata?.memoryDependencies) ? input.sourceMetadata.memoryDependencies as import("@/lib/memory/model").MemoryDependency[] : [],
+    businessContext: input.sourceMetadata?.businessContext,
   });
   const insert = await input.supabase.from("os_approvals").insert({
     id: approvalId,
