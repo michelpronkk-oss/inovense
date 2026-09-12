@@ -20,6 +20,9 @@ import Insights from "../../src/app/app/insights/page";
 
 const params = new URLSearchParams(location.search);
 const lifecycle = params.get("state") || "E";
+let approvalScopeRefreshed = false;
+window.fixtureApprovalSavedDraft = null;
+window.fixtureApprovalCompleted = false;
 const state = buildSeedState();
 state.workspace = { ...state.workspace, id: "fixture-workspace", name: "Sample workspace", plan: "growth", planTier: "growth", billingStatus: "active", onboardingSystems: ["salesforce", "microsoft"] };
 state.currentUser = { ...state.currentUser, name: "Alex Sample", email: "alex@example.test" };
@@ -56,6 +59,38 @@ const fixtureActivity = lifecycle === "E" ? [
   { id: "activity-signal", time: new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString(), type: "operator.signal", title: "Client request detected", description: "A client message was identified.", operatorKey: "client_flow", connectorKey: "gmail", severity: "info", href: "/logs" },
 ] : [];
 const connectorPurpose = { gmail: "Email follow-ups", hubspot: "CRM execution", slack: "Team alerts", trello: "Project tasks" };
+const fixturePendingApproval = {
+  id: "fixture-approval", title: "Send a follow-up email", description: "A pricing question came in while the deal is active. Review the prepared reply before it goes out.",
+  status: "pending", created_at: new Date().toISOString(), resolved_at: null, approval_type: "email", category: "Email",
+  continuation_kind: null, run_id: "fixture-run", linked_run_id: "fixture-run", agent_id: "revenue", agent_mark: "Revenue Operator", policy_reason: "Customer emails require approval.",
+  payload_preview: {
+    operatorKey: "revenue", to: "customer@example.test", subject: "Re: Team pricing", body: "Thank you for asking about pricing for your team. I have included the details we discussed and can help with the next steps.",
+    draftBody: "Thank you for asking about pricing for your team. I have included the details we discussed and can help with the next steps.", draftSubject: "Re: Team pricing",
+    detectedSignal: "Pricing question", matchedKeywords: ["pricing", "team size"], whyThisMatters: "The customer is evaluating a team plan, so a timely reply can keep the active conversation moving.", riskLevel: "medium",
+    preparedActions: ["send_gmail_follow_up", "update_hubspot_deal"], crmPreparationStatus: "hubspot_execution_enabled",
+    livePolicyDecision: { decision: "require_approval", reason: "Customer-facing email requires human approval.", riskLevel: "medium", matchedRuleId: "customer_email_requires_approval", userFacingLabel: "Approval required", requiresHumanReview: true },
+    preparedHubSpotActions: { deal: { dealname: "Northstar team plan", stageLabel: "Evaluation", pipelineLabel: "New business" }, executionStatus: "execution_enabled" },
+    approvalScope: { contextFingerprint: "fixture-context-fingerprint" },
+    policyEvidence: { policyVersion: 3, connector: "gmail", action: "send_gmail_follow_up", subjectType: "email", subjectId: "thread-fixture", matchedRuleIds: ["customer_email_requires_approval"], requiredApproverRoles: ["workspace_admin"], contextSummary: { signal: "pricing inquiry", deal_open: true }, contextFingerprint: "fixture-context-fingerprint" },
+    policyEvidenceByAction: { email: { connector: "gmail", action: "send_gmail_follow_up", subjectType: "email", subjectId: "thread-fixture" }, hubspot: { connector: "hubspot", action: "update_hubspot_deal", subjectType: "deal", subjectId: "deal-fixture", contextSummary: { dealStage: "Evaluation" }, contextFingerprint: "fixture-crm-fingerprint" } },
+    customerEmailPolicy: { mode: "approval_required", humanReview: "Required", crmUpdate: "After email approval" },
+    whatHappensAfterApproval: "Auterim sends the approved email through Gmail, then applies the prepared HubSpot deal update.",
+    crmPreparation: { summary: "A deal update is prepared from the current customer conversation.", suggestedNextStep: "Share the team pricing details" },
+  },
+};
+const fixtureApprovalQueue = Array.from({ length: 8 }, (_, index) => ({
+  ...fixturePendingApproval,
+  id: index === 0 ? fixturePendingApproval.id : `fixture-approval-${index + 1}`,
+  title: `Follow-up review ${index + 1}`,
+  created_at: new Date(Date.now() - index * 18 * 60 * 1000).toISOString(),
+  payload_preview: {
+    ...fixturePendingApproval.payload_preview,
+    to: `customer${index + 1}@example.test`,
+    subject: `Re: Team pricing ${index + 1}`,
+    draftSubject: `Re: Team pricing ${index + 1}`,
+    detectedSignal: ["Pricing question", "Onboarding follow-up", "Renewal timing", "Contract clarification"][index % 4],
+  },
+}));
 const overview = {
   workspace: state.workspace, executionEligibility: eligibility, lifecycleState: lifecycle,
   operatorProductStates: productStates, systemStatus: { status: "healthy", label: "Ready", description: "Your workspace is ready." },
@@ -65,11 +100,29 @@ const overview = {
   connectors: state.connectors.filter((c) => Object.hasOwn(connectorPurpose, c.id)).map((c) => ({ key: c.id, name: c.name, connected: c.isConnected, status: c.isConnected ? "connected" : "needs_setup", purpose: connectorPurpose[c.id], href: "/connectors", usedBy: c.id === "hubspot" ? ["Revenue"] : c.id === "trello" ? ["Client Flow", "Operations"] : ["Revenue", "Client Flow"], lastCheckedAt: null })),
   activity: fixtureActivity,
   activitySummary: { runs: fixtureActivity.filter((item) => item.type === "run.completed").length, approvals: fixtureActivity.filter((item) => item.type === "approval.pending").length, actions: 0, issues: 0, total: fixtureActivity.length, daily: Array.from({ length: 7 }, (_, index) => ({ day: new Date(Date.now() - (6 - index) * 86400000).toISOString().slice(0, 10), count: index === 6 ? fixtureActivity.length : 0 })) },
-  nextBestActions: [], lastUpdatedAt: new Date().toISOString(),
+  nextBestActions: [], workInProgress: [], lastUpdatedAt: new Date().toISOString(),
 };
 window.fetch = async (input, options) => {
-  if (options?.method && options.method !== "GET") throw new Error("Fixture blocks every mutation");
   const url = new URL(input, location.origin);
+  if (options?.method && options.method !== "GET") {
+    if (options.method === "PATCH" && url.pathname.endsWith("/fixture-approval")) {
+      window.fixtureApprovalSavedDraft = JSON.parse(options.body || "{}");
+      approvalScopeRefreshed = true;
+      return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (params.get("approvalAction") === "slow" && url.pathname.endsWith("/approve")) {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      return new Response(JSON.stringify({ status: "approved" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (params.get("approvalError") === "scope_changed" && !approvalScopeRefreshed && url.pathname.endsWith("/approve")) {
+      return new Response(JSON.stringify({ error: "approval_scope_changed", message: "The approved action or its business context changed after approval. Review the updated action before execution." }), { status: 409, headers: { "Content-Type": "application/json" } });
+    }
+    if (url.pathname.endsWith("/approve")) {
+      window.fixtureApprovalCompleted = true;
+      return new Response(JSON.stringify({ status: "approved" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    throw new Error("Fixture blocks every mutation");
+  }
   let data = {};
   if (url.pathname === "/api/dashboard/overview") data = overview;
   else if (url.pathname === "/api/operators/product-state") data = { states: productStates, state: productStates.find((s) => s.operatorKey === url.searchParams.get("operatorKey")) };
@@ -77,12 +130,10 @@ window.fetch = async (input, options) => {
   else if (url.pathname.endsWith("/activate")) data = { state: { activated: lifecycle === "E", activatedAt: null, updatedAt: null } };
   else if (url.pathname.endsWith("/status") && url.pathname.includes("/operators/")) data = { readiness: readiness.find((r) => url.pathname.includes(r.operatorKey.replace("_", "-"))), monitoring: { status: "monitoring_active", message: "Scheduled checks are on.", recentPendingApprovals: [], nextScanLabel: "Daily check" }, revenueMode: "full_crm_mode", setup: { state: "ready", readinessPercent: 100, canRunManual: true, trelloConnected: true, trelloDestinationSet: true, trelloTaskExecutionReady: true, customerEmailPolicySet: true, approvalFlowActive: true }, gmail: { connected: true, executable: true, permissions: { readonly: true }, accountEmail: "alex@example.test" }, hubspot: { connected: true } };
   else if (url.pathname === "/api/policies") data = { policy };
-  else if (url.pathname === "/api/approvals") data = { approvals: params.get("approval") === "pending" ? [{
-    id: "fixture-approval", title: "Follow up on a customer request", description: "The customer asked for an update. Review the prepared reply.",
-    status: "pending", created_at: new Date().toISOString(), resolved_at: null, approval_type: "email", category: "Email",
-    continuation_kind: null, run_id: null, linked_run_id: null, agent_id: "revenue", agent_mark: "Revenue Operator", policy_reason: "Customer emails require approval.",
-    payload_preview: { operatorKey: "revenue", to: "customer@example.test", subject: "Your request", body: "Thank you for your request. Here is the update you asked for.", draftBody: "Thank you for your request. Here is the update you asked for.", draftSubject: "Your request", preparedActions: [], customerEmailPolicy: { mode: "approval_required" } },
-  }] : [] };
+  else if (url.pathname === "/api/approvals") {
+    const mode = params.get("approval");
+    data = { approvals: mode === "queue" ? fixtureApprovalQueue : mode === "pending" ? [fixturePendingApproval] : [] };
+  }
   else if (url.pathname === "/api/operators/runs") data = { runs: [] };
   else if (url.pathname === "/api/connectors/accounts") data = { accounts: [] };
   else if (url.pathname === "/api/activity") data = { items: fixtureActivity.map((item) => ({ id: item.id, occurredAt: item.time, category: item.type === "run.completed" ? "operator_run" : item.type === "approval.pending" ? "approval" : "workflow", title: item.title, description: item.description, operatorKey: item.operatorKey, connectorKey: item.connectorKey, severity: item.severity === "warning" ? "attention" : item.severity === "success" ? "success" : "info", status: "recorded", relatedRoute: item.href, technicalEventId: null })), summary: { runs: 1, approvals: 1, actions: 0, issues: 0, total: fixtureActivity.length, daily: [] }, hasMore: false, partialHistory: false };

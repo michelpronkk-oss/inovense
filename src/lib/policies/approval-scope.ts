@@ -38,6 +38,20 @@ export function emailPayloadIdentity(subject: string, body: string): string {
   return `email-${(hash >>> 0).toString(16).padStart(8, "0")}`;
 }
 
+/**
+ * Bind an explicitly reviewed email edit to its exact subject/body while
+ * retaining the original target, policy and business-context boundaries.
+ */
+export function refreshEmailApprovalScopePayload(scope: ApprovalScope, subject: string, body: string): ApprovalScope {
+  return {
+    ...scope,
+    parameters: {
+      ...scope.parameters,
+      payloadIdentity: emailPayloadIdentity(subject, body),
+    },
+  };
+}
+
 export function buildApprovalScope(input: PolicyInput, decision: PolicyDecision): ApprovalScope {
   const memoryDependencies = decision.evidence.memoryDependencies ?? (Array.isArray(input.metadata?.memoryDependencies) ? input.metadata.memoryDependencies as MemoryDependency[] : []);
   return {

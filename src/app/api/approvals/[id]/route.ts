@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logOperatorEvent } from "@/lib/operators/logging";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
+import { refreshEmailApprovalScopePayload, type ApprovalScope } from "@/lib/policies/approval-scope";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 
 type PatchBody = {
@@ -50,7 +51,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
   const approval = await supabase
     .from("os_approvals")
-    .select("id,workspace_id,status,run_id,continuation_payload,agent_id,agent_mark,agent_color")
+    .select("id,workspace_id,status,run_id,continuation_payload,approval_scope,agent_id,agent_mark,agent_color")
     .eq("id", id)
     .eq("workspace_id", context.workspaceId)
     .maybeSingle();
@@ -70,6 +71,14 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     return NextResponse.json({ error: "unsupported_approval_type", message: "Only email draft approvals can be edited." }, { status: 409 });
   }
 
+  const scopeGroups = asRecord(continuation.approvalScopes);
+  const storedEmailScope = scopeGroups.email ?? continuation.approvalScope ?? approval.data.approval_scope;
+  const storedEmailScopeRecord = asRecord(storedEmailScope);
+  const storedParameters = asRecord(storedEmailScopeRecord.parameters);
+  const refreshedEmailScope = Object.keys(storedParameters).length > 0
+    ? refreshEmailApprovalScopePayload(storedEmailScope as ApprovalScope, draftSubject, draftBody)
+    : null;
+
   const editedAt = new Date().toISOString();
   const editedBy = context.userEmail || context.userId || userEmail || userId;
   const updatedPayload = {
@@ -81,14 +90,22 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     wasEdited: true,
     editedAt,
     editedBy,
+    ...(refreshedEmailScope ? {
+      approvalScope: refreshedEmailScope,
+      approvalScopes: { ...scopeGroups, email: refreshedEmailScope },
+    } : {}),
   };
 
   const update = await supabase.from("os_approvals").update({
     continuation_payload: updatedPayload,
-  }).eq("id", id).eq("workspace_id", context.workspaceId).select("id,status,run_id,continuation_payload").single();
+    ...(refreshedEmailScope ? { approval_scope: refreshedEmailScope } : {}),
+  }).eq("id", id).eq("workspace_id", context.workspaceId).eq("status", "pending").select("id,status,run_id,continuation_payload").maybeSingle();
 
   if (update.error) {
     return NextResponse.json({ error: update.error.message }, { status: 500 });
+  }
+  if (!update.data) {
+    return NextResponse.json({ error: "approval_not_pending", message: "This approval was resolved before the draft edit could be saved." }, { status: 409 });
   }
 
   const runId = stringValue(continuation.operatorRunId) ?? approval.data.run_id;

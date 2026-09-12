@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { getPublicWorkspaceCta, usePublicUserState } from "@/lib/public-user-state";
 import { pricingPlans, resolvePublicPlanCta } from "@/lib/pricing";
 import { AUTERIM_HOME_FAQS } from "@/lib/geo";
+import { appHref } from "@/lib/urls";
 import OperatorsEditorial from "./operators-editorial";
 import HeroEditorial from "./hero-editorial";
 import V3Footer from "./v3-footer";
@@ -38,7 +39,10 @@ export function Head({ label, title, body }: { label: string; title: string; bod
 export default function V3Page() {
   const userState = usePublicUserState();
   const workspaceCta = getPublicWorkspaceCta(userState);
-  const primaryCta = userState === "guest" ? { ...workspaceCta, label: "Set up your workspace" } : workspaceCta;
+  const isPublicSetup = userState === "guest" || userState === "loading";
+  const primaryCta = isPublicSetup
+    ? { label: "Set up your workspace", href: appHref("/onboarding") }
+    : workspaceCta;
 
   useEffect(() => {
     const root = document.querySelector<HTMLElement>(".auterim-v3-page");
@@ -117,7 +121,7 @@ export default function V3Page() {
             <ul>{plan.features.slice(0, 3).map((feature) => <li key={feature}><span className="homepage-plan-check"><Icon name="check" size={10} /></span>{feature}</li>)}</ul>
             <span className="homepage-plan-spacer" aria-hidden="true" />
             <span className="homepage-plan-divider" aria-hidden="true" />
-            <Link href={cta.href}>{userState === "guest" ? "Set up trial" : cta.label} <span aria-hidden="true">→</span></Link>
+            <Link href={isPublicSetup ? appHref("/onboarding") : cta.href}>{isPublicSetup ? "Set up your workspace" : cta.label} <span aria-hidden="true">→</span></Link>
           </article>;
         })}
       </div>

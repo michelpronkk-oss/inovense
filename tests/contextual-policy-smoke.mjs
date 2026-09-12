@@ -92,7 +92,7 @@ const action = (businessContext) => ({
 
 try {
   const { evaluatePolicy } = await load("src/lib/policies/evaluate.ts");
-  const { approvalScopesEqual, buildApprovalScope, emailPayloadIdentity } = await load("src/lib/policies/approval-scope.ts");
+  const { approvalScopesEqual, buildApprovalScope, emailPayloadIdentity, refreshEmailApprovalScopePayload } = await load("src/lib/policies/approval-scope.ts");
 
   const below = evaluatePolicy(action(deal(9999)), policy());
   assert.equal(below.decision, "approval_required");
@@ -145,6 +145,15 @@ try {
   const scope = buildApprovalScope(scopeInput, emailDecision);
   assert.equal(approvalScopesEqual(scope, { ...scope, contextFingerprint: "ctx-changed" }), false, "context changes must require reapproval");
   assert.equal(scope.parameters.payloadIdentity, emailPayloadIdentity("Subject", "Body"));
+  const editedSubject = "Updated subject";
+  const editedBody = "Updated body reviewed by the workspace user.";
+  const editedScope = refreshEmailApprovalScopePayload(scope, editedSubject, editedBody);
+  const editedInput = { ...scopeInput, metadata: { ...scopeInput.metadata, payloadIdentity: emailPayloadIdentity(editedSubject, editedBody) } };
+  const editedDecision = evaluatePolicy(editedInput, policy({ actionRules: [] }));
+  assert.equal(approvalScopesEqual(editedScope, buildApprovalScope(editedInput, editedDecision)), true, "a saved human edit must bind the approval to the exact revised message");
+  assert.equal(editedScope.contextFingerprint, scope.contextFingerprint, "editing copy must not refresh or weaken the business-context boundary");
+  assert.equal(editedScope.parameters.recipient, scope.parameters.recipient, "editing copy must not change the approved recipient");
+  assert.notEqual(approvalScopesEqual(scope, editedScope), true, "the original approval snapshot must not authorize edited copy");
   assert.equal(approvalScopesEqual(scope, { ...scope, connector: "slack", action: "send_slack_message" }), false, "an approval scope must not authorize another connector action");
   assert.equal(approvalScopesEqual(scope, { ...scope, subjectId: "deal-2" }), false, "an approval scope must not authorize another subject");
 
@@ -160,6 +169,9 @@ try {
   assert.match(migration, /approval_scope jsonb/);
   assert.match(migration, /policy_evidence jsonb/);
   const bundledGovernance = fs.readFileSync(path.join(root, "src/lib/policies/approval-governance.ts"), "utf8");
+  const approvalDraftRoute = fs.readFileSync(path.join(root, "src/app/api/approvals/[id]/route.ts"), "utf8");
+  assert.match(approvalDraftRoute, /refreshEmailApprovalScopePayload/, "saving an edited email must refresh only its payload binding");
+  assert.match(approvalDraftRoute, /eq\("status", "pending"\)/, "a resolved approval cannot be edited concurrently");
   assert.match(bundledGovernance, /approvalScopes:/);
   assert.match(bundledGovernance, /email:/);
   assert.match(bundledGovernance, /hubspot/);

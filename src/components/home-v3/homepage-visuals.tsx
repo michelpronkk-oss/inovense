@@ -118,11 +118,11 @@ export function ConnectorsVisual() {
             <span className="hv-lab hv-st" aria-hidden="true"><span className="hv-dot hv-dot-cy hv-pulse" />Reading connected systems</span>
           </div>
           <h3 className="hv-stk-h">Your systems stay the source of truth.</h3>
-          <p className="hv-stk-sub">Auterim reads them, keeps the context, and hands an operator work that is already prepared.</p>
+          <p className="hv-stk-sub">Auterim joins the context and hands the right operator work that is already prepared.</p>
           <div className="hv-steps">
             <div className="hv-sp hv-sp1"><span className="hv-sp-n"><span className="hv-dot" aria-hidden="true" /><i className="hv-ln" aria-hidden="true" /></span><span><span className="hv-sp-k">Signal</span><span className="hv-sp-t">Something changes in a connected system.</span></span></div>
-            <div className="hv-sp hv-sp2"><span className="hv-sp-n"><span className="hv-dot" aria-hidden="true" /><i className="hv-ln hv-am" aria-hidden="true" /></span><span><span className="hv-sp-k">Context</span><span className="hv-sp-t">History and ownership are joined to it.</span></span></div>
-            <div className="hv-sp hv-sp3 hv-gate"><span className="hv-sp-n"><span className="hv-dot" aria-hidden="true" /></span><span><span className="hv-sp-k">Next move</span><span className="hv-sp-t">Prepared for an operator, held at your approval boundary.</span></span></div>
+            <div className="hv-sp hv-sp2"><span className="hv-sp-n"><span className="hv-dot" aria-hidden="true" /><i className="hv-ln hv-am" aria-hidden="true" /></span><span><span className="hv-sp-k">Joined context</span><span className="hv-sp-t">History and ownership are joined to the signal.</span></span></div>
+            <div className="hv-sp hv-sp3 hv-gate"><span className="hv-sp-n"><span className="hv-dot" aria-hidden="true" /></span><span><span className="hv-sp-k">Operator-ready</span><span className="hv-sp-t">A prepared next move is held at your approval boundary.</span></span></div>
           </div>
         </div>
       </div>
@@ -132,7 +132,7 @@ export function ConnectorsVisual() {
 
 export function OutcomesVisual() {
   return (
-    <div className="hv-ov" role="img" aria-label="Operational view. One clear next move. Every open loop arrives with its context already attached, and waits where your policy says it should. Work surfaced. Context ready. Approval held where needed.">
+    <div className="hv-ov" role="img" aria-label="Operational view. One clear next move. A follow-up that was sitting unnoticed is surfaced with its owner and context, then prepared for approval.">
       <div className="hv-ov-tex" aria-hidden="true" />
       <div className="hv-ov-in">
         <div className="hv-ov-top">
@@ -140,11 +140,11 @@ export function OutcomesVisual() {
           <span className="hv-lab hv-st">Operational view</span>
         </div>
         <h3 className="hv-ov-h">One clear next move.</h3>
-        <p className="hv-ov-sub">Every open loop arrives with its context already attached, and waits where your policy says it should.</p>
+        <p className="hv-ov-sub">A follow-up sitting unnoticed arrives with its owner and context, ready for the next move.</p>
         <div className="hv-marks">
-          <div className="hv-mk-r hv-r1"><span className="hv-mk-n"><span className="hv-dot" aria-hidden="true" /></span><span className="hv-mk-t">Work surfaced</span></div>
-          <div className="hv-mk-r hv-r2"><span className="hv-mk-n"><span className="hv-dot" aria-hidden="true" /></span><span className="hv-mk-t">Context ready</span></div>
-          <div className="hv-mk-r hv-r3"><span className="hv-mk-n"><span className="hv-dot" aria-hidden="true" /></span><span className="hv-mk-t">Approval held where needed</span></div>
+          <div className="hv-mk-r hv-r1"><span className="hv-mk-n"><span className="hv-dot" aria-hidden="true" /></span><span className="hv-mk-t">Follow-up surfaced</span></div>
+          <div className="hv-mk-r hv-r2"><span className="hv-mk-n"><span className="hv-dot" aria-hidden="true" /></span><span className="hv-mk-t">Owner and context ready</span></div>
+          <div className="hv-mk-r hv-r3"><span className="hv-mk-n"><span className="hv-dot" aria-hidden="true" /></span><span className="hv-mk-t">Prepared reply held for approval</span></div>
         </div>
       </div>
     </div>

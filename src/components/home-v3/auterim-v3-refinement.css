@@ -5480,3 +5480,145 @@
 @media (max-width: 640px) {
   .auterim-v3-page.homepage-recomposed .homepage-contrast-muted > div { gap: 7px; padding: 17px 0; }
 }
+
+/* Final homepage QA pass --------------------------------------------------
+   Reveal is intentionally additive: the page must be complete before the
+   client observer runs. A very small transform transition remains available
+   to enhanced states, but content never depends on JavaScript for opacity. */
+.auterim-v3-page .rv,
+.auterim-v3-page .rv.in {
+  opacity: 1;
+  transform: none;
+  transition: transform 180ms ease-out;
+}
+.auterim-v3-page .rv .hv-opl,
+.auterim-v3-page .rv .hv-stk,
+.auterim-v3-page .rv .hv-ov,
+.auterim-v3-page .rv .hv-gx,
+.auterim-v3-page .rv .hv-rd,
+.auterim-v3-page .rv.in .hv-opl,
+.auterim-v3-page .rv.in .hv-stk,
+.auterim-v3-page .rv.in .hv-ov,
+.auterim-v3-page .rv.in .hv-gx,
+.auterim-v3-page .rv.in .hv-rd {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
+/* Phone hero: preserve the product story in a deliberately compact state,
+   rather than squeezing the desktop run panel into a source-only preview. */
+.auterim-v3-page .hero-artifact-mobile-proof { display: none; }
+@media (max-width: 767px) {
+  .auterim-v3-page .hero-artifact-mobile-proof {
+    display: grid;
+    gap: 8px;
+    margin-top: 13px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(148, 164, 180, .16);
+  }
+  .auterim-v3-page .hero-artifact-mobile-proof > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .auterim-v3-page .hero-artifact-mobile-proof span {
+    flex: 0 0 auto;
+    color: #8b9aa8;
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
+    font-size: 8px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+  }
+  .auterim-v3-page .hero-artifact-mobile-proof strong {
+    display: flex;
+    min-width: 0;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: 8px;
+    color: #e5ebef;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: -.015em;
+    text-align: right;
+  }
+  .auterim-v3-page .hero-artifact-mobile-proof em {
+    color: #82dfd4;
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
+    font-size: 7px;
+    font-style: normal;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .auterim-v3-page .hero-artifact-mobile-proof > div:last-child em { color: #e3b45e; }
+}
+
+/* Governance needs enough typographic authority to read as a control model,
+   not as low-priority telemetry. The existing rail and restrained scan stay. */
+.auterim-v3-page .homepage-control-visual .hv-gx-stages { gap: 0 20px; padding-top: 38px; }
+.auterim-v3-page .homepage-control-visual .hv-gx-s { padding-right: 10px; }
+.auterim-v3-page .homepage-control-visual .hv-gx-k {
+  color: #aab7c1;
+  font-size: 9.5px;
+  letter-spacing: .16em;
+  animation: none;
+}
+.auterim-v3-page .homepage-control-visual .hv-gx-t { color: #f1f5f7; font-size: 15px; font-weight: 520; line-height: 1.35; }
+.auterim-v3-page .homepage-control-visual .hv-gx-x { color: #b5c0c8; font-size: 12.5px; line-height: 1.58; }
+.auterim-v3-page .homepage-control-visual .hv-gx-s .hv-dot { background: #52d8d0; box-shadow: 0 0 7px rgba(77, 232, 225, .34); animation: none; }
+.auterim-v3-page .homepage-control-visual .hv-gx-gate .hv-dot { background: #e3b45e; box-shadow: 0 0 7px rgba(245, 194, 107, .3); }
+.auterim-v3-page .homepage-control-visual .hv-gx-s::after { display: none; }
+.auterim-v3-page .homepage-control-visual .hv-gx-foot { color: #9dabb7; font-size: 9.5px; }
+
+/* Secondary information remains quiet, but no longer falls below readable
+   contrast in the FAQ and supporting visual labels. */
+.auterim-v3-page.homepage-recomposed .homepage-faq .faq summary { color: #e0e7eb; }
+.auterim-v3-page.homepage-recomposed .homepage-faq .faq-index { color: #67d8cc; }
+.auterim-v3-page.homepage-recomposed .homepage-faq .faq-toggle { opacity: .82; box-shadow: inset 0 0 0 1px rgba(169, 187, 197, .28); }
+.auterim-v3-page.homepage-recomposed .homepage-faq .faq details[open] .faq-toggle { opacity: 1; }
+.auterim-v3-page .hv-lab { color: #8d9ba7; }
+.auterim-v3-page .hv-cn-nm { color: #b5c0c8; }
+.auterim-v3-page .hv-sp-k { color: #9eacb6; animation: none; }
+.auterim-v3-page .hv-sp-t { color: #c1cbd2; animation: none; }
+.auterim-v3-page .hv-sp .hv-dot { background: #52d8d0; box-shadow: 0 0 6px rgba(77, 232, 225, .3); animation: none; }
+.auterim-v3-page .hv-gate .hv-sp-k { color: #e3b45e; animation: none; }
+.auterim-v3-page .hv-gate .hv-dot { background: #e3b45e; box-shadow: 0 0 6px rgba(245, 194, 107, .28); animation: none; }
+
+@media (max-width: 1080px) {
+  .auterim-v3-page .homepage-control-visual .hv-gx-stages { gap: 30px 26px; }
+}
+@media (max-width: 720px) {
+  .auterim-v3-page .homepage-control-visual .hv-gx-stages { gap: 27px; }
+  .auterim-v3-page .homepage-control-visual .hv-gx-t { font-size: 15.5px; }
+  .auterim-v3-page .homepage-control-visual .hv-gx-x { font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auterim-v3-page .rv,
+  .auterim-v3-page .rv.in { transition: none; }
+}
+
+/* The hero must be intelligible on its first paint. Ambient artifact and
+   background motion above stays in place; only the copy's delayed entrance
+   is removed so a slow client never presents a dim or unfinished promise. */
+@media (prefers-reduced-motion: no-preference) {
+  .auterim-v3-page .hero-editorial-eyebrow,
+  .auterim-v3-page .hero-editorial h1,
+  .auterim-v3-page .hero-editorial .say,
+  .auterim-v3-page .hero-editorial .hero-cta,
+  .auterim-v3-page .hero-editorial .note {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+  .auterim-v3-page .hero-editorial-copy::after { animation: none; }
+  .auterim-v3-page .hero-artifact-ctx > div,
+  .auterim-v3-page .hero-artifact-task,
+  .auterim-v3-page .hero-artifact-seq li,
+  .auterim-v3-page .hero-artifact-gate {
+    opacity: 1;
+    transform: none;
+    animation: none !important;
+  }
+}

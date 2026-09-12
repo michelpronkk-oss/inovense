@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { getPublicWorkspaceCta, usePublicUserState } from "@/lib/public-user-state";
+import { appHref } from "@/lib/urls";
 import { Icon } from "./icons";
 import { ResponsiveCopy } from "./responsive-copy";
 
@@ -28,7 +29,9 @@ const RAIL_PATHS = [
 export default function HeroEditorial() {
   const userState = usePublicUserState();
   const workspaceCta = getPublicWorkspaceCta(userState);
-  const primaryCta = userState === "guest" ? { ...workspaceCta, label: "Set up your workspace" } : workspaceCta;
+  const primaryCta = userState === "guest" || userState === "loading"
+    ? { label: "Set up your workspace", href: appHref("/onboarding") }
+    : workspaceCta;
   /* Mouse-driven parallax intentionally removed: it caused perceptible shaking and soft text. */
   /* useEffect(() => {
     const section = sectionRef.current;
@@ -131,6 +134,17 @@ export default function HeroEditorial() {
               {RAIL_PATHS.map((d) => <path className="hero-artifact-rail-fl" d={d} key={`rail-fl-${d}`} />)}
             </svg>
             <p className="hero-artifact-ctx-f">3 sources assembled &middot; policy applied</p>
+
+            <div className="hero-artifact-mobile-proof" aria-label="Revenue Operator has a prepared next move awaiting approval">
+              <div>
+                <span>Operator</span>
+                <strong>Revenue Operator <em>Active</em></strong>
+              </div>
+              <div>
+                <span>Next move</span>
+                <strong>Reply prepared <em>Approval required</em></strong>
+              </div>
+            </div>
 
             <div className="hero-artifact-op">
               <span className="hero-artifact-op-ic"><Icon name="trend" size={18} strokeWidth={1.4} /></span>
