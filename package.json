@@ -83,6 +83,8 @@
     "test:insights-entitlement": "node tests/insights-entitlement-smoke.mjs",
     "test:product-truth-discovery": "node tests/product-truth-discovery-smoke.mjs",
     "test:seo-discovery": "node tests/seo-discovery-smoke.mjs",
+    "test:public-footer-pages": "node tests/public-footer-pages-smoke.mjs",
+    "test:public-footer-browser": "node tests/public-footer-browser-smoke.mjs",
     "test:public-content-quality": "node tests/public-content-quality-smoke.mjs",
     "test:feedback-roadmap": "node tests/feedback-roadmap-smoke.mjs",
     "test:support": "node tests/support-smoke.mjs",

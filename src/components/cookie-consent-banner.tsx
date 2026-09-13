@@ -51,7 +51,7 @@ export default function CookieConsentBanner() {
     >
       <div className="mx-auto flex max-w-[1180px] flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
         <p className="text-[13.5px] leading-relaxed" style={{ color: "#A7B1BE" }}>
-          We use strictly necessary cookies to run Auterim, and optional analytics cookies to understand how the product is used. No advertising cookies, ever.{" "}
+          We use browser storage for your preference and, with your consent, optional traffic attribution. Signed-in sessions may use authentication cookies.{" "}
           <Link href="/cookies" className="underline underline-offset-2" style={{ color: "#F6F8FB" }}>
             Cookie Policy
           </Link>

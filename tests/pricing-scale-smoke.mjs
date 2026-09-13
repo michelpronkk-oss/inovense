@@ -140,8 +140,12 @@ try {
   assert.match(publicPricing, /useEarlyAccess/);
   assert.match(publicPricing, /plan: plan\.plan_tier/);
   assert.doesNotMatch(publicPricing, /dodo\/checkout|resolvePublicPlanCta/);
-  assert.match(pricingPage, /<EarlyAccessProvider>/, "the canonical public pricing page provides the same Early Access modal");
-  assert.match(pricingPage, /<Nav earlyAccessCta \/>/);
+  assert.match(pricingPage, /<PublicSiteFrame>/, "the canonical pricing page uses the shared public Early Access shell");
+  assert.match(pricingPage, /PublicPricing plans=\{pricingPlans\}/, "public pricing uses the canonical billing plan catalogue");
+  const publicFrame = read("src/components/home-v3/public-site-frame.tsx");
+  const publicPageComponents = read("src/components/home-v3/public-page-components.tsx");
+  assert.match(publicFrame, /<EarlyAccessProvider>/, "the shared public shell provides the canonical Early Access modal");
+  assert.match(publicPageComponents, /plan=\{plan\.plan_tier\}/, "pricing passes its selected plan to the Early Access modal");
   assert.match(pricingFinalCta, /openEarlyAccess\(\{ trigger:/);
   assert.match(publicHome, /pricingPlans\.map/, "home pricing must draw from the central catalog");
   assert.match(appPricing, /pricingPlans\.map/, "in-app billing cards must draw from the central catalog");

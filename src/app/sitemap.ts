@@ -14,13 +14,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const pages: Array<[string, MetadataRoute.Sitemap[number]["changeFrequency"], number]> = [
     ["", "weekly", 1],
+    ["/how-it-works", "monthly", 0.85],
     ["/agents", "monthly", 0.9],
     ["/operators", "monthly", 0.85],
+    ["/control", "monthly", 0.8],
     ["/use-cases", "monthly", 0.82],
     ["/getting-started", "monthly", 0.8],
-    ["/integrations", "monthly", 0.85],
+    ["/connectors", "monthly", 0.85],
     ["/pricing", "monthly", 0.85],
     ["/security", "monthly", 0.8],
+    ["/docs", "monthly", 0.7],
     ["/approvals", "monthly", 0.8],
     ["/trust", "monthly", 0.75],
     ["/architecture", "monthly", 0.7],

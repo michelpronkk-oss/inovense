@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { ResponsiveCopy } from "./responsive-copy";
 import { openCookiePreferences } from "@/lib/cookie-consent";
 
 function Mark() {
   return (
     <span className="mk">
-      <img src="/brand/auterim-mark-live.svg" width="16" height="16" alt="" />
+      <Image src="/brand/auterim-mark-live.svg" width={16} height={16} alt="" />
       Auterim
     </span>
   );
@@ -25,16 +26,16 @@ export default function V3Footer() {
           <div>
             <h4>Platform</h4>
             <ul>
-              <li><Link href="/#how">How it works</Link></li>
-              <li><Link href="/#operators">Operators</Link></li>
-              <li><Link href="/#control">Control</Link></li>
-              <li><Link href="/#connectors">Connectors</Link></li>
+              <li><Link href="/how-it-works">How it works</Link></li>
+              <li><Link href="/operators">Operators</Link></li>
+              <li><Link href="/control">Control</Link></li>
+              <li><Link href="/connectors">Connectors</Link></li>
             </ul>
           </div>
           <div>
             <h4>Resources</h4>
             <ul>
-              <li><Link href="/#pricing">Pricing</Link></li>
+              <li><Link href="/pricing">Pricing</Link></li>
               <li><Link href="/use-cases">Use cases</Link></li>
               <li><Link href="/getting-started">Getting started</Link></li>
               <li><Link href="/security">Security</Link></li>

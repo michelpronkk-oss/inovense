@@ -1,105 +1,55 @@
 import type { Metadata } from "next";
-import { PageShell } from "@/components/marketing-ui";
-import V3Header from "@/components/home-v3/v3-header";
-import LegalEditorial from "@/components/home-v3/legal-editorial";
+import PublicSiteFrame from "@/components/home-v3/public-site-frame";
+import { LegalPage } from "@/components/home-v3/public-page-components";
 import { staticOgImage } from "@/lib/static-og";
 
+const title = "Terms of Service";
+const description = "Terms for accessing Auterim, requesting Early Access, connecting third-party systems, and using operator workflows.";
+
 export const metadata: Metadata = {
-  title: "Terms of Service",
-  description: "Terms of service governing use of the Auterim platform: the operator runtime, approval and policy system, connected systems, and subscription plans.",
-  alternates: {
-    canonical: "https://auterim.com/terms",
-  },
-  openGraph: {
-    url: "https://auterim.com/terms",
-    title: "Terms of Service | Auterim",
-    description: "Terms of service governing use of the Auterim platform: the operator runtime, approval and policy system, connected systems, and subscription plans.",
-    type: "website",
-    siteName: "Auterim",
-    images: [staticOgImage("/")],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Terms of Service | Auterim",
-    description: "Terms of service governing use of the Auterim platform: the operator runtime, approval and policy system, connected systems, and subscription plans.",
-    images: [staticOgImage("/")],
-  },
+  title, description,
+  alternates: { canonical: "https://auterim.com/terms" },
+  openGraph: { url: "https://auterim.com/terms", siteName: "Auterim", title: `${title} | Auterim`, description, type: "website", images: [staticOgImage("/terms")] },
+  twitter: { card: "summary_large_image", title: `${title} | Auterim`, description, images: [staticOgImage("/terms")] },
+  robots: { index: true, follow: true },
 };
 
 export default function TermsPage() {
-  return (
-    <div className="font-[family-name:var(--font-geist-sans)]">
-      <V3Header />
-      <main>
-        <PageShell>
-          <LegalEditorial title="Terms of Service" lastUpdated="May 2026">
-            <div className="legal-notice">
-              <i aria-hidden="true" />
-              <span>These terms describe Auterim as it operates today, in product preview. They will be reviewed with counsel before commercial launch, and this page will be updated when that happens.</span>
-            </div>
+  return <PublicSiteFrame><LegalPage title={title}>
+    <h2>Acceptance and accounts</h2>
+    <p>These terms apply when you access or use Auterim. You must provide accurate account information and are responsible for activity in your account and workspace, including actions approved by people you authorize.</p>
 
-            <h2>Acceptance of terms</h2>
-            <p>
-              These Terms of Service govern your access to and use of the Auterim platform, including the operator runtime, approval and policy system, connector framework, and all associated services. By accessing or using Auterim, you agree to be bound by these terms. If you do not agree, do not use the platform.
-            </p>
+    <h2>Early Access</h2>
+    <p>An Early Access request is a request for consideration. It does not create an account, guarantee an invitation, start a trial, or authorize a payment. Access may follow an invitation and workspace setup. Product features and availability may change as Early Access develops.</p>
 
-            <h2>What Auterim does</h2>
-            <p>
-              Auterim understands your business, recommends an AI workforce of operators suited to it, and lets those operators prepare and execute real work under the controls you define. The platform follows one loop for every account: connect your systems, understand your business, diagnose where time and opportunity are being lost, recommend the right operators, deploy them with controls, and measure and improve the result.
-            </p>
+    <h2>Trials and billing</h2>
+    <p>Current plan prices are listed on the <a href="/pricing">pricing page</a>. If invited, a workspace can choose to start the three-day trial explicitly through the product. Paid plan, billing interval, applicable charges, and other checkout terms are shown before a purchase is completed. A request for Early Access does not begin a trial or create a payment obligation.</p>
 
-            <h2>Accounts</h2>
-            <p>
-              You must provide accurate information when creating an account and are responsible for activity that occurs under it, including actions approved by anyone you grant access to your workspace.
-            </p>
+    <h2>Using Auterim</h2>
+    <p>You may use Auterim only for lawful business purposes and in accordance with these terms. You must not use the service to access another workspace without permission, interfere with its operation, or configure an operator to bypass a policy or approval boundary.</p>
 
-            <h2>The approval model</h2>
-            <p>
-              Operators propose work; they do not act outside the boundaries you set. Every action falls into one of three states: it can run automatically, it stops and waits for your named approver, or it is never allowed. You are responsible for the approval decisions made under your account, and for keeping your policy boundaries set the way you intend.
-            </p>
+    <h2>Operator actions and connected systems</h2>
+    <p>Operators prepare and may execute work according to enabled capabilities, provider permissions, and workspace policies. You are responsible for reviewing configured rules, granting appropriate access, and deciding whether to approve actions. Third-party providers remain subject to their own terms, permissions, and availability. Auterim cannot guarantee that a provider will accept, complete, or reverse an action.</p>
 
-            <h2>Connected systems</h2>
-            <p>
-              Connecting a third-party system such as Gmail, HubSpot, Google Calendar, or Slack is your choice, and you can disconnect at any time. Your use of those systems through Auterim is still subject to that provider&apos;s own terms. Auterim is not responsible for the availability or behavior of third-party systems you connect.
-            </p>
+    <h2>Your content and product intellectual property</h2>
+    <p>You retain the rights you hold in information you submit or connect. You authorize Auterim to process that information as needed to provide the service and related support. Auterim and its licensors retain rights in the service, software, and product materials.</p>
 
-            <h2>Subscriptions and payment</h2>
-            <p>
-              Preview is free and does not require a connected system. Paid plans (Foundation, Workforce, and Scale) are billed on the cycle shown at checkout through our payment processor, Dodo Payments. Fees are non-refundable except where required by law. You can cancel a paid plan at any time; access continues until the end of the billing period already paid for.
-            </p>
+    <h2>Availability and changes</h2>
+    <p>Auterim may change, suspend, or discontinue parts of the service. We aim to communicate material changes through the product or this site when appropriate, but uninterrupted availability is not guaranteed.</p>
 
-            <h2>Acceptable use</h2>
-            <p>
-              You agree not to use Auterim to break the law, to configure operators to bypass an approval boundary, to attempt to access another workspace&apos;s data, or to interfere with the platform&apos;s normal operation.
-            </p>
+    <h2>Suspension and termination</h2>
+    <p>You may stop using Auterim at any time. Access may be suspended or ended if needed to protect the service, users, or connected systems, or in response to a breach of these terms. Applicable account and data handling after access ends depends on the information type and billing state.</p>
 
-            <h2>Disclaimers</h2>
-            <p>
-              Auterim is provided during product preview on an &quot;as is&quot; basis, without warranties of any kind, express or implied. We do not guarantee that operator recommendations or prepared work are free of error, and approved actions remain your responsibility.
-            </p>
+    <h2>Disclaimers</h2>
+    <p>Auterim is provided as available. Recommendations, prepared work, and observed outcomes may be incomplete or incorrect. You should review work in context and determine whether it is suitable before approving or relying on it.</p>
 
-            <h2>Limitation of liability</h2>
-            <p>
-              To the extent permitted by law, Auterim is not liable for indirect, incidental, or consequential damages arising from use of the platform. Our total liability for any claim is limited to the amount you paid us in the twelve months before the claim arose.
-            </p>
+    <h2>Limitation of liability</h2>
+    <p>To the extent permitted by applicable law, Auterim is not liable for indirect, incidental, special, or consequential damages arising from use of the service. Liability limits do not apply where applicable law does not permit them to apply.</p>
 
-            <h2>Termination</h2>
-            <p>
-              You may stop using Auterim at any time. We may suspend or terminate access for a breach of these terms or acceptable use. On termination, execution logs and profile data remain available for export for a reasonable period before deletion.
-            </p>
+    <h2>Changes to these terms</h2>
+    <p>We may update these terms as Auterim changes. The date at the top of this page indicates when the current text was updated. Continued use after an update constitutes acceptance only to the extent permitted by applicable law.</p>
 
-            <h2>Changes to these terms</h2>
-            <p>
-              We may update these terms as the product evolves. We will update the date below when we do, and continued use of Auterim after a change means you accept the updated terms.
-            </p>
-
-            <h2>Contact</h2>
-            <p>
-              For questions regarding these terms, contact us at <a href="mailto:hello@auterim.com">hello@auterim.com</a>.
-            </p>
-          </LegalEditorial>
-        </PageShell>
-      </main>
-    </div>
-  );
+    <h2>Contact</h2>
+    <p>Questions about these terms can be sent to <a href="mailto:hello@auterim.com">hello@auterim.com</a>.</p>
+  </LegalPage></PublicSiteFrame>;
 }

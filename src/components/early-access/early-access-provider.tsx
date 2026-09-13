@@ -41,7 +41,7 @@ export default function EarlyAccessProvider({ children }: { children: ReactNode 
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
   const openEarlyAccess = useCallback((options?: { plan?: EarlyAccessPlan | null; trigger?: HTMLElement | null }) => {
-    const selectedPlan = submission?.plan ?? options?.plan ?? null;
+    const selectedPlan = options?.plan ?? submission?.plan ?? null;
     setPlan(selectedPlan);
     returnFocusRef.current = options?.trigger ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     setIsOpen(true);

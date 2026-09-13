@@ -3,6 +3,13 @@ import { AUTERIM_URL } from "@/lib/brand";
 type StaticOgAsset = { file: string; alt: string };
 
 const STATIC_OG: Record<string, StaticOgAsset> = {
+  "/how-it-works": { file: "og-home.png", alt: "How Auterim works" },
+  "/control": { file: "og-security.png", alt: "Auterim control and governance" },
+  "/connectors": { file: "og-integrations.png", alt: "Auterim connectors" },
+  "/docs": { file: "og-workflows.png", alt: "Auterim documentation" },
+  "/privacy": { file: "og-trust.png", alt: "Auterim privacy policy" },
+  "/terms": { file: "og-trust.png", alt: "Auterim terms of service" },
+  "/cookies": { file: "og-trust.png", alt: "Auterim cookie and browser storage policy" },
   "/": { file: "og-home.png", alt: "Auterim — The AI workforce built around your business" },
   "/about": { file: "og-about.png", alt: "About Auterim" },
   "/agents": { file: "og-agents.png", alt: "Auterim AI Operators" },

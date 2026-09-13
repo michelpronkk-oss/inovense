@@ -4,7 +4,7 @@ import Link from "next/link";
 import V3Header from "./v3-header";
 import V3Footer from "./v3-footer";
 import { useReveal } from "./use-reveal";
-import { appHref } from "@/lib/urls";
+import RequestEarlyAccessButton from "./request-early-access-button";
 import "./auterim-v3.css";
 import "./auterim-v3-refinement.css";
 import "./auterim-v3-typography.css";
@@ -19,11 +19,11 @@ const principles = [
 ] as const;
 
 const operatingLayer = [
-  ["Company context", "The business, systems, processes and working rules every operator starts with.", "/#profile"],
+  ["Company context", "The business, systems, processes and working rules every operator starts with.", "/getting-started"],
   ["Operators", "Purpose-built roles that prepare and coordinate the work a team already needs to do.", "/agents"],
   ["Approvals and policies", "Clear boundaries for what can run, what needs a decision and what is never allowed.", "/approvals"],
   ["Memory and measurement", "Useful context persists while runs, decisions and outcomes remain reviewable.", "/memory"],
-  ["Existing systems", "Auterim works across the tools where customer history, work and communication already live.", "/integrations"],
+  ["Existing systems", "Auterim works across the tools where customer history, work and communication already live.", "/connectors"],
 ] as const;
 
 export default function AboutEditorial() {
@@ -40,8 +40,8 @@ export default function AboutEditorial() {
               <h1>AI should understand the business before it touches the work.</h1>
               <p>Auterim exists because businesses should not have to choose between AI speed and operational control. We are building an AI workforce that learns how a company works, prepares useful work across its existing systems and keeps important boundaries clear.</p>
               <div className="close-actions">
-                <Link href={appHref("/app/onboarding")} className="btn btn-a">Start preview <span className="arrow">→</span></Link>
-                <Link href="/#how" className="btn btn-b">See how it works</Link>
+                <RequestEarlyAccessButton className="btn btn-a" />
+                <Link href="/how-it-works" className="btn btn-b">See how it works</Link>
               </div>
             </div>
           </div>
@@ -112,7 +112,7 @@ export default function AboutEditorial() {
         </section>
 
         <section className="close about-cta">
-          <div className="wrap close-in rv"><div className="close-main"><span className="lbl"><i aria-hidden="true" />Start with your company</span><h2>See what Auterim would build around your business.</h2><p>Start with a preview of your company context and recommended workforce. Connect live systems when you are ready.</p><div className="close-actions"><Link href={appHref("/app/onboarding")} className="btn btn-a">Start preview <span className="arrow">→</span></Link><Link href="/#how" className="btn btn-b">See how it works</Link></div></div></div>
+          <div className="wrap close-in rv"><div className="close-main"><span className="lbl"><i aria-hidden="true" />Start with your company</span><h2>See what Auterim would build around your business.</h2><p>Tell us what work your team wants to move first. Connect live systems after an Early Access invitation when you are ready.</p><div className="close-actions"><RequestEarlyAccessButton className="btn btn-a" /><Link href="/how-it-works" className="btn btn-b">See how it works</Link></div></div></div>
         </section>
       </main>
       <V3Footer />

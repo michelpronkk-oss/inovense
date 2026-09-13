@@ -1,141 +1,23 @@
 import type { Metadata } from "next";
-import Nav from "@/components/nav";
-import Footer from "@/components/footer";
-import { PageShell, PageHero, SectionDivider, MktCard, MockupWindow } from "@/components/marketing-ui";
-import Reveal from "@/components/reveal";
-import { PricingPlans } from "@/components/pricing/pricing-plans";
-import { PricingPageFinalCta } from "@/components/pricing/pricing-page-final-cta";
-import EarlyAccessProvider from "@/components/early-access/early-access-provider";
+import PublicSiteFrame from "@/components/home-v3/public-site-frame";
+import { PublicHero, PublicPricing } from "@/components/home-v3/public-page-components";
 import { pricingPlans } from "@/lib/pricing";
 import { staticOgImage } from "@/lib/static-og";
 
+const title = "Auterim Pricing: Foundation, Workforce, and Scale";
+const description = "Compare Auterim Foundation at $99, Workforce at $299, and Scale at $799 per month. Request Early Access; no trial or payment begins with your request.";
+
 export const metadata: Metadata = {
-  title: "AI Workforce Pricing",
-  description: "Compare Foundation, Workforce, and Scale pricing, then request Auterim Early Access. Your 3-day trial begins only when you choose to start it.",
-  alternates: {
-    canonical: "https://auterim.com/pricing",
-  },
-  openGraph: {
-    url: "https://auterim.com/pricing",
-    title: "AI Workforce Pricing | Auterim",
-    description: "Compare Auterim's Foundation, Workforce, and Scale plans and request Early Access before public launch.",
-    type: "website",
-    siteName: "Auterim",
-    images: [staticOgImage("/pricing")],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "AI Workforce Pricing | Auterim",
-    description: "Compare Foundation, Workforce, and Scale pricing, then request Auterim Early Access. Your 3-day trial begins only when you choose to start it.",
-    images: [staticOgImage("/pricing")],
-  },
+  title, description,
+  alternates: { canonical: "https://auterim.com/pricing" },
+  openGraph: { url: "https://auterim.com/pricing", siteName: "Auterim", title, description, type: "website", images: [staticOgImage("/pricing")] },
+  twitter: { card: "summary_large_image", title, description, images: [staticOgImage("/pricing")] },
+  robots: { index: true, follow: true },
 };
 
-const capacityRows = [
-  { label: "Active operators", values: ["Foundation · up to 3", "Workforce · up to 8", "Scale · up to 20"] },
-  { label: "Connected systems", values: ["Foundation · up to 3", "Workforce · up to 8", "Scale · up to 20"] },
-  { label: "Controlled runs", values: ["Foundation · 1,000 / month", "Workforce · 5,000 / month", "Scale · 20,000 / month"] },
-  { label: "Approval policies", values: ["Foundation · approval-first", "Workforce · advanced", "Scale · advanced"] },
-];
-
-export default async function PricingPage({ searchParams }: { searchParams: Promise<{ billing?: string }> }) {
-  const billing = (await searchParams).billing;
-  return (
-    <EarlyAccessProvider>
-      <>
-      <Nav earlyAccessCta />
-      <main>
-        <PageShell>
-          <Reveal>
-            <PageHero
-              eyebrow="Pricing"
-            heading="Pay for operating capacity, not seats."
-            description="Choose the operating capacity that fits your team. Request Early Access before public launch; your 3-day trial starts only when you explicitly choose to begin it."
-            mobileDescription="Compare plans and request Early Access. Your trial starts only when you choose to begin it."
-              descMaxWidth="56ch"
-            />
-          </Reveal>
-
-          {(billing === "setup_required" || billing === "error") && (
-            <div className="mx-auto mt-6 max-w-6xl px-6">
-              <div className="rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(242,118,124,0.07)", color: "#F2B3B7", boxShadow: "inset 0 0 0 1px rgba(242,118,124,0.2)" }}>
-                Checkout is not ready yet. Confirm that the matching Dodo product ID is set in the deployment environment, then try again.
-              </div>
-            </div>
-          )}
-
-          <section className="relative py-8">
-            <div className="mx-auto grid max-w-6xl gap-8 px-6 lg:grid-cols-[1fr_1.08fr]">
-              <Reveal>
-                <div>
-                  <p className="font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: "#4A4F57" }}>Capacity economics</p>
-                  <h2 className="mt-3 text-3xl font-semibold md:text-4xl" style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}>
-                    Price scales with execution depth.
-                  </h2>
-                  <p className="mt-4 text-base leading-relaxed" style={{ color: "#A4ABB4" }}>
-                    Plans scale by active operators, connected systems, actions, policy complexity, and operational support.
-                  </p>
-                </div>
-              </Reveal>
-              <Reveal delayMs={120}>
-                <MockupWindow
-                  title="Live capacity usage - this month"
-                  subtitle="operators / actions / logs / approvals"
-                  rows={[
-                    { label: "3 active operators", meta: "Revenue, Marketing, Operations", status: "live" },
-                    { label: "3,840 actions executed", meta: "76.8% of Workforce capacity", status: "ok" },
-                    { label: "291 approvals reviewed", meta: "median review time 4m 12s", status: "ok" },
-                    { label: "Audit logs retention", meta: "90 days active", status: "live" },
-                  ]}
-                />
-              </Reveal>
-            </div>
-          </section>
-
-          <section className="relative py-12 md:py-20">
-            <SectionDivider />
-            <div className="mx-auto max-w-6xl px-6 pt-8 md:pt-16">
-              <PricingPlans plans={pricingPlans} />
-              <p className="mt-8 text-center font-mono text-[11px]" style={{ color: "#4A4F57" }}>
-                Request Early Access for the plan that fits your team. If invited, you choose when to start the 3-day trial.
-              </p>
-            </div>
-          </section>
-
-          <section className="relative py-12 md:py-20" style={{ background: "rgba(13,16,21,0.5)" }}>
-            <SectionDivider />
-            <div className="mx-auto max-w-5xl px-6 pt-8 md:pt-16">
-              <span className="font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: "#4A4F57" }}>
-                Capacity model
-              </span>
-              <h2 className="mb-10 mt-3 text-3xl font-semibold md:text-4xl" style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}>
-                Scale by execution, not by seats.
-              </h2>
-              <div className="grid gap-4">
-                {capacityRows.map((row) => (
-                  <MktCard key={row.label} className="p-0">
-                    <div className="grid grid-cols-1 gap-3 p-5 md:grid-cols-4 md:items-center">
-                      <p className="font-mono text-[11px] uppercase tracking-[0.12em]" style={{ color: "#4A4F57" }}>
-                        {row.label}
-                      </p>
-                      {row.values.map((value) => (
-                        <p key={value} className="text-sm" style={{ color: "#A4ABB4" }}>
-                          {value}
-                        </p>
-                      ))}
-                    </div>
-                  </MktCard>
-                ))}
-              </div>
-            </div>
-            <SectionDivider />
-          </section>
-
-          <PricingPageFinalCta heading="Pick a plan that matches your operating capacity." sub="Request Early Access. If invited, you choose when to start the 3-day trial." />
-        </PageShell>
-      </main>
-      <Footer />
-      </>
-    </EarlyAccessProvider>
-  );
+export default function PricingPage() {
+  return <PublicSiteFrame>
+    <PublicHero label="Pricing" title="Operating capacity that scales with the work." description="Foundation, Workforce, and Scale are the canonical Auterim plans. Early Access remains active, so begin with a request and choose when to start a trial only after invitation." secondary={{ label: "How the trial works", href: "/getting-started" }} />
+    <PublicPricing plans={pricingPlans} />
+  </PublicSiteFrame>;
 }

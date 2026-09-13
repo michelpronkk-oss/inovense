@@ -47,15 +47,15 @@ export default function ContactForm() {
 
   if (state === "success") {
     return (
-      <div className="cf cf-success">
-        <h3>Message received.</h3>
-        <p>We will get back to you within one business day.</p>
+      <div className="cf cf-success" role="status" aria-live="polite">
+        <h3>Message sent.</h3>
+        <p>Thanks for reaching out to Auterim.</p>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="cf">
+    <form onSubmit={handleSubmit} className="cf">
       <div className="cf-row">
         <div className="cf-field">
           <label htmlFor="cf-name">Name <em>*</em></label>
@@ -65,6 +65,7 @@ export default function ContactForm() {
             required
             autoComplete="name"
             placeholder="Your name"
+            maxLength={200}
             value={values.name}
             onChange={set("name")}
           />
@@ -76,6 +77,7 @@ export default function ContactForm() {
             type="email"
             required
             autoComplete="email"
+            maxLength={320}
             placeholder="you@company.com"
             value={values.email}
             onChange={set("email")}
@@ -91,6 +93,7 @@ export default function ContactForm() {
             type="text"
             autoComplete="organization"
             placeholder="Your company"
+            maxLength={200}
             value={values.company}
             onChange={set("company")}
           />
@@ -99,10 +102,10 @@ export default function ContactForm() {
           <label htmlFor="cf-reason">Reason</label>
           <select id="cf-reason" value={values.reason} onChange={set("reason")}>
             <option value="">Select a reason</option>
-            <option value="demo">Book a demo</option>
+            <option value="early-access">Early Access</option>
             <option value="pricing">Pricing question</option>
+            <option value="support">Support</option>
             <option value="partnership">Partnership</option>
-            <option value="press">Press inquiry</option>
             <option value="other">Other</option>
           </select>
         </div>
@@ -114,13 +117,15 @@ export default function ContactForm() {
           id="cf-message"
           required
           rows={5}
+          minLength={10}
+          maxLength={5000}
           placeholder="Tell us what you are working on or what you need."
           value={values.message}
           onChange={set("message")}
         />
       </div>
 
-      {state === "error" && <p className="cf-error">{errorMsg}</p>}
+      {state === "error" && <p className="cf-error" role="alert">{errorMsg}</p>}
 
       <button type="submit" disabled={state === "submitting"} className="btn btn-a cf-submit">
         {state === "submitting" ? "Sending…" : "Send message"}

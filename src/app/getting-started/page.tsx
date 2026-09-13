@@ -1,18 +1,34 @@
 import type { Metadata } from "next";
-import { appHref } from "@/lib/urls";
-import { StrategicPage } from "@/components/home-v3/strategic-page";
+import PublicSiteFrame from "@/components/home-v3/public-site-frame";
+import { PublicHero, PublicRows } from "@/components/home-v3/public-page-components";
+import { staticOgImage } from "@/lib/static-og";
+
+const title = "Getting Started with Auterim Early Access";
+const description = "A realistic path from an Early Access request to a controlled operator trial, with workspace invitation, connector setup, policies, approvals, and review.";
 
 export const metadata: Metadata = {
-  title: "Getting Started: AI Workforce Preview",
-  description: "Start with your company context, preview the right Auterim operators and connect systems when you are ready.",
+  title,
+  description,
   alternates: { canonical: "https://auterim.com/getting-started" },
-  openGraph: { url: "https://auterim.com/getting-started", siteName: "Auterim", title: "Getting Started with Auterim", description: "Start with company context. Connect systems when you are ready.", type: "website", images: [{ url: "/og/og-getting-started.png", width: 1200, height: 630, alt: "Getting started with Auterim" }] },
-  twitter: { card: "summary_large_image", title: "Getting Started with Auterim", description: "Start with company context. Connect systems when you are ready.", images: [{ url: "/og/og-getting-started.png", width: 1200, height: 630, alt: "Getting started with Auterim" }] },
+  openGraph: { url: "https://auterim.com/getting-started", siteName: "Auterim", title, description, type: "website", images: [staticOgImage("/getting-started")] },
+  twitter: { card: "summary_large_image", title, description, images: [staticOgImage("/getting-started")] },
+  robots: { index: true, follow: true },
 };
 
-export default function GettingStartedPage() { return <StrategicPage eyebrow="Start with your company" title="Start with one useful business loop, not a blank AI canvas." intro="The practical path is small by design: make the workspace context clear, connect only the system that gives the first operator useful evidence, define the approval boundary, and then review what the operator prepares." cta={{ label: "Start preview", href: appHref("/app/onboarding"), secondaryLabel: "See current operators", secondaryHref: "/operators" }} sections={[
-  { label: "01 / Create the workspace", title: "Make the operating context explicit.", body: "Set the company basics, the work that needs attention first, and who owns the decisions. Missing information remains visible instead of becoming a guess.", links: [{ label: "Company context", href: "/memory" }] },
-  { label: "02 / Connect one useful system", title: "Give the first operator real evidence.", body: "Connect Gmail or Microsoft 365 for communication context, Trello for internal work, or the CRM context relevant to revenue. Connections stay scoped to the role you are setting up.", links: [{ label: "Current integrations", href: "/integrations" }] },
-  { label: "03 / Choose the first operator", title: "Start from the job that is already getting delayed.", body: "Revenue handles prepared follow-up, Client Flow prepares communication and handoffs, and Operations finds stalled Trello work. Each role has a different connector requirement and boundary.", links: [{ label: "Available operators", href: "/operators" }, { label: "Use cases", href: "/use-cases" }] },
-  { label: "04 / Define control, then activate", title: "Keep consequential work with the right owner.", body: "Set what must be approved, activate the operator only when required setup is ready, and use the resulting approvals and logs to review what changed.", links: [{ label: "Approval model", href: "/approvals" }, { label: "Controlled workflows", href: "/workflows" }] },
-]} />; }
+const steps = [
+  { title: "Request Early Access", body: "Tell us about your team and the work you want an operator to handle. Submitting a request does not create an account or start a trial." },
+  { title: "Receive a workspace invitation", body: "If your use case fits the current Early Access program, the team will contact you with next steps and an invitation." },
+  { title: "Connect the systems for the first loop", body: "Choose the available connectors the selected role needs. Auterim adds a layer over those systems; they remain the systems of record." },
+  { title: "Activate the relevant Operators", body: "Start with the role closest to the delayed work: Revenue, Client Flow, Operations, or Support. Availability depends on connector setup and workspace readiness." },
+  { title: "Set policies and approval owners", body: "Define what may run inside policy, what waits for a named decision, and what is blocked. External communication can require approval." },
+  { title: "Let Auterim watch approved context", body: "Once connected and activated, the operator looks for relevant work in its defined area and prepares a next step from the available context." },
+  { title: "Review the first prepared work", body: "Check the evidence, proposed action, and policy outcome. Approve, edit, reject, or leave the work waiting according to your process." },
+  { title: "Start a trial explicitly, when appropriate", body: "An invited workspace can choose to start the three-day trial through the product. It is never started by submitting an Early Access request." },
+];
+
+export default function GettingStartedPage() {
+  return <PublicSiteFrame>
+    <PublicHero label="Early Access path" title="Start with a real operating loop, one deliberate step at a time." description="Early Access begins with a request and an invitation. Setup, connections, operator activation, and any trial start happen later, under your control." secondary={{ label: "See current Operators", href: "/operators" }} />
+    <PublicRows label="Eight steps" title="From first request to reviewed work." rows={steps} className="public-steps" note="Trial access begins only after an invited workspace explicitly starts it. A request alone does not start a trial or payment." />
+  </PublicSiteFrame>;
+}

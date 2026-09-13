@@ -6,12 +6,12 @@ const read = (file) => readFileSync(resolve(process.cwd(), file), "utf8");
 const includes = (source, value, label) => assert.ok(source.includes(value), `${label}: expected ${value}`);
 const h1Count = (source) => (source.match(/<h1(?:\\s|>)/g) ?? []).length;
 
-assert.equal(h1Count(read("src/app/operators/page.tsx")), 1, "operator registry has exactly one page H1");
+assert.equal(h1Count(read("src/components/home-v3/public-page-components.tsx")), 2, "shared marketing and legal hero primitives each render one H1");
 
 for (const page of [
   "src/app/operators/page.tsx",
   "src/app/agents/page.tsx",
-  "src/app/integrations/page.tsx",
+  "src/app/connectors/page.tsx",
   "src/app/workflows/page.tsx",
   "src/app/use-cases/page.tsx",
   "src/app/memory/page.tsx",
@@ -23,20 +23,19 @@ for (const page of [
 
 const operators = read("src/app/operators/page.tsx");
 includes(operators, "Available today", "operator registry separates current roles");
-includes(operators, "Expanding workforce", "operator registry separates future roles");
-for (const name of ["Revenue Operator", "Client Flow Operator", "Operations Operator"]) includes(operators, name, "current operator registry");
+includes(operators, "Roadmap", "operator registry separates planned roles");
+for (const name of ["Revenue Operator", "Client Flow Operator", "Operations Operator", "Support Operator"]) includes(operators, name, "current operator registry");
 includes(operators, "Salesforce is read-context only today.", "Salesforce truth on operator page");
 
 const agents = read("src/app/agents/page.tsx");
 includes(agents, "Current roles for the work Auterim can support today.", "agents page distinct current-role framing");
 assert.ok(!agents.includes("Building Q3 campaign brief"), "agents page contains no invented live operator activity");
 
-const integrations = read("src/app/integrations/page.tsx");
-for (const name of ["Gmail", "Microsoft 365", "HubSpot", "Salesforce", "Trello", "Slack"]) includes(integrations, name, "current integration named");
-for (const unavailable of ["Pipedrive", "Airtable", "Stripe", "Notion", "Zendesk", "Shopify"]) {
-  assert.ok(!integrations.includes(unavailable), `integrations page does not present unavailable ${unavailable}`);
-}
-includes(integrations, "Salesforce writes are not enabled.", "Salesforce write boundary");
+const integrations = read("src/app/connectors/page.tsx");
+includes(integrations, "CONNECTOR_CATALOG", "connector page uses the product registry");
+includes(integrations, "status === \"available\"", "connector page shows only active connectors");
+includes(integrations, "readActions", "connector page reports supported capabilities");
+includes(integrations, "approvalRequiredActions", "connector page reports approval boundaries");
 
 const workflows = read("src/app/workflows/page.tsx");
 includes(workflows, "Inbound opportunity workflow", "concrete revenue workflow");
@@ -44,8 +43,8 @@ includes(workflows, "Blocked task workflow", "concrete operations workflow");
 includes(workflows, "approval", "workflow approval model");
 
 const useCases = read("src/app/use-cases/page.tsx");
-includes(useCases, "Available today", "use cases label live work");
-includes(useCases, "Expanding workforce", "use cases label future work");
+includes(useCases, "available today", "use cases identify the current operator scope");
+for (const area of ["Revenue", "Client Flow", "Operations", "Support"]) includes(useCases, area, "use cases cover current operator outcomes");
 
 const home = read("src/app/page.tsx");
 includes(home, "Find the work before your team has to", "homepage owns clear operating-layer positioning");
@@ -86,9 +85,9 @@ for (const staleExample of ["Atlas Studio", "Vela Partners", "M. Keller"]) {
   assert.ok(!homePage.includes(staleExample), `homepage does not use invented ${staleExample} product data`);
 }
 
-includes(operators, "Defined AI operators for real business work.", "operators targets business operator intent");
+includes(operators, "Operators are roles, not chatbots.", "operators clarifies its defined role model");
 for (const href of ["/integrations", "/approvals", "/workflows", "/getting-started", "/pricing"]) {
-  includes(operators, `href=\"${href}\"`, `operators links to ${href}`);
+  includes(operators, href, `operators links to ${href}`);
 }
 
 includes(agents, "Why business AI agents need defined responsibilities", "agents remains educational and distinct from operators");

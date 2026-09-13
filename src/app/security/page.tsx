@@ -1,213 +1,34 @@
-﻿import type { Metadata } from "next";
-import Nav from "@/components/nav";
-import Footer from "@/components/footer";
-import Link from "next/link";
-import {
-  PageShell,
-  PageHero,
-  MktCard,
-  MockupWindow,
-  SectionDivider,
-  PageCTA,
-  PropList,
-} from "@/components/marketing-ui";
-import Reveal from "@/components/reveal";
+import type { Metadata } from "next";
+import PublicSiteFrame from "@/components/home-v3/public-site-frame";
+import { PublicHero, PublicRows, PublicCta } from "@/components/home-v3/public-page-components";
 import { staticOgImage } from "@/lib/static-og";
 
+const title = "Auterim Security and Data Controls";
+const description = "A factual overview of Auterim authentication, connector token encryption, workspace authorization, approval controls, webhook verification, and activity records.";
+
 export const metadata: Metadata = {
-  title: "AI Agent Security & Policy Controls",
-  description: "See how Auterim protects operator work with scoped connector access, policy checks, execution gates, and reviewable activity records.",
-  alternates: {
-    canonical: "https://auterim.com/security",
-  },
-  openGraph: {
-    url: "https://auterim.com/security",
-    title: "AI Agent Security & Policy Controls | Auterim",
-    description: "See how Auterim protects operator work with scoped connector access, policy checks, execution gates, and reviewable activity records.",
-    type: "website",
-    siteName: "Auterim",
-    images: [staticOgImage("/security")],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "AI Agent Security & Policy Controls | Auterim",
-    description: "See how Auterim protects operator work with scoped connector access, policy checks, execution gates, and reviewable activity records.",
-    images: [staticOgImage("/security")],
-  },
+  title, description,
+  alternates: { canonical: "https://auterim.com/security" },
+  openGraph: { url: "https://auterim.com/security", siteName: "Auterim", title, description, type: "website", images: [staticOgImage("/security")] },
+  twitter: { card: "summary_large_image", title, description, images: [staticOgImage("/security")] },
+  robots: { index: true, follow: true },
 };
 
-const model = [
-  {
-    badge: "PE",
-    title: "Policy Engine",
-    description: "Define what agents can and cannot do before a single action is taken. Policies are enforced at runtime on every execution.",
-  },
-  {
-    badge: "AG",
-    title: "Approval Gates",
-    description: "Human-in-the-loop gates between proposal and execution. Operators surface the action and the reason. You approve or reject.",
-  },
-  {
-    badge: "EL",
-    title: "Execution Logs",
-    description: "Complete audit trail for every run. What executed, what was approved, what was blocked, and when.",
-  },
-];
-
-const properties = [
-  "All actions proposed before execution",
-  "Policy rules enforced at runtime",
-  "Approval required for configurable action types",
-  "Execution logs for operator activity and approval decisions",
-  "Role-based access control",
-  "Data stays within your connector boundaries",
-  "Controls documented in the product preview",
+const controls = [
+  { kicker: "Authentication", title: "Signed-in users are verified through Supabase Auth.", body: "The server-side Supabase client uses the public anon key with the request session. User identity is verified with Supabase Auth rather than trusted from a locally decoded cookie." },
+  { kicker: "Database access", title: "Authorization is enforced in server code and database policies.", body: "Core auth and workspace tables have Row Level Security policies. Some server workflows use a privileged service-role client, which bypasses RLS; those paths are kept in server-side code and apply workspace and role checks in the application." },
+  { kicker: "Connector credentials", title: "Stored connector tokens use authenticated encryption.", body: "The connector token utility encrypts and decrypts credentials with AES-256-GCM using a 32-byte CONNECTOR_TOKEN_ENCRYPTION_KEY. The key is read from the server environment and is not a public client setting." },
+  { kicker: "Provider authorization", title: "OAuth scopes bound what a connector can access.", body: "Connectors use provider OAuth flows with product-defined scopes. Available read and write capabilities differ by provider, and some providers require additional administrator consent. External sends and supported writes can be gated by workspace approval policy." },
+  { kicker: "Approvals and policy", title: "Sensitive work can stop for a human decision.", body: "Operator actions are evaluated against configured policy. Actions can proceed, wait for an approval, or be blocked. Approval availability depends on the workflow and connected provider." },
+  { kicker: "Webhook verification", title: "Billing webhooks verify signatures and timestamp freshness.", body: "The Dodo webhook handler checks an HMAC signature using a timing-safe comparison and rejects timestamps outside its freshness window before processing an event." },
+  { kicker: "Activity records", title: "Runs and decisions can be reviewed in the workspace.", body: "The product records operator activity, policy outcomes, approval decisions, and execution state. Record coverage depends on the action path and connected provider; it is not a guarantee that every external event is observable." },
+  { kicker: "Execution reliability", title: "Exactly-once execution is not promised for every provider action.", body: "Idempotency and deduplication controls apply where supported. External provider timeouts can leave an outcome unclear and may require reconciliation." },
 ];
 
 export default function SecurityPage() {
-  return (
-    <>
-      <Nav />
-      <main>
-        <PageShell>
-          {/* Hero */}
-          <Reveal>
-            <PageHero
-              eyebrow="Platform"
-            heading="Operators act. Policies decide. Humans approve."
-            description="Every agent runs inside your defined policy boundaries. No action executes without passing the policy engine. No sensitive action executes without your approval. Full audit trail for everything that runs."
-            mobileDescription="Policies set the boundary. Sensitive actions wait for approval. Every run is logged."
-            >
-              <Link
-                href="/architecture"
-                className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-medium transition-all hover:-translate-y-px"
-                style={{
-                  background: "#4DE8E1",
-                  color: "#04130F",
-                  boxShadow:
-                    "inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(77,232,225,0.45), 0 8px 28px -8px rgba(77,232,225,0.5)",
-                }}
-              >
-                View architecture
-              </Link>
-              <Link
-                href="/trust"
-                className="inline-flex rounded-xl px-6 py-3 text-sm font-medium transition-colors"
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  color: "#ECEFF3",
-                  boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
-                }}
-              >
-                Trust center
-              </Link>
-            </PageHero>
-          </Reveal>
-
-          <section className="relative py-8">
-            <div className="mx-auto grid max-w-6xl gap-8 px-6 lg:grid-cols-[1fr_1.1fr]">
-              <Reveal>
-                <div>
-                  <p className="font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: "#4A4F57" }}>Guardrail pipeline</p>
-                  <h2 className="mt-3 text-3xl font-semibold md:text-4xl" style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}>
-                    Policy-enforced before execution.
-                  </h2>
-                  <p className="mt-4 text-base leading-relaxed" style={{ color: "#A4ABB4" }}>
-                    Operators can propose actions. The policy engine and approval layer determine what can run.
-                  </p>
-                </div>
-              </Reveal>
-              <Reveal delayMs={120}>
-                <MockupWindow
-                  title="Policy evaluation stream"
-                  subtitle="allow / require approval / block"
-                  rows={[
-                    { label: "email.send to external domain", meta: "require_approval - reviewer: admin", status: "pending" },
-                    { label: "crm.updateRecord stage change", meta: "allowed by CRM auto-write policy", status: "ok" },
-                    { label: "payment.refund", meta: "blocked by payment guardrail", status: "pending" },
-                    { label: "memory.write onboarding context", meta: "allowed and logged", status: "live" },
-                  ]}
-                />
-              </Reveal>
-            </div>
-          </section>
-
-          {/* 3-column model */}
-          <section className="relative py-12 md:py-20">
-            <SectionDivider />
-            <div className="mx-auto max-w-5xl px-6 pt-8 md:pt-16">
-              <span
-                className="font-mono text-[11px] uppercase tracking-[0.14em]"
-                style={{ color: "#4A4F57" }}
-              >
-                Security model
-              </span>
-              <h2
-                className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
-                style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
-              >
-                Three layers between intention and execution.
-              </h2>
-              <div className="grid gap-5 md:grid-cols-3">
-                {model.map((item) => (
-                  <MktCard key={item.title}>
-                    <span
-                      className="mb-4 inline-block rounded px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.14em]"
-                      style={{
-                        background: "rgba(77,232,225,0.08)",
-                        color: "#4DE8E1",
-                        border: "1px solid rgba(77,232,225,0.18)",
-                      }}
-                    >
-                      {item.badge}
-                    </span>
-                    <h3
-                      className="mb-2 text-base font-semibold"
-                      style={{ color: "#ECEFF3", letterSpacing: "-0.015em" }}
-                    >
-                      {item.title}
-                    </h3>
-                    <p className="text-sm leading-relaxed" style={{ color: "#6B7178" }}>
-                      {item.description}
-                    </p>
-                  </MktCard>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* Properties */}
-          <section className="relative py-12 md:py-20" style={{ background: "rgba(13,16,21,0.5)" }}>
-            <SectionDivider />
-            <div className="mx-auto max-w-5xl px-6 pt-8 md:pt-16">
-              <span
-                className="font-mono text-[11px] uppercase tracking-[0.14em]"
-                style={{ color: "#4A4F57" }}
-              >
-                Security properties
-              </span>
-              <h2
-                className="mb-6 md:mb-12 mt-3 text-3xl font-semibold md:text-4xl"
-                style={{ color: "#ECEFF3", letterSpacing: "-0.025em" }}
-              >
-                What you get out of the box.
-              </h2>
-              <PropList items={properties} />
-            </div>
-            <SectionDivider />
-          </section>
-
-          <PageCTA
-            heading="Built for teams that need enforceable control."
-            sub="Deploy one controlled operator first, then expand with policy-safe execution."
-            primary="Get Starter"
-            primaryHref="/app/onboarding"
-            secondary="Book a 20-min demo"
-            secondaryHref="/contact"
-          />
-        </PageShell>
-      </main>
-      <Footer />
-    </>
-  );
+  return <PublicSiteFrame>
+    <PublicHero label="Security and control" title="Keep access bounded and consequential work visible." description="Auterim is built around authenticated workspaces, scoped provider access, workspace policies, and reviewable operator activity. The details below describe implemented controls rather than certification claims." secondary={{ label: "Control model", href: "/control" }} />
+    <PublicRows label="Implemented controls" title="What the product does today." rows={controls} note="Auterim does not represent itself as certified under SOC 2, ISO 27001, HIPAA, or GDPR. Security properties also depend on deployment configuration, provider permissions, and how each workspace sets its policies." />
+    <PublicCta title="Ask about a connector or security control." description="Contact the team with a specific question about the product paths your workspace expects to use." />
+  </PublicSiteFrame>;
 }

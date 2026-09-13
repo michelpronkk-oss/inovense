@@ -20,7 +20,7 @@ export const changelogReleases: ChangelogRelease[] = [
   { date: "September 3, 2026", title: "A clearer Auterim", summary: "The public product story now shows how context becomes controlled work, from the first signal to the approval boundary.", sourceCommits: ["f65702c", "59c1b0d", "ba89867", "1e6da60", "544ed97", "dc666cc", "16fa691", "6588fd5"], changes: [
     { type: "improved", title: "Operating model made visible", description: "The homepage now connects company context, operators, policies and measured runs in one continuous product story." },
     { type: "improved", title: "A quieter, more focused interface", description: "Typography, spacing and motion were refined across the public experience so the important decisions stay clear." },
-    { type: "new", title: "Live product preview", description: "Visitors can follow a representative operator run from signal received to work held at an approval boundary." },
+    { type: "new", title: "Interactive operator walkthrough", description: "Visitors can follow a representative operator run from signal received to work held at an approval boundary." },
   ] },
   { date: "September 3, 2026", title: "A more direct path through the workspace", summary: "The app now makes it easier to understand what needs attention, what is ready, and what to set up next.", sourceCommits: ["87d5d81", "ad27c49", "95dd9b9", "f70f9af", "742f270"], changes: [
     { type: "improved", title: "Navigation follows the work", description: "Workspace navigation now keeps account context and the active page aligned as you move between overview, operators, logs and workflows." },

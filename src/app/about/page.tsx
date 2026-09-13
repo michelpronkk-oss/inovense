@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import AboutEditorial from "@/components/home-v3/about-editorial";
+import EarlyAccessProvider from "@/components/early-access/early-access-provider";
 import { staticOgImage } from "@/lib/static-og";
 
 export const metadata: Metadata = {
@@ -20,8 +21,9 @@ export const metadata: Metadata = {
     description: "Learn why Auterim is building an AI workforce that understands how companies operate, works across existing systems and keeps important actions under clear human control.",
     images: [staticOgImage("/about")],
   },
+  robots: { index: true, follow: true },
 };
 
 export default function AboutPage() {
-  return <AboutEditorial />;
+  return <EarlyAccessProvider><AboutEditorial /></EarlyAccessProvider>;
 }

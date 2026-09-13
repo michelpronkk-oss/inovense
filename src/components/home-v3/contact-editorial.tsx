@@ -1,79 +1,26 @@
-"use client";
-
-import Link from "next/link";
 import ContactForm from "@/components/contact-form";
-import { appHref } from "@/lib/urls";
-import { Head } from "./v3-page";
-import V3Footer from "./v3-footer";
-import { useReveal } from "./use-reveal";
-import "./auterim-v3.css";
-import "./auterim-v3-refinement.css";
-import "./auterim-v3-typography.css";
+import RequestEarlyAccessButton from "./request-early-access-button";
+import { PublicHero } from "./public-page-components";
 
-const SUPPORT_FEATURES = [
-  ["Reply time", "One business day", "Every message gets a real reply, not an autoresponder."],
-  ["Who replies", "The team that builds it", "You reach the people running Auterim, not a support tier."],
-  ["No pressure", "Nothing to commit to", "Ask anything before you connect a system or choose a plan."],
-] as const;
-
-const REASONS = [
-  ["Sales", "Pricing and rollout", "Plans, procurement, or deploying Auterim across more than one team.", "sales@auterim.com", "Sales inquiry"],
-  ["Support", "Already using Auterim", "Help with a run, an approval, or a connected system.", "support@auterim.com", "Support request"],
-  ["Partnerships", "Integrations and referrals", "Build on Auterim, or bring it into a client engagement.", "hello@auterim.com", "Partnership inquiry"],
-] as const;
+const routes = [
+  { label: "General", address: "hello@auterim.com", href: "mailto:hello@auterim.com", description: "Questions about Auterim, the operating model, or working together." },
+  { label: "Support", address: "support@auterim.com", href: "mailto:support@auterim.com", description: "Help with an account, connection, approval, or operator run." },
+];
 
 export default function ContactEditorial() {
-  useReveal("auterim-v3-page");
-
-  return (
-    <div className="auterim-v3-page">
-      <section className="page-hero">
-        <div className="wrap">
-          <div className="close-main rv">
-            <span className="lbl"><i aria-hidden="true" />Contact</span>
-            <h1>Tell us what&apos;s taking up your team&apos;s time.</h1>
-            <p>Talk to us about deploying your first operator, or ask anything about approvals, connectors and control before you connect a system.</p>
-            <div className="close-actions">
-              <Link href={appHref("/app/onboarding")} className="btn btn-a">Start preview <span className="arrow">→</span></Link>
-              <a href="mailto:hello@auterim.com" className="close-run">hello@auterim.com <span>→</span></a>
-            </div>
-          </div>
+  return <>
+    <PublicHero label="Contact" title="Tell us where work keeps getting stuck." description="Ask about an operating workflow, an available connector, a policy boundary, or Early Access. Use the form or write to the address that fits your question." action={false} secondary={{ label: "hello@auterim.com", href: "mailto:hello@auterim.com" }} />
+    <section className="sec public-content contact-public-content">
+      <div className="wrap">
+        <div className="public-section-heading"><span>Direct routes</span><div><h2>Start with the right conversation.</h2><p>Use the contact form for a message, email the team directly, or request Early Access through the shared form.</p></div></div>
+        <div className="contact-public-routes">
+          {routes.map((route) => <a href={route.href} key={route.label}><span>{route.label}</span><strong>{route.address}</strong><p>{route.description}</p></a>)}
+          <div className="contact-public-route-action"><span>Early Access</span><p>Share the work you want an Operator to support.</p><RequestEarlyAccessButton className="public-inline-button" /></div>
         </div>
-      </section>
-
-      <section className="sec">
-        <div className="wrap">
-          <Head label="Where to start" title="Pick what fits, or send a message below." />
-          <div className="body connect-editorial-grid contact-reasons rv">
-            {REASONS.map(([tag, title, body, email, subject]) => (
-              <a href={`mailto:${email}?subject=${encodeURIComponent(subject)}`} key={tag}>
-                <span className="connect-editorial-number">{tag}</span>
-                <h3>{title}</h3>
-                <p>{body}</p>
-                <span className="connect-editorial-cue"><i />{email} <span>→</span></span>
-              </a>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="sec contact-form-section">
-        <div className="wrap">
-          <Head label="Send a message" title="Write to us directly." />
-          <div className="body connect-editorial-grid rv">
-            {SUPPORT_FEATURES.map(([tag, title, body]) => (
-              <article key={tag}>
-                <span className="connect-editorial-number">{tag}</span>
-                <h3>{title}</h3>
-                <p>{body}</p>
-              </article>
-            ))}
-          </div>
-          <div className="body rv"><ContactForm /></div>
-        </div>
-      </section>
-
-      <V3Footer />
-    </div>
-  );
+        <div className="contact-form-heading"><span className="lbl">Send a message</span><h2>Write to the Auterim team.</h2><p>Include enough detail for us to understand the question. Do not send passwords, access tokens, or other credentials.</p></div>
+        <ContactForm />
+        <p className="contact-followup">Messages are sent to <a href="mailto:hello@auterim.com">hello@auterim.com</a>. For account support, you can also write to <a href="mailto:support@auterim.com">support@auterim.com</a>.</p>
+      </div>
+    </section>
+  </>;
 }

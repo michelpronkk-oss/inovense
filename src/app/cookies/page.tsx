@@ -1,84 +1,42 @@
 import type { Metadata } from "next";
-import { PageShell } from "@/components/marketing-ui";
-import V3Header from "@/components/home-v3/v3-header";
-import LegalEditorial from "@/components/home-v3/legal-editorial";
+import PublicSiteFrame from "@/components/home-v3/public-site-frame";
+import { LegalPage } from "@/components/home-v3/public-page-components";
 import CookiePreferencesButton from "@/components/home-v3/cookie-preferences-button";
 import { staticOgImage } from "@/lib/static-og";
 
+const title = "Cookie and Browser Storage Policy";
+const description = "Learn how Auterim uses authentication cookies, local storage, session storage, and optional traffic attribution, and update your preferences.";
+
 export const metadata: Metadata = {
-  title: "Cookie Policy",
-  description: "How Auterim uses cookies. Strictly necessary cookies for platform operation and analytics cookies to improve the product. No advertising cookies.",
-  alternates: {
-    canonical: "https://auterim.com/cookies",
-  },
-  openGraph: {
-    url: "https://auterim.com/cookies",
-    title: "Cookie Policy | Auterim",
-    description: "How Auterim uses cookies. Strictly necessary cookies for platform operation and analytics cookies to improve the product. No advertising cookies.",
-    type: "website",
-    siteName: "Auterim",
-    images: [staticOgImage("/")],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Cookie Policy | Auterim",
-    description: "How Auterim uses cookies. Strictly necessary cookies for platform operation and analytics cookies to improve the product. No advertising cookies.",
-    images: [staticOgImage("/")],
-  },
+  title, description,
+  alternates: { canonical: "https://auterim.com/cookies" },
+  openGraph: { url: "https://auterim.com/cookies", siteName: "Auterim", title: `${title} | Auterim`, description, type: "website", images: [staticOgImage("/cookies")] },
+  twitter: { card: "summary_large_image", title: `${title} | Auterim`, description, images: [staticOgImage("/cookies")] },
+  robots: { index: true, follow: true },
 };
 
 export default function CookiesPage() {
-  return (
-    <div className="font-[family-name:var(--font-geist-sans)]">
-      <V3Header />
-      <main>
-        <PageShell>
-          <LegalEditorial title="Cookie Policy" lastUpdated="May 2026">
-            <div className="legal-notice">
-              <i aria-hidden="true" />
-              <span>This policy describes Auterim as it operates today, in product preview. It will be reviewed with counsel before commercial launch, and this page will be updated when that happens.</span>
-            </div>
+  return <PublicSiteFrame><LegalPage title={title}>
+    <h2>Overview</h2>
+    <p>Auterim uses cookies in the signed-in product to support authentication. The public site also uses browser local and session storage for preference and optional traffic-attribution functions. The traffic-attribution feature does not set an analytics cookie.</p>
 
-            <h2>Overview</h2>
-            <p>
-              Auterim uses cookies and similar technologies to keep you signed in, remember settings, and understand how the platform and marketing site are used. This policy explains what we use and why.
-            </p>
+    <h2>Authentication cookies</h2>
+    <p>When you sign in, Supabase Auth may set and read session cookies so the product can maintain and refresh your authenticated session. These cookies are used by the product authentication flow. Blocking them can prevent sign-in or session continuity.</p>
 
-            <h2>Strictly necessary cookies</h2>
-            <p>
-              Required for the platform to function: keeping you signed in to your workspace, remembering your session across the admin, app, and portal, and protecting against cross-site request forgery. These cannot be turned off without breaking core functionality.
-            </p>
+    <h2>Cookie preference</h2>
+    <p>Your public-site choice to accept or decline optional traffic attribution is stored in local storage under <code>auterim_cookie_consent</code>. This preference is not itself an authentication cookie.</p>
 
-            <h2>Analytics cookies</h2>
-            <p>
-              Used to understand which pages and features are used, so we can improve the product and this site. These are set only with your consent where required by law, and never combine with advertising networks.
-            </p>
+    <h2>Optional traffic attribution</h2>
+    <p>If you accept, the site may store first-touch source, landing path, referrer host, campaign parameters, and a timestamp in local storage under <code>_iv_attr</code>. A session identifier is stored in session storage under <code>_iv_sk</code>. Page and attribution details are sent to Auterim&apos;s own traffic endpoint to understand site traffic. The tracker does not run until you accept. If you decline, any existing attribution snapshot and session identifier are removed and future tracking remains off.</p>
 
-            <h2>Cookies we do not use</h2>
-            <ul>
-              <li>No advertising or ad-retargeting cookies</li>
-              <li>No cross-site tracking sold or shared with third parties</li>
-              <li>No cookies from social media widgets we haven&apos;t embedded</li>
-            </ul>
+    <h2>Advertising</h2>
+    <p>The traffic-attribution code described here does not set advertising cookies or send the recorded visit to an advertising network.</p>
 
-            <h2>Managing cookies</h2>
-            <p>
-              You can accept or decline analytics cookies at any time from the preference banner, or block and delete cookies through your browser settings directly. Disabling strictly necessary cookies will prevent you from staying signed in and will affect core platform functionality.
-            </p>
-            <CookiePreferencesButton />
+    <h2>Manage your choice</h2>
+    <p>You can reopen the preference controls at any time. Your browser also lets you inspect and clear cookies or storage. Clearing the preference value will cause the choice banner to appear again.</p>
+    <CookiePreferencesButton />
 
-            <h2>Changes to this policy</h2>
-            <p>
-              We will update this page if the cookies we use change, and update the date below when we do.
-            </p>
-
-            <h2>Contact</h2>
-            <p>
-              For questions about this policy, contact us at <a href="mailto:hello@auterim.com">hello@auterim.com</a>. See also our <a href="/privacy">Privacy Policy</a> and <a href="/terms">Terms of Service</a>.
-            </p>
-          </LegalEditorial>
-        </PageShell>
-      </main>
-    </div>
-  );
+    <h2>Changes and contact</h2>
+    <p>We will update this page if the technologies described here change. Questions can be sent to <a href="mailto:hello@auterim.com">hello@auterim.com</a>. See our <a href="/privacy">Privacy Policy</a> and <a href="/terms">Terms of Service</a>.</p>
+  </LegalPage></PublicSiteFrame>;
 }
