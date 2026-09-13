@@ -4,7 +4,7 @@ import { type PricingPlan } from "@/lib/pricing";
 import { useEarlyAccess } from "@/components/early-access/early-access-provider";
 
 export function PricingPlans({ plans }: { plans: PricingPlan[] }) {
-  const { openEarlyAccess } = useEarlyAccess();
+  const { openEarlyAccess, hasSubmitted } = useEarlyAccess();
 
   return (
     <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -59,7 +59,7 @@ export function PricingPlans({ plans }: { plans: PricingPlan[] }) {
                     boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
                   }}
             >
-              {plan.cta}
+              {hasSubmitted ? "Request received" : plan.cta}
             </button>
           </div>
         );

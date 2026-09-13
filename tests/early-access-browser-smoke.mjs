@@ -71,14 +71,27 @@ try {
     assert.match(await planDialog.innerText(), /Request submitted as\s+maya\.chen@example\.com/i);
     if (slug === "workforce") await page.screenshot({ path: path.join(outputDirectory, "early-access-success.png") });
     await planDialog.getByRole("button", { name: "Done" }).click();
-    assert.equal(await page.evaluate(() => document.activeElement?.textContent?.includes("Request early access")), true, "Done restores focus to the selected-plan CTA");
+    assert.equal(await page.evaluate(() => document.activeElement?.closest("[data-plan]")?.getAttribute("data-plan")), slug, "Done restores focus to the selected-plan CTA");
+    const selectedPlanCta = page.locator(`.homepage-plan-teaser article[data-plan="${slug}"] button`);
+    assert.equal((await selectedPlanCta.innerText()).trim(), "Request received", `${label} CTA reflects the submitted request`);
+    assert.equal((await page.locator(".homepage-plan-teaser article button").allInnerTexts()).every((text) => text.trim() === "Request received"), true, "all plan CTAs reflect that an Early Access request is already received");
+    await selectedPlanCta.click();
+    await page.getByRole("heading", { name: "You’re on the early access list." }).waitFor();
+    await page.getByRole("button", { name: "Done" }).click();
+    await page.locator(".ea-dialog").waitFor({ state: "detached" });
+    if (slug !== "scale") {
+      await page.goto(`${baseUrl}/?utm_source=x&utm_medium=founder&utm_campaign=early_access&utm_content=founder_post`);
+    }
   }
 
+  assert.equal((await page.locator(".hero-cta button").innerText()).trim(), "Request received", "the main Early Access CTA reflects a completed request");
   const headerTrigger = page.locator("header .cta > button");
   await headerTrigger.click();
-  const headerDialog = page.getByRole("dialog", { name: "Get early access to Auterim." });
+  const headerDialog = page.locator(".ea-dialog");
   await headerDialog.waitFor();
-  assert.equal(await headerDialog.getByText("Plan interest").count(), 0, "non-plan entry points do not carry plan context");
+  await headerDialog.getByRole("heading", { name: "You’re on the early access list." }).waitFor();
+  assert.equal(await headerDialog.getByText("Plan interest").count(), 1, "the confirmation retains the originally submitted plan across entry points");
+  await headerDialog.getByText("Scale", { exact: true }).waitFor();
   await page.keyboard.press("Shift+Tab");
   await page.keyboard.press("Shift+Tab");
   assert.equal(await page.evaluate(() => document.activeElement?.classList.contains("ea-submit")), true, "the focus trap wraps from the first control to the final action");
@@ -87,11 +100,11 @@ try {
   await page.keyboard.press("Escape");
   await page.locator(".ea-dialog").waitFor({ state: "detached" });
   assert.equal(await page.locator(".ea-dialog").count(), 0, "Escape dismisses the dialog");
-  assert.equal(await page.evaluate(() => document.activeElement?.textContent?.includes("Request early access")), true, "Escape restores focus to the header CTA");
+  assert.equal(await page.evaluate(() => document.activeElement?.textContent?.includes("Request received")), true, "Escape restores focus to the submitted header CTA");
 
   await page.locator(".homepage-final-cta button").scrollIntoViewIfNeeded();
   await page.locator(".homepage-final-cta button").click();
-  await page.getByRole("dialog", { name: "Get early access to Auterim." }).waitFor();
+  await page.locator(".ea-dialog").waitFor();
   await page.locator(".ea-close").click();
   await page.locator(".ea-dialog").waitFor({ state: "detached" });
 
@@ -114,6 +127,10 @@ try {
     if (width <= 600) {
       assert.ok(Math.abs(rect.y + rect.height - height) <= 2, `mobile sheet is anchored to the bottom at ${width}px`);
       assert.equal(await page.evaluate(() => document.activeElement?.classList.contains("ea-dialog")), true, "mobile opens without summoning the keyboard");
+      const mobileControlStyles = await currentDialog.locator('input:not([tabindex="-1"]),select,textarea').evaluateAll((controls) => controls.map((control) => Number.parseFloat(getComputedStyle(control).fontSize)));
+      assert.ok(mobileControlStyles.every((fontSize) => fontSize >= 16), `mobile fields use at least 16px text to prevent iOS focus zoom at ${width}px`);
+      const fieldColumns = await currentDialog.locator(".ea-fields").evaluate((fields) => getComputedStyle(fields).gridTemplateColumns.trim().split(/\s+/).length);
+      assert.equal(fieldColumns, 1, `mobile form fields use a readable single column at ${width}px`);
     }
     if (width === 390) {
       const helper = await currentDialog.locator(".ea-form-footer > span").boundingBox();

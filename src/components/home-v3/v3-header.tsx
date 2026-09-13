@@ -17,7 +17,7 @@ function V3HeaderContent() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDetailsElement>(null);
   const userState = usePublicUserState();
-  const { openEarlyAccess } = useEarlyAccess();
+  const { openEarlyAccess, hasSubmitted } = useEarlyAccess();
   const signInHref = getPublicSignInHref();
   const showSignIn = userState === "guest";
   useEffect(() => {
@@ -51,7 +51,7 @@ function V3HeaderContent() {
         </nav>
         <div className="cta">
           {showSignIn && <Link className="in" href={signInHref}>Sign in</Link>}
-          <button type="button" className="btn btn-a" onClick={(event) => openEarlyAccess({ trigger: event.currentTarget })}>Request early access</button>
+          <button type="button" className="btn btn-a" onClick={(event) => openEarlyAccess({ trigger: event.currentTarget })}>{hasSubmitted ? "Request received" : "Request early access"}</button>
         </div>
         <details className="mobile-menu" ref={menuRef} onToggle={(event) => setMenuOpen(event.currentTarget.open)}>
           <summary aria-label={menuOpen ? "Close navigation" : "Open navigation"} aria-expanded={menuOpen} aria-controls="mobile-navigation">
@@ -69,7 +69,7 @@ function V3HeaderContent() {
               <Link href="/#pricing" onClick={closeMenu}>Pricing</Link>
               {showSignIn && <Link href={signInHref} onClick={closeMenu}>Sign in</Link>}
             </div>
-            <button type="button" className="mobile-menu-cta btn btn-a" onClick={(event) => { const menuTrigger = menuRef.current?.querySelector<HTMLElement>("summary") ?? event.currentTarget; closeMenu(); openEarlyAccess({ trigger: menuTrigger }); }}>Request early access <span className="arrow">→</span></button>
+            <button type="button" className="mobile-menu-cta btn btn-a" onClick={(event) => { const menuTrigger = menuRef.current?.querySelector<HTMLElement>("summary") ?? event.currentTarget; closeMenu(); openEarlyAccess({ trigger: menuTrigger }); }}>{hasSubmitted ? "Request received" : <>Request early access <span className="arrow">→</span></>}</button>
           </nav>
         </details>
       </div>

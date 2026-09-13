@@ -25,7 +25,7 @@ const RAIL_PATHS = [
 ];
 
 export default function HeroEditorial() {
-  const { openEarlyAccess } = useEarlyAccess();
+  const { openEarlyAccess, hasSubmitted } = useEarlyAccess();
   /* Mouse-driven parallax intentionally removed: it caused perceptible shaking and soft text. */
   /* useEffect(() => {
     const section = sectionRef.current;
@@ -103,7 +103,9 @@ export default function HeroEditorial() {
           <h1>Auterim <em className="hero-editorial-forward">finds the work</em> before your team has to.</h1>
           <p className="say"><ResponsiveCopy desktop="Connect your tools. Auterim finds the work and acts under your rules." /></p>
           <div className="hero-cta">
-            <button type="button" onClick={(event) => openEarlyAccess({ trigger: event.currentTarget })} className="btn btn-a">Request early access <span className="arrow">→</span></button>
+            <button type="button" onClick={(event) => openEarlyAccess({ trigger: event.currentTarget })} className="btn btn-a">
+              {hasSubmitted ? "Request received" : <>Request early access <span className="arrow">→</span></>}
+            </button>
             <a href="#how" className="btn btn-b">See how it works</a>
           </div>
         </div>

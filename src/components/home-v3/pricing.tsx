@@ -15,7 +15,7 @@ const CYAN = "#4DE8E1";
 const CYAN_LINE = "rgba(77,232,225,0.28)";
 
 export default function PricingSection() {
-  const { openEarlyAccess } = useEarlyAccess();
+  const { openEarlyAccess, hasSubmitted } = useEarlyAccess();
   return (
     <section id="pricing" className="mx-auto w-full max-w-[1240px] px-5 py-16 sm:px-6 md:py-24 lg:px-8">
       <Reveal>
@@ -91,8 +91,8 @@ export default function PricingSection() {
                       : { background: "rgba(255,255,255,0.025)", color: TEXT, boxShadow: `inset 0 0 0 1px ${LINE_2}` }
                   }
                 >
-                  Request early access
-                  <Icon name="arrow" size={13} />
+                  {hasSubmitted ? "Request received" : "Request early access"}
+                  {!hasSubmitted && <Icon name="arrow" size={13} />}
               </button>
 
               <div className="my-5 h-px" style={{ background: LINE }} />

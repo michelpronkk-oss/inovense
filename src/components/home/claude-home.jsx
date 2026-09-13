@@ -2365,7 +2365,7 @@ const OnboardingSection = () => {
 // 11. Pricing
 // ============================================================================
 const PricingSection = () => {
-  const { openEarlyAccess } = useEarlyAccess();
+  const { openEarlyAccess, hasSubmitted } = useEarlyAccess();
   const tiers = pricingPlans;
 
   return (
@@ -2390,7 +2390,7 @@ const PricingSection = () => {
               </div>
               <div className="pr-hint">{t.billingLabel}</div>
               <button type="button" onClick={(event) => openEarlyAccess({ plan: t.plan_tier, trigger: event.currentTarget })} className={`btn ${t.featured ? "btn-primary" : "btn-ghost"} pr-cta`}>
-                Request early access <I.arrow size={13} />
+                {hasSubmitted ? "Request received" : <>Request early access <I.arrow size={13} /></>}
               </button>
               <div className="pr-divider" />
               <ul className="pr-bullets">

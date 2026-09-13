@@ -91,17 +91,20 @@
 
 @media (max-width: 600px) {
   .ea-backdrop { align-items: flex-end; padding: 0; }
-  .ea-dialog { width: 100%; max-height: min(94dvh, calc(100dvh - env(safe-area-inset-top) - 8px)); padding: 28px 22px calc(22px + env(safe-area-inset-bottom)); border-right: 0; border-bottom: 0; border-left: 0; border-radius: 12px 12px 0 0; }
+  .ea-dialog { width: 100%; max-height: min(94dvh, calc(100dvh - env(safe-area-inset-top) - 8px)); padding: 26px 20px calc(22px + env(safe-area-inset-bottom)); border-right: 0; border-bottom: 0; border-left: 0; border-radius: 16px 16px 0 0; }
   .ea-dialog::before { left: 22px; }
   .ea-close { top: 13px; right: 13px; width: 34px; height: 34px; }
   .ea-heading { padding-right: 32px; }
   .ea-heading h2, .ea-success-content h2 { font-size: clamp(24px, 7vw, 30px); }
-  .ea-heading > p, .ea-success-content > p { font-size: 13px; }
+  .ea-heading > p, .ea-success-content > p { font-size: 14px; line-height: 1.55; }
   .ea-form { margin-top: 20px; }
-  .ea-fields { gap: 12px; }
-  .ea-field input, .ea-field select { min-height: 45px; }
-  .ea-field-use-case textarea { min-height: 82px; }
-  .ea-form-footer { align-items: stretch; flex-direction: column; gap: 9px; margin-top: 16px; }
+  .ea-fields { grid-template-columns: minmax(0, 1fr); gap: 13px; }
+  .ea-field-use-case { grid-column: auto; }
+  .ea-field label { font-size: 12px; }
+  /* iOS Safari zooms the page when a focused form control uses text below 16px. */
+  .ea-field input, .ea-field select, .ea-field textarea { min-height: 48px; padding: 11px 12px; font-size: 16px; line-height: 1.4; }
+  .ea-field-use-case textarea { min-height: 104px; }
+  .ea-form-footer { align-items: stretch; flex-direction: column; gap: 10px; margin-top: 18px; }
   .ea-form-footer .ea-submit { width: 100%; }
   .ea-form-footer > span { max-width: none; text-align: center; }
   .ea-success-content { padding-top: 10px; }
@@ -112,16 +115,15 @@
   .ea-dialog::before { left: 18px; }
   .ea-close { top: 9px; right: 12px; }
   .ea-heading h2 { margin-top: 8px; font-size: 24px; line-height: 1.08; }
-  .ea-heading > p { margin-top: 8px; font-size: 12px; line-height: 1.48; }
+  .ea-heading > p { margin-top: 8px; font-size: 13px; line-height: 1.5; }
   .ea-form { margin-top: 14px; }
-  .ea-fields { grid-template-columns: 1fr; gap: 9px; }
-  .ea-field { gap: 4px; }
-  .ea-field-use-case { grid-column: auto; }
-  .ea-field input, .ea-field select { min-height: 41px; padding: 8px 10px; }
-  .ea-field textarea { min-height: 66px; padding: 8px 10px; }
+  .ea-fields { gap: 10px; }
+  .ea-field { gap: 5px; }
+  .ea-field input, .ea-field select { min-height: 46px; padding: 10px; }
+  .ea-field textarea { min-height: 92px; padding: 10px; }
   .ea-form-footer { gap: 7px; margin-top: 12px; }
-  .ea-form-footer .ea-submit { min-height: 42px; }
-  .ea-form-footer > span { font-size: 10px; line-height: 1.3; }
+  .ea-form-footer .ea-submit { min-height: 46px; }
+  .ea-form-footer > span { font-size: 11px; line-height: 1.4; }
 }
 
 @media (prefers-reduced-motion: reduce) {

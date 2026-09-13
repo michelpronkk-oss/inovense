@@ -8,6 +8,7 @@ import "./early-access.css";
 
 type EarlyAccessContextValue = {
   openEarlyAccess: (options?: { plan?: EarlyAccessPlan | null; trigger?: HTMLElement | null }) => void;
+  hasSubmitted: boolean;
 };
 
 const EarlyAccessContext = createContext<EarlyAccessContextValue | null>(null);
@@ -36,15 +37,16 @@ export function useOptionalEarlyAccess() {
 export default function EarlyAccessProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [plan, setPlan] = useState<EarlyAccessPlan | null>(null);
+  const [submission, setSubmission] = useState<{ email: string; plan: EarlyAccessPlan | null } | null>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
   const openEarlyAccess = useCallback((options?: { plan?: EarlyAccessPlan | null; trigger?: HTMLElement | null }) => {
-    const selectedPlan = options?.plan ?? null;
+    const selectedPlan = submission?.plan ?? options?.plan ?? null;
     setPlan(selectedPlan);
     returnFocusRef.current = options?.trigger ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     setIsOpen(true);
     track("early_access_modal_opened", selectedPlan);
-  }, []);
+  }, [submission]);
 
   const closeEarlyAccess = useCallback(() => setIsOpen(false), []);
 
@@ -64,20 +66,20 @@ export default function EarlyAccessProvider({ children }: { children: ReactNode 
   }, [isOpen]);
 
   return (
-    <EarlyAccessContext.Provider value={{ openEarlyAccess }}>
+    <EarlyAccessContext.Provider value={{ openEarlyAccess, hasSubmitted: Boolean(submission) }}>
       {children}
-      {isOpen && <EarlyAccessModal plan={plan} onClose={closeEarlyAccess} />}
+      {isOpen && <EarlyAccessModal plan={plan} initialSuccessEmail={submission?.email ?? ""} onSuccess={(email) => setSubmission({ email, plan })} onClose={closeEarlyAccess} />}
     </EarlyAccessContext.Provider>
   );
 }
 
-function EarlyAccessModal({ plan, onClose }: { plan: EarlyAccessPlan | null; onClose: () => void }) {
+function EarlyAccessModal({ plan, initialSuccessEmail, onSuccess, onClose }: { plan: EarlyAccessPlan | null; initialSuccessEmail: string; onSuccess: (email: string) => void; onClose: () => void }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const [values, setValues] = useState(EMPTY_VALUES);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successEmail, setSuccessEmail] = useState("");
+  const [successEmail, setSuccessEmail] = useState(initialSuccessEmail);
   const [hasStarted, setHasStarted] = useState(false);
   const isSuccess = Boolean(successEmail);
 
@@ -178,6 +180,7 @@ function EarlyAccessModal({ plan, onClose }: { plan: EarlyAccessPlan | null; onC
         return;
       }
       setSuccessEmail(validation.data.email);
+      onSuccess(validation.data.email);
       track("early_access_success", plan);
     } catch {
       setSubmitError("We couldn’t send your request just now. Please check your connection and try again.");
@@ -211,6 +214,7 @@ function EarlyAccessModal({ plan, onClose }: { plan: EarlyAccessPlan | null; onC
             <div className="ea-success-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path d="m5 12.5 4.2 4.2L19 7" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg></div>
             <h2 id="early-access-title">You’re on the early access list.</h2>
             <p id="early-access-description">We’re opening Auterim to a small group of teams before public launch. If your use case is a good fit for the current beta, we’ll reach out with next steps.</p>
+            {plan && <span className="ea-plan-context">Plan interest <strong>{PLAN_NAMES[plan]}</strong></span>}
             <div className="ea-confirmation-address"><span>Request submitted as</span><strong>{successEmail}</strong></div>
             <button type="button" className="ea-submit" data-ea-done onClick={onClose}>Done</button>
           </div>

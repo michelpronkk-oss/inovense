@@ -35,7 +35,7 @@ export function Head({ label, title, body }: { label: string; title: string; bod
 }
 
 export default function V3Page() {
-  const { openEarlyAccess } = useEarlyAccess();
+  const { openEarlyAccess, hasSubmitted } = useEarlyAccess();
 
   useEffect(() => {
     const root = document.querySelector<HTMLElement>(".auterim-v3-page");
@@ -113,7 +113,9 @@ export default function V3Page() {
             <ul>{plan.features.slice(0, 3).map((feature) => <li key={feature}><span className="homepage-plan-check"><Icon name="check" size={10} /></span>{feature}</li>)}</ul>
             <span className="homepage-plan-spacer" aria-hidden="true" />
             <span className="homepage-plan-divider" aria-hidden="true" />
-            <button type="button" onClick={(event) => openEarlyAccess({ plan: plan.plan_tier, trigger: event.currentTarget })}>Request early access <span aria-hidden="true">→</span></button>
+            <button type="button" onClick={(event) => openEarlyAccess({ plan: plan.plan_tier, trigger: event.currentTarget })}>
+              {hasSubmitted ? "Request received" : <>Request early access <span aria-hidden="true">→</span></>}
+            </button>
           </article>;
         })}
       </div>
@@ -124,7 +126,7 @@ export default function V3Page() {
       <div className="body faq rv">{AUTERIM_HOME_FAQS.map(({ question, answer }, index) => <details key={question}><summary><span className="faq-index">{String(index + 1).padStart(2, "0")}</span><span className="faq-q">{question}</span><span className="faq-toggle" aria-hidden="true" /></summary><p>{answer}</p></details>)}</div>
     </div></section>
 
-    <section className="close homepage-final-cta"><div className="wrap close-in rv"><div className="close-main"><span className="lbl">Start with the work that matters most</span><h2>Find your first operator.</h2><p>Tell us what you want Auterim to handle first. We’re reviewing use cases for the current Early Access program.</p><div className="close-actions"><button type="button" onClick={(event) => openEarlyAccess({ trigger: event.currentTarget })} className="btn btn-a">Request early access <span className="arrow">→</span></button><a href="#how" className="close-run">See how it works <span>→</span></a></div></div><FinalCtaVisual /></div></section>
+    <section className="close homepage-final-cta"><div className="wrap close-in rv"><div className="close-main"><span className="lbl">Start with the work that matters most</span><h2>Find your first operator.</h2><p>Tell us what you want Auterim to handle first. We’re reviewing use cases for the current Early Access program.</p><div className="close-actions"><button type="button" onClick={(event) => openEarlyAccess({ trigger: event.currentTarget })} className="btn btn-a">{hasSubmitted ? "Request received" : <>Request early access <span className="arrow">→</span></>}</button><a href="#how" className="close-run">See how it works <span>→</span></a></div></div><FinalCtaVisual /></div></section>
     <V3Footer />
   </div>;
 }
