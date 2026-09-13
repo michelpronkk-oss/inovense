@@ -70,6 +70,11 @@ export async function createGmailSendApproval(input: {
   customerEmailMode?: CustomerEmailMode;
   slackNotificationSettings?: SlackNotificationSettings;
 }) {
+  if (input.dedupeKey) {
+    const existing = await input.supabase.from("os_approvals").select("id").eq("workspace_id", input.workspaceId).eq("dedupe_key", input.dedupeKey).in("status", ["pending", "executing", "approved"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (existing.error) throw new Error(`Gmail approval idempotency lookup failed: ${existing.error.message}`);
+    if (typeof existing.data?.id === "string") return { approvalId: existing.data.id, reused: true };
+  }
   const approvalId = operatorRuntimeId("appr-revenue-gmail");
   const customerEmailMode = input.customerEmailMode ?? "approval_required";
   const governance = await buildBundledApprovalGovernance({
@@ -103,6 +108,10 @@ export async function createGmailSendApproval(input: {
       workspaceId: input.workspaceId,
       operatorRunId: input.runId,
       operatorKey: "revenue",
+      workflowId: typeof input.sourceMetadata?.workflowId === "string" ? input.sourceMetadata.workflowId : null,
+      workflowObjective: typeof input.sourceMetadata?.workflowObjective === "string" ? input.sourceMetadata.workflowObjective : null,
+      workflowStepId: typeof input.sourceMetadata?.workflowStepId === "string" ? input.sourceMetadata.workflowStepId : null,
+      workflowStepOrder: typeof input.sourceMetadata?.workflowStepOrder === "number" ? input.sourceMetadata.workflowStepOrder : null,
       dedupeKey: input.dedupeKey ?? null,
       dedupeMetadata: input.dedupeMetadata ?? null,
       to: input.to,
@@ -142,6 +151,12 @@ export async function createGmailSendApproval(input: {
     policy_reason: input.policyReason,
   });
 
-  if (insert.error) throw new Error(insert.error.message);
-  return { approvalId };
+  if (insert.error) {
+    if (insert.error.code === "23505" && input.dedupeKey) {
+      const raced = await input.supabase.from("os_approvals").select("id").eq("workspace_id", input.workspaceId).eq("dedupe_key", input.dedupeKey).in("status", ["pending", "executing", "approved"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (!raced.error && typeof raced.data?.id === "string") return { approvalId: raced.data.id, reused: true };
+    }
+    throw new Error(insert.error.message);
+  }
+  return { approvalId, reused: false };
 }

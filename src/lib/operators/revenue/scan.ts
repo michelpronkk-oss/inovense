@@ -29,6 +29,7 @@ import {
 } from "@/lib/operators/revenue/crm";
 import type { PreparedHubSpotActions } from "@/lib/operators/executors/hubspot";
 import { logOperatorEvent, operatorRuntimeId } from "@/lib/operators/logging";
+import { logRevenueLifecycle } from "@/lib/operators/revenue/lifecycle-log";
 import { getOperatorReadiness, type OperatorReadiness } from "@/lib/operators/readiness";
 import { getWorkspaceExecutionEligibility } from "@/lib/os/execution-eligibility";
 import { draftRevenueFollowUpWithAI } from "@/lib/operators/revenue/ai-drafting";
@@ -305,6 +306,7 @@ export type RevenueScanSummary = {
   opportunities?: {
     messageId: string;
     threadId?: string;
+    receivedAt?: string;
     from: string;
     subject: string;
     matchedKeywords: string[];
@@ -317,6 +319,13 @@ export type RevenueScanSummary = {
     crmPreparationStatus?: string;
     dedupeKey?: string;
     signalCandidate?: SignalCandidate;
+    signalId?: string;
+    workflowId?: string;
+    workflowStepId?: string;
+    workflowStepOrder?: number;
+    workflowIdentity?: "business_problem" | "thread" | "message";
+    workflowUpdatedAt?: string | null;
+    approvalStatus?: string;
     runId: string;
     approvalId: string;
   }[];
@@ -330,10 +339,15 @@ export type RevenueScanSummary = {
   }[];
   skipped?: {
     messageId: string;
+    threadId?: string;
+    signalId?: string;
+    workflowId?: string;
+    workflowStepId?: string;
     subject?: string;
     from?: string;
     reason: string;
     dedupeKey?: string;
+    dedupeReason?: string;
   }[];
   readiness?: unknown;
   error?: string;
@@ -974,6 +988,17 @@ async function observeRevenueWorkflows(input: {
     }
     if (!dealObservation) continue;
     await recordObservedWorkflowOutcome({ workspaceId: input.workspaceId, operatorKey: "revenue", workflowId, signalId: String(signal.id), executionIntentId: step.execution_intent_id ? String(step.execution_intent_id) : null, outcomeType: dealObservation.outcomeType, attributionLevel: dealObservation.attributionLevel, confidence: dealObservation.confidence, evidenceRefs: dealObservation.evidenceRefs, observedAt: new Date().toISOString(), supabase: input.supabase });
+    logRevenueLifecycle("outcome_recorded", {
+      workspaceId: input.workspaceId,
+      provider: String(signal.source) === "microsoft" ? "microsoft" : "gmail",
+      messageId: sourceId,
+      threadId,
+      signalId: String(signal.id),
+      workflowId,
+      actionId: String(step.id),
+      state: "observed",
+      outcomeType: dealObservation.outcomeType,
+    });
     // A no-response observation is follow-through state, not completion. It
     // stays visible for another bounded review cycle instead of pretending the
     // commercial work is finished.
@@ -1337,12 +1362,14 @@ export async function scanRevenueOpportunities(input: {
       const duplicate = findDuplicateReason(dedupe, handled);
       const isReactivation = Boolean(duplicate && duplicate.scope === "thread");
       if (duplicate && duplicate.scope === "message") {
+        logRevenueLifecycle("signal_skipped", { workspaceId, provider: emailConnector, messageId: message.id || item.id, threadId: message.threadId, state: "skipped", skipReason: duplicate.reason, dedupeReason: `message:${duplicate.reason}` });
         skipped.push({ messageId: message.id || item.id, subject: message.subject, from: message.from, reason: duplicate.reason, dedupeKey: dedupe.dedupeKey });
         continue;
       }
 
       const detected = detectOpportunity(message, providerEmail);
       if (detected.kind === "skipped") {
+        logRevenueLifecycle("signal_skipped", { workspaceId, provider: emailConnector, messageId: message.id || item.id, threadId: message.threadId, state: "skipped", skipReason: detected.reason });
         skipped.push({ messageId: message.id || item.id, subject: message.subject, from: message.from, reason: detected.reason });
         continue;
       }
@@ -1389,9 +1416,19 @@ export async function scanRevenueOpportunities(input: {
       const routedSignal = routeSignalEvent(signalEvent);
       const signalCandidate = routedSignal.candidates.find((candidate) => candidate.operatorKey === "revenue") ?? null;
       if (!signalCandidate) {
+        logRevenueLifecycle("signal_skipped", { workspaceId, provider: emailConnector, messageId: message.id, threadId: message.threadId, state: "skipped", skipReason: "inbound_intent_not_revenue" });
         skipped.push({ messageId: message.id, subject: message.subject, from: message.from, reason: "inbound_intent_not_revenue" });
         continue;
       }
+      logRevenueLifecycle("signal_routed", {
+        workspaceId,
+        provider: emailConnector,
+        messageId: message.id,
+        threadId: message.threadId,
+        signalId: signalCandidate.signalId,
+        state: "candidate_routed",
+        dedupeReason: isReactivation ? `thread_reactivation:${duplicate?.reason ?? "previously_handled"}` : undefined,
+      });
       const opportunity: Opportunity = {
         message,
         matchedKeywords: detected.matchedKeywords,
@@ -1667,8 +1704,31 @@ export async function scanRevenueOpportunities(input: {
         priority: commercialContext.priority,
         contextRefs: [commercialContext.preparationState, ...commercialContext.priorityReasons],
       });
+      logRevenueLifecycle("workflow_resolved", {
+        workspaceId,
+        provider: emailConnector,
+        messageId: opportunity.message.id,
+        threadId: opportunity.message.threadId,
+        signalId: canonicalSignalId,
+        workflowId: revenueWorkflow.workflowId,
+        actionId: revenueWorkflow.stepId,
+        state: revenueWorkflow.existingApprovalId ? "existing_action" : "action_proposed",
+      });
       if (revenueWorkflow.existingApprovalId) {
-        skipped.push({ messageId: opportunity.message.id, subject: opportunity.message.subject, from: opportunity.message.from, reason: "existing_revenue_workflow", dedupeKey: dedupe.dedupeKey });
+        logRevenueLifecycle("signal_skipped", {
+          workspaceId,
+          provider: emailConnector,
+          messageId: opportunity.message.id,
+          threadId: opportunity.message.threadId,
+          signalId: canonicalSignalId,
+          workflowId: revenueWorkflow.workflowId,
+          actionId: revenueWorkflow.stepId,
+          approvalId: revenueWorkflow.existingApprovalId,
+          state: "already_materialized",
+          skipReason: "same_signal_action_already_exists",
+          dedupeReason: dedupe.dedupeKey,
+        });
+        skipped.push({ messageId: opportunity.message.id, threadId: opportunity.message.threadId, signalId: canonicalSignalId, workflowId: revenueWorkflow.workflowId, workflowStepId: revenueWorkflow.stepId, subject: opportunity.message.subject, from: opportunity.message.from, reason: "existing_revenue_workflow", dedupeKey: dedupe.dedupeKey, dedupeReason: "same_signal_action_already_exists" });
         continue;
       }
       await createRevenueSupportingHandoff({
@@ -1680,7 +1740,7 @@ export async function scanRevenueOpportunities(input: {
         priority: commercialContext.priority,
         reason: "Delivery feasibility is needed before committing commercial scope.",
       });
-      sourceMetadata = { ...sourceMetadata, workflowId: revenueWorkflow.workflowId, workflowStepId: revenueWorkflow.stepId };
+      sourceMetadata = { ...sourceMetadata, workflowId: revenueWorkflow.workflowId, workflowObjective: "Follow up on commercial opportunity", workflowStepId: revenueWorkflow.stepId, workflowStepOrder: revenueWorkflow.stepOrder, signalId: canonicalSignalId };
 
       const runInsert = await supabase.from("os_operator_runs").insert({
         id: runId,
@@ -1758,6 +1818,16 @@ export async function scanRevenueOpportunities(input: {
         output: { status: crmPreparationStatus, preparedActions, crmPreparation, preparedHubSpotActions },
       });
       await insertStep({ supabase, workspaceId, runId, stepKey: "prepare_follow_up", title: "Prepare follow-up email", output: draft });
+      logRevenueLifecycle("action_prepared", {
+        workspaceId,
+        provider: emailConnector,
+        messageId: opportunity.message.id,
+        threadId: opportunity.message.threadId,
+        signalId: canonicalSignalId,
+        workflowId: revenueWorkflow.workflowId,
+        actionId: revenueWorkflow.stepId,
+        state: "approval_required",
+      });
 
       const approval = emailConnector === "microsoft"
         ? await createMicrosoftSendApproval({
@@ -1801,13 +1871,27 @@ export async function scanRevenueOpportunities(input: {
           slackNotificationSettings: workspacePolicy.slack,
         });
 
-      await linkRevenueApprovalWorkflow({
+      const workflowLink = await linkRevenueApprovalWorkflow({
         supabase,
         workspaceId,
         workflowId: revenueWorkflow.workflowId,
         stepId: revenueWorkflow.stepId,
         approvalId: approval.approvalId,
         sourceMetadata,
+      });
+
+      const candidateUpdate = await supabase.from("os_signal_candidates").update({ status: "action_proposed", last_seen_at: new Date().toISOString() }).eq("workspace_id", workspaceId).eq("operator_key", "revenue").eq("dedupe_key", canonicalCandidate.dedupeKey);
+      if (candidateUpdate.error) throw new Error(`Revenue candidate lifecycle update failed: ${candidateUpdate.error.message}`);
+      logRevenueLifecycle("approval_created", {
+        workspaceId,
+        provider: emailConnector,
+        messageId: opportunity.message.id,
+        threadId: opportunity.message.threadId,
+        signalId: canonicalSignalId,
+        workflowId: revenueWorkflow.workflowId,
+        actionId: revenueWorkflow.stepId,
+        approvalId: approval.approvalId,
+        state: workflowLink.approvalStatus,
       });
 
       await insertStep({ supabase, workspaceId, runId, stepKey: "create_approval", title: "Create approval request", output: { approvalId: approval.approvalId } });
@@ -1927,6 +2011,7 @@ export async function scanRevenueOpportunities(input: {
       created.push({
         messageId: opportunity.message.id,
         threadId: opportunity.message.threadId,
+        receivedAt: opportunity.message.internalDate || opportunity.message.date || undefined,
         from: opportunity.message.fromEmail,
         subject: opportunity.message.subject,
         matchedKeywords: opportunity.matchedKeywords,
@@ -1939,6 +2024,13 @@ export async function scanRevenueOpportunities(input: {
         crmPreparationStatus,
         dedupeKey: dedupe.dedupeKey,
         signalCandidate: signalCandidate ? { ...signalCandidate, status: "approval_created" } : undefined,
+        signalId: canonicalSignalId,
+        workflowId: revenueWorkflow.workflowId,
+        workflowStepId: revenueWorkflow.stepId,
+        workflowStepOrder: revenueWorkflow.stepOrder,
+        workflowIdentity: revenueWorkflow.identity,
+        workflowUpdatedAt: workflowLink.updatedAt,
+        approvalStatus: workflowLink.approvalStatus,
         runId,
         approvalId: approval.approvalId,
       });

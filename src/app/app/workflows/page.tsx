@@ -152,7 +152,7 @@ function WorkflowDetail({ workflow, onClose }: { workflow: WorkflowPresentation;
     <div className="card-head workflow-detail-head">
       <div>
         <span className="t-meta">Workflow detail</span>
-        <div className="inline" style={{ marginTop: 4 }}><span className={`badge ${badgeTone(workflow.status)}`}>{label(workflow.status)}</span><span className="t-meta">{workflow.operatorName} · {relativeTime(workflow.createdAt)}</span></div>
+        <div className="inline" style={{ marginTop: 4 }}><span className={`badge ${badgeTone(workflow.status)}`}>{label(workflow.status)}</span><span className="t-meta">{workflow.operatorName} · started {relativeTime(workflow.createdAt)} · updated {relativeTime(workflow.updatedAt)}</span></div>
         <h3 className="t-section" style={{ marginTop: 8 }}>{workflow.objective}</h3>
       </div>
       <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>

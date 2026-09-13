@@ -20,6 +20,7 @@ import { hubSpotBusinessContext } from "@/lib/policies/context";
 import { logPolicyDecision } from "@/lib/policies/audit";
 import type { PolicyDecision } from "@/lib/policies/types";
 import { logOperatorEvent, recordOperatorUsage } from "@/lib/operators/logging";
+import { logRevenueLifecycle } from "@/lib/operators/revenue/lifecycle-log";
 import { createOperatorMemory } from "@/lib/operators/memory";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { AuthorizationError, requireWorkspaceRoleForIdentity } from "@/lib/server/workspace-access";
@@ -42,6 +43,10 @@ type GmailContinuationPayload = {
   workspaceId: string;
   operatorRunId?: string;
   operatorKey?: string;
+  workflowId?: string | null;
+  workflowObjective?: string | null;
+  workflowStepId?: string | null;
+  workflowStepOrder?: number | null;
   to: string;
   subject: string;
   body: string;
@@ -279,6 +284,10 @@ function validateGmailPayload(value: unknown): { ok: true; payload: GmailContinu
       workspaceId: String(rec.workspaceId).trim(),
       operatorRunId: typeof rec.operatorRunId === "string" ? rec.operatorRunId : undefined,
       operatorKey: typeof rec.operatorKey === "string" ? rec.operatorKey : undefined,
+      workflowId: typeof rec.workflowId === "string" ? rec.workflowId : null,
+      workflowObjective: typeof rec.workflowObjective === "string" ? rec.workflowObjective : null,
+      workflowStepId: typeof rec.workflowStepId === "string" ? rec.workflowStepId : null,
+      workflowStepOrder: typeof rec.workflowStepOrder === "number" ? rec.workflowStepOrder : null,
       to: String(rec.to).trim().toLowerCase(),
       subject: String(rec.subject).trim(),
       body: String(rec.body).trim(),
@@ -1458,6 +1467,10 @@ function validateMicrosoftPayload(value: unknown): { ok: true; payload: Microsof
       workspaceId: String(rec.workspaceId).trim(),
       operatorRunId: typeof rec.operatorRunId === "string" ? rec.operatorRunId : undefined,
       operatorKey: typeof rec.operatorKey === "string" ? rec.operatorKey : undefined,
+      workflowId: typeof rec.workflowId === "string" ? rec.workflowId : null,
+      workflowObjective: typeof rec.workflowObjective === "string" ? rec.workflowObjective : null,
+      workflowStepId: typeof rec.workflowStepId === "string" ? rec.workflowStepId : null,
+      workflowStepOrder: typeof rec.workflowStepOrder === "number" ? rec.workflowStepOrder : null,
       to: String(rec.to).trim().toLowerCase(),
       subject: String(rec.subject).trim(),
       body: String(rec.body).trim(),
@@ -1702,6 +1715,20 @@ async function executeMicrosoftApproval(input: {
     return NextResponse.json({ error: "approval_claim_failed", message: executionClaim.error?.message || "Could not claim approval for execution." }, { status: 409 });
   }
 
+  const revenueSource = payload.sourceMetadata ?? {};
+  logRevenueLifecycle("execution_started", {
+    workspaceId: payload.workspaceId,
+    provider: "microsoft",
+    messageId: typeof revenueSource.gmailMessageId === "string" ? revenueSource.gmailMessageId : undefined,
+    threadId: typeof revenueSource.gmailThreadId === "string" ? revenueSource.gmailThreadId : undefined,
+    signalId: typeof revenueSource.signalId === "string" ? revenueSource.signalId : undefined,
+    workflowId: payload.workflowId ?? undefined,
+    actionId: payload.workflowStepId ?? undefined,
+    approvalId,
+    state: "executing",
+    operatorKey: payload.operatorKey,
+  });
+
   try {
     await sendMicrosoftMessageAfterApproval({ workspaceId: payload.workspaceId, to: payload.to, subject: finalDraft.subject, body: finalDraft.body, supabase });
   } catch (error) {
@@ -1715,6 +1742,18 @@ async function executeMicrosoftApproval(input: {
       resolved_by: resolvedBy,
       continuation_payload: { ...continuation, executionResult },
     }).eq("id", approvalId).eq("workspace_id", payload.workspaceId);
+    logRevenueLifecycle("execution_failed", {
+      workspaceId: payload.workspaceId,
+      provider: "microsoft",
+      messageId: typeof revenueSource.gmailMessageId === "string" ? revenueSource.gmailMessageId : undefined,
+      threadId: typeof revenueSource.gmailThreadId === "string" ? revenueSource.gmailThreadId : undefined,
+      signalId: typeof revenueSource.signalId === "string" ? revenueSource.signalId : undefined,
+      workflowId: payload.workflowId ?? undefined,
+      actionId: payload.workflowStepId ?? undefined,
+      approvalId,
+      state: "failed",
+      operatorKey: payload.operatorKey,
+    });
     if (runId) {
       await supabase.from("os_operator_runs").update({
         status: "failed",
@@ -1812,6 +1851,18 @@ async function executeMicrosoftApproval(input: {
     return NextResponse.json({ error: "approval_update_failed", message: approvalUpdate.error.message }, { status: 500 });
   }
   await advanceWorkflowForApproval({ approvalId, workspaceId: payload.workspaceId, supabase });
+  logRevenueLifecycle("execution_completed", {
+    workspaceId: payload.workspaceId,
+    provider: "microsoft",
+    messageId: typeof revenueSource.gmailMessageId === "string" ? revenueSource.gmailMessageId : undefined,
+    threadId: typeof revenueSource.gmailThreadId === "string" ? revenueSource.gmailThreadId : undefined,
+    signalId: typeof revenueSource.signalId === "string" ? revenueSource.signalId : undefined,
+    workflowId: payload.workflowId ?? undefined,
+    actionId: payload.workflowStepId ?? undefined,
+    approvalId,
+    state: "sent",
+    operatorKey: payload.operatorKey,
+  });
 
   await optionalStep(warnings, "os_execution_logs.insert", () => supabase.from("os_execution_logs").insert([
     {
@@ -2321,6 +2372,20 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }, { status: 409 });
   }
 
+  const revenueSource = gmailPayload.sourceMetadata ?? {};
+  logRevenueLifecycle("execution_started", {
+    workspaceId: context.workspaceId,
+    provider: "gmail",
+    messageId: typeof revenueSource.gmailMessageId === "string" ? revenueSource.gmailMessageId : undefined,
+    threadId: typeof revenueSource.gmailThreadId === "string" ? revenueSource.gmailThreadId : undefined,
+    signalId: typeof revenueSource.signalId === "string" ? revenueSource.signalId : undefined,
+    workflowId: gmailPayload.workflowId ?? undefined,
+    actionId: gmailPayload.workflowStepId ?? undefined,
+    approvalId: id,
+    state: "executing",
+    operatorKey: gmailPayload.operatorKey,
+  });
+
   let draft: { draftId: string; messageId?: string; raw: string; draftCreateStatus: number };
   let sent: { messageId?: string; sendEndpoint: "drafts/send" | "messages/send"; googleResponseBody: unknown };
   let draftSendFailure: unknown = null;
@@ -2381,6 +2446,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       approvalRow: approvalRow as Record<string, unknown>,
       payload: gmailPayload,
       error,
+    });
+    logRevenueLifecycle("execution_failed", {
+      workspaceId: context.workspaceId,
+      provider: "gmail",
+      messageId: typeof revenueSource.gmailMessageId === "string" ? revenueSource.gmailMessageId : undefined,
+      threadId: typeof revenueSource.gmailThreadId === "string" ? revenueSource.gmailThreadId : undefined,
+      signalId: typeof revenueSource.signalId === "string" ? revenueSource.signalId : undefined,
+      workflowId: gmailPayload.workflowId ?? undefined,
+      actionId: gmailPayload.workflowStepId ?? undefined,
+      approvalId: id,
+      state: "failed",
+      operatorKey: gmailPayload.operatorKey,
     });
     await optionalStep([], "slack_notification.execution_failed", () => sendSlackApprovalNotification({
       supabase,
@@ -2501,6 +2578,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ error: "approval_update_failed", message: approvalUpdate.error.message }, { status: 500 });
   }
   await advanceWorkflowForApproval({ approvalId: id, workspaceId: context.workspaceId, supabase });
+  logRevenueLifecycle("execution_completed", {
+    workspaceId: context.workspaceId,
+    provider: "gmail",
+    messageId: typeof revenueSource.gmailMessageId === "string" ? revenueSource.gmailMessageId : undefined,
+    threadId: typeof revenueSource.gmailThreadId === "string" ? revenueSource.gmailThreadId : undefined,
+    signalId: typeof revenueSource.signalId === "string" ? revenueSource.signalId : undefined,
+    workflowId: gmailPayload.workflowId ?? undefined,
+    actionId: gmailPayload.workflowStepId ?? undefined,
+    approvalId: id,
+    state: "sent",
+    operatorKey: gmailPayload.operatorKey,
+  });
 
   await optionalStep(warnings, "os_execution_logs.insert", () => supabase.from("os_execution_logs").insert([
     {

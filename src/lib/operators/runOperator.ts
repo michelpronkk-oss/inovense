@@ -235,7 +235,7 @@ export async function runRevenueOperator(input: RunOperatorInput) {
         subject: draft.subject,
         body: draft.body,
         policyReason: policy.reason,
-        sourceMetadata: { workflowId: revenueWorkflow.workflowId, workflowStepId: revenueWorkflow.stepId, manual: true, subjectType: "commercial_thread", subjectId: manualWork.candidate.sourceId, businessContext: { deal: { amount: { value: null, reliability: "missing" }, currency: { value: null, reliability: "missing" }, stage: { value: null, reliability: "missing" } } } },
+        sourceMetadata: { workflowId: revenueWorkflow.workflowId, workflowObjective: "Follow up on commercial opportunity", workflowStepId: revenueWorkflow.stepId, workflowStepOrder: revenueWorkflow.stepOrder, manual: true, subjectType: "commercial_thread", subjectId: manualWork.candidate.sourceId, businessContext: { deal: { amount: { value: null, reliability: "missing" }, currency: { value: null, reliability: "missing" }, stage: { value: null, reliability: "missing" } } } },
         dedupeKey: manualDedupeKey,
       })
       : await createGmailSendApproval({
@@ -246,7 +246,7 @@ export async function runRevenueOperator(input: RunOperatorInput) {
         subject: draft.subject,
         body: draft.body,
         policyReason: policy.reason,
-        sourceMetadata: { workflowId: revenueWorkflow.workflowId, workflowStepId: revenueWorkflow.stepId, manual: true, subjectType: "commercial_thread", subjectId: manualWork.candidate.sourceId, businessContext: { deal: { amount: { value: null, reliability: "missing" }, currency: { value: null, reliability: "missing" }, stage: { value: null, reliability: "missing" } } } },
+        sourceMetadata: { workflowId: revenueWorkflow.workflowId, workflowObjective: "Follow up on commercial opportunity", workflowStepId: revenueWorkflow.stepId, workflowStepOrder: revenueWorkflow.stepOrder, manual: true, subjectType: "commercial_thread", subjectId: manualWork.candidate.sourceId, businessContext: { deal: { amount: { value: null, reliability: "missing" }, currency: { value: null, reliability: "missing" }, stage: { value: null, reliability: "missing" } } } },
         dedupeKey: manualDedupeKey,
       });
     await linkRevenueApprovalWorkflow({ supabase, workspaceId: input.workspaceId, workflowId: revenueWorkflow.workflowId, stepId: revenueWorkflow.stepId, approvalId: approval.approvalId, sourceMetadata: { preparationState: "ready_to_follow_up", workflowId: revenueWorkflow.workflowId } });

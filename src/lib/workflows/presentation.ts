@@ -121,6 +121,9 @@ export async function getWorkflowPresentations(input: { workspaceId: string; wor
     .from("os_workflow_runs")
     .select("id,operator_key,primary_owner,supporting_operators,external_communication_owner,dependency_state,handoff_reason,requested_outcome,relevant_context,result_evidence,originating_signal_id,objective,priority,confidence,status,created_at,updated_at,parent_workflow_id")
     .eq("workspace_id", input.workspaceId)
+    // Workflows are long-lived; the queue is an activity view, so recently
+    // changed work must rise above older workflows created more recently.
+    .order("updated_at", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(input.limit ?? 80);
   if (input.workflowId) runsQuery = runsQuery.eq("id", input.workflowId);

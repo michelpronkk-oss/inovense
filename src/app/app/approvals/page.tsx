@@ -322,7 +322,7 @@ export default function ApprovalsPage() {
             {resolved.slice(0, 20).map((item) => (
               <div className="row" key={item.id}>
                 <span className="grow"><span className="ttl">{item.title}</span><span className="sub">{item.agent_mark || "Operator"} · {timeAgo(item.resolved_at)}</span></span>
-                <span className="rt"><span className={`badge ${item.status === "approved" || item.status === "partially_completed" ? "green" : "red"}`}>{item.status.replace(/_/g, " ")}</span></span>
+                <span className="rt"><span className={`badge ${item.status === "approved" || item.status === "partially_completed" ? "green" : item.status === "superseded" ? "amber" : "red"}`}>{item.status.replace(/_/g, " ")}</span></span>
               </div>
             ))}
           </div>

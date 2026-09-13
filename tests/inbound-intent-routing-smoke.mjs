@@ -9,9 +9,11 @@ const tmpDir = path.join(root, "tests", `.tmp-inbound-intent-routing-${process.p
 fs.mkdirSync(tmpDir, { recursive: true });
 
 async function loadEngine() {
-  const inbound = fs.readFileSync(path.join(root, "src/lib/signals/inbound.ts"), "utf8").replace('import type { SignalEvent } from "@/lib/signals/types";\n', "");
-  const engine = fs.readFileSync(path.join(root, "src/lib/signals/engine.ts"), "utf8").replace('import { classifyInboundSignalEvent, type InboundActionability, type InboundClassification, type InboundOperatorKey } from "@/lib/signals/inbound";\n', `${inbound}\n`);
-  const { code } = esbuild.transformSync(engine, { loader: "ts", format: "esm", target: "node18" });
+  const inbound = fs.readFileSync(path.join(root, "src/lib/signals/inbound.ts"), "utf8").replace(/^import[^\n]+\n/gm, "");
+  const identity = fs.readFileSync(path.join(root, "src/lib/workflows/identity.ts"), "utf8").replace(/^import[^\n]+\n/gm, "");
+  const ownership = `function arbitrateSignalOwnership(event, decision) { const primaryOperator = decision.primaryOperator ?? null; return { primaryOperator, supportingOperators: decision.supportingOperators ?? [], externalCommunicationOwner: decision.customerFacing ? primaryOperator : null, customerFacing: decision.customerFacing === true, reason: "Test adapter preserves the classifier ownership decision." }; }`;
+  const engine = fs.readFileSync(path.join(root, "src/lib/signals/engine.ts"), "utf8").replace(/^import[^\n]+\n/gm, "");
+  const { code } = esbuild.transformSync(`${inbound}\n${ownership}\n${identity}\n${engine}`, { loader: "ts", format: "esm", target: "node18" });
   const file = path.join(tmpDir, "engine.mjs");
   fs.writeFileSync(file, code, "utf8");
   return import(pathToFileURL(file).href + `?t=${Date.now()}`);
