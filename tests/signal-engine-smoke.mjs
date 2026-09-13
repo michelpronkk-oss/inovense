@@ -17,7 +17,7 @@ async function loadEngine() {
     .replace(/textOf/g, "workforceTextOf");
   const identity = fs.readFileSync(path.join(root, "src/lib/workflows/identity.ts"), "utf8");
   const source = fs.readFileSync(path.join(root, "src/lib/signals/engine.ts"), "utf8")
-    .replace('import { classifyInboundSignalEvent, type InboundActionability, type InboundClassification, type InboundOperatorKey } from "@/lib/signals/inbound";\n', `${inbound}\n`)
+    .replace('import { classifyInboundSignalEvent, type InboundActionability, type InboundClassification, type InboundOperatorKey, type RevenueIntentSignal } from "@/lib/signals/inbound";\n', () => `${inbound}\n`)
     .replace('import { arbitrateSignalOwnership } from "@/lib/workforce/ownership";\n', `${ownership}\n`)
     .replace('import { explicitBusinessProblemKey } from "@/lib/workflows/identity";\n', `${identity}\n`);
   const { code } = esbuild.transformSync(source, { loader: "ts", format: "esm", target: "node18" });

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { GMAIL_SCAN_REQUIRED_SCOPES, GMAIL_SEND_REQUIRED_SCOPES, GmailApiError, getMessageDetails, getMissingGmailScopes, listRecentMessages, resolveAccessTokenFromCredential, type SafeGmailMessage, type StoredConnectorCredential } from "@/lib/connectors/gmail";
 import {
   MICROSOFT_READ_REQUIRED_SCOPES,
@@ -1413,10 +1414,29 @@ export async function scanRevenueOpportunities(input: {
           threadMessageCount: message.threadId ? 2 : 1,
         },
       });
-      const routedSignal = routeSignalEvent(signalEvent);
+      const classificationText = message.bodyText || message.snippet || message.subject || "";
+      const routedSignal = routeSignalEvent(signalEvent, new Date(), { classificationText });
       const signalCandidate = routedSignal.candidates.find((candidate) => candidate.operatorKey === "revenue") ?? null;
+      const classificationTrace = {
+        subjectHash: message.subject ? createHash("sha256").update(message.subject).digest("hex").slice(0, 16) : undefined,
+        intent: routedSignal.decision.primaryIntent,
+        confidence: routedSignal.decision.confidence,
+        revenueSignals: routedSignal.decision.revenueSignals,
+        classificationReason: routedSignal.decision.classificationReason,
+        classificationSource: message.bodyText ? "parsed_body" : message.snippet ? "provider_snippet" : "subject_only",
+        classificationTextLength: classificationText.length,
+      };
       if (!signalCandidate) {
-        logRevenueLifecycle("signal_skipped", { workspaceId, provider: emailConnector, messageId: message.id, threadId: message.threadId, state: "skipped", skipReason: "inbound_intent_not_revenue" });
+        logRevenueLifecycle("signal_skipped", {
+          workspaceId,
+          provider: emailConnector,
+          messageId: message.id,
+          threadId: message.threadId,
+          state: "skipped",
+          skipReason: "inbound_intent_not_revenue",
+          rejectionCategory: routedSignal.decision.primaryOperator ? `owned_by_${routedSignal.decision.primaryOperator}` : "no_revenue_route",
+          ...classificationTrace,
+        });
         skipped.push({ messageId: message.id, subject: message.subject, from: message.from, reason: "inbound_intent_not_revenue" });
         continue;
       }
@@ -1428,6 +1448,7 @@ export async function scanRevenueOpportunities(input: {
         signalId: signalCandidate.signalId,
         state: "candidate_routed",
         dedupeReason: isReactivation ? `thread_reactivation:${duplicate?.reason ?? "previously_handled"}` : undefined,
+        ...classificationTrace,
       });
       const opportunity: Opportunity = {
         message,

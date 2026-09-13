@@ -23,6 +23,18 @@ export type InboundIntent =
 export type InboundActionability = "OBSERVE" | "RECOMMEND" | "WORKFLOW_CANDIDATE" | "IGNORE";
 export type InboundSenderKind = "human" | "automated" | "newsletter" | "unknown";
 export type InboundOperatorKey = "revenue" | "client_flow" | "operations" | "support";
+export type RevenueIntentSignal =
+  | "pricing"
+  | "purchase_intent"
+  | "decision_deadline"
+  | "competitor_evaluation"
+  | "seat_count"
+  | "expansion"
+  | "commercial_negotiation"
+  | "proposal_follow_up"
+  | "renewal"
+  | "procurement"
+  | "demo_request";
 
 /** The live routing registry. Future operators can subscribe to intents here without changing provider intake. */
 export const INBOUND_OPERATOR_INTENTS: Record<InboundOperatorKey, readonly InboundIntent[]> = {
@@ -55,6 +67,7 @@ export type InboundClassification = {
   actionability: InboundActionability;
   customerFacing: boolean;
   commercialSignal: boolean;
+  revenueSignals: RevenueIntentSignal[];
   supportSignal: boolean;
   operationsSignal: boolean;
   primaryOperator: InboundOperatorKey | null;
@@ -81,8 +94,8 @@ const TERMS: Record<Exclude<InboundIntent, "NEWSLETTER" | "SPAM" | "AUTOMATED_NO
   INTERNAL_BLOCKER: ["internal blocker", "blocked", "blocker", "stuck", "waiting on", "dependency", "on hold"],
   DELIVERY_RISK: ["delivery risk", "delayed", "delay", "slipping", "missed deadline", "at risk"],
   HANDOFF_ISSUE: ["handoff", "hand-off", "no owner", "ownership", "lost in the handoff"],
-  VENDOR_ISSUE: ["vendor", "supplier", "third party", "third-party"],
-  CUSTOMER_QUESTION: ["can you", "could you", "what is", "what are", "how do", "please clarify", "question"],
+  VENDOR_ISSUE: ["vendor issue", "supplier issue", "third party issue", "third-party issue", "vendor failure", "supplier failure"],
+  CUSTOMER_QUESTION: ["can you", "could you", "what is", "what are", "how do", "please clarify", "question", "questions"],
   SUPPORT_REQUEST: ["need help", "support", "not working", "broken", "error", "issue", "problem", "help me"],
 };
 
@@ -91,12 +104,59 @@ const SUPPORT_CONTEXT_TERMS = [
   "integration", "feature", "reset", "login", "sign in", "password", "account access", "outage", "service failure",
 ];
 
+const REVENUE_SIGNAL_PATTERNS: Array<[RevenueIntentSignal, RegExp]> = [
+  ["pricing", /\b(?:pricing|prices?|costs?|how much|rate card|monthly fee|per user)\b/i],
+  ["purchase_intent", /\b(?:ready to (?:buy|purchase|sign)|move forward|make (?:a )?decision|making (?:a )?decision|final decision|decide whether|plan(?:ning)? to (?:sign|start|purchase)|after signing|after we sign)\b/i],
+  ["decision_deadline", /\b(?:decision|decide|choose|select|finali[sz]e)\b[^.!?\n]{0,100}\b(?:by|before|on)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2}(?:st|nd|rd|th)?(?:\s+of)?\s+[a-z]+|[a-z]+\s+\d{1,2})\b|\b(?:by|before)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b[^.!?\n]{0,80}\b(?:decision|decide|choose|select|vendor|option)\b/i],
+  ["competitor_evaluation", /\b(?:one of (?:the )?two|another|other|multiple)\s+(?:options?|vendors?|providers?|solutions?)\b|\b(?:compar(?:e|ing|ison)|evaluat(?:e|ing|ion)|shortlist(?:ed|ing)?)\b[^.!?\n]{0,100}\b(?:vendor|provider|option|solution|platform|alternative)\b/i],
+  ["seat_count", /\b(?:team of\s+\d{1,5}|\d{1,5}\s*(?:users?|seats?|licenses?|people|employees|team members))\b|\bacross\s+(?:our\s+)?(?:\d{1,5}\s+)?(?:operations|customer success|sales|support)\b/i],
+  ["expansion", /\b(?:add(?:ing)?|expand(?:ing|ed)?|increase|grow|additional|more)\s+(?:\d+\s+)?(?:users?|seats?|licenses?|teams?|locations?|regions?)\b|\b(?:expansion|scale up|scaling up)\b/i],
+  ["commercial_negotiation", /\b(?:discount|flexibility on (?:the )?(?:price|pricing)|better price|price reduction|lower rate|longer[- ]term|annual commitment|multi[- ]year|if we commit|commit(?:ment)? for (?:a |the )?(?:longer|extended|[0-9]+[- ]year))\b/i],
+  ["proposal_follow_up", /\b(?:(?:following|checking|circling) up on|status of)\s+(?:(?:the|your|our|a) )?(?:proposal|quote|estimate|pricing)\b/i],
+  ["renewal", /\b(?:renew(?:al|ing)?|extend(?:ing)? (?:the )?(?:contract|subscription|plan)|contract extension)\b/i],
+  ["procurement", /\b(?:procurement(?: process| questions?)?|purchase order|vendor (?:selection|evaluation|onboarding)|security review|legal review)\b/i],
+  ["demo_request", /\b(?:request(?:ing)?|schedule|book|arrange|see|show us|walk us through)\b[^.!?\n]{0,60}\b(?:demo|demonstration)\b/i],
+];
+
 function hasSupportContext(text: string): boolean {
-  return SUPPORT_CONTEXT_TERMS.some((term) => text.includes(term));
+  return SUPPORT_CONTEXT_TERMS.some((term) => {
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`\\b${escaped}\\b`, "i").test(text);
+  });
 }
 
 function inboundBounded(value: string, max: number): string {
   return value.replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+function removeQuotedAndSignatureText(value: string): string {
+  const kept: string[] = [];
+  for (const line of value.replace(/\r/g, "").split("\n")) {
+    if (/^\s*>/.test(line)
+      || /^\s*On .{1,180}\bwrote:\s*$/i.test(line)
+      || /^\s*(?:-{2,}\s*)?(?:original|forwarded) message\s*(?:-{2,})?\s*$/i.test(line)
+      || /^\s*Begin forwarded message:\s*$/i.test(line)
+      || /^\s*--\s*$/.test(line)
+      || /^\s*(?:best|kind regards|regards|sincerely|thanks|thank you),?\s*$/i.test(line)) break;
+    kept.push(line);
+  }
+  return kept.join("\n");
+}
+
+function detectRevenueSignals(text: string): RevenueIntentSignal[] {
+  return REVENUE_SIGNAL_PATTERNS
+    .filter(([, pattern]) => pattern.test(text))
+    .map(([signal]) => signal);
+}
+
+function revenueIntentsForSignals(signals: RevenueIntentSignal[]): InboundIntent[] {
+  const intents: InboundIntent[] = [];
+  if (signals.includes("pricing")) intents.push("PRICING_REQUEST");
+  if (signals.includes("proposal_follow_up") || signals.includes("demo_request")) intents.push("PROPOSAL_REQUEST");
+  if (signals.some((signal) => ["purchase_intent", "decision_deadline", "competitor_evaluation", "seat_count", "expansion", "commercial_negotiation", "renewal", "procurement"].includes(signal))) {
+    intents.push("COMMERCIAL_INTENT");
+  }
+  return intents;
 }
 
 export function normalizeInboundEmail(value?: string | null): string | null {
@@ -118,7 +178,7 @@ function inboundMetadataString(metadata: Record<string, unknown>, key: string): 
   return typeof value === "string" ? inboundBounded(value, 240) : null;
 }
 
-export function normalizeInboundCommunication(event: SignalEvent): InboundCommunicationEvent {
+export function normalizeInboundCommunication(event: SignalEvent, classificationText?: string): InboundCommunicationEvent {
   const metadata = event.metadata ?? {};
   const from = normalizeInboundEmail(event.from);
   const recipients = Array.isArray(metadata.recipients)
@@ -128,7 +188,8 @@ export function normalizeInboundCommunication(event: SignalEvent): InboundCommun
   const threadId = event.threadId ? inboundBounded(event.threadId, 180) : null;
   const messageCount = typeof metadata.threadMessageCount === "number" && Number.isFinite(metadata.threadMessageCount) ? Math.max(1, Math.min(50, metadata.threadMessageCount)) : 1;
   const unresolved = metadata.threadUnresolved === true || metadata.unresolved === true;
-  const safeText = inboundBounded([event.subject, event.snippet].filter(Boolean).join("\n"), 1600);
+  const bodyText = removeQuotedAndSignatureText(classificationText ?? event.snippet ?? "");
+  const safeText = inboundBounded([event.subject, bodyText].filter(Boolean).join("\n"), 4000);
   return {
     provider: inboundBounded(event.provider || event.connectorKey || event.source || "unknown", 80),
     workspaceId: event.workspaceId,
@@ -152,7 +213,10 @@ export function normalizeInboundCommunication(event: SignalEvent): InboundCommun
 }
 
 function inboundMatches(text: string, terms: string[]): string[] {
-  return terms.filter((term) => text.includes(term));
+  return terms.filter((term) => {
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`\\b${escaped}\\b`, "i").test(text);
+  });
 }
 
 function choosePrimary(intents: InboundIntent[], text: string): InboundOperatorKey | null {
@@ -176,16 +240,29 @@ export function createInboundDedupeKey(input: { event: InboundCommunicationEvent
 
 export function classifyInboundCommunication(event: InboundCommunicationEvent): InboundClassification {
   const text = `${event.subject}\n${event.safeText}`.toLowerCase();
+  const revenueSignals = detectRevenueSignals(text);
   for (const [intent, pattern] of NOISE_PATTERNS) {
     if (pattern.test(text) || (intent === "NEWSLETTER" && event.sender.kind === "newsletter") || (intent === "AUTOMATED_NOTIFICATION" && event.sender.kind === "automated" && !/\b(urgent|blocked|complaint|problem|issue)\b/i.test(text))) {
-      return { primaryIntent: intent, secondaryIntents: [], confidence: "high", actionability: "IGNORE", customerFacing: false, commercialSignal: false, supportSignal: false, operationsSignal: false, primaryOperator: null, supportingOperators: [], priority: "LOW", reason: `Suppressed ${intent.toLowerCase().replace(/_/g, " ")} content.`, evidenceRefs: [intent.toLowerCase()] };
+      return { primaryIntent: intent, secondaryIntents: [], confidence: "high", actionability: "IGNORE", customerFacing: false, commercialSignal: false, revenueSignals: [], supportSignal: false, operationsSignal: false, primaryOperator: null, supportingOperators: [], priority: "LOW", reason: `Suppressed ${intent.toLowerCase().replace(/_/g, " ")} content.`, evidenceRefs: [intent.toLowerCase()] };
     }
   }
   if (/\b(thanks|thank you|all good|that solved it|solved now)\b/i.test(text) && !event.replyContext.unresolved) {
-    return { primaryIntent: "FYI", secondaryIntents: [], confidence: "high", actionability: "OBSERVE", customerFacing: true, commercialSignal: false, supportSignal: false, operationsSignal: false, primaryOperator: null, supportingOperators: [], priority: "LOW", reason: "Acknowledgement or resolved reply; no new work is requested.", evidenceRefs: ["resolved_reply"] };
+    return { primaryIntent: "FYI", secondaryIntents: [], confidence: "high", actionability: "OBSERVE", customerFacing: true, commercialSignal: false, revenueSignals: [], supportSignal: false, operationsSignal: false, primaryOperator: null, supportingOperators: [], priority: "LOW", reason: "Acknowledgement or resolved reply; no new work is requested.", evidenceRefs: ["resolved_reply"] };
   }
   const intentOrder: InboundIntent[] = ["ESCALATION", "COMPLAINT", "DELIVERY_RISK", "INTERNAL_BLOCKER", "HANDOFF_ISSUE", "VENDOR_ISSUE", "CHANGE_REQUEST", "SUPPORT_REQUEST", "PRICING_REQUEST", "PROPOSAL_REQUEST", "COMMERCIAL_INTENT", "CUSTOMER_QUESTION", "DELIVERY_STATUS_REQUEST"];
-  const detected = (Object.entries(TERMS) as Array<[InboundIntent, string[]]>).map(([intent, terms]) => [intent, inboundMatches(text, terms)] as const).filter(([, hits]) => hits.length > 0).sort(([left], [right]) => intentOrder.indexOf(left) - intentOrder.indexOf(right));
+  const detected = (Object.entries(TERMS) as Array<[InboundIntent, string[]]>).map(([intent, terms]) => [intent, inboundMatches(text, terms)] as [InboundIntent, string[]]).filter(([, hits]) => hits.length > 0);
+  const detectedIntentSet = new Set(detected.map(([intent]) => intent));
+  for (const intent of revenueIntentsForSignals(revenueSignals)) {
+    if (!detectedIntentSet.has(intent)) {
+      detected.push([intent, revenueSignals.filter((signal) => {
+        if (intent === "PRICING_REQUEST") return signal === "pricing";
+        if (intent === "PROPOSAL_REQUEST") return signal === "proposal_follow_up" || signal === "demo_request";
+        return signal !== "pricing" && signal !== "proposal_follow_up" && signal !== "demo_request";
+      }).map((signal) => `signal:${signal}`)]);
+      detectedIntentSet.add(intent);
+    }
+  }
+  detected.sort(([left], [right]) => intentOrder.indexOf(left) - intentOrder.indexOf(right));
   const intents = detected.map(([intent]) => intent);
   const primaryIntent = intents[0] ?? (event.replyContext.messageCount > 1 && event.replyContext.unresolved ? "ESCALATION" : "UNKNOWN");
   const secondaryIntents = intents.slice(1, 4);
@@ -196,13 +273,14 @@ export function classifyInboundCommunication(event: InboundCommunicationEvent): 
   if (primaryOperator === "support" && (intents.includes("COMPLAINT") || intents.includes("ESCALATION") || hasSupportContext(text))) supportingOperators.push("client_flow");
   const allHits = detected.flatMap(([, hits]) => hits);
   const repeatedFollowUp = event.replyContext.messageCount >= 2 && event.replyContext.unresolved;
-  const confidence: InboundClassification["confidence"] = repeatedFollowUp || allHits.length >= 2 ? "high" : allHits.length === 1 ? "medium" : "low";
+  const explicitCommercialIntent = ["PRICING_REQUEST", "PROPOSAL_REQUEST"].includes(primaryIntent);
+  const confidence: InboundClassification["confidence"] = repeatedFollowUp || allHits.length >= 2 || revenueSignals.length >= 2 || explicitCommercialIntent ? "high" : allHits.length === 1 ? "medium" : "low";
   const customerFacing = primaryOperator === "client_flow" || primaryOperator === "revenue" || primaryOperator === "support";
-  const commercialSignal = intents.some((intent) => ["COMMERCIAL_INTENT", "PRICING_REQUEST", "PROPOSAL_REQUEST"].includes(intent));
+  const commercialSignal = revenueSignals.length > 0 || intents.some((intent) => ["COMMERCIAL_INTENT", "PRICING_REQUEST", "PROPOSAL_REQUEST"].includes(intent));
   const supportSignal = intents.some((intent) => ["CUSTOMER_QUESTION", "SUPPORT_REQUEST", "COMPLAINT", "ESCALATION"].includes(intent));
   const operationsSignal = intents.some((intent) => ["INTERNAL_BLOCKER", "DELIVERY_RISK", "HANDOFF_ISSUE", "VENDOR_ISSUE"].includes(intent));
   const explicitRequest = /\b(can you|could you|please|need|request|send|provide|when will|how much)\b/i.test(text);
-  const actionability: InboundActionability = primaryIntent === "UNKNOWN" ? "OBSERVE" : repeatedFollowUp || ["COMPLAINT", "ESCALATION", "PRICING_REQUEST", "PROPOSAL_REQUEST", "CHANGE_REQUEST", "INTERNAL_BLOCKER", "DELIVERY_RISK", "VENDOR_ISSUE"].includes(primaryIntent) ? "WORKFLOW_CANDIDATE" : explicitRequest ? "RECOMMEND" : "OBSERVE";
+  const actionability: InboundActionability = primaryIntent === "UNKNOWN" ? "OBSERVE" : repeatedFollowUp || ["COMPLAINT", "ESCALATION", "PRICING_REQUEST", "PROPOSAL_REQUEST", "COMMERCIAL_INTENT", "CHANGE_REQUEST", "INTERNAL_BLOCKER", "DELIVERY_RISK", "VENDOR_ISSUE"].includes(primaryIntent) ? "WORKFLOW_CANDIDATE" : explicitRequest ? "RECOMMEND" : "OBSERVE";
   const priority: InboundClassification["priority"] = repeatedFollowUp || ["COMPLAINT", "ESCALATION", "DELIVERY_RISK"].includes(primaryIntent) ? "HIGH" : actionability === "WORKFLOW_CANDIDATE" ? "MEDIUM" : "LOW";
   return {
     primaryIntent,
@@ -211,6 +289,7 @@ export function classifyInboundCommunication(event: InboundCommunicationEvent): 
     actionability,
     customerFacing,
     commercialSignal,
+    revenueSignals,
     supportSignal,
     operationsSignal,
     primaryOperator,
@@ -221,8 +300,8 @@ export function classifyInboundCommunication(event: InboundCommunicationEvent): 
   };
 }
 
-export function classifyInboundSignalEvent(event: SignalEvent): { inbound: InboundCommunicationEvent; classification: InboundClassification; dedupeKey: string } {
-  const inbound = normalizeInboundCommunication(event);
+export function classifyInboundSignalEvent(event: SignalEvent, classificationText?: string): { inbound: InboundCommunicationEvent; classification: InboundClassification; dedupeKey: string } {
+  const inbound = normalizeInboundCommunication(event, classificationText);
   const classification = classifyInboundCommunication(inbound);
   return { inbound, classification, dedupeKey: createInboundDedupeKey({ event: inbound, intent: classification.primaryIntent }) };
 }

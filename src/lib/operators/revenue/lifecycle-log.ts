@@ -13,6 +13,14 @@ export function logRevenueLifecycle(event: string, input: {
   skipReason?: string;
   dedupeReason?: string;
   outcomeType?: string;
+  subjectHash?: string;
+  intent?: string;
+  confidence?: string;
+  revenueSignals?: string[];
+  classificationReason?: string;
+  classificationSource?: string;
+  classificationTextLength?: number;
+  rejectionCategory?: string;
 }) {
   console.info("[revenue-lifecycle]", JSON.stringify({
     event,
@@ -29,5 +37,13 @@ export function logRevenueLifecycle(event: string, input: {
     skipReason: input.skipReason,
     dedupeReason: input.dedupeReason,
     outcomeType: input.outcomeType,
+    subjectHash: input.subjectHash,
+    intent: input.intent,
+    confidence: input.confidence,
+    revenueSignals: input.revenueSignals,
+    classificationReason: input.classificationReason,
+    classificationSource: input.classificationSource,
+    classificationTextLength: input.classificationTextLength,
+    rejectionCategory: input.rejectionCategory,
   }));
 }

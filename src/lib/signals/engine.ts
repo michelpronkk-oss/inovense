@@ -1,5 +1,5 @@
 import type { SignalCandidate, SignalCategory, SignalEvent, SignalPriority } from "@/lib/signals/types";
-import { classifyInboundSignalEvent, type InboundActionability, type InboundClassification, type InboundOperatorKey } from "@/lib/signals/inbound";
+import { classifyInboundSignalEvent, type InboundActionability, type InboundClassification, type InboundOperatorKey, type RevenueIntentSignal } from "@/lib/signals/inbound";
 import { arbitrateSignalOwnership } from "@/lib/workforce/ownership";
 import { explicitBusinessProblemKey } from "@/lib/workflows/identity";
 
@@ -29,6 +29,8 @@ export type SignalDecision = {
   supportSignal?: boolean;
   operationsSignal?: boolean;
   evidenceRefs?: string[];
+  classificationReason?: string;
+  revenueSignals?: RevenueIntentSignal[];
   classificationFailed?: boolean;
 };
 
@@ -194,6 +196,7 @@ function candidateFor(event: SignalEvent, decision: SignalDecision, operatorKey:
         secondaryIntents: inbound.secondaryIntents,
         reason: inbound.reason,
         evidenceRefs: inbound.evidenceRefs,
+        revenueSignals: inbound.revenueSignals,
         actionability: inbound.actionability,
         supportingOperators: inbound.supportingOperators,
       } : {}),
@@ -246,16 +249,18 @@ function decisionFromInbound(classification: InboundClassification): SignalDecis
     supportSignal: classification.supportSignal,
     operationsSignal: classification.operationsSignal,
     evidenceRefs: classification.evidenceRefs,
+    classificationReason: classification.reason,
+    revenueSignals: classification.revenueSignals,
   };
 }
 
 /** Route only meaningful candidates. This never invokes an operator or action. */
-export function routeSignalEvent(input: SignalEvent, now = new Date()): RoutedSignal {
+export function routeSignalEvent(input: SignalEvent, now = new Date(), options?: { classificationText?: string }): RoutedSignal {
   const event = normalizeSignalEvent(input);
   if (event.sourceType === "email") {
     let inbound: ReturnType<typeof classifyInboundSignalEvent>;
     try {
-      inbound = classifyInboundSignalEvent(event);
+      inbound = classifyInboundSignalEvent(event, options?.classificationText);
     } catch {
       return {
         event,
