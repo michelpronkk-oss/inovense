@@ -34,7 +34,7 @@ export const revenueOperatorScan = task({
 type WorkspaceDiscoveryResult = { ok: true; workspaceIds: string[] } | { ok: false; error: string };
 
 /**
- * List workspaces the daily cron should actually scan. A workspace must
+ * List workspaces the scheduled monitor should actually scan. A workspace must
  * clear all three independent gates:
  *   1. Revenue readiness (same getOperatorReadiness() the manual scan route
  *      and scanRevenueOpportunities() itself use) reports "ready" or
@@ -99,10 +99,10 @@ export const revenueOperatorDailyScan = schedules.task({
   retry: { maxAttempts: 2, factor: 2, minTimeoutInMs: 1_000, maxTimeoutInMs: 8_000, randomize: true },
   queue: { name: "operator-scan-fanout", concurrencyLimit: 1 },
   cron: {
-    pattern: "0 7 * * *",
+    pattern: "0 * * * *",
     timezone: "UTC",
   },
-  run: () => withTaskHeartbeat({ taskId: "revenue-operator-daily-scan", expectedCadenceMinutes: 24 * 60 }, async () => {
+  run: () => withTaskHeartbeat({ taskId: "revenue-operator-daily-scan", expectedCadenceMinutes: 60 }, async () => {
     const discovery = await listEligibleRevenueWorkspaceIds();
 
     if (!discovery.ok) {

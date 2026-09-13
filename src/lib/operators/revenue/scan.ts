@@ -905,8 +905,8 @@ async function insertStep(input: {
   });
 }
 
-function nextDailyRunFrom(lastRunAt: string): string {
-  return new Date(new Date(lastRunAt).getTime() + 24 * 60 * 60 * 1000).toISOString();
+function nextHourlyRunFrom(lastRunAt: string): string {
+  return new Date(new Date(lastRunAt).getTime() + 60 * 60 * 1000).toISOString();
 }
 
 async function upsertRevenueMonitoringConfig(input: {
@@ -917,27 +917,92 @@ async function upsertRevenueMonitoringConfig(input: {
   lastRunStatus: string;
   lastRunSummary: Record<string, unknown>;
 }) {
-  const cadence = "daily";
-  const triggerId = `optrig-${input.workspaceId}-revenue-monitoring`;
+  const scheduled = input.sourceMode === "scheduled";
+  const triggerType = scheduled ? "scheduled_monitoring" : "manual_monitoring";
+  const triggerId = scheduled
+    ? `optrig-${input.workspaceId}-revenue-monitoring`
+    : `optrig-${input.workspaceId}-revenue-manual-monitoring`;
+  const existing = await input.supabase.from("os_operator_triggers").select("config")
+    .eq("workspace_id", input.workspaceId).eq("operator_key", "revenue").eq("trigger_type", triggerType).maybeSingle();
+  if (existing.error) return { error: existing.error };
+  const previous = existing.data?.config && typeof existing.data.config === "object"
+    ? existing.data.config as Record<string, unknown>
+    : {};
+  const successful = input.lastRunStatus === "completed";
+  const failed = input.lastRunStatus === "failed";
+  const previousFailures = typeof previous.consecutiveScheduledFailures === "number" ? previous.consecutiveScheduledFailures : 0;
+  const config: Record<string, unknown> = {
+    ...previous,
+    ...(successful ? { lastSuccessfulCheckAt: input.lastRunAt, lastSuccessfulSummary: input.lastRunSummary } : failed ? { lastFailedCheckAt: input.lastRunAt } : {}),
+  };
+  if (scheduled) {
+    Object.assign(config, {
+      monitoringEnabled: true,
+      cadence: "hourly",
+      scheduleProvider: "trigger.dev",
+      triggerTaskId: "revenue-operator-daily-scan",
+      manualRunAvailable: true,
+      lastRunAt: input.lastRunAt,
+      nextRunAt: nextHourlyRunFrom(input.lastRunAt),
+      lastRunStatus: input.lastRunStatus,
+      lastRunSummary: input.lastRunSummary,
+      sourceMode: input.sourceMode,
+      lastScheduledCheckAt: input.lastRunAt,
+      lastScheduledSuccessAt: successful ? input.lastRunAt : previous.lastScheduledSuccessAt ?? null,
+      lastScheduledFailureAt: failed ? input.lastRunAt : previous.lastScheduledFailureAt ?? null,
+      consecutiveScheduledFailures: successful ? 0 : failed ? previousFailures + 1 : previousFailures,
+      lastScheduledErrorCode: successful ? null : failed ? input.lastRunSummary.errorCode ?? "revenue_scan_failed" : previous.lastScheduledErrorCode ?? null,
+    });
+  } else {
+    Object.assign(config, {
+      lastManualCheckAt: input.lastRunAt,
+      lastManualStatus: input.lastRunStatus,
+      lastManualErrorCode: successful ? null : failed ? input.lastRunSummary.errorCode ?? "revenue_scan_failed" : null,
+    });
+  }
+  if (failed) config.lastFailureCode = input.lastRunSummary.errorCode ?? "revenue_scan_failed";
+  if (successful && scheduled) config.lastFailureCode = null;
   return input.supabase.from("os_operator_triggers").upsert({
     id: triggerId,
     workspace_id: input.workspaceId,
     operator_key: "revenue",
-    trigger_type: "scheduled_monitoring",
+    trigger_type: triggerType,
     enabled: true,
-    config: {
-      monitoringEnabled: true,
-      cadence,
-      scheduleProvider: "trigger.dev",
-      triggerTaskId: "revenue-operator-daily-scan",
-      lastRunAt: input.lastRunAt,
-      nextRunAt: nextDailyRunFrom(input.lastRunAt),
-      lastRunStatus: input.lastRunStatus,
-      lastRunSummary: input.lastRunSummary,
-      manualRunAvailable: true,
-      sourceMode: input.sourceMode,
-    },
+    config,
   });
+}
+
+async function markRevenueScanStarted(input: { supabase: SupabaseAdmin; workspaceId: string; sourceMode: RevenueScanSourceMode }): Promise<void> {
+  const scheduled = input.sourceMode === "scheduled";
+  const triggerType = scheduled ? "scheduled_monitoring" : "manual_monitoring";
+  const triggerId = scheduled
+    ? `optrig-${input.workspaceId}-revenue-monitoring`
+    : `optrig-${input.workspaceId}-revenue-manual-monitoring`;
+  const existing = await input.supabase.from("os_operator_triggers").select("config")
+    .eq("workspace_id", input.workspaceId).eq("operator_key", "revenue").eq("trigger_type", triggerType).maybeSingle();
+  if (existing.error) {
+    console.warn("[revenue-scan] start status update skipped", { workspaceId: input.workspaceId, error: existing.error.message });
+    return;
+  }
+  const previous = existing.data?.config && typeof existing.data.config === "object"
+    ? existing.data.config as Record<string, unknown>
+    : {};
+  const timestamp = new Date().toISOString();
+  const config = {
+    ...previous,
+    ...(scheduled
+      ? { cadence: "hourly", scheduleProvider: "trigger.dev", triggerTaskId: "revenue-operator-daily-scan", lastScheduledStartedAt: timestamp }
+      : { lastManualStartedAt: timestamp }),
+  };
+  const result = await input.supabase.from("os_operator_triggers").upsert({
+    id: triggerId,
+    workspace_id: input.workspaceId,
+    operator_key: "revenue",
+    trigger_type: triggerType,
+    enabled: true,
+    config,
+  });
+  if (result.error) console.warn("[revenue-scan] start status update skipped", { workspaceId: input.workspaceId, error: result.error.message });
 }
 
 async function observeRevenueWorkflows(input: {
@@ -1182,7 +1247,7 @@ function scanFailure(error: unknown): RevenueScanResult {
   };
 }
 
-export async function scanRevenueOpportunities(input: {
+async function scanRevenueOpportunitiesInternal(input: {
   workspaceId: string;
   maxResults?: number;
   sourceMode?: RevenueScanSourceMode;
@@ -2067,7 +2132,7 @@ export async function scanRevenueOpportunities(input: {
       status: "completed",
       sourceMode,
       monitoringEnabled: true,
-      cadence: "daily",
+      cadence: "hourly",
       emailConnector,
       scanned: listed.length,
       opportunitiesFound: opportunities.length,
@@ -2150,5 +2215,65 @@ export async function scanRevenueOpportunities(input: {
     };
   } catch (error) {
     return scanFailure(error);
+  }
+}
+
+export async function scanRevenueOpportunities(input: {
+  workspaceId: string;
+  maxResults?: number;
+  sourceMode?: RevenueScanSourceMode;
+  supabase?: SupabaseAdmin;
+}): Promise<RevenueScanResult> {
+  const sourceMode = input.sourceMode ?? "manual";
+  let supabase = input.supabase;
+  try {
+    supabase ??= createSupabaseAdmin();
+    await markRevenueScanStarted({ supabase, workspaceId: input.workspaceId.trim(), sourceMode }).catch((error) => {
+      console.warn("[revenue-scan] start status update skipped", { workspaceId: input.workspaceId, error: error instanceof Error ? error.message : "Unknown error" });
+    });
+    const result = await scanRevenueOpportunitiesInternal({ ...input, supabase });
+    if (!result.ok) {
+      const completedAt = new Date().toISOString();
+      const failed = result.status >= 500 || Boolean(result.body.error) || sourceMode === "scheduled";
+      const summary = {
+        type: failed ? "revenue_scan_failure" : "revenue_scan_blocked",
+        status: failed ? "failed" : "blocked",
+        sourceMode,
+        completedAt,
+        errorCode: result.body.error ?? result.body.status ?? (failed ? "revenue_scan_failed" : "not_ready"),
+      };
+      const saved = await upsertRevenueMonitoringConfig({
+        supabase,
+        workspaceId: input.workspaceId.trim(),
+        sourceMode,
+        lastRunAt: completedAt,
+        lastRunStatus: failed ? "failed" : "blocked",
+        lastRunSummary: summary,
+      });
+      if (saved.error) console.warn("[revenue-scan] failure status update skipped", { workspaceId: input.workspaceId, error: saved.error.message });
+    }
+    return result;
+  } catch (error) {
+    const result = scanFailure(error);
+    if (supabase) {
+      const completedAt = new Date().toISOString();
+      const summary = {
+        type: "revenue_scan_failure",
+        status: "failed",
+        sourceMode,
+        completedAt,
+        errorCode: result.body.error ?? "revenue_scan_failed",
+      };
+      const saved = await upsertRevenueMonitoringConfig({
+        supabase,
+        workspaceId: input.workspaceId.trim(),
+        sourceMode,
+        lastRunAt: completedAt,
+        lastRunStatus: "failed",
+        lastRunSummary: summary,
+      }).catch((persistError) => ({ error: { message: persistError instanceof Error ? persistError.message : "Could not record monitoring failure." } }));
+      if (saved.error) console.warn("[revenue-scan] failure status update skipped", { workspaceId: input.workspaceId, error: saved.error.message });
+    }
+    return result;
   }
 }

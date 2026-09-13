@@ -83,7 +83,7 @@ const CONNECTOR_IMPACT: Record<string, string[]> = {
 export const TASK_CADENCE_MINUTES: Record<string, number> = {
   "workflow-recovery-scan": 15,
   "trial-lifecycle": 60,
-  "revenue-operator-daily-scan": 24 * 60,
+  "revenue-operator-daily-scan": 60,
   "client-flow-operator-daily-scan": 24 * 60,
   "operations-operator-daily-scan": 24 * 60,
   "jira-personal-data-reporting": 24 * 60,

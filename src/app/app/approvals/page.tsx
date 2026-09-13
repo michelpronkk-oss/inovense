@@ -32,10 +32,12 @@ export default function ApprovalsPage() {
   const [editingDrafts, setEditingDrafts] = useState<Record<string, DraftEdit>>({});
   const [savingEditId, setSavingEditId] = useState<string | null>(null);
 
-  const loadApprovals = useCallback(async () => {
+  const loadApprovals = useCallback(async (background = false) => {
     if (!state.workspace.id) return;
-    setLoading(true);
-    setError("");
+    if (!background) {
+      setLoading(true);
+      setError("");
+    }
     const qs = new URLSearchParams({
       workspaceId: state.workspace.id,
       userId: state.currentUser.id,
@@ -56,7 +58,7 @@ export default function ApprovalsPage() {
       setError("Could not load approvals.");
       setApprovals([]);
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   }, [state.currentUser.email, state.currentUser.id, state.workspace.id]);
 
@@ -64,6 +66,20 @@ export default function ApprovalsPage() {
     const handle = window.setTimeout(() => { void loadApprovals(); }, 0);
     return () => window.clearTimeout(handle);
   }, [loadApprovals]);
+  useEffect(() => {
+    if (busyId || savingEditId || Object.keys(editingDrafts).length > 0) return;
+    const refresh = () => {
+      if (document.visibilityState === "visible") void loadApprovals(true);
+    };
+    const timer = window.setInterval(refresh, 15_000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [busyId, editingDrafts, loadApprovals, savingEditId]);
 
   const pending = useMemo(() => approvals.filter((a) => a.status === "pending"), [approvals]);
   const resolved = useMemo(() => approvals.filter((a) => a.status !== "pending"), [approvals]);

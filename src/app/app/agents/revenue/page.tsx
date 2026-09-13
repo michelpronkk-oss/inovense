@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useOS } from "@/lib/os/app-provider";
 import { getEntitlements } from "@/lib/os/entitlements";
@@ -56,8 +56,10 @@ type RevenueScanResult = {
   scanned?: number;
   opportunitiesFound?: number;
   approvalsCreated?: number;
+  deferredCount?: number;
   reconnectRequired?: boolean;
   opportunities?: { messageId: string; from: string; subject: string; matchedKeywords: string[]; runId: string; approvalId: string }[];
+  deferred?: { reason: string }[];
   skipped?: { messageId: string; subject?: string; from?: string; reason: string; dedupeKey?: string }[];
   error?: string;
 };
@@ -113,6 +115,12 @@ type RevenueStatus = {
     lastRunAt?: string | null;
     nextRunAt?: string | null;
     lastRunStatus?: string | null;
+    lastSuccessfulCheckAt?: string | null;
+    lastFailedCheckAt?: string | null;
+    lastScheduledCheckAt?: string | null;
+    consecutiveScheduledFailures?: number;
+    lastFailureCode?: string | null;
+    isRunning?: boolean;
     lastRunSummary?: Record<string, unknown> | null;
     manualRunAvailable?: boolean;
     lastScanTime: string | null;
@@ -135,6 +143,36 @@ function dateTimeLabel(iso: string | null | undefined): string {
   return date.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+function shortTimeAgo(iso: string | null | undefined): string {
+  if (!iso) return "Not yet";
+  const elapsed = Math.max(0, Date.now() - Date.parse(iso));
+  if (!Number.isFinite(elapsed)) return "Not yet";
+  const minutes = Math.floor(elapsed / 60_000);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  return hours < 24 ? `${hours} hr ago` : `${Math.floor(hours / 24)} days ago`;
+}
+
+function humanSkipGroup(reason: string): string {
+  if (reason === "already_approved") return "already approved";
+  if (["already_handled", "previously_rejected", "existing_pending_approval"].includes(reason)) return "already handled";
+  if (["promotional_or_junk", "newsletter", "no_reply", "receipt", "security_alert", "tool_notification", "automated_or_missing_sender", "auterim_generated_outbound", "self_sent", "sent_mail", "noise"].includes(reason)) return "not a sales enquiry";
+  return "not new Revenue work";
+}
+
+function monitoringLabel(status: string | undefined): string {
+  if (status === "paused") return "Paused";
+  if (status === "monitoring_issue") return "Monitoring issue";
+  if (status === "reconnect_required") return "Reconnect Gmail";
+  return "On · checks hourly";
+}
+
+function monitoringNextLabel(status: string | undefined, nextRunAt: string | null | undefined): string {
+  if (status === "paused") return "Automatic checks paused";
+  return nextRunAt ? `Next check ${dateTimeLabel(nextRunAt)}` : "Next check not scheduled";
+}
+
 export default function RevenueOperatorPage() {
   const { state } = useOS();
   const entitlements = getEntitlements(state.workspace);
@@ -146,9 +184,11 @@ export default function RevenueOperatorPage() {
   const [runtimeError, setRuntimeError] = useState("");
   const [scanSubmitting, setScanSubmitting] = useState(false);
   const [scanResult, setScanResult] = useState<RevenueScanResult | null>(null);
+  const [monitoringUpdate, setMonitoringUpdate] = useState(false);
+  const seenApprovalIds = useRef<Set<string> | null>(null);
+  const seenSuccessfulCheckAt = useRef<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [runSubmitting, setRunSubmitting] = useState(false);
-  const [runResult, setRunResult] = useState<RevenueRunResult | null>(null);
   const [leadName, setLeadName] = useState("");
   const [leadEmail, setLeadEmail] = useState("");
   const [context, setContext] = useState("");
@@ -159,10 +199,12 @@ export default function RevenueOperatorPage() {
     userEmail: state.currentUser.email,
   }), [state.currentUser.email, state.currentUser.id, state.workspace.id]);
 
-  const loadRevenueRuntime = useCallback(async () => {
+  const loadRevenueRuntime = useCallback(async (background = false) => {
     if (!state.workspace.id) return;
-    setRuntimeLoading(true);
-    setRuntimeError("");
+    if (!background) {
+      setRuntimeLoading(true);
+      setRuntimeError("");
+    }
     try {
       const readinessQs = new URLSearchParams(identityParams);
       readinessQs.set("operatorKey", "revenue");
@@ -182,16 +224,50 @@ export default function RevenueOperatorPage() {
       if (!runsRes.ok) throw new Error(runsJson.error || "Could not load Revenue Operator runs.");
       if (!statusRes.ok) throw new Error(statusJson.error || "Could not load Revenue Operator status.");
       setRevenueReadiness(statusJson.readiness ?? readinessJson.readiness ?? null);
+      const nextApprovals = statusJson.monitoring?.recentPendingApprovals ?? [];
+      const nextApprovalIds = new Set(nextApprovals.map((approval) => approval.id));
+      if (seenApprovalIds.current && [...nextApprovalIds].some((id) => !seenApprovalIds.current?.has(id))) {
+        setMonitoringUpdate(true);
+      }
+      seenApprovalIds.current = nextApprovalIds;
+      const successfulCheckAt = statusJson.monitoring?.lastSuccessfulCheckAt ?? null;
+      const lastSummary = statusJson.monitoring?.lastRunSummary;
+      if (seenSuccessfulCheckAt.current && successfulCheckAt && successfulCheckAt !== seenSuccessfulCheckAt.current
+        && lastSummary?.sourceMode === "scheduled" && Number(lastSummary.opportunitiesFound) > 0) {
+        setMonitoringUpdate(true);
+      }
+      seenSuccessfulCheckAt.current = successfulCheckAt;
       setRevenueStatus(statusJson);
       setRevenueRuns(Array.isArray(runsJson.runs) ? runsJson.runs : []);
     } catch (error) {
-      setRuntimeError(error instanceof Error ? error.message : "Could not load Revenue Operator runtime.");
+      if (!background) setRuntimeError(error instanceof Error ? error.message : "Could not load Revenue Operator runtime.");
     } finally {
-      setRuntimeLoading(false);
+      if (!background) setRuntimeLoading(false);
     }
   }, [identityParams, state.workspace.id]);
 
-  useEffect(() => { void loadRevenueRuntime(); }, [loadRevenueRuntime]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void loadRevenueRuntime(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadRevenueRuntime]);
+  useEffect(() => {
+    if (!monitoringUpdate) return;
+    const timer = window.setTimeout(() => setMonitoringUpdate(false), 8_000);
+    return () => window.clearTimeout(timer);
+  }, [monitoringUpdate]);
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible" && !scanSubmitting) void loadRevenueRuntime(true);
+    };
+    const timer = window.setInterval(refresh, 15_000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [loadRevenueRuntime, scanSubmitting]);
 
   const startGmailReconnect = () => {
     if (!entitlements.canUseRealConnectors) {
@@ -214,10 +290,14 @@ export default function RevenueOperatorPage() {
       });
       const json = await res.json().catch(() => ({})) as RevenueScanResult;
       setScanResult(json);
-      if (!res.ok && json.status !== "requires_gmail_read_scope") throw new Error(json.message || json.error || "Revenue scan failed.");
-      await loadRevenueRuntime();
-    } catch (error) {
-      setRuntimeError(error instanceof Error ? error.message : "Revenue scan failed.");
+      if (!res.ok && json.status !== "requires_gmail_read_scope") {
+        setRuntimeError(json.status === "requires_gmail_send_scope" || json.status === "requires_gmail_read_scope"
+          ? "Reconnect Gmail to continue Revenue monitoring."
+          : "This check could not finish. Try again, or review technical details below.");
+      }
+      await loadRevenueRuntime(true);
+    } catch {
+      setRuntimeError("This check could not finish. Try again, or review technical details below.");
     } finally {
       setScanSubmitting(false);
     }
@@ -227,7 +307,6 @@ export default function RevenueOperatorPage() {
     event.preventDefault();
     setRunSubmitting(true);
     setRuntimeError("");
-    setRunResult(null);
     try {
       const res = await fetch("/api/operators/run", {
         method: "POST",
@@ -236,7 +315,6 @@ export default function RevenueOperatorPage() {
       });
       const json = await res.json().catch(() => ({})) as RevenueRunResult;
       if (!res.ok) throw new Error(json.error || "Revenue Operator run failed.");
-      setRunResult(json);
       setLeadName("");
       setLeadEmail("");
       setContext("");
@@ -252,12 +330,15 @@ export default function RevenueOperatorPage() {
   const gmailReconnectRequired = Boolean(revenueStatus?.gmail?.reconnectRequired || monitoring?.reconnectRequired);
   const scanNeedsReconnect = gmailReconnectRequired || scanResult?.status === "requires_gmail_read_scope" || scanResult?.status === "requires_gmail_send_scope";
   const canRunRevenue = Boolean(revenueReadiness?.canRunManual && (revenueReadiness.status === "ready" || revenueReadiness.status === "draft_only"));
-  const scanSkippedSummary = scanResult?.skipped?.length
-    ? Object.entries(scanResult.skipped.reduce<Record<string, number>>((counts, item) => {
-      counts[item.reason] = (counts[item.reason] ?? 0) + 1;
-      return counts;
-    }, {})).map(([reason, count]) => `${reason}: ${count}`).join(" / ")
-    : "";
+  const skippedGroups = scanResult?.skipped?.reduce<Record<string, number>>((counts, item) => {
+    const group = humanSkipGroup(item.reason);
+    counts[group] = (counts[group] ?? 0) + 1;
+    return counts;
+  }, {}) ?? {};
+  const scanFound = scanResult?.opportunitiesFound ?? scanResult?.opportunities?.length ?? 0;
+  const scanApprovals = scanResult?.approvalsCreated ?? 0;
+  const scanDeferred = scanResult?.deferredCount ?? scanResult?.deferred?.length ?? 0;
+  const scanSucceeded = scanResult?.status === "completed";
   const pendingApprovals = monitoring?.recentPendingApprovals?.length ?? 0;
   const optionalContext = getOperatorCapabilityCopy("revenue").optional;
   const showRuntime = presentationState?.lifecycle === "active";
@@ -290,7 +371,7 @@ export default function RevenueOperatorPage() {
         onStateChange={setPresentationState}
         runtime={{
           pendingApprovals,
-          monitoringLabel: monitoring?.status === "monitoring_active" ? "Active" : "Scheduled",
+          monitoringLabel: monitoringLabel(monitoring?.status),
           nextCheckLabel: dateTimeLabel(monitoring?.nextRunAt),
         }}
       />
@@ -301,7 +382,13 @@ export default function RevenueOperatorPage() {
             <div className="card">
               <div className="card-head">
                 <div className="t-section">Current work</div>
-                <div className="inline">{pendingApprovals > 0 ? <Link href="/app/approvals" className="btn btn-primary btn-sm">{pendingApprovals} awaiting review</Link> : null}<button className="btn btn-ghost btn-sm" type="button" onClick={submitRevenueScan} disabled={!canRunRevenue || scanSubmitting}>{scanSubmitting ? "Checking…" : "Run manual check"}</button></div>
+                <div className="inline">{pendingApprovals > 0 ? <Link href="/app/approvals" className="btn btn-primary btn-sm">{pendingApprovals} awaiting review</Link> : null}<button className="btn btn-ghost btn-sm" type="button" onClick={submitRevenueScan} disabled={!canRunRevenue || scanSubmitting}>{scanSubmitting ? "Checking…" : "Check now"}</button></div>
+              </div>
+              <div className="card-pad" style={{ borderBottom: "1px solid var(--line)", display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }} aria-live="polite">
+                <span className="t-compact"><strong>Monitoring</strong> · {runtimeLoading || scanSubmitting || monitoring?.isRunning ? "Checking connected systems…" : monitoringLabel(monitoring?.status)}</span>
+                <span className="t-meta">Last checked {shortTimeAgo(monitoring?.lastRunAt)} · {monitoringNextLabel(monitoring?.status, monitoring?.nextRunAt)}</span>
+                {monitoring?.status === "monitoring_issue" && <button className="btn btn-ghost btn-sm" type="button" onClick={submitRevenueScan} disabled={!canRunRevenue || scanSubmitting}>Retry</button>}
+                {monitoringUpdate && <span className="badge cyan">Revenue Operator found new work</span>}
               </div>
               {pendingApprovals > 0 ? (
                 <div className="rows">
@@ -313,7 +400,7 @@ export default function RevenueOperatorPage() {
                   ))}
                 </div>
               ) : (
-                <div className="card-pad t-meta">{revenueRuns.length ? `${revenueRuns.length} recent check${revenueRuns.length === 1 ? "" : "s"} recorded. Next scheduled check: ${dateTimeLabel(monitoring?.nextRunAt)}.` : `No issues need attention right now. Next scheduled check: ${dateTimeLabel(monitoring?.nextRunAt)}.`}</div>
+                <div className="card-pad t-meta">{revenueRuns.length ? `${revenueRuns.length} recent check${revenueRuns.length === 1 ? "" : "s"} recorded. Next check: ${dateTimeLabel(monitoring?.nextRunAt)}.` : `No issues need attention right now. Next check: ${dateTimeLabel(monitoring?.nextRunAt)}.`}</div>
               )}
               {gmailReconnectRequired && (
                 <div className="card-pad" style={{ borderTop: "1px solid var(--line)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
@@ -323,9 +410,18 @@ export default function RevenueOperatorPage() {
               )}
               {scanResult && (
                 <div className="card-pad" style={{ borderTop: "1px solid var(--line)" }}>
-                  <div className="t-object" style={{ fontSize: 13 }}>{scanNeedsReconnect ? "Reconnect Gmail required" : `Manual check ${scanResult.status ?? "completed"}`}</div>
-                  {scanResult.message && <div className="t-compact" style={{ marginTop: 4 }}>{scanResult.message}</div>}
-                  {!scanNeedsReconnect && <div className="t-meta" style={{ marginTop: 4 }}>{scanResult.scanned ?? 0} scanned · {scanResult.opportunitiesFound ?? 0} found · {scanResult.approvalsCreated ?? 0} approvals prepared{scanSkippedSummary ? ` · skipped: ${scanSkippedSummary}` : ""}</div>}
+                  <div className="t-object" style={{ fontSize: 13 }}>{scanNeedsReconnect ? "Reconnect Gmail required" : !scanSucceeded ? "Check couldn’t finish" : scanFound === 0 ? "Check completed" : `${scanFound} new Revenue opportunit${scanFound === 1 ? "y" : "ies"} found`}</div>
+                  {scanNeedsReconnect
+                    ? <div className="t-compact" style={{ marginTop: 4 }}>Reconnect Gmail to resume automatic monitoring.</div>
+                    : !scanSucceeded
+                      ? <div className="t-compact" style={{ marginTop: 4 }}>Try again, or review the technical details if the issue continues.</div>
+                    : <>
+                      <div className="t-compact" style={{ marginTop: 4 }}>{scanResult.scanned ?? 0} messages scanned. {scanFound === 0 ? "No new Revenue work found." : `${scanApprovals} follow-up${scanApprovals === 1 ? "" : "s"} prepared · ${scanApprovals} approval${scanApprovals === 1 ? "" : "s"} waiting${scanDeferred ? ` · ${scanDeferred} need${scanDeferred === 1 ? "s" : ""} more context` : ""}.`}</div>
+                      {scanFound === 0 && Object.entries(skippedGroups).length > 0 && <div className="t-meta" style={{ marginTop: 4 }}>{Object.entries(skippedGroups).map(([label, count]) => `${count} ${label}`).join(" · ")}</div>}
+                      {scanApprovals > 0 && <Link className="btn btn-primary btn-sm" href="/app/approvals" style={{ marginTop: 10, width: "fit-content" }}>Review {scanApprovals === 1 ? "approval" : "approvals"}</Link>}
+                      {scanFound > 0 && scanApprovals === 0 && <Link className="btn btn-ghost btn-sm" href="/app/workflows" style={{ marginTop: 10, width: "fit-content" }}>Review work</Link>}
+                    </>}
+                  {(scanResult.error || scanResult.message || scanResult.skipped?.length) ? <details style={{ marginTop: 10 }}><summary className="t-meta" style={{ cursor: "pointer" }}>Technical details</summary><div className="t-meta" style={{ marginTop: 6 }}>{scanResult.error || scanResult.message}{scanResult.skipped?.length ? <div>{Object.entries(scanResult.skipped.reduce<Record<string, number>>((counts, item) => { counts[item.reason] = (counts[item.reason] ?? 0) + 1; return counts; }, {})).map(([reason, count]) => `${reason}: ${count}`).join(" · ")}</div> : null}</div></details> : null}
                 </div>
               )}
             </div>

@@ -179,6 +179,15 @@ try {
   assert.notEqual(distinct.workflowId, prepared.workflowId, "a distinct Gmail thread must not merge into the prior opportunity");
   assert.equal(database.get("os_workflow_runs").length, 2);
 
+  const concurrentCandidate = { ...makeCandidate({ messageId: "gmail-message-concurrent", threadId: "gmail-thread-concurrent", signalId: "signal-concurrent" }), workspaceId: "ws-concurrent" };
+  const concurrent = await Promise.all([
+    ensureRevenueWorkflow({ supabase, workspaceId: "ws-concurrent", signalId: "signal-concurrent", candidate: concurrentCandidate, connectorKey: "gmail", targetRef: "gmail-thread-concurrent" }),
+    ensureRevenueWorkflow({ supabase, workspaceId: "ws-concurrent", signalId: "signal-concurrent", candidate: concurrentCandidate, connectorKey: "gmail", targetRef: "gmail-thread-concurrent" }),
+  ]);
+  assert.equal(concurrent[0].workflowId, concurrent[1].workflowId, "scheduled and manual scans of the same Gmail signal must resolve to one workflow identity");
+  assert.equal(database.get("os_workflow_runs").filter((row) => row.workspace_id === "ws-concurrent").length, 1, "the concurrent race must not create duplicate workflows");
+  assert.equal(database.get("os_workflow_steps").filter((row) => row.workspace_id === "ws-concurrent").length, 1, "the concurrent race must not create duplicate workflow actions");
+
   const scan = read("src/lib/operators/revenue/scan.ts");
   const gmailApproval = read("src/lib/operators/executors/gmail.ts");
   const microsoftApproval = read("src/lib/operators/executors/microsoft.ts");
@@ -203,6 +212,7 @@ try {
   assert.match(gmailApproval, /\.in\("status", \["pending", "executing", "approved"\]\)/, "retrying the same action must reuse its active approval");
   assert.match(microsoftApproval, /\.in\("status", \["pending", "executing", "approved"\]\)/);
   assert.match(migration, /status in \('pending', 'executing', 'approved'\)/, "the database uniqueness guard must cover in-flight approvals too");
+  assert.match(migration, /create unique index if not exists os_approvals_active_execution_dedupe_uidx/, "concurrent scans must retain the database guard against duplicate active approvals");
   assert.match(approvalRoute, /\.eq\("workspace_id", context\.workspaceId\)/);
   assert.match(approvalRoute, /\.order\("created_at", \{ ascending: false \}\)/);
   assert.match(approveRoute, /\.eq\("status", "pending"\)[\s\S]{0,100}\.select\("id"\)[\s\S]{0,60}\.maybeSingle\(\)/, "approval execution atomically claims only a pending approval before sending");

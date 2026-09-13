@@ -4,6 +4,7 @@ import { getConnectorTruth } from "@/lib/connectors/truth";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { getHubSpotDealPipelineMapping, getHubSpotPropertyReadiness } from "@/lib/operators/executors/hubspot";
 import { getOperatorReadiness } from "@/lib/operators/readiness";
+import { getOperatorActivationState } from "@/lib/operators/activation";
 import { getOperatorConnectorReadiness, getOptionalUpsellConnectors } from "@/lib/operators/connector-requirements";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 
@@ -53,11 +54,25 @@ function boolValue(value: unknown): boolean | null {
 }
 
 function nextRunFromCadence(lastRunAt: string | null, cadence: string): string | null {
+  if (cadence === "hourly") {
+    const next = new Date();
+    next.setUTCHours(next.getUTCHours() + 1, 0, 0, 0);
+    return next.toISOString();
+  }
   if (!lastRunAt) return null;
   const date = new Date(lastRunAt);
   if (Number.isNaN(date.getTime())) return null;
   if (cadence === "daily") return new Date(date.getTime() + 24 * 60 * 60 * 1000).toISOString();
   return null;
+}
+
+function latestTimestamp(...values: Array<string | null>): string | null {
+  return values.filter((value): value is string => Boolean(value))
+    .sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null;
+}
+
+function numberValue(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 function mapPendingApproval(row: Record<string, unknown>) {
@@ -91,7 +106,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: context.error, code: context.code }, { status: context.status });
   }
 
-  const [readiness, connectorTruth, runs, pendingApprovals, triggerConfig] = await Promise.all([
+  const [readiness, connectorTruth, runs, pendingApprovals, triggerConfig, manualConfig, activation] = await Promise.all([
     getOperatorReadiness({ workspaceId: context.workspaceId, operatorKey: "revenue" }),
     getConnectorTruth({ workspaceId: context.workspaceId, supabase }),
     supabase
@@ -117,6 +132,14 @@ export async function GET(req: NextRequest) {
       .eq("operator_key", "revenue")
       .eq("trigger_type", "scheduled_monitoring")
       .maybeSingle(),
+    supabase
+      .from("os_operator_triggers")
+      .select("id,trigger_type,enabled,config,updated_at")
+      .eq("workspace_id", context.workspaceId)
+      .eq("operator_key", "revenue")
+      .eq("trigger_type", "manual_monitoring")
+      .maybeSingle(),
+    getOperatorActivationState({ workspaceId: context.workspaceId, operatorKey: "revenue", supabase }),
   ]);
 
   if (runs.error) {
@@ -127,6 +150,9 @@ export async function GET(req: NextRequest) {
   }
   if (triggerConfig.error) {
     return NextResponse.json({ error: triggerConfig.error.message }, { status: 500 });
+  }
+  if (manualConfig.error) {
+    return NextResponse.json({ error: manualConfig.error.message }, { status: 500 });
   }
 
   const gmail = connectorTruth.find((connector) => connector.connectorKey === "gmail") ?? null;
@@ -143,20 +169,62 @@ export async function GET(req: NextRequest) {
   const hasScan = Boolean(latestScanRow && latestScan);
   const trigger = triggerConfig.data ? asRecord(triggerConfig.data) : {};
   const triggerSettings = asRecord(trigger.config);
-  const monitoringEnabled = boolValue(trigger.enabled) ?? boolValue(triggerSettings.monitoringEnabled) ?? true;
-  const cadence = stringValue(triggerSettings.cadence) ?? latestScan?.cadence ?? "daily";
-  const lastRunAt = stringValue(triggerSettings.lastRunAt)
-    ?? latestScan?.completedAt
+  const manualTrigger = manualConfig.data ? asRecord(manualConfig.data) : {};
+  const manualSettings = asRecord(manualTrigger.config);
+  const monitoringEnabled = activation?.activated === true;
+  const cadence = stringValue(triggerSettings.cadence) ?? latestScan?.cadence ?? "hourly";
+  const latestRunFallback = latestScan?.completedAt
     ?? (typeof latestScanRow?.completed_at === "string" ? latestScanRow.completed_at : null)
     ?? (typeof latestScanRow?.created_at === "string" ? latestScanRow.created_at : null);
-  const nextRunAt = stringValue(triggerSettings.nextRunAt) ?? nextRunFromCadence(lastRunAt, cadence);
-  const lastRunSummary = asRecord(triggerSettings.lastRunSummary);
-  const lastRunSourceMode = stringValue(triggerSettings.sourceMode) ?? latestScan?.sourceMode ?? "scheduled";
-  const monitoringStatus = reconnectRequired
+  const latestScheduledScanRow = (runs.data ?? []).find((run) => asScanSummary(run.output)?.sourceMode === "scheduled");
+  const latestManualScanRow = (runs.data ?? []).find((run) => asScanSummary(run.output)?.sourceMode === "manual");
+  const latestScheduledFallback = latestScheduledScanRow
+    ? (typeof latestScheduledScanRow.completed_at === "string" ? latestScheduledScanRow.completed_at : null)
+      ?? (typeof latestScheduledScanRow.created_at === "string" ? latestScheduledScanRow.created_at : null)
+    : null;
+  const latestManualFallback = latestManualScanRow
+    ? (typeof latestManualScanRow.completed_at === "string" ? latestManualScanRow.completed_at : null)
+      ?? (typeof latestManualScanRow.created_at === "string" ? latestManualScanRow.created_at : null)
+    : null;
+  const lastScheduledCheckAt = stringValue(triggerSettings.lastScheduledCheckAt) ?? latestScheduledFallback;
+  const lastManualCheckAt = stringValue(manualSettings.lastManualCheckAt) ?? latestManualFallback;
+  const lastRunAt = latestTimestamp(lastScheduledCheckAt, lastManualCheckAt, stringValue(triggerSettings.lastRunAt), latestRunFallback);
+  const lastRunSourceMode = lastManualCheckAt && (!lastScheduledCheckAt || Date.parse(lastManualCheckAt) > Date.parse(lastScheduledCheckAt)) ? "manual" : "scheduled";
+  const nextRunAt = monitoringEnabled ? nextRunFromCadence(lastScheduledCheckAt, cadence) : null;
+  const scheduledStartedAt = stringValue(triggerSettings.lastScheduledStartedAt);
+  const manualStartedAt = stringValue(manualSettings.lastManualStartedAt);
+  const lastScheduledCompletedAt = lastScheduledCheckAt;
+  const lastManualCompletedAt = lastManualCheckAt;
+  const scheduledIsRunning = Boolean(scheduledStartedAt && Date.parse(scheduledStartedAt) > Date.parse(lastScheduledCompletedAt ?? "") && Date.now() - Date.parse(scheduledStartedAt) < 60 * 60 * 1000);
+  const manualIsRunning = Boolean(manualStartedAt && Date.parse(manualStartedAt) > Date.parse(lastManualCompletedAt ?? "") && Date.now() - Date.parse(manualStartedAt) < 30 * 60 * 1000);
+  const scheduledSummary = asRecord(triggerSettings.lastSuccessfulSummary);
+  const manualSummary = asRecord(manualSettings.lastSuccessfulSummary);
+  const scheduledSuccessAt = stringValue(triggerSettings.lastSuccessfulCheckAt);
+  const manualSuccessAt = stringValue(manualSettings.lastSuccessfulCheckAt);
+  const lastSuccessfulCheckAt = latestTimestamp(scheduledSuccessAt, manualSuccessAt)
+    ?? latestRunFallback;
+  const lastRunSummary = manualSuccessAt && (!scheduledSuccessAt || Date.parse(manualSuccessAt) > Date.parse(scheduledSuccessAt))
+    ? manualSummary
+    : scheduledSummary;
+  const lastSuccessfulSummary = asScanSummary(lastRunSummary) ?? latestScan;
+  const lastFailedCheckAt = latestTimestamp(
+    stringValue(triggerSettings.lastFailedCheckAt),
+    stringValue(manualSettings.lastFailedCheckAt),
+  );
+  const lastFailureCode = lastRunSourceMode === "manual"
+    ? stringValue(manualSettings.lastManualErrorCode) ?? stringValue(triggerSettings.lastScheduledErrorCode)
+    : stringValue(triggerSettings.lastScheduledErrorCode) ?? stringValue(manualSettings.lastManualErrorCode);
+  const lastRunStatus = lastRunSourceMode === "manual"
+    ? stringValue(manualSettings.lastManualStatus) ?? latestScanRow?.status ?? latestScan?.status ?? null
+    : stringValue(triggerSettings.lastRunStatus) ?? latestScanRow?.status ?? latestScan?.status ?? null;
+  const scheduledFailures = numberValue(triggerSettings.consecutiveScheduledFailures) ?? 0;
+  const monitoringStatus = !monitoringEnabled
+    ? "paused"
+    : reconnectRequired
     ? "reconnect_required"
-    : monitoringEnabled
-      ? "monitoring_active"
-      : "idle";
+    : scheduledFailures > 0
+      ? "monitoring_issue"
+      : "monitoring_active";
   const [hubspotPropertyReadiness, hubspotPipelineMapping] = hubspotConnected
     ? await Promise.all([
       getHubSpotPropertyReadiness(context.workspaceId),
@@ -244,14 +312,28 @@ export async function GET(req: NextRequest) {
     },
     monitoring: {
       status: monitoringStatus,
-      message: hasScan ? "Monitoring is active. Latest check loaded from operator run history." : "Monitoring is active. No check has run yet.",
+      message: monitoringStatus === "paused"
+        ? "Revenue monitoring is paused. Turn it on to resume automatic checks."
+        : monitoringStatus === "reconnect_required"
+          ? "Reconnect Gmail to resume Revenue monitoring."
+          : monitoringStatus === "monitoring_issue"
+            ? "Automatic checks need attention. You can try a check now."
+            : hasScan ? "Revenue is checking for new work automatically." : "Revenue monitoring is on. The first check is coming up.",
       monitoringEnabled,
       cadence,
       sourceMode: lastRunSourceMode,
       lastRunAt,
       nextRunAt,
-      lastRunStatus: stringValue(triggerSettings.lastRunStatus) ?? latestScanRow?.status ?? latestScan?.status ?? null,
-      lastRunSummary: Object.keys(lastRunSummary).length > 0 ? lastRunSummary : latestScan,
+      lastRunStatus,
+      lastRunSummary: Object.keys(lastSuccessfulSummary ?? {}).length > 0
+        ? lastSuccessfulSummary
+        : Object.keys(lastRunSummary).length > 0 ? lastRunSummary : latestScan,
+      lastSuccessfulCheckAt,
+      lastFailedCheckAt,
+      lastScheduledCheckAt,
+      consecutiveScheduledFailures: scheduledFailures,
+      lastFailureCode,
+      isRunning: scheduledIsRunning || manualIsRunning,
       manualRunAvailable: boolValue(triggerSettings.manualRunAvailable) ?? true,
       lastScanTime: lastRunAt,
       lastScannedCount: latestScan?.scanned ?? (typeof lastRunSummary.scanned === "number" ? lastRunSummary.scanned : 0),
@@ -261,7 +343,7 @@ export async function GET(req: NextRequest) {
       routedItemCount: latestScan?.routedItemCount ?? (typeof lastRunSummary.routedItemCount === "number" ? lastRunSummary.routedItemCount : null),
       recentPendingApprovals: (pendingApprovals.data ?? []).map((row) => mapPendingApproval(row as Record<string, unknown>)),
       reconnectRequired,
-      nextScanLabel: nextRunAt ? `Next daily check ${new Date(nextRunAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}` : "Daily scan ready",
+      nextScanLabel: nextRunAt ? `Next check ${new Date(nextRunAt).toLocaleString("en-US", { hour: "2-digit", minute: "2-digit", timeZoneName: "short" })}` : "Not scheduled",
     },
   });
 }

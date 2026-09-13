@@ -1,5 +1,5 @@
 // Operator activation - the real, user-set gate for a workspace's
-// unattended scheduled operator scan (the Trigger.dev daily cron).
+// unattended scheduled operator scan (the Trigger.dev hourly cron).
 //
 // Uses the existing os_operator_triggers table (see
 // supabase/migrations/20260618_os_operator_runtime.sql) with a dedicated
@@ -18,7 +18,7 @@
 // Manual/on-demand scans (POST /api/operators/{operator}/scan) are NOT
 // gated by this - they remain available regardless of activation state, for
 // pre-purchase exploration. Only the unattended scheduled cron
-// (src/trigger/*-operator-scan.ts daily tasks) should consult
+// (src/trigger/*-operator-scan.ts scheduled tasks) should consult
 // getOperatorActivationState() before including a workspace in its fanout.
 
 import { getOperatorDefinition, type OperatorKey } from "@/lib/operators/registry";

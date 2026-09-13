@@ -29,12 +29,32 @@ export default function ActivityPage() {
   const filterMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const controller = new AbortController();
-    fetch(`/api/activity?range=${range}`, { cache: "no-store", signal: controller.signal })
-      .then(async (response) => { const body = await response.json(); if (!response.ok) throw new Error(body.error || "Activity is unavailable."); return body as WorkforceActivityPage; })
-      .then(setData)
-      .catch((reason) => { if (reason instanceof DOMException && reason.name === "AbortError") return; setError(reason instanceof Error ? reason.message : "Activity is unavailable."); });
-    return () => controller.abort();
+    let active = false;
+    let disposed = false;
+    const refresh = async () => {
+      if (disposed || active || document.visibilityState !== "visible") return;
+      active = true;
+      try {
+        const response = await fetch(`/api/activity?range=${range}`, { cache: "no-store" });
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || "Activity is unavailable.");
+        if (!disposed) { setData(body as WorkforceActivityPage); setError(""); }
+      } catch (reason) {
+        if (!disposed) setError(reason instanceof Error ? reason.message : "Activity is unavailable.");
+      } finally {
+        active = false;
+      }
+    };
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 30_000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
   }, [range]);
 
   useEffect(() => {

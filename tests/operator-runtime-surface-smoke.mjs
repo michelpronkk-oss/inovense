@@ -36,7 +36,8 @@ for (const source of [clientVisible, operationsVisible, revenueCompact]) assert.
 for (const source of [briefing, clientVisible, operationsVisible, revenueCompact]) assert.doesNotMatch(source, /almost ready/i);
 // 7. Each live operator renders exactly one manual monitoring action.
 for (const [name, source] of [["Client Flow", clientVisible], ["Operations", operationsVisible], ["Revenue", revenueCompact]]) {
-  assert.equal((source.match(/Run manual check/g) ?? []).length, 1, `${name} must expose one manual check`);
+  const label = name === "Revenue" ? /Check now/g : /Run manual check/g;
+  assert.equal((source.match(label) ?? []).length, 1, `${name} must expose one manual check`);
 }
 assert.equal((supportVisible.match(/onClick=\{runScan\}/g) ?? []).length, 1, "Support must expose one manual check");
 assert.match(supportVisible, /Check now/, "Support's compact live-state rail must retain its manual check control");

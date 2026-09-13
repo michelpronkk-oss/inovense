@@ -376,20 +376,24 @@ export function OSOverview() {
 
   useEffect(() => {
     const controller = new AbortController();
-    setOverview(null);
-    setLoading(true);
-    setError("");
-    void loadOverview(controller.signal);
-    return () => controller.abort();
+    const timer = window.setTimeout(() => {
+      setOverview(null);
+      setLoading(true);
+      setError("");
+      void loadOverview(controller.signal);
+    }, 0);
+    return () => { window.clearTimeout(timer); controller.abort(); };
   }, [loadOverview]);
 
   useEffect(() => {
     const refreshWhenVisible = () => {
       if (document.visibilityState === "visible") void loadOverview();
     };
+    const timer = window.setInterval(refreshWhenVisible, 30_000);
     window.addEventListener("focus", refreshWhenVisible);
     document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
+      window.clearInterval(timer);
       window.removeEventListener("focus", refreshWhenVisible);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };

@@ -42,18 +42,31 @@ export default function WorkflowsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get("workflow"));
-  const load = useCallback(async () => {
-    setLoading(true); setError("");
+  const load = useCallback(async (background = false) => {
+    if (!background) { setLoading(true); setError(""); }
     try {
       const response = await fetch("/api/workflows", { cache: "no-store" });
       const json = await response.json().catch(() => ({})) as { workflows?: WorkflowPresentation[]; error?: string };
       if (!response.ok) throw new Error(json.error || "Could not load workflows.");
       setWorkflows(json.workflows ?? []);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not load workflows."); } finally { setLoading(false); }
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not load workflows."); } finally { if (!background) setLoading(false); }
   }, []);
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 0);
     return () => window.clearTimeout(timer);
+  }, [load]);
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible") void load(true);
+    };
+    const timer = window.setInterval(refresh, 15_000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
   }, [load]);
   useEffect(() => {
     const requested = searchParams.get("workflow");
