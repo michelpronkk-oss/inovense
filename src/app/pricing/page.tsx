@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import PublicSiteFrame from "@/components/home-v3/public-site-frame";
 import { PublicHero, PublicPricing } from "@/components/home-v3/public-page-components";
+import { PricingHeroVisual } from "@/components/home-v3/page-specific-hero-visuals";
 import { pricingPlans } from "@/lib/pricing";
 import { staticOgImage } from "@/lib/static-og";
 
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
 
 export default function PricingPage() {
   return <PublicSiteFrame>
-    <PublicHero label="Pricing" title="Operating capacity that scales with the work." description="Foundation, Workforce, and Scale are the canonical Auterim plans. Early Access remains active, so begin with a request and choose when to start a trial only after invitation." secondary={{ label: "How the trial works", href: "/getting-started" }} />
+    <PublicHero className="pricing-hero" label="Pricing" title="Operating capacity that scales with the work." description="Choose the capacity that fits your team. Begin with an Early Access request; an invited workspace decides when to start its trial." secondary={{ label: "How the trial works", href: "/getting-started" }} visual={<PricingHeroVisual plans={pricingPlans} />} />
     <PublicPricing plans={pricingPlans} />
   </PublicSiteFrame>;
 }

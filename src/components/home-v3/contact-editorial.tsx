@@ -1,5 +1,6 @@
 import ContactForm from "@/components/contact-form";
 import RequestEarlyAccessButton from "./request-early-access-button";
+import { ContactHeroVisual } from "./page-specific-hero-visuals";
 import { PublicHero } from "./public-page-components";
 
 const routes = [
@@ -9,7 +10,7 @@ const routes = [
 
 export default function ContactEditorial() {
   return <>
-    <PublicHero label="Contact" title="Tell us where work keeps getting stuck." description="Ask about an operating workflow, an available connector, a policy boundary, or Early Access. Use the form or write to the address that fits your question." action={false} secondary={{ label: "hello@auterim.com", href: "mailto:hello@auterim.com" }} />
+    <PublicHero label="Contact" title="Tell us where work keeps getting stuck." description="Talk to us about your work, your systems, or the next step with Auterim." action={false} visual={<ContactHeroVisual />} />
     <section className="sec public-content contact-public-content">
       <div className="wrap">
         <div className="public-section-heading"><span>Direct routes</span><div><h2>Start with the right conversation.</h2><p>Use the contact form for a message, email the team directly, or request Early Access through the shared form.</p></div></div>

@@ -19,7 +19,7 @@ export default function PrivacyPage() {
     <p>This Privacy Policy explains how Auterim collects, uses, stores, and protects information when you use our websites, products, and services.</p>
 
     <h2>Information Auterim handles</h2>
-    <ul>
+    <ul className="privacy-data-list">
       <li><strong>Early Access requests:</strong> name, work email, company, role, team size, use case, and request attribution such as source path, referrer, and campaign parameters.</li>
       <li><strong>Contact messages:</strong> the name, email, company, reason, and message details submitted through the contact form.</li>
       <li><strong>Account and workspace details:</strong> sign-in identity, company context, workspace members, selected policies, and setup choices entered into the product.</li>

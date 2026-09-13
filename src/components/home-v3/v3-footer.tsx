@@ -2,8 +2,35 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ResponsiveCopy } from "./responsive-copy";
 import { openCookiePreferences } from "@/lib/cookie-consent";
+
+const FOOTER_GROUPS = [
+  {
+    title: "Platform",
+    links: [
+      { label: "How it works", href: "/how-it-works" },
+      { label: "Operators", href: "/operators" },
+      { label: "Connectors", href: "/connectors" },
+    ],
+  },
+  {
+    title: "Resources",
+    links: [
+      { label: "Pricing", href: "/pricing" },
+      { label: "Security", href: "/security" },
+      { label: "Getting started", href: "/getting-started" },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { label: "About", href: "/about" },
+      { label: "Contact", href: "/contact" },
+      { label: "Privacy", href: "/privacy" },
+      { label: "Terms", href: "/terms" },
+    ],
+  },
+] as const;
 
 function Mark() {
   return (
@@ -21,38 +48,18 @@ export default function V3Footer() {
         <div className="foot-grid">
           <div className="foot-brand">
             <Link href="/" className="mark"><Mark /></Link>
-            <p><ResponsiveCopy desktop="Finds the work before your team has to." /></p>
+            <p>Auterim finds the work before your team has to.</p>
           </div>
-          <div>
-            <h4>Platform</h4>
-            <ul>
-              <li><Link href="/how-it-works">How it works</Link></li>
-              <li><Link href="/operators">Operators</Link></li>
-              <li><Link href="/control">Control</Link></li>
-              <li><Link href="/connectors">Connectors</Link></li>
-            </ul>
-          </div>
-          <div>
-            <h4>Resources</h4>
-            <ul>
-              <li><Link href="/pricing">Pricing</Link></li>
-              <li><Link href="/use-cases">Use cases</Link></li>
-              <li><Link href="/getting-started">Getting started</Link></li>
-              <li><Link href="/security">Security</Link></li>
-              <li><Link href="/docs">Documentation</Link></li>
-              <li><Link href="/changelog">Changelog</Link></li>
-            </ul>
-          </div>
-          <div>
-            <h4>Company</h4>
-            <ul>
-              <li><Link href="/about">About</Link></li>
-              <li><Link href="/contact">Contact</Link></li>
-              <li><Link href="/privacy">Privacy</Link></li>
-              <li><Link href="/terms">Terms</Link></li>
-              <li><Link href="/cookies">Cookies</Link></li>
-            </ul>
-          </div>
+          {FOOTER_GROUPS.map((group) => (
+            <div key={group.title}>
+              <h4>{group.title}</h4>
+              <ul>
+                {group.links.map((link) => (
+                  <li key={link.href}><Link href={link.href}>{link.label}</Link></li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
         <div className="foot-base">
           <span>© 2026 Auterim</span>

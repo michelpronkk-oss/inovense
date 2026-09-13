@@ -4603,7 +4603,8 @@
   .auterim-v3-page .foot-grid { gap: 34px; }
   .auterim-v3-page .foot-brand { padding-bottom: 8px; border-bottom: 1px solid var(--rule); }
   .auterim-v3-page .foot h4 { margin-bottom: 15px; }
-  .auterim-v3-page .foot ul { gap: 11px; }
+  .auterim-v3-page .foot ul { gap: 4px; }
+  .auterim-v3-page .foot ul a { display: flex; min-height: 40px; align-items: center; }
   .auterim-v3-page .foot-base { margin-top: 44px; padding-top: 20px; }
 }
 @media (max-width: 520px) {

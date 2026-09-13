@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import PublicSiteFrame from "@/components/home-v3/public-site-frame";
-import { PublicHero, PublicRows, PublicCta } from "@/components/home-v3/public-page-components";
+import { PublicHero, PublicCta } from "@/components/home-v3/public-page-components";
+import { DetailGroup, StorySection } from "@/components/home-v3/public-story-components";
+import { SecurityHeroVisual } from "@/components/home-v3/page-specific-hero-visuals";
 import { staticOgImage } from "@/lib/static-og";
 
 const title = "Auterim Security and Data Controls";
@@ -27,8 +29,15 @@ const controls = [
 
 export default function SecurityPage() {
   return <PublicSiteFrame>
-    <PublicHero label="Security and control" title="Keep access bounded and consequential work visible." description="Auterim is built around authenticated workspaces, scoped provider access, workspace policies, and reviewable operator activity. The details below describe implemented controls rather than certification claims." secondary={{ label: "Control model", href: "/control" }} />
-    <PublicRows label="Implemented controls" title="What the product does today." rows={controls} note="Auterim does not represent itself as certified under SOC 2, ISO 27001, HIPAA, or GDPR. Security properties also depend on deployment configuration, provider permissions, and how each workspace sets its policies." />
+    <PublicHero label="Security and control" title="Keep access bounded and consequential work visible." description="Auterim is built around authenticated workspaces, scoped provider access, workspace policies, and reviewable operator activity. The details below describe implemented controls rather than certification claims." secondary={{ label: "Control model", href: "/control" }} visual={<SecurityHeroVisual />} />
+    <StorySection className="public-security" label="Implemented controls" title="Protection at the important boundaries.">
+      <div className="security-groups">
+        <DetailGroup title="Identity and workspace access" description="Verified sessions, application authorization, and database policies." rows={controls.slice(0, 2)} />
+        <DetailGroup title="Credentials and connected systems" description="Authenticated token encryption, scoped provider access, and verified billing webhooks." rows={[controls[2], controls[3], controls[5]]} />
+        <DetailGroup title="Decisions and execution records" description="Policy checks before action, with reviewable records and bounded retry behavior." rows={[controls[4], controls[6], controls[7]]} />
+      </div>
+      <p className="public-note">Auterim does not represent itself as certified under SOC 2, ISO 27001, HIPAA, or GDPR. Security properties also depend on deployment configuration, provider permissions, and how each workspace sets its policies.</p>
+    </StorySection>
     <PublicCta title="Ask about a connector or security control." description="Contact the team with a specific question about the product paths your workspace expects to use." />
   </PublicSiteFrame>;
 }

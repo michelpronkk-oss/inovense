@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import PublicSiteFrame from "@/components/home-v3/public-site-frame";
-import { PublicHero, PublicRows, PublicCta } from "@/components/home-v3/public-page-components";
+import { PublicHero, PublicCta } from "@/components/home-v3/public-page-components";
+import { DetailGroup, PolicyBoundary, StorySection } from "@/components/home-v3/public-story-components";
+import { ControlHeroVisual } from "@/components/home-v3/page-specific-hero-visuals";
 import { staticOgImage } from "@/lib/static-og";
 
 const title = "Control and Governance for AI Operators";
@@ -26,8 +28,16 @@ const controls = [
 
 export default function ControlPage() {
   return <PublicSiteFrame>
-    <PublicHero label="Governance" title="Your rules come first." description="Auterim can move work only inside the boundaries your workspace defines. The product makes the path to approval, execution, or a stop visible before consequential work continues." secondary={{ label: "Security details", href: "/security" }} />
-    <PublicRows label="Control model" title="Every next step has an owner and a boundary." rows={controls.map((item) => ({ ...item, kicker: "Policy and execution" }))} note="Control depends on configured policies, connected-provider permissions, and the specific action. The product does not guarantee that every provider outcome is reversible or unambiguous." />
+    <PublicHero label="Governance" title="Your rules come first." description="Auterim can move work only inside the boundaries your workspace defines. The product makes the path to approval, execution, or a stop visible before consequential work continues." secondary={{ label: "Security details", href: "/security" }} visual={<ControlHeroVisual />} />
+    <section className="public-feature"><div className="wrap"><PolicyBoundary /></div></section>
+    <StorySection label="Control model" title="Clear ownership. Visible decisions.">
+      <div className="public-principles">
+        <DetailGroup title="Set the boundary." description="Workspace policy and provider permissions shape what can happen." rows={[controls[0], controls[3]]} />
+        <DetailGroup title="Keep the decision human." description="One primary owner, with approval where the action needs it." rows={[controls[1], controls[2]]} />
+        <DetailGroup title="Review what happened." description="Follow the action record and the evidence behind an outcome." rows={controls.slice(4)} />
+      </div>
+      <p className="public-note">Control depends on configured policies, connected-provider permissions, and the specific action. The product does not guarantee that every provider outcome is reversible or unambiguous.</p>
+    </StorySection>
     <PublicCta title="See where your work needs a gate." description="Describe a real workflow and the decisions you want to keep with your team." />
   </PublicSiteFrame>;
 }

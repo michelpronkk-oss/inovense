@@ -39,7 +39,7 @@ function V3HeaderContent() {
   return (
     <header className={`top ${scrolled ? "on" : ""}`} onKeyDown={(event) => { if (event.key === "Escape") closeMenu(); }}>
       <div className="wrap">
-        <Link href="#top" className="mark" aria-label="Auterim home">
+        <Link href="/" className="mark" aria-label="Auterim home">
           <img src="/brand/auterim-mark-live.svg" width="20" height="20" alt="" />
           Auterim
         </Link>

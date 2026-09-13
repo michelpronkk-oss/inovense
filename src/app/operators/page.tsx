@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import PublicSiteFrame from "@/components/home-v3/public-site-frame";
-import { PublicHero, PublicRows, PublicCta } from "@/components/home-v3/public-page-components";
+import Link from "next/link";
+import { PublicHero, PublicCta } from "@/components/home-v3/public-page-components";
+import { OperatorsHeroVisual } from "@/components/home-v3/page-specific-hero-visuals";
+import { OperatorProfileGrid } from "@/components/home-v3/public-story-components";
+import { operatorAvatarPath } from "@/lib/operator-assets";
+import { ROADMAP_OPERATOR_PRESENTATION } from "@/lib/operators/index-card-presentation";
 import { staticOgImage } from "@/lib/static-og";
 
 const title = "Auterim AI Operators for Business";
@@ -18,7 +24,7 @@ const currentOperators = [
   {
     kicker: "Revenue · available today",
     title: "Revenue Operator",
-    body: "Owns inbound opportunity follow-up and the signals around active deals.",
+    body: "Keeps inbound opportunity follow-up moving across active deals.",
     bullets: [
       "Watches: connected email and CRM context.",
       "Detects: pricing intent, stalled opportunities, and follow-up needs.",
@@ -31,7 +37,7 @@ const currentOperators = [
   {
     kicker: "Client Flow · available today",
     title: "Client Flow Operator",
-    body: "Owns client onboarding communication, delivery coordination, and handoff momentum.",
+    body: "Keeps onboarding, delivery coordination, and client handoffs moving.",
     bullets: [
       "Watches: connected email, calendar, files, and workspace handoff context where available.",
       "Detects: missing onboarding steps, unanswered client follow-up, and delivery handoff gaps.",
@@ -44,7 +50,7 @@ const currentOperators = [
   {
     kicker: "Operations · available today",
     title: "Operations Operator",
-    body: "Owns internal operational follow-through and stalled work across supported work systems.",
+    body: "Moves blocked work and internal follow-through toward a clear owner.",
     bullets: [
       "Watches: connected Trello work and allowed team communication context.",
       "Detects: blocked, overdue, or stalled cards and relevant internal signals.",
@@ -57,7 +63,7 @@ const currentOperators = [
   {
     kicker: "Support · available today",
     title: "Support Operator",
-    body: "Owns unresolved support work, technical issues, and escalation follow-through.",
+    body: "Keeps unresolved customer issues and escalations in view.",
     bullets: [
       "Watches: connected support ticket and email context where the workspace has granted access.",
       "Detects: unresolved ticket risk, escalation signals, and approaching service targets in available context.",
@@ -69,14 +75,26 @@ const currentOperators = [
   },
 ];
 
-const roadmap = ["Finance", "Marketing", "Recruiting", "Procurement", "Compliance", "Data"];
-
 export default function OperatorsPage() {
   return <PublicSiteFrame>
-    <PublicHero label="The AI workforce" title="Operators are roles, not chatbots." description="Each Operator owns a defined area of business work, monitors approved context, prepares a useful next step, and follows the permissions and approval policy of its workspace." secondary={{ label: "See how it works", href: "/how-it-works" }} />
-    <PublicRows label="Available today" title="Four current roles, each with a focused responsibility." description="The exact capabilities depend on the connected provider, granted scopes, workspace policy, and readiness of the role." rows={currentOperators} />
-    <PublicRows label="Continue exploring" title="See the systems, policies, and setup around each role." rows={[{ kicker: "Product detail", title: "From connection to controlled work.", body: "Review which systems can be connected, how approvals are evaluated, how workflows proceed, and what to expect during setup.", links: [{ label: "Connectors", href: "/connectors" }, { label: "Approval boundaries", href: "/approvals" }, { label: "Controlled workflows", href: "/workflows" }, { label: "Getting started", href: "/getting-started" }, { label: "Pricing", href: "/pricing" }, { label: "Integration catalog", href: "/integrations" }] }]} />
-    <PublicRows label="Roadmap" title="A workforce that can expand over time." rows={[{ kicker: "Planned roles", title: "Future operator areas", body: "These roles are planned areas of expansion. They are not presented as currently available Operators.", bullets: roadmap }]} />
+    <PublicHero action label="The AI workforce" title="Operators are roles, not chatbots." description="Purpose-built roles monitor approved context, prepare useful work, and move it forward inside your rules." secondary={{ label: "See how they work", href: "/how-it-works" }} visual={<OperatorsHeroVisual operators={currentOperators} />} />
+    <section className="public-story operator-collection"><div className="wrap">
+      <div className="public-story-heading"><span className="lbl">Available today</span><h2>Four roles. Four kinds of work.</h2><p>Each Operator has a clear responsibility and an approval boundary shaped by connected systems, granted scopes, and workspace policy.</p></div>
+      <OperatorProfileGrid operators={currentOperators} />
+    </div></section>
+    <section className="public-story operator-behavior"><div className="wrap">
+      <div className="public-story-heading"><span className="lbl">How Operators work</span><h2>Context first. Action inside policy.</h2></div>
+      <div className="operator-behavior-grid"><article><span>01</span><h3>Approved context</h3><p>Operators work from the systems and information a workspace connects.</p></article><article><span>02</span><h3>A prepared next step</h3><p>Each role turns a signal into a specific piece of work for its owner.</p></article><article><span>03</span><h3>A visible boundary</h3><p>Allowed actions proceed. Gated actions pause. Blocked actions stop.</p></article></div>
+      <nav className="operator-guide-links" aria-label="More about Operators"><Link href="/integrations">Connectors</Link><Link href="/approvals">Approvals</Link><Link href="/workflows">Workflows</Link><Link href="/getting-started">Getting started</Link><Link href="/pricing">Pricing</Link></nav>
+    </div></section>
+    <div className="wrap"><aside className="operator-roadmap" aria-labelledby="operator-roadmap-title">
+      <div className="operator-roadmap-heading"><div><span className="lbl">Roadmap · coming later</span><h2 id="operator-roadmap-title">More areas of work, over time.</h2></div><span className="operator-roadmap-count">{ROADMAP_OPERATOR_PRESENTATION.length} planned roles</span></div>
+      <div className="operator-roadmap-grid">{ROADMAP_OPERATOR_PRESENTATION.map((role) => <article className="operator-roadmap-card" key={role.name}>
+        <Image className="operator-roadmap-avatar" src={operatorAvatarPath(role.avatarKey)} alt="" width={40} height={40} aria-hidden />
+        <span className="operator-roadmap-copy"><strong>{role.name}</strong><span>{role.descriptor}</span></span>
+        <span className="operator-roadmap-state">Planned</span>
+      </article>)}</div>
+    </aside></div>
     <PublicCta title="Start with one responsibility that already has an owner." description="Tell us which work loop you want an Operator to support. Early Access requests are reviewed before workspace invitations are sent." />
   </PublicSiteFrame>;
 }

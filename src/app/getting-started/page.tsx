@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import PublicSiteFrame from "@/components/home-v3/public-site-frame";
-import { PublicHero, PublicRows } from "@/components/home-v3/public-page-components";
+import { PublicHero, PublicCta } from "@/components/home-v3/public-page-components";
+import { DetailGroup, StorySection } from "@/components/home-v3/public-story-components";
+import { GettingStartedHeroVisual } from "@/components/home-v3/page-specific-hero-visuals";
 import { staticOgImage } from "@/lib/static-og";
 
 const title = "Getting Started with Auterim Early Access";
@@ -28,7 +30,15 @@ const steps = [
 
 export default function GettingStartedPage() {
   return <PublicSiteFrame>
-    <PublicHero label="Early Access path" title="Start with a real operating loop, one deliberate step at a time." description="Early Access begins with a request and an invitation. Setup, connections, operator activation, and any trial start happen later, under your control." secondary={{ label: "See current Operators", href: "/operators" }} />
-    <PublicRows label="Eight steps" title="From first request to reviewed work." rows={steps} className="public-steps" note="Trial access begins only after an invited workspace explicitly starts it. A request alone does not start a trial or payment." />
+    <PublicHero label="Early Access path" title="Start with a real operating loop, one deliberate step at a time." description="Early Access begins with a request and an invitation. Setup, connections, operator activation, and any trial start happen later, under your control." secondary={{ label: "See current Operators", href: "/operators" }} visual={<GettingStartedHeroVisual />} />
+    <StorySection label="From request to reviewed work" title="Start small. Set the boundary. See the work.">
+      <div className="public-onboarding">
+        <DetailGroup title="An invitation to begin." description="Tell us about the work. If the use case fits, we will help you take the next step." rows={steps.slice(0, 2)} />
+        <DetailGroup title="A workspace under your rules." description="Connect the right systems, activate a role, and set its policies." rows={steps.slice(2, 5)} />
+        <DetailGroup title="Your first prepared work." description="Review the evidence and the next move. Start a trial only when you choose." rows={steps.slice(5)} />
+      </div>
+      <p className="public-note">Trial access begins only after an invited workspace explicitly starts it. A request alone does not start a trial or payment.</p>
+    </StorySection>
+    <PublicCta title="Bring one workflow into focus." description="Tell us what your team wants to move first." />
   </PublicSiteFrame>;
 }

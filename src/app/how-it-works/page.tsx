@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import PublicSiteFrame from "@/components/home-v3/public-site-frame";
-import { PublicHero, PublicRows, PublicCta } from "@/components/home-v3/public-page-components";
+import { PublicHero, PublicCta } from "@/components/home-v3/public-page-components";
+import { DetailGroup, OperatingFlow, StorySection } from "@/components/home-v3/public-story-components";
+import { HowItWorksHeroVisual } from "@/components/home-v3/page-specific-hero-visuals";
 import { staticOgImage } from "@/lib/static-og";
 
 const title = "How Auterim Works";
@@ -29,8 +31,15 @@ const loop = [
 
 export default function HowItWorksPage() {
   return <PublicSiteFrame>
-    <PublicHero label="The operating loop" title="Auterim finds the work before your team has to." description="Connect the tools your business already uses. Auterim watches what matters, prepares the next move, and acts under your rules." secondary={{ label: "Meet the Operators", href: "/operators" }} />
-    <PublicRows label="From context to outcome" title="A controlled operating loop, not a generic automation flow." rows={loop.map((step) => ({ ...step, kicker: "Auterim cycle" }))} />
+    <PublicHero label="The operating loop" title="Auterim finds the work before your team has to." description="Connect the tools your business already uses. Auterim watches what matters, prepares the next move, and acts under your rules." secondary={{ label: "Meet the Operators", href: "/operators" }} visual={<HowItWorksHeroVisual />} />
+    <section className="public-feature"><div className="wrap"><OperatingFlow /></div></section>
+    <StorySection label="The operating loop" title="The work keeps its context. Your team keeps control.">
+      <div className="public-principles">
+        <DetailGroup title="Connect and understand." description="The systems stay familiar. The next step gets clearer." rows={loop.slice(0, 4)} />
+        <DetailGroup title="Prepare and decide." description="One operator owns the work. Your policy sets its boundary." rows={loop.slice(4, 7)} />
+        <DetailGroup title="Act and follow through." description="Track the action, then look for evidence of the outcome." rows={loop.slice(7)} />
+      </div>
+    </StorySection>
     <PublicCta title="Start with the work your team keeps chasing." description="Tell us what should move first. Early Access requests are reviewed before workspace invitations are sent." />
   </PublicSiteFrame>;
 }

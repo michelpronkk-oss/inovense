@@ -80,15 +80,55 @@ try {
       await page.screenshot({ path: join(screenshotDir, `${route.slice(1).replaceAll("/", "-") || "home"}-${viewport.width}.png`) });
     }
 
-    for (const viewport of [viewports[0], viewports[4]]) {
+    for (const viewport of viewports) {
       await page.setViewportSize(viewport);
-      await page.locator("footer").scrollIntoViewIfNeeded();
+      await page.evaluate(() => {
+        document.documentElement.style.scrollBehavior = "auto";
+        const footer = document.querySelector("footer");
+        const headerHeight = document.querySelector("header")?.getBoundingClientRect().height ?? 0;
+        if (!footer) return;
+        const footerTop = footer.getBoundingClientRect().top + window.scrollY;
+        window.scrollTo({ top: Math.max(0, footerTop - headerHeight), behavior: "instant" });
+      });
+      const footerLinks = await page.locator("footer .foot-grid ul a").evaluateAll((links) =>
+        links.map((link) => ({ href: link.getAttribute("href"), height: link.getBoundingClientRect().height })),
+      );
+      assert.equal(footerLinks.length, 10, `${route} shows only the ten Early Access footer links`);
+      if (viewport.width <= 820) {
+        assert.ok(footerLinks.every((link) => link.height >= 40), `${route} footer links have mobile tap targets at ${viewport.width}px`);
+      }
       await page.screenshot({ path: join(screenshotDir, `${route.slice(1).replaceAll("/", "-") || "home"}-footer-${viewport.width}.png`) });
     }
   }
 
   assert.equal(new Set([...titles.keys()]).size, titles.size, "footer pages have unique document titles");
   assert.deepEqual(dashPages, [], `visible public copy does not use em dashes: ${dashPages.join(", ")}`);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(new URL("/", baseUrl).href, { waitUntil: "networkidle" });
+  const operatorSection = page.locator("#operators");
+  const operatorRows = operatorSection.locator("details.op");
+  assert.equal(await operatorRows.count(), 4, "homepage workforce section shows the four current operators");
+  await operatorSection.locator(".ops").scrollIntoViewIfNeeded();
+  await page.waitForFunction(() => document.querySelector("#operators .mk-reveal")?.classList.contains("is-visible"));
+  await page.waitForTimeout(650);
+  const collapsedRows = await operatorRows.evaluateAll((rows) => rows.map((row) => ({
+    open: row.open,
+    height: row.querySelector(".op-row")?.getBoundingClientRect().height ?? 0,
+    description: getComputedStyle(row.querySelector(".op-say")).display,
+    systems: getComputedStyle(row.querySelector(".op-end")).display,
+  })));
+  assert.ok(collapsedRows.every((row) => !row.open && row.height <= 80 && row.description === "none" && row.systems === "none"), "mobile workforce rows collapse to compact profile bars");
+  await operatorSection.locator(".ops").screenshot({ path: join(screenshotDir, "home-operators-mobile-collapsed.png") });
+  await operatorRows.first().locator("summary").click();
+  assert.equal(await operatorRows.first().evaluate((row) => row.open), true, "mobile operator bar unfolds on tap");
+  assert.equal(await operatorRows.first().locator(".op-say").isVisible(), true, "expanded operator reveals role details");
+  assert.equal(await operatorRows.first().locator(".op-end").isVisible(), true, "expanded operator reveals connected systems");
+  const expandedDocumentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+  assert.ok(expandedDocumentWidth <= 390, "expanded mobile workforce row does not overflow the viewport");
+  await operatorRows.first().screenshot({ path: join(screenshotDir, "home-operator-mobile-expanded.png") });
+  await operatorRows.nth(1).locator("summary").click();
+  assert.equal(await operatorRows.first().evaluate((row) => row.open), false, "opening another mobile role closes the previous one");
 
   const brokenPaths = [];
   for (const path of internalPaths) {

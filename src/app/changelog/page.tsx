@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import PublicSiteFrame from "@/components/home-v3/public-site-frame";
 import { PublicHero, PublicRows } from "@/components/home-v3/public-page-components";
 import { changelogReleases } from "@/data/changelog";
+import { ChangelogHeroVisual } from "@/components/home-v3/page-specific-hero-visuals";
 import { staticOgImage } from "@/lib/static-og";
 
 const title = "Auterim Changelog";
@@ -26,7 +27,7 @@ export default function ChangelogPage() {
   }));
 
   return <PublicSiteFrame>
-    <PublicHero label="Product updates" title="What changed in Auterim." description="A lightweight product changelog. Each entry is tied to merged repository history; it describes product work, not a guarantee of a business outcome." action={false} secondary={{ label: "Documentation", href: "/docs" }} />
-    <PublicRows label="Verified releases" title="Progress across the operating layer." rows={rows} />
+    <PublicHero label="Product updates" title="What changed in Auterim." description="A lightweight product changelog. Each entry is tied to merged repository history; it describes product work, not a guarantee of a business outcome." action={false} secondary={{ label: "Documentation", href: "/docs" }} visual={<ChangelogHeroVisual releases={changelogReleases.slice(0, 3)} />} />
+    <PublicRows label="Verified releases" title="Progress across the operating layer." rows={rows} className="public-release-notes" />
   </PublicSiteFrame>;
 }
