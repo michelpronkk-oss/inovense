@@ -9,7 +9,7 @@ import { LinkIcon, PlusIcon, XIcon } from "@/components/dashboard/icons";
 import type { Connector } from "@/lib/os/types";
 import { UsageBanner } from "@/components/upgrade-prompt";
 import { getEntitlements } from "@/lib/os/entitlements";
-import { isRealConnectedConnector } from "@/lib/os/truth";
+import { getPlanLabel, isRealConnectedConnector } from "@/lib/os/truth";
 import { clearOnboardingReturn, hasPendingOnboardingReturn, isOnboardingLaunch } from "@/lib/onboarding/return-contract";
 import { ProviderLogo } from "@/components/connectors/provider-logo";
 import {
@@ -389,7 +389,7 @@ export default function ConnectorsPage() {
   const realConnectedCount = realConnectedConnectors.length;
   const connectorLimit = typeof entitlements.connectorsLimit === "number" ? entitlements.connectorsLimit : null;
   const atConnectorLimit = connectorLimit !== null && realConnectedCount >= connectorLimit;
-  const planLabel = entitlements.planTier.charAt(0).toUpperCase() + entitlements.planTier.slice(1);
+  const planLabel = getPlanLabel(entitlements.planTier);
 
   // Abandoning a connector flow that onboarding launched must hand the user
   // back to onboarding, never leave them standing on a bare /connectors page
@@ -570,7 +570,9 @@ export default function ConnectorsPage() {
     const connected = searchParams.get("connected");
     if (!connected) return;
     const connectedConnector = state.connectors.find((connector) => normalizeConnectorKey(connector.id) === connected);
-    if (connected === "google_drive" && (!connectedConnector || connectedConnector.health !== "healthy")) {
+    if (connected === "gmail" && searchParams.get("monitoring") === "issue") {
+      setFeedback("Gmail connected. Inbox monitoring needs setup; Revenue will continue its scheduled checks while you review the configuration.");
+    } else if (connected === "google_drive" && (!connectedConnector || connectedConnector.health !== "healthy")) {
       const needsFolder = !connectedConnector
         || connectedConnector.records.includes("Select a folder")
         || connectedConnector.records.includes("Select folders")
@@ -1341,7 +1343,7 @@ export default function ConnectorsPage() {
                   {trialEligible ? (
                     <Link className="btn btn-primary btn-sm" href="/plans">Choose a plan</Link>
                   ) : trialState?.reason === "already_consumed" ? (
-                    <a className="btn btn-primary btn-sm" href="/api/billing/dodo/checkout?plan=starter">Continue to Foundation</a>
+                    <a className="btn btn-primary btn-sm" href="/api/billing/dodo/checkout?plan=foundation">Continue to Foundation</a>
                   ) : trialState === null ? (
                     <button type="button" className="btn btn-primary btn-sm" disabled>Continue to Foundation</button>
                   ) : null}

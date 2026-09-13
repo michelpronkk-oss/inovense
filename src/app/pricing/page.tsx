@@ -1,22 +1,24 @@
 import type { Metadata } from "next";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
-import { PageShell, PageHero, SectionDivider, PageCTA, MktCard, MockupWindow } from "@/components/marketing-ui";
+import { PageShell, PageHero, SectionDivider, MktCard, MockupWindow } from "@/components/marketing-ui";
 import Reveal from "@/components/reveal";
 import { PricingPlans } from "@/components/pricing/pricing-plans";
+import { PricingPageFinalCta } from "@/components/pricing/pricing-page-final-cta";
+import EarlyAccessProvider from "@/components/early-access/early-access-provider";
 import { pricingPlans } from "@/lib/pricing";
 import { staticOgImage } from "@/lib/static-og";
 
 export const metadata: Metadata = {
   title: "AI Workforce Pricing",
-  description: "Start free, then pay for the AI operators, connected systems and controlled runs your company puts into production.",
+  description: "Compare Foundation, Workforce, and Scale pricing, then request Auterim Early Access. Your 3-day trial begins only when you choose to start it.",
   alternates: {
     canonical: "https://auterim.com/pricing",
   },
   openGraph: {
     url: "https://auterim.com/pricing",
     title: "AI Workforce Pricing | Auterim",
-    description: "Start free, then pay for the AI operators, connected systems and controlled runs your company puts into production.",
+    description: "Compare Auterim's Foundation, Workforce, and Scale plans and request Early Access before public launch.",
     type: "website",
     siteName: "Auterim",
     images: [staticOgImage("/pricing")],
@@ -24,7 +26,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "AI Workforce Pricing | Auterim",
-    description: "Start free, then pay for the AI operators, connected systems and controlled runs your company puts into production.",
+    description: "Compare Foundation, Workforce, and Scale pricing, then request Auterim Early Access. Your 3-day trial begins only when you choose to start it.",
     images: [staticOgImage("/pricing")],
   },
 };
@@ -39,16 +41,17 @@ const capacityRows = [
 export default async function PricingPage({ searchParams }: { searchParams: Promise<{ billing?: string }> }) {
   const billing = (await searchParams).billing;
   return (
-    <>
-      <Nav />
+    <EarlyAccessProvider>
+      <>
+      <Nav earlyAccessCta />
       <main>
         <PageShell>
           <Reveal>
             <PageHero
               eyebrow="Pricing"
             heading="Pay for operating capacity, not seats."
-            description="Every plan includes the core operating layer: operators, workflows, memory, approvals, connectors, policies and execution logs. Scale by volume, complexity and support."
-            mobileDescription="Every plan includes operators, workflows, memory, approvals and execution logs. Scale with the work."
+            description="Choose the operating capacity that fits your team. Request Early Access before public launch; your 3-day trial starts only when you explicitly choose to begin it."
+            mobileDescription="Compare plans and request Early Access. Your trial starts only when you choose to begin it."
               descMaxWidth="56ch"
             />
           </Reveal>
@@ -80,7 +83,7 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
                   subtitle="operators / actions / logs / approvals"
                   rows={[
                     { label: "3 active operators", meta: "Revenue, Marketing, Operations", status: "live" },
-                    { label: "11,840 actions executed", meta: "47.3% of Workforce capacity", status: "ok" },
+                    { label: "3,840 actions executed", meta: "76.8% of Workforce capacity", status: "ok" },
                     { label: "291 approvals reviewed", meta: "median review time 4m 12s", status: "ok" },
                     { label: "Audit logs retention", meta: "90 days active", status: "live" },
                   ]}
@@ -94,7 +97,7 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
             <div className="mx-auto max-w-6xl px-6 pt-8 md:pt-16">
               <PricingPlans plans={pricingPlans} />
               <p className="mt-8 text-center font-mono text-[11px]" style={{ color: "#4A4F57" }}>
-                Start self-serve. Upgrade when your operators need higher volume, more connected systems, or more controlled runs.
+                Request Early Access for the plan that fits your team. If invited, you choose when to start the 3-day trial.
               </p>
             </div>
           </section>
@@ -128,17 +131,11 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
             <SectionDivider />
           </section>
 
-          <PageCTA
-            heading="Pick a plan that matches your current operating capacity."
-            sub="Deploy one operator first. Expand once workflows, approvals, and logs prove value."
-            primary="Get Started"
-            primaryHref="/app/onboarding"
-            secondary="Book a 20-min demo"
-            secondaryHref="/contact"
-          />
+          <PricingPageFinalCta heading="Pick a plan that matches your operating capacity." sub="Request Early Access. If invited, you choose when to start the 3-day trial." />
         </PageShell>
       </main>
       <Footer />
-    </>
+      </>
+    </EarlyAccessProvider>
   );
 }

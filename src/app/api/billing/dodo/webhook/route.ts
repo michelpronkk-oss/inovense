@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
-import { getBillingEntitlementsForPlan, type BillingPlanTier } from "@/lib/pricing";
+import { getBillingEntitlementsForPlan } from "@/lib/pricing";
 import { isDodoWebhookTimestampFresh, verifyDodoWebhookSignature } from "@/lib/billing/dodo";
+import { getPlanFromDodoProductId } from "@/lib/billing/dodo-products";
 import { getWorkspaceTrialEntitlement, recordTrialStarted, updateTrialStatus } from "@/lib/billing/trials";
 import { sendTrialLifecycleEmail } from "@/lib/billing/trial-notifications";
+import { PLAN_LABELS, type PlanSlug } from "@/lib/plan-identity";
 
 type BillingStatus = "preview" | "trialing" | "active" | "past_due" | "canceled";
 
@@ -17,13 +19,13 @@ function createSupabaseAdmin() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-function mapProductToPlan(productId: string | undefined): BillingPlanTier | null {
-  if (!productId) return null;
-  if (productId === process.env.DODO_PRODUCT_STARTER) return "starter";
-  if (productId === process.env.DODO_PRODUCT_GROWTH) return "growth";
-  if (productId === process.env.DODO_SCALE_PRICE_ID) return "scale";
-  if (productId === process.env.DODO_PRODUCT_OPERATOR) return "operator";
-  return null;
+function mapProductToPlan(productId: string | undefined): PlanSlug | null {
+  try {
+    return getPlanFromDodoProductId(productId);
+  } catch {
+    console.error("[dodo.webhook] Dodo product configuration is ambiguous.");
+    return null;
+  }
 }
 
 function mapEventToBillingStatus(eventType: string, trialEndsAt?: string): BillingStatus | null {
@@ -108,7 +110,6 @@ export async function POST(req: NextRequest) {
   const metadata = (data.metadata as Record<string, unknown> | undefined) || {};
   const subscription = (data.subscription as Record<string, unknown> | undefined) || data;
 
-  const explicitPlan = firstString(metadata.plan_tier, metadata.plan);
   const productId = firstString(
     data.product_id,
     subscription.product_id,
@@ -133,9 +134,7 @@ export async function POST(req: NextRequest) {
     payload.product_id,
     fromPath(payload, "data.product.id"),
   );
-  const plan = (explicitPlan === "starter" || explicitPlan === "growth" || explicitPlan === "scale" || explicitPlan === "operator")
-    ? explicitPlan
-    : mapProductToPlan(resolvedProductId);
+  const plan = mapProductToPlan(resolvedProductId);
 
   const workspaceId = firstString(
     metadata.workspace_id,
@@ -202,10 +201,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, warning: "Unknown event type ignored." });
   }
   const updatePayload = {
-    // `operator` is a legacy persisted key. Keep the key in plan_tier, but
-    // never surface the obsolete billing name in workspace display fields.
-    plan: plan === "starter" ? "Foundation" : plan === "growth" ? "Workforce" : plan === "scale" ? "Scale" : "Scale",
-    plan_tier: entitlements.planTier,
+    plan: PLAN_LABELS[plan],
+    plan_tier: plan,
     billing_status: billingStatus,
     trial_ends_at: trialEndsAt ?? null,
     operators_limit: entitlements.operatorsLimit,
@@ -243,6 +240,7 @@ export async function POST(req: NextRequest) {
       workspace_id: workspaceId,
       dodo_customer_id: customerId ?? null,
       dodo_product_id: resolvedProductId ?? null,
+      plan_slug: plan,
       status: subscriptionStatus,
       currency,
       recurring_amount_minor: recurringAmount,
@@ -261,7 +259,7 @@ export async function POST(req: NextRequest) {
   // entitlement record only makes a first-time trial impossible to repeat.
   // Lifecycle messaging is deliberately best-effort: provider billing and
   // workspace access must still be committed if mail delivery is unavailable.
-  if (plan !== "operator") {
+  {
     try {
       const checkoutPlan = plan;
       const isActiveTrial = billingStatus === "trialing" && Boolean(trialEndsAt);

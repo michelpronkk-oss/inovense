@@ -36,7 +36,10 @@ const tmpDir = path.join(root, "tests", ".tmp-capability-billing-gating-smoke");
 fs.mkdirSync(tmpDir, { recursive: true });
 
 function loadModule(relSourcePath) {
-  const source = fs.readFileSync(path.join(root, relSourcePath), "utf8");
+  const source = fs.readFileSync(path.join(root, relSourcePath), "utf8").replace(
+    'import { normalizeWorkspacePlanTier, type WorkspacePlanTier } from "@/lib/plan-identity";',
+    "const { normalizeWorkspacePlanTier } = globalThis.__testPlanIdentity;",
+  );
   const { code } = esbuild.transformSync(source, { loader: "ts", format: "esm", target: "node18" });
   const tmpFile = path.join(tmpDir, `${path.basename(relSourcePath, ".ts")}-${Math.random().toString(36).slice(2)}.mjs`);
   fs.writeFileSync(tmpFile, code, "utf8");
@@ -84,7 +87,7 @@ function testSourceContracts() {
 
   // A2. The billing gate in each scan runs after readiness/setup checks and before connector API calls.
   const revenueGateIndex = revenueScan.indexOf("getWorkspaceExecutionEligibility(workspaceId, supabase)");
-  const revenueEmailConnectorIndex = revenueScan.indexOf("const emailConnector = resolveRevenueEmailConnector(readiness);");
+  const revenueEmailConnectorIndex = revenueScan.indexOf("const emailConnector =", revenueGateIndex + 1);
   assert.ok(revenueGateIndex > 0 && revenueGateIndex < revenueEmailConnectorIndex, "revenue billing gate must run before connector resolution/API calls");
 
   const opsGateIndex = operationsScan.indexOf("getWorkspaceExecutionEligibility(workspaceId, supabase)");
@@ -138,6 +141,7 @@ function testSourceContracts() {
 // ─────────────────────────────────────────────────────────────────────────
 
 async function testExecutionEligibilityRuntime() {
+  globalThis.__testPlanIdentity = await loadModule("src/lib/plan-identity.ts");
   const entitlements = await loadModule("src/lib/os/entitlements.ts");
   globalThis.__test_getEntitlements = entitlements.getEntitlements;
 
@@ -155,12 +159,12 @@ async function testExecutionEligibilityRuntime() {
   const { getWorkspaceExecutionEligibility, getWorkspaceExecutionEligibilityFromWorkspace } = eligibilityModule;
 
   function baseWorkspace(overrides = {}) {
-    return { id: "ws-test", name: "Test", environment: "production", region: "us", plan: "starter", ...overrides };
+    return { id: "ws-test", name: "Test", environment: "production", region: "us", plan: "foundation", ...overrides };
   }
 
   // 1. A canceled workspace is not execution-eligible.
   {
-    const result = getWorkspaceExecutionEligibilityFromWorkspace(baseWorkspace({ planTier: "starter", billingStatus: "canceled" }));
+    const result = getWorkspaceExecutionEligibilityFromWorkspace(baseWorkspace({ planTier: "foundation", billingStatus: "canceled" }));
     assert.equal(result.eligible, false, "canceled must not be eligible");
     assert.equal(result.status, "suspended");
     assert.equal(result.canRunRealActions, false);
@@ -168,7 +172,7 @@ async function testExecutionEligibilityRuntime() {
 
   // 2. A trialing workspace IS eligible (preserves entitlements.ts's intentional trial allowance).
   {
-    const result = getWorkspaceExecutionEligibilityFromWorkspace(baseWorkspace({ planTier: "starter", billingStatus: "trialing", trialEndsAt: "2099-01-01T00:00:00.000Z" }));
+    const result = getWorkspaceExecutionEligibilityFromWorkspace(baseWorkspace({ planTier: "foundation", billingStatus: "trialing", trialEndsAt: "2099-01-01T00:00:00.000Z" }));
     assert.equal(result.eligible, true, "trialing must be eligible");
     assert.equal(result.status, "trial");
     assert.equal(result.canRunRealActions, true);
@@ -177,7 +181,7 @@ async function testExecutionEligibilityRuntime() {
 
   // 3. A past_due workspace is not eligible, and is labeled distinctly from "canceled"/"suspended".
   {
-    const result = getWorkspaceExecutionEligibilityFromWorkspace(baseWorkspace({ planTier: "growth", billingStatus: "past_due" }));
+    const result = getWorkspaceExecutionEligibilityFromWorkspace(baseWorkspace({ planTier: "workforce", billingStatus: "past_due" }));
     assert.equal(result.eligible, false, "past_due must not be eligible");
     assert.equal(result.status, "billing_attention");
   }
@@ -231,7 +235,7 @@ async function testExecutionEligibilityRuntime() {
   }
 
   {
-    const activeRow = { id: "ws-a", name: "A", environment: "production", region: "us", plan: "growth", plan_tier: "growth", billing_status: "active", trial_ends_at: null };
+    const activeRow = { id: "ws-a", name: "A", environment: "production", region: "us", plan: "workforce", plan_tier: "workforce", billing_status: "active", trial_ends_at: null };
     const canceledRow = { ...activeRow, billing_status: "canceled" };
     const activeResult = await getWorkspaceExecutionEligibility("ws-a", mockWorkspaceSupabase(activeRow));
     const canceledResult = await getWorkspaceExecutionEligibility("ws-a", mockWorkspaceSupabase(canceledRow));
@@ -362,5 +366,6 @@ try {
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });
   delete globalThis.__test_getEntitlements;
+  delete globalThis.__testPlanIdentity;
   delete globalThis.__test_getOperatorDefinition;
 }

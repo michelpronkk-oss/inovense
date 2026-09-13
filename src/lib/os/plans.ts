@@ -1,6 +1,8 @@
 // Inovense OS — Plan definitions and limit enforcement
 
-export type PlanId = "preview" | "starter" | "growth" | "scale" | "operator" | "enterprise";
+import { normalizeWorkspacePlanTier, type WorkspacePlanTier } from "@/lib/plan-identity";
+
+export type PlanId = WorkspacePlanTier;
 
 export interface PlanLimits {
   name: string;
@@ -32,7 +34,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     companyMemory: true,
     insights: false,
   },
-  starter: {
+  foundation: {
     name: "Foundation",
     price: "$99/mo",
     maxOperators: 3,
@@ -46,7 +48,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     companyMemory: true,
     insights: false,
   },
-  growth: {
+  workforce: {
     name: "Workforce",
     price: "$299/mo",
     maxOperators: 8,
@@ -91,7 +93,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     insights: true,
   },
   enterprise: {
-    name: "Enterprise",
+    name: "Scale",
     price: "Custom",
     maxOperators: -1,
     maxConnectors: -1,
@@ -108,13 +110,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
 
 /** Normalize raw plan string from DB/seed to a PlanId */
 export function resolvePlanId(raw: string): PlanId {
-  const s = raw.toLowerCase();
-  if (s.includes("preview")) return "preview";
-  if (s.includes("enterprise")) return "enterprise";
-  if (s.includes("operator")) return "operator";
-  if (s.includes("scale")) return "scale";
-  if (s.includes("growth") || s.includes("workforce")) return "growth";
-  return "starter";
+  return normalizeWorkspacePlanTier(raw) ?? "preview";
 }
 
 export function getPlanLimits(raw: string): PlanLimits {

@@ -1,16 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { PLAN_LABELS, type PlanSlug } from "@/lib/plan-identity";
 
 interface UpgradePromptProps {
   feature: string;
   description: string;
-  requiredPlan: "growth";
+  requiredPlan: PlanSlug;
 }
-
-const PLAN_LABELS = {
-  growth: "Workforce",
-};
 
 function LockIcon() {
   return (

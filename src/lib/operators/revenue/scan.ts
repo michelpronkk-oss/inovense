@@ -50,7 +50,7 @@ import { returnSupportingOutcome } from "@/lib/workflows/workforce";
 import { connectorObservationsFromTruth, materializeConnectorObservations } from "@/lib/memory/materialize";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
-type RevenueScanSourceMode = "scheduled" | "manual" | "event_ready";
+type RevenueScanSourceMode = "scheduled" | "manual" | "event_ready" | "push";
 
 /**
  * Revenue supports Gmail and Microsoft 365 as interchangeable inbox sources.
@@ -1251,6 +1251,7 @@ async function scanRevenueOpportunitiesInternal(input: {
   workspaceId: string;
   maxResults?: number;
   sourceMode?: RevenueScanSourceMode;
+  gmailMessages?: SafeGmailMessage[];
   supabase?: SupabaseAdmin;
 }): Promise<RevenueScanResult> {
   const supabase = input.supabase ?? createSupabaseAdmin();
@@ -1294,7 +1295,9 @@ async function scanRevenueOpportunitiesInternal(input: {
     };
   }
 
-  const emailConnector = resolveRevenueEmailConnector(readiness);
+  const emailConnector = sourceMode === "push"
+    ? readiness.connectedRequiredConnectors.includes("gmail") ? "gmail" : null
+    : resolveRevenueEmailConnector(readiness);
   if (!emailConnector) {
     return { ok: false, status: 409, body: { status: "missing_connector", message: "Connect Gmail or Microsoft 365 to scan for revenue opportunities.", readiness } };
   }
@@ -1398,7 +1401,9 @@ async function scanRevenueOpportunitiesInternal(input: {
     );
     const maxResults = Math.min(Math.max(Number(input.maxResults) || 15, 1), 20);
     const listed = emailConnector === "gmail"
-      ? await listRecentMessages(accessToken, { maxResults, query: "newer_than:30d" })
+      ? input.gmailMessages
+        ? input.gmailMessages.slice(0, maxResults).map((message) => ({ id: message.id, threadId: message.threadId }))
+        : await listRecentMessages(accessToken, { maxResults, query: "newer_than:30d" })
       : (await listRecentMicrosoftMessages(accessToken, maxResults)).map((message) => ({ id: message.id }));
     const handled = await loadRevenueDedupeState({ supabase, workspaceId });
     const companyGraphContext = await loadRevenueCompanyGraphContext({ supabase, workspaceId });
@@ -1420,9 +1425,14 @@ async function scanRevenueOpportunitiesInternal(input: {
     const observedEmailMessages: SafeGmailMessage[] = [];
 
     for (const item of listed) {
-      const message = emailConnector === "gmail"
-        ? await getMessageDetails(accessToken, item.id)
-        : fromMicrosoftMessage(await getMicrosoftMessage(accessToken, item.id));
+      let message: SafeGmailMessage;
+      if (emailConnector === "gmail") {
+        const supplied = input.gmailMessages?.find((candidate) => candidate.id === item.id);
+        if (input.gmailMessages && !supplied) continue;
+        message = supplied ?? await getMessageDetails(accessToken, item.id);
+      } else {
+        message = fromMicrosoftMessage(await getMicrosoftMessage(accessToken, item.id));
+      }
       observedEmailMessages.push(message);
       const dedupe = buildDedupeMetadata(message, emailConnector);
       const duplicate = findDuplicateReason(dedupe, handled);
@@ -2181,19 +2191,21 @@ async function scanRevenueOpportunitiesInternal(input: {
       requires_approval: false,
     });
     if (scanOutputInsert.error) throw new Error(scanOutputInsert.error.message);
-    const monitoringUpdate = await upsertRevenueMonitoringConfig({
-      supabase,
-      workspaceId,
-      sourceMode,
-      lastRunAt: completedAt,
-      lastRunStatus: "completed",
-      lastRunSummary: scanSummary,
-    });
-    if (monitoringUpdate.error) {
-      console.warn("[revenue-scan] monitoring config update skipped", {
+    if (sourceMode !== "push") {
+      const monitoringUpdate = await upsertRevenueMonitoringConfig({
+        supabase,
         workspaceId,
-        error: monitoringUpdate.error.message,
+        sourceMode,
+        lastRunAt: completedAt,
+        lastRunStatus: "completed",
+        lastRunSummary: scanSummary,
       });
+      if (monitoringUpdate.error) {
+        console.warn("[revenue-scan] monitoring config update skipped", {
+          workspaceId,
+          error: monitoringUpdate.error.message,
+        });
+      }
     }
 
     return {
@@ -2222,17 +2234,20 @@ export async function scanRevenueOpportunities(input: {
   workspaceId: string;
   maxResults?: number;
   sourceMode?: RevenueScanSourceMode;
+  gmailMessages?: SafeGmailMessage[];
   supabase?: SupabaseAdmin;
 }): Promise<RevenueScanResult> {
   const sourceMode = input.sourceMode ?? "manual";
   let supabase = input.supabase;
   try {
     supabase ??= createSupabaseAdmin();
-    await markRevenueScanStarted({ supabase, workspaceId: input.workspaceId.trim(), sourceMode }).catch((error) => {
-      console.warn("[revenue-scan] start status update skipped", { workspaceId: input.workspaceId, error: error instanceof Error ? error.message : "Unknown error" });
-    });
+    if (sourceMode !== "push") {
+      await markRevenueScanStarted({ supabase, workspaceId: input.workspaceId.trim(), sourceMode }).catch((error) => {
+        console.warn("[revenue-scan] start status update skipped", { workspaceId: input.workspaceId, error: error instanceof Error ? error.message : "Unknown error" });
+      });
+    }
     const result = await scanRevenueOpportunitiesInternal({ ...input, supabase });
-    if (!result.ok) {
+    if (!result.ok && sourceMode !== "push") {
       const completedAt = new Date().toISOString();
       const failed = result.status >= 500 || Boolean(result.body.error) || sourceMode === "scheduled";
       const summary = {
@@ -2255,7 +2270,7 @@ export async function scanRevenueOpportunities(input: {
     return result;
   } catch (error) {
     const result = scanFailure(error);
-    if (supabase) {
+    if (supabase && sourceMode !== "push") {
       const completedAt = new Date().toISOString();
       const summary = {
         type: "revenue_scan_failure",

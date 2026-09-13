@@ -2,6 +2,7 @@ import "server-only";
 
 import { requireInternalAdmin } from "@/lib/admin/auth";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
+import { normalizeWorkspacePlanTier } from "@/lib/plan-identity";
 
 type Row = Record<string, unknown>;
 type Availability = "connected" | "partial" | "unavailable";
@@ -105,7 +106,7 @@ export async function getRevenueData(): Promise<RevenueData> {
       failed: eventResult.available ? events.filter(statusContains("failed")).length : null,
     },
     workspaces: workspaceResult.rows.slice(0, 16).map((row) => ({
-      id: String(row.id ?? "workspace"), name: String(row.name ?? "Unnamed workspace"), plan: String(row.plan_tier ?? "preview"),
+      id: String(row.id ?? "workspace"), name: String(row.name ?? "Unnamed workspace"), plan: normalizeWorkspacePlanTier(row.plan_tier ?? row.plan) ?? "preview",
       billingStatus: String(row.billing_status ?? "preview"), updatedAt: typeof row.billing_updated_at === "string" ? row.billing_updated_at : null,
     })),
     subscriptionsAvailable: subscriptionResult.available,

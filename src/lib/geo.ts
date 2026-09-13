@@ -26,7 +26,7 @@ export const INOVENSE_LANES = AUTERIM_LANES;
 
 export const AUTERIM_HOME_FAQS = [
   { question: "What is Auterim?", answer: "Auterim is the operating layer between your business and the software it runs on. It finds work in the systems you already use, prepares the next move, and keeps the result traceable." },
-  { question: "Do I have to build workflows?", answer: "No. You connect the systems you use and choose where to begin. Auterim recommends the right operator and keeps work within the controls you set." },
+  { question: "Do I have to build workflows?", answer: "Once invited, connect the systems you use and choose where to begin. Auterim recommends the right operator and keeps work within the controls you set." },
   { question: "What can happen automatically?", answer: "Safe internal work can run where your policy allows it. Sensitive external actions wait for approval, and blocked actions do not run." },
   { question: "Does Auterim replace our existing tools?", answer: "No. Your connected systems remain the source of truth. Auterim adds a governed operating layer across them." },
 ] as const;

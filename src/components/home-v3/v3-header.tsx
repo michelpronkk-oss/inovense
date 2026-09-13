@@ -2,19 +2,23 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { getPublicSignInHref, getPublicWorkspaceCta, usePublicUserState } from "@/lib/public-user-state";
-import { appHref } from "@/lib/urls";
+import { getPublicSignInHref, usePublicUserState } from "@/lib/public-user-state";
+import EarlyAccessProvider, { useEarlyAccess, useOptionalEarlyAccess } from "@/components/early-access/early-access-provider";
 
 export default function V3Header() {
+  const sharedEarlyAccess = useOptionalEarlyAccess();
+  return sharedEarlyAccess
+    ? <V3HeaderContent />
+    : <EarlyAccessProvider><V3HeaderContent /></EarlyAccessProvider>;
+}
+
+function V3HeaderContent() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDetailsElement>(null);
   const userState = usePublicUserState();
+  const { openEarlyAccess } = useEarlyAccess();
   const signInHref = getPublicSignInHref();
-  const workspaceCta = getPublicWorkspaceCta(userState);
-  const primaryCta = userState === "guest" || userState === "loading"
-    ? { label: "Set up your workspace", href: appHref("/onboarding") }
-    : workspaceCta;
   const showSignIn = userState === "guest";
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 14);
@@ -47,7 +51,7 @@ export default function V3Header() {
         </nav>
         <div className="cta">
           {showSignIn && <Link className="in" href={signInHref}>Sign in</Link>}
-          <Link className="btn btn-a" href={primaryCta.href}>{primaryCta.label}</Link>
+          <button type="button" className="btn btn-a" onClick={(event) => openEarlyAccess({ trigger: event.currentTarget })}>Request early access</button>
         </div>
         <details className="mobile-menu" ref={menuRef} onToggle={(event) => setMenuOpen(event.currentTarget.open)}>
           <summary aria-label={menuOpen ? "Close navigation" : "Open navigation"} aria-expanded={menuOpen} aria-controls="mobile-navigation">
@@ -65,7 +69,7 @@ export default function V3Header() {
               <Link href="/#pricing" onClick={closeMenu}>Pricing</Link>
               {showSignIn && <Link href={signInHref} onClick={closeMenu}>Sign in</Link>}
             </div>
-            <Link className="mobile-menu-cta btn btn-a" href={primaryCta.href} onClick={closeMenu}>{primaryCta.label} <span className="arrow">→</span></Link>
+            <button type="button" className="mobile-menu-cta btn btn-a" onClick={(event) => { const menuTrigger = menuRef.current?.querySelector<HTMLElement>("summary") ?? event.currentTarget; closeMenu(); openEarlyAccess({ trigger: menuTrigger }); }}>Request early access <span className="arrow">→</span></button>
           </nav>
         </details>
       </div>

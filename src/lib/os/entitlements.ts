@@ -1,6 +1,7 @@
 import type { Workspace } from "@/lib/os/types";
+import { normalizeWorkspacePlanTier, type WorkspacePlanTier } from "@/lib/plan-identity";
 
-export type PlanTier = "preview" | "starter" | "growth" | "scale" | "operator" | "enterprise";
+export type PlanTier = WorkspacePlanTier;
 export type BillingStatus = "preview" | "trialing" | "active" | "past_due" | "canceled";
 
 export interface Entitlements {
@@ -42,14 +43,7 @@ const PREVIEW: Entitlements = {
 };
 
 export function resolveWorkspacePlanTier(workspace: Workspace): PlanTier {
-  if (workspace.planTier) return workspace.planTier;
-  const raw = (workspace.plan || "").toLowerCase();
-  if (raw.includes("enterprise")) return "enterprise";
-  if (raw.includes("operator")) return "operator";
-  if (raw.includes("scale")) return "scale";
-  if (raw.includes("growth") || raw.includes("workforce")) return "growth";
-  if (raw.includes("starter") || raw.includes("foundation")) return "starter";
-  return "preview";
+  return normalizeWorkspacePlanTier(workspace.planTier ?? workspace.plan) ?? "preview";
 }
 
 export function resolveWorkspaceBillingStatus(workspace: Workspace): BillingStatus {
@@ -80,7 +74,7 @@ export function getEntitlements(workspace: Workspace): Entitlements {
     };
   }
 
-  if (planTier === "starter") {
+  if (planTier === "foundation") {
     return {
       planTier,
       billingStatus,
@@ -100,7 +94,7 @@ export function getEntitlements(workspace: Workspace): Entitlements {
     };
   }
 
-  if (planTier === "growth") {
+  if (planTier === "workforce") {
     return {
       planTier,
       billingStatus,

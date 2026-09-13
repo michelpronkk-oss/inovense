@@ -1,17 +1,12 @@
-import { getPublicSignInHref, getPublicWorkspaceCta, type PublicUserState } from "@/lib/public-user-state";
-import { appHref } from "@/lib/urls";
+import { PLAN_LABELS, PLAN_SLUGS, type PlanSlug } from "@/lib/plan-identity";
 
-// `starter` and `growth` are persisted legacy keys for Foundation and
-// Workforce. Keep them stable so current workspaces and Dodo subscriptions
-// continue to resolve. `operator` remains a legacy billed tier; it is not a
-// self-serve offer.
-export type PublicPlanTier = "starter" | "growth" | "scale";
+export type PublicPlanTier = PlanSlug;
 export type LegacyBillingPlanTier = "operator";
 export type BillingPlanTier = PublicPlanTier | LegacyBillingPlanTier;
 export type CheckoutPlanTier = PublicPlanTier;
 
 // Explicit commercial ordering. Do not infer upgrade paths alphabetically.
-export const SELF_SERVE_PLAN_ORDER: readonly CheckoutPlanTier[] = ["starter", "growth", "scale"];
+export const SELF_SERVE_PLAN_ORDER: readonly CheckoutPlanTier[] = PLAN_SLUGS;
 
 export function getSelfServePlanRank(plan: CheckoutPlanTier): number {
   return SELF_SERVE_PLAN_ORDER.indexOf(plan);
@@ -26,7 +21,6 @@ export type PricingPlan = {
   tagline: string;
   billingLabel: string;
   cta: string;
-  ctaHref: string;
   featured?: boolean;
   badge?: string;
   features: string[];
@@ -42,24 +36,16 @@ export type PricingPlan = {
   };
 };
 
-export const dodoProductEnvKeys = {
-  starter: "DODO_PRODUCT_STARTER",
-  growth: "DODO_PRODUCT_GROWTH",
-  scale: "DODO_SCALE_PRICE_ID",
-  operator: "DODO_PRODUCT_OPERATOR",
-} as const satisfies Record<BillingPlanTier, string>;
-
 export const pricingPlans: PricingPlan[] = [
   {
-    plan: "starter",
-    plan_tier: "starter",
-    plan_name: "Foundation",
+    plan: "foundation",
+    plan_tier: "foundation",
+    plan_name: PLAN_LABELS.foundation,
     price: "$99",
     period: "/mo",
     tagline: "Deploy your first controlled AI operators.",
     billingLabel: "3 days free for first-time workspaces",
-    cta: "Choose Foundation",
-    ctaHref: appHref("/api/billing/dodo/checkout?plan=starter"),
+    cta: "Request early access",
     features: [
       "Up to 3 active operators",
       "Up to 3 connected systems",
@@ -79,17 +65,16 @@ export const pricingPlans: PricingPlan[] = [
     },
   },
   {
-    plan: "growth",
-    plan_tier: "growth",
-    plan_name: "Workforce",
+    plan: "workforce",
+    plan_tier: "workforce",
+    plan_name: PLAN_LABELS.workforce,
     price: "$299",
     period: "/mo",
     tagline: "Run essential work across teams with control.",
     billingLabel: "3 days free for first-time workspaces",
     badge: "Recommended",
     featured: true,
-    cta: "Choose Workforce",
-    ctaHref: appHref("/api/billing/dodo/checkout?plan=growth"),
+    cta: "Request early access",
     features: [
       "Up to 8 active operators",
       "Up to 8 connected systems",
@@ -113,13 +98,12 @@ export const pricingPlans: PricingPlan[] = [
   {
     plan: "scale",
     plan_tier: "scale",
-    plan_name: "Scale",
+    plan_name: PLAN_LABELS.scale,
     price: "$799",
     period: "/mo",
     tagline: "Scale AI operations across more teams, systems, and workflows with higher execution capacity and deeper governance.",
     billingLabel: "3 days free for first-time workspaces",
-    cta: "Start Scale trial",
-    ctaHref: appHref("/api/billing/dodo/checkout?plan=scale"),
+    cta: "Request early access",
     features: [
       "Up to 20 active operators",
       "Up to 20 connected systems",
@@ -152,20 +136,6 @@ export function getPlanByTier(tier: PublicPlanTier): PricingPlan | undefined {
   return pricingPlans.find((plan) => plan.plan_tier === tier);
 }
 
-export function resolvePublicPlanCta(
-  plan: PricingPlan,
-  userState: PublicUserState,
-): { label: string; href: string } {
-  if (userState !== "signed_in") {
-    if (userState === "guest" || userState === "registered" || userState === "loading") {
-      return { label: "Sign in to choose", href: getPublicSignInHref() };
-    }
-    const workspaceCta = getPublicWorkspaceCta(userState);
-    return { label: "Complete setup", href: workspaceCta.href };
-  }
-  return { label: plan.cta, href: appHref(`/api/billing/dodo/checkout?plan=${plan.plan_tier}`) };
-}
-
 export type BillingEntitlementSnapshot = {
   planTier: BillingPlanTier;
   operatorsLimit: number;
@@ -178,9 +148,9 @@ export type BillingEntitlementSnapshot = {
 };
 
 export function getBillingEntitlementsForPlan(plan: BillingPlanTier): BillingEntitlementSnapshot {
-  if (plan === "starter") {
+  if (plan === "foundation") {
     return {
-      planTier: "starter",
+      planTier: "foundation",
       operatorsLimit: 3,
       connectorsLimit: 3,
       actionsLimit: 1000,
@@ -190,9 +160,9 @@ export function getBillingEntitlementsForPlan(plan: BillingPlanTier): BillingEnt
       supportLevel: "email",
     };
   }
-  if (plan === "growth") {
+  if (plan === "workforce") {
     return {
-      planTier: "growth",
+      planTier: "workforce",
       operatorsLimit: 8,
       connectorsLimit: 8,
       actionsLimit: 5000,

@@ -4,7 +4,8 @@
 import React from 'react';
 import './claude-home.css';
 import { getPublicWorkspaceCta, usePublicUserState } from '@/lib/public-user-state';
-import { pricingPlans, resolvePublicPlanCta } from '@/lib/pricing';
+import { pricingPlans } from '@/lib/pricing';
+import { useEarlyAccess } from '@/components/early-access/early-access-provider';
 import { appHref } from '@/lib/urls';
 // Inovense  -  Premium line icons (24x24, 1.5 stroke)
 const Icon = ({ children, size = 18, stroke = 1.5, className = "", style }) => (
@@ -2364,7 +2365,7 @@ const OnboardingSection = () => {
 // 11. Pricing
 // ============================================================================
 const PricingSection = () => {
-  const userState = usePublicUserState();
+  const { openEarlyAccess } = useEarlyAccess();
   const tiers = pricingPlans;
 
   return (
@@ -2378,7 +2379,6 @@ const PricingSection = () => {
 
         <div className="pr-grid">
           {tiers.map((t) => {
-            const dynamicCta = resolvePublicPlanCta(t, userState);
             return (
             <div className={`pr-card ${t.featured ? "pr-featured" : ""}`} key={t.plan_tier}>
               {t.featured && <span className="pr-tag">Most chosen</span>}
@@ -2389,9 +2389,9 @@ const PricingSection = () => {
                 <span className="pr-unit">{t.period}</span>
               </div>
               <div className="pr-hint">{t.billingLabel}</div>
-              <a href={dynamicCta.href} className={`btn ${t.featured ? "btn-primary" : "btn-ghost"} pr-cta`}>
-                {dynamicCta.label} <I.arrow size={13} />
-              </a>
+              <button type="button" onClick={(event) => openEarlyAccess({ plan: t.plan_tier, trigger: event.currentTarget })} className={`btn ${t.featured ? "btn-primary" : "btn-ghost"} pr-cta`}>
+                Request early access <I.arrow size={13} />
+              </button>
               <div className="pr-divider" />
               <ul className="pr-bullets">
                 {t.features.map((b) => <li key={b}><I.check size={11} /> {b}</li>)}
@@ -2402,13 +2402,13 @@ const PricingSection = () => {
 
         <div className="pr-foot">
           <span className="mono" style={{ fontSize: 12, color: "var(--text-mute)" }}>
-            Start self-serve. Upgrade when your operators need higher volume, custom workflows or private connector setup.
+            Request Early Access. If invited, you choose when to start the 3-day trial.
           </span>
         </div>
       </div>
 
       <style jsx global>{`
-        .pr-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        .pr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
         .pr-card {
           position: relative;
           padding: 28px 24px 24px;

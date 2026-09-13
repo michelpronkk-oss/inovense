@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import ClaudeHomeV2 from "@/components/home/claude-home-v2";
+import EarlyAccessProvider from "@/components/early-access/early-access-provider";
 
 export const metadata: Metadata = {
   title: "Inovense | Homepage V2 Preview",
@@ -13,9 +14,10 @@ export const metadata: Metadata = {
 
 export default function HomeV2Page() {
   return (
-    <main>
-      <ClaudeHomeV2 />
-    </main>
+    <EarlyAccessProvider>
+      <main>
+        <ClaudeHomeV2 />
+      </main>
+    </EarlyAccessProvider>
   );
 }
-

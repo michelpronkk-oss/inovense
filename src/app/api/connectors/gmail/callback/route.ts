@@ -4,6 +4,7 @@ import { parseOAuthState } from "@/lib/connectors/oauth-state";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { getAppUrl } from "@/lib/urls";
 import { reconcileConnectorState } from "@/lib/connectors/reconciliation";
+import { ensureGmailWatch } from "@/lib/connectors/gmail-monitoring";
 
 function appBase(): string {
   return getAppUrl();
@@ -73,7 +74,14 @@ export async function GET(req: NextRequest) {
       ...((existing.data?.metadata ?? {}) as Record<string, unknown>),
       ...(credential.metadata ?? {}),
     };
-    await supabase.from("os_connector_credentials").upsert(credential, { onConflict: "workspace_id,connector_key" });
+    const credentialSave = await supabase.from("os_connector_credentials").upsert(credential, { onConflict: "workspace_id,connector_key" });
+    if (credentialSave.error) throw new Error("gmail_credential_persist_failed");
+
+    // Gmail is connected independently of push availability. A Cloud/PubSub
+    // configuration or watch error is surfaced as a monitoring issue without
+    // rolling back the newly saved provider credentials.
+    const watchResult = state.surface === "google_drive" ? null : await ensureGmailWatch({ workspaceId: state.workspaceId, supabase })
+      .catch(() => ({ ok: false, errorCode: "gmail_watch_failed" }));
 
     // Read verified connector truth and derived live-operator readiness after
     // OAuth. Readiness remains a projection, not a second access store.
@@ -100,7 +108,7 @@ export async function GET(req: NextRequest) {
         status: "ok",
       });
 
-    return NextResponse.redirect(`${appBase()}/app/connectors?connected=${state.surface === "google_drive" ? "google_drive" : "gmail"}`);
+    return NextResponse.redirect(`${appBase()}/app/connectors?connected=${state.surface === "google_drive" ? "google_drive" : "gmail"}${watchResult && !watchResult.ok ? "&monitoring=issue" : ""}`);
   } catch (err) {
     const reason = err instanceof Error ? err.message : "oauth_failed";
     return NextResponse.redirect(`${appBase()}/app/connectors?gmail=error&reason=${encodeURIComponent(reason)}`);

@@ -77,6 +77,16 @@ export type StoredConnectorCredential = {
   metadata?: Record<string, unknown> | null;
 };
 
+export type GmailWatchResponse = { historyId: string; expiration: string };
+export type GmailHistoryPageResponse = {
+  historyId?: string;
+  nextPageToken?: string;
+  history?: Array<{
+    messagesAdded?: Array<{ message?: { id?: string; threadId?: string; labelIds?: string[] } }>;
+    labelsAdded?: Array<{ message?: { id?: string; threadId?: string; labelIds?: string[] }; labelIds?: string[] }>;
+  }>;
+};
+
 function required(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`Missing required env var: ${name}`);
@@ -178,14 +188,47 @@ export async function refreshAccessToken(refreshToken: string): Promise<TokenExc
   return json;
 }
 
-export async function fetchGmailProfile(accessToken: string): Promise<{ email?: string; id?: string }> {
+export async function fetchGmailProfile(accessToken: string): Promise<{ email?: string; id?: string; historyId?: string }> {
   const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
     headers: { Authorization: `Bearer ${accessToken}` },
     cache: "no-store",
   });
   if (!res.ok) return {};
-  const json = await res.json() as { emailAddress?: string; messagesTotal?: number; historyId?: string };
-  return { email: json.emailAddress };
+  const json = await res.json() as { emailAddress?: string; id?: string; messagesTotal?: number; historyId?: string };
+  return { email: json.emailAddress, id: json.id, historyId: json.historyId };
+}
+
+export async function registerGmailWatch(accessToken: string, topicName: string): Promise<GmailWatchResponse> {
+  const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/watch", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      topicName,
+      labelIds: ["INBOX"],
+      labelFilterBehavior: "INCLUDE",
+    }),
+    cache: "no-store",
+  });
+  const json = await readGmailJson(res) as { historyId?: string; expiration?: string | number } | null;
+  if (!res.ok) throwGmailApiError("gmail.users.watch", res, json);
+  if (!json || typeof json.historyId !== "string" || !/^\d{1,30}$/.test(json.historyId) || !json.expiration) {
+    throw new Error("gmail_watch_response_invalid");
+  }
+  return { historyId: json.historyId, expiration: String(json.expiration) };
+}
+
+export async function listGmailHistory(accessToken: string, input: { startHistoryId: string; pageToken?: string }): Promise<GmailHistoryPageResponse> {
+  const params = new URLSearchParams({ startHistoryId: input.startHistoryId, maxResults: "500" });
+  params.append("historyTypes", "messageAdded");
+  params.append("historyTypes", "labelAdded");
+  if (input.pageToken) params.set("pageToken", input.pageToken);
+  const res = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/history?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  });
+  const json = await readGmailJson(res) as GmailHistoryPageResponse;
+  if (!res.ok) throwGmailApiError("gmail.users.history.list", res, json);
+  return json ?? {};
 }
 
 export async function listRecentMessages(accessToken: string, options?: { maxResults?: number; query?: string }): Promise<{ id: string; threadId?: string }[]> {
@@ -203,6 +246,27 @@ export async function listRecentMessages(accessToken: string, options?: { maxRes
   return (json.messages ?? [])
     .filter((message): message is { id: string; threadId?: string } => typeof message.id === "string")
     .map((message) => ({ id: message.id, threadId: message.threadId }));
+}
+
+export async function listGmailMessagePage(accessToken: string, options?: { maxResults?: number; query?: string; pageToken?: string }): Promise<{
+  messages: { id: string; threadId?: string }[];
+  nextPageToken?: string;
+}> {
+  const params = new URLSearchParams({
+    maxResults: String(Math.min(Math.max(options?.maxResults ?? 500, 1), 500)),
+    q: options?.query ?? "newer_than:30d",
+  });
+  if (options?.pageToken) params.set("pageToken", options.pageToken);
+  const res = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  });
+  const json = await readGmailJson(res) as { messages?: { id?: string; threadId?: string }[]; nextPageToken?: string };
+  if (!res.ok) throwGmailApiError("gmail.messages.list", res, json);
+  return {
+    messages: (json.messages ?? []).filter((message): message is { id: string; threadId?: string } => typeof message.id === "string"),
+    nextPageToken: typeof json.nextPageToken === "string" ? json.nextPageToken : undefined,
+  };
 }
 
 export async function getMessageDetails(accessToken: string, messageId: string): Promise<SafeGmailMessage> {
@@ -462,6 +526,17 @@ export function toStoredCredential(input: {
       kind: "gmail",
     },
   };
+}
+
+export async function getStoredGmailCredential(workspaceId: string, supabase = createSupabaseAdmin()): Promise<StoredConnectorCredential | null> {
+  const result = await supabase
+    .from("os_connector_credentials")
+    .select("id,workspace_id,connector_key,provider_account_id,provider_email,encrypted_access_token,encrypted_refresh_token,token_expires_at,scopes,status,metadata")
+    .eq("workspace_id", workspaceId)
+    .eq("connector_key", "gmail")
+    .maybeSingle();
+  if (result.error) throw new Error("Gmail credential could not be loaded.");
+  return (result.data as StoredConnectorCredential | null) ?? null;
 }
 
 export function gmailAccessTokenIsFresh(row: { token_expires_at?: string | null }): boolean {

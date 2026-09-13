@@ -1,8 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { getPublicWorkspaceCta, usePublicUserState } from "@/lib/public-user-state";
-import { appHref } from "@/lib/urls";
+import { useEarlyAccess } from "@/components/early-access/early-access-provider";
 import { Icon } from "./icons";
 import { ResponsiveCopy } from "./responsive-copy";
 
@@ -27,11 +25,7 @@ const RAIL_PATHS = [
 ];
 
 export default function HeroEditorial() {
-  const userState = usePublicUserState();
-  const workspaceCta = getPublicWorkspaceCta(userState);
-  const primaryCta = userState === "guest" || userState === "loading"
-    ? { label: "Set up your workspace", href: appHref("/onboarding") }
-    : workspaceCta;
+  const { openEarlyAccess } = useEarlyAccess();
   /* Mouse-driven parallax intentionally removed: it caused perceptible shaking and soft text. */
   /* useEffect(() => {
     const section = sectionRef.current;
@@ -104,12 +98,12 @@ export default function HeroEditorial() {
       <div className="wrap hero-editorial-in">
         <div className="hero-editorial-copy">
           <p className="hero-editorial-eyebrow hero-trial">
-            <span className="hero-trial-pill"><i />3-day trial</span>
+            <span className="hero-trial-pill"><i />Early access</span>
           </p>
           <h1>Auterim <em className="hero-editorial-forward">finds the work</em> before your team has to.</h1>
           <p className="say"><ResponsiveCopy desktop="Connect your tools. Auterim finds the work and acts under your rules." /></p>
           <div className="hero-cta">
-            <Link href={primaryCta.href} className="btn btn-a">{primaryCta.label} <span className="arrow">→</span></Link>
+            <button type="button" onClick={(event) => openEarlyAccess({ trigger: event.currentTarget })} className="btn btn-a">Request early access <span className="arrow">→</span></button>
             <a href="#how" className="btn btn-b">See how it works</a>
           </div>
         </div>

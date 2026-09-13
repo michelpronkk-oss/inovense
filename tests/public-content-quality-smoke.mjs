@@ -52,15 +52,23 @@ includes(home, "Find the work before your team has to", "homepage owns clear ope
 
 const homePage = read("src/components/home-v3/v3-page.tsx");
 const homeHero = read("src/components/home-v3/hero-editorial.tsx");
+const homeHeader = read("src/components/home-v3/v3-header.tsx");
+const homeVisuals = read("src/components/home-v3/homepage-visuals.tsx");
 const homeOperators = read("src/components/home-v3/operators-editorial.tsx");
-const publicState = read("src/lib/public-user-state.ts");
+const earlyAccessProvider = read("src/components/early-access/early-access-provider.tsx");
 const homepageFaqs = read("src/lib/geo.ts");
 includes(homeHero, "finds the work", "homepage hero leads with the core positioning promise");
 includes(homeHero, "before your team has to.", "homepage hero leads with the core positioning promise");
-includes(homeHero, "Set up your workspace", "homepage hero gives guests a workspace-setup path");
-includes(homeHero, "3-day trial", "homepage hero states the trial term");
-assert.ok(!homeHero.toLowerCase().includes("start your trial") && !homeHero.toLowerCase().includes("starts automatically"), "homepage does not imply that a visitor starts a trial passively");
-includes(publicState, 'appHref("/onboarding")', "guest trial setup keeps the existing onboarding entry point");
+includes(homeHero, "Request early access", "homepage hero opens Early Access");
+includes(homeHero, "Early access", "homepage hero identifies the pre-launch program");
+includes(homeHeader, "Request early access", "desktop and mobile header use the canonical Early Access CTA");
+includes(homeHeader, "useEarlyAccess", "header opens the shared Early Access modal");
+includes(homePage, "Early access pricing", "homepage pricing copy makes the pre-launch state clear");
+includes(homePage, "Your 3-day trial begins only when you explicitly choose to start it", "homepage preserves explicit trial-start truth");
+includes(homePage, "We’re reviewing use cases for the current Early Access program", "final homepage CTA does not imply immediate product access");
+includes(homepageFaqs, "Once invited, connect the systems you use", "homepage FAQ makes the pre-access stage clear");
+includes(earlyAccessProvider, 'fetch("/api/early-access"', "homepage conversion submits through the server endpoint");
+assert.ok(!homeHero.toLowerCase().includes("set up your workspace") && !homeHero.toLowerCase().includes("start your trial"), "homepage hero does not route visitors into open workspace or trial setup");
 includes(homePage, "pricingPlans.map", "homepage pricing resolves from canonical plans");
 assert.ok(!homePage.includes('"$99"'), "homepage does not duplicate plan prices");
 includes(homePage, "AUTERIM_HOME_FAQS", "visible homepage FAQs share the structured-data source");
@@ -68,7 +76,7 @@ for (const question of ["What is Auterim?", "Do I have to build workflows?", "Wh
   includes(homepageFaqs, question, "homepage FAQ schema matches visible copy");
 }
 for (const stage of ["Connect", "Understand", "Find", "Handle", "Measure"]) includes(homePage, stage, "homepage explains the operator loop");
-for (const connector of ["Gmail", "Microsoft 365", "HubSpot", "Google Drive", "Slack", "Trello", "Asana", "Jira", "Zendesk"]) includes(homePage, connector, "homepage names a supported connector");
+for (const connector of ["Gmail", "Microsoft 365", "HubSpot", "Google Drive", "Slack", "Trello", "Asana", "Jira", "Zendesk"]) includes(homeVisuals, connector, "homepage names a supported connector");
 for (const operator of ["Revenue Operator", "Client Flow Operator", "Operations Operator", "Support Operator"]) includes(homeOperators, operator, "homepage shows only a live operator");
 assert.ok(!homeOperators.includes('operator("Marketing Operator")'), "homepage does not present a roadmap operator as live");
 for (const anchor of ["how", "platform", "control", "connectors", "pricing", "faq"]) {

@@ -1,8 +1,10 @@
-import Link from "next/link";
+"use client";
+
 import Reveal from "@/components/reveal";
 import { Eyebrow } from "@/components/marketing-ui";
+import { useEarlyAccess } from "@/components/early-access/early-access-provider";
 import { Icon } from "./icons";
-import { appHref } from "@/lib/urls";
+import { pricingPlans } from "@/lib/pricing";
 
 const LINE = "rgba(255,255,255,0.055)";
 const LINE_2 = "rgba(255,255,255,0.085)";
@@ -12,40 +14,8 @@ const TEXT_MUTE = "#646A72";
 const CYAN = "#4DE8E1";
 const CYAN_LINE = "rgba(77,232,225,0.28)";
 
-const TIERS = [
-  {
-    name: "Starter",
-    tagline: "For a single operator inside one team.",
-    price: "$0",
-    unit: "/ workspace",
-    hint: "Free during preview",
-    bullets: ["1 operator", "5 connectors", "1,000 actions / mo", "Slack + email approvals", "Community support"],
-    cta: "Start preview",
-    featured: false,
-  },
-  {
-    name: "Growth",
-    tagline: "When AI starts running real workflows.",
-    price: "$1,200",
-    unit: "/ workspace · month",
-    hint: "Billed annually",
-    bullets: ["Up to 8 operators", "All connectors", "50k actions / mo", "Approval policies & roles", "Audit logs · 90 days", "Email + Slack support"],
-    cta: "Start preview",
-    featured: true,
-  },
-  {
-    name: "Enterprise",
-    tagline: "For regulated, multi-team operations.",
-    price: "Custom",
-    unit: "",
-    hint: "Annual contract",
-    bullets: ["Unlimited operators", "Custom connectors & private models", "SSO/SCIM · SOC 2 · HIPAA", "Data residency · KMS", "Dedicated success + SLA", "Procurement & legal review"],
-    cta: "Contact sales",
-    featured: false,
-  },
-];
-
 export default function PricingSection() {
+  const { openEarlyAccess } = useEarlyAccess();
   return (
     <section id="pricing" className="mx-auto w-full max-w-[1240px] px-5 py-16 sm:px-6 md:py-24 lg:px-8">
       <Reveal>
@@ -67,8 +37,8 @@ export default function PricingSection() {
       </Reveal>
 
       <div className="grid gap-4 min-[881px]:grid-cols-3">
-        {TIERS.map((t, i) => (
-          <Reveal key={t.name} delayMs={i * 70}>
+        {pricingPlans.map((t, i) => (
+          <Reveal key={t.plan_tier} delayMs={i * 70}>
             <div
               className="relative flex h-full flex-col rounded-2xl p-6 pt-7"
               style={
@@ -92,7 +62,7 @@ export default function PricingSection() {
                 </span>
               )}
               <div className="text-[18px] font-medium" style={{ color: TEXT, letterSpacing: "-0.015em" }}>
-                {t.name}
+                {t.plan_name}
               </div>
               <div className="mt-1.5 text-[13.5px]" style={{ color: TEXT_MUTE }}>
                 {t.tagline}
@@ -101,28 +71,19 @@ export default function PricingSection() {
                 <span className="text-[40px] font-medium" style={{ color: TEXT, letterSpacing: "-0.03em" }}>
                   {t.price}
                 </span>
-                {t.unit && (
+                {t.period && (
                   <span className="font-mono text-[12.5px]" style={{ color: TEXT_MUTE }}>
-                    {t.unit}
+                    {t.period}
                   </span>
                 )}
               </div>
               <div className="mt-1 font-mono text-[11.5px]" style={{ color: TEXT_MUTE }}>
-                {t.hint}
+                {t.billingLabel}
               </div>
 
-              {t.cta === "Contact sales" ? (
-                <a
-                  href="mailto:hello@auterim.com?subject=Sales%20inquiry"
-                  className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-[14px] font-medium transition-colors duration-150"
-                  style={{ background: "rgba(255,255,255,0.025)", color: TEXT, boxShadow: `inset 0 0 0 1px ${LINE_2}` }}
-                >
-                  {t.cta}
-                  <Icon name="arrow" size={13} />
-                </a>
-              ) : (
-                <Link
-                  href={appHref("/app/onboarding")}
+              <button
+                  type="button"
+                  onClick={(event) => openEarlyAccess({ plan: t.plan_tier, trigger: event.currentTarget })}
                   className={`mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-[14px] font-medium transition-all duration-150 hover:-translate-y-px`}
                   style={
                     t.featured
@@ -130,15 +91,14 @@ export default function PricingSection() {
                       : { background: "rgba(255,255,255,0.025)", color: TEXT, boxShadow: `inset 0 0 0 1px ${LINE_2}` }
                   }
                 >
-                  {t.cta}
+                  Request early access
                   <Icon name="arrow" size={13} />
-                </Link>
-              )}
+              </button>
 
               <div className="my-5 h-px" style={{ background: LINE }} />
 
               <ul className="flex flex-col gap-2.5">
-                {t.bullets.map((b) => (
+                {t.features.map((b) => (
                   <li key={b} className="flex items-center gap-2.5 text-[13.5px]" style={{ color: TEXT_DIM }}>
                     <Icon name="check" size={12} style={{ color: CYAN, flexShrink: 0 }} />
                     {b}

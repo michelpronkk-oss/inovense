@@ -1,11 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect } from "react";
-import { getPublicWorkspaceCta, usePublicUserState } from "@/lib/public-user-state";
-import { pricingPlans, resolvePublicPlanCta } from "@/lib/pricing";
+import { pricingPlans } from "@/lib/pricing";
 import { AUTERIM_HOME_FAQS } from "@/lib/geo";
-import { appHref } from "@/lib/urls";
+import { useEarlyAccess } from "@/components/early-access/early-access-provider";
 import OperatorsEditorial from "./operators-editorial";
 import HeroEditorial from "./hero-editorial";
 import V3Footer from "./v3-footer";
@@ -37,12 +35,7 @@ export function Head({ label, title, body }: { label: string; title: string; bod
 }
 
 export default function V3Page() {
-  const userState = usePublicUserState();
-  const workspaceCta = getPublicWorkspaceCta(userState);
-  const isPublicSetup = userState === "guest" || userState === "loading";
-  const primaryCta = isPublicSetup
-    ? { label: "Set up your workspace", href: appHref("/onboarding") }
-    : workspaceCta;
+  const { openEarlyAccess } = useEarlyAccess();
 
   useEffect(() => {
     const root = document.querySelector<HTMLElement>(".auterim-v3-page");
@@ -110,10 +103,9 @@ export default function V3Page() {
     </div></section>
 
     <section className="sec homepage-pricing" id="pricing"><div className="wrap">
-      <Head label="Start when you are ready" title="Start controlled. Scale when the work proves its value." body="Set up your 3-day Foundation trial in the workspace, then choose the capacity that fits your operation." />
+      <Head label="Early access pricing" title="Start controlled. Scale when the work proves its value." body="Request Early Access before public launch. Your 3-day trial begins only when you explicitly choose to start it." />
       <div className="body homepage-plan-teaser rv">
         {pricingPlans.map((plan) => {
-          const cta = resolvePublicPlanCta(plan, userState);
           return <article key={plan.plan_tier} className={plan.featured ? "is-featured" : undefined} data-plan={plan.plan_tier}>
             {plan.featured && <span className="homepage-plan-badge"><i />Recommended</span>}
             <h3>{plan.plan_name}</h3><p className="homepage-plan-price">{plan.price}<small>{plan.period}</small></p><p>{plan.tagline}</p>
@@ -121,7 +113,7 @@ export default function V3Page() {
             <ul>{plan.features.slice(0, 3).map((feature) => <li key={feature}><span className="homepage-plan-check"><Icon name="check" size={10} /></span>{feature}</li>)}</ul>
             <span className="homepage-plan-spacer" aria-hidden="true" />
             <span className="homepage-plan-divider" aria-hidden="true" />
-            <Link href={isPublicSetup ? appHref("/onboarding") : cta.href}>{isPublicSetup ? "Set up your workspace" : cta.label} <span aria-hidden="true">→</span></Link>
+            <button type="button" onClick={(event) => openEarlyAccess({ plan: plan.plan_tier, trigger: event.currentTarget })}>Request early access <span aria-hidden="true">→</span></button>
           </article>;
         })}
       </div>
@@ -132,7 +124,7 @@ export default function V3Page() {
       <div className="body faq rv">{AUTERIM_HOME_FAQS.map(({ question, answer }, index) => <details key={question}><summary><span className="faq-index">{String(index + 1).padStart(2, "0")}</span><span className="faq-q">{question}</span><span className="faq-toggle" aria-hidden="true" /></summary><p>{answer}</p></details>)}</div>
     </div></section>
 
-    <section className="close homepage-final-cta"><div className="wrap close-in rv"><div className="close-main"><span className="lbl">Start with the work that matters most</span><h2>Find your first operator.</h2><p>Connect your business context. Auterim will show where your workforce can start.</p><div className="close-actions"><Link href={primaryCta.href} className="btn btn-a">{primaryCta.label} <span className="arrow">→</span></Link><a href="#how" className="close-run">See how it works <span>→</span></a></div></div><FinalCtaVisual /></div></section>
+    <section className="close homepage-final-cta"><div className="wrap close-in rv"><div className="close-main"><span className="lbl">Start with the work that matters most</span><h2>Find your first operator.</h2><p>Tell us what you want Auterim to handle first. We’re reviewing use cases for the current Early Access program.</p><div className="close-actions"><button type="button" onClick={(event) => openEarlyAccess({ trigger: event.currentTarget })} className="btn btn-a">Request early access <span className="arrow">→</span></button><a href="#how" className="close-run">See how it works <span>→</span></a></div></div><FinalCtaVisual /></div></section>
     <V3Footer />
   </div>;
 }

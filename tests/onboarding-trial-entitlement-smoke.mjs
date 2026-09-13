@@ -20,26 +20,12 @@ const gatewaySource = read("src/lib/server/app-gateway.ts");
 const trialStartRouteSource = read("src/app/api/billing/trial/start/route.ts");
 
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "auterim-onboarding-trial-"));
-// Next.js provides "server-only" as a framework-internal marker module
-// (throws only in a browser bundle); it isn't a resolvable npm package
-// outside Next's build, so alias it to a no-op stub for this Node test.
-const serverOnlyStub = path.join(tmpDir, "server-only-stub.mjs");
-fs.writeFileSync(serverOnlyStub, "export {};\n");
-
-async function bundleModule(relSourcePath) {
-  const entry = path.join(root, relSourcePath);
-  const outfile = path.join(tmpDir, `${path.basename(relSourcePath, ".ts")}.mjs`);
-  await esbuild.build({
-    entryPoints: [entry],
-    outfile,
-    bundle: true,
-    platform: "node",
-    format: "esm",
-    target: "node18",
-    alias: { "@": path.join(root, "src"), "server-only": serverOnlyStub },
-    external: ["@supabase/supabase-js"],
-    logLevel: "silent",
-  });
+async function transformModule(relSourcePath, replacements = []) {
+  let source = read(relSourcePath);
+  for (const [pattern, replacement] of replacements) source = source.replace(pattern, replacement);
+  const { code } = esbuild.transformSync(source, { loader: "ts", format: "esm", target: "node18" });
+  const outfile = path.join(tmpDir, `${path.basename(relSourcePath, ".ts")}-${Math.random().toString(36).slice(2)}.mjs`);
+  fs.writeFileSync(outfile, code, "utf8");
   return import(`${pathToFileURL(outfile).href}?t=${Date.now()}`);
 }
 
@@ -92,8 +78,18 @@ function makeFakeSupabase() {
 }
 
 try {
-  const trials = await bundleModule("src/lib/billing/trials.ts");
-  const entitlements = await bundleModule("src/lib/os/entitlements.ts");
+  const identity = await transformModule("src/lib/plan-identity.ts");
+  globalThis.__trialPlanIdentity = identity;
+  const trials = await transformModule("src/lib/billing/trials.ts", [
+    [/import "server-only";\r?\n/, ""],
+    [/import type \{ SupabaseClient \} from "@\/supabase\/supabase-js";\r?\n/, ""],
+    [/import \{ getBillingEntitlementsForPlan, type CheckoutPlanTier \} from "@\/lib\/pricing";\r?\n/, `const getBillingEntitlementsForPlan = (plan) => ({ planTier: plan, operatorsLimit: 3, connectorsLimit: 3, actionsLimit: 1000, logRetentionDays: 30, canUseRealConnectors: true, canRunRealActions: true, supportLevel: "email" });\n`],
+    [/import \{ normalizePlanSlug, normalizeWorkspacePlanTier \} from "@\/lib\/plan-identity";\r?\n/, "const { normalizePlanSlug, normalizeWorkspacePlanTier } = globalThis.__trialPlanIdentity;\n"],
+  ]);
+  const entitlements = await transformModule("src/lib/os/entitlements.ts", [
+    [/import type \{ Workspace \} from "@\/lib\/os\/types";\r?\n/, ""],
+    [/import \{ normalizeWorkspacePlanTier, type WorkspacePlanTier \} from "@\/lib\/plan-identity";\r?\n/, "const { normalizeWorkspacePlanTier } = globalThis.__trialPlanIdentity;\n"],
+  ]);
 
   // A. Fresh workspace: no trial, no billing history -> trial is granted.
   {
@@ -103,7 +99,7 @@ try {
     assert.equal(result.granted, true, "a brand-new preview workspace must receive the organic trial");
     assert.equal(result.outcome, "granted");
     const row = supabase.getWorkspace("ws-fresh");
-    assert.equal(row.plan_tier, "starter");
+    assert.equal(row.plan_tier, "foundation");
     assert.equal(row.billing_status, "trialing");
     assert.ok(row.trial_ends_at, "trial_ends_at must be persisted");
     assert.equal(row.can_use_real_connectors, true, "the trial must unlock real connectors immediately");
@@ -139,11 +135,11 @@ try {
   // be reset back into a trial.
   {
     const supabase = makeFakeSupabase();
-    supabase.seedWorkspace("ws-paid", { plan_tier: "growth", billing_status: "active" });
+    supabase.seedWorkspace("ws-paid", { plan_tier: "workforce", billing_status: "active" });
     const result = await trials.ensureOrganicTrial({ supabase, workspaceId: "ws-paid", ownerUserId: "owner-paid" });
     assert.equal(result.granted, false);
     assert.equal(result.outcome, "not_preview");
-    assert.deepEqual(supabase.getWorkspace("ws-paid"), { plan_tier: "growth", billing_status: "active" });
+    assert.deepEqual(supabase.getWorkspace("ws-paid"), { plan_tier: "workforce", billing_status: "active" });
   }
 
   // I (continued). An owner who already consumed a trial on another
@@ -173,5 +169,6 @@ try {
 
   console.log("Onboarding trial entitlement contracts passed.");
 } finally {
+  delete globalThis.__trialPlanIdentity;
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }

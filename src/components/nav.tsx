@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getPublicSignInHref, getPublicWorkspaceCta, usePublicUserState } from "@/lib/public-user-state";
+import { useOptionalEarlyAccess } from "@/components/early-access/early-access-provider";
 import {
   Sheet,
   SheetClose,
@@ -29,10 +30,11 @@ function isActive(href: string, pathname: string) {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-export default function Nav({ homepage = false }: { homepage?: boolean }) {
+export default function Nav({ homepage = false, earlyAccessCta = false }: { homepage?: boolean; earlyAccessCta?: boolean }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const userState = usePublicUserState();
+  const earlyAccess = useOptionalEarlyAccess();
   const primaryCta = getPublicWorkspaceCta(userState);
   const signInHref = getPublicSignInHref();
   const showSecondarySignIn = userState === "guest";
@@ -99,17 +101,15 @@ export default function Nav({ homepage = false }: { homepage?: boolean }) {
               Sign in
             </Link>
           )}
-          <Link
-            href={primaryCta.href}
-            className="rounded-xl px-5 py-2 text-[13px] font-medium text-[#04130F] transition-all duration-150 hover:-translate-y-px"
-            style={{
-              background: "#4DE8E1",
-              boxShadow:
-                "inset 0 1px 0 rgba(255,255,255,0.4), 0 0 0 1px rgba(77,232,225,0.45), 0 8px 24px -8px rgba(77,232,225,0.5)",
-            }}
-          >
-            {primaryCta.label}
-          </Link>
+          {earlyAccessCta && earlyAccess ? (
+            <button type="button" onClick={(event) => earlyAccess.openEarlyAccess({ trigger: event.currentTarget })} className="rounded-xl px-5 py-2 text-[13px] font-medium text-[#04130F] transition-all duration-150 hover:-translate-y-px" style={{ background: "#4DE8E1", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4), 0 0 0 1px rgba(77,232,225,0.45), 0 8px 24px -8px rgba(77,232,225,0.5)" }}>
+              Request early access
+            </button>
+          ) : (
+            <Link href={primaryCta.href} className="rounded-xl px-5 py-2 text-[13px] font-medium text-[#04130F] transition-all duration-150 hover:-translate-y-px" style={{ background: "#4DE8E1", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4), 0 0 0 1px rgba(77,232,225,0.45), 0 8px 24px -8px rgba(77,232,225,0.5)" }}>
+              {primaryCta.label}
+            </Link>
+          )}
         </div>
 
         {/* Mobile hamburger */}
@@ -192,13 +192,15 @@ export default function Nav({ homepage = false }: { homepage?: boolean }) {
               </nav>
 
               <div className="mt-auto shrink-0 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
-                <Link
-                  href={primaryCta.href}
-                  onClick={() => setOpen(false)}
-                  className="block w-full rounded-full bg-brand py-3 text-center text-sm font-medium text-white transition-colors hover:bg-brand/90"
-                >
-                  {primaryCta.label}
-                </Link>
+                {earlyAccessCta && earlyAccess ? (
+                  <button type="button" onClick={(event) => { earlyAccess.openEarlyAccess({ trigger: event.currentTarget }); setOpen(false); }} className="block w-full rounded-full bg-brand py-3 text-center text-sm font-medium text-white transition-colors hover:bg-brand/90">
+                    Request early access
+                  </button>
+                ) : (
+                  <Link href={primaryCta.href} onClick={() => setOpen(false)} className="block w-full rounded-full bg-brand py-3 text-center text-sm font-medium text-white transition-colors hover:bg-brand/90">
+                    {primaryCta.label}
+                  </Link>
+                )}
               </div>
 
             </div>

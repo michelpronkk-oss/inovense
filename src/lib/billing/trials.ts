@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getBillingEntitlementsForPlan, type CheckoutPlanTier } from "@/lib/pricing";
+import { normalizePlanSlug, normalizeWorkspacePlanTier } from "@/lib/plan-identity";
 
 export type TrialStatus = "active" | "consumed" | "converted" | "expired";
 
@@ -33,14 +34,14 @@ function asEntitlement(row: Row | null | undefined): TrialEntitlement | null {
   if (!row) return null;
   const status = String(row.trial_status ?? "");
   if (!["active", "consumed", "converted", "expired"].includes(status)) return null;
-  const plan = String(row.trial_plan ?? "");
-  if (plan !== "starter" && plan !== "growth" && plan !== "scale") return null;
+  const plan = normalizePlanSlug(row.trial_plan);
+  if (!plan) return null;
   return {
     id: String(row.id), workspaceId: String(row.workspace_id), ownerUserId: typeof row.owner_user_id === "string" ? row.owner_user_id : null,
     billingCustomerId: typeof row.billing_customer_id === "string" ? row.billing_customer_id : null,
     trialPlan: plan, trialStartedAt: String(row.trial_started_at), trialEndsAt: typeof row.trial_ends_at === "string" ? row.trial_ends_at : null,
     trialConsumedAt: String(row.trial_consumed_at), trialStatus: status as TrialStatus,
-    convertedPlan: typeof row.converted_plan === "string" ? row.converted_plan : null,
+    convertedPlan: normalizeWorkspacePlanTier(row.converted_plan),
     convertedAt: typeof row.converted_at === "string" ? row.converted_at : null,
   };
 }
@@ -110,7 +111,7 @@ export async function recordTrialStarted(input: {
   return { entitlement: asEntitlement(result.data as Row | null), created: !result.error, error: result.error };
 }
 
-const ORGANIC_TRIAL_PLAN: CheckoutPlanTier = "starter";
+const ORGANIC_TRIAL_PLAN: CheckoutPlanTier = "foundation";
 const ORGANIC_TRIAL_DAYS = 3;
 
 export type OrganicTrialOutcome = "granted" | "not_preview" | "not_eligible" | "history_unavailable" | "workspace_unavailable";

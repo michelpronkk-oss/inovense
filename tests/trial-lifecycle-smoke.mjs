@@ -13,12 +13,6 @@ const scheduler = read("src/trigger/trial-lifecycle.ts");
 const migration = read("supabase/migrations/20260907_os_trial_lifecycle.sql");
 const entitlements = read("src/lib/os/entitlements.ts");
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "auterim-trial-lifecycle-"));
-// Next.js provides "server-only" as a framework-internal marker module; it
-// isn't a resolvable npm package outside Next's build, so alias it to a
-// no-op stub for this Node test.
-const serverOnlyStub = path.join(tmpDir, "server-only-stub.mjs");
-fs.writeFileSync(serverOnlyStub, "export {};\n");
-
 function mockDb({ workspace = {}, workspaceTrial = null, ownerTrial = null, customerTrial = null, error = null } = {}) {
   return {
     from(table) {
@@ -38,23 +32,28 @@ function mockDb({ workspace = {}, workspaceTrial = null, ownerTrial = null, cust
 }
 
 try {
+  const identitySource = fs.readFileSync(path.join(root, "src/lib/plan-identity.ts"), "utf8");
+  const identityCode = esbuild.transformSync(identitySource, { loader: "ts", format: "esm", target: "node18" }).code;
+  const identityPath = path.join(tmpDir, "plan-identity.mjs");
+  fs.writeFileSync(identityPath, identityCode, "utf8");
+  globalThis.__trialPlanIdentity = await import(`${pathToFileURL(identityPath).href}?v=${Math.random()}`);
+
+  let trialSource = fs.readFileSync(path.join(root, "src/lib/billing/trials.ts"), "utf8");
+  trialSource = trialSource
+    .replace(/import "server-only";\r?\n/, "")
+    .replace(/import type \{ SupabaseClient \} from "@\/supabase\/supabase-js";\r?\n/, "")
+    .replace(/import \{ getBillingEntitlementsForPlan, type CheckoutPlanTier \} from "@\/lib\/pricing";\r?\n/, "const getBillingEntitlementsForPlan = () => ({});\n")
+    .replace(/import \{ normalizePlanSlug, normalizeWorkspacePlanTier \} from "@\/lib\/plan-identity";\r?\n/, "const { normalizePlanSlug, normalizeWorkspacePlanTier } = globalThis.__trialPlanIdentity;\n");
+  const trialCode = esbuild.transformSync(trialSource, { loader: "ts", format: "esm", target: "node18" }).code;
   const target = path.join(tmpDir, "trials.mjs");
-  await esbuild.build({
-    entryPoints: [path.join(root, "src/lib/billing/trials.ts")],
-    outfile: target,
-    bundle: true,
-    platform: "node",
-    format: "esm",
-    target: "node18",
-    alias: { "@": path.join(root, "src"), "server-only": serverOnlyStub },
-    external: ["@supabase/supabase-js"],
-    logLevel: "silent",
-  });
+  fs.writeFileSync(target, trialCode, "utf8");
   const trials = await import(`${pathToFileURL(target).href}?v=${Math.random()}`);
   const eligible = await trials.getTrialEligibility({ supabase: mockDb({ workspace: { dodo_customer_id: "cus-new" } }), workspaceId: "ws-new", ownerUserId: "owner-new" });
   assert.equal(eligible.eligible, true, "a first workspace is eligible");
   const row = { id: "trial-1", workspace_id: "ws-old", owner_user_id: "owner-old", billing_customer_id: "cus-old", trial_plan: "starter", trial_started_at: "2026-01-01T00:00:00Z", trial_consumed_at: "2026-01-01T00:00:00Z", trial_status: "expired" };
-  assert.equal((await trials.getTrialEligibility({ supabase: mockDb({ workspace: { dodo_customer_id: "cus-new" }, ownerTrial: row }), workspaceId: "ws-new", ownerUserId: "owner-old" })).eligible, false, "verified owner history blocks a second trial");
+  const ownerHistory = await trials.getTrialEligibility({ supabase: mockDb({ workspace: { dodo_customer_id: "cus-new" }, ownerTrial: row }), workspaceId: "ws-new", ownerUserId: "owner-old" });
+  assert.equal(ownerHistory.eligible, false, "verified owner history blocks a second trial");
+  assert.equal(ownerHistory.entitlement?.trialPlan, "foundation", "historical Foundation trial rows normalize at the read boundary");
   assert.equal((await trials.getTrialEligibility({ supabase: mockDb({ workspace: { dodo_customer_id: "cus-old" }, customerTrial: row }), workspaceId: "ws-new", ownerUserId: "owner-new" })).eligible, false, "Dodo customer history blocks a second trial");
   assert.equal((await trials.getTrialEligibility({ supabase: mockDb({ workspace: {}, error: { message: "unavailable" } }), workspaceId: "ws-new", ownerUserId: "owner-new" })).reason, "history_unavailable", "an unavailable history source fails closed");
   assert.match(checkout, /trialDays: trial\.eligible \? 3 : 0/, "checkout decides trial days on the server");
@@ -70,5 +69,6 @@ try {
   assert.match(migration, /enable row level security/, "trial records are never browser-writable");
   console.log("Trial lifecycle entitlement, checkout, expiry, and access contracts passed.");
 } finally {
+  delete globalThis.__trialPlanIdentity;
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }

@@ -11,7 +11,7 @@ assert.match(helper, /throw error/);
 assert.doesNotMatch(helper, /error\.message|access_token|refresh_token|raw_payload|request_body/);
 assert.match(migration, /enable row level security/);
 assert.doesNotMatch(migration, /create policy/i);
-for (const file of ["workflow-recovery", "trial-lifecycle", "workspace-daily-brief", "revenue-operator-scan", "client-flow-operator-scan", "operations-operator-scan", "jira-personal-data-reporting"]) {
+for (const file of ["workflow-recovery", "trial-lifecycle", "workspace-daily-brief", "revenue-operator-scan", "client-flow-operator-scan", "operations-operator-scan", "jira-personal-data-reporting", "gmail-watch-renewal"]) {
   const source = fs.readFileSync(`src/trigger/${file}.ts`, "utf8");
   assert.match(source, /withTaskHeartbeat/);
 }

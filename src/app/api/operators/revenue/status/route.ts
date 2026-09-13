@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: context.error, code: context.code }, { status: context.status });
   }
 
-  const [readiness, connectorTruth, runs, pendingApprovals, triggerConfig, manualConfig, activation] = await Promise.all([
+  const [readiness, connectorTruth, runs, pendingApprovals, triggerConfig, manualConfig, activation, gmailSyncState] = await Promise.all([
     getOperatorReadiness({ workspaceId: context.workspaceId, operatorKey: "revenue" }),
     getConnectorTruth({ workspaceId: context.workspaceId, supabase }),
     supabase
@@ -140,6 +140,8 @@ export async function GET(req: NextRequest) {
       .eq("trigger_type", "manual_monitoring")
       .maybeSingle(),
     getOperatorActivationState({ workspaceId: context.workspaceId, operatorKey: "revenue", supabase }),
+    supabase.from("os_signal_sync_state").select("cursor,last_success_at,last_failure_code,updated_at")
+      .eq("workspace_id", context.workspaceId).eq("connector_key", "gmail").maybeSingle(),
   ]);
 
   if (runs.error) {
@@ -154,6 +156,7 @@ export async function GET(req: NextRequest) {
   if (manualConfig.error) {
     return NextResponse.json({ error: manualConfig.error.message }, { status: 500 });
   }
+  if (gmailSyncState.error) return NextResponse.json({ error: "Gmail monitoring status could not be loaded." }, { status: 500 });
 
   const gmail = connectorTruth.find((connector) => connector.connectorKey === "gmail") ?? null;
   const microsoft = connectorTruth.find((connector) => connector.connectorKey === "microsoft") ?? null;
@@ -163,6 +166,12 @@ export async function GET(req: NextRequest) {
   const microsoftConnected = Boolean(microsoft?.executable);
   const hubspotConnected = Boolean(hubspot?.executable);
   const gmailScopes = gmail?.scopes ?? [];
+  const gmailSyncCursor = asRecord(gmailSyncState.data?.cursor);
+  const gmailWatchExpiresAt = stringValue(gmailSyncCursor.watchExpiresAt);
+  const gmailWatchExpiration = gmailWatchExpiresAt ? Date.parse(gmailWatchExpiresAt) : NaN;
+  const gmailPushLive = gmail?.executable === true && gmailSyncCursor.watchStatus === "active"
+    && Number.isFinite(gmailWatchExpiration) && gmailWatchExpiration > Date.now();
+  const gmailPushStatus = gmail ? gmailPushLive ? "live" : "issue" : null;
   const reconnectRequired = Boolean(gmail && !gmailScopes.includes(GMAIL_READONLY_SCOPE));
   const latestScanRow = (runs.data ?? []).find((run) => asScanSummary(run.output));
   const latestScan = latestScanRow ? asScanSummary(latestScanRow.output) : null;
@@ -222,9 +231,14 @@ export async function GET(req: NextRequest) {
     ? "paused"
     : reconnectRequired
     ? "reconnect_required"
-    : scheduledFailures > 0
+    : scheduledFailures > 0 || (gmail?.executable === true && !gmailPushLive)
       ? "monitoring_issue"
       : "monitoring_active";
+  const scheduledTimestamp = lastScheduledCheckAt ? Date.parse(lastScheduledCheckAt) : NaN;
+  const fallbackStatus = !monitoringEnabled ? "paused"
+    : scheduledFailures > 0 ? "issue"
+      : !Number.isFinite(scheduledTimestamp) ? lastScheduledCheckAt ? "issue" : "pending"
+        : Date.now() - scheduledTimestamp > 3 * 60 * 60 * 1000 ? "issue" : "healthy";
   const [hubspotPropertyReadiness, hubspotPipelineMapping] = hubspotConnected
     ? await Promise.all([
       getHubSpotPropertyReadiness(context.workspaceId),
@@ -253,6 +267,13 @@ export async function GET(req: NextRequest) {
       missingScopes: gmail.missingScopes ?? [],
       executable: Boolean(gmail.executable),
       reconnectRequired,
+      monitoring: gmailPushStatus ? {
+        status: gmailPushStatus,
+        lastEventAt: stringValue(gmailSyncCursor.lastEventAt),
+        lastSuccessfulSyncAt: stringValue(gmailSyncCursor.lastSyncAt),
+        watchExpiresAt: gmailWatchExpiresAt,
+        errorCode: gmailPushStatus === "issue" ? stringValue(gmailSyncCursor.watchErrorCode) ?? stringValue(gmailSyncState.data?.last_failure_code) : null,
+      } : null,
       permissions: {
         compose: gmailScopes.includes("https://www.googleapis.com/auth/gmail.compose"),
         send: gmailScopes.includes("https://www.googleapis.com/auth/gmail.send"),
@@ -331,6 +352,7 @@ export async function GET(req: NextRequest) {
       lastSuccessfulCheckAt,
       lastFailedCheckAt,
       lastScheduledCheckAt,
+      fallbackStatus,
       consecutiveScheduledFailures: scheduledFailures,
       lastFailureCode,
       isRunning: scheduledIsRunning || manualIsRunning,

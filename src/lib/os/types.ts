@@ -1,6 +1,8 @@
 // Inovense OS — Core data types
 // All entities that flow through the dashboard. Supabase-ready row shapes.
 
+import type { WorkspacePlanTier } from "@/lib/plan-identity";
+
 export type AgentStatus = "running" | "paused" | "awaiting" | "idle" | "error";
 export type RunStatus = "running" | "awaiting_approval" | "completed" | "skipped" | "failed";
 export type ApprovalStatus = "pending" | "approved" | "skipped" | "expired";
@@ -347,7 +349,7 @@ export interface Workspace {
   environment: string;
   region: string;
   plan: string;
-  planTier?: "preview" | "starter" | "growth" | "scale" | "operator" | "enterprise";
+  planTier?: WorkspacePlanTier;
   billingStatus?: "preview" | "trialing" | "active" | "past_due" | "canceled";
   trialEndsAt?: string;
   dodoCustomerId?: string;

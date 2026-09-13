@@ -73,7 +73,7 @@ export async function POST() {
       workspaceId,
       eventKey: `trial-started:organic:${workspaceId}`,
       type: "trial_started",
-      plan: "starter",
+      plan: "foundation",
       trialEndsAt: after.data?.trial_ends_at ?? undefined,
     });
   } catch {
@@ -96,7 +96,7 @@ export async function POST() {
   return NextResponse.json({
     ok: true,
     status: "started",
-    planTier: after.data?.plan_tier ?? "starter",
+    planTier: after.data?.plan_tier ?? "foundation",
     billingStatus: after.data?.billing_status ?? "trialing",
     trialEndsAt: after.data?.trial_ends_at ?? null,
   });

@@ -178,7 +178,7 @@ async function loadComputeOperatorProductState() {
 }
 
 function eligibility(status, eligible) {
-  return { status, eligible, planTier: "growth", billingStatus: "active", canRunRealActions: eligible, reason: "test" };
+  return { status, eligible, planTier: "workforce", billingStatus: "active", canRunRealActions: eligible, reason: "test" };
 }
 
 async function testPrecedenceRuntime() {

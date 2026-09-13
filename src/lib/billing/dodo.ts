@@ -1,5 +1,8 @@
+import "server-only";
+
 import crypto from "node:crypto";
-import { dodoProductEnvKeys, type CheckoutPlanTier } from "@/lib/pricing";
+import type { CheckoutPlanTier } from "@/lib/pricing";
+import { getDodoProductId } from "@/lib/billing/dodo-products";
 
 export type DodoCheckoutSessionInput = {
   plan: CheckoutPlanTier;
@@ -18,11 +21,6 @@ function requiredEnv(name: string): string {
     throw new Error(`Missing required env var: ${name}`);
   }
   return value;
-}
-
-export function getDodoProductId(plan: CheckoutPlanTier): string {
-  const envName = dodoProductEnvKeys[plan];
-  return requiredEnv(envName);
 }
 
 function resolveCheckoutUrl(): string {

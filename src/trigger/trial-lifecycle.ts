@@ -2,8 +2,9 @@ import { schedules } from "@trigger.dev/sdk/v3";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { sendTrialLifecycleEmail } from "@/lib/billing/trial-notifications";
 import { withTaskHeartbeat } from "@/lib/runtime/task-heartbeat";
+import { normalizePlanSlug } from "@/lib/plan-identity";
 
-type TrialRow = { id: string; workspace_id: string; trial_plan: "starter" | "growth" | "scale"; trial_ends_at: string | null };
+type TrialRow = { id: string; workspace_id: string; trial_plan: string; trial_ends_at: string | null };
 
 function rows(value: unknown): TrialRow[] {
   return Array.isArray(value) ? value.filter((row): row is TrialRow => Boolean(row) && typeof row === "object" && typeof (row as TrialRow).id === "string") : [];
@@ -23,16 +24,18 @@ export const trialLifecycle = schedules.task({
     let reminders = 0;
     let expired = 0;
     for (const trial of rows(result.data)) {
+      const plan = normalizePlanSlug(trial.trial_plan);
+      if (!plan) continue;
       const end = trial.trial_ends_at ? new Date(trial.trial_ends_at).getTime() : NaN;
       if (!Number.isFinite(end)) continue;
       if (end <= now) {
         const update = await supabase.from("os_trial_entitlements").update({ trial_status: "expired" }).eq("id", trial.id).eq("trial_status", "active");
         if (update.error) continue;
         await supabase.from("os_workspaces").update({ billing_status: "canceled", billing_updated_at: new Date().toISOString() }).eq("id", trial.workspace_id).eq("billing_status", "trialing");
-        await sendTrialLifecycleEmail({ supabase, workspaceId: trial.workspace_id, eventKey: `trial-expired:${trial.id}`, type: "trial_expired", plan: trial.trial_plan });
+        await sendTrialLifecycleEmail({ supabase, workspaceId: trial.workspace_id, eventKey: `trial-expired:${trial.id}`, type: "trial_expired", plan });
         expired += 1;
       } else if (end - now <= 25 * 60 * 60 * 1000 && end - now >= 23 * 60 * 60 * 1000) {
-        await sendTrialLifecycleEmail({ supabase, workspaceId: trial.workspace_id, eventKey: `trial-ending:${trial.id}:${trial.trial_ends_at}`, type: "trial_ending", plan: trial.trial_plan, trialEndsAt: trial.trial_ends_at ?? undefined });
+        await sendTrialLifecycleEmail({ supabase, workspaceId: trial.workspace_id, eventKey: `trial-ending:${trial.id}:${trial.trial_ends_at}`, type: "trial_ending", plan, trialEndsAt: trial.trial_ends_at ?? undefined });
         reminders += 1;
       }
     }

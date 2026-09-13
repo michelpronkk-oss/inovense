@@ -5,6 +5,7 @@ import { InsightsReportDocument } from "@/lib/insights-pdf";
 import type { InsightsReportData } from "@/lib/insights-pdf";
 import { getVerifiedSupabaseUser } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { normalizeWorkspacePlanTier } from "@/lib/plan-identity";
 import { requireWorkspaceMember, resolveActiveWorkspaceId } from "@/lib/server/workspace-access";
 import { canAccessInsights } from "@/lib/os/entitlements";
 import type { Workspace } from "@/lib/os/types";
@@ -44,13 +45,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Workspace unavailable" }, { status: 404 });
   }
   const row = workspaceResult.data as Record<string, unknown>;
+  const planTier = normalizeWorkspacePlanTier(row.plan_tier ?? row.plan) ?? "preview";
   const workspace: Workspace = {
     id: String(row.id),
     name: String(row.name ?? "Workspace"),
     environment: String(row.environment ?? "production"),
     region: String(row.region ?? ""),
-    plan: String(row.plan ?? row.plan_tier ?? "preview"),
-    planTier: typeof row.plan_tier === "string" ? row.plan_tier as Workspace["planTier"] : undefined,
+    plan: planTier,
+    planTier,
     billingStatus: typeof row.billing_status === "string" ? row.billing_status as Workspace["billingStatus"] : undefined,
     trialEndsAt: typeof row.trial_ends_at === "string" ? row.trial_ends_at : undefined,
   };

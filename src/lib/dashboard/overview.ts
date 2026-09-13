@@ -21,6 +21,7 @@ import {
 } from "@/lib/approvals/presentation";
 import { getWorkflowPresentations } from "@/lib/workflows/presentation";
 import { loopStageForStatus, type WorkflowLoopStage } from "@/lib/workflows/stage";
+import { normalizeWorkspacePlanTier } from "@/lib/plan-identity";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
@@ -564,8 +565,8 @@ export async function getDashboardOverview(input: {
     name: stringValue(workspace.data.name) ?? "Workspace",
     environment: stringValue(workspace.data.environment) ?? "production",
     region: stringValue(workspace.data.region) ?? "us",
-    plan: stringValue(workspace.data.plan) ?? "starter",
-    planTier: (stringValue(workspace.data.plan_tier) as Workspace["planTier"]) ?? undefined,
+    plan: normalizeWorkspacePlanTier(workspace.data.plan_tier ?? workspace.data.plan) ?? "preview",
+    planTier: normalizeWorkspacePlanTier(workspace.data.plan_tier ?? workspace.data.plan) ?? undefined,
     billingStatus: (stringValue(workspace.data.billing_status) as Workspace["billingStatus"]) ?? undefined,
     trialEndsAt: stringValue(workspace.data.trial_ends_at) ?? undefined,
   };
@@ -624,7 +625,7 @@ export async function getDashboardOverview(input: {
     workspace: {
       id: String(workspace.data.id),
       name: stringValue(workspace.data.name) ?? "Workspace",
-      planTier: stringValue(workspace.data.plan_tier),
+      planTier: normalizeWorkspacePlanTier(workspace.data.plan_tier ?? workspace.data.plan) ?? "preview",
       billingStatus: stringValue(workspace.data.billing_status),
       onboardingSystems,
     },

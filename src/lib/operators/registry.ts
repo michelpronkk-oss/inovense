@@ -70,7 +70,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["gmail.sendExternal", "hubspot.updateContact", "hubspot.updateDeal"],
     blockedActions: ["hubspot.deleteRecord", "pricing.change", "payment.refund"],
     supportedModes: ["draft", "approval_gated", "real_action"],
-    planAvailability: ["starter", "growth", "scale", "operator", "enterprise"],
+    planAvailability: ["foundation", "workforce", "scale", "operator", "enterprise"],
     currentReleaseStatus: "requires_connector",
   },
   {
@@ -86,7 +86,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["gmail.sendExternal", "calendar.createExternalInvite", "teams.sendChannelMessage", "zendesk.replyTicket", "zendesk.addInternalNote", "zendesk.updateTicket", "intercom.replyConversation", "intercom.updateConversation"],
     blockedActions: ["pricing.change", "contract.changeTerms", "file.shareExternalWithoutApproval"],
     supportedModes: ["draft", "approval_gated"],
-    planAvailability: ["starter", "growth", "scale", "operator", "enterprise"],
+    planAvailability: ["foundation", "workforce", "scale", "operator", "enterprise"],
     currentReleaseStatus: "requires_connector",
   },
   {
@@ -102,7 +102,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["trello.moveCard", "trello.addComment", "trello.createCard", "asana.createTask", "asana.updateTask", "asana.addComment", "jira.createIssue", "jira.updateIssue", "jira.addComment", "zendesk.addInternalNote", "zendesk.updateTicket", "slack.postMessage", "teams.sendChannelMessage"],
     blockedActions: ["payment.refund", "pricing.change", "destructive.delete"],
     supportedModes: ["draft", "read_only", "approval_gated"],
-    planAvailability: ["starter", "growth", "scale", "operator", "enterprise"],
+    planAvailability: ["foundation", "workforce", "scale", "operator", "enterprise"],
     currentReleaseStatus: "requires_connector",
   },
   {
@@ -118,7 +118,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["publish.external", "gmail.sendExternal"],
     blockedActions: ["adSpend.changeBudget", "pricing.change"],
     supportedModes: ["draft", "read_only"],
-    planAvailability: ["growth", "scale", "operator", "enterprise"],
+    planAvailability: ["workforce", "scale", "operator", "enterprise"],
     currentReleaseStatus: "preview",
   },
   {
@@ -134,7 +134,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["website.publishChange"],
     blockedActions: ["dns.change", "production.deployWithoutApproval"],
     supportedModes: ["draft"],
-    planAvailability: ["growth", "scale", "operator", "enterprise"],
+    planAvailability: ["workforce", "scale", "operator", "enterprise"],
     currentReleaseStatus: "coming_next",
   },
   {
@@ -150,7 +150,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["gmail.sendExternal", "quote.send", "contract.changeTerms"],
     blockedActions: ["pricing.change", "discount.applyWithoutApproval"],
     supportedModes: ["draft", "approval_gated"],
-    planAvailability: ["growth", "scale", "operator", "enterprise"],
+    planAvailability: ["workforce", "scale", "operator", "enterprise"],
     currentReleaseStatus: "preview",
   },
   {
@@ -166,7 +166,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["clientFacing.approve"],
     blockedActions: ["publish.externalWithoutApproval"],
     supportedModes: ["read_only", "draft"],
-    planAvailability: ["growth", "scale", "operator", "enterprise"],
+    planAvailability: ["workforce", "scale", "operator", "enterprise"],
     currentReleaseStatus: "coming_next",
   },
   {
@@ -182,7 +182,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["memory.write", "file.shareExternal"],
     blockedActions: ["memory.deleteWithoutApproval"],
     supportedModes: ["draft", "read_only"],
-    planAvailability: ["growth", "scale", "operator", "enterprise"],
+    planAvailability: ["workforce", "scale", "operator", "enterprise"],
     currentReleaseStatus: "preview",
   },
   {
@@ -198,7 +198,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["policy.change", "approval.autoApproveRule"],
     blockedActions: ["approval.bypass", "auditLog.delete"],
     supportedModes: ["read_only", "draft"],
-    planAvailability: ["growth", "scale", "operator", "enterprise"],
+    planAvailability: ["workforce", "scale", "operator", "enterprise"],
     currentReleaseStatus: "preview",
   },
   {
@@ -230,7 +230,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["gmail.sendExternal", "zendesk.replyTicket", "zendesk.addInternalNote", "zendesk.updateTicket", "intercom.replyConversation", "intercom.updateConversation"],
     blockedActions: ["payment.refund", "account.delete"],
     supportedModes: ["draft", "approval_gated"],
-    planAvailability: ["growth", "scale", "operator", "enterprise"],
+    planAvailability: ["workforce", "scale", "operator", "enterprise"],
     currentReleaseStatus: "requires_connector",
   },
   {
@@ -262,7 +262,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["social.publish", "gmail.sendExternal"],
     blockedActions: ["adSpend.changeBudget", "delete.publicPost"],
     supportedModes: ["draft"],
-    planAvailability: ["growth", "scale", "operator", "enterprise"],
+    planAvailability: ["workforce", "scale", "operator", "enterprise"],
     currentReleaseStatus: "coming_next",
   },
   {
@@ -278,7 +278,7 @@ export const OPERATOR_REGISTRY: OperatorDefinition[] = [
     approvalRequiredActions: ["website.publishChange", "analytics.changeGoal"],
     blockedActions: ["production.deployWithoutApproval", "tracking.delete"],
     supportedModes: ["draft", "read_only"],
-    planAvailability: ["growth", "scale", "operator", "enterprise"],
+    planAvailability: ["workforce", "scale", "operator", "enterprise"],
     currentReleaseStatus: "coming_next",
   },
   {

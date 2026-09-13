@@ -7,6 +7,7 @@ import { getConnectorTruth } from "@/lib/connectors/truth";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { requestBodyWithinLimit } from "@/lib/server/request-guards";
+import { normalizeWorkspacePlanTier } from "@/lib/plan-identity";
 
 const TOPICS = new Set(["account", "connector", "operator", "billing", "bug", "other"]);
 const attempts = new Map<string, number[]>();
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
     getWorkspaceOperatorProductStates({ workspaceId: context.workspaceId, supabase }),
   ]);
   const metadata = {
-    planTier: workspace.data?.plan_tier ?? workspace.data?.plan ?? null,
+    planTier: normalizeWorkspacePlanTier(workspace.data?.plan_tier ?? workspace.data?.plan) ?? "preview",
     connectors: connectors.map((row) => ({ key: row.connectorKey, status: row.status })),
     operators: operators.map((row) => ({ key: row.operatorKey, state: row.state })),
     appVersion: process.env.VERCEL_GIT_COMMIT_SHA ?? null,

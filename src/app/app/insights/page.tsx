@@ -39,7 +39,7 @@ export default function InsightsPage() {
   const outcomes = useMemo(() => workflows.flatMap((workflow) => workflow.outcomes.map((outcome) => ({ ...outcome, workflow }))).sort((a, b) => new Date(b.observedAt).getTime() - new Date(a.observedAt).getTime()), [workflows]);
   const byOperator = useMemo(() => Object.entries(outcomes.reduce<Record<string, number>>((all, outcome) => { all[outcome.workflow.operatorName] = (all[outcome.workflow.operatorName] ?? 0) + 1; return all; }, {})), [outcomes]);
 
-  if (!entitlements.features.insights) return <div className="os-page insights-page"><PageHeader eyebrow="Workforce feature" title="Insights" description="Evidence-backed outcome reporting for your workforce." /><UpgradePrompt feature="Outcome intelligence" description="Review observed outcomes from completed work when connected systems provide evidence." requiredPlan="growth" /></div>;
+  if (!entitlements.features.insights) return <div className="os-page insights-page"><PageHeader eyebrow="Workforce feature" title="Insights" description="Evidence-backed outcome reporting for your workforce." /><UpgradePrompt feature="Outcome intelligence" description="Review observed outcomes from completed work when connected systems provide evidence." requiredPlan="workforce" /></div>;
 
   const observed = outcomes.filter((outcome) => outcome.attribution === "observed").length;
   const influenced = outcomes.filter((outcome) => outcome.attribution === "influenced").length;

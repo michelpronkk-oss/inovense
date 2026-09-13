@@ -2,6 +2,7 @@
 import { PageShell } from "@/components/marketing-ui";
 import V3Header from "@/components/home-v3/v3-header";
 import V3Page from "@/components/home-v3/v3-page";
+import EarlyAccessProvider from "@/components/early-access/early-access-provider";
 import {
   AUTERIM_DESCRIPTION,
   AUTERIM_HOME_FAQS,
@@ -157,12 +158,14 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: toJsonLd(homeFaqSchema) }}
       />
-      <V3Header />
-      <main>
-        <PageShell>
-          <V3Page />
-        </PageShell>
-      </main>
+      <EarlyAccessProvider>
+        <V3Header />
+        <main>
+          <PageShell>
+            <V3Page />
+          </PageShell>
+        </main>
+      </EarlyAccessProvider>
     </div>
   );
 }

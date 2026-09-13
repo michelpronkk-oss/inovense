@@ -6,16 +6,11 @@ import { getVerifiedSupabaseUser } from "@/lib/supabase/server";
 import { requireWorkspaceAdmin, resolveActiveWorkspaceId } from "@/lib/server/workspace-access";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { getTrialEligibility } from "@/lib/billing/trials";
+import { isDodoProductConfigured } from "@/lib/billing/dodo-products";
+import { isPlanSlug } from "@/lib/plan-identity";
 
 function parsePlan(value: string | null): CheckoutPlanTier | null {
-  if (value === "starter" || value === "growth" || value === "scale") return value;
-  return null;
-}
-
-function isPlanConfigured(plan: CheckoutPlanTier): boolean {
-  if (plan === "starter") return Boolean(process.env.DODO_PRODUCT_STARTER);
-  if (plan === "growth") return Boolean(process.env.DODO_PRODUCT_GROWTH);
-  return Boolean(process.env.DODO_SCALE_PRICE_ID);
+  return isPlanSlug(value) ? value : null;
 }
 
 function resolveSiteUrl(): string {
@@ -27,7 +22,7 @@ export async function GET(req: NextRequest) {
   if (!plan) {
     return NextResponse.redirect(new URL("/plans?billing=invalid_plan", getAppUrl()));
   }
-  if (!isPlanConfigured(plan)) {
+  if (!isDodoProductConfigured(plan)) {
     return NextResponse.redirect(new URL(`/plans?billing=setup_required&plan=${plan}`, getAppUrl()));
   }
 

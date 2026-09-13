@@ -5,6 +5,7 @@ import { SUPPORT_FROM } from "@/lib/email/config";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { requestBodyWithinLimit } from "@/lib/server/request-guards";
+import { normalizeWorkspacePlanTier } from "@/lib/plan-identity";
 
 const TYPES = new Set(["general", "connector_request", "operator_request", "feature_request", "bug"]);
 const LIMIT = 5;
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
   const workspace = await supabase.from("os_workspaces").select("name,plan_tier,plan").eq("id", context.workspaceId).maybeSingle();
   const submittedAt = new Date().toISOString();
   const metadata = {
-    planTier: workspace.data?.plan_tier ?? workspace.data?.plan ?? null,
+    planTier: normalizeWorkspacePlanTier(workspace.data?.plan_tier ?? workspace.data?.plan) ?? "preview",
     appVersion: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
   };
   const insert = await supabase.from("os_feedback").insert({

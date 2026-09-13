@@ -1,4 +1,5 @@
 import type { Connector, ExecutionLog } from "@/lib/os/types";
+import { getCanonicalPlanLabel } from "@/lib/plan-identity";
 
 // A connector is real only when authenticated through a direct provider OAuth
 // credential. Legacy managed-auth state remains representable for migration,
@@ -45,12 +46,5 @@ export function isDemoLog(log: ExecutionLog): boolean {
 
 // Capitalised plan label from tier string.
 export function getPlanLabel(planTier: string): string {
-  const t = planTier.toLowerCase();
-  if (t === "starter" || t === "foundation") return "Foundation";
-  if (t === "growth" || t === "workforce") return "Workforce";
-  if (t === "scale") return "Scale";
-  // `operator` and `enterprise` are retained as compatibility keys only.
-  // They must never reappear as customer-facing plan names.
-  if (t === "operator" || t === "enterprise") return "Scale";
-  return "Preview";
+  return getCanonicalPlanLabel(planTier) ?? "Preview";
 }

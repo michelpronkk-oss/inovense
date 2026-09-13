@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { getRevenueData } from "@/lib/admin/revenue";
 import { getPlanLabel } from "@/lib/os/truth";
+import { normalizeWorkspacePlanTier } from "@/lib/plan-identity";
 
 export const metadata: Metadata = { title: "Revenue | Auterim Admin", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
 const number = (value: number | null) => value === null ? "Unavailable" : value.toLocaleString("en-US");
 const currency = (value: number | null) => value === null ? "Unavailable" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
-const label = (value: string) => ["starter", "growth", "scale", "operator", "enterprise", "foundation", "workforce"].includes(value.toLowerCase())
+const label = (value: string) => normalizeWorkspacePlanTier(value)
   ? getPlanLabel(value)
   : value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 

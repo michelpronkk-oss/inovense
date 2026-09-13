@@ -1,23 +1,14 @@
 "use client";
 
-import Link from "next/link";
-import { usePublicUserState } from "@/lib/public-user-state";
-import { resolvePublicPlanCta, type CheckoutPlanTier, type PricingPlan } from "@/lib/pricing";
-import { appHref } from "@/lib/urls";
+import { type PricingPlan } from "@/lib/pricing";
+import { useEarlyAccess } from "@/components/early-access/early-access-provider";
 
 export function PricingPlans({ plans }: { plans: PricingPlan[] }) {
-  const userState = usePublicUserState();
-
-  const startCheckout = (plan: CheckoutPlanTier) => {
-    // The server route verifies the signed-in owner and active workspace.
-    // Do not reconstruct billing identity from browser storage.
-    window.location.assign(appHref(`/api/billing/dodo/checkout?plan=${plan}`));
-  };
+  const { openEarlyAccess } = useEarlyAccess();
 
   return (
     <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
       {plans.map((plan) => {
-        const cta = resolvePublicPlanCta(plan, userState);
         return (
           <div
             key={plan.plan_tier}
@@ -52,44 +43,24 @@ export function PricingPlans({ plans }: { plans: PricingPlan[] }) {
                 </li>
               ))}
             </ul>
-            {userState !== "signed_in" ? (
-              <Link
-                href={cta.href}
-                className="block w-full rounded-xl py-2.5 text-center text-sm font-medium transition-all hover:-translate-y-px"
-                style={plan.featured
-                  ? {
-                      background: "#4DE8E1",
-                      color: "#04130F",
-                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(77,232,225,0.45)",
-                    }
-                  : {
-                      background: "rgba(255,255,255,0.03)",
-                      color: "#ECEFF3",
-                      boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
-                    }}
-              >
-                {cta.label}
-              </Link>
-            ) : (
-              <button
-                type="button"
-                onClick={() => startCheckout(plan.plan_tier)}
-                className="block w-full rounded-xl py-2.5 text-center text-sm font-medium transition-all hover:-translate-y-px"
-                style={plan.featured
-                  ? {
-                      background: "#4DE8E1",
-                      color: "#04130F",
-                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(77,232,225,0.45)",
-                    }
-                  : {
-                      background: "rgba(255,255,255,0.03)",
-                      color: "#ECEFF3",
-                      boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
-                    }}
-              >
-                {cta.label}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={(event) => openEarlyAccess({ plan: plan.plan_tier, trigger: event.currentTarget })}
+              className="block w-full rounded-xl py-2.5 text-center text-sm font-medium transition-all hover:-translate-y-px"
+              style={plan.featured
+                ? {
+                    background: "#4DE8E1",
+                    color: "#04130F",
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(77,232,225,0.45)",
+                  }
+                : {
+                    background: "rgba(255,255,255,0.03)",
+                    color: "#ECEFF3",
+                    boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
+                  }}
+            >
+              {plan.cta}
+            </button>
           </div>
         );
       })}

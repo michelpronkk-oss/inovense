@@ -8,6 +8,7 @@ import { APP_SESSION_COOKIE, createSessionToken, SESSION_MAX_AGE_SEC } from "@/l
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { roleLabel } from "@/lib/workspace-permissions";
 import { normalizeMemoryRow, resolveMemoryEntries, type MemoryRow } from "@/lib/memory/model";
+import { normalizeWorkspacePlanTier } from "@/lib/plan-identity";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -26,7 +27,11 @@ function asState(value: unknown): OSState | null {
   if (!rec.workspace || !rec.currentUser || !Array.isArray(rec.connectors) || !Array.isArray(rec.agents)) {
     return null;
   }
-  return rec as OSState;
+  const planTier = normalizeWorkspacePlanTier(rec.workspace.planTier ?? rec.workspace.plan) ?? "preview";
+  return {
+    ...rec,
+    workspace: { ...rec.workspace, plan: planTier, planTier },
+  } as OSState;
 }
 
 function stringSettings(value: unknown): Record<string, string> {
@@ -231,8 +236,8 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
     name: db.name ?? state.workspace.name,
     environment: db.environment ?? state.workspace.environment,
     region: db.region ?? state.workspace.region,
-    plan: db.plan ?? state.workspace.plan,
-    planTier: db.plan_tier ?? state.workspace.planTier,
+    plan: normalizeWorkspacePlanTier(db.plan_tier ?? db.plan) ?? state.workspace.plan,
+    planTier: normalizeWorkspacePlanTier(db.plan_tier ?? db.plan) ?? state.workspace.planTier,
     billingStatus: db.billing_status ?? state.workspace.billingStatus,
     trialEndsAt: db.trial_ends_at ?? undefined,
     dodoCustomerId: db.dodo_customer_id ?? undefined,

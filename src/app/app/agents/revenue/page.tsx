@@ -71,6 +71,13 @@ type RevenueStatus = {
     accountEmail?: string | null;
     reconnectRequired?: boolean;
     permissions?: { compose?: boolean; send?: boolean; readonly?: boolean };
+    monitoring?: {
+      status?: "live" | "issue";
+      lastEventAt?: string | null;
+      lastSuccessfulSyncAt?: string | null;
+      watchExpiresAt?: string | null;
+      errorCode?: string | null;
+    } | null;
   } | null;
   hubspot?: {
     status?: string;
@@ -119,6 +126,7 @@ type RevenueStatus = {
     lastFailedCheckAt?: string | null;
     lastScheduledCheckAt?: string | null;
     consecutiveScheduledFailures?: number;
+    fallbackStatus?: "healthy" | "issue" | "pending" | "paused";
     lastFailureCode?: string | null;
     isRunning?: boolean;
     lastRunSummary?: Record<string, unknown> | null;
@@ -165,7 +173,7 @@ function monitoringLabel(status: string | undefined): string {
   if (status === "paused") return "Paused";
   if (status === "monitoring_issue") return "Monitoring issue";
   if (status === "reconnect_required") return "Reconnect Gmail";
-  return "On · checks hourly";
+  return "Live · hourly fallback";
 }
 
 function monitoringNextLabel(status: string | undefined, nextRunAt: string | null | undefined): string {
@@ -390,6 +398,15 @@ export default function RevenueOperatorPage() {
                 {monitoring?.status === "monitoring_issue" && <button className="btn btn-ghost btn-sm" type="button" onClick={submitRevenueScan} disabled={!canRunRevenue || scanSubmitting}>Retry</button>}
                 {monitoringUpdate && <span className="badge cyan">Revenue Operator found new work</span>}
               </div>
+              {revenueStatus?.gmail?.monitoring && (
+                <div className="card-pad t-meta" style={{ borderBottom: "1px solid var(--line)", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }} aria-live="polite">
+                  <span><strong>Inbox monitoring</strong> · {revenueStatus.gmail.monitoring.status === "live" ? "Live" : "Needs attention"}</span>
+                  <span><strong>Last Gmail event</strong> · {shortTimeAgo(revenueStatus.gmail.monitoring.lastEventAt)}</span>
+                  <span><strong>Last successful sync</strong> · {shortTimeAgo(revenueStatus.gmail.monitoring.lastSuccessfulSyncAt)}</span>
+                  <span><strong>Watch valid until</strong> · {dateTimeLabel(revenueStatus.gmail.monitoring.watchExpiresAt)}</span>
+                  <span><strong>Hourly fallback</strong> · {monitoring?.fallbackStatus === "healthy" ? "Healthy" : monitoring?.fallbackStatus === "paused" ? "Paused" : monitoring?.fallbackStatus === "pending" ? "Waiting for first check" : "Needs attention"}</span>
+                </div>
+              )}
               {pendingApprovals > 0 ? (
                 <div className="rows">
                   {monitoring?.recentPendingApprovals.map((approval) => (
