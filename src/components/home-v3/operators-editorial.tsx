@@ -60,7 +60,7 @@ export default function OperatorsEditorial() {
               <details className="op" name="operator" key={op.name}>
                 <summary>
                   <div className="op-row">
-                    <span className="op-avatar"><OperatorAvatar color={op.color} glyph={GLYPHS[op.glyph]} size={44} /></span>
+                    <span className="op-avatar"><OperatorAvatar color={op.color} glyph={GLYPHS[op.glyph]} size={44} containBadge /></span>
                     <div className="op-name">
                       <h3 style={{ color: "var(--auterim-v3-ink)" }}>{op.name}</h3>
                       <div className="t">{type}</div>

@@ -146,9 +146,11 @@
 .auterim-v3-page.public-page .page-hero.pricing-hero { padding-bottom: 42px; }
 .public-page .pricing-hero h1 { font-size: clamp(46px, 5vw, 66px); }
 .auterim-v3-page.public-page .sec.public-pricing-section { padding-top: 20px; }
-.public-page .public-pricing-intro { max-width: 660px; margin-bottom: 32px; }
-.public-page .public-pricing-heading { color: #edf2f7; font-size: clamp(30px, 3.2vw, 38px); font-weight: 500; line-height: 1.12; letter-spacing: -.045em; text-wrap: balance; }
-.public-page .public-pricing-intro > p { margin-top: 11px; color: #98a9b7; font-size: 15px; line-height: 1.7; }
+.public-page .public-pricing-intro { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 420px); align-items: end; gap: 44px; margin-bottom: 30px; padding-bottom: 25px; border-bottom: 1px solid #202d37; }
+.public-page .public-pricing-overline { display: inline-flex; align-items: center; gap: 10px; color: #87a1af; font: 9px var(--mono); letter-spacing: .16em; text-transform: uppercase; }
+.public-page .public-pricing-overline i { display: block; width: 20px; height: 1px; background: #4bd7ca; }
+.public-page .public-pricing-heading { margin-top: 13px; color: #edf2f7; font-size: clamp(34px, 3.5vw, 42px); font-weight: 500; line-height: 1.08; letter-spacing: -.05em; text-wrap: balance; }
+.public-page .public-pricing-intro > p { max-width: 390px; margin: 0 0 3px; border-left: 1px solid #30434d; padding: 2px 0 2px 20px; color: #a4b3bf; font-size: 15px; line-height: 1.75; }
 .public-page .public-plan { display: flex; flex-direction: column; min-width: 0; padding: 30px 24px; border: 1px solid #24303b; border-radius: 6px; background: #0c121a; }
 .public-page .public-plan-featured { border-top: 2px solid #66bfb8; }
 .public-page .public-plan-heading-row { display: flex; min-height: 24px; align-items: center; justify-content: space-between; gap: 12px; }
@@ -161,6 +163,16 @@
 .public-page .public-plan li { color: #bac4cf; font-size: 13px; line-height: 1.7; }
 .public-page .public-plan li::before { content: "·"; margin-right: 9px; color: #7eafa9; }
 .public-page .public-plan .btn { width: 100%; justify-content: center; margin-top: auto; }
+.public-page .public-pricing-note { position: relative; display: grid; grid-template-columns: 205px minmax(0, 1fr); gap: 36px; margin-top: 36px; padding: 22px 0; border-top: 1px solid #202d37; border-bottom: 1px solid #202d37; }
+.public-page .public-pricing-note::before { position: absolute; top: -1px; left: 0; width: 38px; height: 1px; background: #4bd7ca; content: ""; }
+.public-page .public-pricing-note-title { display: flex; align-items: center; gap: 12px; }
+.public-page .public-pricing-note-mark { width: 34px; height: 34px; display: grid; flex: none; place-items: center; border: 1px solid #27403f; border-radius: 50%; color: #72c7bf; background: #0b1418; }
+.public-page .public-pricing-note-heading { display: grid; gap: 5px; }
+.public-page .public-pricing-note-heading > span { color: #87b9b5; font: 8px var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+.public-page .public-pricing-note-heading strong { color: #dbe4e9; font-size: 14px; font-weight: 500; letter-spacing: -.01em; }
+.public-page .public-pricing-note-copy { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 30px; }
+.public-page .public-pricing-note-copy p { margin: 0; color: #8e9eab; font-size: 12px; line-height: 1.75; }
+.public-page .public-pricing-note-copy strong { color: #c6d2d8; font-weight: 500; }
 .public-page .contact-public-routes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; margin-top: 42px; }
 .public-page .contact-public-routes > a, .public-page .contact-public-route-action { min-width: 0; padding: 24px 0; border-top: 1px solid #25323c; }
 .public-page .contact-public-routes > a > span, .public-page .contact-public-route-action > span { display: block; color: #839aa9; font: 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; }
@@ -194,6 +206,8 @@
   .public-page .public-scenario { gap: 24px; padding: 38px 0; }
   .public-page .operating-flow ol { gap: 14px; }
   .public-page .operating-flow { padding: 26px; }
+  .public-page .public-pricing-intro { grid-template-columns: minmax(0, 1fr) minmax(270px, 370px); gap: 28px; }
+  .public-page .public-pricing-note { grid-template-columns: 180px minmax(0, 1fr); gap: 24px; }
   .public-page .public-pricing { gap: 12px; }
   .public-page .public-plan { padding: 25px 18px; }
 }
@@ -207,6 +221,12 @@
   .public-page .public-story, .auterim-v3-page.public-page .sec.public-content { padding: 44px 0 72px; }
   .public-page .public-story-heading, .public-page .public-section-heading { margin-bottom: 34px; }
   .public-page .public-story-heading h2, .public-page .public-section-heading h2 { font-size: 32px; margin-top: 20px; }
+  .public-page .public-pricing-intro { grid-template-columns: minmax(0, 1fr); gap: 13px; margin-bottom: 25px; padding-bottom: 20px; }
+  .public-page .public-pricing-heading { font-size: 34px; }
+  .public-page .public-pricing-intro > p { max-width: 470px; border-left: 0; padding: 0; font-size: 14px; }
+  .public-page .public-pricing-note { grid-template-columns: minmax(0, 1fr); gap: 16px; margin-top: 28px; padding: 20px 0; }
+  .public-page .public-pricing-note-copy { grid-template-columns: minmax(0, 1fr); gap: 10px; padding-left: 46px; }
+  .public-page .public-pricing-note-copy p { font-size: 12px; }
   .public-page .public-editorial-list, .public-page .public-principles, .public-page .public-topic-grid, .public-page .connector-marketplace, .public-page .public-pricing, .public-page .contact-public-routes { grid-template-columns: 1fr; gap: 34px; }
   .public-page .public-principles { gap: 12px; }
   .public-page .public-principles > .public-detail-group { min-height: 0; padding: 22px; }

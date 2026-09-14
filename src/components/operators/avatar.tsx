@@ -12,14 +12,16 @@ export function OperatorAvatar({
   color,
   glyph,
   size = 48,
+  containBadge = false,
 }: {
   color: string;
   glyph: string;
   size?: number;
+  containBadge?: boolean;
 }) {
-  const badgeSize = Math.round(size * 0.46);
+  const badgeSize = Math.round(size * (containBadge ? 0.34 : 0.46));
   const badgeIconSize = Math.round(badgeSize * 0.55);
-  const personSize = Math.round(size * 0.54);
+  const personSize = Math.round(size * (containBadge ? 0.5 : 0.54));
 
   return (
     <div
@@ -42,8 +44,8 @@ export function OperatorAvatar({
       <span
         className="absolute grid place-items-center rounded-full"
         style={{
-          right: -3,
-          bottom: -3,
+          right: containBadge ? 5 : -3,
+          bottom: containBadge ? 5 : -3,
           width: badgeSize,
           height: badgeSize,
           background: "#0A0E12",

@@ -124,7 +124,10 @@ export function PublicPricing({ plans }: { plans: PricingPlan[] }) {
     <section className="sec public-content public-pricing-section">
       <div className="wrap">
         <div className="public-pricing-intro">
-          <h2 className="public-pricing-heading">Monthly plans</h2>
+          <div className="public-pricing-intro-title">
+            <span className="public-pricing-overline"><i aria-hidden="true" />Plans · Monthly</span>
+            <h2 className="public-pricing-heading">Monthly plans</h2>
+          </div>
           <p>Compare operator, connected system, and controlled run capacity for your team.</p>
         </div>
         <div className="public-pricing">
@@ -139,7 +142,21 @@ export function PublicPricing({ plans }: { plans: PricingPlan[] }) {
             <RequestEarlyAccessButton className="btn btn-a" plan={plan.plan_tier} />
           </article>)}
         </div>
-        <p className="public-note">Every plan is requested through Early Access. A request does not create an account, start a trial, or charge a payment method. If invited, your workspace can choose to begin the three-day trial explicitly. Paid plan terms are shown before checkout.</p>
+        <aside className="public-pricing-note" aria-label="Early Access trial and billing terms">
+          <div className="public-pricing-note-title">
+            <span className="public-pricing-note-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M12 3.5 19 6v5.4c0 4.1-2.8 7.3-7 9.1-4.2-1.8-7-5-7-9.1V6l7-2.5Z" stroke="currentColor" strokeWidth="1.25"/><path d="m9.3 12.1 1.8 1.8 3.8-4" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </span>
+            <span className="public-pricing-note-heading">
+              <span>Early Access</span>
+              <strong>Trial and billing</strong>
+            </span>
+          </div>
+          <div className="public-pricing-note-copy">
+            <p>Every plan is requested through <strong>Early Access</strong>. A request does not create an account, start a trial, or charge a payment method.</p>
+            <p>If invited, your workspace can choose to begin the <strong>three-day trial</strong> explicitly. Paid plan terms are shown before checkout.</p>
+          </div>
+        </aside>
       </div>
     </section>
   );
