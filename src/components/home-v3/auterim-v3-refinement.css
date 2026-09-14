@@ -5391,10 +5391,40 @@
   }
   .auterim-v3-page.homepage-recomposed .homepage-loop li:last-child { margin-bottom: 0 !important; }
   .auterim-v3-page.homepage-recomposed .homepage-loop li + li { border-left: 0; }
-  .auterim-v3-page.homepage-recomposed .homepage-loop span { position: absolute; top: 1px; left: 0; padding: 0; background: none; }
-  .auterim-v3-page.homepage-recomposed .homepage-loop .is-focus span { color: var(--auterim-v3-aqua); }
+  /* Retire the legacy free-floating focus dot in favour of the step marker below. */
+  .auterim-v3-page.homepage-recomposed .homepage-loop .is-focus::after { content: none; display: none; }
+  /* The differentiator step keeps a faint ambient wash, anchored at its marker,
+     instead of the full bordered card desktop uses - enough to read as "the one
+     that matters" in a single narrow column without turning into a heavy tile. */
+  .auterim-v3-page.homepage-recomposed .homepage-loop .is-focus {
+    background: radial-gradient(130% 170% at 0% 0%, rgba(55, 230, 212, .09), transparent 58%) !important;
+  }
+  /* Each step number becomes a small lit marker sitting directly on the rail,
+     echoing the aqua accent used across the rest of the page on mobile. */
+  .auterim-v3-page.homepage-recomposed .homepage-loop span {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 50%;
+    background: #0b141a;
+    border: 1px solid rgba(148, 164, 180, .3);
+    color: var(--auterim-v3-dim, var(--dim));
+    font-size: 10px;
+  }
+  .auterim-v3-page.homepage-recomposed .homepage-loop .is-focus span {
+    border-color: rgba(55, 230, 212, .6);
+    background: radial-gradient(circle at 34% 28%, rgba(55, 230, 212, .3), rgba(8, 18, 22, .96) 72%);
+    color: var(--auterim-v3-aqua, var(--acc));
+    box-shadow: 0 0 0 4px rgba(55, 230, 212, .1), 0 0 16px rgba(55, 230, 212, .4);
+  }
   .auterim-v3-page.homepage-recomposed .homepage-loop h3,
-  .auterim-v3-page.homepage-recomposed .homepage-loop .is-focus h3 { margin: 2px 0 6px; font-size: 18px; color: var(--auterim-v3-ink); }
+  .auterim-v3-page.homepage-recomposed .homepage-loop .is-focus h3 { margin: 3px 0 6px; font-size: 18px; color: var(--auterim-v3-ink, var(--ink)); }
   .auterim-v3-page.homepage-recomposed .homepage-loop p { max-width: 34ch; }
   .auterim-v3-page.homepage-recomposed .homepage-contrast { grid-template-columns: 1fr; margin-top: 38px; }
   .auterim-v3-page.homepage-recomposed .homepage-control-model { grid-template-columns: 1fr; margin-top: 38px; padding: 22px; }
