@@ -319,9 +319,6 @@
 .public-page .operator-behavior-grid article:nth-child(3) > span { border-color: #355244; color: #9ac6a2; background: #111b17; }
 .public-page .operator-behavior-grid h3 { margin-top: 20px; font-size: 19px; letter-spacing: -.02em; }
 .public-page .operator-behavior-grid p { max-width: 36ch; margin-top: 10px; color: #9baab8; font-size: 14px; line-height: 1.75; }
-.public-page .operator-guide-links { display: flex; flex-wrap: wrap; gap: 10px 26px; margin-top: 37px; }
-.public-page .operator-guide-links a { min-height: 44px; display: inline-flex; align-items: center; color: #a9c9c5; font-size: 12px; transition: color .18s ease; }
-.public-page .operator-guide-links a:hover { color: var(--acc); }
 .public-page .operator-roadmap { margin: 12px 0 82px; padding: 28px; border: 1px solid #1b252f; border-radius: 7px; background: #090e14; }
 .public-page .operator-roadmap-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; padding-bottom: 20px; border-bottom: 1px solid #1b252f; }
 .public-page .operator-roadmap h2 { margin: 10px 0 0; color: #d9e1e7; font-size: 19px; font-weight: 500; letter-spacing: -.02em; }
@@ -347,7 +344,6 @@
   .public-page .operator-profile-signals > div { grid-template-columns: 86px minmax(0,1fr); }
   .public-page .operator-profile-details summary { min-height: 52px; }
   .public-page .operator-behavior { padding-top: 52px; }
-  .public-page .operator-guide-links { gap: 2px 17px; margin-top: 25px; }
   .public-page .operator-behavior-grid { grid-template-columns: 1fr; gap: 10px; }
   .public-page .operator-behavior-grid article { min-height: 0; padding: 20px; }
   .public-page .operator-behavior-grid h3 { margin-top: 16px; }

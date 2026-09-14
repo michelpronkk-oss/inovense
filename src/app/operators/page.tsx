@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import PublicSiteFrame from "@/components/home-v3/public-site-frame";
-import Link from "next/link";
 import { PublicHero, PublicCta } from "@/components/home-v3/public-page-components";
 import { OperatorsHeroVisual } from "@/components/home-v3/page-specific-hero-visuals";
 import { OperatorProfileGrid } from "@/components/home-v3/public-story-components";
@@ -85,7 +84,6 @@ export default function OperatorsPage() {
     <section className="public-story operator-behavior"><div className="wrap">
       <div className="public-story-heading"><span className="lbl">How Operators work</span><h2>Context first. Action inside policy.</h2></div>
       <div className="operator-behavior-grid"><article><span>01</span><h3>Approved context</h3><p>Operators work from the systems and information a workspace connects.</p></article><article><span>02</span><h3>A prepared next step</h3><p>Each role turns a signal into a specific piece of work for its owner.</p></article><article><span>03</span><h3>A visible boundary</h3><p>Allowed actions proceed. Gated actions pause. Blocked actions stop.</p></article></div>
-      <nav className="operator-guide-links" aria-label="More about Operators"><Link href="/integrations">Connectors</Link><Link href="/approvals">Approvals</Link><Link href="/workflows">Workflows</Link><Link href="/getting-started">Getting started</Link><Link href="/pricing">Pricing</Link></nav>
     </div></section>
     <div className="wrap"><aside className="operator-roadmap" aria-labelledby="operator-roadmap-title">
       <div className="operator-roadmap-heading"><div><span className="lbl">Roadmap · coming later</span><h2 id="operator-roadmap-title">More areas of work, over time.</h2></div><span className="operator-roadmap-count">{ROADMAP_OPERATOR_PRESENTATION.length} planned roles</span></div>
