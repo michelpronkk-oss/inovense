@@ -237,8 +237,7 @@
   border-left: 1px solid rgba(148, 164, 180, .14);
 }
 .auterim-v3-page.homepage-recomposed .homepage-loop li:first-child { border-left: 0; }
-.auterim-v3-page.homepage-recomposed .homepage-loop span,
-.auterim-v3-page.homepage-recomposed .homepage-contrast span {
+.auterim-v3-page.homepage-recomposed .homepage-loop span {
   display: block;
   color: var(--auterim-v3-aqua);
   font-family: var(--font-geist-mono), monospace;
@@ -2554,7 +2553,10 @@
     animation: hero-editorial-beam-breathe 9s ease-in-out .6s infinite;
   }
   .auterim-v3-page .hero-artifact-panel::before {
-    animation: hero-artifact-panel-glow-breathe 12s ease-in-out 1.4s infinite;
+    animation: hero-artifact-panel-glow-breathe 12s ease-in-out 1.4s infinite, hero-artifact-edge-scan 17s linear infinite;
+  }
+  .auterim-v3-page .hero-artifact-badge::before {
+    animation: hero-artifact-badge-halo 4.6s ease-in-out infinite;
   }
 
 }
@@ -2585,6 +2587,16 @@
 
 @keyframes hero-artifact-panel-glow-breathe {
   0%, 100% { opacity: .55; }
+  50% { opacity: 1; }
+}
+
+@keyframes hero-artifact-edge-scan {
+  0% { background-position: -32% 0; }
+  100% { background-position: 134% 0; }
+}
+
+@keyframes hero-artifact-badge-halo {
+  0%, 100% { opacity: .4; }
   50% { opacity: 1; }
 }
 
@@ -2758,7 +2770,51 @@
   top: 0;
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(55,230,212,.7), transparent);
+  background-size: 30% 100%;
+  background-repeat: no-repeat;
 }
+
+/* Grain overlay: a per-panel feTurbulence noise texture (filter #heroN, defined
+   once in VisualDefs) painted last so it reads faintly across the whole card,
+   matching the other five homepage panels' .hv-grain treatment. */
+.auterim-v3-page .hero-artifact-grain {
+  position: absolute;
+  inset: 0;
+  opacity: .04;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+.auterim-v3-page .hero-artifact-grain svg { display: block; width: 100%; height: 100%; }
+
+/* Glass mark badge: matches the .hv-badge treatment used across the other five
+   homepage panels (glass chip + pulsing halo behind the #mk logomark). */
+.auterim-v3-page .hero-artifact-badge {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(158deg, rgba(20,34,45,.9), rgba(7,12,17,.75));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.07), inset 1px 1px 0 rgba(196,240,250,.06);
+}
+.auterim-v3-page .hero-artifact-badge::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 14px;
+  background: radial-gradient(circle, rgba(55,230,212,.16), transparent 70%);
+  pointer-events: none;
+}
+.auterim-v3-page .hero-artifact-badge svg {
+  width: 16px;
+  height: 16px;
+  color: var(--acc-hi);
+  position: relative;
+  z-index: 1;
+}
+
 .auterim-v3-page .hero-artifact-top { display: flex; align-items: center; gap: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--rule); }
 .auterim-v3-page .hero-artifact-top-k { font-family: var(--mono); font-size: 9.5px; letter-spacing: .22em; text-transform: uppercase; color: var(--ink); }
 .auterim-v3-page .hero-artifact-run {

@@ -61,6 +61,7 @@
     "test:operator-discovery": "node tests/operator-discovery-smoke.mjs",
     "test:operator-runtime-surface": "node tests/operator-runtime-surface-smoke.mjs",
     "test:pricing-scale": "node tests/pricing-scale-smoke.mjs",
+    "test:plan-usage-summary": "node tests/plan-usage-summary-smoke.mjs",
     "test:trial-lifecycle": "node tests/trial-lifecycle-smoke.mjs",
     "test:connector-impact": "node tests/connector-impact-smoke.mjs",
     "test:connector-readiness-reconciliation": "node tests/connector-readiness-reconciliation-smoke.mjs",

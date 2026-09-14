@@ -8,7 +8,7 @@ import OperatorsEditorial from "./operators-editorial";
 import HeroEditorial from "./hero-editorial";
 import V3Footer from "./v3-footer";
 import { Icon } from "./icons";
-import { WhyAuterimVisual, ConnectorsVisual, OutcomesVisual, ControlVisual, FinalCtaVisual } from "./homepage-visuals";
+import { VisualDefs, WhyAuterimVisual, ConnectorsVisual, OutcomesVisual, ControlVisual, FinalCtaVisual } from "./homepage-visuals";
 import "./auterim-v3.css";
 import "./auterim-v3-refinement.css";
 import "./auterim-v3-typography.css";
@@ -51,6 +51,7 @@ export default function V3Page() {
   }, []);
 
   return <div className="auterim-v3-page homepage-recomposed">
+    <VisualDefs />
     <HeroEditorial />
 
     <section className="sec homepage-story" id="how"><div className="wrap">

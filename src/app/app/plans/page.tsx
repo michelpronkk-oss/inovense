@@ -4,14 +4,16 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { useOS } from "@/lib/os/app-provider";
 import { getEntitlements } from "@/lib/os/entitlements";
-import { getPlanLabel } from "@/lib/os/truth";
+import { getPlanLabel, getRealConnectedCount } from "@/lib/os/truth";
 import { appHref } from "@/lib/urls";
 import { pricingPlans, type CheckoutPlanTier } from "@/lib/pricing";
 import { getPlanLimits } from "@/lib/os/plans";
+import { getPlanUsageMetrics } from "@/lib/billing/plan-usage-summary";
 import { PageHeader, MetricStrip } from "@/components/product-ui/page-primitives";
 
 type PlanCard = { tier: CheckoutPlanTier; name: string; price: string; summary: string; limits: string[]; teamSeats: number; featured?: boolean };
 type TrialState = { eligible: boolean; status: string; reason: "eligible" | "already_consumed" | "history_unavailable"; matchedBy: "workspace" | "owner" | "billing_customer" | null };
+type OperatorUsage = { identity: string; status: "loading" | "unavailable" } | { identity: string; status: "ready"; count: number };
 
 const PLANS: PlanCard[] = pricingPlans.map((plan) => ({
   tier: plan.plan_tier,
@@ -30,20 +32,30 @@ function displayDate(value?: string): string | null {
 }
 
 export default function PlansPage() {
-  const { state } = useOS();
+  const { state, clientHydrated } = useOS();
   const searchParams = useSearchParams();
   const entitlements = getEntitlements(state.workspace);
-  const currentPlanLimits = getPlanLimits(state.workspace.planTier ?? state.workspace.plan);
   const [submitting, setSubmitting] = useState<CheckoutPlanTier | null>(null);
   const [trialState, setTrialState] = useState<TrialState | null>(null);
   const [billingBusy, setBillingBusy] = useState(false);
   const [portalError, setPortalError] = useState("");
+  const [operatorUsage, setOperatorUsage] = useState<OperatorUsage>({ identity: "", status: "loading" });
   const canManageBilling = state.currentUser.roleLabel === "Owner" || state.currentUser.roleLabel === "Admin";
   const trialEnd = displayDate(entitlements.trialEndsAt);
   const showManageBilling = entitlements.billingStatus === "active" || entitlements.billingStatus === "trialing" || entitlements.billingStatus === "past_due";
   // Real, already-loaded workspace state -- no new fetch. Team seats in use
   // mirrors the same active/non-pending definition the Team page uses.
   const teamSeatsInUse = state.teamMembers.filter((member) => member.active && member.status !== "pending").length;
+  const operatorUsageIdentity = JSON.stringify([state.workspace.id, state.currentUser.id, state.currentUser.email]);
+  const currentOperatorUsage = operatorUsage.identity === operatorUsageIdentity ? operatorUsage : null;
+  const currentOperatorUsageStatus = currentOperatorUsage?.status ?? "loading";
+  const usageMetrics = getPlanUsageMetrics({
+    entitlements,
+    activeOperators: currentOperatorUsage?.status === "ready" ? currentOperatorUsage.count : null,
+    operatorUsageStatus: currentOperatorUsageStatus === "unavailable" ? "unavailable" : "loading",
+    connectedSystems: clientHydrated ? getRealConnectedCount(state.connectors) : null,
+    activeTeamSeats: clientHydrated ? teamSeatsInUse : null,
+  });
 
   useEffect(() => {
     let active = true;
@@ -56,6 +68,25 @@ export default function PlansPage() {
       .catch(() => { if (active) setTrialState({ eligible: false, status: "unavailable", reason: "history_unavailable", matchedBy: null }); });
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    const identity = JSON.stringify([state.workspace.id, state.currentUser.id, state.currentUser.email]);
+    const params = new URLSearchParams({
+      workspaceId: state.workspace.id,
+      userId: state.currentUser.id,
+      userEmail: state.currentUser.email,
+    });
+    fetch(appHref(`/api/operators/product-state?${params.toString()}`), { cache: "no-store" })
+      .then(async (response) => {
+        const result = await response.json().catch(() => null) as { states?: Array<{ state?: string }>; error?: string } | null;
+        if (!response.ok || !Array.isArray(result?.states)) throw new Error(result?.error || "Operator usage unavailable");
+        const count = result.states.filter((item) => item.state === "active" || item.state === "active_limited" || item.state === "enhanced").length;
+        if (active) setOperatorUsage({ identity, status: "ready", count });
+      })
+      .catch(() => { if (active) setOperatorUsage({ identity, status: "unavailable" }); });
+    return () => { active = false; };
+  }, [state.currentUser.email, state.currentUser.id, state.workspace.id]);
 
   function beginCheckout(tier: CheckoutPlanTier) {
     if (!canManageBilling) return;
@@ -111,11 +142,7 @@ export default function PlansPage() {
         <p className="t-meta" style={{ marginTop: 6 }}>{trialEnd ? `Trial access ends ${trialEnd}.` : entitlements.billingStatus === "preview" ? trialState === null || trialState.reason === "history_unavailable" ? "We could not verify trial eligibility yet. Try again shortly." : trialState.eligible ? "Your 3-day Foundation trial is available now - no card required." : trialState.matchedBy === "billing_customer" ? "This Dodo billing profile has already used an Auterim trial. Choose a plan to connect real systems." : trialState.matchedBy === "owner" ? "This Auterim account has already used its trial. Choose a plan to connect real systems." : "This workspace's trial has already been used. Choose a plan to connect real systems." : "Billing and cancellation are managed in the customer portal."}</p>
       </div>
       <div className="card-pad" style={{ paddingTop: 0 }}>
-        <MetricStrip items={[
-          { label: "Operator capacity", value: entitlements.operatorsLimit, detail: "Included in this plan" },
-          { label: "Connector capacity", value: entitlements.connectorsLimit === "custom" || entitlements.connectorsLimit === "standard_all" ? "Custom" : entitlements.connectorsLimit, detail: "Connected systems allowed" },
-          { label: "Team seats", value: currentPlanLimits.maxTeamMembers === -1 ? teamSeatsInUse : `${teamSeatsInUse} / ${currentPlanLimits.maxTeamMembers}`, detail: currentPlanLimits.maxTeamMembers === -1 ? "Active workspace members" : "Active / included seats" },
-        ]} />
+        <MetricStrip items={usageMetrics} />
       </div>
     </section>
 

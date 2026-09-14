@@ -29,6 +29,7 @@ export default function HeroOperatingArtifact() {
     >
       <div className="hero-artifact-panel">
         <div className="hero-artifact-top">
+          <span className="hero-artifact-badge" aria-hidden="true"><svg viewBox="0 0 64 64"><use href="#mk" /></svg></span>
           <span className="hero-artifact-top-k">Auterim operating layer</span>
           <span className="hero-artifact-run"><i />Prepared work</span>
         </div>
@@ -74,6 +75,9 @@ export default function HeroOperatingArtifact() {
             </li>
           ))}
         </ul>
+        <div className="hero-artifact-grain" aria-hidden="true">
+          <svg viewBox="0 0 216 216" preserveAspectRatio="none"><rect width="216" height="216" filter="url(#heroN)" /></svg>
+        </div>
       </div>
 
       <div className="hero-artifact-gate" aria-hidden="true">
