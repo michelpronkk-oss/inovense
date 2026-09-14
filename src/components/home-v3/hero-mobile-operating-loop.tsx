@@ -7,11 +7,11 @@ const CONTEXT_SOURCES = [
   { icon: "artifactMemory", label: "Memory" },
 ] as const;
 
-const SEQUENCE_STEPS = [
+const SEQUENCE_STEPS: ReadonlyArray<{ label: string; time: string; state?: "now" }> = [
   { label: "Signal detected", time: "00:02" },
   { label: "Context prepared", time: "00:11" },
   { label: "Reply prepared", time: "held at gate", state: "now" },
-] as const;
+];
 
 export default function HeroMobileOperatingLoop() {
   return (
