@@ -35,7 +35,7 @@ requireText(robots, "host === getAppHost()", "app-host robots rule");
 requireText(robots, 'disallow: "/"', "private-host crawl block");
 requireText(sitemap, "host === getAppHost()", "app-host empty sitemap guard");
 
-const middleware = read("src/middleware.ts");
+const middleware = read("src/proxy.ts");
 requireText(middleware, "isPublicAliasHost(requestHost)", "www-to-apex redirect guard");
 requireText(middleware, "robots.txt", "metadata routes bypass app rewrite");
 requireText(middleware, "x-auterim-surface", "private host rewrite marker");

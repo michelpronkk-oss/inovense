@@ -7,7 +7,7 @@ const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
 const brand = read("src/lib/brand.ts");
 const routing = read("src/lib/host-routing.ts");
-const middleware = read("src/middleware.ts");
+const middleware = read("src/proxy.ts");
 const session = read("src/lib/session.ts");
 const storage = read("src/lib/os/app-provider.tsx");
 const urls = read("src/lib/urls.ts");

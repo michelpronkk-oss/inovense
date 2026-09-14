@@ -28,7 +28,7 @@ function testSourceContracts() {
   assert.ok(productIndex > -1 && systemMapIndex > -1 && connectorsIndex > -1, "all three nav entries must exist");
   assert.ok(productIndex < systemMapIndex && systemMapIndex < connectorsIndex, "System Map must sit between Product and Connectors in the nav array");
 
-  const middleware = read("src/middleware.ts");
+const middleware = read("src/proxy.ts");
   assert.match(middleware, /"\/system-map"/, "middleware's internal command allow-list must include /system-map or the route is unreachable on the real admin host");
 
   const layout = read("src/app/admin/layout.tsx");
@@ -122,28 +122,17 @@ function loadModuleWithReplacements(relSourcePath, replacements) {
 }
 
 async function testRuntimeShape() {
-  // Chain-load the real dependency graph: brand.ts (pure) -> urls.ts ->
-  // public-user-state.ts -> pricing.ts, plus the two registries, exactly as
-  // system-map.ts imports them, so this proves the real files, not a mock.
-  const brandModule = await loadModule("src/lib/brand.ts");
-  globalThis.__test_brand = brandModule;
-
-  const urlsModule = await loadModuleWithReplacements("src/lib/urls.ts", [
-    ['import { AUTERIM_APP_URL, AUTERIM_MARKETING_URL } from "@/lib/brand";', "const { AUTERIM_APP_URL, AUTERIM_MARKETING_URL } = globalThis.__test_brand;"],
-  ]);
-  globalThis.__test_urls = urlsModule;
-
-  const publicUserStateModule = await loadModuleWithReplacements("src/lib/public-user-state.ts", [
-    ['import { appHref } from "@/lib/urls";', "const { appHref } = globalThis.__test_urls;"],
-  ]);
-  globalThis.__test_publicUserState = publicUserStateModule;
+  // Chain-load pricing's current canonical plan identity dependency, plus the
+  // two registries, exactly as system-map.ts imports them, so this proves the
+  // real source files rather than a stale mocked dependency graph.
+  const planIdentityModule = await loadModule("src/lib/plan-identity.ts");
+  globalThis.__test_planIdentity = planIdentityModule;
 
   const pricingModule = await loadModuleWithReplacements("src/lib/pricing.ts", [
     [
-      `import { getPublicSignInHref, getPublicWorkspaceCta, type PublicUserState } from "@/lib/public-user-state";`,
-      `const { getPublicSignInHref, getPublicWorkspaceCta } = globalThis.__test_publicUserState;`,
+      `import { PLAN_LABELS, PLAN_SLUGS, type PlanSlug } from "@/lib/plan-identity";`,
+      `const { PLAN_LABELS, PLAN_SLUGS } = globalThis.__test_planIdentity;`,
     ],
-    ['import { appHref } from "@/lib/urls";', "const { appHref } = globalThis.__test_urls;"],
   ]);
   globalThis.__test_pricing = pricingModule;
 

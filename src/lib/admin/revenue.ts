@@ -3,6 +3,7 @@ import "server-only";
 import { requireInternalAdmin } from "@/lib/admin/auth";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { normalizeWorkspacePlanTier } from "@/lib/plan-identity";
+import { isAdminTrialActive, isAdminTrialExpired } from "@/lib/admin/trial-state";
 
 type Row = Record<string, unknown>;
 type Availability = "connected" | "partial" | "unavailable";
@@ -73,6 +74,9 @@ export async function getRevenueData(): Promise<RevenueData> {
   const mrrAvailable = subscriptionResult.available && onlyUsd && mrrHasCompleteFacts && (activeSubscriptions.length > 0 || states("active") === 0);
   const mrr = mrrAvailable ? amounts.reduce<number>((total, amount) => total + (amount ?? 0), 0) / 100 : null;
   const events = eventResult.rows;
+  const now = Date.now();
+  const activeTrialCount = trialResult.rows.filter((row) => isAdminTrialActive(row, now)).length;
+  const expiredTrialCount = trialResult.rows.filter((row) => isAdminTrialExpired(row, now)).length;
   const trialStates = (status: string) => trialResult.rows.filter((row) => String(row.trial_status) === status).length;
   const statusContains = (text: string) => (row: Row) => String(row.processing_status).toLowerCase().includes(text);
 
@@ -93,9 +97,9 @@ export async function getRevenueData(): Promise<RevenueData> {
     },
     trials: {
       started: trialResult.available ? trialResult.rows.length : null,
-      active: trialResult.available ? trialStates("active") : null,
+      active: trialResult.available ? activeTrialCount : null,
       converted: trialResult.available ? trialStates("converted") : null,
-      expired: trialResult.available ? trialStates("expired") : null,
+      expired: trialResult.available ? expiredTrialCount : null,
       conversionRate: trialResult.available && trialResult.rows.length ? trialStates("converted") / trialResult.rows.length : trialResult.available ? 0 : null,
       available: trialResult.available,
     },

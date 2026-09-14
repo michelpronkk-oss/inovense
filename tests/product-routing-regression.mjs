@@ -5,7 +5,7 @@ import path from "node:path";
 const root = process.cwd();
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
-const middleware = read("src/middleware.ts");
+const middleware = read("src/proxy.ts");
 const layout = read("src/app/app/layout.tsx");
 const shell = read("src/app/app/app-shell.tsx");
 const urls = read("src/lib/urls.ts");

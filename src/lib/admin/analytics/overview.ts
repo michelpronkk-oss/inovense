@@ -1,5 +1,6 @@
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { requireInternalAdmin } from "@/lib/admin/auth";
+import { isAdminTrialActive, isAdminTrialEndingSoon, isAdminTrialExpired } from "@/lib/admin/trial-state";
 
 export type AdminRange = "today" | "7d" | "30d" | "90d" | "ytd";
 
@@ -110,6 +111,7 @@ export async function getAdminOverview(range: AdminRange = "30d"): Promise<Admin
   const mrrReady = subscriptions.available && hasOnlyUsdSubscriptions && (normalizedSubscriptions.length > 0 || activeSubscriptionCount === 0);
   const sourceFlags = [workspaces.available, traffic.available, runs.available, approvals.available, connectors.available, activity.available, subscriptions.available, trials.available];
   const sourceStatus = sourceFlags.every(Boolean) ? "connected" : sourceFlags.some(Boolean) ? "partial" : "unavailable";
+  const now = Date.now();
 
   const operatorCounts = new Map<string, number>();
   for (const row of runRows) {
@@ -133,10 +135,10 @@ export async function getAdminOverview(range: AdminRange = "30d"): Promise<Admin
     revenue: { available: mrrReady, reason: mrrReady ? "Recurring amount, currency, and billing interval are normalized from active Dodo subscriptions." : "Dodo webhooks are stored, but active subscription events need to populate recurring amount, currency, and billing interval." },
     trials: {
       available: trials.available,
-      active: trials.available ? trials.rows.filter((row) => String(row.trial_status) === "active").length : null,
-      endingSoon: trials.available ? trials.rows.filter((row) => String(row.trial_status) === "active" && typeof row.trial_ends_at === "string" && new Date(row.trial_ends_at).getTime() - Date.now() <= 25 * 60 * 60 * 1000 && new Date(row.trial_ends_at).getTime() > Date.now()).length : null,
+      active: trials.available ? trials.rows.filter((row) => isAdminTrialActive(row, now)).length : null,
+      endingSoon: trials.available ? trials.rows.filter((row) => isAdminTrialEndingSoon(row, now)).length : null,
       converted: trials.available ? trials.rows.filter((row) => String(row.trial_status) === "converted").length : null,
-      expired: trials.available ? trials.rows.filter((row) => String(row.trial_status) === "expired").length : null,
+      expired: trials.available ? trials.rows.filter((row) => isAdminTrialExpired(row, now)).length : null,
     },
     usage: { runs: runs.available ? runRows.length : null, approvals: approvals.available ? approvals.rows.length : null, failedRuns: runs.available ? failedRuns : null },
     operators: [...operatorCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([key, count]) => ({ key, runs: count, label: operatorLabel(key) })),

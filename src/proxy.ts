@@ -31,10 +31,10 @@ function redirectToHost(
   return NextResponse.redirect(url, { status: 308 });
 }
 
-const INTERNAL_COMMAND_PATHS = new Set(["/", "/login", "/growth", "/customers", "/revenue", "/product", "/system-map", "/connectors", "/operators", "/support", "/feedback", "/system-health"]);
+const INTERNAL_COMMAND_PATHS = new Set(["/", "/login", "/growth", "/customers", "/revenue", "/product", "/system-map", "/connectors", "/operators", "/support", "/feedback", "/system-health", "/early-access"]);
 const RETIRED_PUBLIC_PATHS = ["/customers", "/growth"] as const;
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const originalPathname = request.nextUrl.pathname;
   const requestHost = normalizeHost(
     request.headers.get("x-forwarded-host") ?? request.headers.get("host")
@@ -85,7 +85,8 @@ export async function middleware(request: NextRequest) {
     // Retire the legacy CRM paths from the internal host. This also prevents
     // their historical server actions from remaining reachable through a
     // command-center session.
-    if (!originalPathname.startsWith("/api") && !INTERNAL_COMMAND_PATHS.has(originalPathname)) {
+    const isInternalCommandPath = INTERNAL_COMMAND_PATHS.has(originalPathname) || originalPathname.startsWith("/early-access/");
+    if (!originalPathname.startsWith("/api") && !isInternalCommandPath) {
       return redirectToHost(request, getAdminHost(), "/");
     }
 

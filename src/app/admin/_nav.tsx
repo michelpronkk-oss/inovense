@@ -3,14 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, type MouseEvent } from "react";
+import { useEffect, useRef, useSyncExternalStore, type MouseEvent } from "react";
 import { ChartIcon, CpuIcon, FlowIcon, LinkIcon, MessageIcon, ShieldIcon, TargetIcon, TrendIcon, UsersIcon } from "@/components/dashboard/icons";
 import { logout } from "./login/actions";
 
 const links = [
   { href: "/", label: "Overview", icon: TargetIcon, exact: true },
+  { href: "/early-access", label: "Early Access", icon: UsersIcon },
   { href: "/growth", label: "Growth", icon: TrendIcon },
-  { href: "/customers", label: "Customers", icon: UsersIcon },
+  { href: "/customers", label: "Workspaces", icon: UsersIcon },
   { href: "/revenue", label: "Revenue", icon: ChartIcon },
   { href: "/product", label: "Product", icon: CpuIcon },
   { href: "/system-map", label: "System Map", icon: FlowIcon },
@@ -21,7 +22,10 @@ const links = [
   { href: "/system-health", label: "System health", icon: ShieldIcon },
 ] as const;
 
-const ADMIN_ROUTE_REVISION = "20260907";
+const ADMIN_ROUTE_REVISION = "20260914";
+const subscribeToNothing = () => () => {};
+const getHydrationSnapshot = () => true;
+const getServerHydrationSnapshot = () => false;
 
 function navigateThroughAdminHost(event: MouseEvent<HTMLAnchorElement>) {
   if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -32,14 +36,19 @@ function navigateThroughAdminHost(event: MouseEvent<HTMLAnchorElement>) {
 export function AdminSidebar({ admin }: { admin: { email: string; role: string } }) {
   const pathname = usePathname();
   const activeLinkRef = useRef<HTMLAnchorElement>(null);
+  // Keep SSR and the first browser render identical. The snapshot flips after
+  // hydration without a state-setting effect, avoiding rewrite-related
+  // usePathname mismatches and extra cascading renders.
+  const hydrated = useSyncExternalStore(subscribeToNothing, getHydrationSnapshot, getServerHydrationSnapshot);
 
   // On the mobile horizontal-scroll nav (see admin.css `max-width: 820px`), the
   // active route can otherwise land off-screen with no indication of where you
   // are or that more sections exist further along the strip. Scroll it into
   // view on mount/route change; a no-op on desktop, where the nav never scrolls.
   useEffect(() => {
+    if (!hydrated) return;
     activeLinkRef.current?.scrollIntoView({ block: "nearest", inline: "center" });
-  }, [pathname]);
+  }, [hydrated, pathname]);
 
   return (
     <aside className="admin-sidebar">
@@ -53,7 +62,11 @@ export function AdminSidebar({ admin }: { admin: { email: string; role: string }
 
       <nav aria-label="Internal command center" className="admin-sidebar-nav">
         {links.map((item) => {
-          const active = "exact" in item ? pathname === "/" : pathname === item.href || pathname.startsWith(`${item.href}/`);
+          // `usePathname()` can resolve differently on the server and browser
+          // when the admin host rewrites to the shared host. Defer the active
+          // decoration until the browser's first route effect to keep hydration
+          // markup stable.
+          const active = hydrated && ("exact" in item ? pathname === "/" : pathname === item.href || pathname.startsWith(`${item.href}/`));
           const Icon = item.icon;
           const href = item.href === "/" ? "/" : `${item.href}?admin=${ADMIN_ROUTE_REVISION}`;
           return (
