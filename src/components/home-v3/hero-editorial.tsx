@@ -2,6 +2,7 @@
 
 import { useEarlyAccess } from "@/components/early-access/early-access-provider";
 import HeroOperatingArtifact from "./hero-operating-artifact";
+import HeroMobileOperatingLoop from "./hero-mobile-operating-loop";
 import { ResponsiveCopy } from "./responsive-copy";
 
 export default function HeroEditorial() {
@@ -91,6 +92,7 @@ export default function HeroEditorial() {
         </div>
 
         <HeroOperatingArtifact />
+        <HeroMobileOperatingLoop />
       </div>
     </section>
   );

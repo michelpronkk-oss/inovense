@@ -44,8 +44,8 @@ export function OperatorAvatar({
       <span
         className="absolute grid place-items-center rounded-full"
         style={{
-          right: containBadge ? 5 : -3,
-          bottom: containBadge ? 5 : -3,
+          right: containBadge ? "var(--operator-avatar-badge-inset, 5px)" : -3,
+          bottom: containBadge ? "var(--operator-avatar-badge-inset, 5px)" : -3,
           width: badgeSize,
           height: badgeSize,
           background: "#0A0E12",

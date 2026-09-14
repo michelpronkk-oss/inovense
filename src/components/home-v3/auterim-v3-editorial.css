@@ -208,7 +208,7 @@
     border-radius: 7px;
     background: #0a1118;
   }
-  .auterim-v3-editorial .op-avatar { grid-column: 1; grid-row: 1; align-self: center; width: 44px; height: 44px; overflow: visible; border: 0; background: transparent; }
+  .auterim-v3-editorial .op-avatar { --operator-avatar-badge-inset: 2px; grid-column: 1; grid-row: 1; align-self: center; width: 44px; height: 44px; overflow: visible; border: 0; background: transparent; }
   .auterim-v3-editorial .op-name { grid-column: 2; grid-row: 1; min-width: 0; }
   .auterim-v3-editorial .op-name h3 { font-size: clamp(16px, 4.5vw, 18px); }
   .auterim-v3-editorial .op-name .t { margin-top: 5px; font-size: 8px; letter-spacing: .1em; }
