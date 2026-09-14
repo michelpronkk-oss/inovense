@@ -10,7 +10,6 @@ assert.equal(h1Count(read("src/components/home-v3/public-page-components.tsx")),
 
 for (const page of [
   "src/app/operators/page.tsx",
-  "src/app/agents/page.tsx",
   "src/app/connectors/page.tsx",
   "src/app/workflows/page.tsx",
   "src/app/use-cases/page.tsx",
@@ -27,9 +26,8 @@ includes(operators, "Roadmap", "operator registry separates planned roles");
 for (const name of ["Revenue Operator", "Client Flow Operator", "Operations Operator", "Support Operator"]) includes(operators, name, "current operator registry");
 includes(operators, "Salesforce is read-context only today.", "Salesforce truth on operator page");
 
-const agents = read("src/app/agents/page.tsx");
-includes(agents, "Current roles for the work Auterim can support today.", "agents page distinct current-role framing");
-assert.ok(!agents.includes("Building Q3 campaign brief"), "agents page contains no invented live operator activity");
+const agentsAlias = read("src/app/agents/page.tsx");
+includes(agentsAlias, 'permanentRedirect("/operators")', "legacy public agents route consolidates on Operators");
 
 const integrations = read("src/app/connectors/page.tsx");
 includes(integrations, "CONNECTOR_CATALOG", "connector page uses the product registry");
@@ -43,8 +41,30 @@ includes(workflows, "Blocked task workflow", "concrete operations workflow");
 includes(workflows, "approval", "workflow approval model");
 
 const useCases = read("src/app/use-cases/page.tsx");
-includes(useCases, "available today", "use cases identify the current operator scope");
+const useCasesVisuals = read("src/components/home-v3/use-case-finished-visuals.tsx");
 for (const area of ["Revenue", "Client Flow", "Operations", "Support"]) includes(useCases, area, "use cases cover current operator outcomes");
+for (const required of [
+  "Where Auterim moves work forward.",
+  "A signal becomes owned work.",
+  "A buying signal arrives before the task does.",
+  "Surface the missing handoff before onboarding stalls.",
+  "Find the blocker before the deadline does.",
+  "Unresolved issues need a clear next step.",
+  "One business. Shared context. Clear ownership.",
+  "Fast does not mean unchecked.",
+  "Execution is only the middle.",
+  "See what Auterim finds first.",
+  "BreadcrumbList",
+  "RequestEarlyAccessButton",
+  "without assuming causation",
+]) includes(useCases, required, "use cases page structure and product truth");
+for (const required of ["competitor review, stalled deals, renewals and expansion", "Execute within policy", "Hold for approval", "Stop if not allowed"]) {
+  includes(useCasesVisuals, required, "use cases finished visuals carry the real product outcomes");
+}
+assert.doesNotMatch(useCases, /<details|PublicDisclosure/, "use case explanations are present without closed accordions");
+for (const visual of ["OperatingLoopVisual", "RevenueVisual", "ClientFlowVisual", "OperationsVisual", "SupportVisual", "SharedContextVisual", "PolicyForkVisual", "OutcomesVisual"]) {
+  includes(useCases, `<${visual} />`, "overview and use case sections render their finished visuals");
+}
 
 const home = read("src/app/page.tsx");
 includes(home, "Find the work before your team has to", "homepage owns clear operating-layer positioning");
@@ -65,13 +85,13 @@ includes(homeHeader, "useEarlyAccess", "header opens the shared Early Access mod
 includes(homePage, "Early access pricing", "homepage pricing copy makes the pre-launch state clear");
 includes(homePage, "Your 3-day trial begins only when you explicitly choose to start it", "homepage preserves explicit trial-start truth");
 includes(homePage, "We’re reviewing use cases for the current Early Access program", "final homepage CTA does not imply immediate product access");
-includes(homepageFaqs, "Once invited, connect the systems you use", "homepage FAQ makes the pre-access stage clear");
+includes(homepageFaqs, "A request does not create an account or start a trial", "homepage FAQ makes the pre-access stage clear");
 includes(earlyAccessProvider, 'fetch("/api/early-access"', "homepage conversion submits through the server endpoint");
 assert.ok(!homeHero.toLowerCase().includes("set up your workspace") && !homeHero.toLowerCase().includes("start your trial"), "homepage hero does not route visitors into open workspace or trial setup");
 includes(homePage, "pricingPlans.map", "homepage pricing resolves from canonical plans");
 assert.ok(!homePage.includes('"$99"'), "homepage does not duplicate plan prices");
 includes(homePage, "AUTERIM_HOME_FAQS", "visible homepage FAQs share the structured-data source");
-for (const question of ["What is Auterim?", "Do I have to build workflows?", "What can happen automatically?", "Does Auterim replace our existing tools?"]) {
+for (const question of ["What is Auterim?", "How is Auterim different from a chatbot or workflow builder?", "What are Auterim Operators?", "What can happen automatically?", "Does Auterim replace our existing tools?", "How does Early Access work?"]) {
   includes(homepageFaqs, question, "homepage FAQ schema matches visible copy");
 }
 for (const stage of ["Connect", "Understand", "Find", "Handle", "Measure"]) includes(homePage, stage, "homepage explains the operator loop");
@@ -86,12 +106,9 @@ for (const staleExample of ["Atlas Studio", "Vela Partners", "M. Keller"]) {
 }
 
 includes(operators, "Operators are roles, not chatbots.", "operators clarifies its defined role model");
-for (const href of ["/integrations", "/approvals", "/workflows", "/getting-started", "/pricing"]) {
+for (const href of ["/how-it-works"]) {
   includes(operators, href, `operators links to ${href}`);
 }
-
-includes(agents, "Why business AI agents need defined responsibilities", "agents remains educational and distinct from operators");
-assert.ok(!agents.includes('title: "AI Operators for Business"'), "agents metadata does not compete with operators");
 
 const revenue = read("src/app/solutions/revenue-teams/page.tsx");
 includes(revenue, "AI sales follow-up", "revenue page targets sales follow-up intent");
@@ -99,7 +116,7 @@ includes(revenue, "Salesforce writes are not enabled.", "revenue page preserves 
 for (const unsupported of ["autonomous prospecting", "lead generation", "cold outreach", "meeting booking"]) {
   assert.ok(!revenue.toLowerCase().includes(unsupported), `revenue page does not claim ${unsupported}`);
 }
-for (const href of ["/operators", "/integrations", "/approvals", "/workflows", "/pricing"]) {
+for (const href of ["/operators", "/connectors", "/approvals", "/workflows", "/pricing"]) {
   includes(revenue, `\"${href}\"`, `revenue links to ${href}`);
 }
 includes(revenue, 'staticOgImage("/solutions/revenue-teams")', "revenue OG route remains unchanged");
@@ -110,7 +127,7 @@ includes(operations, "AI operations monitoring", "operations page supports its s
 for (const unsupported of ["Jira", "Asana", "ERP", "process mining"]) {
   assert.ok(!operations.includes(unsupported), `operations page does not claim ${unsupported}`);
 }
-for (const href of ["/operators", "/integrations", "/approvals", "/workflows", "/pricing"]) {
+for (const href of ["/operators", "/connectors", "/approvals", "/workflows", "/pricing"]) {
   includes(operations, `\"${href}\"`, `operations links to ${href}`);
 }
 includes(operations, 'staticOgImage("/solutions/operations")', "operations OG route remains unchanged");

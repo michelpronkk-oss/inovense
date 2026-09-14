@@ -5676,8 +5676,15 @@
 @media (max-width: 720px) {
   .auterim-v3-page .homepage-control-visual .hv-gx-stages { gap: 27px; }
   .auterim-v3-page .homepage-control-visual .hv-gx-t { font-size: 15.5px; }
-  .auterim-v3-page .homepage-control-visual .hv-gx-x { font-size: 13px; }
+.auterim-v3-page .homepage-control-visual .hv-gx-x { font-size: 13px; }
 }
+
+/* Keep SSR copy visible until hydration explicitly enables reveal motion. */
+.auterim-v3-page:not(.motion-ready) .rv {
+  opacity: 1;
+  transform: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .auterim-v3-page .rv,
   .auterim-v3-page .rv.in { transition: none; }

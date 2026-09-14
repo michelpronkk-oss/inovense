@@ -12,6 +12,7 @@ import {
   AUTERIM_WEBSITE_ID,
   toJsonLd,
 } from "@/lib/geo";
+import { pricingPlans } from "@/lib/pricing";
 
 const organizationSchema = {
   "@context": "https://schema.org",
@@ -59,14 +60,29 @@ const softwareSchema = {
   url: AUTERIM_URL,
   description: AUTERIM_DESCRIPTION,
   provider: { "@id": AUTERIM_ORGANIZATION_ID },
+  offers: pricingPlans.map((plan) => {
+    const price = Number(plan.price.replace(/[^0-9.]/g, ""));
+    return {
+      "@type": "Offer",
+      name: `${plan.plan_name} monthly plan`,
+      price,
+      priceCurrency: "USD",
+      url: `${AUTERIM_URL}/pricing`,
+      priceSpecification: {
+        "@type": "UnitPriceSpecification",
+        price,
+        priceCurrency: "USD",
+        billingDuration: "P1M",
+      },
+    };
+  }),
 };
 
 export const metadata: Metadata = {
   title: {
     absolute: "Auterim | Find the work before your team has to",
   },
-  description:
-    "Auterim connects the tools you already use, finds work that needs attention, and prepares or executes the next action under your rules.",
+  description: AUTERIM_DESCRIPTION,
   alternates: {
     canonical: "https://auterim.com",
     languages: {
@@ -77,8 +93,7 @@ export const metadata: Metadata = {
   openGraph: {
     url: "https://auterim.com",
     title: "Auterim | Find the work before your team has to",
-    description:
-      "Auterim connects the tools you already use, finds work that needs attention, and prepares or executes the next action under your rules.",
+    description: AUTERIM_DESCRIPTION,
     images: [
       {
         url: "/og/og-home.png",
@@ -91,8 +106,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Auterim | Find the work before your team has to",
-    description:
-      "Auterim connects the tools you already use, finds work that needs attention, and prepares or executes the next action under your rules.",
+    description: AUTERIM_DESCRIPTION,
     images: [
       {
         url: "/og/og-home.png",

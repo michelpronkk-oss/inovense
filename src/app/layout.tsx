@@ -48,26 +48,36 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 
   const image = staticOgImage(pathname);
+  const googleVerification = process.env.GOOGLE_SITE_VERIFICATION?.trim();
+  const bingVerification = process.env.BING_SITE_VERIFICATION?.trim();
+  const verification = googleVerification || bingVerification
+    ? {
+        ...(googleVerification ? { google: googleVerification } : {}),
+        ...(bingVerification ? { other: { "msvalidate.01": bingVerification } } : {}),
+      }
+    : undefined;
+
   return {
     metadataBase: new URL(AUTERIM_URL),
     title: {
-      default: "Auterim — AI Workforce for Business Operations",
+      default: "Auterim — Operating Layer for Business Work",
       template: "%s | Auterim",
     },
     description: AUTERIM_DESCRIPTION,
+    ...(verification ? { verification } : {}),
     icons: { icon: "/favicon.ico", shortcut: "/favicon.ico" },
     openGraph: {
       type: "website",
       locale: "en_US",
       siteName: "Auterim",
-      title: "Auterim | AI workforce for businesses",
+      title: "Auterim | Operating layer for business work",
       description: AUTERIM_DESCRIPTION,
       url: AUTERIM_URL,
       images: [image],
     },
     twitter: {
       card: "summary_large_image",
-      title: "Auterim | AI workforce for businesses",
+      title: "Auterim | Operating layer for business work",
       description: AUTERIM_DESCRIPTION,
       images: [image],
     },

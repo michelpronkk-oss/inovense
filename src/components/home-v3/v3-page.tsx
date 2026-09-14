@@ -40,14 +40,24 @@ export default function V3Page() {
   useEffect(() => {
     const root = document.querySelector<HTMLElement>(".auterim-v3-page");
     if (!root) return;
+    // Content is visible in the server-rendered HTML. Only opt into the
+    // reveal animation after hydration so crawlers and no-JS clients never
+    // receive a page whose text starts hidden.
+    root.classList.add("motion-ready");
     const nodes = Array.from(root.querySelectorAll<HTMLElement>(".rv"));
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced || !("IntersectionObserver" in window)) { nodes.forEach((node) => node.classList.add("in")); return; }
+    if (reduced || !("IntersectionObserver" in window)) {
+      nodes.forEach((node) => node.classList.add("in"));
+      return () => root.classList.remove("motion-ready");
+    }
     const observer = new IntersectionObserver((entries) => entries.forEach((entry) => {
       if (entry.isIntersecting) { entry.target.classList.add("in"); observer.unobserve(entry.target); }
     }), { threshold: 0.14 });
     nodes.forEach((node) => observer.observe(node));
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      root.classList.remove("motion-ready");
+    };
   }, []);
 
   return <div className="auterim-v3-page homepage-recomposed">

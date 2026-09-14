@@ -37,7 +37,7 @@ const setup = [
   { label: "Business outcome", value: "Blocked and stalled work is surfaced with a named next step before it becomes a delivery delay." },
 ];
 
-const related = [["Meet Operations Operator", "/operators"], ["See current integrations", "/integrations"], ["Explore approval boundaries", "/approvals"], ["See controlled workflows", "/workflows"], ["View pricing", "/pricing"]] as const;
+const related = [["Meet Operations Operator", "/operators"], ["See current connectors", "/connectors"], ["Explore approval boundaries", "/approvals"], ["See controlled workflows", "/workflows"], ["View pricing", "/pricing"]] as const;
 
 export default function OperationsPage() {
   return <><BreadcrumbJsonLd items={[{ name: "Home", path: "/" }, { name: "Operations", path: "/solutions/operations" }]} /><Nav /><main><PageShell>

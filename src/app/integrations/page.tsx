@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 
-export default function IntegrationsAliasPage() {
-  redirect("/connectors");
+export default function IntegrationsAliasPage(): never {
+  permanentRedirect("/connectors");
 }

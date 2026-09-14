@@ -2,7 +2,7 @@
 
 const platformLinks = [
   { label: "Overview", href: "/" },
-  { label: "AI Agents", href: "/agents" },
+  { label: "Operators", href: "/operators" },
   { label: "Workflows", href: "/workflows" },
   { label: "Memory & context", href: "/memory" },
   { label: "Approvals & controls", href: "/security" },

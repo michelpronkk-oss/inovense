@@ -181,7 +181,7 @@ export function ConnectorsVisual() {
               </span>
             ))}
           </div>
-          <div className="hv-cn-foot"><Link href="/integrations" className="hv-cn-more">See supported connectors <span aria-hidden="true">{ARROW}</span></Link></div>
+          <div className="hv-cn-foot"><Link href="/connectors" className="hv-cn-more">See supported connectors <span aria-hidden="true">{ARROW}</span></Link></div>
         </div>
 
         <div className="hv-stk-r">

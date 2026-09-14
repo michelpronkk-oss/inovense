@@ -71,7 +71,7 @@ assert.doesNotMatch(`${pricing}\n${pricingComponents}`, /Starter|Growth/);
 assert.match(read("src/components/home-v3/request-early-access-button.tsx"), /openEarlyAccess\(\{ plan, trigger:/, "public CTA opens the canonical Early Access modal");
 
 const integrationAlias = read("src/app/integrations/page.tsx");
-assert.match(integrationAlias, /redirect\("\/connectors"\)/, "legacy integrations URL redirects to its canonical connector route");
+assert.match(integrationAlias, /permanentRedirect\("\/connectors"\)/, "legacy integrations URL permanently redirects to its canonical connector route");
 
 for (const path of ["src/app/privacy/page.tsx", "src/app/terms/page.tsx", "src/app/cookies/page.tsx"]) {
   const content = read(path);
@@ -116,7 +116,7 @@ for (const [path, pattern, label] of [
   ["src/app/control/page.tsx", /visual=\{<ControlHeroVisual \/>\}/, "control uses its policy-decision visual"],
   ["src/app/docs/page.tsx", /visual=\{<DocsHeroVisual \/>\}/, "documentation uses its guide-map visual"],
   ["src/app/changelog/page.tsx", /visual=\{<ChangelogHeroVisual releases=\{changelogReleases\.slice\(0, 3\)\} \/>\}/, "changelog uses its verified-release timeline"],
-  ["src/app/use-cases/page.tsx", /visual=\{<UseCasesHeroVisual \/>\}/, "use cases supplies its Operator roster visual"],
+  ["src/app/use-cases/page.tsx", /<OperatingLoopVisual \/>/, "use cases supplies the signal-to-outcome operating-loop visual"],
 ]) assert.match(read(path), pattern, label);
 
 const docs = read("src/app/docs/page.tsx");

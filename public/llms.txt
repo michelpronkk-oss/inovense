@@ -1,0 +1,34 @@
+# Auterim
+
+> Auterim is the operating layer between a business and the software it runs on. It connects existing systems, detects relevant work, routes it to specialized Operators, prepares or executes actions under company policies and approvals, and tracks outcomes.
+
+Canonical website: https://auterim.com/
+
+Auterim's core promise: “Auterim finds the work before your team has to.”
+
+## Product
+
+- [How Auterim works](https://auterim.com/how-it-works): the path from connected context to a controlled next step and measured outcome.
+- [Operators](https://auterim.com/operators): Revenue, Client Flow, Operations, and Support roles, their current scope, and their boundaries.
+- [Connectors](https://auterim.com/connectors): systems currently available to connect and their supported access profiles.
+- [Control, policies, and approvals](https://auterim.com/control): how workspace rules govern preparation, approval, and execution.
+- [Use cases](https://auterim.com/use-cases): current work signals Auterim can help teams move.
+- [Workflows](https://auterim.com/workflows): how signals, operators, policy checks, and outcomes fit together.
+
+## Plans and access
+
+- [Pricing](https://auterim.com/pricing): Foundation is $99/month, Workforce is $299/month, and Scale is $799/month.
+- [Getting started](https://auterim.com/getting-started): Early Access requests are reviewed before invitations; submitting a request does not create an account or start a trial.
+- [Documentation](https://auterim.com/docs): current public product guides.
+
+## Company and updates
+
+- [Security](https://auterim.com/security)
+- [Trust](https://auterim.com/trust)
+- [About Auterim](https://auterim.com/about)
+- [Changelog](https://auterim.com/changelog): dated updates tied to verified product work.
+- [Contact](https://auterim.com/contact): hello@auterim.com
+- [Privacy](https://auterim.com/privacy)
+- [Terms](https://auterim.com/terms)
+
+Auterim is in Early Access. Connector availability, permissions, and allowed actions depend on provider scopes, workspace configuration, and policy. A prepared action does not imply that it ran or that a business outcome was achieved.

@@ -107,7 +107,7 @@ export default function ClientServicesPage() {
               Get Starter
             </Link>
             <Link
-              href="/agents"
+              href="/operators"
               className="inline-flex rounded-xl px-6 py-3 text-sm font-medium transition-colors"
               style={{
                 background: "rgba(255,255,255,0.03)",

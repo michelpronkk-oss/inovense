@@ -163,6 +163,17 @@ async function main() {
       assert.equal(parsed.data.referrer, "https://x.com/founder");
       assert.equal(parsed.data.utmSource, "x");
       assert.equal(parsed.data.sourcePath, "/");
+
+      for (const source of ["chatgpt.com", "perplexity.ai", "claude.ai", "gemini.google.com", "bing.com", "google.com", "x.com"]) {
+        const referral = validation.parseEarlyAccessSubmission(validSubmission({
+          sourcePath: `/?utm_source=${encodeURIComponent(source)}`,
+          referrer: `https://${source}/result?private=removed`,
+          utmSource: source,
+          utmMedium: "referral",
+        }));
+        assert.equal(referral.data.utmSource, source, `${source} referral remains distinguishable`);
+        assert.equal(referral.data.referrer, `https://${source}/result`, `${source} referrer query is removed`);
+      }
     });
     await check(8, "all canonical plan interests pass and legacy slugs are rejected", () => {
       for (const plan of ["foundation", "workforce", "scale"]) {

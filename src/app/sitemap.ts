@@ -1,53 +1,64 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
-import { getAdminHost, getAppHost, normalizeHost } from "@/lib/host-routing";
+import { AUTERIM_URL } from "@/lib/brand";
+import { normalizeHost, resolveHostSurface } from "@/lib/host-routing";
 
-const BASE = "https://auterim.com";
+type PublicPage = {
+  path: string;
+  changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"];
+  priority: number;
+  lastModified?: string;
+};
+
+// Only canonical, useful public pages belong here. Do not emit a synthetic
+// modification timestamp: most pages have no authoritative content date.
+const PUBLIC_PAGES: PublicPage[] = [
+  { path: "/", changeFrequency: "weekly", priority: 1 },
+  { path: "/how-it-works", changeFrequency: "monthly", priority: 0.9 },
+  { path: "/operators", changeFrequency: "monthly", priority: 0.9 },
+  { path: "/control", changeFrequency: "monthly", priority: 0.8 },
+  { path: "/use-cases", changeFrequency: "monthly", priority: 0.85 },
+  { path: "/connectors", changeFrequency: "monthly", priority: 0.85 },
+  { path: "/pricing", changeFrequency: "monthly", priority: 0.85 },
+  { path: "/getting-started", changeFrequency: "monthly", priority: 0.8 },
+  { path: "/security", changeFrequency: "monthly", priority: 0.8 },
+  { path: "/docs", changeFrequency: "monthly", priority: 0.75 },
+  { path: "/approvals", changeFrequency: "monthly", priority: 0.75 },
+  { path: "/workflows", changeFrequency: "monthly", priority: 0.75 },
+  { path: "/architecture", changeFrequency: "monthly", priority: 0.7 },
+  { path: "/memory", changeFrequency: "monthly", priority: 0.65 },
+  { path: "/trust", changeFrequency: "monthly", priority: 0.7 },
+  { path: "/about", changeFrequency: "yearly", priority: 0.6 },
+  { path: "/contact", changeFrequency: "yearly", priority: 0.6 },
+  {
+    path: "/changelog",
+    changeFrequency: "monthly",
+    priority: 0.7,
+    // The latest verified public release in src/data/changelog.ts.
+    lastModified: "2026-09-03",
+  },
+  { path: "/solutions/revenue-teams", changeFrequency: "monthly", priority: 0.75 },
+  { path: "/solutions/client-services", changeFrequency: "monthly", priority: 0.75 },
+  { path: "/solutions/operations", changeFrequency: "monthly", priority: 0.75 },
+  { path: "/solutions/marketing", changeFrequency: "monthly", priority: 0.7 },
+  { path: "/solutions/founders-ops", changeFrequency: "monthly", priority: 0.7 },
+  { path: "/privacy", changeFrequency: "yearly", priority: 0.3 },
+  { path: "/terms", changeFrequency: "yearly", priority: 0.3 },
+  { path: "/cookies", changeFrequency: "yearly", priority: 0.25 },
+];
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const requestHeaders = await headers();
   const host = normalizeHost(
     requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host")
   );
+  const surface = resolveHostSurface(host);
 
   // Private surfaces must not publish the marketing sitemap from their own host.
-  if (host === getAppHost() || host === getAdminHost()) return [];
+  if (surface === "app" || surface === "admin" || surface === "portal") return [];
 
-  const pages: Array<[string, MetadataRoute.Sitemap[number]["changeFrequency"], number]> = [
-    ["", "weekly", 1],
-    ["/how-it-works", "monthly", 0.85],
-    ["/agents", "monthly", 0.9],
-    ["/operators", "monthly", 0.85],
-    ["/control", "monthly", 0.8],
-    ["/use-cases", "monthly", 0.82],
-    ["/getting-started", "monthly", 0.8],
-    ["/connectors", "monthly", 0.85],
-    ["/pricing", "monthly", 0.85],
-    ["/security", "monthly", 0.8],
-    ["/docs", "monthly", 0.7],
-    ["/approvals", "monthly", 0.8],
-    ["/trust", "monthly", 0.75],
-    ["/architecture", "monthly", 0.7],
-    ["/workflows", "monthly", 0.75],
-    ["/memory", "monthly", 0.7],
-    ["/about", "yearly", 0.55],
-    ["/contact", "yearly", 0.55],
-    ["/careers", "monthly", 0.5],
-    ["/press", "monthly", 0.45],
-    ["/changelog", "monthly", 0.7],
-    ["/status", "weekly", 0.55],
-    ["/solutions/revenue-teams", "monthly", 0.75],
-    ["/solutions/client-services", "monthly", 0.75],
-    ["/solutions/operations", "monthly", 0.75],
-    ["/solutions/marketing", "monthly", 0.7],
-    ["/solutions/founders-ops", "monthly", 0.7],
-    ["/privacy", "yearly", 0.25],
-    ["/terms", "yearly", 0.25],
-    ["/cookies", "yearly", 0.2],
-  ];
-
-  return pages.map(([path, changeFrequency, priority]) => ({
-    url: `${BASE}${path}`,
-    changeFrequency,
-    priority,
+  return PUBLIC_PAGES.map(({ path, ...page }) => ({
+    url: `${AUTERIM_URL}${path}`,
+    ...page,
   }));
 }

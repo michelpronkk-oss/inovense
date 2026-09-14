@@ -16,8 +16,8 @@ export const AUTERIM_EMAILS = {
   notifications: "notifications@auterim.com",
 } as const;
 
-export const AUTERIM_POSITIONING = "Auterim is the AI workforce built around your business.";
-export const AUTERIM_DESCRIPTION = "Auterim understands how your company works, recommends AI operators, and runs approved work across the systems your team already uses.";
+export const AUTERIM_POSITIONING = "Auterim is the operating layer between a business and the software it runs on.";
+export const AUTERIM_DESCRIPTION = "Auterim connects existing business systems, detects relevant work, routes it to specialized Operators, and prepares or executes actions within company policies and approvals while tracking outcomes.";
 export const AUTERIM_CORE_LOOP = "Connect → Understand → Diagnose → Recommend → Deploy → Measure → Improve";
 export const AUTERIM_ORGANIZATION_ID = `${AUTERIM_URL}/#organization`;
 export const AUTERIM_WEBSITE_ID = `${AUTERIM_URL}/#website`;
