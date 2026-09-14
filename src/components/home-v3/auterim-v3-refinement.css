@@ -5397,7 +5397,7 @@
      instead of the full bordered card desktop uses - enough to read as "the one
      that matters" in a single narrow column without turning into a heavy tile. */
   .auterim-v3-page.homepage-recomposed .homepage-loop .is-focus {
-    background: radial-gradient(130% 170% at 0% 0%, rgba(55, 230, 212, .09), transparent 58%) !important;
+    background: radial-gradient(130% 170% at 0% 0%, rgba(55, 230, 212, .09), rgba(55, 230, 212, 0) 58%) !important;
   }
   /* Each step number becomes a small lit marker sitting directly on the rail,
      echoing the aqua accent used across the rest of the page on mobile. */
