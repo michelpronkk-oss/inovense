@@ -5393,12 +5393,6 @@
   .auterim-v3-page.homepage-recomposed .homepage-loop li + li { border-left: 0; }
   /* Retire the legacy free-floating focus dot in favour of the step marker below. */
   .auterim-v3-page.homepage-recomposed .homepage-loop .is-focus::after { content: none; display: none; }
-  /* The differentiator step keeps a faint ambient wash, anchored at its marker,
-     instead of the full bordered card desktop uses - enough to read as "the one
-     that matters" in a single narrow column without turning into a heavy tile. */
-  .auterim-v3-page.homepage-recomposed .homepage-loop .is-focus {
-    background: radial-gradient(130% 170% at 0% 0%, rgba(55, 230, 212, .09), rgba(55, 230, 212, 0) 58%) !important;
-  }
   /* Each step number becomes a small lit marker sitting directly on the rail,
      echoing the aqua accent used across the rest of the page on mobile. */
   .auterim-v3-page.homepage-recomposed .homepage-loop span {
