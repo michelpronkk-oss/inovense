@@ -8,6 +8,7 @@ import { chromium } from "@playwright/test";
 
 const root = process.cwd();
 const adminId = "11111111-1111-4111-8111-111111111111";
+const historicalId = "44444444-4444-4444-8444-444444444444";
 const workspaceId = "workspace-demo";
 const reviewerId = "22222222-2222-4222-8222-222222222222";
 const inviteId = "33333333-3333-4333-8333-333333333333";
@@ -24,6 +25,9 @@ const applicant = {
   interested_plan: "workforce", confirmation_sent_at: "2026-09-12T10:21:00.000Z", confirmation_attempted_at: "2026-09-12T10:21:00.000Z",
   reviewed_at: null, reviewed_by: null, notes: null,
 };
+let requestRecord = applicant;
+let cascadeDeletedInviteCount = 0;
+const deleteTables = [];
 const workspace = { id: workspaceId, name: "Northstar Studio", plan: "workforce", plan_tier: "workforce", billing_status: "trialing", trial_ends_at: "2030-01-01T00:00:00.000Z", created_at: "2026-08-20T12:00:00.000Z", updated_at: "2026-09-12T10:00:00.000Z" };
 const trial = { workspace_id: workspaceId, trial_status: "active", trial_ends_at: workspace.trial_ends_at };
 const connector = { id: "connector-demo", workspace_id: workspaceId, connector_key: "google_drive", name: "Google Drive", connected: true, status: "healthy" };
@@ -48,7 +52,7 @@ function parseSimpleFilter(value) {
 
 function rowsFor(table) {
   if (table === "os_internal_admins") return [admin];
-  if (table === "os_early_access_requests") return [applicant];
+  if (table === "os_early_access_requests") return requestRecord ? [requestRecord] : [];
   if (table === "os_early_access_invites") return inviteRecord ? [inviteRecord] : [];
   if (table === "os_workspaces") return [workspace];
   if (table === "os_trial_entitlements") return [trial];
@@ -111,6 +115,20 @@ const mockSupabase = createServer((request, response) => {
     return;
   }
   const objectResponse = String(request.headers.accept || "").includes("vnd.pgrst.object+json");
+  if (request.method === "DELETE") {
+    deleteTables.push(table);
+    if (table === "os_early_access_requests" && rows[0]) {
+      requestRecord = null;
+      if (inviteRecord?.request_id === adminId) {
+        inviteRecord = null;
+        cascadeDeletedInviteCount += 1;
+      }
+    }
+    const deleted = rows[0] ?? null;
+    response.writeHead(200);
+    response.end(JSON.stringify(objectResponse ? deleted : deleted ? [deleted] : []));
+    return;
+  }
   response.writeHead(200);
   response.end(JSON.stringify(objectResponse ? pageRows[0] ?? null : pageRows));
 });
@@ -222,9 +240,46 @@ try {
   await page.getByRole("link", { name: "Open workspace in admin ↗" }).waitFor();
   assert.match(await page.locator(".ea-invite-control").innerText(), /verified at acceptance/);
   await screenshot("early-access-detail-accepted.png");
+  await page.getByRole("button", { name: "Delete request" }).click();
+  const deleteDialog = page.getByRole("dialog");
+  await deleteDialog.getByRole("heading", { name: "Delete maya@northstar.example?" }).waitFor();
+  assert.match(await deleteDialog.innerText(), /accounts, workspaces, memberships, billing, and trials are not deleted/i);
+  assert.match(await page.locator(".ea-danger-note").innerText(), /workspace.*membership untouched/i);
+  await screenshot("early-access-delete-confirmation.png");
+  await deleteDialog.getByRole("button", { name: "Cancel" }).click();
+  assert.equal(deleteTables.length, 0, "opening and cancelling the confirmation never deletes a request");
+
+  await page.getByRole("button", { name: "Delete request" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Delete permanently" }).click();
+  await page.waitForURL((url) => url.pathname === "/early-access" && url.searchParams.get("result") === "deleted");
+  await page.getByRole("status").getByText(/request and invite history deleted/i).waitFor();
+  assert.deepEqual(deleteTables, ["os_early_access_requests"], "the delete action removes only the request; the database cascade clears its invite");
+  assert.equal(cascadeDeletedInviteCount, 1, "request deletion cascades its invite history");
+  assert.equal(requestRecord, null);
+  assert.equal(inviteRecord, null);
+  await page.goto(`${appUrl}/customers`, { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "Workspace state." }).waitFor();
+  assert.equal((await page.locator(".workspace-mobile-card, .workspace-table tbody tr").count()) > 0, true, "the existing workspace remains after request deletion");
+  assert.equal((await page.getByText("Maya Chen", { exact: true }).count()) > 0, true, "the existing workspace owner membership remains after request deletion");
+
+  requestRecord = { ...applicant, id: historicalId, name: "Legacy Applicant", email: "legacy@example.com", status: "accepted" };
+  await page.goto(`${appUrl}/early-access/${historicalId}`, { waitUntil: "networkidle" });
+  await page.getByText("This historical record was marked accepted before verified invite acceptance was implemented. No accepted user or workspace is recorded.").waitFor();
+  await page.getByRole("button", { name: "Delete request" }).click();
+  await page.getByRole("dialog").getByRole("heading", { name: "Delete legacy@example.com?" }).waitFor();
+  await page.getByRole("dialog").getByRole("button", { name: "Delete permanently" }).click();
+  await page.waitForURL((url) => url.pathname === "/early-access" && url.searchParams.get("result") === "deleted");
+  assert.deepEqual(deleteTables, ["os_early_access_requests", "os_early_access_requests"], "historical accepted requests are deletable through the same admin-only parent-row action");
+  assert.equal(cascadeDeletedInviteCount, 1, "the verified accepted request's invite was cascaded; the historical row had no fabricated invite");
+  assert.equal(requestRecord, null);
+  await page.goto(`${appUrl}/customers`, { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "Workspace state." }).waitFor();
+  assert.equal((await page.locator(".workspace-mobile-card, .workspace-table tbody tr").count()) > 0, true, "historical-record deletion also leaves existing workspaces intact");
+  assert.match(await page.locator("body").innerText(), /Trial active/);
+  assert.match(await page.locator("body").innerText(), /subscription\s+none/i);
   assert.deepEqual(pageErrors, [], `browser console errors: ${pageErrors.join(" | ")}`);
   const serverIssueLines = logs.filter((line) => /\b(error|issue)\b/i.test(line));
-  console.log(JSON.stringify({ viewports, routes: ["/", "/early-access", "/early-access/[id]", "/customers"], detailStates: ["reviewing", "invited", "accepted"], screenshotDirectory, browserErrors: pageErrors, serverIssueLines, result: "anonymous access redirected; review, resend, revoke, and accepted-workspace controls render without page overflow" }, null, 2));
+  console.log(JSON.stringify({ viewports, routes: ["/", "/early-access", "/early-access/[id]", "/customers"], detailStates: ["reviewing", "invited", "accepted", "accepted-legacy"], deleteTables, cascadedInvites: cascadeDeletedInviteCount, screenshotDirectory, browserErrors: pageErrors, serverIssueLines, result: "anonymous access redirected; accepted and historical accepted records can be deleted with confirmation; invite history cascades and workspace data remains intact" }, null, 2));
 } catch (error) {
   console.error(error);
   throw error;

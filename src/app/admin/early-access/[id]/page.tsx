@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getAllowedEarlyAccessTransition, getEarlyAccessRequest, earlyAccessPriority, type EarlyAccessStatus } from "@/lib/admin/early-access";
 import { PLAN_LABELS } from "@/lib/plan-identity";
 import { approveAndSendEarlyAccessInvite, revokeEarlyAccessInvite, updateEarlyAccessNotes, updateEarlyAccessStatus } from "../actions";
+import { DeleteEarlyAccessRequestForm } from "../delete-request-form";
 
 export const metadata: Metadata = { title: "Applicant | Early Access | Auterim Admin", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -26,6 +27,7 @@ const feedback: Record<string, string> = {
   "invite-revoked": "The outstanding invite was revoked. The request is back in review.",
   "invite-revoke-failed": "The invite could not be revoked. Refresh and try again.",
   "invite-already-accepted": "This invite has already been accepted and cannot be revoked.",
+  "delete-failed": "The Early Access request could not be deleted. Refresh and try again.",
 };
 
 function Value({ children }: { children: React.ReactNode }) { return <div className="ea-detail-value">{children || <span className="ea-muted-value">Not provided</span>}</div>; }
@@ -51,7 +53,7 @@ export default async function EarlyAccessDetailPage({ params, searchParams }: { 
       <div><div className="admin-kicker"><span className="admin-status-dot live" />Early Access applicant</div><h1>{row.name}</h1><p>{row.company} · requested {displayDate(row.created_at)}</p></div>
       <div className="ea-detail-head-state"><span className={`ea-priority ${priority === "High" ? "high" : "normal"}`}>{priority} priority</span><span className={`ea-status ea-status-${row.status}`}>{displayStatus}</span></div>
     </div>
-    {result && <div className={`ea-feedback ${query.result?.includes("invalid") || query.result === "save-failed" || query.result === "conflict" ? "warning" : "success"}`} role="status">{result}</div>}
+    {result && <div className={`ea-feedback ${query.result?.includes("invalid") || query.result === "save-failed" || query.result === "delete-failed" || query.result === "conflict" ? "warning" : "success"}`} role="status">{result}</div>}
 
     <div className="ea-detail-grid">
       <section className="ea-detail-section">
@@ -125,5 +127,10 @@ export default async function EarlyAccessDetailPage({ params, searchParams }: { 
         <form action={updateEarlyAccessNotes} className="ea-notes-form"><input type="hidden" name="id" value={row.id} /><label htmlFor="early-access-notes">Notes</label><textarea id="early-access-notes" name="notes" maxLength={5000} rows={6} defaultValue={row.notes ?? ""} placeholder="Context, follow-up, and decision rationale…" /><div className="ea-notes-form-footer"><span>Up to 5,000 characters</span><button type="submit" className="ea-button-primary">Save private note</button></div></form>
       </section>
     </div>
+    <DeleteEarlyAccessRequestForm
+      requestId={row.id}
+      email={row.email}
+      acceptedWorkspaceExists={Boolean(row.acceptedInvite?.accepted_workspace_id)}
+    />
   </div>;
 }

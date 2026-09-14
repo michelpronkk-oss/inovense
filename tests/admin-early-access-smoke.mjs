@@ -46,6 +46,7 @@ try {
   const list = read("src/lib/admin/early-access.ts");
   const page = read("src/app/admin/early-access/page.tsx");
   const detail = read("src/app/admin/early-access/[id]/page.tsx");
+  const deleteForm = read("src/app/admin/early-access/delete-request-form.tsx");
   const actions = read("src/app/admin/early-access/actions.ts");
   const workspaces = read("src/lib/admin/workspaces.ts");
   const trialSummary = read("src/lib/admin/trial-state.ts");
@@ -56,6 +57,7 @@ try {
   const middleware = read("src/proxy.ts");
   const css = read("src/app/admin/admin.css");
   const migration = read("supabase/migrations/20260913_early_access_requests.sql");
+  const inviteMigration = read("supabase/migrations/20260914_early_access_invites.sql");
 
   assert.match(list, /requireInternalAdmin\(\)/);
   assert.match(list, /\.range\(/);
@@ -75,6 +77,13 @@ try {
   assert.match(detail, /Private internal context/);
   assert.match(detail, /legacy unverified/);
   assert.match(detail, /Open workspace in admin/);
+  assert.match(detail, /DeleteEarlyAccessRequestForm/);
+  assert.match(detail, /delete-failed/);
+  assert.match(deleteForm, /Danger zone/);
+  assert.match(deleteForm, /Delete \{email\}\?/);
+  assert.match(deleteForm, /Delete permanently/);
+  assert.match(deleteForm, /Existing Auterim accounts, workspaces, memberships, billing, and trials are not deleted/);
+  assert.match(deleteForm, /accepted request is linked to a workspace/);
   assert.match(actions, /await requireInternalAdmin\(\)/);
   assert.match(actions, /getAllowedEarlyAccessTransition/);
   assert.match(actions, /reviewed_at: new Date\(\)\.toISOString\(\)/);
@@ -87,10 +96,15 @@ try {
   assert.match(actions, /finalize_early_access_invite_send/);
   assert.match(actions, /new Resend\(apiKey\)/);
   assert.match(actions, /revoke_early_access_invite/);
+  assert.match(actions, /export async function deleteEarlyAccessRequest/);
+  assert.match(actions, /createSupabaseAdmin\(\)[\s\S]*?from\("os_early_access_requests"\)[\s\S]*?\.delete\(\)/);
+  assert.match(actions, /redirect\("\/early-access\?result=deleted"\)/);
   assert.doesNotMatch(actions, /formData\.get\("status"\)[\s\S]*?"accepted"/);
   assert.doesNotMatch(actions, /auth\.admin|createUser|signUp|os_member_invites|trial\/start|startTrial/i);
   assert.match(migration, /status in \('requested', 'reviewing', 'invited', 'accepted', 'declined'\)/);
   assert.match(migration, /notes text/);
+  assert.match(migration, /create unique index if not exists os_early_access_requests_email_normalized_uidx[\s\S]*on public\.os_early_access_requests \(email_normalized\)/);
+  assert.match(inviteMigration, /request_id uuid not null references public\.os_early_access_requests\(id\) on delete cascade/);
 
   assert.match(workspaces, /getCanonicalPlanLabel/);
   assert.match(workspaces, /billingStatus === "trialing"/);

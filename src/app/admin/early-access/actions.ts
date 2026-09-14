@@ -16,7 +16,7 @@ const INVITE_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
 
 function requestId(formData: FormData) {
   const id = formData.get("id");
-  return typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id) ? id : null;
+  return typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id) ? id : null;
 }
 
 function detailPath(id: string, result: string): never {
@@ -68,6 +68,29 @@ export async function updateEarlyAccessNotes(formData: FormData) {
   revalidatePath("/early-access");
   revalidatePath(`/early-access/${id}`);
   detailPath(id, "notes-saved");
+}
+
+export async function deleteEarlyAccessRequest(formData: FormData) {
+  await requireInternalAdmin();
+  const id = requestId(formData);
+  if (!id) redirect("/early-access?result=invalid");
+  if (!hasSupabaseAdminConfig()) detailPath(id, "delete-failed");
+
+  const { data, error } = await createSupabaseAdmin()
+    .from("os_early_access_requests")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+  if (error) detailPath(id, "delete-failed");
+  if (!data?.id) detailPath(id, "unavailable");
+
+  // The request-to-invite foreign key is ON DELETE CASCADE. This removes only
+  // Early Access records; referenced Auth users and workspaces remain intact.
+  revalidatePath("/early-access");
+  revalidatePath(`/early-access/${id}`);
+  revalidatePath("/");
+  redirect("/early-access?result=deleted");
 }
 
 function inviteResultForError(message: string): string {

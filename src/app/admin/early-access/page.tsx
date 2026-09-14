@@ -35,12 +35,14 @@ export default async function EarlyAccessPage({ searchParams }: { searchParams: 
   };
   const list = await getEarlyAccessList(filters);
   const totalPages = Math.max(1, Math.ceil(list.total / list.pageSize));
+  const requestDeleted = param(search.result) === "deleted";
 
   return <div className="admin-command-center ea-command-center">
     <div className="admin-page-intro">
       <div><div className="admin-kicker"><span className={`admin-status-dot ${list.available ? "live" : "partial"}`} />Auterim / Early Access</div><h1>Applicant review.</h1><p>Evaluate demand, record internal context, and move requests through the controlled Early Access lifecycle.</p></div>
       <div className="admin-intro-meta"><span className={`admin-status-pill ${list.available ? "live" : "partial"}`}>{list.available ? `${list.total.toLocaleString()} requests` : "Source unavailable"}</span><Link className="ea-back-link" href="/">Command center</Link></div>
     </div>
+    {requestDeleted && <div className="ea-feedback success" role="status">Early Access request and invite history deleted. Existing Auterim accounts and workspaces were not changed.</div>}
 
     {!list.available ? <section className="admin-panel"><div className="admin-empty-compact">Early Access records are unavailable. Check the service database connection and table migration.</div></section> : <>
       <form className="ea-filter-panel" method="get" action="/early-access">
