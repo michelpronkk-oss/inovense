@@ -91,6 +91,7 @@ export default function HeroEditorial() {
           </div>
         </div>
 
+        <div className="hero-mobile-bridge" aria-hidden="true"><span /></div>
         <HeroOperatingArtifact />
         <HeroMobileOperatingLoop />
       </div>
