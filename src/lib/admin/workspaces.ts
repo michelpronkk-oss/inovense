@@ -59,14 +59,17 @@ const groupByWorkspace = (items: Row[]) => {
   return map;
 };
 
-export async function getAdminWorkspaceData(requestedPage = 1): Promise<AdminWorkspaceData> {
+export async function getAdminWorkspaceData(requestedPage = 1, requestedWorkspaceId?: string | null): Promise<AdminWorkspaceData> {
   await requireInternalAdmin();
   const pageSize = 25;
   const page = Math.max(1, Math.min(999, Math.trunc(requestedPage || 1)));
   if (!hasSupabaseAdminConfig()) return { available: false, total: 0, page, pageSize, rows: [], sources: ["Supabase is not configured"] };
 
   const db = createSupabaseAdmin();
-  const workspaceResult = await safely(() => db.from("os_workspaces").select("id,name,plan,plan_tier,billing_status,trial_ends_at,created_at", { count: "exact" }).order("created_at", { ascending: false }).range((page - 1) * pageSize, page * pageSize - 1));
+  let workspaceQuery = db.from("os_workspaces").select("id,name,plan,plan_tier,billing_status,trial_ends_at,created_at", { count: "exact" }).order("created_at", { ascending: false });
+  if (requestedWorkspaceId && /^[A-Za-z0-9_-]{1,120}$/.test(requestedWorkspaceId)) workspaceQuery = workspaceQuery.eq("id", requestedWorkspaceId);
+  else workspaceQuery = workspaceQuery.range((page - 1) * pageSize, page * pageSize - 1);
+  const workspaceResult = await safely(() => workspaceQuery);
   if (!workspaceResult.available) return { available: false, total: 0, page, pageSize, rows: [], sources: ["Workspace records unavailable"] };
   const workspaces = workspaceResult.rows;
   const ids = workspaces.map((row) => text(row.id)).filter(Boolean);

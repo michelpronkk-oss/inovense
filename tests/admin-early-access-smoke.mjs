@@ -30,10 +30,8 @@ try {
   const lifecycle = await loadPureAdminEarlyAccess();
   const trialState = await loadAdminTrialState();
   assert.equal(lifecycle.getAllowedEarlyAccessTransition("requested", "reviewing"), "reviewing");
-  assert.equal(lifecycle.getAllowedEarlyAccessTransition("reviewing", "invited"), "invited");
   assert.equal(lifecycle.getAllowedEarlyAccessTransition("reviewing", "declined"), "declined");
-  assert.equal(lifecycle.getAllowedEarlyAccessTransition("invited", "accepted"), "accepted");
-  for (const [from, to] of [["requested", "accepted"], ["reviewing", "accepted"], ["invited", "declined"], ["accepted", "reviewing"], ["declined", "invited"], ["requested", "arbitrary"]]) {
+  for (const [from, to] of [["requested", "accepted"], ["reviewing", "accepted"], ["reviewing", "invited"], ["invited", "accepted"], ["invited", "declined"], ["accepted", "reviewing"], ["declined", "invited"], ["requested", "arbitrary"]]) {
     assert.equal(lifecycle.getAllowedEarlyAccessTransition(from, to), null, `${from} -> ${to} must be rejected`);
   }
   assert.equal(lifecycle.earlyAccessPriority({ email: "ops@northstar.example", team_size: "21–50", use_case: "x".repeat(90), interested_plan: "workforce" }), "High");
@@ -73,9 +71,10 @@ try {
   assert.match(detail, /Use case and intent/);
   assert.match(detail, /Acquisition context/);
   assert.match(detail, /Confirmation email/);
-  assert.match(detail, /Invite to Early Access/);
+  assert.match(detail, /Approve &amp; send invite/);
   assert.match(detail, /Private internal context/);
-  assert.match(detail, /This records an invite decision only/);
+  assert.match(detail, /legacy unverified/);
+  assert.match(detail, /Open workspace in admin/);
   assert.match(actions, /await requireInternalAdmin\(\)/);
   assert.match(actions, /getAllowedEarlyAccessTransition/);
   assert.match(actions, /reviewed_at: new Date\(\)\.toISOString\(\)/);
@@ -83,6 +82,12 @@ try {
   assert.match(actions, /\.eq\("status", current\.data\.status\)/);
   assert.match(actions, /notes: notesValue\.trim\(\) \|\| null/);
   assert.match(actions, /notesValue\.length > 5000/);
+  assert.match(actions, /approveAndSendEarlyAccessInvite/);
+  assert.match(actions, /prepare_early_access_invite/);
+  assert.match(actions, /finalize_early_access_invite_send/);
+  assert.match(actions, /new Resend\(apiKey\)/);
+  assert.match(actions, /revoke_early_access_invite/);
+  assert.doesNotMatch(actions, /formData\.get\("status"\)[\s\S]*?"accepted"/);
   assert.doesNotMatch(actions, /auth\.admin|createUser|signUp|os_member_invites|trial\/start|startTrial/i);
   assert.match(migration, /status in \('requested', 'reviewing', 'invited', 'accepted', 'declined'\)/);
   assert.match(migration, /notes text/);

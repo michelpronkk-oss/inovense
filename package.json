@@ -40,6 +40,8 @@
     "test:signup-auth": "node tests/signup-auth-regression.mjs",
     "test:signup-confirmation-flow": "node tests/signup-confirmation-flow-smoke.mjs",
     "test:early-access": "node tests/early-access-smoke.mjs",
+    "test:early-access-invite-flow": "node tests/early-access-invite-flow-smoke.mjs",
+    "test:early-access-invite-browser": "node tests/early-access-invite-browser-smoke.mjs",
     "test:early-access-browser": "node tests/early-access-browser-smoke.mjs",
     "test:admin-early-access": "node tests/admin-early-access-smoke.mjs",
     "test:admin-early-access-browser": "node tests/admin-early-access-browser-smoke.mjs",

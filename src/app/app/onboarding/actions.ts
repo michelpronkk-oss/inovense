@@ -24,17 +24,18 @@ async function authorizedWorkspace() {
   return { user, admin, workspaceId } as const;
 }
 
-export async function getOnboardingDraftAction(): Promise<{ ok: true; draft: OnboardingDraft } | { ok: false; error: string }> {
+export async function getOnboardingDraftAction(): Promise<{ ok: true; draft: OnboardingDraft; earlyAccessAccepted: boolean } | { ok: false; error: string }> {
   const access = await authorizedWorkspace();
   if ("error" in access) return { ok: false, error: access.error ?? "Could not access your workspace." };
-  const [workspaceResult, profileResult] = await Promise.all([
+  const [workspaceResult, profileResult, earlyAccessResult] = await Promise.all([
     access.admin.from("os_workspaces").select("name,onboarding_data").eq("id", access.workspaceId).single(),
     access.admin.from("os_user_profiles").select("full_name").eq("user_id", access.user.id).maybeSingle(),
+    access.admin.from("os_early_access_invites").select("id").eq("accepted_user_id", access.user.id).not("accepted_at", "is", null).limit(1).maybeSingle(),
   ]);
   if (workspaceResult.error) return { ok: false, error: workspaceResult.error.message };
   const data = (workspaceResult.data.onboarding_data ?? {}) as Record<string, unknown>;
   const metadataName = (access.user.user_metadata?.full_name as string | undefined) ?? (access.user.user_metadata?.name as string | undefined) ?? "";
-  return { ok: true, draft: cleanDraft({ fullName: profileResult.data?.full_name ?? metadataName, workspaceName: workspaceResult.data.name, websiteUrl: typeof data.website === "string" ? data.website : typeof data.websiteUrl === "string" ? data.websiteUrl : "", industry: typeof data.industry === "string" ? data.industry : "", teamSize: typeof data.team_size === "string" ? data.team_size : "", priority: typeof data.first_priority === "string" ? data.first_priority as OnboardingDraft["priority"] : "", systems: Array.isArray(data.systems) ? data.systems.filter((v): v is string => typeof v === "string") : [], noSupportedConnector: data.no_supported_connector === true, trialDeclined: data.trial_declined === true, step: typeof data.onboarding_step === "number" ? data.onboarding_step : 1 }) };
+  return { ok: true, draft: cleanDraft({ fullName: profileResult.data?.full_name ?? metadataName, workspaceName: workspaceResult.data.name, websiteUrl: typeof data.website === "string" ? data.website : typeof data.websiteUrl === "string" ? data.websiteUrl : "", industry: typeof data.industry === "string" ? data.industry : "", teamSize: typeof data.team_size === "string" ? data.team_size : "", priority: typeof data.first_priority === "string" ? data.first_priority as OnboardingDraft["priority"] : "", systems: Array.isArray(data.systems) ? data.systems.filter((v): v is string => typeof v === "string") : [], noSupportedConnector: data.no_supported_connector === true, trialDeclined: data.trial_declined === true, step: typeof data.onboarding_step === "number" ? data.onboarding_step : 1 }), earlyAccessAccepted: !earlyAccessResult.error && Boolean(earlyAccessResult.data) };
 }
 
 export async function saveOnboardingDraftAction(input: Partial<OnboardingDraft>): Promise<OnboardingResult> {

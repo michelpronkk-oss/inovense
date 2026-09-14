@@ -19,9 +19,10 @@ function queryHref(filters: EarlyAccessFilters, page: number) {
 function planLabel(value: string | null) { return value ? PLAN_LABELS[value as keyof typeof PLAN_LABELS] ?? value : "No plan"; }
 
 function RequestSummary({ row }: { row: EarlyAccessRow }) {
+  const status = row.status === "accepted" && row.acceptanceVerified !== true ? "Accepted · unverified legacy" : statusLabel[row.status] ?? row.status;
   return <>
     <span className={`ea-priority ${earlyAccessPriority(row) === "High" ? "high" : "normal"}`}>{earlyAccessPriority(row)} priority</span>
-    <span className={`ea-status ea-status-${row.status}`}>{statusLabel[row.status] ?? row.status}</span>
+    <span className={`ea-status ea-status-${row.status}`}>{status}</span>
   </>;
 }
 

@@ -79,9 +79,11 @@ export function AppShell({ children, onboardingCompletedAt }: { children: React.
     pathname === "/login" || pathname === "/register" ||
     pathname === "/forgot-password" || pathname === "/reset-password" ||
     pathname === "/auth/callback" || pathname === "/invite/accept" ||
+    pathname === "/early-access/accept/session" ||
     pathname === "/app/login" || pathname === "/app/register" ||
     pathname === "/app/forgot-password" || pathname === "/app/reset-password" ||
-    pathname === "/app/auth/callback" || pathname === "/app/invite/accept"
+    pathname === "/app/auth/callback" || pathname === "/app/invite/accept" ||
+    pathname === "/app/early-access/accept/session"
   ));
   const entitlements = getEntitlements(state.workspace);
   const showBillingAttention = entitlements.billingStatus === "past_due";

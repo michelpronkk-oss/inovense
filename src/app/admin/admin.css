@@ -104,6 +104,12 @@
 .ea-lifecycle-step { border: 1px solid rgba(148,163,184,.12); border-radius: 5px; padding: 5px 7px; color: #647186; font-size: 9px; }
 .ea-lifecycle-step.current { border-color: rgba(77,231,223,.28); background: rgba(77,231,223,.06); color: #70dedc; }
 .ea-status-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; }
+.ea-invite-control { margin-top: 16px; padding: 14px; border: 1px solid rgba(77,231,223,.15); border-radius: 9px; background: rgba(77,231,223,.035); }
+.ea-invite-control > .ea-detail-help:first-child { margin-top: 0; }
+.ea-invite-control .ea-status-actions { margin-top: 12px; }
+.ea-invite-error { color: #e5a36d; }
+.ea-detail-workspace-link { display: inline-flex; margin-top: 14px; color: #73e8e2; font-size: 11px; font-weight: 600; text-decoration: none; }
+.ea-detail-workspace-link:hover { color: #a4fffa; }
 .ea-button-secondary { border-color: rgba(247,190,88,.22); background: rgba(247,190,88,.055); color: #e4bd73; }
 .ea-button-secondary:hover { border-color: rgba(247,190,88,.4); background: rgba(247,190,88,.1); }
 .ea-review-meta { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 15px; padding-top: 12px; border-top: 1px solid rgba(148,163,184,.09); color: #6d7a8e; font-size: 9px; }

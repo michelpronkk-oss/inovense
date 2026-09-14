@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { authErrorDiagnostics, authErrorMessage } from "@/lib/supabase/auth-errors";
+import { safeAppPath } from "@/lib/urls";
 import { AuthBackdrop, AuthBrand, AuthCardBadge } from "@/app/app/_auth/auth-chrome";
 import "@/app/app/_auth/auth.css";
 
@@ -17,7 +18,7 @@ function errorMessageFor(code: string | undefined, message: string): string {
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const from = searchParams.get("from");
+  const [from] = useState(() => safeAppPath(searchParams.get("from")));
   const queryError = searchParams.get("error") || undefined;
 
   const [email, setEmail] = useState("");
@@ -25,6 +26,14 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(queryError ? errorMessageFor(queryError, "") : "");
   const [notice] = useState(searchParams.get("verified") === "1" ? "Email verified. Sign in to continue." : "");
+
+  useEffect(() => {
+    // Invite URLs are bearer credentials. Keep their safe destination in
+    // memory for the sign-in action, then remove it from browser history.
+    if (from?.startsWith("/early-access/accept?token=")) {
+      window.history.replaceState(window.history.state, "", window.location.pathname);
+    }
+  }, [from]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,7 +53,7 @@ export default function LoginPage() {
         setBusy(false);
         return;
       }
-      router.replace(from && from.startsWith("/") && !from.startsWith("//") ? from : "/");
+      router.replace(from || "/");
       router.refresh();
     } catch (signInError) {
       console.warn("[auth.signin] failed", authErrorDiagnostics(signInError));

@@ -148,7 +148,7 @@ export function renderAuterimEmailHtml(content: AuterimEmailContent): string {
 
           <tr>
             <td style="padding:22px 6px 0 6px;">
-              <p style="margin:0;font-size:12px;line-height:1.6;color:${COLOR.mute};">Auterim &mdash; The AI workforce built around your business.</p>
+              <p style="margin:0;font-size:12px;line-height:1.6;color:${COLOR.mute};">Auterim. The AI workforce built around your business.</p>
             </td>
           </tr>
 

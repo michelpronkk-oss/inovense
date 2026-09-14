@@ -22,6 +22,7 @@ const PUBLIC_APP_PATHS = new Set([
   "/reset-password",
   "/auth/callback",
   "/invite/accept",
+  "/early-access/accept/session",
 ]);
 
 // Visiting these while already signed in should not show the auth form -
@@ -90,6 +91,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     // the existing client-side preview/dev experience rather than hard
     // failing, matching pre-existing local-preview behavior.
   }
+
+  // Auth and invitation entry points must not mount AppProvider/AppShell.
+  // Their client bootstrap can provision a workspace for an authenticated
+  // user, which is premature on a pending Early Access invitation.
+  if (PUBLIC_APP_PATHS.has(pathname)) return <>{children}</>;
 
   return (
     <AppProvider initialContext={initialContext}>

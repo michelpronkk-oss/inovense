@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createSupabaseServerActionClient } from "@/lib/supabase/server";
 import { appHref, safeAppPath } from "@/lib/urls";
+import { EARLY_ACCESS_INVITE_COOKIE, isEarlyAccessToken } from "@/lib/early-access/invites";
+
+const EARLY_ACCESS_TOKEN_COOKIE_PATH = "/early-access/accept";
 
 /**
  * Handles Supabase email-link redirects: signup verification, password
@@ -15,10 +18,17 @@ export async function GET(req: NextRequest) {
   const requestedType = req.nextUrl.searchParams.get("type");
   const next = req.nextUrl.searchParams.get("next");
   const errorDescription = req.nextUrl.searchParams.get("error_description");
+  const safeNext = safeAppPath(next);
+  const loginWithError = () => {
+    const loginUrl = new URL(appHref("/login"));
+    loginUrl.searchParams.set("error", "invalid_or_expired_link");
+    if (safeNext && safeNext !== "/") loginUrl.searchParams.set("from", safeNext);
+    return NextResponse.redirect(loginUrl);
+  };
 
   if (errorDescription) {
     console.warn("[auth.callback] provider returned an error");
-    return NextResponse.redirect(new URL(`${appHref("/login")}?error=invalid_or_expired_link`));
+    return loginWithError();
   }
 
   if (tokenHash) {
@@ -43,7 +53,7 @@ export async function GET(req: NextRequest) {
         code: error.code ?? "unknown",
         status: error.status ?? null,
       });
-      return NextResponse.redirect(new URL(`${appHref("/login")}?error=invalid_or_expired_link`));
+      return loginWithError();
     }
   } else if (code) {
     const supabase = await createSupabaseServerActionClient();
@@ -53,17 +63,39 @@ export async function GET(req: NextRequest) {
         code: error.code ?? "unknown",
         status: error.status ?? null,
       });
-      return NextResponse.redirect(new URL(`${appHref("/login")}?error=invalid_or_expired_link`));
+      return loginWithError();
     }
   } else {
     console.warn("[auth.callback] missing verification code");
-    return NextResponse.redirect(new URL(`${appHref("/login")}?error=invalid_or_expired_link`));
+    return loginWithError();
   }
 
   // Always enter through the app gateway after verification. The gateway
   // provisions exactly one owner workspace when needed and then decides
   // whether this account belongs in onboarding or the product. Sending every
   // callback straight to onboarding could otherwise revive an old draft.
-  const safeNext = safeAppPath(next) ?? "/";
-  return NextResponse.redirect(new URL(appHref(safeNext)));
+  const destination = safeNext ?? "/";
+  const nextUrl = new URL(destination, appHref("/"));
+  if (nextUrl.pathname === "/early-access/accept") {
+    const tokens = nextUrl.searchParams.getAll("token");
+    const token = tokens.length === 1 ? tokens[0] : null;
+    if (isEarlyAccessToken(token)) {
+      // Supabase signup verification may be opened on another device. Carry
+      // the invite through its safe internal `next` destination, exchange the
+      // token into an HttpOnly cookie here, and redirect without it.
+      const response = NextResponse.redirect(new URL("/early-access/accept/session", appHref("/")), 303);
+      response.cookies.set(EARLY_ACCESS_INVITE_COOKIE, token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: EARLY_ACCESS_TOKEN_COOKIE_PATH,
+        maxAge: 8 * 24 * 60 * 60,
+      });
+      response.headers.set("Referrer-Policy", "no-referrer");
+      response.headers.set("Cache-Control", "no-store, max-age=0");
+      response.headers.set("X-Robots-Tag", "noindex, nofollow");
+      return response;
+    }
+  }
+  return NextResponse.redirect(new URL(appHref(destination)));
 }

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAllowedEarlyAccessTransition, getEarlyAccessRequest, earlyAccessPriority, type EarlyAccessStatus } from "@/lib/admin/early-access";
 import { PLAN_LABELS } from "@/lib/plan-identity";
-import { updateEarlyAccessNotes, updateEarlyAccessStatus } from "../actions";
+import { approveAndSendEarlyAccessInvite, revokeEarlyAccessInvite, updateEarlyAccessNotes, updateEarlyAccessStatus } from "../actions";
 
 export const metadata: Metadata = { title: "Applicant | Early Access | Auterim Admin", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -15,6 +15,17 @@ const feedback: Record<string, string> = {
   "invalid-transition": "That status transition is not allowed.", invalid: "The requested update could not be validated.",
   unavailable: "This request is no longer available.", conflict: "The request changed in another session. Refresh and try again.",
   "save-failed": "The note could not be saved.", "invalid-notes": "Notes must be 5,000 characters or fewer.",
+  "invite-sent": "The invite email was accepted by the email provider. Mailbox delivery is not confirmed.",
+  "invite-resent": "The replacement invite was accepted by the email provider. Earlier links are now revoked.",
+  "invite-send-failed": "The invite email could not be sent. The request status was not advanced, and you can retry.",
+  "invite-send-finalizing": "The email provider accepted the send, but invite state is still being confirmed. Refresh before retrying.",
+  "invite-send-in-progress": "An invite attempt is still being processed. Refresh in a few moments before retrying.",
+  "invite-rate-limited": "Too many invite attempts were made recently. Wait before trying again.",
+  "invite-invalid-status": "This request is no longer eligible for an invite.",
+  "invite-unavailable": "The invite flow is unavailable. Check that its database migration is applied and email is configured.",
+  "invite-revoked": "The outstanding invite was revoked. The request is back in review.",
+  "invite-revoke-failed": "The invite could not be revoked. Refresh and try again.",
+  "invite-already-accepted": "This invite has already been accepted and cannot be revoked.",
 };
 
 function Value({ children }: { children: React.ReactNode }) { return <div className="ea-detail-value">{children || <span className="ea-muted-value">Not provided</span>}</div>; }
@@ -29,12 +40,16 @@ export default async function EarlyAccessDetailPage({ params, searchParams }: { 
   const priority = earlyAccessPriority(row);
   const plan = row.interested_plan ? PLAN_LABELS[row.interested_plan] ?? row.interested_plan : "No plan selected";
   const confirmationState = row.confirmation_sent_at ? "Confirmation sent" : row.confirmation_attempted_at ? "Attempted · delivery unconfirmed" : "Not attempted";
+  const acceptedIsVerified = Boolean(row.acceptedInvite);
+  const displayStatus = row.status === "accepted" && !acceptedIsVerified ? "Accepted · legacy unverified" : statusLabel[row.status];
+  const latestInvite = row.inviteLatestAttempt;
+  const inviteAttemptLabel = latestInvite?.delivery_state === "sent" ? "Accepted by provider" : latestInvite?.delivery_state === "failed" ? "Send failed" : latestInvite?.delivery_state === "pending" ? "Send pending" : "No invite attempt";
 
   return <div className="admin-command-center ea-detail-page">
     <div className="ea-detail-back"><Link href="/early-access">← Back to applicants</Link><span>Request ID <code>{row.id}</code></span></div>
     <div className="admin-page-intro">
       <div><div className="admin-kicker"><span className="admin-status-dot live" />Early Access applicant</div><h1>{row.name}</h1><p>{row.company} · requested {displayDate(row.created_at)}</p></div>
-      <div className="ea-detail-head-state"><span className={`ea-priority ${priority === "High" ? "high" : "normal"}`}>{priority} priority</span><span className={`ea-status ea-status-${row.status}`}>{statusLabel[row.status]}</span></div>
+      <div className="ea-detail-head-state"><span className={`ea-priority ${priority === "High" ? "high" : "normal"}`}>{priority} priority</span><span className={`ea-status ea-status-${row.status}`}>{displayStatus}</span></div>
     </div>
     {result && <div className={`ea-feedback ${query.result?.includes("invalid") || query.result === "save-failed" || query.result === "conflict" ? "warning" : "success"}`} role="status">{result}</div>}
 
@@ -71,12 +86,38 @@ export default async function EarlyAccessDetailPage({ params, searchParams }: { 
         <div className="ea-lifecycle-steps">{["requested", "reviewing", "invited", "accepted", "declined"].map((status) => <span key={status} className={`ea-lifecycle-step${status === row.status ? " current" : ""}`}>{statusLabel[status as EarlyAccessStatus]}</span>)}</div>
         <div className="ea-status-actions">
           {next("reviewing") && <form action={updateEarlyAccessStatus}><input type="hidden" name="id" value={row.id} /><input type="hidden" name="status" value="reviewing" /><button type="submit" className="ea-button-primary">Begin review</button></form>}
-          {next("invited") && <form action={updateEarlyAccessStatus}><input type="hidden" name="id" value={row.id} /><input type="hidden" name="status" value="invited" /><button type="submit" className="ea-button-primary">Invite to Early Access</button></form>}
           {next("declined") && <form action={updateEarlyAccessStatus}><input type="hidden" name="id" value={row.id} /><input type="hidden" name="status" value="declined" /><button type="submit" className="ea-button-secondary">Decline request</button></form>}
-          {next("accepted") && <form action={updateEarlyAccessStatus}><input type="hidden" name="id" value={row.id} /><input type="hidden" name="status" value="accepted" /><button type="submit" className="ea-button-primary">Mark accepted</button></form>}
-          {!next("reviewing") && !next("invited") && !next("declined") && !next("accepted") && <span className="ea-detail-help">This request is in a terminal state. No further transition is available.</span>}
         </div>
-        {row.status === "reviewing" && <p className="ea-invite-limit">This records an invite decision only. The existing workspace invitation flow requires an authenticated workspace and does not safely support Early Access applicants, so no invite email or account is created here.</p>}
+        {row.status === "reviewing" && <div className="ea-invite-control">
+          {latestInvite?.delivery_state === "failed" && <p className="ea-detail-help ea-invite-error">Last send attempt failed. This request remains in review.</p>}
+          {!row.inviteFlowAvailable ? <p className="ea-detail-help">Apply the Early Access invites migration to enable secure invitations.</p> : <form action={approveAndSendEarlyAccessInvite}><input type="hidden" name="id" value={row.id} /><button type="submit" className="ea-button-primary">Approve &amp; send invite</button></form>}
+          <p className="ea-detail-help">A workspace is created or attached only after the invited person signs in with the verified matching email and accepts.</p>
+        </div>}
+        {row.status === "invited" && <div className="ea-invite-control">
+          <div className="ea-detail-fields ea-request-facts">
+            <Field label="Latest send attempt">{inviteAttemptLabel}</Field>
+            <Field label="Sent at">{row.inviteActive?.last_sent_at ? displayDate(row.inviteActive.last_sent_at) : displayDate(latestInvite?.last_sent_at ?? null)}</Field>
+            <Field label="Expires at">{row.inviteActive ? displayDate(row.inviteActive.expires_at) : latestInvite ? displayDate(latestInvite.expires_at) : "No active invite"}</Field>
+            <Field label="Last attempt">{displayDate(latestInvite?.last_attempted_at ?? null)}</Field>
+          </div>
+          {latestInvite?.delivery_state === "failed" && <p className="ea-detail-help ea-invite-error">The latest send failed. Any previously sent invite remains valid until it expires or is revoked.</p>}
+          {!row.inviteFlowAvailable ? <p className="ea-detail-help">Apply the Early Access invites migration to manage invitations.</p> : <div className="ea-status-actions">
+            <form action={approveAndSendEarlyAccessInvite}><input type="hidden" name="id" value={row.id} /><button type="submit" className="ea-button-primary">Resend invite</button></form>
+            {row.inviteActive && <form action={revokeEarlyAccessInvite}><input type="hidden" name="inviteId" value={row.inviteActive.id} /><button type="submit" className="ea-button-secondary">Revoke invite</button></form>}
+          </div>}
+          <p className="ea-detail-help">Provider acceptance is recorded as sent; mailbox delivery is not confirmed. Resend rotates the link after the replacement send succeeds.</p>
+        </div>}
+        {row.status === "accepted" && <div className="ea-invite-control">
+          {row.acceptedInvite ? <>
+            <div className="ea-detail-fields ea-request-facts">
+              <Field label="Accepted at">{displayDate(row.acceptedInvite.accepted_at)}</Field>
+              <Field label="Accepted user">{row.email} · verified at acceptance</Field>
+              <Field label="Workspace">{row.acceptedWorkspaceName || row.acceptedInvite.accepted_workspace_id}</Field>
+            </div>
+            {row.acceptedInvite.accepted_workspace_id && <Link className="ea-detail-workspace-link" href={`/customers?workspace=${encodeURIComponent(row.acceptedInvite.accepted_workspace_id)}`}>Open workspace in admin ↗</Link>}
+          </> : <p className="ea-detail-help ea-invite-error">This historical record was marked accepted before verified invite acceptance was implemented. No accepted user or workspace is recorded.</p>}
+        </div>}
+        {row.status === "declined" && <span className="ea-detail-help">This request was declined. No invitation can be sent.</span>}
         <div className="ea-review-meta"><span>Last reviewed <strong>{displayDate(row.reviewed_at)}</strong></span><span>Reviewed by <strong>{row.reviewerEmail || row.reviewed_by || "Not recorded"}</strong></span></div>
       </section>
       <section className="ea-detail-section ea-notes-section">

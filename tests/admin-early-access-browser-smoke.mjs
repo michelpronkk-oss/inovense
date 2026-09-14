@@ -10,6 +10,8 @@ const root = process.cwd();
 const adminId = "11111111-1111-4111-8111-111111111111";
 const workspaceId = "workspace-demo";
 const reviewerId = "22222222-2222-4222-8222-222222222222";
+const inviteId = "33333333-3333-4333-8333-333333333333";
+let inviteRecord = null;
 const screenshotDirectory = process.env.ADMIN_EA_SCREENSHOT_DIR || fs.mkdtempSync(path.join(os.tmpdir(), "auterim-admin-review-"));
 fs.mkdirSync(screenshotDirectory, { recursive: true });
 
@@ -47,6 +49,7 @@ function parseSimpleFilter(value) {
 function rowsFor(table) {
   if (table === "os_internal_admins") return [admin];
   if (table === "os_early_access_requests") return [applicant];
+  if (table === "os_early_access_invites") return inviteRecord ? [inviteRecord] : [];
   if (table === "os_workspaces") return [workspace];
   if (table === "os_trial_entitlements") return [trial];
   if (table === "os_operator_triggers") return [{ workspace_id: workspaceId, operator_key: "operations", enabled: true, trigger_type: "operator_activation" }];
@@ -199,9 +202,29 @@ try {
     assert.equal(await page.locator(".workspace-mobile-list").evaluate((element) => getComputedStyle(element).display === "grid"), width <= 820, `workspace layout adapts at ${width}`);
     await screenshot(`workspaces-${width}x${height}.png`);
   }
+  applicant.status = "reviewing";
+  await page.goto(`${appUrl}/early-access/${adminId}`, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "Approve & send invite" }).waitFor();
+  await screenshot("early-access-detail-reviewing.png");
+
+  applicant.status = "invited";
+  inviteRecord = { id: inviteId, request_id: adminId, delivery_state: "sent", created_at: "2026-09-13T10:00:00.000Z", expires_at: "2026-09-20T10:00:00.000Z", last_attempted_at: "2026-09-13T10:00:00.000Z", last_sent_at: "2026-09-13T10:01:00.000Z", error_code: null, accepted_at: null, revoked_at: null, accepted_user_id: null, accepted_workspace_id: null };
+  await page.goto(`${appUrl}/early-access/${adminId}`, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "Resend invite" }).waitFor();
+  await page.getByRole("button", { name: "Revoke invite" }).waitFor();
+  await screenshot("early-access-detail-invited.png");
+
+  applicant.status = "accepted";
+  inviteRecord.accepted_at = "2026-09-14T10:00:00.000Z";
+  inviteRecord.accepted_user_id = reviewerId;
+  inviteRecord.accepted_workspace_id = workspaceId;
+  await page.goto(`${appUrl}/early-access/${adminId}`, { waitUntil: "networkidle" });
+  await page.getByRole("link", { name: "Open workspace in admin ↗" }).waitFor();
+  assert.match(await page.locator(".ea-invite-control").innerText(), /verified at acceptance/);
+  await screenshot("early-access-detail-accepted.png");
   assert.deepEqual(pageErrors, [], `browser console errors: ${pageErrors.join(" | ")}`);
   const serverIssueLines = logs.filter((line) => /\b(error|issue)\b/i.test(line));
-  console.log(JSON.stringify({ viewports, routes: ["/", "/early-access", "/early-access/[id]", "/customers"], screenshotDirectory, browserErrors: pageErrors, serverIssueLines, result: "anonymous access redirected; authenticated internal views render without page overflow" }, null, 2));
+  console.log(JSON.stringify({ viewports, routes: ["/", "/early-access", "/early-access/[id]", "/customers"], detailStates: ["reviewing", "invited", "accepted"], screenshotDirectory, browserErrors: pageErrors, serverIssueLines, result: "anonymous access redirected; review, resend, revoke, and accepted-workspace controls render without page overflow" }, null, 2));
 } catch (error) {
   console.error(error);
   throw error;

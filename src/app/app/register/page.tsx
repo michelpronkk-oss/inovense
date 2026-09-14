@@ -20,7 +20,7 @@ export default function RegisterPage() {
   // Preserves e.g. /invite/accept?token=... through signup so a brand-new
   // invitee lands back on their invite (not their own workspace) once their
   // account exists -- workspace membership is granted there, never here.
-  const from = safeAppPath(searchParams.get("from"));
+  const [from] = useState(() => safeAppPath(searchParams.get("from")));
   const [fullName, setFullName] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [email, setEmail] = useState("");
@@ -32,6 +32,14 @@ export default function RegisterPage() {
   const [resendNotice, setResendNotice] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
   const submittingRef = useRef(false);
+
+  useEffect(() => {
+    // Keep the invite destination in component state so auth verification
+    // can return here without leaving the bearer token in browser history.
+    if (from?.startsWith("/early-access/accept?token=")) {
+      window.history.replaceState(window.history.state, "", window.location.pathname);
+    }
+  }, [from]);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;

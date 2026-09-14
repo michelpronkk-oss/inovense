@@ -46,7 +46,7 @@ try {
   const routeSource = read("src/app/app/auth/callback/route.ts")
     .replace(
       'import { NextRequest, NextResponse } from "next/server";',
-      'const NextResponse = { redirect(url) { return { location: String(url) }; } };',
+      'const NextResponse = { redirect(url, status = 307) { const headers = new Map(); return { location: String(url), status, cookies: { set(name, value, options) { this.last = { name, value, options }; } }, headers: { set(name, value) { headers.set(name, value); }, get(name) { return headers.get(name); } } }; } };',
     )
     .replace('import type { EmailOtpType } from "@supabase/supabase-js";', "type EmailOtpType = string;")
     .replace(
@@ -56,6 +56,10 @@ try {
     .replace(
       'import { appHref, safeAppPath } from "@/lib/urls";',
       'const appHref = (value) => new URL(value, "https://app.auterim.com").href; const safeAppPath = (value) => value && value.startsWith("/") && !value.startsWith("//") && !value.includes("\\\\") ? value : null;',
+    )
+    .replace(
+      'import { EARLY_ACCESS_INVITE_COOKIE, isEarlyAccessToken } from "@/lib/early-access/invites";',
+      'const EARLY_ACCESS_INVITE_COOKIE = "auterim_ea_invite"; const isEarlyAccessToken = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{43}$/.test(value);',
     );
   const routeModulePath = path.join(tempDir, "callback.mjs");
   fs.writeFileSync(
@@ -92,6 +96,23 @@ try {
   assert.deepEqual(calls.shift(), {
     method: "verifyOtp",
     params: { token_hash: "verified-hash", type: "email" },
+  });
+
+  const inviteToken = "A".repeat(43);
+  const inviteResult = await GET({
+    nextUrl: new URL(`https://app.auterim.com/auth/callback?next=${encodeURIComponent(`/early-access/accept?token=${inviteToken}`)}&token_hash=verified-hash&type=signup`),
+  });
+  assert.equal(inviteResult.location, "https://app.auterim.com/early-access/accept/session");
+  assert.equal(inviteResult.status, 303);
+  assert.deepEqual(inviteResult.cookies.last, {
+    name: "auterim_ea_invite",
+    value: inviteToken,
+    options: { httpOnly: true, secure: true, sameSite: "lax", path: "/early-access/accept", maxAge: 8 * 24 * 60 * 60 },
+  });
+  assert.equal(inviteResult.headers.get("Referrer-Policy"), "no-referrer");
+  assert.deepEqual(calls.shift(), {
+    method: "verifyOtp",
+    params: { token_hash: "verified-hash", type: "signup" },
   });
 
   const openRedirectResult = await GET({

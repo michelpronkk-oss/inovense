@@ -25,10 +25,10 @@ function cells(row: Record<string, unknown>) {
 }
 
 const showDate = (value: string) => value.includes("T") ? new Date(value).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : value;
-const queryPage = (page: number) => `/customers?page=${page}`;
+const queryPage = (page: number, workspaceId?: string | null) => `/customers?page=${page}${workspaceId ? `&workspace=${encodeURIComponent(workspaceId)}` : ""}`;
 
-async function AdminWorkspacesPage({ requestedPage }: { requestedPage: number }) {
-  const [data, counts] = await Promise.all([getAdminWorkspaceData(requestedPage), getAdminCommandCounts()]);
+async function AdminWorkspacesPage({ requestedPage, workspaceId }: { requestedPage: number; workspaceId?: string | null }) {
+  const [data, counts] = await Promise.all([getAdminWorkspaceData(requestedPage, workspaceId), getAdminCommandCounts()]);
   const totalPages = Math.max(1, Math.ceil(data.total / data.pageSize));
   const summary = [
     ["Total workspaces", counts.totalWorkspaces], ["Active trials", counts.activeTrials], ["Expired trials", counts.expiredTrials],
@@ -39,7 +39,7 @@ async function AdminWorkspacesPage({ requestedPage }: { requestedPage: number })
   const tone = (entitlement: string) => entitlement === "Paid active" || entitlement === "Trial active" ? "live" : entitlement === "Past due" || entitlement === "Expired trial" ? "warning" : "muted";
 
   return <div className="admin-command-center admin-workspaces-page">
-    <div className="admin-page-intro"><div><div className="admin-kicker"><span className={`admin-status-dot ${data.available ? "live" : "partial"}`} />Auterim / Workspaces</div><h1>Workspace state.</h1><p>Plan identity, product entitlement, trial lifecycle, and provider subscription are shown as separate facts.</p></div><div className="admin-intro-meta"><span className={`admin-status-pill ${data.available ? "live" : "partial"}`}>{data.total.toLocaleString()} workspaces</span></div></div>
+    <div className="admin-page-intro"><div><div className="admin-kicker"><span className={`admin-status-dot ${data.available ? "live" : "partial"}`} />Auterim / Workspaces</div><h1>Workspace state.</h1><p>Plan identity, product entitlement, trial lifecycle, and provider subscription are shown as separate facts.</p>{workspaceId && <Link className="admin-panel-link" href="/customers">← All workspaces</Link>}</div><div className="admin-intro-meta"><span className={`admin-status-pill ${data.available ? "live" : "partial"}`}>{data.total.toLocaleString()} workspaces</span></div></div>
     <div className="workspace-count-strip">{summary.map(([label, number]) => <div key={label}><span>{label}</span><strong>{value(number)}</strong></div>)}</div>
     {!data.available ? <section className="admin-panel"><p className="admin-empty-compact">Workspace records are unavailable in the current database.</p></section> : <>
       <section className="workspace-list-panel">
@@ -60,7 +60,7 @@ async function AdminWorkspacesPage({ requestedPage }: { requestedPage: number })
             <div className="workspace-mobile-last">Last operator run · {showDate(workspace.lastActivity)}</div>
           </article>)}</div>
         </> : <div className="admin-empty-compact">No workspaces are available on this page.</div>}
-        <nav className="workspace-pagination" aria-label="Workspace pages"><Link aria-disabled={data.page <= 1} href={queryPage(Math.max(1, data.page - 1))}>← Previous</Link><span>Page {data.page} of {totalPages}</span><Link aria-disabled={data.page >= totalPages} href={queryPage(Math.min(totalPages, data.page + 1))}>Next →</Link></nav>
+        <nav className="workspace-pagination" aria-label="Workspace pages"><Link aria-disabled={data.page <= 1} href={queryPage(Math.max(1, data.page - 1), workspaceId)}>← Previous</Link><span>Page {data.page} of {totalPages}</span><Link aria-disabled={data.page >= totalPages} href={queryPage(Math.min(totalPages, data.page + 1), workspaceId)}>Next →</Link></nav>
       </section>
       <div className="workspace-source-note">Entitlement reads from workspace billing state, trial lifecycle from trial records, and subscription from the normalized Dodo snapshot. Connector health is the last stored status, not a live provider probe. Operator activations count as active only when entitlement is currently usable. {data.sources.length !== 8 && <>Unavailable sources: {data.sources.join(", ")}.</>}</div>
     </>}
@@ -71,7 +71,9 @@ export default async function AdminSectionPage({ params, searchParams }: { param
   const [{ section }, query] = await Promise.all([params, searchParams]);
   if (section === "customers") {
     const page = Array.isArray(query.page) ? query.page[0] : query.page;
-    return <AdminWorkspacesPage requestedPage={Number(page ?? "1")} />;
+    const workspace = Array.isArray(query.workspace) ? query.workspace[0] : query.workspace;
+    const workspaceId = workspace && /^[A-Za-z0-9_-]{1,120}$/.test(workspace) ? workspace : null;
+    return <AdminWorkspacesPage requestedPage={Number(page ?? "1")} workspaceId={workspaceId} />;
   }
   const page = copy[section] ?? { label: "Internal", title: "Command center.", body: "This route has no internal intelligence view." };
   const data = await getAdminSectionData(section);

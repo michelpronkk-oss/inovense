@@ -54,7 +54,8 @@ assert.match(acceptPage, /Create an account to accept/);
 // ── 5. /auth/callback forwards `next` safely after either flow completes,
 //      and /invite/accept is public (never intercepted by the onboarding
 //      gateway before the token can be checked) ──────────────────────────
-assert.match(authCallback, /const safeNext = safeAppPath\(next\) \?\? "\/"/);
+assert.match(authCallback, /const safeNext = safeAppPath\(next\);/);
+assert.match(authCallback, /const destination = safeNext \?\? "\/"/);
 assert.match(appLayout, /"\/invite\/accept"/);
 
 // ── 6. Acceptance itself: authenticated, server-derived workspace/role,

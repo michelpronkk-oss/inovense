@@ -34,6 +34,26 @@ export type EarlyAccessRow = {
   reviewed_by: string | null;
   reviewerEmail?: string | null;
   notes: string | null;
+  acceptanceVerified?: boolean | null;
+  inviteFlowAvailable?: boolean;
+  inviteActive?: EarlyAccessInviteRecord | null;
+  inviteLatestAttempt?: EarlyAccessInviteRecord | null;
+  acceptedInvite?: EarlyAccessInviteRecord | null;
+  acceptedWorkspaceName?: string | null;
+};
+
+export type EarlyAccessInviteRecord = {
+  id: string;
+  delivery_state: "pending" | "sent" | "failed";
+  created_at: string;
+  expires_at: string;
+  last_attempted_at: string | null;
+  last_sent_at: string | null;
+  error_code: string | null;
+  accepted_at: string | null;
+  revoked_at: string | null;
+  accepted_user_id: string | null;
+  accepted_workspace_id: string | null;
 };
 
 export type EarlyAccessFilters = {
@@ -77,8 +97,8 @@ export function earlyAccessPriority(row: Pick<EarlyAccessRow, "email" | "team_si
 export function getAllowedEarlyAccessTransition(current: string, next: string): EarlyAccessStatus | null {
   const allowed: Record<EarlyAccessStatus, readonly EarlyAccessStatus[]> = {
     requested: ["reviewing"],
-    reviewing: ["invited", "declined"],
-    invited: ["accepted"],
+    reviewing: ["declined"],
+    invited: [],
     accepted: [],
     declined: [],
   };
@@ -122,7 +142,14 @@ export async function getEarlyAccessList(filters: EarlyAccessFilters = {}): Prom
 
   const { data, count, error } = await query.range((page - 1) * pageSize, page * pageSize - 1);
   if (error) return { rows: [], total: 0, page, pageSize, available: false };
-  return { rows: (data ?? []) as EarlyAccessRow[], total: count ?? 0, page, pageSize, available: true };
+  const listRows = (data ?? []) as EarlyAccessRow[];
+  const acceptedIds = listRows.filter((row) => row.status === "accepted").map((row) => row.id);
+  if (acceptedIds.length) {
+    const verified = await db.from("os_early_access_invites").select("request_id").in("request_id", acceptedIds).not("accepted_at", "is", null);
+    const verifiedIds = new Set((verified.data ?? []).map((item) => String(item.request_id)));
+    for (const row of listRows) if (row.status === "accepted") row.acceptanceVerified = verified.error ? null : verifiedIds.has(row.id);
+  }
+  return { rows: listRows, total: count ?? 0, page, pageSize, available: true };
 }
 
 export async function getEarlyAccessRequest(id: string): Promise<EarlyAccessRow | null> {
@@ -132,6 +159,24 @@ export async function getEarlyAccessRequest(id: string): Promise<EarlyAccessRow 
   const { data, error } = await db.from("os_early_access_requests").select("*").eq("id", id).maybeSingle();
   if (error || !data) return null;
   const row = data as EarlyAccessRow;
+  const inviteResult = await db.from("os_early_access_invites")
+    .select("id,delivery_state,created_at,expires_at,last_attempted_at,last_sent_at,error_code,accepted_at,revoked_at,accepted_user_id,accepted_workspace_id")
+    .eq("request_id", id)
+    .order("created_at", { ascending: false })
+    .limit(10);
+  const inviteRows = inviteResult.error ? [] : (inviteResult.data ?? []) as EarlyAccessInviteRecord[];
+  const inviteActive = inviteRows.find((invite) => invite.delivery_state === "sent" && !invite.accepted_at && !invite.revoked_at && new Date(invite.expires_at).getTime() > Date.now()) ?? null;
+  const acceptedInvite = inviteRows.find((invite) => Boolean(invite.accepted_at && invite.accepted_user_id && invite.accepted_workspace_id)) ?? null;
+  let acceptedWorkspaceName: string | null = null;
+  if (acceptedInvite?.accepted_workspace_id) {
+    const workspace = await db.from("os_workspaces").select("name").eq("id", acceptedInvite.accepted_workspace_id).maybeSingle();
+    if (!workspace.error && workspace.data?.name) acceptedWorkspaceName = String(workspace.data.name);
+  }
+  row.inviteFlowAvailable = !inviteResult.error;
+  row.inviteActive = inviteActive;
+  row.inviteLatestAttempt = inviteRows[0] ?? null;
+  row.acceptedInvite = acceptedInvite;
+  row.acceptedWorkspaceName = acceptedWorkspaceName;
   if (row.reviewed_by) {
     const reviewer = await db.from("os_internal_admins").select("email").eq("user_id", row.reviewed_by).maybeSingle();
     if (!reviewer.error && reviewer.data?.email) return { ...row, reviewerEmail: String(reviewer.data.email) };
@@ -167,22 +212,28 @@ export async function getEarlyAccessOverview(): Promise<EarlyAccessOverview> {
   const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
   const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const statusCounts = await Promise.all(EARLY_ACCESS_STATUSES.map(async (status) => {
+    if (status === "accepted") {
+      const result = await db.from("os_early_access_invites").select("id", { count: "exact", head: true }).not("accepted_at", "is", null);
+      return [status, result.error ? null : result.count ?? 0] as const;
+    }
     const result = await db.from("os_early_access_requests").select("id", { count: "exact", head: true }).eq("status", status);
     return [status, result.error ? null : result.count ?? 0] as const;
   }));
-  const [totalResult, todayResult, weekResult, reviewResult, attributionResult, emailFailuresResult] = await Promise.all([
+  const [totalResult, todayResult, weekResult, reviewResult, attributionResult, emailFailuresResult, acceptedRequestsResult] = await Promise.all([
     db.from("os_early_access_requests").select("id", { count: "exact", head: true }),
     db.from("os_early_access_requests").select("id", { count: "exact", head: true }).gte("created_at", todayStart),
     db.from("os_early_access_requests").select("id", { count: "exact", head: true }).gte("created_at", weekStart),
     db.from("os_early_access_requests").select("*").in("status", ["requested", "reviewing"]).order("created_at", { ascending: false }).limit(30),
-    db.from("os_early_access_requests").select("source,utm_source,utm_medium,utm_campaign,interested_plan,team_size,referrer,status").order("created_at", { ascending: false }).limit(500),
+    db.from("os_early_access_requests").select("id,source,utm_source,utm_medium,utm_campaign,interested_plan,team_size,referrer,status").order("created_at", { ascending: false }).limit(500),
     db.from("os_early_access_requests").select("id", { count: "exact", head: true }).not("confirmation_attempted_at", "is", null).is("confirmation_sent_at", null),
+    db.from("os_early_access_invites").select("request_id").not("accepted_at", "is", null),
   ]);
   const statuses = Object.fromEntries(statusCounts) as Record<EarlyAccessStatus, number | null>;
-  const available = !totalResult.error && !todayResult.error && !weekResult.error && !reviewResult.error && !attributionResult.error && !emailFailuresResult.error && Object.values(statuses).every((value) => value !== null);
+  const available = !totalResult.error && !todayResult.error && !weekResult.error && !reviewResult.error && !attributionResult.error && !emailFailuresResult.error && !acceptedRequestsResult.error && Object.values(statuses).every((value) => value !== null);
   if (!available) return { available: false, total: null, today: null, last7Days: null, statuses: emptyStatuses, attribution: [], utmSources: [], utmMediums: [], campaigns: [], teamSizes: [], plans: [], fromX: null, emailFailures: null, attributionSampleSize: 0, reviewQueue: [] };
 
   const attributionRows = (attributionResult.data ?? []) as Array<Record<string, unknown>>;
+  const acceptedRequestIds = new Set((acceptedRequestsResult.data ?? []).map((row) => String(row.request_id)));
   const tally = (key: string, fallback: string) => {
     const counts = new Map<string, number>();
     for (const row of attributionRows) {
@@ -201,7 +252,7 @@ export async function getEarlyAccessOverview(): Promise<EarlyAccessOverview> {
     const label = safeString(row.utm_campaign).trim() || "Unattributed";
     const current = campaigns.get(label) ?? { value: 0, accepted: 0 };
     current.value += 1;
-    if (row.status === "accepted") current.accepted += 1;
+    if (acceptedRequestIds.has(String(row.id))) current.accepted += 1;
     campaigns.set(label, current);
   }
 
