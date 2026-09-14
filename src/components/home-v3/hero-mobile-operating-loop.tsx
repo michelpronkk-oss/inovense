@@ -5,25 +5,21 @@ export default function HeroMobileOperatingLoop() {
     <div
       className="hero-mobile-loop"
       role="img"
-      aria-label="Revenue Operator assembles a signal and context, prepares a reply, and waits for approval."
+      aria-label="Revenue Operator detected a signal and prepared context. The next move is ready and awaiting approval."
     >
-      <div className="hero-mobile-loop-head">
-        <span className="hero-mobile-loop-brand">
-          <Image src="/brand/auterim-mark-live.svg" width={15} height={15} alt="" />
-          <span>Operating loop</span>
+      <div className="hero-mobile-loop-header">
+        <span className="hero-mobile-loop-identity">
+          <span className="hero-mobile-loop-mark">
+            <Image src="/brand/auterim-mark-live.svg" width={16} height={16} alt="" />
+          </span>
+          <strong>Revenue Operator</strong>
         </span>
-        <span className="hero-mobile-loop-policy"><i />Policy applied</span>
+        <span className="hero-mobile-loop-approval"><i />Awaiting approval</span>
       </div>
 
       <div className="hero-mobile-loop-stages" aria-hidden="true">
-        <span className="hero-mobile-loop-stage is-complete"><i /><b>Signal</b></span>
-        <span className="hero-mobile-loop-stage is-complete"><i /><b>Context</b></span>
-        <span className="hero-mobile-loop-stage is-held"><i /><b>Prepared</b></span>
-      </div>
-
-      <div className="hero-mobile-loop-result">
-        <span><small>Revenue Operator</small><strong>Reply prepared</strong></span>
-        <span className="hero-mobile-loop-gate">Awaiting approval</span>
+        <span className="hero-mobile-loop-stage is-signal"><i /><span>Signal detected</span></span>
+        <span className="hero-mobile-loop-stage is-context"><i /><span>Context prepared</span></span>
       </div>
     </div>
   );
