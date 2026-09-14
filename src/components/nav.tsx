@@ -23,6 +23,7 @@ const links = [
   { label: "Security", href: "/security" },
   { label: "Pricing", href: "/pricing" },
   { label: "Docs", href: "/docs" },
+  { label: "Contact", href: "/contact" },
 ];
 
 function isActive(href: string, pathname: string) {
@@ -44,6 +45,7 @@ export default function Nav({ homepage = false, earlyAccessCta = false }: { home
         { label: "Operators", href: "#operators" },
         { label: "How it works", href: "#how" },
         { label: "Pricing", href: "#pricing" },
+        { label: "Contact", href: "/contact" },
       ]
     : links;
 
