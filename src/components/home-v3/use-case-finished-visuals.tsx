@@ -51,6 +51,12 @@ function GxCard({ filterId, title, stat, loop, foot, children }: GxCardProps) {
   );
 }
 
+// Shared timing: every card's "signal" travels a 0.7 fraction of a 5s cycle,
+// arriving at evenly spaced stops so desktop and mobile stay in the same rhythm.
+const GX_CYCLE = 5;
+const GX_TRAVEL = GX_CYCLE * 0.7;
+const rowDelay = (index: number, count: number) => (GX_TRAVEL * index) / Math.max(count - 1, 1);
+
 type GxRowNode = {
   key: string;
   icon: ReactNode;
@@ -59,42 +65,39 @@ type GxRowNode = {
   tag?: string;
 };
 
-const GX_ROW_CYCLE = 5;
-const GX_ROW_TRAVEL = GX_ROW_CYCLE * 0.7;
-const ROW_COMET_KEYFRAME: Record<number, string> = { 3: "uc-gx-comet3", 4: "uc-gx-comet4" };
-
 function GxRow({ nodes, amberEnd }: { nodes: GxRowNode[]; amberEnd?: boolean }) {
   const count = nodes.length;
-  const nodeDelay = (index: number) => (GX_ROW_TRAVEL * index) / (count - 1);
-  const cometKeyframe = ROW_COMET_KEYFRAME[count] ?? ROW_COMET_KEYFRAME[3];
   return (
-    <div className="gx-flow">
-      <div
-        className={`gx-row${amberEnd ? " is-amber" : ""}`}
-        style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` } as CSSProperties}
-      >
-        <span className="gx-row-rail" aria-hidden="true" />
-        <span
-          className="gx-comet"
-          style={{ animationName: cometKeyframe, animationDuration: `${GX_ROW_CYCLE}s` } as CSSProperties}
-          aria-hidden="true"
-        />
-        {nodes.map((node, index) => (
-          <div
-            className={`gx-node${node.amber ? " am" : ""}`}
-            style={{ "--gx-delay": `${nodeDelay(index)}s` } as CSSProperties}
-            key={node.key}
-          >
-            <span className="gx-dot">
-              <span className="gx-ring" aria-hidden="true" />
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">{node.icon}</svg>
-            </span>
-            <span className="k">{node.label}</span>
-            {node.tag && <span className="tag"><span className="p" />{node.tag}</span>}
-          </div>
-        ))}
+    <>
+      <div className="gx-flow">
+        <div
+          className={`gx-row${amberEnd ? " is-amber" : ""}`}
+          style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` } as CSSProperties}
+        >
+          <span className="gx-track" aria-hidden="true"><span className="gx-comet" /></span>
+          {nodes.map((node, index) => (
+            <div
+              className={`gx-node${node.amber ? " am" : ""}`}
+              style={{ "--gx-delay": `${rowDelay(index, count)}s` } as CSSProperties}
+              key={node.key}
+            >
+              <span className="gx-dot">
+                <span className="gx-ring" aria-hidden="true" />
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">{node.icon}</svg>
+              </span>
+              <span className="k">{node.label}</span>
+              {node.tag && <span className="tag"><span className="p" />{node.tag}</span>}
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
+      <GxTimelineMobile
+        sections={nodes.map((node, index) => ({
+          items: [{ key: node.key, icon: node.icon, label: node.label, amber: node.amber, tag: node.tag, delay: rowDelay(index, count) }],
+          connectorDelay: index > 0 ? rowDelay(index - 1, count) : undefined,
+        }))}
+      />
+    </>
   );
 }
 
@@ -104,6 +107,62 @@ function GxTake({ heading, copy }: { heading: string; copy: ReactNode }) {
       <span className="lab2">Takeaway</span>
       <span className="h">{heading}</span>
       <span className="c">{copy}</span>
+    </div>
+  );
+}
+
+// A single vertical, top-to-bottom timeline used as the mobile presentation for
+// every "flow" visual (loop, row cards, and the branch diagrams alike) so the
+// phone experience is one deliberate layout instead of a shrunk desktop grid.
+type TlItem = {
+  key: string;
+  icon?: ReactNode;
+  label: string;
+  description?: string;
+  amber?: boolean;
+  tag?: string;
+  delay?: number;
+};
+type TlSection = { items: TlItem[]; connectorDelay?: number };
+
+function GxTimelineMobile({ sections, dotsOnly }: { sections: TlSection[]; dotsOnly?: boolean }) {
+  return (
+    <div className={`gx-tl${dotsOnly ? " is-dots" : ""}`}>
+      {sections.map((section, index) => (
+        <div className="gx-tl-section" key={index}>
+          {index > 0 && (
+            <span className="gx-tick" aria-hidden="true">
+              <span
+                className="gx-comet-v"
+                style={section.connectorDelay !== undefined ? ({ "--gx-delay": `${section.connectorDelay}s` } as CSSProperties) : undefined}
+              />
+            </span>
+          )}
+          <div className={`gx-tl-group${section.items.length > 1 ? " is-fork" : ""}`}>
+            {section.items.map((item) => (
+              <div
+                className={`gx-tl-item${item.amber ? " am" : ""}`}
+                style={item.delay !== undefined ? ({ "--gx-delay": `${item.delay}s` } as CSSProperties) : undefined}
+                key={item.key}
+              >
+                {item.icon ? (
+                  <span className="gx-dot">
+                    <span className="gx-ring" aria-hidden="true" />
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">{item.icon}</svg>
+                  </span>
+                ) : (
+                  <span className={`gx-tl-dot${item.delay !== undefined ? " is-live" : ""}`} aria-hidden="true" />
+                )}
+                <span className="gx-tl-copy">
+                  <span className={`k${item.amber ? " am" : ""}`}>{item.label}</span>
+                  {item.description && <span className="x">{item.description}</span>}
+                  {item.tag && <span className="tag"><span className="p" />{item.tag}</span>}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -139,6 +198,7 @@ const LOOP_NODES = [
 ];
 
 export function OperatingLoopVisual() {
+  const count = LOOP_NODES.length;
   return (
     <>
       <GxNoiseFilter id="gxN2" />
@@ -155,6 +215,12 @@ export function OperatingLoopVisual() {
             </div>
           ))}
         </div>
+        <GxTimelineMobile
+          sections={LOOP_NODES.map((node, index) => ({
+            items: [{ key: node.key, icon: node.icon, label: node.k, description: node.x, amber: node.amber, delay: rowDelay(index, count) }],
+            connectorDelay: index > 0 ? rowDelay(index - 1, count) : undefined,
+          }))}
+        />
       </GxCard>
     </>
   );
@@ -314,6 +380,22 @@ export function SharedContextVisual() {
             { left: "37.5%", top: 126, height: 32, delay: 4 },
           ]}
         />
+        <GxTimelineMobile
+          dotsOnly
+          sections={[
+            { items: [{ key: "company", label: "Company context", delay: 0 }] },
+            {
+              items: [
+                { key: "revenue", label: "Revenue", delay: 0.9 },
+                { key: "client", label: "Client Flow", delay: 1.7 },
+                { key: "operations", label: "Operations", delay: 2.5 },
+                { key: "support", label: "Support", delay: 3.3 },
+              ],
+              connectorDelay: 0,
+            },
+            { items: [{ key: "owner", label: "One primary owner", delay: 4.6 }], connectorDelay: 3.3 },
+          ]}
+        />
       </GxCard>
     </>
   );
@@ -335,6 +417,20 @@ export function PolicyForkVisual() {
             { left: "16.6%", top: 66, height: 84, delay: 0.3 },
             { left: "50%", top: 66, height: 84, delay: 0.3 },
             { left: "83.3%", top: 66, height: 84, delay: 0.3 },
+          ]}
+        />
+        <GxTimelineMobile
+          dotsOnly
+          sections={[
+            { items: [{ key: "prepared", label: "Prepared action", delay: 0 }] },
+            {
+              items: [
+                { key: "execute", label: "Execute within policy" },
+                { key: "hold", label: "Hold for approval", amber: true, delay: 2 },
+                { key: "stop", label: "Stop if not allowed" },
+              ],
+              connectorDelay: 0,
+            },
           ]}
         />
       </GxCard>
