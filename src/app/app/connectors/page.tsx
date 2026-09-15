@@ -70,6 +70,8 @@ type SlackAlertSettings = {
   slackApprovalAlertsEnabled: boolean;
   slackDefaultChannelId: string | null;
   slackDefaultChannelName: string | null;
+  slackMonitoredChannelIds: string[];
+  slackMonitoredChannelNames: string[];
   notifyOnRevenueApprovalCreated: boolean;
   notifyOnApprovalApproved: boolean;
   notifyOnApprovalRejected: boolean;
@@ -275,6 +277,8 @@ export default function ConnectorsPage() {
     slackApprovalAlertsEnabled: false,
     slackDefaultChannelId: null,
     slackDefaultChannelName: null,
+    slackMonitoredChannelIds: [],
+    slackMonitoredChannelNames: [],
     notifyOnRevenueApprovalCreated: true,
     notifyOnApprovalApproved: true,
     notifyOnApprovalRejected: true,
@@ -1503,6 +1507,32 @@ export default function ConnectorsPage() {
                   <button className="btn btn-ghost btn-sm" onClick={fetchSlackChannels} disabled={slackChannelsLoading}>
                     Refresh
                   </button>
+                </div>
+                <div style={{ display: "grid", gap: 5 }}>
+                  <label className="lab" htmlFor="slack-monitored-channels">Realtime message channels</label>
+                  <select
+                    id="slack-monitored-channels"
+                    className="os-input"
+                    multiple
+                    size={Math.min(6, Math.max(3, slackChannels.length))}
+                    value={slackAlertSettings.slackMonitoredChannelIds ?? []}
+                    disabled={slackChannelsLoading || slackSettingsSaving}
+                    onChange={(event) => {
+                      const ids = Array.from(event.target.selectedOptions).map((option) => option.value);
+                      const selected = slackChannels.filter((channel) => ids.includes(channel.id));
+                      void saveSlackAlertSettings({
+                        slackMonitoredChannelIds: ids,
+                        slackMonitoredChannelNames: selected.map((channel) => channel.name),
+                      });
+                    }}
+                  >
+                    {slackChannels.filter((channel) => !channel.isPrivate && !channel.isArchived).map((channel) => (
+                      <option key={channel.id} value={channel.id}>#{channel.name}</option>
+                    ))}
+                  </select>
+                  <div style={{ fontSize: 11.5, color: "var(--text-mute)" }}>
+                    No channels are monitored by default. Select only public channels whose messages should become Operator signals; @mentions remain directly actionable.
+                  </div>
                 </div>
                 {(() => {
                   const selected = slackChannels.find((channel) => channel.id === slackAlertSettings.slackDefaultChannelId) ?? null;

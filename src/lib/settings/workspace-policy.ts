@@ -12,6 +12,9 @@ export type SlackNotificationSettings = {
   slackApprovalAlertsEnabled: boolean;
   slackDefaultChannelId: string | null;
   slackDefaultChannelName: string | null;
+  /** Public channel IDs explicitly allowed for Slack message ingestion. */
+  slackMonitoredChannelIds: string[];
+  slackMonitoredChannelNames: string[];
   notifyOnRevenueApprovalCreated: boolean;
   notifyOnApprovalApproved: boolean;
   notifyOnApprovalRejected: boolean;
@@ -46,6 +49,8 @@ export const DEFAULT_SLACK_NOTIFICATION_SETTINGS: SlackNotificationSettings = {
   slackApprovalAlertsEnabled: false,
   slackDefaultChannelId: null,
   slackDefaultChannelName: null,
+  slackMonitoredChannelIds: [],
+  slackMonitoredChannelNames: [],
   notifyOnRevenueApprovalCreated: true,
   notifyOnApprovalApproved: true,
   notifyOnApprovalRejected: true,
@@ -69,6 +74,14 @@ function boolValue(value: unknown, fallback: boolean): boolean {
 
 function stringOrNull(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function stringList(value: unknown, max = 100): string[] {
+  if (!Array.isArray(value)) return [];
+  return Array.from(new Set(value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim().slice(0, 120))
+    .filter(Boolean))).slice(0, max);
 }
 
 function customerEmailMode(value: unknown): CustomerEmailMode {
@@ -142,6 +155,8 @@ export function parseSlackNotificationSettings(value: unknown): SlackNotificatio
     slackApprovalAlertsEnabled: boolValue(rec.slackApprovalAlertsEnabled, DEFAULT_SLACK_NOTIFICATION_SETTINGS.slackApprovalAlertsEnabled),
     slackDefaultChannelId: stringOrNull(rec.slackDefaultChannelId),
     slackDefaultChannelName: stringOrNull(rec.slackDefaultChannelName),
+    slackMonitoredChannelIds: stringList(rec.slackMonitoredChannelIds),
+    slackMonitoredChannelNames: stringList(rec.slackMonitoredChannelNames),
     notifyOnRevenueApprovalCreated: boolValue(rec.notifyOnRevenueApprovalCreated, DEFAULT_SLACK_NOTIFICATION_SETTINGS.notifyOnRevenueApprovalCreated),
     notifyOnApprovalApproved: boolValue(rec.notifyOnApprovalApproved, DEFAULT_SLACK_NOTIFICATION_SETTINGS.notifyOnApprovalApproved),
     notifyOnApprovalRejected: boolValue(rec.notifyOnApprovalRejected, DEFAULT_SLACK_NOTIFICATION_SETTINGS.notifyOnApprovalRejected),

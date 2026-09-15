@@ -176,14 +176,20 @@ export function normalizeHubSpotSnapshot(input: {
 }): SignalEvent {
   const properties = object(input.snapshot.properties) ?? {};
   const objectName = typeof properties.dealname === "string" ? properties.dealname : typeof properties.firstname === "string" || typeof properties.lastname === "string" ? [properties.firstname, properties.lastname].filter((value): value is string => typeof value === "string").join(" ") : `${input.event.entityType} ${input.event.objectId}`;
-  const closedWon = input.event.eventType === "hubspot.deal.stage_changed" && (isHubSpotClosedWon(properties) || /closed[\s_-]*won/i.test(input.event.propertyValue ?? ""));
+  // The business transition is read from the authoritative snapshot, not
+  // from which specific property changed in this particular webhook. A deal
+  // that is already closed-won must classify the same way whether this
+  // delivery is the dealstage change itself, a concurrent closedate update,
+  // or any other property webhook that raced it.
+  const closedWon = input.event.entityType === "deal" && isHubSpotClosedWon(properties);
+  const canonicalEventType = closedWon ? "hubspot.deal.closed_won" : input.event.eventType;
   return {
     workspaceId: input.workspaceId,
     connectorKey: "hubspot",
     provider: "hubspot",
     source: "hubspot",
     sourceType: "crm",
-    eventType: input.event.eventType,
+    eventType: canonicalEventType,
     sourceId: input.event.objectId,
     sourceParentId: input.providerEventId,
     occurredAt: input.event.occurredAt,
@@ -191,8 +197,8 @@ export function normalizeHubSpotSnapshot(input: {
     actor: null,
     entityType: input.event.entityType,
     entityId: input.event.objectId,
-    subject: `HubSpot ${input.event.entityType} ${input.event.eventType.replace("hubspot.", "").replaceAll("_", " ")}`,
-    snippet: `${objectName}${input.event.propertyName ? ` ${input.event.propertyName} changed` : " created"}`.slice(0, 320),
+    subject: `HubSpot ${input.event.entityType} ${canonicalEventType.replace("hubspot.", "").replaceAll("_", " ")}`,
+    snippet: `${objectName}${closedWon ? " closed won" : input.event.propertyName ? ` ${input.event.propertyName} changed` : " created"}`.slice(0, 320),
     metadata: {
       providerEventId: input.providerEventId,
       hubspotObjectType: input.event.entityType,

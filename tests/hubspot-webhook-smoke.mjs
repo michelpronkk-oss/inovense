@@ -48,8 +48,32 @@ assert.equal(contactSignal.eventType, "hubspot.contact.created");
 assert.equal(contactSignal.sourceType, "crm");
 assert.equal(contactSignal.metadata.hubspotObjectIdHash, protocol.hashHubSpotIdentifier("9001"));
 const dealSignal = protocol.normalizeHubSpotSnapshot({ workspaceId: "ws-1", providerEventId: "pev_deal", event: parsed.supported[1], snapshot: { id: "8001", properties: { dealname: "Expansion", dealstage: "closedwon", amount: "25000" } } });
-assert.equal(dealSignal.eventType, "hubspot.deal.stage_changed");
+assert.equal(dealSignal.eventType, "hubspot.deal.closed_won", "the canonical audit trail must name the business transition, not the raw property webhook");
 assert.equal(dealSignal.metadata.hubspotClosedWon, true);
+
+// A concurrent, non-stage property webhook (e.g. closedate) that arrives for
+// a deal already in the closed-won stage must classify identically to the
+// dealstage webhook itself - the authoritative snapshot is the source of
+// truth, not which property changed in this specific delivery.
+const closedateBody = JSON.stringify([
+  { eventId: 201, portalId: 12345, subscriptionType: "deal.propertyChange", propertyName: "closedate", propertyValue: "1700000000000", objectId: 8001, occurredAt: now, changeSource: "CRM", changeFlag: "NEW_VALUE", appId: 77 },
+]);
+const closedateParsed = protocol.parseHubSpotWebhookBatch(closedateBody);
+assert.equal(closedateParsed.supported[0].eventType, "hubspot.deal.updated", "a closedate property change is a deal.updated event, not stage_changed");
+const closedateSignal = protocol.normalizeHubSpotSnapshot({ workspaceId: "ws-1", providerEventId: "pev_deal_closedate", event: closedateParsed.supported[0], snapshot: { id: "8001", properties: { dealname: "Expansion", dealstage: "closedwon", amount: "25000" } } });
+assert.equal(closedateSignal.eventType, "hubspot.deal.closed_won", "closed-won state must be derived from the snapshot regardless of which property webhook triggered the fetch");
+assert.equal(closedateSignal.metadata.hubspotClosedWon, true);
+
+// A normal, non-closed-won stage change must not be misclassified as a
+// closed-won handoff.
+const openStageBody = JSON.stringify([
+  { eventId: 301, portalId: 12345, subscriptionType: "deal.propertyChange", propertyName: "dealstage", propertyValue: "presentationscheduled", objectId: 8002, occurredAt: now, changeSource: "CRM", changeFlag: "NEW_VALUE", appId: 77 },
+]);
+const openStageParsed = protocol.parseHubSpotWebhookBatch(openStageBody);
+const openStageSignal = protocol.normalizeHubSpotSnapshot({ workspaceId: "ws-1", providerEventId: "pev_deal_open", event: openStageParsed.supported[0], snapshot: { id: "8002", properties: { dealname: "New deal", dealstage: "presentationscheduled" } } });
+assert.equal(openStageSignal.eventType, "hubspot.deal.stage_changed");
+assert.equal(openStageSignal.metadata.hubspotClosedWon, false);
+
 const ownershipSource = fs.readFileSync("src/lib/workforce/ownership.ts", "utf8").replace(/^import type[^\n]+\n/gm, "");
 const ownershipCode = esbuild.transformSync(ownershipSource, { loader: "ts", format: "esm", target: "node18" }).code;
 const ownershipFile = path.join(temp, "ownership.mjs");
@@ -57,6 +81,8 @@ fs.writeFileSync(ownershipFile, ownershipCode, "utf8");
 const ownership = await import(pathToFileURL(ownershipFile).href + `?t=${Date.now()}`);
 assert.equal(ownership.arbitrateOwnership({ sourceType: "crm", connectorKey: "hubspot", category: "crm_change", metadata: contactSignal.metadata }).primaryOperator, "revenue");
 assert.equal(ownership.arbitrateOwnership({ sourceType: "crm", connectorKey: "hubspot", category: "customer_request", metadata: dealSignal.metadata }).primaryOperator, "client_flow");
+assert.equal(ownership.arbitrateOwnership({ sourceType: "crm", connectorKey: "hubspot", category: "customer_request", metadata: closedateSignal.metadata }).primaryOperator, "client_flow", "the closedate-only delivery must route to Client Flow just like the stage_changed delivery");
+assert.equal(ownership.arbitrateOwnership({ sourceType: "crm", connectorKey: "hubspot", category: "sales_opportunity", metadata: openStageSignal.metadata }).primaryOperator, "revenue", "a deal that is not yet closed-won must remain Revenue-owned");
 
 const route = fs.readFileSync("src/app/api/connectors/hubspot/webhook/route.ts", "utf8");
 const helper = fs.readFileSync("src/lib/connectors/hubspot-webhook.ts", "utf8");
@@ -82,6 +108,21 @@ assert.match(processor, /materializeWorkflows: false/);
 assert.match(processor, /hubspot_self_write_echo/);
 assert.match(recovery, /hubspotWebhookProcess/);
 assert.match(recovery, /event\.provider === "hubspot"/);
-assert.match(engine, /event\.eventType === "hubspot\.deal\.stage_changed"/);
+assert.match(engine, /if \(hubspotClosedWon\)/, "closed-won classification must not be gated on which property webhook triggered the fetch");
+assert.doesNotMatch(engine, /event\.eventType === "hubspot\.deal\.stage_changed" && hubspotClosedWon/, "the stage_changed-only gate that caused concurrent property webhooks to misclassify must be removed");
 assert.match(engine, /hubspot:deal_closed_won/);
-console.log("HubSpot webhook smoke: signatures, freshness, safe batch parsing, tenant mapping, canonical normalization, self-write guard, processor wiring, recovery dispatch, and CRM routing verified.");
+assert.match(engine, /export function connectorCandidateDedupeKey/, "the candidate dedupe key builder must be reusable for cross-operator supersession lookups");
+
+// Materialization: a routed Client Flow HubSpot candidate must become a
+// visible, idempotent current-work item, and the superseded Revenue
+// candidate for the same deal must resolve.
+const handoff = fs.readFileSync("src/lib/operators/client-flow/hubspot-handoff.ts", "utf8");
+assert.match(processor, /materializeClientFlowHandoff/, "the processor must attempt handoff materialization after ingestion");
+assert.match(processor, /signal\.metadata\?\.hubspotClosedWon === true/, "handoff materialization must only run for confirmed closed-won deals");
+assert.match(processor, /ensureHubSpotClientFlowHandoff/);
+assert.match(processor, /resolveSupersededHubSpotRevenueCandidate/);
+assert.match(handoff, /oprun-clientflow-hubspot-\$\{input\.workspaceId\}-\$\{input\.dealId\}/, "the handoff run id must be deterministic per workspace and deal for idempotent replay/concurrency handling");
+assert.match(handoff, /insert\.error\.code === "23505"/, "a concurrent duplicate insert (racing dealstage/closedate webhooks) must not be treated as a failure");
+assert.match(handoff, /status: "resolved"/, "the superseded Revenue candidate must use the existing os_signal_candidates lifecycle status, not a new invented value");
+assert.match(handoff, /\.eq\("status", "routed"\)/, "supersession must only touch a still-active Revenue candidate");
+console.log("HubSpot webhook smoke: signatures, freshness, safe batch parsing, tenant mapping, canonical normalization, self-write guard, processor wiring, recovery dispatch, Client Flow handoff materialization, Revenue supersession, and CRM routing verified.");

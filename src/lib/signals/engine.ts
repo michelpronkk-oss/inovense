@@ -51,8 +51,18 @@ function matches(text: string, terms: string[]): string[] {
   return terms.filter((term) => text.includes(term));
 }
 
-function bounded(value: string, max: number): string {
+export function bounded(value: string, max: number): string {
   return value.replace(/[^a-zA-Z0-9:_-]+/g, "-").replace(/-+/g, "-").slice(0, max);
+}
+
+/** The exact dedupe-key shape candidateFor() uses for a connector-identity
+ * candidate (no explicit business-problem key). Exported so callers that
+ * need to look up or supersede a sibling candidate for the same entity
+ * (e.g. resolving a HubSpot Revenue candidate once the deal is closed-won)
+ * can compute the identical key without duplicating the formatting rules. */
+export function connectorCandidateDedupeKey(input: { workspaceId: string; operatorKey: string; connectorKey: string; sourceId: string; category: string }): string {
+  const identityAnchor = `${input.connectorKey}:${input.sourceId}`;
+  return bounded([input.workspaceId, input.operatorKey, identityAnchor, input.category].join(":"), 480);
 }
 
 function safeMetadata(value: Record<string, unknown>): Record<string, unknown> {
@@ -148,7 +158,11 @@ export function classifySignalEvent(event: SignalEvent, now = new Date()): Signa
   if (event.provider === "hubspot" || event.connectorKey === "hubspot") {
     const hubspotClosedWon = event.metadata?.hubspotClosedWon === true;
     const hubspotCommercial = event.metadata?.hubspotCommercial === true;
-    if (event.eventType === "hubspot.deal.stage_changed" && hubspotClosedWon) {
+    // hubspotClosedWon is derived from the authoritative deal snapshot, not
+    // from which specific property triggered this webhook delivery - so a
+    // deal that is already closed-won classifies the same way regardless of
+    // whether dealstage, closedate, or another property webhook arrives first.
+    if (hubspotClosedWon) {
       return { category: "customer_request", confidence: "high", priority: 65, priorityLevel: priorityLevel(65), urgency: urgencyFor(65), reasonCodes: ["hubspot:deal_closed_won"], suppressed: false };
     }
     if (hubspotCommercial || event.eventType.startsWith("hubspot.deal.")) {
@@ -185,7 +199,9 @@ export function classifySignalEvent(event: SignalEvent, now = new Date()): Signa
 function candidateFor(event: SignalEvent, decision: SignalDecision, operatorKey: string, inbound?: InboundClassification, inboundDedupeKey?: string): SignalCandidate {
   const problemKey = explicitBusinessProblemKey(event.metadata);
   const identityAnchor = problemKey ? `business_problem:${problemKey}` : `${event.connectorKey || event.source}:${event.sourceId}`;
-  const dedupeKey = problemKey ? bounded([event.workspaceId, operatorKey, identityAnchor, "business_work"].join(":"), 480) : inboundDedupeKey || bounded([event.workspaceId, operatorKey, identityAnchor, decision.category].join(":"), 480);
+  const dedupeKey = problemKey
+    ? bounded([event.workspaceId, operatorKey, identityAnchor, "business_work"].join(":"), 480)
+    : inboundDedupeKey || connectorCandidateDedupeKey({ workspaceId: event.workspaceId, operatorKey, connectorKey: event.connectorKey || event.source, sourceId: event.sourceId, category: decision.category });
   return {
     id: `candidate_${bounded(dedupeKey, 170)}`,
     signalId: event.id,
@@ -272,7 +288,10 @@ function decisionFromInbound(classification: InboundClassification): SignalDecis
 /** Route only meaningful candidates. This never invokes an operator or action. */
 export function routeSignalEvent(input: SignalEvent, now = new Date(), options?: { classificationText?: string }): RoutedSignal {
   const event = normalizeSignalEvent(input);
-  if (event.sourceType === "email") {
+  // Slack beta messages use the same bounded, explainable intent vocabulary
+  // as inbound email, but keep their provider-native source type so the
+  // workflow/UI projection can present Slack accurately.
+  if (event.sourceType === "email" || event.metadata?.slackInbound === true) {
     let inbound: ReturnType<typeof classifyInboundSignalEvent>;
     try {
       inbound = classifyInboundSignalEvent(event, options?.classificationText);

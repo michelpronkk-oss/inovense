@@ -65,6 +65,7 @@ export class SlackExecutionError extends Error {
     statusText?: string | null;
     responseBody?: unknown;
     code?: string;
+    retryAfterSeconds?: number | null;
   };
 
   constructor(message: string, details: SlackExecutionError["details"]) {
@@ -118,10 +119,13 @@ function assertSlackOk(response: unknown, step: string, method: HTTP_METHOD, pat
       step,
       method,
       path,
-      status: 400,
-      statusText: "Slack API ok:false",
-      responseBody: body,
-      code,
+      status: code === "ratelimited" ? 429 : 400,
+      statusText: code === "ratelimited" ? "Slack rate limited" : "Slack API ok:false",
+      // Slack error bodies can echo request context. Persist and expose only
+      // the stable provider error code, never message text or blocks.
+      responseBody: { error: code },
+      code: code === "ratelimited" ? "slack_rate_limited" : code,
+      retryAfterSeconds: null,
     });
   }
 }
@@ -189,6 +193,10 @@ async function slackRequestWithConnection<T = unknown>(
   }
 
   if (!response.ok) {
+    const retryAfterValue = Number(response.headers.get("retry-after"));
+    const retryAfterSeconds = response.status === 429 && Number.isFinite(retryAfterValue)
+      ? Math.max(1, Math.min(3600, Math.ceil(retryAfterValue)))
+      : null;
     throw new SlackExecutionError(
       response.status === 429 ? "Slack rate limit reached. Try again later." : `Slack request failed (${response.status}).`,
       {
@@ -197,8 +205,9 @@ async function slackRequestWithConnection<T = unknown>(
         path,
         status: response.status,
         statusText: response.statusText,
-        responseBody: data,
+        responseBody: { error: response.status === 429 ? "slack_rate_limited" : "slack_request_failed" },
         code: response.status === 429 ? "slack_rate_limited" : response.status === 401 ? "slack_reconnect_required" : "slack_request_failed",
+        retryAfterSeconds,
       },
     );
   }

@@ -20,6 +20,14 @@ function stringOrNull(value: unknown): string | null | undefined {
   return undefined;
 }
 
+function stringList(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return Array.from(new Set(value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim().slice(0, 120))
+    .filter(Boolean))).slice(0, 100);
+}
+
 export async function GET(req: NextRequest) {
   if (!hasSupabaseAdminConfig()) {
     return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
@@ -66,6 +74,26 @@ export async function PATCH(req: NextRequest) {
   const channelName = stringOrNull(body.slackDefaultChannelName);
   if (channelId !== undefined) patch.slackDefaultChannelId = channelId;
   if (channelName !== undefined) patch.slackDefaultChannelName = channelName;
+
+  const monitoredChannelIds = stringList(body.slackMonitoredChannelIds);
+  if (monitoredChannelIds !== undefined) {
+    const channels = await listSlackChannels(context.workspaceId);
+    const selected = monitoredChannelIds.map((id) => channels.find((channel) => channel.id === id)).filter((channel): channel is NonNullable<typeof channel> => Boolean(channel));
+    if (selected.length !== monitoredChannelIds.length) {
+      return NextResponse.json({ error: "slack_monitored_channel_not_found", message: "One or more monitored Slack channels are not accessible." }, { status: 404 });
+    }
+    if (selected.some((channel) => channel.isArchived || channel.isPrivate)) {
+      return NextResponse.json({ error: "slack_monitored_channel_unsupported", message: "Realtime beta monitoring is limited to active public Slack channels. Private channels require an explicit future opt-in." }, { status: 409 });
+    }
+    for (const channel of selected) {
+      const validation = await validateSlackAlertChannel({ workspaceId: context.workspaceId, channelId: channel.id, isPrivate: false, isMember: channel.isMember });
+      if (!validation.ready) {
+        return NextResponse.json({ error: "slack_monitored_channel_unavailable", message: "Auterim could not join one of the selected public channels. Choose another channel or reconnect Slack with channels:join permission." }, { status: 409 });
+      }
+    }
+    patch.slackMonitoredChannelIds = selected.map((channel) => channel.id);
+    patch.slackMonitoredChannelNames = selected.map((channel) => channel.name);
+  }
 
   for (const key of [
     "slackNotificationsEnabled",

@@ -29,15 +29,17 @@ const SLACK_AUTHORIZE_URL = "https://slack.com/oauth/v2/authorize";
 
 /**
  * Bot scopes, deliberately limited to what Auterim actually calls today:
+ *   app_mentions:read -> app_mention event subscriptions
  *   channels:read  -> conversations.list (public channels)
+ *   channels:history -> message.channels event subscriptions
  *   groups:read    -> conversations.list (private channels the bot is in)
  *   channels:join  -> conversations.join for the selected public alert channel
  *   chat:write     -> chat.postMessage for approved and internal messages
  * No history/read-message scope is requested because no Slack message read is
  * implemented; requesting one would broaden permissions for nothing.
  */
-export const SLACK_OAUTH_SCOPES = ["channels:read", "groups:read", "channels:join", "chat:write"];
-export const SLACK_READ_SCOPES = ["channels:read"];
+export const SLACK_OAUTH_SCOPES = ["app_mentions:read", "channels:read", "channels:history", "groups:read", "channels:join", "chat:write"];
+export const SLACK_READ_SCOPES = ["app_mentions:read", "channels:read", "channels:history"];
 export const SLACK_SEND_SCOPES = ["chat:write"];
 export const SLACK_JOIN_SCOPE = "channels:join";
 

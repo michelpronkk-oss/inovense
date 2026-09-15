@@ -30,12 +30,31 @@ type ClientFlowRun = {
   id: string;
   operator_key: string;
   status: string;
-  output: { title?: string; type?: string } | null;
+  output: {
+    title?: string;
+    type?: string;
+    provider?: string;
+    dealId?: string;
+    portalId?: string;
+    amount?: number | null;
+    currency?: string | null;
+    stage?: string | null;
+    recommendedActionTypes?: string[];
+  } | null;
   approval_id: string | null;
   error: string | null;
   created_at: string;
   completed_at: string | null;
 };
+
+function formatAmount(amount: number | null | undefined, currency: string | null | undefined): string | null {
+  if (typeof amount !== "number" || !Number.isFinite(amount)) return null;
+  try {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: currency || "USD", maximumFractionDigits: 0 }).format(amount);
+  } catch {
+    return `${currency || ""} ${amount}`.trim();
+  }
+}
 
 type ClientFlowScanResult = {
   status?: string;
@@ -140,10 +159,12 @@ export default function ClientFlowOperatorPage() {
     userEmail: state.currentUser.email,
   }), [state.currentUser.email, state.currentUser.id, state.workspace.id]);
 
-  const loadRuntime = useCallback(async () => {
+  const loadRuntime = useCallback(async (background = false) => {
     if (!state.workspace.id) return;
-    setLoading(true);
-    setError("");
+    if (!background) {
+      setLoading(true);
+      setError("");
+    }
     try {
       const readinessQs = new URLSearchParams(identityParams);
       readinessQs.set("operatorKey", "client_flow");
@@ -166,13 +187,26 @@ export default function ClientFlowOperatorPage() {
       setStatus(statusJson);
       setRuns(Array.isArray(runsJson.runs) ? runsJson.runs : []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load Client Flow runtime.");
+      if (!background) setError(err instanceof Error ? err.message : "Could not load Client Flow runtime.");
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   }, [identityParams, state.workspace.id]);
 
   useEffect(() => { void loadRuntime(); }, [loadRuntime]);
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible" && !scanSubmitting) void loadRuntime(true);
+    };
+    const timer = window.setInterval(refresh, 15_000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [loadRuntime, scanSubmitting]);
 
   const submitScan = async () => {
     setScanSubmitting(true);
@@ -295,12 +329,29 @@ export default function ClientFlowOperatorPage() {
                       <span className="badge amber">APPROVAL NEEDED</span>
                     </div>
                   ))}
-                  {runs.slice(0, 5).map((run) => (
-                    <div className="row" key={run.id}>
-                      <span className="grow"><span className="ttl">{run.output?.title || run.output?.type || "Client Flow run"}</span><span className="sub">{relativeTime(run.created_at)} · Approval: {run.approval_id || "none"}</span></span>
-                      <span className={`badge ${run.status === "completed" ? "green" : run.status === "failed" ? "red" : "amber"}`}>{run.status.toUpperCase()}</span>
-                    </div>
-                  ))}
+                  {runs.slice(0, 5).map((run) => {
+                    const isHubSpotHandoff = run.output?.type === "hubspot_client_handoff";
+                    const amountLabel = formatAmount(run.output?.amount, run.output?.currency);
+                    const dealHref = isHubSpotHandoff && run.output?.portalId && run.output?.dealId
+                      ? `https://app.hubspot.com/contacts/${run.output.portalId}/deal/${run.output.dealId}`
+                      : null;
+                    const rowBody = (
+                      <span className="grow">
+                        <span className="ttl">{run.output?.title || run.output?.type || "Client Flow run"}</span>
+                        <span className="sub">
+                          {isHubSpotHandoff
+                            ? `HubSpot · Closed won${run.output?.stage ? ` (${run.output.stage})` : ""}${amountLabel ? ` · ${amountLabel}` : ""} · ${relativeTime(run.created_at)}`
+                            : `${relativeTime(run.created_at)} · Approval: ${run.approval_id || "none"}`}
+                        </span>
+                      </span>
+                    );
+                    return (
+                      <div className="row" key={run.id}>
+                        {dealHref ? <a className="grow" href={dealHref} target="_blank" rel="noreferrer" style={{ textDecoration: "none", color: "inherit" }}>{rowBody}</a> : rowBody}
+                        <span className={`badge ${isHubSpotHandoff ? "amber" : run.status === "completed" ? "green" : run.status === "failed" ? "red" : "amber"}`}>{isHubSpotHandoff ? "REVIEW" : run.status.toUpperCase()}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

@@ -17,6 +17,8 @@ assert.match(callback, /os_connector_credentials/);
 assert.match(callback, /clearLegacyNangoConnection/);
 assert.match(slack, /resolveAccessTokenWithRefreshLock/);
 assert.match(slack, /chat:write/);
+assert.match(slack, /app_mentions:read/);
+assert.match(slack, /channels:history/);
 assert.match(legacy, /legacy Nango/);
 assert.match(truth, /connectorKey === SLACK_CONNECTOR_KEY/);
 assert.match(truth, /source: slackRow \? "native"/);

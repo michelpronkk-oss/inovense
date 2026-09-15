@@ -27,6 +27,7 @@
     "test:google-drive-connector": "node tests/google-drive-connector-smoke.mjs && node tests/google-drive-runtime-smoke.mjs",
     "test:google-drive-auth": "node tests/google-drive-connector-smoke.mjs && node tests/google-drive-runtime-smoke.mjs",
     "test:slack-direct-oauth": "node tests/slack-direct-oauth-smoke.mjs",
+    "test:slack-events": "node tests/slack-events-smoke.mjs && node --experimental-strip-types tests/slack-events-runtime-smoke.mjs",
     "test:trello-direct-auth": "node tests/trello-direct-auth-smoke.mjs",
     "test:hubspot-direct-oauth": "node tests/hubspot-direct-oauth-smoke.mjs",
     "test:nango-runtime-removal": "node tests/nango-runtime-removal-smoke.mjs",

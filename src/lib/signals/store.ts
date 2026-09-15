@@ -23,6 +23,12 @@ export type SignalIngestionResult = {
   candidatesSuppressed: number;
   routedByOperator: Record<string, number>;
   classificationFailures: number;
+  /** Every candidate produced by this batch with the persisted status that
+   * was actually written to os_signal_candidates. Callers that need to know
+   * whether a specific operator's candidate is live (not merely proposed)
+   * before triggering operator-specific materialization should read this
+   * instead of re-deriving eligibility themselves. */
+  candidates: Array<{ candidate: SignalCandidate; status: "routed" | "suppressed" }>;
 };
 
 function eventRow(event: SignalEvent, category: string) {
@@ -155,6 +161,7 @@ export async function ingestSignalBatch(input: {
     candidatesSuppressed: eligibility.filter((item) => !item.eligible).length,
     routedByOperator,
     classificationFailures: routed.filter((item) => item.decision.classificationFailed === true).length,
+    candidates: eligibility.map(({ candidate, eligible }) => ({ candidate, status: eligible ? "routed" as const : "suppressed" as const })),
   };
 }
 

@@ -2,6 +2,7 @@ import { task } from "@trigger.dev/sdk/v3";
 import { randomUUID } from "node:crypto";
 import { getStoredHubSpotCredential, hubSpotApiRequest, HubSpotConnectorError, HubSpotReconnectionRequiredError } from "@/lib/connectors/hubspot";
 import { isHubSpotSelfWriteEcho, normalizeHubSpotSnapshot, type HubSpotWebhookDescriptor } from "@/lib/connectors/hubspot-webhook";
+import { ensureHubSpotClientFlowHandoff, resolveSupersededHubSpotRevenueCandidate } from "@/lib/operators/client-flow/hubspot-handoff";
 import { claimProviderEvent, completeProviderEvent, failProviderEvent, getProviderEvent } from "@/lib/provider-events/store";
 import { hashProviderAccountId } from "@/lib/provider-events/types";
 import { ingestSignalBatch } from "@/lib/signals/store";
@@ -103,6 +104,54 @@ async function fetchSnapshot(input: {
   });
 }
 
+function numericProperty(value: unknown): number | null {
+  const parsed = typeof value === "string" ? Number(value) : typeof value === "number" ? value : NaN;
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function stringProperty(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+/**
+ * Turns a routed Client Flow HubSpot candidate into visible current work and
+ * resolves the superseded Revenue candidate for the same deal. Best-effort:
+ * the canonical signal and candidate are already durable at this point, so a
+ * failure here is logged rather than failing the whole webhook (matching
+ * ingestSignalBatch's existing best-effort workflow-materialization
+ * contract). It only runs once ownership has actually routed the candidate
+ * to Client Flow (status "routed", not "suppressed" by inactive/ineligible
+ * operator state).
+ */
+async function materializeClientFlowHandoff(input: {
+  workspaceId: string;
+  dealId: string;
+  portalId: string;
+  snapshot: JsonObject;
+  candidates: Awaited<ReturnType<typeof ingestSignalBatch>>["candidates"];
+  supabase: ReturnType<typeof createSupabaseAdmin>;
+}): Promise<void> {
+  const clientFlowCandidate = input.candidates.find((item) => item.candidate.operatorKey === "client_flow" && item.status === "routed");
+  if (!clientFlowCandidate) return;
+  const properties = record(input.snapshot.properties);
+  try {
+    await ensureHubSpotClientFlowHandoff({
+      supabase: input.supabase,
+      workspaceId: input.workspaceId,
+      dealId: input.dealId,
+      portalId: input.portalId,
+      candidate: clientFlowCandidate.candidate,
+      dealName: stringProperty(properties.dealname) ?? `HubSpot deal ${input.dealId}`,
+      amount: numericProperty(properties.amount),
+      currency: stringProperty(properties.deal_currency_code),
+      dealstage: stringProperty(properties.dealstage),
+    });
+    await resolveSupersededHubSpotRevenueCandidate({ supabase: input.supabase, workspaceId: input.workspaceId, dealId: input.dealId });
+  } catch (error) {
+    console.warn("[hubspot-webhook-process] client flow handoff materialization skipped", { workspaceId: input.workspaceId, dealId: input.dealId, error: error instanceof Error ? error.message : "Unknown handoff materialization error" });
+  }
+}
+
 export const hubspotWebhookProcess = task({
   id: "hubspot-webhook-process",
   retry: { maxAttempts: 5, factor: 2, minTimeoutInMs: 1_000, maxTimeoutInMs: 60_000, randomize: true },
@@ -141,7 +190,10 @@ export const hubspotWebhookProcess = task({
       }
       const snapshot = await fetchSnapshot({ workspaceId: event.workspace_id, credential, entityType: descriptor.entityType, entityId: descriptor.objectId, supabase });
       const signal = normalizeHubSpotSnapshot({ workspaceId: event.workspace_id, providerEventId: event.id, event: descriptor, snapshot });
-      await ingestSignalBatch({ workspaceId: event.workspace_id, events: [signal], supabase, materializeWorkflows: false });
+      const ingestResult = await ingestSignalBatch({ workspaceId: event.workspace_id, events: [signal], supabase, materializeWorkflows: false });
+      if (signal.entityType === "deal" && signal.metadata?.hubspotClosedWon === true) {
+        await materializeClientFlowHandoff({ workspaceId: event.workspace_id, dealId: descriptor.objectId, portalId: descriptor.portalId, snapshot, candidates: ingestResult.candidates, supabase });
+      }
       if (!await completeProviderEvent({ eventId: event.id, leaseToken, supabase })) throw new Error("provider_event_completion_conflict");
       await updateWebhookState({ workspaceId: event.workspace_id, status: "active", eventId: event.external_event_id, supabase });
       return { status: "processed", eventType: event.event_type };

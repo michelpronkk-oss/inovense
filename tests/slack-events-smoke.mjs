@@ -1,0 +1,41 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+
+const read = (path) => fs.readFileSync(path, "utf8");
+const events = read("src/lib/connectors/slack-events.ts");
+const route = read("src/app/api/connectors/slack/events/route.ts");
+const process = read("src/trigger/slack-event-process.ts");
+const settings = read("src/lib/settings/workspace-policy.ts");
+const recovery = read("src/trigger/provider-event-recovery.ts");
+const signalEngine = read("src/lib/signals/engine.ts");
+const executor = read("src/lib/operators/executors/slack.ts");
+
+assert.match(events, /createHmac\("sha256"/);
+assert.match(events, /timingSafeEqual/);
+assert.match(events, /v0:\$\{timestamp\}:\$\{input\.rawBody\}/);
+assert.match(events, /SLACK_EVENTS_MAX_CLOCK_SKEW_SECONDS = 5 \* 60/);
+assert.match(events, /SLACK_EVENTS_MAX_BODY_BYTES/);
+assert.match(route, /await request\.text\(\)/);
+assert.doesNotMatch(route, /request\.json\(\)/);
+assert.match(route, /url_verification/);
+assert.match(route, /hashProviderAccountId\("slack"/);
+assert.match(route, /ingestProviderEvent/);
+assert.match(route, /slackEventProcess\.trigger/);
+assert.match(route, /x-slack-retry-num/);
+assert.match(route, /x-slack-retry-reason/);
+assert.match(events, /slack\.app_mentioned/);
+assert.match(events, /slack\.message\.received/);
+assert.match(events, /!subtype && event\.channel_type === "channel"/);
+assert.match(route, /slackMonitoredChannelIds/);
+assert.match(settings, /slackMonitoredChannelIds/);
+assert.match(process, /getSlackCredential/);
+assert.match(process, /slack_credential_account_mismatch/);
+assert.match(process, /slack_self_write/);
+assert.match(process, /ingestSignalBatch/);
+assert.match(process, /lastSlackEventId/);
+assert.match(recovery, /slackEventProcess/);
+assert.match(signalEngine, /event\.metadata\?\.slackInbound === true/);
+assert.match(executor, /retryAfterSeconds/);
+assert.match(executor, /responseBody: \{ error:/);
+
+console.log("Slack realtime connector smoke contracts passed.");

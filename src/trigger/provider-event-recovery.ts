@@ -3,6 +3,7 @@ import { listRecoverableProviderEvents } from "@/lib/provider-events/store";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { gmailPushProcess } from "@/trigger/gmail-push-process";
 import { hubspotWebhookProcess } from "@/trigger/hubspot-webhook-process";
+import { slackEventProcess } from "@/trigger/slack-event-process";
 import { withTaskHeartbeat } from "@/lib/runtime/task-heartbeat";
 
 const RECOVERY_BATCH_SIZE = 200;
@@ -22,7 +23,8 @@ export const providerEventRecovery = schedules.task({
     for (const event of events) {
       const isGmail = event.provider === "gmail" && event.event_type === "gmail.history.changed";
       const isHubSpot = event.provider === "hubspot" && event.connector_key === "hubspot" && event.source_mode === "webhook" && event.event_type.startsWith("hubspot.");
-      if (!isGmail && !isHubSpot) {
+      const isSlack = event.provider === "slack" && event.connector_key === "slack" && event.source_mode === "webhook" && event.event_type.startsWith("slack.");
+      if (!isGmail && !isHubSpot && !isSlack) {
         unsupported += 1;
         continue;
       }
@@ -32,8 +34,10 @@ export const providerEventRecovery = schedules.task({
       );
       if (isGmail) {
         await gmailPushProcess.trigger({ providerEventId: event.id }, { idempotencyKey, idempotencyKeyTTL: "30d", concurrencyKey: event.connector_id });
-      } else {
+      } else if (isHubSpot) {
         await hubspotWebhookProcess.trigger({ providerEventId: event.id }, { idempotencyKey, idempotencyKeyTTL: "30d", concurrencyKey: event.connector_id });
+      } else {
+        await slackEventProcess.trigger({ providerEventId: event.id }, { idempotencyKey, idempotencyKeyTTL: "30d", concurrencyKey: event.connector_id });
       }
       enqueued += 1;
     }
