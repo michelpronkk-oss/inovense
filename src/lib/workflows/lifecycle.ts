@@ -3,6 +3,7 @@ import "server-only";
 import { deriveWorkflowStatus, type WorkflowStepStatus } from "@/lib/workflows/engine";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { materializeWorkflowStep } from "@/lib/workflows/materialize";
+import { triggerSlackLifecycleUpdate } from "@/lib/connectors/slack-acknowledgement";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 type StepRow = { id: string; workflow_id: string; workspace_id: string; status: WorkflowStepStatus; dependency_step_ids: unknown; approval_id: string | null };
@@ -19,12 +20,13 @@ function dependencyIds(value: unknown): string[] {
 export async function advanceWorkflow(input: { workflowId: string; workspaceId: string; supabase?: SupabaseAdmin }): Promise<{ status: string; updatedSteps: number }> {
   const supabase = input.supabase ?? createSupabaseAdmin();
   const [workflowResult, stepsResult] = await Promise.all([
-    supabase.from("os_workflow_runs").select("operator_key").eq("id", input.workflowId).eq("workspace_id", input.workspaceId).maybeSingle(),
+    supabase.from("os_workflow_runs").select("operator_key,status").eq("id", input.workflowId).eq("workspace_id", input.workspaceId).maybeSingle(),
     supabase.from("os_workflow_steps").select("id,workflow_id,workspace_id,status,dependency_step_ids,approval_id").eq("workflow_id", input.workflowId).eq("workspace_id", input.workspaceId).order("step_order"),
   ]);
   if (workflowResult.error || !workflowResult.data) throw new Error("Workflow not found.");
   if (stepsResult.error) throw new Error(`Workflow steps could not be loaded: ${stepsResult.error.message}`);
   const operator_key = String(workflowResult.data.operator_key);
+  const previousWorkflowStatus = String(workflowResult.data.status ?? "planned");
   const customerFacingOperators = ["support", "revenue", "client_flow"];
   const steps = (stepsResult.data ?? []) as StepRow[];
   const approvalIds = steps.flatMap((step) => step.approval_id ? [step.approval_id] : []);
@@ -64,6 +66,24 @@ export async function advanceWorkflow(input: { workflowId: string; workspaceId: 
   await Promise.all(steps.filter((step) => states.get(step.id) === "proposed" && dependencyIds(step.dependency_step_ids).every((dependency) => states.get(`${input.workflowId}:${dependency}`) === "completed")).map(async (step) => {
     try { await materializeWorkflowStep({ workflowId: input.workflowId, stepId: step.id, workspaceId: input.workspaceId, supabase }); } catch { /* a blocked next step is persisted by the materializer */ }
   }));
+  if (status !== previousWorkflowStatus) {
+    const lifecycleType = status === "awaiting_approval"
+      ? "approval_requested"
+      : status === "executing" || status === "partially_approved"
+        ? "approved"
+        : status === "completed"
+          ? "execution_succeeded"
+          : status === "partially_completed"
+            ? "execution_failed"
+          : status === "blocked" && [...approvalStatus.values()].some((value) => value === "rejected")
+            ? "rejected"
+            : status === "failed" ? "execution_failed" : null;
+    if (lifecycleType) {
+      await triggerSlackLifecycleUpdate({ workflowId: input.workflowId, workspaceId: input.workspaceId, updateType: lifecycleType, supabase }).catch((error) => {
+        console.warn("[workflow] Slack lifecycle update dispatch skipped", { workspaceId: input.workspaceId, workflowId: input.workflowId, updateType: lifecycleType, error: error instanceof Error ? error.message : "unknown" });
+      });
+    }
+  }
   return { status, updatedSteps };
 }
 

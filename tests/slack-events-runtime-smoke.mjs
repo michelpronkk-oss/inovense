@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
-import { isSlackRequestTimestampFresh, parseSlackEventPayload, verifySlackRequestSignature } from "../src/lib/connectors/slack-events.ts";
+import { isSlackRequestTimestampFresh, parseSlackEventPayload, stripSlackMentionMarkup, verifySlackRequestSignature } from "../src/lib/connectors/slack-events.ts";
 
 const timestamp = String(Math.floor(Date.now() / 1000));
 const rawBody = JSON.stringify({ type: "url_verification", challenge: "challenge-123" });
@@ -17,6 +17,7 @@ const mention = parseSlackEventPayload(JSON.stringify({ type: "event_callback", 
 assert.equal(mention.eventType, "slack.app_mentioned");
 const channelMessage = parseSlackEventPayload(JSON.stringify({ type: "event_callback", event_id: "Ev-2", team_id: "T-1", event: { type: "message", channel_type: "channel", channel: "C-1", ts: "2.000", thread_ts: "1.000", user: "U-1", text: "blocked on the rollout" } }));
 assert.equal(channelMessage.eventType, "slack.message.received");
+assert.equal(stripSlackMentionMarkup("<@U123> please prepare pricing <!subteam^S123|@sales>"), "please prepare pricing");
 assert.throws(() => parseSlackEventPayload(JSON.stringify({ type: "event_callback", event_id: "Ev-3", team_id: "T-1", event: { type: "message", subtype: "message_changed", channel_type: "channel", channel: "C-1", ts: "3.000", text: "changed" } })), /slack_event_type_unsupported/);
 
 console.log("Slack signature and event parser runtime smoke passed.");

@@ -2,6 +2,7 @@ import type { SignalCandidate, SignalCategory, SignalEvent, SignalPriority } fro
 import { classifyInboundSignalEvent, type InboundActionability, type InboundClassification, type InboundOperatorKey, type RevenueIntentSignal } from "@/lib/signals/inbound";
 import { arbitrateSignalOwnership } from "@/lib/workforce/ownership";
 import { explicitBusinessProblemKey } from "@/lib/workflows/identity";
+import { stripSlackMentionMarkup } from "@/lib/connectors/slack-events";
 
 export const SIGNAL_ENGINE_VERSION = "2026-09-08";
 
@@ -72,6 +73,15 @@ function safeMetadata(value: Record<string, unknown>): Record<string, unknown> {
     if (typeof item === "string") safe[key] = item.slice(0, 240);
     else if (typeof item === "number" || typeof item === "boolean" || item === null) safe[key] = item;
     else if (Array.isArray(item)) safe[key] = item.slice(0, 20).filter((entry) => typeof entry === "string" || typeof entry === "number" || typeof entry === "boolean").map((entry) => typeof entry === "string" ? entry.slice(0, 120) : entry);
+    else if (key === "slackOrigin" && item && typeof item === "object" && !Array.isArray(item)) {
+      const origin = item as Record<string, unknown>;
+      safe[key] = {
+        teamId: typeof origin.teamId === "string" ? origin.teamId.slice(0, 80) : null,
+        channelId: typeof origin.channelId === "string" ? origin.channelId.slice(0, 120) : null,
+        messageTs: typeof origin.messageTs === "string" ? origin.messageTs.slice(0, 80) : null,
+        threadTs: typeof origin.threadTs === "string" ? origin.threadTs.slice(0, 80) : null,
+      };
+    }
     return safe;
   }, {});
 }
@@ -93,7 +103,10 @@ export function createSignalId(event: SignalEvent): string {
 export function normalizeSignalEvent(event: SignalEvent, observedAt = new Date().toISOString()): SignalEvent {
   const occurredAt = event.occurredAt || event.receivedAt || null;
   const source = event.source || event.connectorKey || event.provider || "unknown";
-  const safePreview = (event.snippet || event.subject || "").replace(/\s+/g, " ").trim().slice(0, 320) || null;
+  const previewSource = event.connectorKey === "slack" || event.provider === "slack"
+    ? stripSlackMentionMarkup(event.snippet || event.subject || "")
+    : (event.snippet || event.subject || "");
+  const safePreview = previewSource.replace(/\s+/g, " ").trim().slice(0, 320) || null;
   const normalized: SignalEvent = {
     ...event,
     id: event.id || createSignalId(event),
@@ -198,6 +211,9 @@ export function classifySignalEvent(event: SignalEvent, now = new Date()): Signa
 
 function candidateFor(event: SignalEvent, decision: SignalDecision, operatorKey: string, inbound?: InboundClassification, inboundDedupeKey?: string): SignalCandidate {
   const problemKey = explicitBusinessProblemKey(event.metadata);
+  const slackOrigin = event.metadata?.slackInbound === true && typeof event.metadata.channelId === "string" && typeof event.metadata.messageTs === "string"
+    ? { teamId: typeof event.metadata.teamId === "string" ? event.metadata.teamId.slice(0, 80) : null, channelId: event.metadata.channelId.slice(0, 120), messageTs: event.metadata.messageTs.slice(0, 80), threadTs: typeof event.metadata.threadTs === "string" ? event.metadata.threadTs.slice(0, 80) : null }
+    : null;
   const identityAnchor = problemKey ? `business_problem:${problemKey}` : `${event.connectorKey || event.source}:${event.sourceId}`;
   const dedupeKey = problemKey
     ? bounded([event.workspaceId, operatorKey, identityAnchor, "business_work"].join(":"), 480)
@@ -222,6 +238,7 @@ function candidateFor(event: SignalEvent, decision: SignalDecision, operatorKey:
       sourceType: event.sourceType,
       sourceParentId: event.sourceParentId ?? null,
       businessProblemKey: problemKey,
+      ...(slackOrigin ? { slackOrigin } : {}),
       ...(inbound ? {
         primaryIntent: inbound.primaryIntent,
         secondaryIntents: inbound.secondaryIntents,
@@ -238,7 +255,7 @@ function candidateFor(event: SignalEvent, decision: SignalDecision, operatorKey:
     routeReason: `Central signal routing: ${decision.reasonCodes.join(", ")}.`,
     status: "candidate",
     createdAt: event.observedAt ?? undefined,
-    metadata: { category: decision.category, connectorKey: event.connectorKey, trustLevel: event.trustLevel, ...(problemKey ? { businessProblemKey: problemKey } : {}) },
+    metadata: { category: decision.category, connectorKey: event.connectorKey, trustLevel: event.trustLevel, ...(slackOrigin ? { slackOrigin } : {}), ...(problemKey ? { businessProblemKey: problemKey } : {}) },
     actionability: decision.actionability,
     primaryIntent: decision.primaryIntent,
     supportingOperators: decision.supportingOperators,

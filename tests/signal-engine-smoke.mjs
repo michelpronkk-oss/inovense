@@ -19,7 +19,8 @@ async function loadEngine() {
   const source = fs.readFileSync(path.join(root, "src/lib/signals/engine.ts"), "utf8")
     .replace('import { classifyInboundSignalEvent, type InboundActionability, type InboundClassification, type InboundOperatorKey, type RevenueIntentSignal } from "@/lib/signals/inbound";\n', () => `${inbound}\n`)
     .replace('import { arbitrateSignalOwnership } from "@/lib/workforce/ownership";\n', `${ownership}\n`)
-    .replace('import { explicitBusinessProblemKey } from "@/lib/workflows/identity";\n', `${identity}\n`);
+    .replace('import { explicitBusinessProblemKey } from "@/lib/workflows/identity";\n', `${identity}\n`)
+    .replace('import { stripSlackMentionMarkup } from "@/lib/connectors/slack-events";\n', 'const stripSlackMentionMarkup = (value) => value.replace(/<@[UW][A-Z0-9]+>/gi, " ").replace(/<!subteam\\^[A-Z0-9]+(?:\\|[^>]+)?>/gi, " ").replace(/<!(?:channel|everyone|here)>/gi, " ").replace(/\\s+/g, " ").trim();\n');
   const { code } = esbuild.transformSync(source, { loader: "ts", format: "esm", target: "node18" });
   const file = path.join(tmpDir, "engine.mjs");
   fs.writeFileSync(file, code, "utf8");

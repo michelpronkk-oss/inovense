@@ -57,6 +57,17 @@ export function safeSlackText(value: unknown, max = 500): string {
     : "";
 }
 
+/** Removes Slack mention tokens from previews while preserving bounded source
+ * text in provider-event metadata for audit and correlation. */
+export function stripSlackMentionMarkup(value: string): string {
+  return value
+    .replace(/<@[UW][A-Z0-9]+>/gi, " ")
+    .replace(/<!subteam\^[A-Z0-9]+(?:\|[^>]+)?>/gi, " ")
+    .replace(/<!(?:channel|everyone|here)>/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function isSlackRequestTimestampFresh(timestamp: string | null | undefined, nowMs = Date.now()): boolean {
   if (!timestamp || !/^\d{1,12}$/.test(timestamp)) return false;
   const seconds = Number(timestamp);

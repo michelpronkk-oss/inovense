@@ -1,4 +1,4 @@
-import { task } from "@trigger.dev/sdk/v3";
+import { idempotencyKeys, task } from "@trigger.dev/sdk/v3";
 import { randomUUID } from "node:crypto";
 import { getStoredSlackCredential as getSlackCredential } from "@/lib/connectors/slack";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
@@ -7,10 +7,16 @@ import { claimProviderEvent, completeProviderEvent, failProviderEvent, getProvid
 import { hashProviderAccountId } from "@/lib/provider-events/types";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { SlackExecutionError, slackRequest } from "@/lib/operators/executors/slack";
+import { slackMentionAcknowledge } from "@/trigger/slack-mention-acknowledge";
 
 type JsonObject = Record<string, unknown>;
 
 const SUPPORTED_EVENT_TYPES = new Set(["slack.app_mentioned", "slack.message.received"]);
+
+async function dispatchMentionAcknowledgement(providerEventId: string): Promise<void> {
+  const idempotencyKey = await idempotencyKeys.create(`slack-acknowledgement:${providerEventId}`, { scope: "global" });
+  await slackMentionAcknowledge.trigger({ providerEventId }, { idempotencyKey, idempotencyKeyTTL: "30d" });
+}
 
 function record(value: unknown): JsonObject {
   return value && typeof value === "object" && !Array.isArray(value) ? value as JsonObject : {};
@@ -152,6 +158,7 @@ export const slackEventProcess = task({
         trustLevel: "untrusted_provider_content" as const,
         metadata: {
           slackInbound: true,
+          slackAppMentioned: isMention,
           slackEventId: event.external_event_id,
           channelId: String(metadata.channelId),
           channelName,
@@ -159,9 +166,26 @@ export const slackEventProcess = task({
           messageTs: String(metadata.eventTs),
           teamId: String(metadata.teamId),
           sourceProviderEventId: event.id,
+          slackOrigin: {
+            teamId: String(metadata.teamId),
+            channelId: String(metadata.channelId),
+            messageTs: String(metadata.eventTs),
+            threadTs: stringValue(metadata.threadTs, 80),
+          },
         },
       };
       const result = await ingestSignalBatch({ workspaceId: event.workspace_id, events: [signal], supabase });
+      // The message.channels and app_mention deliveries share this identity.
+      // Only the direct mention is allowed to upgrade the canonical signal;
+      // the plain message delivery can never erase that fact.
+      if (isMention) {
+        const persisted = await supabase.from("os_signal_events").select("id,metadata").eq("workspace_id", event.workspace_id).eq("connector_key", "slack").eq("source_type", "slack_message").eq("source_id", String(metadata.eventTs)).maybeSingle();
+        if (persisted.data?.id) {
+          const previous = record(persisted.data.metadata);
+          await supabase.from("os_signal_events").update({ metadata: { ...previous, slackInbound: true, slackAppMentioned: true, slackOrigin: signal.metadata.slackOrigin, sourceProviderEventId: event.id } }).eq("workspace_id", event.workspace_id).eq("id", persisted.data.id);
+        }
+        await dispatchMentionAcknowledgement(event.id);
+      }
       if (!await completeProviderEvent({ eventId: event.id, leaseToken, supabase })) throw new Error("provider_event_completion_conflict");
       await updateSlackState({ workspaceId: event.workspace_id, eventId: event.external_event_id, status: "active", supabase });
       return { status: "processed", eventType: event.event_type, candidates: result.candidatesProduced, workflows: result.workflowCandidates };
@@ -173,7 +197,10 @@ export const slackEventProcess = task({
         : Math.min(3600, 10 * 2 ** Math.min(event.attempt_count, 8));
       await failProviderEvent({ eventId: event.id, leaseToken, errorCode, permanent, retryAfterSeconds: retryAfter, supabase }).catch(() => undefined);
       await updateSlackState({ workspaceId: event.workspace_id, eventId: event.external_event_id, status: "failed", errorCode, supabase }).catch(() => undefined);
-      if (permanent) return { status: "failed", errorCode };
+      if (permanent) {
+        if (event.event_type === "slack.app_mentioned") await dispatchMentionAcknowledgement(event.id).catch(() => undefined);
+        return { status: "failed", errorCode };
+      }
       throw new Error(errorCode);
     }
   },

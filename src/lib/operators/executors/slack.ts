@@ -337,7 +337,7 @@ export type SlackJoinResult = {
 };
 
 /**
- * Attempt to join a public channel so Inovense can post internal alerts there.
+ * Attempt to join a public channel so Auterim can post internal alerts there.
  * Never joins private channels (Slack requires an explicit invite) and never
  * sends a message. Tokens are never logged.
  *

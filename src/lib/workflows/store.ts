@@ -44,7 +44,13 @@ export async function createWorkflowFromSignalCandidate(input: { workspaceId: st
     supporting_operator: null,
     supporting_operators: input.candidate.supportingOperators ?? [],
     requested_outcome: workflow.objective,
-    relevant_context: { source: input.candidate.source, signalType: input.candidate.signalType },
+    relevant_context: {
+      source: input.candidate.source,
+      signalType: input.candidate.signalType,
+      ...(input.candidate.metadata?.slackOrigin && typeof input.candidate.metadata.slackOrigin === "object"
+        ? { slackOrigin: input.candidate.metadata.slackOrigin }
+        : {}),
+    },
     external_communication_allowed: ["revenue", "client_flow", "support"].includes(workflow.operatorKey),
     external_communication_owner: ["revenue", "client_flow", "support"].includes(workflow.operatorKey) ? workflow.operatorKey : null,
     return_condition: "provider_outcome_observed",

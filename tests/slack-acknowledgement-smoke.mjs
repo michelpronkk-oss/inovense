@@ -1,0 +1,44 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+
+const read = (path) => fs.readFileSync(path, "utf8");
+const ack = read("src/lib/connectors/slack-acknowledgement.ts");
+const copy = read("src/lib/connectors/slack-acknowledgement-copy.ts");
+const ledger = read("supabase/migrations/20260915_slack_thread_updates.sql");
+const process = read("src/trigger/slack-event-process.ts");
+const lifecycle = read("src/lib/workflows/lifecycle.ts");
+const webhook = read("src/app/api/connectors/slack/events/route.ts");
+const signalEngine = read("src/lib/signals/engine.ts");
+
+assert.match(ledger, /os_slack_thread_updates/);
+assert.match(ledger, /unique \(workspace_id, channel_id, source_message_ts, update_type\)/);
+assert.match(ledger, /claim_os_slack_thread_update/);
+assert.match(ack, /workspaceId\}:slack:\$\{input\.channelId\}:\$\{input\.messageTs\}:\$\{input\.updateType\}/);
+assert.match(ack, /chat\.postMessage/);
+assert.match(ack, /thread_ts: threadTs/);
+assert.match(ack, /unfurl_links: false/);
+assert.match(ack, /unfurl_media: false/);
+assert.match(ack, /slack\.acknowledgement_sent/);
+assert.match(ack, /lastAcknowledgementAt/);
+assert.match(ack, /lastAcknowledgedMessageTs/);
+assert.match(ack, /lastAcknowledgementStatus/);
+assert.match(ack, /details\.status === 429/);
+assert.doesNotMatch(ack, /sendSlackApprovalNotification/);
+assert.match(ack, /threadTs = text\(metadata\.threadTs, 80\) \?\? messageTs/);
+assert.match(process, /slackAppMentioned/);
+assert.match(process, /slackOrigin/);
+assert.match(process, /dispatchMentionAcknowledgement/);
+assert.match(webhook, /slackEventProcess\.trigger/);
+assert.doesNotMatch(webhook, /chat\.postMessage|sendSlack/);
+assert.match(lifecycle, /approval_requested/);
+assert.match(lifecycle, /execution_succeeded/);
+assert.match(lifecycle, /triggerSlackLifecycleUpdate/);
+assert.match(copy, /Revenue Operator/);
+assert.match(copy, /Client Flow Operator/);
+assert.match(copy, /Operations Operator/);
+assert.match(copy, /Support Operator/);
+assert.match(copy, /No external action has been taken/);
+assert.match(copy, /Er is nog geen externe actie uitgevoerd/);
+assert.match(signalEngine, /stripSlackMentionMarkup/);
+
+console.log("Slack acknowledgement smoke contracts passed.");
