@@ -238,6 +238,22 @@ export const ACTION_REGISTRY: Record<ActionType, ActionDefinition> = {
     allowedExecutionAdapters: ["intercom"],
     canAutoExecute: false,
   },
+  // Platform-internal: records a recommendation inside Auterim itself, never
+  // a third-party write. No connector is ever required for this step - see
+  // isInternalCapability() and its use in validateWorkflowPlan. Because it
+  // performs no external action, it needs no human approval gate; only a
+  // later, distinct step (email, Slack send, CRM mutation, external task)
+  // remains approval-gated.
+  prepare_internal_recommendation: {
+    actionType: "prepare_internal_recommendation",
+    capability: "internal.recommendation.write",
+    connectorCategory: "internal",
+    defaultConnectorKey: "auterim",
+    riskLevel: "low",
+    approvalDefault: false,
+    allowedExecutionAdapters: ["auterim"],
+    canAutoExecute: true,
+  },
 };
 
 export function getActionDefinition(actionType: ActionType): ActionDefinition {

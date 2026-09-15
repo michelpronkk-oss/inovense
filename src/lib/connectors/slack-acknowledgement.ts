@@ -140,7 +140,7 @@ async function loadFacts(input: { eventId: string; updateType: SlackThreadUpdate
   const candidate = record(candidateResult.data);
   if (candidateResult.error) throw new Error("slack_ack_candidate_lookup_failed");
   const workflowResult = signalId
-    ? await input.supabase.from("os_workflow_runs").select("id,status,operator_key,relevant_context").eq("workspace_id", providerEvent.workspace_id).eq("originating_signal_id", signalId).order("created_at", { ascending: false }).limit(1).maybeSingle()
+    ? await input.supabase.from("os_workflow_runs").select("id,status,operator_key,relevant_context,result_evidence").eq("workspace_id", providerEvent.workspace_id).eq("originating_signal_id", signalId).order("created_at", { ascending: false }).limit(1).maybeSingle()
     : { data: null, error: null };
   const workflow = record(workflowResult.data);
   if (workflowResult.error) throw new Error("slack_ack_workflow_lookup_failed");
@@ -152,9 +152,28 @@ async function loadFacts(input: { eventId: string; updateType: SlackThreadUpdate
   if (approval.error) throw new Error("slack_ack_approval_lookup_failed");
   const approvalStatus = text(approval.data?.status, 80);
   const workflowStatus = text(workflow.status, 80);
-  const state = input.updateType === "acknowledgement" && providerEvent.status === "failed"
-    ? "processing_failure"
-    : updateState(input.updateType, workflowStatus, candidate, approvalStatus);
+
+  // A platform-internal recommendation is a fundamentally different kind of
+  // "completed" than a connector-executed action: nothing external ran, so
+  // it must never read as execution_succeeded. Its own step status is the
+  // authoritative source of truth for whether the substantive artifact
+  // actually exists yet - never the generic connector-based state machine.
+  const internalRecommendationStep = (steps.data ?? []).find((step) => step.action_type === "prepare_internal_recommendation") ?? null;
+  const internalRecommendation = record(record(workflow.result_evidence).internalRecommendation);
+  const recommendedNextStepByLanguage = record(internalRecommendation.recommendedNextStep);
+  const recommendedNextStepText = text(recommendedNextStepByLanguage[language], 900);
+
+  let state: SlackReplyState;
+  if (input.updateType === "acknowledgement" && providerEvent.status === "failed") {
+    state = "processing_failure";
+  } else if (internalRecommendationStep) {
+    if (internalRecommendationStep.status === "completed" && recommendedNextStepText) state = "recommendation_ready";
+    else if (["blocked", "failed", "rejected", "skipped"].includes(String(internalRecommendationStep.status))) state = candidate.status === "routed" ? "routed" : "non_actionable";
+    else state = "workflow_created";
+  } else {
+    state = updateState(input.updateType, workflowStatus, candidate, approvalStatus);
+  }
+
   const operatorKey = text(candidate.operator_key, 80) ?? text(workflow.operator_key, 80);
   const workflowUrl = workflowId ? `${getAppUrl()}${getAppRoute(`/workflows?workflow=${encodeURIComponent(workflowId)}`)}` : null;
   const approvalUrl = approvalId ? `${getAppUrl()}${getAppRoute(`/approvals#approval-review-${encodeURIComponent(approvalId)}`)}` : null;
@@ -166,6 +185,7 @@ async function loadFacts(input: { eventId: string; updateType: SlackThreadUpdate
     confidence: candidate.confidence === "high" || candidate.confidence === "medium" || candidate.confidence === "low" ? candidate.confidence : null,
     workflowUrl,
     approvalUrl,
+    recommendedNextStepText: state === "recommendation_ready" ? recommendedNextStepText : null,
   };
   return {
     context: { workspaceId: providerEvent.workspace_id, connectorId: providerEvent.connector_id, channelId, messageTs, threadTs, updateType: input.updateType },

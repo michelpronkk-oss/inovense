@@ -1,6 +1,6 @@
 import { getActionDefinition } from "@/lib/actions/registry";
 import type { ActionType } from "@/lib/actions/types";
-import { connectorHasCapability } from "@/lib/connectors/capabilities";
+import { connectorHasCapability, isInternalCapability } from "@/lib/connectors/capabilities";
 import type { SignalCandidate } from "@/lib/signals/types";
 import { canonicalBusinessProblemWorkflowDedupeKey, canonicalWorkflowDedupeKey, explicitBusinessProblemKey } from "@/lib/workflows/identity";
 
@@ -46,6 +46,19 @@ const PM_PREFERENCE = ["jira", "asana", "trello"];
 
 export function chooseProjectConnector(connectedConnectorKeys: string[], executableConnectorKeys: string[]): string | null {
   return PM_PREFERENCE.find((connector) => connectedConnectorKeys.includes(connector) && executableConnectorKeys.includes(connector)) ?? null;
+}
+
+/**
+ * Unlike chooseProjectConnector's fixed jira > asana > trello preference
+ * (used where a workspace is expected to have configured at most one PM
+ * tool for that flow), this never guesses when workspace configuration
+ * itself does not identify a single destination: it returns a connector
+ * only when exactly one PM tool is both connected and executable, and
+ * returns null (never a guess) when zero or more than one qualify.
+ */
+export function chooseUnambiguousProjectConnector(connectedConnectorKeys: string[], executableConnectorKeys: string[]): string | null {
+  const ready = PM_PREFERENCE.filter((connector) => connectedConnectorKeys.includes(connector) && executableConnectorKeys.includes(connector));
+  return ready.length === 1 ? ready[0] : null;
 }
 
 function step(input: Omit<WorkflowStep, "id" | "status"> & { id: string }): WorkflowStep {
@@ -106,7 +119,27 @@ export function planCandidateWorkflow(input: { candidate: SignalCandidate; signa
     if (input.context.executableConnectorKeys.includes("slack")) steps.push(step({ id: "internal-escalation", order: steps.length + 1, actionType: "send_slack_message", connectorKey: "slack", targetRef: null, payloadRef: "derived:delivery_escalation", dependencyStepIds: steps.length ? ["pm-follow-up"] : [], risk: "low", approvalRequired: true, reason: "Prepare an internal delivery escalation." }));
     return { ...base, objective: "Recover delivery risk", steps };
   }
-  if (operatorKey === "revenue" && ["sales_opportunity", "commercial_intent"].includes(candidate.signalType) && input.context.executableConnectorKeys.some((key) => ["gmail", "microsoft"].includes(key))) {
+  // A Slack candidate's sourceId is the message timestamp, not an email
+  // address or thread id - it must never be targeted by the email follow-up
+  // template below, even when gmail/microsoft happen to be connected in the
+  // same workspace. The recommended next step for an explicit Slack mention
+  // is always prepared: as an external PM task when exactly one project
+  // management connector is connected and executable, or - when zero are
+  // connected, or workspace configuration does not identify a single
+  // preferred destination among several connected PM tools - as a bounded,
+  // connector-independent internal Auterim recommendation. It is never a
+  // customer-facing message or a CRM mutation, and never guesses a
+  // destination the workspace has not made unambiguous.
+  if (operatorKey === "revenue" && ["sales_opportunity", "commercial_intent"].includes(candidate.signalType) && candidate.source === "slack") {
+    const pmConnector = chooseUnambiguousProjectConnector(input.context.connectedConnectorKeys, input.context.executableConnectorKeys);
+    const steps: WorkflowStep[] = [];
+    if (pmConnector === "jira") steps.push(step({ id: "prepare-recommendation", order: 1, actionType: "create_jira_issue", connectorKey: pmConnector, targetRef: null, payloadRef: "derived:slack_recommendation", dependencyStepIds: [], risk: "medium", approvalRequired: true, reason: "Prepare the recommended next step as an internal, reviewable task." }));
+    else if (pmConnector === "asana") steps.push(step({ id: "prepare-recommendation", order: 1, actionType: "create_asana_task", connectorKey: pmConnector, targetRef: null, payloadRef: "derived:slack_recommendation", dependencyStepIds: [], risk: "medium", approvalRequired: true, reason: "Prepare the recommended next step as an internal, reviewable task." }));
+    else if (pmConnector === "trello") steps.push(step({ id: "prepare-recommendation", order: 1, actionType: "create_task", connectorKey: pmConnector, targetRef: null, payloadRef: "derived:slack_recommendation", dependencyStepIds: [], risk: "medium", approvalRequired: true, reason: "Prepare the recommended next step as an internal, reviewable task." }));
+    else steps.push(step({ id: "prepare-recommendation", order: 1, actionType: "prepare_internal_recommendation", connectorKey: "auterim", targetRef: null, payloadRef: "derived:slack_recommendation", dependencyStepIds: [], risk: "low", approvalRequired: false, reason: "No single project-management destination is connected and unambiguous; record the recommended next step as an internal Auterim recommendation instead of guessing." }));
+    return { ...base, objective: "Prepare recommended next step for Slack request", steps };
+  }
+  if (operatorKey === "revenue" && ["sales_opportunity", "commercial_intent"].includes(candidate.signalType) && candidate.source !== "slack" && input.context.executableConnectorKeys.some((key) => ["gmail", "microsoft"].includes(key))) {
     const emailConnector = input.context.executableConnectorKeys.includes("gmail") ? "gmail" : "microsoft";
     return { ...base, objective: "Follow up on sales opportunity", steps: [step({ id: "customer-follow-up", order: 1, actionType: "send_email", connectorKey: emailConnector, targetRef: candidate.sourceId, payloadRef: "derived:commercial_follow_up", dependencyStepIds: [], risk: "high", approvalRequired: true, reason: "Prepare an independently reviewable commercial follow-up." })] };
   }
@@ -118,8 +151,14 @@ export function validateWorkflowPlan(plan: WorkflowPlan, context: WorkflowPlanni
   const ids = new Set(plan.steps.map((item) => item.id));
   const validSteps = plan.steps.filter((item) => {
     const def = getActionDefinition(item.actionType);
-    if (!def || !def.allowedExecutionAdapters.includes(item.connectorKey) || !connectorHasCapability(item.connectorKey, def.capability)) { reasons.push(`unsupported_action:${item.id}`); return false; }
-    if (!context.connectedConnectorKeys.includes(item.connectorKey) || !context.executableConnectorKeys.includes(item.connectorKey)) { reasons.push(`connector_not_ready:${item.id}`); return false; }
+    if (!def) { reasons.push(`unsupported_action:${item.id}`); return false; }
+    // A platform-internal capability (e.g. prepare_internal_recommendation)
+    // performs no external write and therefore needs no connector at all -
+    // it must never be rejected as "connector not ready".
+    if (!isInternalCapability(def.capability)) {
+      if (!def.allowedExecutionAdapters.includes(item.connectorKey) || !connectorHasCapability(item.connectorKey, def.capability)) { reasons.push(`unsupported_action:${item.id}`); return false; }
+      if (!context.connectedConnectorKeys.includes(item.connectorKey) || !context.executableConnectorKeys.includes(item.connectorKey)) { reasons.push(`connector_not_ready:${item.id}`); return false; }
+    }
     if (item.dependencyStepIds.some((dependency) => !ids.has(dependency) || dependency === item.id)) { reasons.push(`invalid_dependency:${item.id}`); return false; }
     if ((item.payloadRef?.length ?? 0) > 240 || (item.targetRef?.length ?? 0) > 240) { reasons.push(`unbounded_reference:${item.id}`); return false; }
     return true;

@@ -124,6 +124,30 @@ export function normalizeSignalEvent(event: SignalEvent, observedAt = new Date()
   return normalized;
 }
 
+/**
+ * A direct Slack app mention carrying an explicit internal-action imperative
+ * ("prepare the recommended next step", "review this opportunity") is a
+ * request for work, not passive observation. This list is intentionally
+ * bounded and deterministic - it only elevates priority for an already
+ * non-suppressed, already-owned candidate so it can clear the workflow
+ * materialization threshold; it never invents ownership or actionability
+ * that classification did not already establish, and it never applies to
+ * passive channel chatter (slack.message.received) or to email/Microsoft
+ * signals.
+ */
+const SLACK_EXPLICIT_INSTRUCTION_PATTERNS: RegExp[] = [
+  /\bprepare (?:the )?recommended next step\b/i,
+  /\breview this (?:opportunity|request|deal|thread|issue)?\b/i,
+  /\binvestigate this (?:blocker|issue|problem)?\b/i,
+  /\bsummari[sz]e (?:the|this) issue\b/i,
+  /\bprepare a response\b/i,
+  /\bprepare (?:a |the )?(?:draft|recommendation)\b/i,
+];
+
+export function hasExplicitSlackInstruction(text: string): boolean {
+  return SLACK_EXPLICIT_INSTRUCTION_PATTERNS.some((pattern) => pattern.test(text));
+}
+
 function priorityLevel(priority: number): SignalPriority {
   if (priority >= 85) return "critical";
   if (priority >= 65) return "high";
@@ -334,6 +358,17 @@ export function routeSignalEvent(input: SignalEvent, now = new Date(), options?:
       };
     }
     const decision = decisionFromInbound(inbound.classification);
+    // Only a direct app mention (not the passive message.channels delivery of
+    // the same message) can carry an explicit internal-action imperative.
+    // This never rescues a suppressed/unowned message into work; it only
+    // raises the priority of an already-actionable, already-owned candidate
+    // so it can clear the workflow materialization threshold.
+    if (event.metadata?.slackAppMentioned === true && !decision.suppressed && decision.primaryOperator && decision.priority < 65 && hasExplicitSlackInstruction(event.snippet ?? "")) {
+      decision.priority = 65;
+      decision.priorityLevel = priorityLevel(65);
+      decision.urgency = urgencyFor(65);
+      decision.reasonCodes = [...decision.reasonCodes, "slack:explicit_instruction"];
+    }
     if (decision.suppressed || !decision.primaryOperator) return { event, decision, candidates: [] };
     return {
       event,

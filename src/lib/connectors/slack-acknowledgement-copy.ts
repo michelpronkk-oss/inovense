@@ -2,6 +2,7 @@ export type SlackReplyLanguage = "en" | "nl";
 export type SlackReplyState =
   | "routed"
   | "workflow_created"
+  | "recommendation_ready"
   | "approval_required"
   | "non_actionable"
   | "processing_failure"
@@ -20,6 +21,11 @@ export type SlackAcknowledgementFacts = {
   confidence?: "low" | "medium" | "high" | null;
   workflowUrl?: string | null;
   approvalUrl?: string | null;
+  /** The already-persisted, language-matched internal recommendation text
+   * (os_workflow_runs.result_evidence.internalRecommendation). Required
+   * whenever state is "recommendation_ready" - never fabricated at compose
+   * time, only ever read back from durable evidence. */
+  recommendedNextStepText?: string | null;
 };
 
 const operatorNames: Record<string, string> = {
@@ -98,22 +104,45 @@ export function composeSlackReply(facts: SlackAcknowledgementFacts): string {
   const intent = facts.intentLabel ?? "actionable work";
   const confidence = facts.confidence === "high" ? (language === "nl" ? "hoge zekerheid" : "high confidence") : null;
   const classified = confidence ? `${intent} ${confidence}` : intent;
+  // No os_workflow_runs row exists yet for this candidate. Only state what is
+  // persisted - classification and routing - never that preparation has
+  // started, which is a distinct, later, workflow-backed fact (see the
+  // "workflow_created" branch below).
+  if (facts.state === "routed") {
+    return language === "nl"
+      ? `Begrepen. Ik heb dit herkend als ${classified} en doorgestuurd naar de ${operator}. Er is nog geen externe actie uitgevoerd.`
+      : `Got it. I classified this as ${classified} and routed it to the ${operator}. No external action has been taken.`;
+  }
   if (facts.state === "approval_required" || facts.state === "approval_requested") {
     return language === "nl"
       ? `Begrepen. Ik heb dit herkend als ${classified} en doorgestuurd naar de ${operator}. De voorgestelde actie wacht op menselijke goedkeuring. Er is nog geen externe actie uitgevoerd.${facts.approvalUrl ? ` Bekijk de goedkeuring: ${facts.approvalUrl}` : ""}`
       : `Got it. I classified this as ${classified} and routed it to the ${operator}. The proposed action is awaiting human approval. No external action has been taken.${facts.approvalUrl ? ` Review the approval: ${facts.approvalUrl}` : ""}`;
   }
+  // The substantive recommendation has been durably persisted (see
+  // completeInternalRecommendationStep) - this is the one state allowed to
+  // quote it verbatim, and it always supersedes a separate "being prepared"
+  // reply when both would otherwise fire from the same acknowledgement pass.
+  if (facts.state === "recommendation_ready" && facts.recommendedNextStepText) {
+    return language === "nl"
+      ? `Aanbevolen vervolgstap: ${facts.recommendedNextStepText} Er is nog geen externe actie uitgevoerd.`
+      : `Recommended next step: ${facts.recommendedNextStepText} No external action has been taken.`;
+  }
+  // A real os_workflow_runs row exists for this candidate (whether its next
+  // step is an external PM task or a connector-independent internal
+  // recommendation) - "being prepared" is now a persisted fact, not a guess.
   if (facts.state === "workflow_created") {
     return language === "nl"
-      ? `Begrepen. Ik heb dit herkend als ${classified} en doorgestuurd naar de ${operator}. Ik heb een werkitem in Auterim aangemaakt en bereid de aanbevolen vervolgstap voor. Er is nog geen externe actie uitgevoerd.${facts.workflowUrl ? ` Bekijk het werkitem: ${facts.workflowUrl}` : ""}`
-      : `Got it. I classified this as ${classified} and routed it to the ${operator}. I created a work item in Auterim and am preparing the recommended next step. No external action has been taken.${facts.workflowUrl ? ` Review the work item: ${facts.workflowUrl}` : ""}`;
+      ? `Begrepen. Ik heb dit herkend als ${classified} en doorgestuurd naar de ${operator}. De aanbevolen vervolgstap wordt voorbereid. Er is nog geen externe actie uitgevoerd.${facts.workflowUrl ? ` Bekijk het werkitem: ${facts.workflowUrl}` : ""}`
+      : `Got it. I classified this as ${classified} and routed it to the ${operator}. The recommended next step is being prepared. No external action has been taken.${facts.workflowUrl ? ` Review the work item: ${facts.workflowUrl}` : ""}`;
   }
   if (facts.state === "draft_prepared") {
     return language === "nl"
       ? `De conceptactie is voorbereid voor beoordeling. Er is nog geen externe actie uitgevoerd.${facts.workflowUrl ? ` Bekijk het werkitem: ${facts.workflowUrl}` : ""}`
       : `The draft action is prepared for review. No external action has been taken.${facts.workflowUrl ? ` Review the work item: ${facts.workflowUrl}` : ""}`;
   }
+  // Fail-conservative: an unmodeled state must never claim more progress than
+  // "routed" does. Overstating persisted state is worse than understating it.
   return language === "nl"
-    ? `Begrepen. Ik heb dit herkend als ${classified} en doorgestuurd naar de ${operator}. De aanbevolen vervolgstap wordt voorbereid. Er is nog geen externe actie uitgevoerd.`
-    : `Got it. I classified this as ${classified} and routed it to the ${operator}. The recommended next step is being prepared. No external action has been taken.`;
+    ? `Begrepen. Ik heb dit herkend als ${classified} en doorgestuurd naar de ${operator}. Er is nog geen externe actie uitgevoerd.`
+    : `Got it. I classified this as ${classified} and routed it to the ${operator}. No external action has been taken.`;
 }

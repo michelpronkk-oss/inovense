@@ -24,7 +24,8 @@ export type ActionType =
   | "add_zendesk_internal_note"
   | "update_zendesk_ticket"
   | "reply_intercom_conversation"
-  | "update_intercom_conversation";
+  | "update_intercom_conversation"
+  | "prepare_internal_recommendation";
 
 export type ActionStatus = "prepared" | "approval_required" | "executing" | "executed" | "failed" | "skipped" | "denied";
 

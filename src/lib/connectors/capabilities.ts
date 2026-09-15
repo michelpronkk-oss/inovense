@@ -76,13 +76,18 @@ export type Capability =
   // internal (platform-provided, not a third-party connector)
   | "approved_outputs.read"
   | "approvals.read"
-  | "audit_logs.write";
+  | "audit_logs.write"
+  | "internal.recommendation.write";
 
-/** Capabilities the platform provides itself, with no external connector. */
+/** Capabilities the platform provides itself, with no external connector.
+ * A workflow step using one of these never requires a connector to be
+ * connected or executable (see validateWorkflowPlan) and never performs an
+ * external write - see isInternalCapability(). */
 export const INTERNAL_CAPABILITIES: Capability[] = [
   "approved_outputs.read",
   "approvals.read",
   "audit_logs.write",
+  "internal.recommendation.write",
 ];
 
 export function isInternalCapability(capability: Capability): boolean {

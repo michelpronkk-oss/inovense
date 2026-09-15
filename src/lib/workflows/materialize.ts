@@ -12,6 +12,7 @@ import { buildCanonicalApprovalScope } from "@/lib/policies/approval-scope";
 import { loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { buildRevenueInternalRecommendation } from "@/lib/workflows/recommendation";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 type Materialization =
@@ -135,6 +136,114 @@ async function materializeStep(input: { workspaceId: string; workflow: WorkflowR
   return { status: "ready", action, continuation };
 }
 
+/**
+ * A platform-internal recommendation performs no external write, so it
+ * never goes through connector readiness, policy evaluation, or approval
+ * creation - there is nothing external to gate. But it must still earn its
+ * "completed" status: this builds a substantive, structured recommendation
+ * from persisted candidate/signal evidence, durably writes it to
+ * os_workflow_runs.result_evidence (the existing "what did this workflow
+ * produce" column - see workforce.ts's cross-operator handoff completion
+ * for the established convention) FIRST, then records an auditable
+ * os_workflow_outcomes row, and only then marks the step and the workflow
+ * itself completed. If a substantive artifact cannot be built (missing
+ * evidence), the step is marked blocked instead - it is never marked
+ * completed on empty output, and any write failure along the way leaves the
+ * step exactly as it was (safe to retry, never falsely completed).
+ */
+async function completeInternalRecommendationStep(input: { workspaceId: string; workflowId: string; stepId: string; workflow: WorkflowRow; signal: WorkflowRow | null; supabase: SupabaseAdmin }): Promise<Materialization> {
+  const candidateResult = await input.supabase
+    .from("os_signal_candidates")
+    .select("operator_key,signal_type,confidence,reason_codes,evidence")
+    .eq("workspace_id", input.workspaceId)
+    .eq("signal_id", String(input.workflow.originating_signal_id || ""))
+    .eq("operator_key", String(input.workflow.operator_key))
+    .order("priority", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (candidateResult.error) throw new Error(`Candidate evidence lookup failed: ${candidateResult.error.message}`);
+  const artifact = candidateResult.data
+    ? buildRevenueInternalRecommendation({
+      candidate: {
+        operatorKey: String(candidateResult.data.operator_key),
+        signalType: String(candidateResult.data.signal_type),
+        confidence: typeof candidateResult.data.confidence === "string" ? candidateResult.data.confidence : null,
+        reasonCodes: Array.isArray(candidateResult.data.reason_codes) ? candidateResult.data.reason_codes as string[] : [],
+        evidence: (candidateResult.data.evidence as Record<string, unknown> | null) ?? {},
+      },
+      signal: { contentPreview: typeof input.signal?.content_preview === "string" ? input.signal.content_preview : null },
+    })
+    : null;
+  if (!artifact) return missing("recommendation_evidence_unavailable", "Auterim could not find the signal/candidate evidence needed to prepare a substantive recommendation.");
+
+  const evidenceUpdate = await input.supabase
+    .from("os_workflow_runs")
+    .select("result_evidence")
+    .eq("id", input.workflowId)
+    .eq("workspace_id", input.workspaceId)
+    .maybeSingle();
+  if (evidenceUpdate.error) throw new Error(`Workflow result evidence lookup failed: ${evidenceUpdate.error.message}`);
+  const existingEvidence = evidenceUpdate.data?.result_evidence && typeof evidenceUpdate.data.result_evidence === "object" ? evidenceUpdate.data.result_evidence as Record<string, unknown> : {};
+  const persistEvidence = await input.supabase
+    .from("os_workflow_runs")
+    .update({ result_evidence: { ...existingEvidence, internalRecommendation: artifact } })
+    .eq("id", input.workflowId)
+    .eq("workspace_id", input.workspaceId);
+  if (persistEvidence.error) throw new Error(`Recommendation could not be durably persisted: ${persistEvidence.error.message}`);
+
+  // Auditable outcome record. Best-effort: the artifact above is already
+  // durably persisted and is the authoritative source of truth, so a
+  // transient failure here must not leave a genuinely-produced
+  // recommendation stuck retrying forever.
+  try {
+    const outcomeId = `internal-recommendation:${input.workflowId}:${input.stepId}`.replace(/[^a-zA-Z0-9_:-]+/g, "-").slice(0, 200);
+    await input.supabase.from("os_workflow_outcomes").upsert({
+      id: outcomeId,
+      workspace_id: input.workspaceId,
+      operator_key: artifact.operatorKey,
+      workflow_id: input.workflowId,
+      signal_id: input.workflow.originating_signal_id ?? null,
+      outcome_type: "revenue_internal_recommendation_prepared",
+      attribution_level: "observed",
+      confidence: artifact.confidence ?? "medium",
+      evidence_refs: artifact.evidenceRefs.slice(0, 20),
+      observed_at: artifact.generatedAt,
+    });
+  } catch (error) {
+    console.warn("[workflow] internal recommendation outcome recording skipped", { workspaceId: input.workspaceId, workflowId: input.workflowId, stepId: input.stepId, error: error instanceof Error ? error.message : "Unknown outcome recording error" });
+  }
+
+  const stepUpdate = await input.supabase.from("os_workflow_steps").update({ status: "completed", block_reason: null, result_ref: `workflow:${input.workflowId}:result_evidence:internalRecommendation` }).eq("id", input.stepId).eq("workspace_id", input.workspaceId);
+  if (stepUpdate.error) throw new Error(`Internal recommendation step could not be recorded: ${stepUpdate.error.message}`);
+  // The recommendation is the entire deliverable of this workflow: once its
+  // one step is durably done, the workflow itself is done - it must not be
+  // left indefinitely "planned".
+  const workflowUpdate = await input.supabase.from("os_workflow_runs").update({ status: "completed" }).eq("id", input.workflowId).eq("workspace_id", input.workspaceId);
+  if (workflowUpdate.error) throw new Error(`Workflow could not be finalized: ${workflowUpdate.error.message}`);
+
+  const action: PreparedAction = {
+    id: `internal-${input.stepId}`.slice(0, 200),
+    workspaceId: input.workspaceId,
+    operatorKey: artifact.operatorKey,
+    actionType: "prepare_internal_recommendation",
+    connectorKey: "auterim",
+    capability: "internal.recommendation.write",
+    connectorCategory: "internal",
+    riskLevel: "low",
+    requiresApproval: false,
+    title: "Recommended next step prepared",
+    summary: artifact.recommendedNextStep.en,
+    input: {},
+    preview: { label: "Internal recommendation", fields: [{ label: "Intent", value: artifact.intentLabel }, { label: "Recommended next step", value: artifact.recommendedNextStep.en }], bodyPreview: artifact.recommendedNextStep.en },
+    status: "executed",
+    dedupeKey: `workflow:${input.workflowId}:${input.stepId}`,
+    source: "workflow",
+    destinationType: "internal",
+    metadata: { workflowId: input.workflowId, workflowStepId: input.stepId },
+  };
+  return { status: "ready", action, continuation: { kind: "internal.recommendation_recorded" } };
+}
+
 /** Links an exact, still-pending Client Flow draft instead of creating a second customer reply. */
 async function findExistingCustomerReply(input: { workspaceId: string; actionType: string; connectorKey: string; sourceId: string; supabase: SupabaseAdmin }): Promise<{ approvalId: string; action: PreparedAction; continuation: Record<string, unknown> } | null> {
   if (![["zendesk", "reply_zendesk_ticket", "ticketId"], ["intercom", "reply_intercom_conversation", "conversationId"]].some(([connector, action]) => connector === input.connectorKey && action === input.actionType)) return null;
@@ -161,6 +270,11 @@ export async function materializeWorkflowStep(input: { workflowId: string; stepI
   if (workflowResult.error || !workflowResult.data || stepResult.error || !stepResult.data) throw new Error("Workflow step not found.");
   if (stepResult.data.approval_id) return missing("approval_already_exists", "This action is already awaiting a decision.");
   const signalResult = workflowResult.data.originating_signal_id ? await supabase.from("os_signal_events").select("source_id,category,content_preview,actor").eq("id", workflowResult.data.originating_signal_id).eq("workspace_id", input.workspaceId).maybeSingle() : { data: null };
+  if (stepResult.data.action_type === "prepare_internal_recommendation") {
+    // Idempotent: re-recording the same "completed" status on replay/retry
+    // is a harmless no-op, never a second external write (there is none).
+    return completeInternalRecommendationStep({ workspaceId: input.workspaceId, workflowId: input.workflowId, stepId: input.stepId, workflow: workflowResult.data, signal: signalResult.data, supabase });
+  }
   const existingReply = await findExistingCustomerReply({ workspaceId: input.workspaceId, actionType: String(stepResult.data.action_type), connectorKey: String(stepResult.data.connector_key), sourceId: String(signalResult.data?.source_id || ""), supabase });
   if (existingReply) {
     const policyInput = existingReply.action.policyInput;

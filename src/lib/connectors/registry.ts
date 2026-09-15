@@ -30,7 +30,9 @@ export type ConnectorCategory =
   | "website_ecommerce"
   | "analytics"
   | "automation"
-  | "custom_api";
+  | "custom_api"
+  /** Platform-provided, not a third-party connector. See INTERNAL_CAPABILITIES. */
+  | "internal";
 
 export type ConnectorCatalogStatus = "available" | "coming_soon" | "planned" | "internal_only";
 
@@ -84,6 +86,7 @@ export const CONNECTOR_CATEGORY_LABELS: Record<ConnectorCategory, string> = {
   analytics: "Analytics",
   automation: "Automation",
   custom_api: "Custom API",
+  internal: "Internal",
 };
 
 /** Customer-facing category label for a connector -- prefers the
