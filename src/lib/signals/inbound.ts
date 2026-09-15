@@ -219,16 +219,13 @@ function inboundMatches(text: string, terms: string[]): string[] {
   });
 }
 
-function choosePrimary(intents: InboundIntent[], text: string): InboundOperatorKey | null {
-  const support = intents.some((intent) => intent === "SUPPORT_REQUEST" || ((intent === "CUSTOMER_QUESTION" || intent === "COMPLAINT" || intent === "ESCALATION") && hasSupportContext(text)));
-  const client = intents.some((intent) => INBOUND_OPERATOR_INTENTS.client_flow.includes(intent) && intent !== "CUSTOMER_QUESTION");
-  const operations = intents.some((intent) => INBOUND_OPERATOR_INTENTS.operations.includes(intent));
-  const commercial = intents.some((intent) => INBOUND_OPERATOR_INTENTS.revenue.includes(intent));
+function choosePrimary(primaryIntent: InboundIntent, text: string): InboundOperatorKey | null {
+  const support = primaryIntent === "SUPPORT_REQUEST"
+    || ((primaryIntent === "CUSTOMER_QUESTION" || primaryIntent === "COMPLAINT" || primaryIntent === "ESCALATION") && hasSupportContext(text));
   if (support) return "support";
-  if (client) return "client_flow";
-  if (operations) return "operations";
-  if (commercial) return "revenue";
-  if (intents.includes("CUSTOMER_QUESTION")) return "client_flow";
+  if (INBOUND_OPERATOR_INTENTS.revenue.includes(primaryIntent)) return "revenue";
+  if (INBOUND_OPERATOR_INTENTS.operations.includes(primaryIntent)) return "operations";
+  if (primaryIntent === "CUSTOMER_QUESTION" || INBOUND_OPERATOR_INTENTS.client_flow.includes(primaryIntent)) return "client_flow";
   if (/\b(fyi|for your information|scheduled for)\b/i.test(text) && /\b(delivery|deployment|rollout|implementation)\b/i.test(text)) return "operations";
   return null;
 }
@@ -266,11 +263,12 @@ export function classifyInboundCommunication(event: InboundCommunicationEvent): 
   const intents = detected.map(([intent]) => intent);
   const primaryIntent = intents[0] ?? (event.replyContext.messageCount > 1 && event.replyContext.unresolved ? "ESCALATION" : "UNKNOWN");
   const secondaryIntents = intents.slice(1, 4);
-  const primaryOperator = choosePrimary([primaryIntent, ...secondaryIntents], text);
+  const primaryOperator = choosePrimary(primaryIntent, text);
   const supportingOperators: InboundOperatorKey[] = [];
   if ((primaryOperator === "client_flow" || primaryOperator === "support") && (intents.some((intent) => ["ESCALATION", "DELIVERY_RISK", "INTERNAL_BLOCKER", "DELIVERY_STATUS_REQUEST"].includes(intent)) || event.replyContext.unresolved)) supportingOperators.push("operations");
   if ((primaryOperator === "client_flow" || primaryOperator === "support") && intents.some((intent) => ["PRICING_REQUEST", "PROPOSAL_REQUEST", "COMMERCIAL_INTENT"].includes(intent))) supportingOperators.push("revenue");
   if (primaryOperator === "support" && (intents.includes("COMPLAINT") || intents.includes("ESCALATION") || hasSupportContext(text))) supportingOperators.push("client_flow");
+  if (primaryOperator === "revenue" && secondaryIntents.some((intent) => INBOUND_OPERATOR_INTENTS.client_flow.includes(intent))) supportingOperators.push("client_flow");
   const allHits = detected.flatMap(([, hits]) => hits);
   const repeatedFollowUp = event.replyContext.messageCount >= 2 && event.replyContext.unresolved;
   const explicitCommercialIntent = ["PRICING_REQUEST", "PROPOSAL_REQUEST"].includes(primaryIntent);
