@@ -6,6 +6,8 @@ import type { WorkforceActivityItem, WorkforceActivityPage } from "@/lib/activit
 import { EmptyState, MetricStrip } from "@/components/product-ui/page-primitives";
 import { ActivityAvatar } from "@/components/activity/activity-avatar";
 import { operatorDisplayName, withoutLeadingOperatorName } from "@/lib/activity/presentation";
+import { useOS } from "@/lib/os/app-provider";
+import { useWorkspaceRealtimeInvalidation } from "@/lib/os/workspace-realtime";
 
 type Range = "24h" | "7d" | "30d";
 type Filter = "workflow" | "operator_run" | "approval" | "execution" | "outcome" | "attention" | "failure";
@@ -20,6 +22,7 @@ function timeLabel(value: string) { return new Intl.DateTimeFormat("en-GB", { da
 function routeLabel(item: WorkforceActivityItem) { return item.relatedRoute === "/approvals" ? "View approval" : item.relatedRoute === "/agents" ? "View operator" : item.relatedRoute?.startsWith("/workflows") ? "View workflow" : item.relatedRoute === "/connectors" ? "View connector" : item.relatedRoute === "/logs" ? "Technical details" : null; }
 
 export default function ActivityPage() {
+  const { state } = useOS();
   const [range, setRange] = useState<Range>("7d");
   const [selectedFilters, setSelectedFilters] = useState<Filter[]>([]);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -27,6 +30,7 @@ export default function ActivityPage() {
   const [error, setError] = useState("");
   const [visible, setVisible] = useState(20);
   const filterMenuRef = useRef<HTMLDivElement>(null);
+  const refreshRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     let active = false;
@@ -45,6 +49,7 @@ export default function ActivityPage() {
         active = false;
       }
     };
+    refreshRef.current = () => { void refresh(); };
     void refresh();
     const timer = window.setInterval(() => void refresh(), 30_000);
     window.addEventListener("focus", refresh);
@@ -56,6 +61,7 @@ export default function ActivityPage() {
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [range]);
+  useWorkspaceRealtimeInvalidation(state.workspace.id, ["activity", "dashboard"], () => { refreshRef.current?.(); });
 
   useEffect(() => {
     const closeOnOutsidePress = (event: MouseEvent) => { if (filterMenuRef.current && !filterMenuRef.current.contains(event.target as Node)) setFilterOpen(false); };

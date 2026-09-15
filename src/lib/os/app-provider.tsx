@@ -23,6 +23,8 @@ import { installWorkflowFromSuggestion, type SuggestedWorkflow } from "@/lib/os/
 import { getEntitlements, type Entitlements } from "@/lib/os/entitlements";
 import { reportLegacyMigrationEvent } from "@/lib/migration-telemetry";
 import { getConnectorDefinition } from "@/lib/connectors/registry";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { WORKSPACE_REALTIME_EVENT, parseWorkspaceRealtimeInvalidation } from "@/lib/os/workspace-realtime";
 
 const STORAGE_KEY = "auterim-os-state-v7";
 const LEGACY_STORAGE_KEYS = ["inovense-os-state-v7", "inovense-os-state-v1"];
@@ -529,6 +531,43 @@ export function AppProvider({ children, initialContext }: { children: React.Reac
   const hydratedFromRemote = useRef(false);
   const finishedInitialHydration = useRef(false);
   const persistTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Subscribe once from the authenticated application shell. The workspace
+  // identifier comes only from the server-verified bootstrap context. The
+  // published row contains a surface revision, never source record content.
+  useEffect(() => {
+    if (!initialContext?.workspaceId) return;
+    let client: ReturnType<typeof createSupabaseBrowserClient>;
+    try { client = createSupabaseBrowserClient(); } catch { return; }
+    const pending = new Map<string, ReturnType<typeof parseWorkspaceRealtimeInvalidation>>();
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const channel = client.channel(`workspace-state:${initialContext.workspaceId}`)
+      .on("postgres_changes", {
+        event: "*", schema: "public", table: "os_workspace_realtime_state",
+        filter: `workspace_id=eq.${initialContext.workspaceId}`,
+      }, (payload) => {
+        const row = (payload.new ?? payload.old) as Record<string, unknown> | undefined;
+        const invalidation = parseWorkspaceRealtimeInvalidation(row && {
+          workspaceId: row.workspace_id,
+          surface: row.surface,
+          revision: Number(row.revision),
+          updatedAt: row.updated_at,
+        });
+        if (!invalidation || invalidation.workspaceId !== initialContext.workspaceId) return;
+        pending.set(invalidation.surface, invalidation);
+        if (!timer) timer = setTimeout(() => {
+          timer = null;
+          for (const latest of pending.values()) window.dispatchEvent(new CustomEvent(WORKSPACE_REALTIME_EVENT, { detail: latest }));
+          pending.clear();
+        }, 120);
+      })
+      .subscribe();
+    return () => {
+      if (timer) clearTimeout(timer);
+      pending.clear();
+      void client.removeChannel(channel);
+    };
+  }, [initialContext?.workspaceId]);
 
   const getIdentity = useCallback(() => {
     if (initialContext) {

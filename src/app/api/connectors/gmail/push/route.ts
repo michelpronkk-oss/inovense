@@ -5,6 +5,8 @@ import { readGmailPushConfig, parseGmailPubSubEnvelope, safeAccountHash } from "
 import { verifyPubSubPushAuthorization } from "@/lib/connectors/gmail-push-auth";
 import { findWorkspaceForGmailAccount } from "@/lib/connectors/gmail-monitoring";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { hashProviderAccountId } from "@/lib/provider-events/types";
+import { ingestProviderEvent } from "@/lib/provider-events/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -72,18 +74,26 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const idempotencyKey = await idempotencyKeys.create(`gmail-pubsub:${config.subscription}:${parsed.messageId}`, { scope: "global" });
-    await gmailPushProcess.trigger({
-      emailAddress: parsed.notification.emailAddress,
-      historyId: parsed.notification.historyId,
-      pubsubMessageId: parsed.messageId,
-      subscription: config.subscription,
-    }, {
+    const supabase = createSupabaseAdmin();
+    const { event, created } = await ingestProviderEvent({
+      workspaceId: mapping.workspaceId,
+      connectorKey: "gmail",
+      provider: "gmail",
+      providerAccountId: hashProviderAccountId("gmail", parsed.notification.emailAddress),
+      externalEventId: `${config.subscription}:${parsed.messageId}`,
+      eventType: "gmail.history.changed",
+      entityType: "mailbox",
+      entityId: hashProviderAccountId("gmail", parsed.notification.emailAddress),
+      sourceMode: "push",
+      metadata: { historyId: parsed.notification.historyId },
+    }, supabase);
+    const idempotencyKey = await idempotencyKeys.create(`provider-event:${event.id}:attempt:${event.attempt_count}`, { scope: "global" });
+    await gmailPushProcess.trigger({ providerEventId: event.id }, {
       idempotencyKey,
       idempotencyKeyTTL: "30d",
-      concurrencyKey: parsed.notification.emailAddress,
+      concurrencyKey: event.connector_id,
     });
-    console.info(JSON.stringify({ event: "gmail_push_received", workspaceId: mapping.workspaceId, accountHash: safeAccountHash(parsed.notification.emailAddress), pubsubMessageId: parsed.messageId }));
+    console.info(JSON.stringify({ event: created ? "provider_event_enqueued" : "provider_event_deduped", workspaceId: mapping.workspaceId, connectorId: event.connector_id, provider: "gmail", providerEventId: event.id, sourceMode: "push" }));
     return response(204);
   } catch {
     // Non-2xx asks Pub/Sub to retry intake. Trigger idempotency makes retries

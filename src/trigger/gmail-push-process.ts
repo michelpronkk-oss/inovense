@@ -2,6 +2,7 @@ import { task } from "@trigger.dev/sdk/v3";
 import { randomUUID } from "node:crypto";
 import {
   fetchGmailProfile,
+  GmailOAuthError,
   getMessageDetails,
   getStoredGmailCredential,
   listGmailHistory,
@@ -11,17 +12,19 @@ import {
 } from "@/lib/connectors/gmail";
 import { GmailApiError } from "@/lib/connectors/gmail";
 import { GmailHistorySyncError, reconcileRecentGmailInbox, syncGmailHistoryEvent } from "@/lib/connectors/gmail-history";
-import { findWorkspaceForGmailAccount, gmailCredentialForAccount } from "@/lib/connectors/gmail-monitoring";
-import { readGmailPushConfig, safeAccountHash } from "@/lib/connectors/gmail-push-protocol";
+import { gmailCredentialForAccount } from "@/lib/connectors/gmail-monitoring";
+import { safeAccountHash } from "@/lib/connectors/gmail-push-protocol";
 import { scanRevenueOpportunities } from "@/lib/operators/revenue/scan";
+import { claimProviderEvent, completeProviderEvent, failProviderEvent, getProviderEvent } from "@/lib/provider-events/store";
+import { hashProviderAccountId } from "@/lib/provider-events/types";
 import { claimSignalSyncLease } from "@/lib/signals/store";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
-type GmailPushPayload = {
+type GmailHistoryPayload = {
+  workspaceId: string;
   emailAddress: string;
   historyId: string;
   pubsubMessageId: string;
-  subscription: string;
 };
 
 function record(value: unknown): Record<string, unknown> {
@@ -34,23 +37,8 @@ function safeErrorCode(error: unknown): string {
   return "gmail_push_processing_failed";
 }
 
-export const gmailPushProcess = task({
-  id: "gmail-push-process",
-  retry: { maxAttempts: 5, factor: 2, minTimeoutInMs: 1_000, maxTimeoutInMs: 60_000, randomize: true },
-  queue: { name: "gmail-history-sync", concurrencyLimit: 20 },
-  maxDuration: 3600,
-  run: async (payload: GmailPushPayload) => {
-    const config = readGmailPushConfig();
-    if (payload.subscription !== config.subscription || !payload.emailAddress || !/^\d{1,30}$/.test(payload.historyId)
-      || !payload.pubsubMessageId || payload.emailAddress !== payload.emailAddress.trim().toLowerCase()) {
-      throw new Error("gmail_push_payload_invalid");
-    }
-    const supabase = createSupabaseAdmin();
-    const mapping = await findWorkspaceForGmailAccount({ emailAddress: payload.emailAddress, supabase });
-    if (!mapping) return { status: "account_unmapped" };
-    const workspaceId = mapping.workspaceId;
-    const credential = await getStoredGmailCredential(workspaceId, supabase);
-    if (!gmailCredentialForAccount(credential, payload.emailAddress)) return { status: "credential_changed" };
+async function processGmailHistory(payload: GmailHistoryPayload, supabase: ReturnType<typeof createSupabaseAdmin>, credential: NonNullable<Awaited<ReturnType<typeof getStoredGmailCredential>>>) {
+    const workspaceId = payload.workspaceId;
 
     const leaseToken = randomUUID();
     const claimed = await claimSignalSyncLease({ workspaceId, connectorKey: "gmail", leaseToken, leaseSeconds: 900, supabase });
@@ -197,6 +185,72 @@ export const gmailPushProcess = task({
         await supabase.from("os_signal_sync_state").update({ lease_token: null, lease_until: null, updated_at: new Date().toISOString() })
           .eq("workspace_id", workspaceId).eq("connector_key", "gmail").eq("lease_token", leaseToken);
       }
+    }
+}
+
+export const gmailPushProcess = task({
+  id: "gmail-push-process",
+  retry: { maxAttempts: 5, factor: 2, minTimeoutInMs: 1_000, maxTimeoutInMs: 60_000, randomize: true },
+  queue: { name: "gmail-history-sync", concurrencyLimit: 20 },
+  maxDuration: 3600,
+  run: async (payload: { providerEventId: string }) => {
+    if (!payload || !/^pev_[a-f0-9]{48}$/.test(payload.providerEventId)) throw new Error("provider_event_id_invalid");
+    const supabase = createSupabaseAdmin();
+    const event = await getProviderEvent(payload.providerEventId, supabase);
+    if (!event) throw new Error("provider_event_missing");
+    if (["processed", "failed", "ignored"].includes(event.status)) return { status: event.status };
+
+    const leaseToken = randomUUID();
+    const claimed = await claimProviderEvent({ eventId: event.id, leaseToken, leaseSeconds: 3600, supabase });
+    if (!claimed) return { status: "not_claimed" };
+
+    try {
+      if (event.provider !== "gmail" || event.connector_key !== "gmail" || event.source_mode !== "push" || event.event_type !== "gmail.history.changed") {
+        await failProviderEvent({ eventId: event.id, leaseToken, errorCode: "provider_event_type_unsupported", permanent: true, supabase });
+        return { status: "failed", errorCode: "provider_event_type_unsupported" };
+      }
+      const historyId = typeof event.metadata?.historyId === "string" ? event.metadata.historyId : "";
+      if (!/^\d{1,30}$/.test(historyId)) {
+        await failProviderEvent({ eventId: event.id, leaseToken, errorCode: "gmail_push_history_id_invalid", permanent: true, supabase });
+        return { status: "failed", errorCode: "gmail_push_history_id_invalid" };
+      }
+      const credential = await getStoredGmailCredential(event.workspace_id, supabase);
+      const emailAddress = credential?.provider_email?.trim().toLowerCase() ?? "";
+      if (!gmailCredentialForAccount(credential, emailAddress)
+        || hashProviderAccountId("gmail", emailAddress) !== event.provider_account_id) {
+        await failProviderEvent({ eventId: event.id, leaseToken, errorCode: "gmail_credential_changed", permanent: true, supabase });
+        return { status: "failed", errorCode: "gmail_credential_changed" };
+      }
+
+      await processGmailHistory({
+        workspaceId: event.workspace_id,
+        emailAddress,
+        historyId,
+        pubsubMessageId: event.external_event_id,
+      }, supabase, credential);
+      const completed = await completeProviderEvent({ eventId: event.id, leaseToken, supabase });
+      if (!completed) throw new Error("provider_event_completion_conflict");
+      console.info(JSON.stringify({ event: "provider_event_processed", workspaceId: event.workspace_id, connectorId: event.connector_id, provider: event.provider, providerEventId: event.id, sourceMode: event.source_mode }));
+      return { status: "processed" };
+    } catch (error) {
+      const errorCode = safeErrorCode(error);
+      const permanent = error instanceof GmailOAuthError && (error.status === 400 || error.status === 401 || error.status === 403)
+        || ["gmail_credential_changed", "provider_event_type_unsupported", "gmail_push_history_id_invalid"].includes(errorCode);
+      try {
+        await failProviderEvent({
+          eventId: event.id,
+          leaseToken,
+          errorCode,
+          permanent,
+          retryAfterSeconds: Math.min(3600, 10 * 2 ** Math.min(event.attempt_count, 8)),
+          supabase,
+        });
+      } catch { /* lease expiry leaves the event recoverable if the DB is temporarily unavailable */ }
+      if (permanent) {
+        console.warn(JSON.stringify({ event: "provider_event_failed", workspaceId: event.workspace_id, connectorId: event.connector_id, provider: event.provider, providerEventId: event.id, errorCode }));
+        return { status: "failed", errorCode };
+      }
+      throw new Error(errorCode);
     }
   },
 });

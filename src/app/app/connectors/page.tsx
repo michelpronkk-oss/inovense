@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useOS } from "@/lib/os/app-provider";
+import { useWorkspaceRealtimeInvalidation } from "@/lib/os/workspace-realtime";
 import { MetricStrip, PageHeader } from "@/components/product-ui/page-primitives";
 import { LinkIcon, PlusIcon, XIcon } from "@/components/dashboard/icons";
 import type { Connector } from "@/lib/os/types";
@@ -720,6 +721,7 @@ export default function ConnectorsPage() {
       // Keep the existing readiness projection visible if a background refresh fails.
     }
   };
+  useWorkspaceRealtimeInvalidation(state.workspace.id, ["connectors", "operators"], () => { void refreshOperatorReadiness(); });
 
   const fetchSlackSettings = async () => {
     setSlackSettingsLoading(true);

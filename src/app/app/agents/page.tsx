@@ -12,6 +12,7 @@ import { getOperatorCapabilityCopy } from "@/lib/operators/capability-presentati
 import { getLiveOperatorCardPresentation, ROADMAP_OPERATOR_PRESENTATION } from "@/lib/operators/index-card-presentation";
 import { GLYPHS, OPERATORS, type Operator } from "@/data/operators";
 import { PageHeader } from "@/components/product-ui/page-primitives";
+import { useWorkspaceRealtimeInvalidation } from "@/lib/os/workspace-realtime";
 
 // Mirrors OperatorProductStateResult (src/lib/operators/product-state.ts) -
 // the ONE shared server-computed state for the four live operators. This
@@ -184,6 +185,7 @@ export default function AgentsRegistryPage() {
       setError(err instanceof Error ? err.message : "Could not load operator state.");
     }
   }, [identityParams, state.workspace.id]);
+  useWorkspaceRealtimeInvalidation(state.workspace.id, ["operators", "workflows", "approvals", "connectors"], () => { void loadProductState(); });
 
   useEffect(() => {
     const kickoff = window.setTimeout(() => { void loadProductState(); }, 0);

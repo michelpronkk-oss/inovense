@@ -12,6 +12,7 @@ import { describeApprovalError } from "./errorMessages";
 import { ApprovalQueueRow } from "./ApprovalQueueRow";
 import { ApprovalExpandedReview } from "./ApprovalExpandedReview";
 import { matchesFilter, timeAgo } from "./utils";
+import { useWorkspaceRealtimeInvalidation } from "@/lib/os/workspace-realtime";
 
 const FILTER_TABS = ["All", "Email", "Follow-up", "Action"];
 
@@ -61,6 +62,7 @@ export default function ApprovalsPage() {
       if (!background) setLoading(false);
     }
   }, [state.currentUser.email, state.currentUser.id, state.workspace.id]);
+  useWorkspaceRealtimeInvalidation(state.workspace.id, ["approvals", "dashboard", "activity"], () => { void loadApprovals(true); });
 
   useEffect(() => {
     const handle = window.setTimeout(() => { void loadApprovals(); }, 0);

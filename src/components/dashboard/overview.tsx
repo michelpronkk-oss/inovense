@@ -11,6 +11,7 @@ import { MetricStrip, PageHeader } from "@/components/product-ui/page-primitives
 import { trialDaysRemaining } from "@/lib/os/plans";
 import { ArrowIcon } from "@/components/dashboard/icons";
 import type { WorkflowLoopStage } from "@/lib/workflows/stage";
+import { useWorkspaceRealtimeInvalidation } from "@/lib/os/workspace-realtime";
 
 type ScanKey = DashboardOperator["key"];
 type OverviewResponse = DashboardOverview & { error?: string; message?: string };
@@ -373,6 +374,7 @@ export function OSOverview() {
       if (!signal?.aborted) setLoading(false);
     }
   }, [identityParams, state.workspace.id]);
+  useWorkspaceRealtimeInvalidation(state.workspace.id, ["dashboard", "approvals", "workflows", "activity", "operators"], () => { void loadOverview(); });
 
   useEffect(() => {
     const controller = new AbortController();

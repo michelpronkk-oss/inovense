@@ -9,6 +9,7 @@ import { ActivityAvatar } from "@/components/activity/activity-avatar";
 import { LoopRail, PageHeader } from "@/components/product-ui/page-primitives";
 import { useOS } from "@/lib/os/app-provider";
 import { getRealConnectedConnectors } from "@/lib/os/truth";
+import { useWorkspaceRealtimeInvalidation } from "@/lib/os/workspace-realtime";
 
 const LOOP_STAGES = [["Detect", "Meaningful change found"], ["Prepare", "Response assembled"], ["Approve", "Human review"], ["Execute", "Action taken"], ["Measure", "Outcome observed"]] as const;
 
@@ -51,6 +52,7 @@ export default function WorkflowsPage() {
       setWorkflows(json.workflows ?? []);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not load workflows."); } finally { if (!background) setLoading(false); }
   }, []);
+  useWorkspaceRealtimeInvalidation(state.workspace.id, ["workflows", "dashboard", "operators", "activity"], () => { void load(true); });
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 0);
     return () => window.clearTimeout(timer);
