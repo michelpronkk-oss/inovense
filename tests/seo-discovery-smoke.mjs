@@ -35,9 +35,14 @@ const sitemap = read("src/app/sitemap.ts");
 for (const path of [
   'path: "/how-it-works"', 'path: "/operators"', 'path: "/pricing"',
   'path: "/connectors"', 'path: "/docs"', 'path: "/changelog"',
-  'path: "/solutions/revenue-teams"', 'path: "/solutions/client-services"',
-  'path: "/solutions/operations"', 'path: "/privacy"', 'path: "/terms"', 'path: "/cookies"',
+  'path: "/privacy"', 'path: "/terms"', 'path: "/cookies"',
 ]) requireText(sitemap, path, "valuable canonical sitemap route");
+// Removed with the former Inovense /solutions family.
+for (const removed of [
+  'path: "/solutions/revenue-teams"', 'path: "/solutions/client-services"',
+  'path: "/solutions/operations"', 'path: "/solutions/marketing"',
+  'path: "/solutions/founders-ops"',
+]) assert.ok(!sitemap.includes(removed), `sitemap excludes removed route ${removed}`);
 for (const excluded of [
   'path: "/agents"', 'path: "/integrations"', 'path: "/app"', 'path: "/login"',
   'path: "/register"', 'path: "/onboarding"', 'path: "/api"', 'path: "/press"',
@@ -71,7 +76,7 @@ for (const [page, canonical] of [
   ["src/app/pricing/page.tsx", "https://auterim.com/pricing"],
   ["src/app/workflows/page.tsx", "https://auterim.com/workflows"],
   ["src/app/use-cases/page.tsx", "https://auterim.com/use-cases"],
-  ["src/app/solutions/revenue-teams/page.tsx", "https://auterim.com/solutions/revenue-teams"],
+  ["src/app/approvals/page.tsx", "https://auterim.com/approvals"],
   ["src/app/security/page.tsx", "https://auterim.com/security"],
 ]) requireText(read(page), canonical, `canonical metadata for ${page}`);
 

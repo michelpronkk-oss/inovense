@@ -14,16 +14,16 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
+// Matches the canonical public navigation in home-v3/v3-header.tsx so every
+// public route presents the same primary IA. "Operators" previously appeared
+// twice here, which both rendered a duplicate link and collided on the
+// key={link.href} below, throwing a React duplicate-key error on every page
+// that renders this nav.
 const links = [
-  { label: "Platform", href: "/" },
-  { label: "Operators", href: "/operators" },
-  { label: "Operators", href: "/operators" },
-  { label: "Workflows", href: "/workflows" },
-  { label: "Integrations", href: "/integrations" },
-  { label: "Security", href: "/security" },
-  { label: "Pricing", href: "/pricing" },
-  { label: "Docs", href: "/docs" },
-  { label: "Contact", href: "/contact" },
+  { label: "How it works", href: "/#how" },
+  { label: "Operators", href: "/#operators" },
+  { label: "Control", href: "/#control" },
+  { label: "Pricing", href: "/#pricing" },
 ];
 
 function isActive(href: string, pathname: string) {
@@ -54,15 +54,8 @@ export default function Nav({ homepage = false, earlyAccessCta = false }: { home
       <div className="mx-auto flex h-18 max-w-[1360px] items-center justify-between px-6 pt-3">
 
         {/* Logo */}
-        <Link href="/" className="flex shrink-0 items-center gap-2.5 transition-opacity hover:opacity-80" aria-label="Auterim">
-          <svg width="20" height="20" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-            <g fill="#ECEFF3">
-              <rect x="10" y="10" width="44" height="9"/>
-              <rect x="26" y="19" width="12" height="12"/>
-              <rect x="26" y="33" width="12" height="12"/>
-              <rect x="10" y="45" width="44" height="9"/>
-            </g>
-          </svg>
+        <Link href="/" className="flex min-h-11 shrink-0 items-center gap-2.5 transition-opacity hover:opacity-80" aria-label="Auterim">
+          <img src="/brand/auterim-mark-live.svg" width="20" height="20" alt="" />
           <span className="text-sm font-semibold tracking-[0.16em] text-zinc-100">AUTERIM</span>
         </Link>
 
@@ -142,15 +135,8 @@ export default function Nav({ homepage = false, earlyAccessCta = false }: { home
               <SheetDescription className="sr-only">Site navigation links and primary call to action.</SheetDescription>
 
               <div className="flex h-18 shrink-0 items-center justify-between pt-3">
-                <Link href="/" onClick={() => setOpen(false)} className="inline-flex items-center gap-2.5" aria-label="Auterim">
-                  <svg width="20" height="20" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-                    <g fill="#ECEFF3">
-                      <rect x="10" y="10" width="44" height="9"/>
-                      <rect x="26" y="19" width="12" height="12"/>
-                      <rect x="26" y="33" width="12" height="12"/>
-                      <rect x="10" y="45" width="44" height="9"/>
-                    </g>
-                  </svg>
+                <Link href="/" onClick={() => setOpen(false)} className="inline-flex min-h-11 items-center gap-2.5" aria-label="Auterim">
+                  <img src="/brand/auterim-mark-live.svg" width="20" height="20" alt="" />
                   <span className="text-sm font-semibold tracking-[0.16em] text-zinc-100">AUTERIM</span>
                 </Link>
                 <SheetClose asChild>

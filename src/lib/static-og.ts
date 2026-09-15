@@ -25,11 +25,6 @@ const STATIC_OG: Record<string, StaticOgAsset> = {
   "/trust": { file: "og-trust.png", alt: "Auterim trust and data boundaries" },
   "/pricing": { file: "og-pricing.png", alt: "Auterim pricing" },
   "/contact": { file: "og-contact.png", alt: "Contact Auterim" },
-  "/solutions/revenue-teams": { file: "og-revenue-teams.png", alt: "Auterim for revenue teams" },
-  "/solutions/client-services": { file: "og-client-services.png", alt: "Auterim for client services" },
-  "/solutions/operations": { file: "og-operations.png", alt: "Auterim for operations teams" },
-  "/solutions/marketing": { file: "og-marketing.png", alt: "Auterim for marketing teams" },
-  "/solutions/founders-ops": { file: "og-founders-ops.png", alt: "Auterim for founders and operations" },
 };
 
 const FALLBACK: StaticOgAsset = STATIC_OG["/"];

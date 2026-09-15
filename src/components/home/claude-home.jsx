@@ -2556,11 +2556,6 @@ const Footer = () => {
     {
       title: "Solutions",
       links: [
-        { label: "Revenue teams", href: "/solutions/revenue-teams" },
-        { label: "Marketing", href: "/solutions/marketing" },
-        { label: "Client services", href: "/solutions/client-services" },
-        { label: "Operations", href: "/solutions/operations" },
-        { label: "Founders & ops", href: "/solutions/founders-ops" },
       ],
     },
     {

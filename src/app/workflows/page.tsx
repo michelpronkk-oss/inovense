@@ -1,9 +1,7 @@
 ﻿import type { Metadata } from "next";
-import Nav from "@/components/nav";
-import Footer from "@/components/footer";
+import PublicSiteFrame from "@/components/home-v3/public-site-frame";
 import Link from "next/link";
 import {
-  PageShell,
   PageHero,
   MktCard,
   MockupWindow,
@@ -62,10 +60,7 @@ const properties = [
 
 export default function WorkflowsPage() {
   return (
-    <>
-      <Nav />
-      <main>
-        <PageShell>
+    <PublicSiteFrame>
           {/* Hero */}
           <Reveal>
             <PageHero
@@ -102,7 +97,7 @@ export default function WorkflowsPage() {
           </Reveal>
 
           <section className="relative py-8">
-            <div className="mx-auto grid max-w-6xl gap-8 px-6 lg:grid-cols-[1fr_1.2fr]">
+            <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-8 px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
               <Reveal>
                 <div>
                   <p className="font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: "#4A4F57" }}>Execution blueprint</p>
@@ -202,9 +197,6 @@ export default function WorkflowsPage() {
             primary="Start with a workflow"
             primaryHref="/app/onboarding"
           />
-        </PageShell>
-      </main>
-      <Footer />
-    </>
+    </PublicSiteFrame>
   );
 }

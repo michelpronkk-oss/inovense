@@ -40,7 +40,7 @@ export function PageHero({
         {mobileDescription && <span className="marketing-copy-mobile" aria-hidden="true">{mobileDescription}</span>}
       </p>
       {children && (
-        <div className="flex w-full flex-col items-center gap-3 xs:flex-row xs:flex-wrap xs:justify-center sm:w-auto">
+        <div className="flex w-full flex-col items-center gap-3 [&>*]:w-full [&>*]:max-w-[320px] sm:w-auto sm:flex-row sm:flex-wrap sm:justify-center sm:[&>*]:w-auto sm:[&>*]:max-w-none">
           {children}
         </div>
       )}

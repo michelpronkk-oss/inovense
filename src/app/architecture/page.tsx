@@ -1,9 +1,7 @@
 ﻿import type { Metadata } from "next";
-import Nav from "@/components/nav";
-import Footer from "@/components/footer";
+import PublicSiteFrame from "@/components/home-v3/public-site-frame";
 import Link from "next/link";
 import {
-  PageShell,
   PageHero,
   SectionDivider,
   PageCTA,
@@ -96,10 +94,7 @@ const properties = [
 
 export default function ArchitecturePage() {
   return (
-    <>
-      <Nav />
-      <main>
-        <PageShell>
+    <PublicSiteFrame>
           {/* Hero */}
           <PageHero
             eyebrow="Resources"
@@ -220,9 +215,6 @@ export default function ArchitecturePage() {
             secondary="Security model"
             secondaryHref="/security"
           />
-        </PageShell>
-      </main>
-      <Footer />
-    </>
+    </PublicSiteFrame>
   );
 }

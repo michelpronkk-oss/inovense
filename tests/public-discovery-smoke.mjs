@@ -7,9 +7,13 @@ const requiredRoutes = new Set([
   "/", "/how-it-works", "/operators", "/control", "/use-cases", "/connectors",
   "/pricing", "/getting-started", "/security", "/docs", "/approvals", "/workflows",
   "/architecture", "/memory", "/trust", "/about", "/contact", "/changelog",
-  "/solutions/revenue-teams", "/solutions/client-services", "/solutions/operations",
-  "/solutions/marketing", "/solutions/founders-ops", "/privacy", "/terms", "/cookies",
+  "/privacy", "/terms", "/cookies",
 ]);
+// The former Inovense /solutions family was removed and must stay not-found.
+const removedRoutes = [
+  "/solutions", "/solutions/revenue-teams", "/solutions/client-services",
+  "/solutions/operations", "/solutions/marketing", "/solutions/founders-ops",
+];
 const privatePaths = [
   "/app", "/app/dashboard", "/app-preview", "/admin", "/admin/login", "/api/health",
   "/auth/callback", "/invite/accept/secret", "/early-access/accept/session", "/onboarding/token",
@@ -96,6 +100,11 @@ const sitemapXml = await sitemapResponse.text();
 const sitemapUrls = [...sitemapXml.matchAll(/<loc>([^<]+)<\/loc>/gi)].map(([, location]) => new URL(location));
 const sitemapPaths = new Set(sitemapUrls.map(({ pathname }) => pathname));
 for (const path of requiredRoutes) assert.ok(sitemapPaths.has(path), `sitemap includes ${path}`);
+for (const path of removedRoutes) assert.ok(!sitemapPaths.has(path), `sitemap excludes removed route ${path}`);
+for (const path of removedRoutes) {
+  const response = await get(path);
+  assert.equal(response.status, 404, `${path} returns the public not-found response`);
+}
 for (const url of sitemapUrls) {
   assert.equal(url.origin, "https://auterim.com", `${url.pathname} uses the canonical host`);
   assert.equal(url.search, "", `${url.pathname} has no query string`);

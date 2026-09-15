@@ -1,9 +1,7 @@
 ﻿import type { Metadata } from "next";
-import Nav from "@/components/nav";
-import Footer from "@/components/footer";
+import PublicSiteFrame from "@/components/home-v3/public-site-frame";
 import Link from "next/link";
 import {
-  PageShell,
   PageHero,
   MktCard,
   SectionDivider,
@@ -56,10 +54,7 @@ const examples = [
 
 export default function MemoryPage() {
   return (
-    <>
-      <Nav />
-      <main>
-        <PageShell>
+    <PublicSiteFrame>
           {/* Hero */}
           <PageHero
             eyebrow="Platform"
@@ -171,9 +166,6 @@ export default function MemoryPage() {
             primary="Get Starter"
             primaryHref="/app/onboarding"
           />
-        </PageShell>
-      </main>
-      <Footer />
-    </>
+    </PublicSiteFrame>
   );
 }

@@ -1,9 +1,7 @@
 ﻿import type { Metadata } from "next";
-import Nav from "@/components/nav";
-import Footer from "@/components/footer";
+import PublicSiteFrame from "@/components/home-v3/public-site-frame";
 import Link from "next/link";
 import {
-  PageShell,
   PageHero,
   MktCard,
   MktCardHover,
@@ -73,10 +71,7 @@ const navLinks = [
 
 export default function TrustPage() {
   return (
-    <>
-      <Nav />
-      <main>
-        <PageShell>
+    <PublicSiteFrame>
           {/* Hero */}
           <PageHero
             eyebrow="Company"
@@ -203,9 +198,6 @@ export default function TrustPage() {
             primary="Contact us"
             primaryHref="/contact"
           />
-        </PageShell>
-      </main>
-      <Footer />
-    </>
+    </PublicSiteFrame>
   );
 }

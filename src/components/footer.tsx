@@ -10,14 +10,6 @@ const platformLinks = [
   { label: "Security", href: "/security" },
 ];
 
-const solutionLinks = [
-  { label: "Revenue teams", href: "/solutions/revenue-teams" },
-  { label: "Marketing", href: "/solutions/marketing" },
-  { label: "Client services", href: "/solutions/client-services" },
-  { label: "Operations", href: "/solutions/operations" },
-  { label: "Founders & ops", href: "/solutions/founders-ops" },
-];
-
 const resourceLinks = [
   { label: "Documentation", href: "/docs" },
   { label: "Platform guides", href: "/docs" },
@@ -47,12 +39,12 @@ function FooterCol({ heading, links }: { heading: string; links: { label: string
       <p className="mb-5 text-[11px] font-medium uppercase tracking-[0.15em] text-zinc-700">
         {heading}
       </p>
-      <ul className="space-y-3.5">
+      <ul className="space-y-1 xl:space-y-3.5">
         {links.map(({ label, href }) => (
           <li key={label}>
             <Link
               href={href}
-              className="text-sm text-zinc-500 transition-colors hover:text-zinc-100"
+              className="flex min-h-11 items-center text-sm text-zinc-500 transition-colors hover:text-zinc-100 xl:min-h-0"
             >
               {label}
             </Link>
@@ -88,15 +80,8 @@ export default function Footer() {
 
           {/* Brand column â€” spans full width on mobile */}
           <div className="col-span-2 flex flex-col items-start md:col-span-1">
-            <Link href="/" className="mb-5 inline-flex items-center gap-2.5 self-start transition-opacity hover:opacity-75" aria-label="Auterim">
-              <svg width="18" height="18" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-                <g fill="#ECEFF3">
-                  <rect x="10" y="10" width="44" height="9"/>
-                  <rect x="26" y="19" width="12" height="12"/>
-                  <rect x="26" y="33" width="12" height="12"/>
-                  <rect x="10" y="45" width="44" height="9"/>
-                </g>
-              </svg>
+            <Link href="/" className="mb-5 inline-flex min-h-11 items-center gap-2.5 self-start transition-opacity hover:opacity-75" aria-label="Auterim">
+              <img src="/brand/auterim-mark-live.svg" width="18" height="18" alt="" />
               <span className="text-[13px] font-semibold tracking-[0.16em] text-zinc-200">AUTERIM</span>
             </Link>
 
@@ -115,7 +100,6 @@ export default function Footer() {
           </div>
 
           <FooterCol heading="Platform" links={platformLinks} />
-          <FooterCol heading="Solutions" links={solutionLinks} />
           <FooterCol heading="Resources" links={resourceLinks} />
           <FooterCol heading="Company" links={companyLinks} />
 
@@ -131,7 +115,7 @@ export default function Footer() {
               <Link
                 key={label}
                 href={href}
-                className="text-xs text-zinc-700 transition-colors hover:text-zinc-400"
+                className="inline-flex min-h-11 items-center text-xs text-zinc-700 transition-colors hover:text-zinc-400 xl:min-h-0"
               >
                 {label}
               </Link>

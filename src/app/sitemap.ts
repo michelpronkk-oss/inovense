@@ -37,11 +37,6 @@ const PUBLIC_PAGES: PublicPage[] = [
     // The latest verified public release in src/data/changelog.ts.
     lastModified: "2026-09-03",
   },
-  { path: "/solutions/revenue-teams", changeFrequency: "monthly", priority: 0.75 },
-  { path: "/solutions/client-services", changeFrequency: "monthly", priority: 0.75 },
-  { path: "/solutions/operations", changeFrequency: "monthly", priority: 0.75 },
-  { path: "/solutions/marketing", changeFrequency: "monthly", priority: 0.7 },
-  { path: "/solutions/founders-ops", changeFrequency: "monthly", priority: 0.7 },
   { path: "/privacy", changeFrequency: "yearly", priority: 0.3 },
   { path: "/terms", changeFrequency: "yearly", priority: 0.3 },
   { path: "/cookies", changeFrequency: "yearly", priority: 0.25 },

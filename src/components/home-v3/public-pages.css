@@ -1214,3 +1214,52 @@
 @media (max-width: 374px) {
   .public-page .public-hero-actions .btn-a { width: 100%; min-width: 0; }
 }
+
+/* Touch targets on public routes. The category chips and disclosure toggles
+   landed at 41-42px, just under the ~44px minimum, so they are raised without
+   changing their visual weight. Inline links inside prose are deliberately
+   excluded: growing them would break the text flow they sit in. */
+@media (max-width: 1024px) {
+  .public-page .connector-category-nav a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .public-page .public-disclosure summary { min-height: 44px; box-sizing: border-box; }
+}
+
+/* Migrated marketing routes (/approvals, /architecture, /memory, /trust,
+   /workflows) now render inside PublicSiteFrame. Their hero was built on a
+   separate type scale that ran to 60px on desktop, well above the canonical
+   public hero. Bring it onto the same scale, container and rhythm so the site
+   reads as one system. */
+.public-page [data-marketing-hero] {
+  max-width: 1120px;
+  padding-top: clamp(96px, 11vw, 150px);
+  padding-bottom: clamp(36px, 4vw, 56px);
+  padding-inline: 40px;
+}
+/* The migrated pages' inner sections used a 1152px/24px container while every
+   canonical public section uses 1120px/40px. One gutter system, one edge. */
+.public-page main .max-w-6xl,
+.public-page main .max-w-5xl,
+.public-page main .max-w-4xl {
+  max-width: 1120px;
+  padding-inline: 40px;
+}
+.public-page [data-marketing-hero] h1 {
+  max-width: 17ch;
+  font-size: clamp(38px, 3.45vw, 46px);
+  line-height: 1.02;
+  letter-spacing: -.052em;
+  text-wrap: balance;
+}
+.public-page [data-marketing-hero] > p {
+  max-width: 52ch;
+  font-size: 16px;
+  line-height: 1.65;
+}
+@media (max-width: 767px) {
+  .public-page [data-marketing-hero] h1 { max-width: 15ch; font-size: clamp(37px, 10.2vw, 43px); }
+  .public-page [data-marketing-hero] > p { max-width: 34ch; text-wrap: pretty; }
+}
