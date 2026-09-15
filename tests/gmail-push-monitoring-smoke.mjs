@@ -23,6 +23,14 @@ const protocol = await loadTypeScript("src/lib/connectors/gmail-push-protocol.ts
 });
 
 const encoded = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+const officialNotification = '{"emailAddress":"michelpronkk@gmail.com","historyId":"17643800"}';
+const officialEnvelope = {
+  subscription: "projects/inovense/subscriptions/auterim-gmail-push-sub",
+  message: { messageId: "official-pubsub-message-1", data: Buffer.from(officialNotification, "utf8").toString("base64") },
+};
+const officialParsed = protocol.parseGmailPubSubEnvelope(officialEnvelope, officialEnvelope.subscription);
+assert.deepEqual(officialParsed.notification, { emailAddress: "michelpronkk@gmail.com", historyId: "17643800" }, "official Gmail notification envelope parses exactly");
+assert.equal(officialParsed.diagnostics.decodedByteLength, Buffer.byteLength(officialNotification, "utf8"));
 const goodEnvelope = {
   subscription: "projects/test-project/subscriptions/mailbox-push",
   message: { messageId: "pubsub-123", data: encoded({ emailAddress: "Founder@Example.com", historyId: "120" }) },
@@ -33,9 +41,11 @@ assert.equal(parsed.notification.historyId, "120");
 const standardBase64Envelope = structuredClone(goodEnvelope);
 standardBase64Envelope.message.data = Buffer.from(JSON.stringify({ emailAddress: "founder@example.com", historyId: "121" })).toString("base64");
 assert.equal(protocol.parseGmailPubSubEnvelope(standardBase64Envelope, goodEnvelope.subscription).notification.historyId, "121", "standard Pub/Sub Base64 is accepted alongside Base64URL");
-assert.throws(() => protocol.parseGmailPubSubEnvelope(goodEnvelope, "projects/other/subscriptions/mailbox-push"), /gmail_push_envelope_invalid/);
-assert.throws(() => protocol.parseGmailPubSubEnvelope({ ...goodEnvelope, message: { ...goodEnvelope.message, data: "%%%" } }, goodEnvelope.subscription), /gmail_push_payload_invalid|gmail_push_data_invalid/);
-assert.throws(() => protocol.parseGmailPubSubEnvelope({ ...goodEnvelope, message: { ...goodEnvelope.message, data: encoded({ emailAddress: "bad", historyId: "1e5" }) } }, goodEnvelope.subscription), /gmail_push_payload_invalid/);
+assert.throws(() => protocol.parseGmailPubSubEnvelope(goodEnvelope, "projects/other/subscriptions/mailbox-push"), /gmail_push_subscription_invalid/);
+assert.throws(() => protocol.parseGmailPubSubEnvelope({ ...goodEnvelope, message: { ...goodEnvelope.message, data: "%%%" } }, goodEnvelope.subscription), /gmail_push_base64_invalid/);
+assert.throws(() => protocol.parseGmailPubSubEnvelope({ ...goodEnvelope, message: { ...goodEnvelope.message, data: Buffer.from("not json", "utf8").toString("base64") } }, goodEnvelope.subscription), /gmail_push_json_invalid/);
+assert.throws(() => protocol.parseGmailPubSubEnvelope({ ...goodEnvelope, message: { ...goodEnvelope.message, data: encoded({ emailAddress: "bad", historyId: "1e5" }) } }, goodEnvelope.subscription), /gmail_push_email_invalid/);
+assert.throws(() => protocol.parseGmailPubSubEnvelope({ ...goodEnvelope, message: { ...goodEnvelope.message, data: encoded({ emailAddress: "valid@example.com", historyId: 123 }) } }, goodEnvelope.subscription), /gmail_push_history_id_invalid/);
 
 const configEnv = {
   GOOGLE_CLOUD_PROJECT_ID: "test-project",

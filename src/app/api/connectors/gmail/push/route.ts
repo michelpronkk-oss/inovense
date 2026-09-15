@@ -55,7 +55,8 @@ export async function POST(request: NextRequest) {
   try { envelope = JSON.parse(text); } catch { return response(400); }
   let parsed;
   try { parsed = parseGmailPubSubEnvelope(envelope, config.subscription); } catch (error) {
-    console.warn(JSON.stringify({ event: "gmail_push_payload_rejected", errorCode: error instanceof Error ? error.message : "gmail_push_payload_invalid" }));
+    const parseError = error && typeof error === "object" && "code" in error ? error as { code?: unknown; diagnostics?: unknown } : null;
+    console.warn(JSON.stringify({ event: "gmail_push_payload_rejected", errorCode: typeof parseError?.code === "string" ? parseError.code : "gmail_push_payload_invalid", diagnostics: parseError?.diagnostics }));
     return response(400);
   }
 
