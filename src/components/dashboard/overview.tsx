@@ -253,7 +253,7 @@ function DashboardReadinessSummary({ overview, trialEligible }: { overview: Dash
   const isTrialing = billingStatus === "trialing";
   const trialEndsAt = overview.executionEligibility.trialEndsAt;
   const trialDaysLeft = trialDaysRemaining(trialEndsAt);
-  const summary = lifecycle === "A"
+  let summary = lifecycle === "A"
     ? (isPreview
         ? (trialEligible
             ? { state: "preview", label: "Preview", message: "Preview is active. Start your 3-day trial to connect real systems and activate your workforce.", primary: "Start 3-day trial", href: "/plans" }
@@ -270,6 +270,25 @@ function DashboardReadinessSummary({ overview, trialEligible }: { overview: Dash
           : lifecycle === "F"
             ? { state: "needs_attention", label: "Needs attention", message: `${counts.attention} operator${counts.attention === 1 ? " needs" : "s need"} a connection restored.`, primary: firstAttention?.nextAction?.label ?? "Review connections", href: firstAttention?.nextAction?.href ?? "/connectors" }
             : { state: "active", label: "Workforce active", message: `${counts.active} operator${counts.active === 1 ? " is" : "s are"} monitoring your workspace.`, primary: overview.approvals.pendingCount > 0 ? "Open approvals" : "View operators", href: overview.approvals.pendingCount > 0 ? "/approvals" : "/agents" };
+
+  // A historical plan identity is meaningful context. It must not collapse to
+  // the Preview/plan-selection state after cancellation or trial expiry.
+  if (overview.accessSummary.hasPlanIdentity && !overview.accessSummary.hasUsableEntitlement) {
+    const label = overview.accessSummary.entitlementState === "billing_attention"
+      ? "Billing needs attention"
+      : overview.accessSummary.planSlug === "foundation" && overview.accessSummary.trialState === "ended"
+        ? "Trial ended"
+        : "Access inactive";
+    summary = {
+      state: overview.accessSummary.entitlementState === "billing_attention" ? "billing_attention" : "plan_required",
+      label,
+      message: overview.accessSummary.entitlementState === "billing_attention"
+        ? `Your ${overview.accessSummary.planLabel} access needs billing attention. ${planBlocked} configured operator${planBlocked === 1 ? " is" : "s are"} waiting.`
+        : `Your ${overview.accessSummary.planLabel} access is inactive. ${planBlocked} configured operator${planBlocked === 1 ? " is" : "s are"} ready when access is restored.`,
+      primary: overview.accessSummary.entitlementState === "billing_attention" ? "Update billing" : "Restore access",
+      href: "/plans",
+    };
+  }
 
   return (
     <section className="attn info" data-state={lifecycle} aria-labelledby="readiness-summary-title" style={{ padding: "16px 18px" }}>
@@ -552,9 +571,9 @@ export function OSOverview() {
         <div className="sec">
           <section className="attn" style={{ padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
             <div className="t-compact">
-              <strong style={{ color: "var(--amber)" }}>{eligibility.status === "plan_required" ? "Plan required" : eligibility.status === "billing_attention" ? "Billing needs attention" : "Execution paused"}.</strong> {eligibility.reason} You can still connect systems and configure operators now.
+              <strong style={{ color: "var(--amber)" }}>{overview.accessSummary.hasPlanIdentity && !overview.accessSummary.hasUsableEntitlement ? overview.accessSummary.entitlementState === "billing_attention" ? "Billing needs attention" : "Access inactive" : eligibility.status === "plan_required" ? "Plan required" : eligibility.status === "billing_attention" ? "Billing needs attention" : "Execution paused"}.</strong> {overview.accessSummary.hasPlanIdentity && !overview.accessSummary.hasUsableEntitlement ? `Your ${overview.accessSummary.planLabel} access is inactive. Configured operators remain ready when access is restored.` : eligibility.reason} You can still connect systems and configure operators now.
             </div>
-            <Link className="btn btn-primary btn-sm" href="/plans">{eligibility.status === "billing_attention" ? "Update billing" : "Choose a plan"}</Link>
+            <Link className="btn btn-primary btn-sm" href="/plans">{overview.accessSummary.hasPlanIdentity && !overview.accessSummary.hasUsableEntitlement ? overview.accessSummary.entitlementState === "billing_attention" ? "Update billing" : "Restore access" : eligibility.status === "billing_attention" ? "Update billing" : "Choose a plan"}</Link>
           </section>
         </div>
       )}

@@ -25,6 +25,26 @@ export interface Entitlements {
   supportLevel: "none" | "email" | "priority" | "dedicated" | "enterprise";
 }
 
+export type WorkspaceAccessSummary = {
+  planSlug: WorkspacePlanTier;
+  planLabel: string;
+  hasPlanIdentity: boolean;
+  entitlementState: "preview" | "trial_active" | "active" | "inactive" | "billing_attention";
+  hasUsableEntitlement: boolean;
+  trialState: "none" | "active" | "ended";
+  subscriptionState: BillingStatus;
+  operatorCapacity: number;
+  connectorCapacity: number | "standard_all" | "custom";
+  seatCapacity: number;
+};
+
+function canonicalPlanLabel(planTier: WorkspacePlanTier): string {
+  if (planTier === "preview") return "Preview";
+  if (planTier === "foundation") return "Foundation";
+  if (planTier === "workforce") return "Workforce";
+  return "Scale";
+}
+
 const PREVIEW: Entitlements = {
   planTier: "preview",
   billingStatus: "preview",
@@ -65,12 +85,32 @@ export function getEntitlements(workspace: Workspace): Entitlements {
   const billingStatus = resolveWorkspaceBillingStatus(workspace);
   const isPaidActive = billingStatus === "active" || billingStatus === "trialing";
 
-  if (planTier === "preview" || !isPaidActive) {
+  if (planTier === "preview") {
     return {
       ...PREVIEW,
       planTier,
       billingStatus,
       trialEndsAt: workspace.trialEndsAt,
+    };
+  }
+
+  // Preserve the historical plan's capacity while removing execution
+  // entitlement. Configuration and connected systems remain visible after
+  // cancellation, but no operator may run until access is restored.
+  if (!isPaidActive) {
+    const capacity = planTier === "foundation"
+      ? { operatorsLimit: 3, connectorsLimit: 3, actionsLimit: 1000, logRetentionDays: 30 }
+      : planTier === "workforce"
+        ? { operatorsLimit: 8, connectorsLimit: 8, actionsLimit: 5000, logRetentionDays: 90 }
+        : planTier === "scale"
+          ? { operatorsLimit: 20, connectorsLimit: 20, actionsLimit: 20000, logRetentionDays: 180 }
+          : { operatorsLimit: 12, connectorsLimit: "standard_all" as const, actionsLimit: 100000, logRetentionDays: 180 };
+    return {
+      planTier, billingStatus, trialEndsAt: workspace.trialEndsAt,
+      ...capacity, canUseRealConnectors: false, canRunRealActions: false,
+      canUseSuggestedWorkflows: true, canUseAdvancedPolicies: false,
+      canUseCompanyMemoryGraph: true, insights: false, features: { insights: false },
+      supportLevel: "none",
     };
   }
 
@@ -170,6 +210,34 @@ export function getEntitlements(workspace: Workspace): Entitlements {
     insights: true,
     features: { insights: true },
     supportLevel: "enterprise",
+  };
+}
+
+export function getWorkspaceAccessSummary(workspace: Workspace): WorkspaceAccessSummary {
+  const entitlements = getEntitlements(workspace);
+  const planSlug = entitlements.planTier;
+  const trialEnd = entitlements.trialEndsAt ? Date.parse(entitlements.trialEndsAt) : Number.NaN;
+  const trialState = Number.isFinite(trialEnd) ? (trialEnd > Date.now() && entitlements.billingStatus === "trialing" ? "active" : "ended") : "none";
+  const entitlementState = entitlements.billingStatus === "preview" || planSlug === "preview"
+    ? "preview"
+    : entitlements.billingStatus === "trialing" && trialState === "active"
+      ? "trial_active"
+      : entitlements.billingStatus === "active"
+        ? "active"
+        : entitlements.billingStatus === "past_due"
+          ? "billing_attention"
+          : "inactive";
+  return {
+    planSlug,
+    planLabel: canonicalPlanLabel(planSlug),
+    hasPlanIdentity: planSlug !== "preview",
+    entitlementState,
+    hasUsableEntitlement: entitlements.canRunRealActions,
+    trialState,
+    subscriptionState: entitlements.billingStatus,
+    operatorCapacity: entitlements.operatorsLimit,
+    connectorCapacity: entitlements.connectorsLimit,
+    seatCapacity: planSlug === "preview" ? 3 : planSlug === "foundation" ? 3 : planSlug === "workforce" ? 8 : 20,
   };
 }
 

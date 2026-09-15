@@ -5,6 +5,7 @@ import { loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { getWorkspaceExecutionEligibilityFromWorkspace, type WorkspaceExecutionEligibility } from "@/lib/os/execution-eligibility";
+import { getWorkspaceAccessSummary, type WorkspaceAccessSummary } from "@/lib/os/entitlements";
 import type { Workspace } from "@/lib/os/types";
 import { getWorkspaceOperatorProductStates, type OperatorProductStateResult } from "@/lib/operators/product-state";
 import { selectDashboardLifecycleState, type DashboardLifecycleState } from "@/lib/dashboard/lifecycle";
@@ -53,6 +54,7 @@ export type DashboardOverview = {
    * descriptive UI state only.
    */
   executionEligibility: WorkspaceExecutionEligibility;
+  accessSummary: WorkspaceAccessSummary;
   systemStatus: {
     status: "healthy" | "needs_attention" | "setup_incomplete" | "emergency_stop";
     label: string;
@@ -571,6 +573,7 @@ export async function getDashboardOverview(input: {
     trialEndsAt: stringValue(workspace.data.trial_ends_at) ?? undefined,
   };
   const executionEligibility = getWorkspaceExecutionEligibilityFromWorkspace(eligibilityWorkspace);
+  const accessSummary = getWorkspaceAccessSummary(eligibilityWorkspace);
   const operators = buildOperators({ approvals, runs, productStates: operatorProductStates, operatorKeys: selectedKeys });
   const today = summarizeToday({ approvals, runs, logs });
   const pendingApprovals = approvals.filter((row) => stringValue(row.status) === "pending");
@@ -630,6 +633,7 @@ export async function getDashboardOverview(input: {
       onboardingSystems,
     },
     executionEligibility,
+    accessSummary,
     systemStatus,
     policy: {
       autonomyMode: policy.autonomyMode,

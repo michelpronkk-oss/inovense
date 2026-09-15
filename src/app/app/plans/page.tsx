@@ -3,8 +3,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { useOS } from "@/lib/os/app-provider";
-import { getEntitlements } from "@/lib/os/entitlements";
-import { getPlanLabel, getRealConnectedCount } from "@/lib/os/truth";
+import { getEntitlements, getWorkspaceAccessSummary } from "@/lib/os/entitlements";
+import { getRealConnectedCount } from "@/lib/os/truth";
 import { appHref } from "@/lib/urls";
 import { pricingPlans, type CheckoutPlanTier } from "@/lib/pricing";
 import { getPlanLimits } from "@/lib/os/plans";
@@ -35,6 +35,7 @@ export default function PlansPage() {
   const { state, clientHydrated } = useOS();
   const searchParams = useSearchParams();
   const entitlements = getEntitlements(state.workspace);
+  const accessSummary = getWorkspaceAccessSummary(state.workspace);
   const [submitting, setSubmitting] = useState<CheckoutPlanTier | null>(null);
   const [trialState, setTrialState] = useState<TrialState | null>(null);
   const [billingBusy, setBillingBusy] = useState(false);
@@ -137,9 +138,15 @@ export default function PlansPage() {
 
     <section className="card sec" style={{ boxShadow: "inset 0 0 0 1px rgba(77,232,225,.24)" }}>
       <div className="card-pad">
-        <span className="badge cyan"><i />Current plan</span>
-        <div className="t-object" style={{ fontSize: 17, marginTop: 10 }}>{entitlements.billingStatus === "preview" ? "Preview: live systems are locked" : `${getPlanLabel(entitlements.planTier)} is ${entitlements.billingStatus}`}</div>
-        <p className="t-meta" style={{ marginTop: 6 }}>{trialEnd ? `Trial access ends ${trialEnd}.` : entitlements.billingStatus === "preview" ? trialState === null || trialState.reason === "history_unavailable" ? "We could not verify trial eligibility yet. Try again shortly." : trialState.eligible ? "Your 3-day Foundation trial is available now - no card required." : trialState.matchedBy === "billing_customer" ? "This Dodo billing profile has already used an Auterim trial. Choose a plan to connect real systems." : trialState.matchedBy === "owner" ? "This Auterim account has already used its trial. Choose a plan to connect real systems." : "This workspace's trial has already been used. Choose a plan to connect real systems." : "Billing and cancellation are managed in the customer portal."}</p>
+        <span className="t-eyebrow">Plan</span>
+        <div className="t-object" style={{ fontSize: 17, marginTop: 8 }}>{accessSummary.planLabel}</div>
+        <div className="grid4" style={{ marginTop: 16 }}>
+          <div><span className="t-meta">Access</span><p className="t-compact" style={{ margin: "4px 0 0" }}>{accessSummary.hasUsableEntitlement ? accessSummary.entitlementState === "trial_active" ? "Trial active" : "Active" : accessSummary.entitlementState === "billing_attention" ? "Needs attention" : accessSummary.hasPlanIdentity ? "Inactive" : "Preview"}</p></div>
+          <div><span className="t-meta">Subscription</span><p className="t-compact" style={{ margin: "4px 0 0", textTransform: "capitalize" }}>{accessSummary.subscriptionState === "preview" ? "None" : accessSummary.subscriptionState.replace("_", " ")}</p></div>
+          <div><span className="t-meta">Trial</span><p className="t-compact" style={{ margin: "4px 0 0" }}>{accessSummary.trialState === "active" ? `Active${trialEnd ? ` · ends ${trialEnd}` : ""}` : accessSummary.trialState === "ended" ? `Ended${trialEnd ? ` ${trialEnd}` : ""}` : "None"}</p></div>
+          <div><span className="t-meta">Execution</span><p className="t-compact" style={{ margin: "4px 0 0" }}>{accessSummary.hasUsableEntitlement ? "Available" : "Paused"}</p></div>
+        </div>
+        <p className="t-meta" style={{ marginTop: 14 }}>{!accessSummary.hasPlanIdentity && accessSummary.entitlementState === "preview" ? trialState === null || trialState.reason === "history_unavailable" ? "We could not verify trial eligibility yet. Try again shortly." : trialState.eligible ? "Your 3-day Foundation trial is available now - no card required." : "Choose a plan to connect real systems." : accessSummary.hasUsableEntitlement ? "Billing and cancellation are managed in the customer portal." : `Your ${accessSummary.planLabel} access is inactive. Restore access to resume operator execution.`}</p>
       </div>
       <div className="card-pad" style={{ paddingTop: 0 }}>
         <MetricStrip items={usageMetrics} />
@@ -150,10 +157,10 @@ export default function PlansPage() {
 
     <div className="grid3 sec">
       {PLANS.map((plan) => {
-        const current = entitlements.planTier === plan.tier && entitlements.billingStatus !== "preview";
+        const current = entitlements.planTier === plan.tier && ["active", "trialing", "past_due"].includes(entitlements.billingStatus);
         const trialActive = trialState?.status === "active";
         const trialReady = trialState !== null && trialState.reason !== "history_unavailable";
-        const checkoutLabel = !trialReady ? "Checking eligibility…" : trialActive ? "Trial in progress" : trialState.eligible ? `Start ${plan.name} trial` : `Choose ${plan.name}`;
+        const checkoutLabel = !trialReady ? "Checking eligibility…" : trialActive ? "Trial in progress" : accessSummary.hasPlanIdentity && accessSummary.planSlug === plan.tier && !accessSummary.hasUsableEntitlement ? `Restore ${plan.name}` : trialState.eligible ? `Start ${plan.name} trial` : `Choose ${plan.name}`;
         return (
           <article key={plan.tier} className="card" style={current ? { boxShadow: "inset 0 0 0 1px rgba(77,232,225,.32)" } : undefined}>
             <div className="card-pad stack">

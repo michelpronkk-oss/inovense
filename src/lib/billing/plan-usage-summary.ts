@@ -33,10 +33,12 @@ function usageMetric(input: {
 }): PlanUsageMetric {
   const { label, count, unit, limit, hasActiveEntitlement, unavailableDetail } = input;
   if (!hasActiveEntitlement) {
+    const capacity = limit !== null && limit !== "custom" && limit !== "standard_all" && limit !== -1 && limit < Number.MAX_SAFE_INTEGER
+      ? `capacity up to ${limit} when access is active` : "capacity follows the selected plan";
     return {
       label,
       value: count === null ? "—" : String(count),
-      detail: count === null ? `${unavailableDetail ?? "Usage unavailable"} · no active plan entitlement` : `${unit} · no active plan entitlement`,
+      detail: count === null ? `${unavailableDetail ?? "Usage unavailable"} · ${capacity}` : `${unit} · ${capacity}`,
     };
   }
 
@@ -70,8 +72,10 @@ export function getPlanUsageMetrics(input: PlanUsageInput): PlanUsageMetric[] {
 
   const tier = billingPlanTier(entitlements.planTier);
   const billingEntitlements = hasActiveEntitlement && tier ? getBillingEntitlementsForPlan(tier) : null;
-  const fallbackLimits = hasActiveEntitlement ? entitlements : null;
-  const teamSeatLimit = hasActiveEntitlement ? getPlanLimits(entitlements.planTier).maxTeamMembers : null;
+  const fallbackLimits = entitlements;
+  // Capacity remains visible for a historical plan even when its entitlement
+  // is inactive; only execution/use is gated.
+  const teamSeatLimit = entitlements.planTier === "preview" ? null : getPlanLimits(entitlements.planTier).maxTeamMembers;
 
   return [
     usageMetric({

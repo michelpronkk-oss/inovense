@@ -63,15 +63,15 @@ try {
 
   const canceledMetrics = summary.getPlanUsageMetrics(usageInput({
     id: "canceled", name: "Canceled", environment: "production", region: "eu", plan: "Workforce", planTier: "workforce", billingStatus: "canceled",
-  }, { operatorUsageStatus: "ready" }));
-  assert.deepEqual(canceledMetrics.map(({ value }) => value), ["1", "1", "1"], "canceled workspaces show usage without implying plan limits remain active");
-  assert.ok(canceledMetrics.every(({ detail }) => detail.includes("no active plan entitlement")));
+  }, { activeOperators: 0, operatorUsageStatus: "ready" }));
+  assert.deepEqual(canceledMetrics.map(({ value }) => value), ["0", "1", "1"], "canceled workspaces show zero active operators while retaining connected systems and seats");
+  assert.ok(canceledMetrics.every(({ detail }) => detail.includes("capacity up to 8 when access is active")));
 
   const expiredTrialMetrics = summary.getPlanUsageMetrics(usageInput({
     id: "expired", name: "Expired", environment: "production", region: "eu", plan: "Scale", planTier: "scale", billingStatus: "trialing", trialEndsAt: "2020-01-01T00:00:00.000Z",
-  }, { operatorUsageStatus: "ready" }));
-  assert.deepEqual(expiredTrialMetrics.map(({ value }) => value), ["1", "1", "1"], "an expired trial never displays paid capacity as active");
-  assert.ok(expiredTrialMetrics.every(({ detail }) => detail.includes("no active plan entitlement")));
+  }, { activeOperators: 0, operatorUsageStatus: "ready" }));
+  assert.deepEqual(expiredTrialMetrics.map(({ value }) => value), ["0", "1", "1"], "an expired trial never displays paid capacity as active");
+  assert.ok(expiredTrialMetrics.every(({ detail }) => detail.includes("capacity up to 20 when access is active")));
 
   const activePeriodMetrics = summary.getPlanUsageMetrics(usageInput({
     id: "active-period", name: "Active period", environment: "production", region: "eu", plan: "Workforce", planTier: "workforce", billingStatus: "active",
