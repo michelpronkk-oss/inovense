@@ -43,24 +43,26 @@ assert.match(dashboard, /<StatusBadge state={item\.state}>{item\.label}<\/Status
 assert.doesNotMatch(dashboard, /void runManualCheck/, "the dashboard Workforce card must not carry a manual-check action not present in the reference (it remains real and reachable from each operator's own page)");
 
 // ─────────────────────────────────────────────────────────────────────────
-// C. Needs your review - operator row, title, Why/Evidence/Policy/
-// Consequence grid, action row. Real per-approval detail, not generic copy.
+// C. Needs your review - a compact triage row per pending approval, matched
+// to the exact density/classes of a Work in progress row (.rows/.row/.grow/
+// .ttl/.sub/.rt). The dashboard is triage, not the decision surface: no
+// Why/Evidence/Policy/Consequence breakdown and no Approve/Edit/Reject
+// actions here - a reviewer must see the actual prepared draft before
+// acting, which only /approvals provides. See src/app/app/approvals/*.
 // ─────────────────────────────────────────────────────────────────────────
 assert.match(dashboard, /<div className="t-section" id="needs-review-title">Needs your review<\/div><Link className="btn btn-sm btn-ghost" href="\/approvals">Open approvals<\/Link>/, "the review card header must match the reference exactly");
-assert.match(dashboard, /<span className="badge amber">AWAITING APPROVAL<\/span>/);
-assert.match(dashboard, /className="grid4"/, "Why/Evidence/Policy/Consequence must use the existing shared 4-column grid utility (already responsive), not a new one-off layout");
-assert.match(dashboard, /<span className="t-meta">Why<\/span>/);
-assert.match(dashboard, /<span className="t-meta">Evidence<\/span>/);
-assert.match(dashboard, /<span className="t-meta">Policy<\/span>/);
-assert.match(dashboard, /<span className="t-meta">Consequence<\/span>/);
-assert.match(dashboard, /\{topApproval\.why /, "Why must read the real per-approval field");
-assert.match(dashboard, /\{topApproval\.evidence /, "Evidence must read the real per-approval field");
-assert.match(dashboard, /\{topApproval\.policy\}/, "Policy must read the real per-approval field");
-assert.match(dashboard, /\{topApproval\.consequence /, "Consequence must read the real per-approval field");
-assert.match(dashboard, /Approve and send/);
-assert.match(dashboard, /topApproval\.canEditDraft \? "Edit draft" : "Open"/, "Edit draft must only be offered for approval kinds that actually support it (gmail\\/microsoft send-after-approval)");
-assert.match(dashboard, /: "Reject"/);
+assert.match(dashboard, /function NeedsYourReview/, "Needs your review must be its own component, reusable and testable like WorkInProgress");
+assert.match(dashboard, /const items = overview\.approvals\.latest;/, "every pending approval in the real latest list must render as a row, not just the single newest one");
+assert.match(dashboard, /<Link key={item\.id} href={item\.href} className="row link">/, "each approval must render with the exact same .row.link primitive Work in progress uses - not a bespoke card");
+assert.match(dashboard, /<span className="ttl">{item\.title}<\/span>/, "the row title must read the real per-approval title");
+assert.match(dashboard, /{titleCase\(item\.operatorKey\)} Operator · {timeAgo\(item\.createdAt\)}/, "the row's one metadata line must be operator + real age, matching Work in progress's own sub-line convention");
+assert.match(dashboard, /<span className="badge amber">{item\.riskLevel \?/, "the row must show a risk or approval-required badge, using the same .badge amber vocabulary as the rest of the dashboard");
+assert.match(dashboard, /"AWAITING APPROVAL"/, "the fallback badge label must remain honest when no risk level is available");
 assert.match(dashboard, /Nothing needs your review\./, "an honest empty state must exist - never a fabricated approval");
+assert.doesNotMatch(dashboard, /className="grid4"/, "the dashboard must no longer render the full Why\\/Evidence\\/Policy\\/Consequence breakdown - that detail now lives only on \\/approvals");
+assert.doesNotMatch(dashboard, /Approve and send/, "Approve and send must not be actionable from the dashboard overview - a reviewer must see the prepared draft on \\/approvals before sending");
+assert.doesNotMatch(dashboard, /"Edit draft"/, "Edit draft must not be offered from the dashboard overview");
+assert.doesNotMatch(dashboard, />Reject</, "Reject must not be actionable from the dashboard overview");
 assert.doesNotMatch(dashboard, /Business context/, "the old Business context connector card is not part of the reference composition");
 assert.doesNotMatch(dashboard, /<div className="t-section">Policy<\/div>/, "the old standalone Policy card is not part of the reference composition");
 assert.doesNotMatch(dashboard, /Recent activity/, "the old Recent activity card is not part of the reference composition");
@@ -101,11 +103,24 @@ for (const fake of ["Northwind", "Elena Roos", "Vela Partners", "Atlas Studio", 
 assert.doesNotMatch(dashboardSource, /Math\.random/, "no dashboard field may be randomly fabricated");
 
 // ─────────────────────────────────────────────────────────────────────────
-// G. Preserved production logic: real actions remain server-authoritative,
-// unchanged by this presentation-only recomposition.
+// G. Preserved production logic: the dashboard no longer acts on approvals
+// itself (moved to /approvals, see below), but it must still route a
+// reviewer to the real per-approval href, and must still load through the
+// real, workspace-scoped overview route.
 // ─────────────────────────────────────────────────────────────────────────
-assert.match(dashboard, /void actOnApproval\(topApproval\.id, "approve"\)/, "Approve and send must remain the real, wired approval action");
-assert.match(dashboard, /void actOnApproval\(topApproval\.id, "reject"\)/, "Reject must remain the real, wired approval action");
+assert.doesNotMatch(dashboard, /actOnApproval/, "the dashboard must no longer call the approve/reject action itself - Approve and send, Edit draft, and Reject now live only on /approvals");
+assert.match(dashboard, /href={item\.href}/, "each compact review row must still link to the approval's real href");
 assert.match(dashboard, /fetch\(`\/api\/dashboard\/overview\?/, "the dashboard must still load through the real, workspace-scoped overview route");
+
+// Approve and send, Edit draft, and Reject must remain real and wired -
+// just on /approvals, where the reviewer can see the actual prepared draft
+// first, per this recomposition's explicit design decision.
+const approvalsPage = read("src/app/app/approvals/page.tsx");
+const approvalDecisionSummary = read("src/app/app/approvals/ApprovalDecisionSummary.tsx");
+assert.match(approvalsPage, /actOnApproval\(item, "approve"\)/, "Approve and send must remain the real, wired approval action on /approvals");
+assert.match(approvalsPage, /actOnApproval\(item, "reject", rejectReason\)/, "Reject must remain the real, wired approval action on /approvals");
+assert.match(approvalDecisionSummary, /approval-approve-btn/, "the primary approve action must remain visually dominant on /approvals");
+assert.match(approvalDecisionSummary, /approval-edit-btn/, "Edit draft must remain available on /approvals");
+assert.match(approvalDecisionSummary, /approval-reject-btn/, "Reject must remain available on /approvals");
 
 console.log("Dashboard recomposition regression contracts passed.");

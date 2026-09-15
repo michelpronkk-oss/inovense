@@ -86,18 +86,36 @@ try {
   result = route({ subject: "Re: issue", snippet: "Thanks, that solved it. All good now." });
   assert.equal(result.decision.actionability, "OBSERVE");
   assert.equal(result.candidates.length, 0);
-  // 10. Multi-intent customer message keeps one primary owner.
-  result = route({ subject: "Implementation and pricing", snippet: "We are still waiting for implementation and also want pricing for another region." });
-  assert.equal(result.decision.primaryOperator, "client_flow");
-  assert.ok(result.decision.supportingOperators.includes("revenue"));
+  // 10. Commercial intent owns a mixed pricing and rollout request.
+  const mixedSubject = "Realtime Test — Pricing request for 25-seat rollout";
+  const mixedBody = "Please share pricing for the 25-seat rollout.";
+  result = routeWithText({ subject: mixedSubject, snippet: mixedBody }, mixedBody);
+  assert.equal(result.decision.primaryIntent, "PRICING_REQUEST");
+  assert.equal(result.decision.primaryOperator, "revenue");
+  assert.ok(result.decision.secondaryIntents.includes("DELIVERY_STATUS_REQUEST"));
+  assert.ok(result.decision.supportingOperators.includes("client_flow"));
+  assert.equal(result.decision.actionability, "WORKFLOW_CANDIDATE");
+  // 11. Secondary context supports the primary owner without creating a second candidate.
+  result = route({ subject: "Pricing and rollout", snippet: "Please provide pricing for the rollout." });
+  assert.equal(result.decision.primaryIntent, "PRICING_REQUEST");
+  assert.equal(result.decision.primaryOperator, "revenue");
+  assert.ok(result.decision.supportingOperators.includes("client_flow"));
   // 11. Supporting context never becomes a second candidate.
   assert.equal(result.candidates.length, 1);
-  assert.deepEqual(result.candidates[0].supportingOperators, ["operations", "revenue"]);
-  // 12. Same provider/thread/intent dedupes deterministically.
+  assert.deepEqual(result.candidates[0].supportingOperators, ["client_flow"]);
+  // 12. Genuine support issues retain Support ownership.
+  result = route({ subject: "Support issue during rollout", snippet: "The integration is broken and we need help." });
+  assert.equal(result.decision.primaryIntent, "SUPPORT_REQUEST");
+  assert.equal(result.decision.primaryOperator, "support");
+  // 13. Delivery status without commercial intent remains Client Flow owned.
+  result = route({ subject: "Rollout status update", snippet: "Please provide the rollout status update." });
+  assert.equal(result.decision.primaryIntent, "DELIVERY_STATUS_REQUEST");
+  assert.equal(result.decision.primaryOperator, "client_flow");
+  // 14. Same provider/thread/intent dedupes deterministically.
   const first = route({ subject: "Pricing", snippet: "Please send pricing." });
   const second = route({ subject: "Pricing", snippet: "Please send pricing.", sourceId: "message-2" });
   assert.equal(first.candidates[0]?.dedupeKey, second.candidates[0]?.dedupeKey);
-  // 13. Repeated unresolved follow-up raises priority.
+  // 15. Repeated unresolved follow-up raises priority.
   result = route({ subject: "Re: implementation", snippet: "Still waiting for an answer.", metadata: { threadMessageCount: 3, threadUnresolved: true } });
   assert.equal(result.decision.priorityLevel, "high");
   assert.equal(result.decision.actionability, "WORKFLOW_CANDIDATE");

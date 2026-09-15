@@ -128,7 +128,6 @@ export function ApprovalExpandedReview({
             <h2 className="approval-review-title">{presentation.queueTitle}</h2>
             <div className="approval-review-meta">
               <span>{presentation.connectorLabel}</span><i>·</i><span>{presentation.kind === "email" ? "Customer email" : presentation.category}</span>
-              {presentation.riskLevel && <><i>·</i><strong>{presentation.riskLevel} risk</strong></>}
               {preview.confidence && <span className="badge green approval-review-confidence">{confidenceLabel(preview.confidence)}</span>}
             </div>
           </header>

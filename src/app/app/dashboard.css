@@ -5412,8 +5412,13 @@ select.os-input option {
 .os-root .approval-executed-note a { color: var(--cyan); }
 
 /* Compact decision aside - never a tall empty box: content hugs the top,
-   only the reject-confirm affordance grows the box when it is opened. */
+   only the reject-confirm affordance grows the box when it is opened. Sticky
+   on desktop (where main and rail sit side by side) so the actions stay
+   reachable if the prepared draft is long or expanded via "Show full draft". */
 .os-root .approval-summary { display: grid; gap: 12px; align-content: start; padding: 2px 0 0 18px; border-left: 1px solid rgba(160,184,202,.13); background: transparent; box-shadow: none; }
+@media (min-width: 861px) {
+  .os-root .approval-summary { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
+}
 .os-root .approval-summary-list { display: grid; gap: 8px; margin: 0; padding: 11px 0; border-top: 1px solid rgba(160,184,202,.1); border-bottom: 1px solid rgba(160,184,202,.1); }
 .os-root .approval-summary-list > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .os-root .approval-summary-list dt { flex: none; color: var(--text-faint); font-size: 11px; }

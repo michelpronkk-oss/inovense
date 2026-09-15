@@ -212,6 +212,41 @@ function stageTone(stage: WorkflowLoopStage): "muted" | "amber" | "cyan" | "gree
   return "muted";
 }
 
+/**
+ * "Needs your review" card: compact triage rows for pending approvals, matched
+ * to the exact density of a "Work in progress" row (.rows/.row/.grow/.ttl/.sub/.rt).
+ * The full decision (why/evidence/policy/consequence, the prepared draft, and
+ * Approve/Edit/Reject) lives on /approvals - a reviewer must see the actual
+ * prepared email before sending it, not act on it from the dashboard.
+ */
+function NeedsYourReview({ overview }: { overview: DashboardOverview }) {
+  const items = overview.approvals.latest;
+  return (
+    <div className="card" aria-labelledby="needs-review-title">
+      <div className="card-head"><div className="t-section" id="needs-review-title">Needs your review</div><Link className="btn btn-sm btn-ghost" href="/approvals">Open approvals</Link></div>
+      {items.length === 0 ? (
+        <p className="t-meta card-pad" style={{ margin: 0 }}>Nothing needs your review.</p>
+      ) : (
+        <div className="rows">
+          {items.map((item) => (
+            <Link key={item.id} href={item.href} className="row link">
+              <OperatorAvatar operatorKey={(item.operatorKey as ScanKey) ?? "revenue"} size={28} />
+              <span className="grow">
+                <span className="ttl">{item.title}</span>
+                <span className="sub">{titleCase(item.operatorKey)} Operator · {timeAgo(item.createdAt)}</span>
+              </span>
+              <span className="rt inline" style={{ gap: 8 }}>
+                <span className="badge amber">{item.riskLevel ? `${item.riskLevel} risk`.toUpperCase() : "AWAITING APPROVAL"}</span>
+                <ArrowIcon size={14} style={{ color: "var(--text-faint)" }} />
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** "Work in progress" card: real, active (non-terminal) workflow runs - see overview.workInProgress. */
 function WorkInProgress({ overview }: { overview: DashboardOverview }) {
   const items = overview.workInProgress;
@@ -359,7 +394,6 @@ export function OSOverview() {
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [busyApproval, setBusyApproval] = useState<string | null>(null);
   // Whether this workspace still has an unused trial available - decides
   // whether Preview copy offers "Start 3-day trial" or genuinely "Choose a
   // plan". Server-authoritative; null while unknown.
@@ -429,31 +463,6 @@ export function OSOverview() {
     return () => { active = false; };
   }, []);
 
-  const actOnApproval = async (id: string, action: "approve" | "reject") => {
-    if (busyApproval) return;
-    setBusyApproval(id);
-    setError("");
-    try {
-      const res = await fetch(`/api/approvals/${id}/${action}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workspaceId: state.workspace.id,
-          userId: state.currentUser.id,
-          userEmail: state.currentUser.email,
-          ...(action === "reject" ? { reason: "Skipped from dashboard" } : {}),
-        }),
-      });
-      const json = await res.json().catch(() => ({})) as { error?: string; message?: string };
-      if (!res.ok) throw new Error(json.message || json.error || "Could not update approval.");
-      await loadOverview();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update approval.");
-    } finally {
-      setBusyApproval(null);
-    }
-  };
-
   if (loading && !overview) return <DashboardLoadingState />;
 
   if (!overview) {
@@ -470,7 +479,6 @@ export function OSOverview() {
   const greet = hh < 5 ? "Good night" : hh < 12 ? "Good morning" : hh < 18 ? "Good afternoon" : "Good evening";
   const firstName = state.currentUser.name?.trim().split(/\s+/)[0] || titleCase((state.currentUser.email?.split("@")[0] || "there").split(/[._-]/)[0]);
   const pending = overview.approvals.pendingCount;
-  const busy = busyApproval !== null;
 
   const headerActions = (
     <>
@@ -535,8 +543,6 @@ export function OSOverview() {
   const eligibility = overview.executionEligibility;
   const showEligibilityBanner = !eligibility.eligible;
 
-  const topApproval = overview.approvals.latest[0];
-
   return (
     <div className="os-page dashboard-overview">
       <PageHeader
@@ -599,35 +605,7 @@ export function OSOverview() {
 
       <div className="sec split">
         <div className="stack">
-          <div className="card" aria-labelledby="needs-review-title">
-            <div className="card-head"><div className="t-section" id="needs-review-title">Needs your review</div><Link className="btn btn-sm btn-ghost" href="/approvals">Open approvals</Link></div>
-            <div className="card-pad" style={{ paddingTop: 16 }}>
-              {!topApproval ? (
-                <p className="t-meta" style={{ margin: 0 }}>Nothing needs your review.</p>
-              ) : (
-                <>
-                  <div className="inline" style={{ gap: 11, marginBottom: 14 }}>
-                    <OperatorAvatar operatorKey={(topApproval.operatorKey as ScanKey) ?? "revenue"} size={28} />
-                    <span className="t-compact ink">{titleCase(topApproval.operatorKey)} Operator</span>
-                    <span className="badge amber">AWAITING APPROVAL</span>
-                  </div>
-                  <div className="t-object" style={{ fontSize: 16 }}>{topApproval.title}</div>
-                  <div className="grid4" style={{ marginTop: 16 }}>
-                    <div><span className="t-meta">Why</span><p className="t-compact" style={{ margin: "4px 0 0" }}>{topApproval.why ?? "Detected from live connected-system activity."}</p></div>
-                    <div><span className="t-meta">Evidence</span><p className="t-compact" style={{ margin: "4px 0 0" }}>{topApproval.evidence ?? "Full context is in Open approvals."}</p></div>
-                    <div><span className="t-meta">Policy</span><p className="t-compact" style={{ margin: "4px 0 0" }}>{topApproval.policy}</p></div>
-                    <div><span className="t-meta">Consequence</span><p className="t-compact" style={{ margin: "4px 0 0" }}>{topApproval.consequence ?? "Recorded in the run log after your decision."}</p></div>
-                  </div>
-                  <div className="inline" style={{ marginTop: 18, gap: 9 }}>
-                    <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void actOnApproval(topApproval.id, "approve")}>{busyApproval === topApproval.id ? "…" : "Approve and send"}</button>
-                    <Link className="btn btn-secondary" href={topApproval.href}>{topApproval.canEditDraft ? "Edit draft" : "Open"}</Link>
-                    <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => void actOnApproval(topApproval.id, "reject")}>{busyApproval === topApproval.id ? "…" : "Reject"}</button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
+          <NeedsYourReview overview={overview} />
           <WorkInProgress overview={overview} />
         </div>
 

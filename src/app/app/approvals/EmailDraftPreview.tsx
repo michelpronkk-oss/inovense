@@ -66,7 +66,7 @@ export function EmailDraftPreview({
   }
 
   return (
-    <section id={id} className="approval-email" aria-label="Prepared email">
+    <section id={id} className="approval-email" aria-label={subject ? `Prepared email: ${subject}` : "Prepared email"}>
       <div className="approval-email-bar">
         <span className="t-eyebrow">Prepared email</span>
         <span className="approval-email-connector">{connectorLabel}</span>
@@ -74,7 +74,6 @@ export function EmailDraftPreview({
       </div>
       <div className="approval-email-sheet">
         <div className="approval-email-field"><span>To</span><strong>{to || "Recipient not available"}</strong></div>
-        {subject && <div className="approval-email-field"><span>Subject</span><strong>{subject}</strong></div>}
         <div className={`approval-email-body${showFullDraft ? " is-expanded" : ""}`}>{body || "Email body not available."}</div>
         {body.length > 900 && <button type="button" className="approval-email-show-more" onClick={() => setShowFullDraft((current) => !current)}>{showFullDraft ? "Show less" : "Show full draft"}</button>}
       </div>
