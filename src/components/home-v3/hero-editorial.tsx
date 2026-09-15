@@ -82,7 +82,7 @@ export default function HeroEditorial() {
             <span className="hero-trial-pill"><i />Early access</span>
           </p>
           <h1>Auterim <em className="hero-editorial-forward">finds the work</em> before your team has to.</h1>
-          <p className="say"><ResponsiveCopy desktop="Connect your tools. Auterim finds the work and acts under your rules." /></p>
+          <p className="say"><ResponsiveCopy desktop="Other tools wait for a prompt. Auterim reads the systems you already run, prepares the next step, and holds anything consequential for your approval." mobile="Auterim reads the systems you already run, prepares the next step, and holds anything consequential for your approval." /></p>
           <div className="hero-cta">
             <button type="button" onClick={(event) => openEarlyAccess({ trigger: event.currentTarget })} className="btn btn-a">
               {hasSubmitted ? "Request received" : <>Request early access <span className="arrow">→</span></>}

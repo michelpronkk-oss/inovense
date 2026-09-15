@@ -213,13 +213,34 @@
 
 /* Public homepage recomposition: a small set of quiet, editorial sections
    that make the product legible before adding decoration. */
+.auterim-v3-page.homepage-recomposed {
+  /* Two spacing steps, not one. Sections that open a new argument get the full
+     step; a section that answers the one directly above it gets the tight step,
+     so the page reads as four grouped arguments instead of eight evenly spaced
+     slabs. Every homepage section spacing value below comes from these two. */
+  --sec-space: clamp(84px, 7vw, 116px);
+  --sec-space-tight: clamp(52px, 4.4vw, 72px);
+}
 .auterim-v3-page.homepage-recomposed .homepage-story,
 .auterim-v3-page.homepage-recomposed .homepage-difference,
 .auterim-v3-page.homepage-recomposed .homepage-control,
 .auterim-v3-page.homepage-recomposed .homepage-connectors,
 .auterim-v3-page.homepage-recomposed .homepage-pricing,
 .auterim-v3-page.homepage-recomposed .homepage-faq {
-  padding: 112px 0;
+  padding: var(--sec-space) 0;
+}
+/* The operators band is a plain .sec, so its bottom has to join the rhythm
+   explicitly or it reads 24px looser than every neighbour. */
+.auterim-v3-page.homepage-recomposed #operators { padding-bottom: var(--sec-space); }
+
+/* Continuations: each of these answers the section immediately above it, so it
+   opens tight and stays visually bound to it. */
+.auterim-v3-page.homepage-recomposed .homepage-story,
+.auterim-v3-page.homepage-recomposed #operators,
+.auterim-v3-page.homepage-recomposed .homepage-connectors,
+.auterim-v3-page.homepage-recomposed .homepage-outcomes,
+.auterim-v3-page.homepage-recomposed .homepage-faq {
+  padding-top: var(--sec-space-tight);
 }
 
 .auterim-v3-page.homepage-recomposed .homepage-loop {
@@ -737,6 +758,10 @@
   .auterim-v3-page .hero-editorial-in {
     grid-template-columns: minmax(0, .94fr) minmax(0, 1.06fr);
     gap: clamp(38px, 4vw, 58px);
+    /* The copy column is much shorter than the operating panel, so top
+       alignment left a large hole under the CTAs on tablet widths. Optical
+       centering balances the two columns instead. */
+    align-items: center;
   }
 
   .auterim-v3-page .hero-editorial h1 { width: 100%; max-width: none; }
@@ -2638,6 +2663,12 @@
   background: var(--acc);
   box-shadow: 0 0 16px rgba(55,230,212,.5);
 }
+
+/* From 821px up the copy column carries a 24px top padding, so the marker has
+   to start at the eyebrow rather than at the box edge or it floats above it. */
+@media (min-width: 821px) {
+  .auterim-v3-page .hero-editorial-copy::after { top: 24px; }
+}
 .auterim-v3-page .hero-editorial h1 { margin-top: 26px; }
 .auterim-v3-page .hero-editorial h1 > span { display: block; color: #c8d1dc; text-wrap: balance; }
 .auterim-v3-page .hero-editorial h1 em { color: var(--acc); font-style: italic; font-weight: 700; font-synthesis: style; }
@@ -2853,9 +2884,11 @@
   stroke-dasharray: 14 260;
   opacity: 0;
 }
-.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-rail-fl { animation: hero-artifact-flow 3.4s cubic-bezier(.4,0,.5,1) infinite; }
+/* Context converging into the operating layer. Three passes, one per source,
+   then it stops: this is a step in a sequence, not an idle loop. */
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-rail-fl { animation: hero-artifact-flow 1.15s cubic-bezier(.4,0,.5,1) .35s 3 both; }
 .auterim-v3-page .hero-artifact-rail-fl:nth-of-type(5) { animation-delay: .5s; }
-.auterim-v3-page .hero-artifact-rail-fl:nth-of-type(6) { animation-delay: 1s; }
+.auterim-v3-page .hero-artifact-rail-fl:nth-of-type(6) { animation-delay: .65s; }
 @keyframes hero-artifact-flow {
   0% { stroke-dashoffset: 274; opacity: 0; }
   12% { opacity: .95; }
@@ -2922,22 +2955,45 @@
 .auterim-v3-page .hero-artifact-mini-ed:hover { color: var(--ink); box-shadow: inset 0 0 0 1px var(--edge); }
 
 /* Staggered reveal, triggered once by the shared scroll observer. */
+/* DETECT: the three connected sources register, one after another. */
 .auterim-v3-page .hero-artifact.sequence-in .hero-artifact-ctx > div { animation: hero-artifact-rise .55s ease both; }
-.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-ctx > div:nth-child(2) { animation-delay: .12s; }
-.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-ctx > div:nth-child(3) { animation-delay: .24s; }
-.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-task { animation: hero-artifact-rise .5s ease .5s both; }
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-ctx > div:nth-child(2) { animation-delay: .15s; }
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-ctx > div:nth-child(3) { animation-delay: .3s; }
+/* UNDERSTAND: only once all three have landed does the panel claim they are
+   assembled and the policy applied. */
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-ctx-f { animation: hero-artifact-rise .5s ease 1.5s both; }
+/* ROUTE: the named Operator takes ownership. */
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-op { animation: hero-artifact-route .7s ease 1.85s both; }
+/* PREPARE: the task it is going to work on. */
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-task { animation: hero-artifact-rise .5s ease 2.25s both; }
 .auterim-v3-page .hero-artifact.sequence-in .hero-artifact-seq li { animation: hero-artifact-rise .5s ease both; }
-.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-seq li:nth-child(1) { animation-delay: .8s; }
-.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-seq li:nth-child(2) { animation-delay: 1.15s; }
-.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-seq li:nth-child(3) { animation-delay: 1.5s; }
-.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-seq li:nth-child(4) { animation-delay: 1.9s; }
-.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-seq li:nth-child(5) { animation-delay: 2.2s; }
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-seq li:nth-child(1) { animation-delay: 2.6s; }
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-seq li:nth-child(2) { animation-delay: 2.95s; }
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-seq li:nth-child(3) { animation-delay: 3.3s; }
+/* HOLD: the prepared reply does not simply appear, it arrives and then turns
+   amber as it reaches the boundary. */
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-seq li:nth-child(4) { animation: hero-artifact-rise .5s ease 3.65s both, hero-artifact-hold .6s ease 4.15s both; }
+/* The action that stays pending. It never lights up: nothing runs unapproved. */
+.auterim-v3-page .hero-artifact.sequence-in .hero-artifact-seq li:nth-child(5) { animation-delay: 4.05s; }
 .auterim-v3-page .hero-artifact.sequence-in .hero-artifact-gate {
   animation:
-    hero-artifact-gate-in .8s cubic-bezier(.2,.8,.2,1) 2.6s both,
-    hero-artifact-gate-flash 1.1s ease-out 2.6s;
+    hero-artifact-gate-in .8s cubic-bezier(.2,.8,.2,1) 4.55s both,
+    hero-artifact-gate-flash 1.1s ease-out 4.55s;
 }
 @keyframes hero-artifact-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+/* ROUTE: the Operator row arrives and its rule brightens briefly as ownership
+   is taken, then settles. Border-color and opacity only, so nothing reflows. */
+@keyframes hero-artifact-route {
+  0% { opacity: 0; transform: translateY(6px); border-top-color: var(--rule); }
+  55% { opacity: 1; transform: none; border-top-color: rgba(55,230,212,.45); }
+  100% { opacity: 1; transform: none; border-top-color: var(--rule); }
+}
+/* HOLD: the prepared step changes colour as it reaches the approval boundary.
+   A state change, not a decoration. */
+@keyframes hero-artifact-hold {
+  from { color: var(--ink); }
+  to { color: var(--gate); }
+}
 @keyframes hero-artifact-gate-in { from { opacity: 0; transform: translateY(18px) scale(.985); } to { opacity: 1; transform: none; } }
 /* One-shot arrival cue — a single soft amber pulse marking the moment the approval
    gate lands, not an ambient loop like `beat`. Runs once alongside the entrance. */
@@ -2952,7 +3008,7 @@
   inset: -3px;
   border-radius: 3px;
   box-shadow: 0 0 0 1px rgba(55,230,212,.5);
-  animation: hero-artifact-ring 2.6s ease-out 3.4s infinite;
+  animation: hero-artifact-ring 2.2s ease-out 5.5s 2 both;
 }
 @keyframes hero-artifact-ring {
   0% { opacity: .9; transform: scale(1); }
@@ -2969,10 +3025,14 @@
     padding-top: 88px;
     padding-bottom: 40px;
   }
-  .auterim-v3-page .hero-editorial-in { width: 100%; }
-  .auterim-v3-page .hero-artifact { padding-bottom: 156px; }
-  .auterim-v3-page .hero-artifact-panel { padding-bottom: 54px; }
-  .auterim-v3-page .hero-artifact-gate { position: absolute; z-index: 2; left: -48px; bottom: -52px; width: 336px; margin-top: 0; }
+  .auterim-v3-page .hero-editorial-in { width: 100%; align-items: center; }
+  /* The gate card overlaps the panel's lower-left corner rather than clearing
+     it, so "Reply prepared / held at gate" and the approval it produces read as
+     one object. The overlap lands on the panel's own reserved bottom padding,
+     so it never covers a sequence row. */
+  .auterim-v3-page .hero-artifact { padding-bottom: 104px; }
+  .auterim-v3-page .hero-artifact-panel { padding-bottom: 48px; }
+  .auterim-v3-page .hero-artifact-gate { position: absolute; z-index: 2; left: -36px; bottom: -14px; width: 340px; margin-top: 0; }
 }
 @media (max-width: 820px) {
   .auterim-v3-page .hero-editorial-copy { padding-left: 30px; }
@@ -3010,14 +3070,23 @@
   .auterim-v3-page .hero-artifact-gate-k::before,
   .auterim-v3-page .hero-artifact-seq li.hero-artifact-seq-now::before,
   .auterim-v3-page .hero-artifact-ctx > div,
+  .auterim-v3-page .hero-artifact-ctx-f,
+  .auterim-v3-page .hero-artifact-op,
   .auterim-v3-page .hero-artifact-task,
   .auterim-v3-page .hero-artifact-seq li,
+  .auterim-v3-page .hero-artifact-rail-fl,
   .auterim-v3-page .hero-artifact-gate,
   .auterim-v3-page .hero-artifact-mini-go::after { animation: none !important; }
   .auterim-v3-page .hero-artifact-ctx > div,
+  .auterim-v3-page .hero-artifact-ctx-f,
+  .auterim-v3-page .hero-artifact-op,
   .auterim-v3-page .hero-artifact-task,
   .auterim-v3-page .hero-artifact-seq li,
   .auterim-v3-page .hero-artifact-gate { opacity: 1; transform: none; }
+  /* The sequence's end state, shown at once: prepared work held at the
+     approval boundary, with the travelling and pulsing cues removed. */
+  .auterim-v3-page .hero-artifact-rail-fl,
+  .auterim-v3-page .hero-artifact-mini-go::after { opacity: 0; }
 }
 
 /* Final responsive foundation. Keep this block last: the V3 stylesheet has
@@ -3485,7 +3554,7 @@
   .auterim-v3-page .hero-editorial .say { max-width: 31ch; margin-top: 17px; font-size: 15px; }
   .auterim-v3-page .hero-editorial .hero-cta { align-items: flex-start; gap: 9px 16px; margin-top: 22px; }
   .auterim-v3-page .hero-editorial .hero-cta .btn-a { width: min(100%, 286px); min-height: 48px; }
-  .auterim-v3-page .hero-editorial .hero-cta .btn-b { width: auto; min-height: 34px; padding: 5px 0; border: 0; background: transparent; }
+  .auterim-v3-page .hero-editorial .hero-cta .btn-b { width: auto; min-height: 44px; padding: 5px 0; border: 0; background: transparent; }
   .auterim-v3-page .hero-artifact { width: 100%; max-width: 470px; margin: 0 auto; padding-bottom: 0; }
   .auterim-v3-page .hero-artifact-gate { display: none; }
   .auterim-v3-page .hero-artifact-ctx { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -3558,7 +3627,7 @@
   .auterim-v3-page .hero-editorial .say { max-width: 31ch; margin-top: 17px; font-size: 15px; line-height: 1.53; }
   .auterim-v3-page .hero-editorial .hero-cta { align-items: flex-start; gap: 9px 16px; margin-top: 22px; }
   .auterim-v3-page .hero-editorial .hero-cta .btn-a { width: min(100%, 286px); min-height: 48px; }
-  .auterim-v3-page .hero-editorial .hero-cta .btn-b { width: auto; min-height: 34px; padding: 5px 0; border: 0; background: transparent; color: var(--ink); }
+  .auterim-v3-page .hero-editorial .hero-cta .btn-b { width: auto; min-height: 44px; padding: 5px 0; border: 0; background: transparent; color: var(--ink); }
   .auterim-v3-page .hero-editorial .note { margin-top: 12px; font-size: 9px; }
   .auterim-v3-page .hero-artifact { width: 100%; max-width: 470px; margin: 0 auto; padding-bottom: 0; }
   .auterim-v3-page .hero-artifact-panel { padding: 14px 15px 16px; border-radius: 9px; }
@@ -4712,7 +4781,7 @@
   .auterim-v3-page .hero-editorial .say { max-width: 31ch; margin-top: 17px; font-size: 15px; }
   .auterim-v3-page .hero-editorial .hero-cta { align-items: flex-start; gap: 9px 16px; margin-top: 22px; }
   .auterim-v3-page .hero-editorial .hero-cta .btn-a { width: min(100%, 286px); min-height: 48px; }
-  .auterim-v3-page .hero-editorial .hero-cta .btn-b { width: auto; min-height: 34px; padding: 5px 0; border: 0; background: transparent; }
+  .auterim-v3-page .hero-editorial .hero-cta .btn-b { width: auto; min-height: 44px; padding: 5px 0; border: 0; background: transparent; }
   .auterim-v3-page .hero-artifact { width: 100%; max-width: 470px; margin: 0 auto; padding-bottom: 0; }
   .auterim-v3-page .hero-artifact-gate { display: none; }
   .auterim-v3-page .hero-artifact-ctx { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -4879,7 +4948,7 @@
 /* Homepage editorial refinement: process and policy information should read as
    an operating surface, not as a collection of interchangeable marketing cards. */
 .auterim-v3-page.homepage-recomposed .homepage-outcomes {
-  padding: 112px 0;
+  padding: var(--sec-space-tight) 0 var(--sec-space);
   background: linear-gradient(90deg, rgba(10, 20, 25, .52), rgba(8, 13, 18, .08) 58%, rgba(10, 20, 25, .35));
 }
 
@@ -5413,7 +5482,7 @@
   .auterim-v3-page.homepage-recomposed .homepage-plan-teaser article > p:not(.homepage-plan-price) { min-height: 0; }
 }
 
-.auterim-v3-page.homepage-recomposed .homepage-faq { padding: 86px 0 94px; background: #080d12; }
+.auterim-v3-page.homepage-recomposed .homepage-faq { padding: var(--sec-space-tight) 0 var(--sec-space); background: #080d12; }
 .auterim-v3-page.homepage-recomposed .homepage-faq .head { max-width: 860px; }
 .auterim-v3-page.homepage-recomposed .homepage-faq .faq { max-width: 880px; margin: 42px auto 0; }
 .auterim-v3-page.homepage-recomposed .homepage-faq .faq summary { padding: 22px 0; font-size: 17px; }
@@ -5510,7 +5579,10 @@
 .auterim-v3-page.homepage-recomposed .homepage-contrast-muted {
   display: grid !important;
   grid-template-columns: minmax(0, 1fr) !important;
-  align-content: end;
+  /* Bottom-aligning the three comparison rows against the taller panel opened a
+     ~90px hole above them. Centering pairs each claim optically with the panel
+     that answers it. */
+  align-content: center;
   padding: 20px 0 26px;
 }
 .auterim-v3-page.homepage-recomposed .homepage-contrast-muted > div {
@@ -5690,9 +5762,11 @@
   .auterim-v3-page .rv.in { transition: none; }
 }
 
-/* The hero must be intelligible on its first paint. Ambient artifact and
-   background motion above stays in place; only the copy's delayed entrance
-   is removed so a slow client never presents a dim or unfinished promise. */
+/* The hero must be intelligible on its first paint, so the copy's delayed
+   entrance is removed and the headline is readable immediately. This block must
+   only ever list copy elements: it previously also carried the hero artifact
+   with `animation: none !important`, which silently disabled the whole product
+   sequence for every user who had motion enabled. */
 @media (prefers-reduced-motion: no-preference) {
   .auterim-v3-page .hero-editorial-eyebrow,
   .auterim-v3-page .hero-editorial h1,
@@ -5704,12 +5778,101 @@
     animation: none;
   }
   .auterim-v3-page .hero-editorial-copy::after { animation: none; }
-  .auterim-v3-page .hero-artifact-ctx > div,
-  .auterim-v3-page .hero-artifact-task,
-  .auterim-v3-page .hero-artifact-seq li,
-  .auterim-v3-page .hero-artifact-gate {
-    opacity: 1;
-    transform: none;
-    animation: none !important;
+}
+
+/* Touch targets on every touch-sized viewport, phone through iPad portrait.
+   These controls all keep their quiet text-link styling; only the tappable area
+   grows to the ~44px minimum. The pricing control is the conversion action on
+   its card and was the worst of them at 21px, so it also takes the full card
+   width. */
+@media (max-width: 1024px) {
+  .auterim-v3-page.homepage-recomposed .homepage-plan-teaser button {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 44px;
+  }
+  .auterim-v3-page.homepage-recomposed .ops-more,
+  .auterim-v3-page.homepage-recomposed .hv-cn-more,
+  .auterim-v3-page .foot-cookie-btn {
+    min-height: 44px;
+  }
+  /* The footer is outside .auterim-v3-page as well. */
+  .auterim-v3-page .foot ul a,
+  .foot ul a { display: flex; align-items: center; min-height: 44px; }
+  .auterim-v3-page .close-run { display: inline-flex; align-items: center; min-height: 44px; }
+  .top .cta .btn { min-height: 44px; }
+  /* The site header sits outside .auterim-v3-page, so these are addressed by
+     their own scopes rather than the page prefix used above. */
+  .top .mark,
+  .foot .mark,
+  .top .nav a,
+  .top .cta .in {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
   }
 }
+
+/* Mobile length. The page stacked to roughly 12,000px, which is a long scroll
+   for the amount of information it carries. Nothing is hidden here: the rhythm
+   tightens, repeated card chrome shrinks, and grids that had collapsed all the
+   way to one column go back to two where the content still reads. */
+@media (max-width: 640px) {
+  .auterim-v3-page.homepage-recomposed {
+    --sec-space: 58px;
+    --sec-space-tight: 40px;
+  }
+  .auterim-v3-page.homepage-recomposed .sec,
+  .auterim-v3-page.homepage-recomposed #operators { padding-top: var(--sec-space-tight); padding-bottom: var(--sec-space); }
+
+  /* Footer: brand across the top, then the three link groups two-up. */
+  .foot-grid { grid-template-columns: 1fr 1fr; gap: 26px 20px; }
+  .foot-brand { grid-column: 1 / -1; }
+
+
+  /* Connected systems read fine two-up at this width and halve the column. */
+  .hv-cn-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* Governed execution: the raised gate treatment is a horizontal idea, so in a
+     single column it returns to a flat amber-marked row. */
+  .hv-gx-gate { margin: 0; padding: 18px 16px 20px; }
+  .hv-gx-gate::before, .hv-gx-gate::after { display: none; }
+  .hv-gx-stages { gap: 8px; padding: 20px 18px 22px; }
+  .hv-gx-s { padding: 16px 16px 18px; }
+
+  /* Plan cards carried desktop-sized internal spacing. */
+  .auterim-v3-page.homepage-recomposed .homepage-plan-teaser { gap: 14px; }
+  .auterim-v3-page.homepage-recomposed .homepage-plan-teaser article { padding: 22px 20px 20px; }
+  .auterim-v3-page.homepage-recomposed .homepage-plan-teaser ul { gap: 7px; }
+  .auterim-v3-page.homepage-recomposed .homepage-plan-spacer { display: none; }
+
+  /* The closing panel restates the operator readiness the page has already
+     made; on phone it keeps its meaning at a smaller scale. */
+  .auterim-v3-page.homepage-recomposed .close-in { gap: 26px; }
+  .auterim-v3-page.homepage-recomposed .close-main { gap: 14px; }
+}
+
+/* Header: the sticky state was a background swap only. Settling the bar a few
+   pixels shorter on scroll gives the transition a reason and returns height to
+   the content. Height is on .wrap, which is not in flow with the page, so this
+   costs no layout shift in the document. */
+.top .wrap { transition: height .32s cubic-bezier(.4, 0, .2, 1); }
+.top.on .wrap { height: 62px; }
+.top.on { border-bottom-color: rgba(148, 164, 180, .2); }
+/* The sign-in link should not compete with the primary action. */
+.top .cta .in { color: var(--mute); transition: color .2s; }
+.top .cta .in:hover { color: var(--ink); }
+@media (prefers-reduced-motion: reduce) {
+  .top .wrap { transition: none; }
+}
+
+/* Closing section. It carried 40px of its own side padding on top of the
+   container's 20px, so its eyebrow and headline sat 20px right of every other
+   section on the page and the footer beneath it. */
+.auterim-v3-page.homepage-recomposed .close-in { padding-left: 20px; padding-right: 20px; }
+/* The closing headline was the largest type on the page by a wide margin. It is
+   the conversion moment, so it stays the biggest, just not shouting. */
+.auterim-v3-page.homepage-recomposed .close h2 { font-size: clamp(36px, 3.6vw, 50px); }
+.auterim-v3-page.homepage-recomposed .close-main .say,
+.auterim-v3-page.homepage-recomposed .close-main p { max-width: 46ch; }

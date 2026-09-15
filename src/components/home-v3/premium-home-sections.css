@@ -97,7 +97,9 @@
   }
   .auterim-v3-page .hero-editorial .hero-cta .btn-b {
     width: auto;
-    min-height: 32px;
+    /* Quiet text-link styling is deliberate here, but the tap area still has
+       to clear the ~44px touch-target minimum. */
+    min-height: 44px;
     justify-content: flex-start;
     padding: 0;
     border: 0;

@@ -183,6 +183,8 @@
 .hv-cn .hv-dot { width: 4px; height: 4px; margin-left: auto; }
 .hv-cn-foot { margin-top: auto; padding: 18px 0 26px; border-top: 1px solid var(--hv-line); }
 .hv-cn-more { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--hv-text); text-decoration: none; }
+/* Loaded after the refinement sheet, so the touch-target minimum is restated here. */
+@media (max-width: 1024px) { .hv-cn-more { min-height: 44px; } }
 .hv-cn-more:hover { color: var(--hv-cyan); }
 .hv-cn-more svg { color: var(--hv-cyan); }
 
@@ -290,12 +292,51 @@
 
 .hv-gx-top { position: relative; z-index: 1; display: flex; align-items: center; gap: 14px; padding: 34px 40px 26px; border-bottom: 1px solid var(--hv-line); }
 .hv-gx-top .hv-st { margin-left: auto; white-space: nowrap; padding: 7px 13px; }
-.hv-gx-stages { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; padding: 32px 32px 34px; }
+/* Governed execution reads as two sides of one boundary rather than five equal
+   cards: what Auterim may prepare, the human gate, then what is authorized to
+   run. The gate column is the anchor, so it is wider, lifted and amber. */
+.hv-gx-stages {
+  position: relative; z-index: 1; display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 10px;
+  padding: 32px 32px 34px;
+}
 .hv-gx-s {
-  position: relative; padding: 20px 18px 22px; border-radius: 14px;
-  background: linear-gradient(160deg, rgba(255,255,255,.028), rgba(255,255,255,.008));
+  position: relative; padding: 20px 18px 22px; border-radius: 12px;
+  background: transparent;
+  box-shadow: none;
+}
+/* The two preparation stages sit in one quiet surface, the two authorized
+   stages in another; only the gate between them is raised. */
+.hv-gx-s1, .hv-gx-s2, .hv-gx-s4, .hv-gx-s5 {
+  background: linear-gradient(160deg, rgba(255,255,255,.022), rgba(255,255,255,.006));
   box-shadow: inset 0 0 0 1px var(--hv-line-2);
 }
+.hv-gx-s1 { border-top-right-radius: 4px; border-bottom-right-radius: 4px; }
+.hv-gx-s2 { border-top-left-radius: 4px; border-bottom-left-radius: 4px; }
+.hv-gx-s4 { border-top-right-radius: 4px; border-bottom-right-radius: 4px; }
+.hv-gx-s5 { border-top-left-radius: 4px; border-bottom-left-radius: 4px; }
+/* The boundary itself. */
+.hv-gx-gate {
+  margin: -8px 6px;
+  padding: 26px 20px 28px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(245,194,107,.085), rgba(245,194,107,.02) 62%, transparent);
+  box-shadow: inset 0 0 0 1px rgba(245,194,107,.34), 0 26px 52px -30px rgba(0,0,0,.9);
+}
+.hv-gx-gate::before,
+.hv-gx-gate::after {
+  content: "";
+  position: absolute;
+  top: -22px;
+  bottom: -22px;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(245,194,107,.3) 26%, rgba(245,194,107,.3) 74%, transparent);
+}
+.hv-gx-gate::before { left: -9px; }
+.hv-gx-gate::after { right: -9px; }
+.hv-gx-gate .hv-gx-t { color: var(--hv-amber, #f5c26b); }
 .hv-gx-line { height: 2px; border-radius: 2px; background: var(--hv-line-2); position: relative; overflow: hidden; margin-bottom: 14px; }
 .hv-gx-line i {
   content: ""; position: absolute; inset: 0; transform-origin: left; transform: scaleX(0);
@@ -407,4 +448,33 @@
     transition: opacity .01s linear !important;
   }
   .rv .hv-opl, .rv .hv-stk, .rv .hv-ov, .rv .hv-gx, .rv .hv-rd { transform: none; }
+}
+
+/* Mobile: the five governance stages stacked to ~900px in one column. Two-up
+   keeps every label readable and halves that, with the approval gate spanning
+   the full width so the boundary still reads as the anchor. */
+@media (max-width: 640px) {
+  .hv-gx-stages {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 22px 18px 24px;
+  }
+  .hv-gx-s { padding: 15px 14px 17px; border-radius: 10px; }
+  .hv-gx-gate {
+    grid-column: 1 / -1;
+    order: -1;
+    margin: 0 0 4px;
+    padding: 17px 16px 19px;
+  }
+  .hv-gx-gate::before, .hv-gx-gate::after { display: none; }
+  .hv-gx-s1, .hv-gx-s2, .hv-gx-s4, .hv-gx-s5 { border-radius: 10px; }
+  .hv-gx-t { font-size: 15px; }
+  .hv-gx-x { font-size: 12.5px; line-height: 1.45; }
+}
+
+@media (max-width: 640px) {
+  /* Connector and readiness panels carried desktop padding into a 390px column. */
+  .hv-stk-l, .hv-stk-r { padding: 20px 18px; }
+  .hv-rd-in { padding: 20px 18px 22px; }
+  .hv-cn-c { padding: 11px 12px; }
 }

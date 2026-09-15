@@ -82,15 +82,15 @@ const HUBSPOT_ICON = <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
 
 export function WhyAuterimVisual() {
   return (
-    <div className="hv-opl" role="img" aria-label="Finds the work before your team has to. It reads the systems you already run, recognises what changed, and prepares the move that change calls for. No prompt, no workflow built by hand. Example: an inbox pricing question on an open deal has approval held; a CRM deal untouched for eleven days is preparing.">
+    <div className="hv-opl" role="img" aria-label="No one had to ask. Auterim reads the systems you already run, recognizes what changed, and prepares the move that change calls for. No prompt, no workflow built by hand. Example: an inbox pricing question on an open deal has approval held; a CRM deal untouched for eleven days is preparing.">
       <PanelDepth />
       <div className="hv-opl-main">
         <div className="hv-opl-rail">
           <MarkBadge size={52} radius={15} icon={24} />
         </div>
         <div className="hv-opl-right">
-          <h3 className="hv-opl-h">Finds the work before your team has to.</h3>
-          <div className="hv-opl-sub">It reads the systems you already run, recognises what changed, and prepares the move that change calls for.</div>
+          <h3 className="hv-opl-h">No one had to ask.</h3>
+          <div className="hv-opl-sub">Auterim reads the systems you already run, recognizes what changed, and prepares the move that change calls for.</div>
           <div className="hv-opl-claim">No prompt. No workflow built by hand.</div>
           <div className="hv-ledger">
             <div className="hv-lg">
