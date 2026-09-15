@@ -29,40 +29,56 @@ assert.match(approve, /log-teams-send[\s\S]{0,900}advanceWorkflowForApproval|adv
 // A platform-internal recommendation (e.g. the Slack no-PM-connector
 // fallback) must short-circuit before any connector readiness, policy
 // evaluation, or os_approvals creation - it performs no external action.
+// materialize.ts itself only DISPATCHES generation (never calls a
+// generator, never contacts OpenAI, never persists the artifact) - the
+// dedicated slack-recommendation-generate Trigger task and
+// recommendation-service.ts own that work, so a slow/unavailable model
+// call can never block this synchronous materialization pass.
 const internalBranchMatch = source.match(/if \(stepResult\.data\.action_type === "prepare_internal_recommendation"\) \{[\s\S]*?\n {2}\}/);
 assert.ok(internalBranchMatch, "materializeWorkflowStep must special-case the internal recommendation action type");
-assert.match(internalBranchMatch[0], /completeInternalRecommendationStep/);
-const fnStart = source.indexOf("async function completeInternalRecommendationStep");
-const fnEnd = source.indexOf("\nasync function findExistingCustomerReply");
-assert.ok(fnStart > 0 && fnEnd > fnStart, "completeInternalRecommendationStep must be located as a standalone function");
+assert.match(internalBranchMatch[0], /dispatchInternalRecommendationGeneration/);
+const fnStart = source.indexOf("async function dispatchInternalRecommendationGeneration");
+const fnEnd = source.indexOf("\n/** Links an exact, still-pending Client Flow draft");
+assert.ok(fnStart > 0 && fnEnd > fnStart, "dispatchInternalRecommendationGeneration must be located as a standalone function");
 const fnBody = source.slice(fnStart, fnEnd);
-assert.match(fnBody, /^async function completeInternalRecommendationStep/);
-assert.doesNotMatch(fnBody, /evaluateExecutionPolicy|assertConnectorReady|prepareAction\(/, "recording an internal recommendation must never evaluate policy, check connector readiness, or prepare a provider action");
+assert.match(fnBody, /^async function dispatchInternalRecommendationGeneration/);
+assert.doesNotMatch(fnBody, /evaluateExecutionPolicy|assertConnectorReady|prepareAction\(/, "dispatching generation must never evaluate policy, check connector readiness, or prepare a provider action");
 assert.doesNotMatch(fnBody, /\.from\("os_approvals"\)/, "an internal recommendation must never create an approval - there is nothing external to gate");
-assert.match(source, /connectorKey: "auterim"/);
-assert.match(source, /capability: "internal\.recommendation\.write"/);
+assert.doesNotMatch(fnBody, /openai|OpenAI|result_evidence|os_workflow_outcomes/i, "materialize.ts must never call a generator or persist the artifact directly - that is recommendation-service.ts's job");
+assert.match(source, /import \{ idempotencyKeys \} from "@trigger\.dev\/sdk\/v3"/);
+assert.match(fnBody, /await import\("@\/trigger\/slack-recommendation-generate"\)/, "the dedicated Trigger task must be dispatched, not run inline");
+assert.match(fnBody, /idempotencyKeys\.create\(`slack-recommendation:\$\{input\.workflowId\}:\$\{input\.stepId\}`/);
+assert.match(fnBody, /if \(input\.stepStatus === "completed"\) return missing\("recommendation_already_completed"/, "an already-completed step must never be re-dispatched");
+assert.match(fnBody, /if \(input\.stepStatus !== "executing"\)/, "a step already dispatched (executing) must never be re-dispatched a second time");
+assert.doesNotMatch(source, /connectorKey: "auterim"|capability: "internal\.recommendation\.write"/, "the PreparedAction/artifact shape for this step now lives in recommendation-service.ts, not materialize.ts");
 
-// buildRevenueInternalRecommendation must be reused, not duplicated, and its
-// null (insufficient-evidence) result must short-circuit to "blocked" before
-// any persistence - completion is never marked on empty output.
-assert.match(fnBody, /import { buildRevenueInternalRecommendation }|buildRevenueInternalRecommendation\(/);
-assert.match(source, /import \{ buildRevenueInternalRecommendation \} from "@\/lib\/workflows\/recommendation"/);
-const artifactCheckIdx = fnBody.indexOf("if (!artifact)");
-const evidenceWriteIdx = fnBody.indexOf('.from("os_workflow_runs")\n    .update({ result_evidence');
-const stepCompleteIdx = fnBody.indexOf('status: "completed"');
-assert.ok(artifactCheckIdx > 0 && evidenceWriteIdx > artifactCheckIdx && stepCompleteIdx > evidenceWriteIdx, "order must be: build artifact -> fail closed if empty -> persist result_evidence -> only then mark the step completed");
-assert.match(fnBody, /return missing\("recommendation_evidence_unavailable"/, "insufficient evidence must produce a truthful blocked state, never a false completion");
+// recommendation-service.ts owns the actual generation-to-persistence
+// pipeline: reuse-existing-artifact check, generator orchestration, and
+// only then persistence, in the correct order - completion is never
+// marked on empty output, and result_evidence/outcomes are the same
+// existing columns/table as before (no new migration).
+const service = fs.readFileSync("src/lib/workflows/recommendation-service.ts", "utf8");
+assert.match(service, /if \(stepResult\.data\.status === "completed"\) return \{ status: "already_completed" \}/, "a durable reuse-existing-artifact check must run before any generator call");
+assert.match(service, /generateInternalRecommendation/);
+assert.match(service, /if \(!generated\) return \{ status: "insufficient_evidence" \}/, "insufficient evidence must be a truthful non-completion, never a false completion");
+const persistStart = service.indexOf("async function persistInternalRecommendation");
+assert.ok(persistStart > 0);
+const evidenceWriteIdx = service.indexOf("const persistEvidence =", persistStart);
+const outcomeIdx = service.indexOf('outcome_type: "revenue_internal_recommendation_prepared"');
+const stepCompleteIdx = service.indexOf('status: "completed", block_reason: null, result_ref:');
+const workflowCompleteIdx = service.indexOf('.update({ status: "completed" })');
+assert.ok(evidenceWriteIdx > 0 && outcomeIdx > evidenceWriteIdx && stepCompleteIdx > outcomeIdx && workflowCompleteIdx > stepCompleteIdx, "order must be: persist result_evidence -> record outcome -> mark step completed -> mark workflow completed");
+assert.match(service, /generator: "openai" \| "deterministic_fallback"/);
 
-// The recommendation reuses the existing os_workflow_runs.result_evidence
-// column (already used by workforce.ts's cross-operator handoff completion)
-// and the existing os_workflow_outcomes table - no new migration/table.
-assert.match(fnBody, /result_evidence: \{ \.\.\.existingEvidence, internalRecommendation: artifact \}/);
-assert.match(fnBody, /\.from\("os_workflow_outcomes"\)\.upsert/, "an auditable outcome record must be written using the existing outcomes table");
-assert.match(fnBody, /outcome_type: "revenue_internal_recommendation_prepared"/);
-
-// The workflow must reach a real terminal status once its only step is
-// durably done - it must never be left indefinitely "planned".
-assert.match(fnBody, /\.from\("os_workflow_runs"\)\s*\.update\(\{ status: "completed" \}\)/, "the workflow itself must be finalized to a terminal status, not left planned");
+// The dedicated Trigger task is thin: it delegates to recommendation-service.ts
+// and, once done (or already done), dispatches the existing Slack lifecycle
+// update mechanism rather than posting to Slack itself.
+const recommendationTask = fs.readFileSync("src/trigger/slack-recommendation-generate.ts", "utf8");
+assert.match(recommendationTask, /id: "slack-recommendation-generate"/);
+assert.match(recommendationTask, /runInternalRecommendationGeneration/);
+assert.match(recommendationTask, /triggerSlackLifecycleUpdate/);
+assert.match(recommendationTask, /updateType: "acknowledgement"/, "the final recommendation reuses the single acknowledgement claim");
+assert.doesNotMatch(recommendationTask, /chat\.postMessage|postSlackThreadReply/, "the generation task must never post to Slack directly - only the existing thread-update system does");
 
 // The Slack workflow engine template must reuse this same internal step,
 // and must never resolve an ambiguous set of connected PM connectors by

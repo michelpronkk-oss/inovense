@@ -41,7 +41,7 @@ const SEAT_COUNT_PATTERNS: RegExp[] = [
   /\bteam of\s+(\d{1,5})\b/i,
 ];
 
-function extractSeatCount(text: string): number | null {
+export function extractSeatCount(text: string): number | null {
   for (const pattern of SEAT_COUNT_PATTERNS) {
     const match = pattern.exec(text);
     if (match?.[1]) {
@@ -80,7 +80,7 @@ function buildRecommendedNextStep(input: { primaryIntent: string; sourceText: st
   return { en: build("en"), nl: build("nl") };
 }
 
-function intentLabelFor(primaryIntent: string): string {
+export function intentLabelFor(primaryIntent: string): string {
   if (["PRICING_REQUEST", "PROPOSAL_REQUEST", "COMMERCIAL_INTENT"].includes(primaryIntent)) return "pricing opportunity";
   return "commercial opportunity";
 }

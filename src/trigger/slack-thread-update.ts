@@ -7,7 +7,7 @@ export const slackThreadUpdate = task({
   retry: { maxAttempts: 5, factor: 2, minTimeoutInMs: 2_000, maxTimeoutInMs: 60_000, randomize: true },
   queue: { name: "slack-acknowledgements", concurrencyLimit: 10 },
   maxDuration: 300,
-  run: async (payload: { workspaceId: string; workflowId: string; updateType: Exclude<SlackThreadUpdateType, "acknowledgement"> }) => {
+  run: async (payload: { workspaceId: string; workflowId: string; updateType: SlackThreadUpdateType }) => {
     if (!payload?.workspaceId || !payload.workflowId || !payload.updateType) throw new Error("slack_thread_update_payload_invalid");
     const supabase = createSupabaseAdmin();
     const context = await loadSlackMentionContextFromWorkflow({ workspaceId: payload.workspaceId, workflowId: payload.workflowId, updateType: payload.updateType, supabase });

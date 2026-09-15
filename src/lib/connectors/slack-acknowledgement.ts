@@ -48,7 +48,7 @@ function text(value: unknown, max = 240): string | null {
   return typeof value === "string" && value.trim() ? value.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : null;
 }
 
-function languageFromSettings(settings: Awaited<ReturnType<typeof loadWorkspacePolicySettings>>): SlackReplyLanguage | null {
+export function languageFromSettings(settings: Awaited<ReturnType<typeof loadWorkspacePolicySettings>>): SlackReplyLanguage | null {
   const notifications = record(settings.notifications);
   return normalizeSlackReplyLanguage(notifications.language)
     ?? normalizeSlackReplyLanguage(notifications.locale)
@@ -160,13 +160,18 @@ async function loadFacts(input: { eventId: string; updateType: SlackThreadUpdate
   // actually exists yet - never the generic connector-based state machine.
   const internalRecommendationStep = (steps.data ?? []).find((step) => step.action_type === "prepare_internal_recommendation") ?? null;
   const internalRecommendation = record(record(workflow.result_evidence).internalRecommendation);
-  const recommendedNextStepByLanguage = record(internalRecommendation.recommendedNextStep);
-  const recommendedNextStepText = text(recommendedNextStepByLanguage[language], 900);
+  // The current v2 artifact stores one language-resolved string. The legacy
+  // deterministic v1 artifact stored { en, nl }; read both shapes so an old
+  // workflow can still receive its truthful recommendation update.
+  const legacyRecommendationText = record(internalRecommendation.recommendedNextStep);
+  const recommendedNextStepText = text(internalRecommendation.recommendedNextStep, 900)
+    ?? text(legacyRecommendationText[language], 900);
+  const recommendationLanguage = normalizeSlackReplyLanguage(internalRecommendation.language) ?? language;
 
   let state: SlackReplyState;
   if (input.updateType === "acknowledgement" && providerEvent.status === "failed") {
     state = "processing_failure";
-  } else if (internalRecommendationStep) {
+  } else if (internalRecommendationStep && input.updateType === "acknowledgement") {
     if (internalRecommendationStep.status === "completed" && recommendedNextStepText) state = "recommendation_ready";
     else if (["blocked", "failed", "rejected", "skipped"].includes(String(internalRecommendationStep.status))) state = candidate.status === "routed" ? "routed" : "non_actionable";
     else state = "workflow_created";
@@ -179,7 +184,7 @@ async function loadFacts(input: { eventId: string; updateType: SlackThreadUpdate
   const approvalUrl = approvalId ? `${getAppUrl()}${getAppRoute(`/approvals#approval-review-${encodeURIComponent(approvalId)}`)}` : null;
   const facts: SlackAcknowledgementFacts = {
     state,
-    language,
+    language: state === "recommendation_ready" ? recommendationLanguage : language,
     operatorName: operatorKey ? slackOperatorName(operatorKey) : null,
     intentLabel: slackIntentLabel(text(candidate.signal_type), text(signal?.category)),
     confidence: candidate.confidence === "high" || candidate.confidence === "medium" || candidate.confidence === "low" ? candidate.confidence : null,
@@ -191,13 +196,26 @@ async function loadFacts(input: { eventId: string; updateType: SlackThreadUpdate
     context: { workspaceId: providerEvent.workspace_id, connectorId: providerEvent.connector_id, channelId, messageTs, threadTs, updateType: input.updateType },
     facts,
     providerEventStatus: providerEvent.status,
-    safeMeta: { language, state, operatorKey: operatorKey ?? null, workflowId: workflowId ?? null, approvalId: approvalId ?? null, providerEventId: providerEvent.id },
+    safeMeta: {
+      language,
+      state,
+      operatorKey: operatorKey ?? null,
+      workflowId: workflowId ?? null,
+      approvalId: approvalId ?? null,
+      providerEventId: providerEvent.id,
+      recommendationPending: internalRecommendationStep !== null && internalRecommendationStep.status !== "completed" && !["blocked", "failed", "rejected", "skipped"].includes(String(internalRecommendationStep.status)),
+    },
   };
 }
 
 export async function deliverSlackMentionUpdate(input: { eventId: string; updateType?: SlackThreadUpdateType; supabase?: SupabaseAdmin }): Promise<{ status: string; replyTs?: string | null }> {
   const supabase = input.supabase ?? createSupabaseAdmin();
   const loaded = await loadFacts({ eventId: input.eventId, updateType: input.updateType ?? "acknowledgement", supabase });
+  // Internal recommendations use the acknowledgement claim as their single
+  // final Slack reply. The initial acknowledgement task exits without
+  // claiming/sending while generation is pending; the generation worker
+  // triggers this same update after the validated artifact is persisted.
+  if (input.updateType === "acknowledgement" && loaded.safeMeta.recommendationPending === true) return { status: "deferred" };
   const key = slackThreadUpdateKey(loaded.context);
   const claim = await claimSlackThreadUpdate(loaded.context, loaded.safeMeta, supabase);
   if (!claim.claimed) return { status: claim.status, replyTs: claim.replyTs };
@@ -277,7 +295,7 @@ export async function postSlackThreadReply(input: { workspaceId: string; channel
   return { channelId: data.channel ?? channelId, messageTs: data.ts ?? null };
 }
 
-export async function triggerSlackLifecycleUpdate(input: { workflowId: string; workspaceId: string; updateType: Exclude<SlackThreadUpdateType, "acknowledgement">; supabase?: SupabaseAdmin }): Promise<boolean> {
+export async function triggerSlackLifecycleUpdate(input: { workflowId: string; workspaceId: string; updateType: SlackThreadUpdateType; supabase?: SupabaseAdmin }): Promise<boolean> {
   const workflow = await (input.supabase ?? createSupabaseAdmin()).from("os_workflow_runs").select("relevant_context").eq("id", input.workflowId).eq("workspace_id", input.workspaceId).maybeSingle();
   const origin = record(record(workflow.data?.relevant_context).slackOrigin);
   if (!text(origin.channelId, 120) || !text(origin.messageTs, 80)) return false;
@@ -286,7 +304,7 @@ export async function triggerSlackLifecycleUpdate(input: { workflowId: string; w
   return true;
 }
 
-export async function loadSlackMentionContextFromWorkflow(input: { workflowId: string; workspaceId: string; updateType: Exclude<SlackThreadUpdateType, "acknowledgement">; supabase?: SupabaseAdmin }): Promise<{ eventId: string } | null> {
+export async function loadSlackMentionContextFromWorkflow(input: { workflowId: string; workspaceId: string; updateType: SlackThreadUpdateType; supabase?: SupabaseAdmin }): Promise<{ eventId: string } | null> {
   const supabase = input.supabase ?? createSupabaseAdmin();
   const workflow = await supabase.from("os_workflow_runs").select("originating_signal_id,relevant_context").eq("id", input.workflowId).eq("workspace_id", input.workspaceId).maybeSingle();
   const signalId = text(workflow.data?.originating_signal_id, 220);

@@ -119,9 +119,9 @@ export function composeSlackReply(facts: SlackAcknowledgementFacts): string {
       : `Got it. I classified this as ${classified} and routed it to the ${operator}. The proposed action is awaiting human approval. No external action has been taken.${facts.approvalUrl ? ` Review the approval: ${facts.approvalUrl}` : ""}`;
   }
   // The substantive recommendation has been durably persisted (see
-  // completeInternalRecommendationStep) - this is the one state allowed to
+  // recommendation-service.ts) - this is the one state allowed to
   // quote it verbatim, and it always supersedes a separate "being prepared"
-  // reply when both would otherwise fire from the same acknowledgement pass.
+  // reply when an initial acknowledgement was deferred during generation.
   if (facts.state === "recommendation_ready" && facts.recommendedNextStepText) {
     return language === "nl"
       ? `Aanbevolen vervolgstap: ${facts.recommendedNextStepText} Er is nog geen externe actie uitgevoerd.`
