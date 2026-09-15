@@ -97,13 +97,20 @@ export function parseGmailPubSubEnvelope(value: unknown, expectedSubscription: s
   if (!notification || typeof notification !== "object" || Array.isArray(notification)) {
     throw new GmailPushParseError("gmail_push_json_invalid", { messageId: message.messageId, encodedLength: message.data.length, decodedByteLength: decoded.byteLength });
   }
-  const payload = notification as Partial<GmailPushNotification>;
+  const payload = notification as Record<string, unknown>;
   const fieldNames = Object.keys(payload).slice(0, 40).sort();
-  const fieldTypes = Object.fromEntries(fieldNames.map((field) => [field, Array.isArray(payload[field as keyof GmailPushNotification]) ? "array" : typeof payload[field as keyof GmailPushNotification]]));
+  const fieldTypes = Object.fromEntries(fieldNames.map((field) => [field, Array.isArray(payload[field]) ? "array" : typeof payload[field]]));
   const diagnostics = { messageId: message.messageId, encodedLength: message.data.length, decodedByteLength: decoded.byteLength, fieldNames, fieldTypes };
   if (typeof payload.emailAddress !== "string" || !EMAIL.test(payload.emailAddress.trim())) throw new GmailPushParseError("gmail_push_email_invalid", diagnostics);
-  if (!isValidGmailHistoryId(payload.historyId)) throw new GmailPushParseError("gmail_push_history_id_invalid", diagnostics);
-  return { messageId: message.messageId, notification: { emailAddress: payload.emailAddress.trim().toLowerCase(), historyId: payload.historyId }, diagnostics };
+  let historyId: string | null = null;
+  if (typeof payload.historyId === "string") {
+    if (isValidGmailHistoryId(payload.historyId)) historyId = payload.historyId;
+  } else if (typeof payload.historyId === "number"
+    && Number.isSafeInteger(payload.historyId) && payload.historyId >= 0) {
+    historyId = String(payload.historyId);
+  }
+  if (historyId === null) throw new GmailPushParseError("gmail_push_history_id_invalid", diagnostics);
+  return { messageId: message.messageId, notification: { emailAddress: payload.emailAddress.trim().toLowerCase(), historyId }, diagnostics };
 }
 
 export function findUniqueWorkspaceForGmailAccount(

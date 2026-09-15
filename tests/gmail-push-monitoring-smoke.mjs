@@ -45,7 +45,16 @@ assert.throws(() => protocol.parseGmailPubSubEnvelope(goodEnvelope, "projects/ot
 assert.throws(() => protocol.parseGmailPubSubEnvelope({ ...goodEnvelope, message: { ...goodEnvelope.message, data: "%%%" } }, goodEnvelope.subscription), /gmail_push_base64_invalid/);
 assert.throws(() => protocol.parseGmailPubSubEnvelope({ ...goodEnvelope, message: { ...goodEnvelope.message, data: Buffer.from("not json", "utf8").toString("base64") } }, goodEnvelope.subscription), /gmail_push_json_invalid/);
 assert.throws(() => protocol.parseGmailPubSubEnvelope({ ...goodEnvelope, message: { ...goodEnvelope.message, data: encoded({ emailAddress: "bad", historyId: "1e5" }) } }, goodEnvelope.subscription), /gmail_push_email_invalid/);
-assert.throws(() => protocol.parseGmailPubSubEnvelope({ ...goodEnvelope, message: { ...goodEnvelope.message, data: encoded({ emailAddress: "valid@example.com", historyId: 123 }) } }, goodEnvelope.subscription), /gmail_push_history_id_invalid/);
+assert.throws(() => protocol.parseGmailPubSubEnvelope({ ...goodEnvelope, message: { ...goodEnvelope.message, data: encoded({ emailAddress: "valid@example.com", historyId: true }) } }, goodEnvelope.subscription), /gmail_push_history_id_invalid/);
+const parseHistory = (historyId, messageId) => protocol.parseGmailPubSubEnvelope({
+  subscription: goodEnvelope.subscription,
+  message: { messageId, data: encoded({ emailAddress: "valid@example.com", historyId }) },
+}, goodEnvelope.subscription).notification.historyId;
+assert.equal(parseHistory("17643800", "history-string"), "17643800", "decimal string historyId is accepted");
+assert.equal(parseHistory(17643800, "history-number"), "17643800", "safe numeric historyId is normalized to a string");
+assert.throws(() => parseHistory(Number.MAX_SAFE_INTEGER + 1, "history-unsafe"), /gmail_push_history_id_invalid/);
+assert.throws(() => parseHistory(17643800.5, "history-fractional"), /gmail_push_history_id_invalid/);
+assert.throws(() => parseHistory(-1, "history-negative"), /gmail_push_history_id_invalid/);
 
 const configEnv = {
   GOOGLE_CLOUD_PROJECT_ID: "test-project",
