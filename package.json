@@ -12,6 +12,7 @@
     "test:pre-beta-security": "node tests/pre-beta-security-smoke.mjs",
     "test:microsoft-connector": "node tests/microsoft-connector-smoke.mjs",
     "test:gmail-push": "node tests/gmail-push-monitoring-smoke.mjs",
+    "test:hubspot-webhook": "node tests/hubspot-webhook-smoke.mjs",
     "test:provider-events": "node tests/provider-events-smoke.mjs",
     "test:workspace-realtime": "node tests/workspace-realtime-smoke.mjs",
     "test:plan-entitlement-truth": "node tests/plan-entitlement-truth-smoke.mjs",

@@ -142,6 +142,21 @@ export function classifySignalEvent(event: SignalEvent, now = new Date()): Signa
   const escalations = matches(text, ESCALATION_TERMS);
   const blockers = matches(text, BLOCKER_TERMS);
 
+  // HubSpot webhook events are change notifications. Their canonical event
+  // type and authoritative snapshot metadata carry the business meaning; do
+  // not require a CRM property name to contain email-oriented keywords.
+  if (event.provider === "hubspot" || event.connectorKey === "hubspot") {
+    const hubspotClosedWon = event.metadata?.hubspotClosedWon === true;
+    const hubspotCommercial = event.metadata?.hubspotCommercial === true;
+    if (event.eventType === "hubspot.deal.stage_changed" && hubspotClosedWon) {
+      return { category: "customer_request", confidence: "high", priority: 65, priorityLevel: priorityLevel(65), urgency: urgencyFor(65), reasonCodes: ["hubspot:deal_closed_won"], suppressed: false };
+    }
+    if (hubspotCommercial || event.eventType.startsWith("hubspot.deal.")) {
+      return { category: "sales_opportunity", confidence: "high", priority: 65, priorityLevel: priorityLevel(65), urgency: urgencyFor(65), reasonCodes: [`hubspot:${event.eventType}`], suppressed: false };
+    }
+    return { category: "crm_change", confidence: "medium", priority: 20, priorityLevel: priorityLevel(20), urgency: urgencyFor(20), reasonCodes: [`hubspot:${event.eventType}`], suppressed: false };
+  }
+
   if (Number.isFinite(dueAt) && dueAt < now.getTime()) {
     category = "overdue_work"; priority = 70; reasonCodes.push("due_date_overdue");
   } else if (blockers.length > 0) {

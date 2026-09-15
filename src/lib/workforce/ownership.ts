@@ -55,6 +55,8 @@ export function arbitrateOwnership(input: {
 
   let primary: WorkforceOperator | null = validOperator(input.primaryOperator) ? input.primaryOperator : validOperator(input.metadata?.primaryOperator) ? input.metadata?.primaryOperator : null;
   if (!primary && supportSource) primary = "support";
+  if (!primary && connector === "hubspot" && input.metadata?.hubspotClosedWon === true) primary = "client_flow";
+  if (!primary && connector === "hubspot" && input.metadata?.hubspotCommercial === true) primary = "revenue";
   if (!primary && (connector === "hubspot" || input.sourceType === "crm") && hasTerm(text, COMMERCIAL_TERMS)) primary = "revenue";
   if (!primary && ["sales_opportunity", "commercial_intent"].includes(category)) primary = "revenue";
   if (!primary && ["blocked_work", "overdue_work", "stalled_work", "delivery_risk", "internal_coordination", "delivery_risk"].includes(category)) primary = "operations";

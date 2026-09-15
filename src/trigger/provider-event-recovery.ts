@@ -2,6 +2,7 @@ import { idempotencyKeys, schedules } from "@trigger.dev/sdk/v3";
 import { listRecoverableProviderEvents } from "@/lib/provider-events/store";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { gmailPushProcess } from "@/trigger/gmail-push-process";
+import { hubspotWebhookProcess } from "@/trigger/hubspot-webhook-process";
 import { withTaskHeartbeat } from "@/lib/runtime/task-heartbeat";
 
 const RECOVERY_BATCH_SIZE = 200;
@@ -19,9 +20,9 @@ export const providerEventRecovery = schedules.task({
     let enqueued = 0;
     let unsupported = 0;
     for (const event of events) {
-      // Gmail is the first adapter on this backbone. Future adapters register
-      // their own event processor rather than falling through to Gmail logic.
-      if (event.provider !== "gmail" || event.event_type !== "gmail.history.changed") {
+      const isGmail = event.provider === "gmail" && event.event_type === "gmail.history.changed";
+      const isHubSpot = event.provider === "hubspot" && event.connector_key === "hubspot" && event.source_mode === "webhook" && event.event_type.startsWith("hubspot.");
+      if (!isGmail && !isHubSpot) {
         unsupported += 1;
         continue;
       }
@@ -29,11 +30,11 @@ export const providerEventRecovery = schedules.task({
         `provider-event:${event.id}:attempt:${event.attempt_count}`,
         { scope: "global" },
       );
-      await gmailPushProcess.trigger({ providerEventId: event.id }, {
-        idempotencyKey,
-        idempotencyKeyTTL: "30d",
-        concurrencyKey: event.connector_id,
-      });
+      if (isGmail) {
+        await gmailPushProcess.trigger({ providerEventId: event.id }, { idempotencyKey, idempotencyKeyTTL: "30d", concurrencyKey: event.connector_id });
+      } else {
+        await hubspotWebhookProcess.trigger({ providerEventId: event.id }, { idempotencyKey, idempotencyKeyTTL: "30d", concurrencyKey: event.connector_id });
+      }
       enqueued += 1;
     }
     console.info(JSON.stringify({ event: "provider_event_recovery_dispatched", examined: events.length, enqueued, unsupported }));
