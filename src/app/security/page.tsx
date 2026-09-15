@@ -29,7 +29,7 @@ const controls = [
 
 export default function SecurityPage() {
   return <PublicSiteFrame>
-    <PublicHero label="Security and control" title="Keep access bounded and consequential work visible." description="Auterim is built around authenticated workspaces, scoped provider access, workspace policies, and reviewable operator activity. The details below describe implemented controls rather than certification claims." secondary={{ label: "Control model", href: "/control" }} visual={<SecurityHeroVisual />} />
+    <PublicHero label="Security and control" title="Keep access bounded and consequential work visible." description="Authenticated workspaces, scoped provider access, workspace policies, and reviewable Operator activity. Everything below is an implemented control, not a certification claim." secondary={{ label: "Control model", href: "/control" }} visual={<SecurityHeroVisual />} />
     <StorySection className="public-security" label="Implemented controls" title="Protection at the important boundaries.">
       <div className="security-groups">
         <DetailGroup title="Identity and workspace access" description="Verified sessions, application authorization, and database policies." rows={controls.slice(0, 2)} />

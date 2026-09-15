@@ -29,7 +29,7 @@ const available = Object.values(CONNECTOR_CATALOG).filter((connector) => connect
 export default function ConnectorsPage() {
   const categories = [...new Set(available.map((connector) => connector.category))];
   return <PublicSiteFrame>
-    <PublicHero action label="Connected systems" title="Keep the tools you trust. Add Auterim on top." description="Bring context and action together across the systems your team already uses." secondary={{ label: "Browse connectors", href: "#category-email" }} visual={<ConnectionLayer connectorCount={available.length} className="connector-hero-map" />} />
+    <PublicHero action label="Connected systems" title="Keep the tools you trust. Add Auterim on top." description="Connect the tools you already use. Auterim combines their context and turns important signals into governed work." secondary={{ label: "Browse connectors", href: "#category-email" }} visual={<ConnectionLayer connectorCount={available.length} className="connector-hero-map" />} />
     <StorySection className="connector-catalog" label="Available to connect" title="Your stack, with a clearer next move." description="Explore the systems available today. Exact read and write capabilities depend on provider permissions and workspace setup.">
       <nav className="connector-category-nav" aria-label="Browse available connector categories">{categories.map((category) => {
         const count = available.filter((connector) => connector.category === category).length;

@@ -3,7 +3,6 @@
 import { useEarlyAccess } from "@/components/early-access/early-access-provider";
 import HeroOperatingArtifact from "./hero-operating-artifact";
 import HeroMobileOperatingLoop from "./hero-mobile-operating-loop";
-import { ResponsiveCopy } from "./responsive-copy";
 
 export default function HeroEditorial() {
   const { openEarlyAccess, hasSubmitted } = useEarlyAccess();
@@ -82,7 +81,7 @@ export default function HeroEditorial() {
             <span className="hero-trial-pill"><i />Early access</span>
           </p>
           <h1>Auterim <em className="hero-editorial-forward">finds the work</em> before your team has to.</h1>
-          <p className="say"><ResponsiveCopy desktop="Other tools wait for a prompt. Auterim reads the systems you already run, prepares the next step, and holds anything consequential for your approval." mobile="Auterim reads the systems you already run, prepares the next step, and holds anything consequential for your approval." /></p>
+          <p className="say">Auterim spots what needs attention, prepares the next step, and holds consequential actions for your approval.</p>
           <div className="hero-cta">
             <button type="button" onClick={(event) => openEarlyAccess({ trigger: event.currentTarget })} className="btn btn-a">
               {hasSubmitted ? "Request received" : <>Request early access <span className="arrow">→</span></>}

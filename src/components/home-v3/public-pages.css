@@ -1167,3 +1167,50 @@
   .public-page .uc-page .gx-take { padding: 22px 22px 28px; }
   .public-page .uc-page .gx-loop-foot { padding: 16px 22px 24px; }
 }
+
+/* Centered mobile hero for the shared public-page hero. This sheet loads after
+   the refinement sheet on public pages, so the centering is restated here to
+   win the cascade. Only the introductory hero centers: the connector grid,
+   pricing detail, FAQ answers and legal copy below stay left aligned. */
+@media (max-width: 767px) {
+  .public-page .public-hero-copy {
+    text-align: center;
+    padding: 0;
+  }
+  .public-page .public-hero-copy > .lbl { display: inline-flex; }
+  .public-page .public-hero-copy > h1 {
+    max-width: 15ch;
+    margin-inline: auto;
+    text-wrap: balance;
+  }
+  .public-page .public-hero:not(.legal-hero) .public-hero-copy > p {
+    max-width: 34ch;
+    margin-inline: auto;
+    text-wrap: pretty;
+  }
+  .public-page .public-hero-actions {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+  .public-page .public-hero-actions .btn-a {
+    width: auto;
+    min-width: 232px;
+    max-width: 100%;
+    min-height: 48px;
+    padding-inline: 28px;
+    justify-content: center;
+  }
+  .public-page .public-hero-actions .btn-b {
+    width: auto;
+    min-height: 44px;
+    justify-content: center;
+    text-align: center;
+  }
+  /* The legal hero keeps its left-aligned document framing. */
+  .public-page .public-hero.legal-hero .wrap { text-align: left; }
+}
+@media (max-width: 374px) {
+  .public-page .public-hero-actions .btn-a { width: 100%; min-width: 0; }
+}

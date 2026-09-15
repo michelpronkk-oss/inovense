@@ -391,3 +391,47 @@
   .auterim-v3-page .hero-mobile-loop-seq li.is-now::before,
   .auterim-v3-page .hero-mobile-loop-gate-k i { animation: none; }
 }
+
+/* Centered mobile hero CTA group. This sheet loads after the refinement sheet,
+   so the hero button sizing is restated here to win the cascade. The primary
+   action stays prominent but stops spanning the full viewport: a capped,
+   centered button reads as deliberate next to a centered headline. */
+@media (max-width: 767px) {
+  /* The desktop rail's left padding survived into the centered composition and
+     pushed the whole column 16px right of its container. */
+  .auterim-v3-page .hero-editorial-copy { padding-left: 0; padding-right: 0; }
+  .auterim-v3-page .hero-editorial .hero-cta {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+  .auterim-v3-page .hero-editorial .hero-cta .btn-a {
+    width: auto;
+    min-width: 232px;
+    max-width: 100%;
+    min-height: 48px;
+    padding-inline: 28px;
+    justify-content: center;
+  }
+  .auterim-v3-page .hero-editorial .hero-cta .btn-b {
+    width: auto;
+    min-height: 44px;
+    justify-content: center;
+    text-align: center;
+  }
+}
+@media (max-width: 374px) {
+  .auterim-v3-page .hero-editorial .hero-cta .btn-a { width: 100%; min-width: 0; }
+}
+
+/* Centered mobile hero: vertical rhythm. The gap under the fixed 64px header
+   was 74px, which pushed the product visual further down than the composition
+   needs. Tightening the lead-in and the steps between eyebrow, headline,
+   support copy and CTA group brings the visual up without crowding. */
+@media (max-width: 767px) {
+  .auterim-v3-page .hero-editorial { padding-top: 74px; }
+  .auterim-v3-page .hero-editorial h1 { margin-top: 16px; }
+  .auterim-v3-page .hero-editorial .say { margin-top: 14px; }
+  .auterim-v3-page .hero-editorial .hero-cta { margin-top: 22px; }
+}

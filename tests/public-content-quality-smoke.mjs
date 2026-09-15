@@ -84,7 +84,7 @@ includes(homeHeader, "Request early access", "desktop and mobile header use the 
 includes(homeHeader, "useEarlyAccess", "header opens the shared Early Access modal");
 includes(homePage, "Early access pricing", "homepage pricing copy makes the pre-launch state clear");
 includes(homePage, "Your 3-day trial begins only when you explicitly choose to start it", "homepage preserves explicit trial-start truth");
-includes(homePage, "We’re reviewing use cases for the current Early Access program", "final homepage CTA does not imply immediate product access");
+includes(homePage, "We review each use case before enabling a workspace", "final homepage CTA does not imply immediate product access");
 includes(homepageFaqs, "A request does not create an account or start a trial", "homepage FAQ makes the pre-access stage clear");
 includes(earlyAccessProvider, 'fetch("/api/early-access"', "homepage conversion submits through the server endpoint");
 assert.ok(!homeHero.toLowerCase().includes("set up your workspace") && !homeHero.toLowerCase().includes("start your trial"), "homepage hero does not route visitors into open workspace or trial setup");
