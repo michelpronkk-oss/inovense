@@ -175,15 +175,11 @@ export const slackEventProcess = task({
         },
       };
       const result = await ingestSignalBatch({ workspaceId: event.workspace_id, events: [signal], supabase });
-      // The message.channels and app_mention deliveries share this identity.
-      // Only the direct mention is allowed to upgrade the canonical signal;
-      // the plain message delivery can never erase that fact.
+      // ingestSignalBatch canonically merges the paired message.channels and
+      // app_mention deliveries. A direct mention acknowledgement is a
+      // separate durable side effect and must remain independent of workflow
+      // materialization or candidate eligibility.
       if (isMention) {
-        const persisted = await supabase.from("os_signal_events").select("id,metadata").eq("workspace_id", event.workspace_id).eq("connector_key", "slack").eq("source_type", "slack_message").eq("source_id", String(metadata.eventTs)).maybeSingle();
-        if (persisted.data?.id) {
-          const previous = record(persisted.data.metadata);
-          await supabase.from("os_signal_events").update({ metadata: { ...previous, slackInbound: true, slackAppMentioned: true, slackOrigin: signal.metadata.slackOrigin, sourceProviderEventId: event.id } }).eq("workspace_id", event.workspace_id).eq("id", persisted.data.id);
-        }
         await dispatchMentionAcknowledgement(event.id);
       }
       if (!await completeProviderEvent({ eventId: event.id, leaseToken, supabase })) throw new Error("provider_event_completion_conflict");

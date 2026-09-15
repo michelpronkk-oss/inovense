@@ -91,6 +91,15 @@ function safeMetadata(value: Record<string, unknown>): Record<string, unknown> {
  * update a new event without letting a repeated poll recreate it.
  */
 export function createSignalDedupeKey(event: SignalEvent): string {
+  // Slack sends message.channels and app_mention as separate provider
+  // deliveries. Their canonical identity is the workspace/team/channel/
+  // message tuple, not the provider delivery timestamp or event id.
+  if (event.connectorKey === "slack" && event.sourceType === "slack_message"
+    && typeof event.metadata?.teamId === "string"
+    && typeof event.metadata?.channelId === "string"
+    && typeof event.metadata?.messageTs === "string") {
+    return bounded([event.workspaceId, "slack", event.metadata.teamId, event.metadata.channelId, event.metadata.messageTs].join(":"), 480);
+  }
   const connector = event.connectorKey || event.provider || event.source || "unknown";
   const version = event.occurredAt || event.receivedAt || String(event.metadata?.version ?? event.metadata?.updatedAt ?? event.eventType);
   return bounded([event.workspaceId, connector, event.sourceType, event.sourceId, version].join(":"), 480);
@@ -103,6 +112,11 @@ export function createSignalId(event: SignalEvent): string {
 export function normalizeSignalEvent(event: SignalEvent, observedAt = new Date().toISOString()): SignalEvent {
   const occurredAt = event.occurredAt || event.receivedAt || null;
   const source = event.source || event.connectorKey || event.provider || "unknown";
+  const normalizedMetadata = safeMetadata(event.metadata ?? {});
+  const isSlackMessage = (event.connectorKey === "slack" || event.provider === "slack") && event.sourceType === "slack_message";
+  if (isSlackMessage) {
+    normalizedMetadata.slackAppMentioned = event.eventType === "slack.app_mentioned" || normalizedMetadata.slackAppMentioned === true;
+  }
   const previewSource = event.connectorKey === "slack" || event.provider === "slack"
     ? stripSlackMentionMarkup(event.snippet || event.subject || "")
     : (event.snippet || event.subject || "");
@@ -117,9 +131,13 @@ export function normalizeSignalEvent(event: SignalEvent, observedAt = new Date()
     occurredAt,
     observedAt: event.observedAt || observedAt,
     snippet: safePreview,
-    dedupeKey: event.dedupeKey || createSignalDedupeKey(event),
+    // A Slack pair must converge even if an adapter supplied a delivery-
+    // specific dedupe key. The stable identity is authoritative here.
+    dedupeKey: isSlackMessage && typeof normalizedMetadata.teamId === "string" && typeof normalizedMetadata.channelId === "string" && typeof normalizedMetadata.messageTs === "string"
+      ? createSignalDedupeKey({ ...event, metadata: normalizedMetadata })
+      : event.dedupeKey || createSignalDedupeKey(event),
     trustLevel: "untrusted_provider_content",
-    metadata: safeMetadata(event.metadata ?? {}),
+    metadata: normalizedMetadata,
   };
   return normalized;
 }
@@ -146,6 +164,12 @@ const SLACK_EXPLICIT_INSTRUCTION_PATTERNS: RegExp[] = [
 
 export function hasExplicitSlackInstruction(text: string): boolean {
   return SLACK_EXPLICIT_INSTRUCTION_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+/** Canonical direct-mention evidence. The event type is authoritative even
+ * for older rows whose normalized metadata flag is null or absent. */
+export function isDirectSlackMention(event: SignalEvent): boolean {
+  return event.eventType === "slack.app_mentioned" || event.metadata?.slackAppMentioned === true;
 }
 
 function priorityLevel(priority: number): SignalPriority {
@@ -363,7 +387,7 @@ export function routeSignalEvent(input: SignalEvent, now = new Date(), options?:
     // This never rescues a suppressed/unowned message into work; it only
     // raises the priority of an already-actionable, already-owned candidate
     // so it can clear the workflow materialization threshold.
-    if (event.metadata?.slackAppMentioned === true && !decision.suppressed && decision.primaryOperator && decision.priority < 65 && hasExplicitSlackInstruction(event.snippet ?? "")) {
+    if (isDirectSlackMention(event) && !decision.suppressed && decision.primaryOperator && decision.priority < 65 && hasExplicitSlackInstruction(event.snippet ?? "")) {
       decision.priority = 65;
       decision.priorityLevel = priorityLevel(65);
       decision.urgency = urgencyFor(65);

@@ -28,7 +28,7 @@ async function loadEngine() {
 }
 
 try {
-  const { createSignalDedupeKey, normalizeSignalEvent, routeSignalEvent, hasExplicitSlackInstruction } = await loadEngine();
+  const { createSignalDedupeKey, normalizeSignalEvent, routeSignalEvent, hasExplicitSlackInstruction, isDirectSlackMention } = await loadEngine();
   const base = { workspaceId: "ws-one", source: "gmail", connectorKey: "gmail", sourceType: "email", eventType: "email.received", sourceId: "message-1", subject: "Pricing and demo", snippet: "We are interested in a pricing proposal and demo.", receivedAt: "2026-09-08T10:00:00.000Z" };
   assert.equal(createSignalDedupeKey(base), createSignalDedupeKey(base), "the same provider delivery must dedupe deterministically");
   assert.notEqual(createSignalDedupeKey(base), createSignalDedupeKey({ ...base, receivedAt: "2026-09-09T10:00:00.000Z" }), "a meaningful provider version must remain observable");
@@ -73,11 +73,32 @@ try {
   assert.ok(explicitMention.decision.reasonCodes.includes("slack:explicit_instruction"), "the elevation must be traceable in reason codes");
   assert.deepEqual(explicitMention.candidates.map((candidate) => candidate.operatorKey), ["revenue"]);
 
+  // Backward compatibility: canonical event type is authoritative even when
+  // older persisted rows have a missing/null slackAppMentioned flag.
+  const legacyMention = routeSignalEvent({ ...slackMentionBase, sourceId: "1789489622.919072", metadata: { ...slackMentionBase.metadata, slackAppMentioned: null }, snippet: "Please prepare the recommended next step for this pricing request." });
+  assert.equal(isDirectSlackMention(legacyMention.event), true);
+  assert.equal(legacyMention.event.metadata.slackAppMentioned, true, "normalization must repair the missing mention flag on app_mentioned events");
+  assert.equal(legacyMention.decision.priority, 65, "event_type slack.app_mentioned must be sufficient for explicit-instruction elevation");
+  assert.ok(legacyMention.decision.reasonCodes.includes("slack:explicit_instruction"));
+
   // The identical instruction text in the passive message.channels delivery
   // of the same message (slackAppMentioned: false) must NOT be elevated -
   // passive chatter is not a direct action request.
   const passiveChatter = routeSignalEvent({ ...slackMentionBase, sourceId: "1789489622.919071", eventType: "slack.message.received", metadata: { ...slackMentionBase.metadata, slackAppMentioned: false }, snippet: "Please prepare the recommended next step for this pricing request." });
   assert.equal(passiveChatter.decision.priority, 45, "passive channel chatter must never be elevated, even with the same instruction text");
+  const passiveAtString = routeSignalEvent({ ...slackMentionBase, sourceId: "1789489622.919073", eventType: "slack.message.received", metadata: { ...slackMentionBase.metadata, slackAppMentioned: false, messageTs: "1789489622.919073" }, snippet: "@someone please prepare the recommended next step for this pricing request." });
+  assert.equal(isDirectSlackMention(passiveAtString.event), false);
+  assert.equal(passiveAtString.decision.priority, 45, "an @ string in passive channel text must not make it a direct mention");
+
+  // The paired deliveries share one canonical signal identity regardless of
+  // event type or provider event timestamp.
+  const pairRoot = { ...slackMentionBase, sourceId: "1789489622.919074", metadata: { ...slackMentionBase.metadata, messageTs: "1789489622.919074", teamId: "T-1", channelId: "C-1" } };
+  const pairPassive = normalizeSignalEvent({ ...pairRoot, eventType: "slack.message.received", metadata: { ...pairRoot.metadata, slackAppMentioned: false }, occurredAt: "2026-09-15T16:00:00.000Z" });
+  const pairMention = normalizeSignalEvent({ ...pairRoot, eventType: "slack.app_mentioned", metadata: { ...pairRoot.metadata, slackAppMentioned: true }, occurredAt: "2026-09-15T16:00:02.000Z" });
+  assert.equal(createSignalDedupeKey(pairPassive), createSignalDedupeKey(pairMention), "paired Slack events must have one stable signal identity");
+  const pairPassiveCandidate = routeSignalEvent({ ...pairRoot, eventType: "slack.message.received", metadata: { ...pairRoot.metadata, slackAppMentioned: false }, snippet: "pricing request" }).candidates[0];
+  const pairMentionCandidate = routeSignalEvent({ ...pairRoot, eventType: "slack.app_mentioned", metadata: { ...pairRoot.metadata, slackAppMentioned: true }, snippet: "pricing request" }).candidates[0];
+  assert.equal(pairPassiveCandidate.id, pairMentionCandidate.id, "paired Slack deliveries must retain one candidate identity");
   assert.equal(hasExplicitSlackInstruction("please review this opportunity"), true);
   assert.equal(hasExplicitSlackInstruction("investigate this blocker"), true);
   assert.equal(hasExplicitSlackInstruction("summarize the issue for me"), true);

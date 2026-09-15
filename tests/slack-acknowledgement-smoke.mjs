@@ -10,6 +10,7 @@ const lifecycle = read("src/lib/workflows/lifecycle.ts");
 const webhook = read("src/app/api/connectors/slack/events/route.ts");
 const signalEngine = read("src/lib/signals/engine.ts");
 const workflowEngine = read("src/lib/workflows/engine.ts");
+const signalStore = read("src/lib/signals/store.ts");
 
 assert.match(ledger, /os_slack_thread_updates/);
 assert.match(ledger, /unique \(workspace_id, channel_id, source_message_ts, update_type\)/);
@@ -68,7 +69,18 @@ assert.match(ledger, /current_row\.status = 'processing' and current_row\.lease_
 // to app mentions, never to passive channel chatter or to email/Microsoft.
 assert.match(signalEngine, /hasExplicitSlackInstruction/);
 assert.match(signalEngine, /event\.metadata\?\.slackAppMentioned === true/);
+assert.match(signalEngine, /event\.eventType === "slack\.app_mentioned"/);
+assert.match(signalEngine, /export function isDirectSlackMention/);
 assert.match(signalEngine, /slack:explicit_instruction/);
+assert.match(signalStore, /persistCanonicalSignal/);
+assert.match(signalStore, /event_type: identity && mention \? "slack\.app_mentioned"/);
+assert.match(signalStore, /slackAppMentioned: mention/);
+assert.match(signalStore, /persistCandidateMonotonic/);
+assert.match(signalStore, /Math\.max\(candidatePriority\(existing\?\.priority\)/);
+assert.match(signalStore, /new Set\(\[/);
+assert.match(signalEngine, /metadata\.teamId/);
+assert.match(signalEngine, /metadata\.channelId/);
+assert.match(signalEngine, /metadata\.messageTs/);
 
 // The Slack-sourced revenue candidate must get its own internal-task
 // template and must never fall through to the email follow-up template
