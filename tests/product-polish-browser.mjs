@@ -74,6 +74,15 @@ try {
     }
   }
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${base}/?surface=dashboard`);
+  assert.match((await page.locator(".wa-chart-live").innerText()), /Connecting…/, "initial realtime state is honest and does not claim a retry");
+  for (const option of ["24H", "30D", "7D"]) {
+    await page.getByRole("button", { name: option, exact: true }).click();
+    await page.getByText(option === "24H" ? "Last 24 hours · UTC" : option === "30D" ? "Last 30 days · UTC" : "Last 7 days · UTC", { exact: true }).waitFor();
+    assert.equal(await page.getByRole("button", { name: option, exact: true }).getAttribute("aria-pressed"), "true", `${option} range is selected`);
+  }
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "dashboard range control does not create mobile overflow");
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${base}/?surface=activity`);
   await page.getByRole("button", { name: /^Filter/ }).click();
   const filterMenu = page.getByRole("menu", { name: "Filter activity" });

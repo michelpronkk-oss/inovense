@@ -15,6 +15,7 @@
     "test:hubspot-webhook": "node tests/hubspot-webhook-smoke.mjs",
     "test:provider-events": "node tests/provider-events-smoke.mjs",
     "test:workspace-realtime": "node tests/workspace-realtime-smoke.mjs",
+    "test:workforce-activity-range": "node tests/workforce-activity-range-smoke.mjs",
     "test:future-proofing-scale": "node tests/future-proofing-scale-smoke.mjs",
     "test:plan-entitlement-truth": "node tests/plan-entitlement-truth-smoke.mjs",
     "test:microsoft-teams-connector": "node tests/microsoft-teams-connector-smoke.mjs && node tests/microsoft-teams-runtime-smoke.mjs",

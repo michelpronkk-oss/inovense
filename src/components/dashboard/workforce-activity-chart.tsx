@@ -3,8 +3,9 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { Area, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, type ChartConfig } from "@/components/ui/chart";
-import { formatDayTick, formatTooltipDate, integerTicks, niceMax } from "@/lib/dashboard/chart-scale";
+import { formatActivityTick, formatActivityTooltip, integerTicks, niceMax } from "@/lib/dashboard/chart-scale";
 import type { WorkforceActivitySummary } from "@/lib/activity/types";
+import type { WorkforceActivityChartSummary } from "@/lib/dashboard/workforce-activity";
 
 export type WorkforceSeriesKey = "prepared" | "executed" | "held";
 
@@ -14,7 +15,7 @@ export const workforceChartConfig: ChartConfig = {
   held: { label: "Held at approval", color: "var(--amber)" },
 };
 
-type ChartPoint = { day: string; prepared: number; executed: number; held: number };
+type ChartPoint = { start: string; end: string; prepared: number; executed: number; held: number };
 
 function subscribeToReducedMotion(callback: () => void) {
   if (typeof window === "undefined" || !window.matchMedia) return () => {};
@@ -35,11 +36,12 @@ function useReducedMotion(): boolean {
   return useSyncExternalStore(subscribeToReducedMotion, getReducedMotionSnapshot, getReducedMotionServerSnapshot);
 }
 
-function WorkforceTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ dataKey?: string | number; value?: number | string; color?: string }>; label?: string }) {
+function WorkforceTooltip({ active, payload, label, data, granularity }: { active?: boolean; payload?: Array<{ dataKey?: string | number; value?: number | string; color?: string }>; label?: string; data?: ChartPoint[]; granularity: "hour" | "day" }) {
   if (!active || !payload || payload.length === 0 || typeof label !== "string") return null;
+  const point = data?.find((item) => item.start === label);
   return (
     <div className="wa-chart-tooltip" role="status">
-      <div className="wa-chart-tooltip-date">{formatTooltipDate(label)}</div>
+      <div className="wa-chart-tooltip-date">{point ? formatActivityTooltip(point.start, point.end, granularity) : label}</div>
       <div className="wa-chart-tooltip-rows">
         {payload.map((entry) => {
           const key = String(entry.dataKey ?? "");
@@ -67,7 +69,7 @@ function makeLatestPointDot(color: string, lastIndex: number) {
   };
 }
 
-export function WorkforceActivityChart({ summary }: { summary: WorkforceActivitySummary }) {
+export function WorkforceActivityChart({ summary }: { summary: WorkforceActivitySummary | WorkforceActivityChartSummary }) {
   const reducedMotion = useReducedMotion();
   const [hidden, setHidden] = useState<ReadonlySet<WorkforceSeriesKey>>(new Set());
   const toggleSeries = (key: WorkforceSeriesKey) => {
@@ -79,10 +81,12 @@ export function WorkforceActivityChart({ summary }: { summary: WorkforceActivity
     });
   };
 
-  const data: ChartPoint[] = useMemo(
-    () => summary.daily.map((item) => ({ day: item.day, prepared: item.prepared, executed: item.executed, held: item.held })),
-    [summary.daily]
-  );
+  const chartSummary = summary as WorkforceActivityChartSummary;
+  const granularity = chartSummary.granularity ?? "day";
+  const data: ChartPoint[] = useMemo(() => {
+    if (Array.isArray(chartSummary.buckets) && chartSummary.buckets.length > 0) return chartSummary.buckets.map((item) => ({ start: item.start, end: item.end, prepared: item.prepared, executed: item.executed, held: item.held }));
+    return summary.daily.map((item) => ({ start: `${item.day}T00:00:00.000Z`, end: `${item.day}T23:59:59.999Z`, prepared: item.prepared, executed: item.executed, held: item.held }));
+  }, [chartSummary.buckets, summary.daily]);
 
   const hasActivity = summary.prepared > 0 || summary.executed > 0 || summary.held > 0;
   const rawMax = Math.max(1, ...data.flatMap((point) => [point.prepared, point.executed, point.held]));
@@ -94,11 +98,11 @@ export function WorkforceActivityChart({ summary }: { summary: WorkforceActivity
   // to the new one) without any extra state - this single duration sits
   // between the initial-reveal and live-update targets for both cases.
   const animationDuration = reducedMotion ? 0 : 600;
-  const rangeLabel = `${data.length}-day range`;
+  const rangeLabel = chartSummary.range === "24h" ? "24-hour range" : chartSummary.range === "30d" ? "30-day range" : `${data.length}-day range`;
 
   return (
     <div className="wa-chart">
-      <div className="wa-chart-legend" role="group" aria-label={`Series totals for the last ${data.length} days`}>
+      <div className="wa-chart-legend" role="group" aria-label={`Series totals for the ${rangeLabel}`}>
         {(Object.keys(workforceChartConfig) as WorkforceSeriesKey[]).map((key) => (
           <button
             key={key}
@@ -127,11 +131,11 @@ export function WorkforceActivityChart({ summary }: { summary: WorkforceActivity
             <ComposedChart data={data} margin={{ top: 10, right: 10, bottom: 0, left: -18 }} accessibilityLayer>
               <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
               <XAxis
-                dataKey="day"
+                dataKey="start"
                 axisLine={false}
                 tickLine={false}
                 tick={{ fontSize: 10, fill: "var(--text-faint)" }}
-                tickFormatter={(day: string) => formatDayTick(day, data.length > 14)}
+                tickFormatter={(start: string) => formatActivityTick(start, granularity, data.length > 14)}
                 interval="preserveStartEnd"
                 minTickGap={8}
               />
@@ -144,7 +148,7 @@ export function WorkforceActivityChart({ summary }: { summary: WorkforceActivity
                 ticks={ticks}
                 tick={{ fontSize: 10, fill: "var(--text-faint)" }}
               />
-              <ChartTooltip cursor={{ stroke: "rgba(255,255,255,0.14)" }} content={<WorkforceTooltip />} isAnimationActive={false} />
+              <ChartTooltip cursor={{ stroke: "rgba(255,255,255,0.14)" }} content={<WorkforceTooltip data={data} granularity={granularity} />} isAnimationActive={false} />
               {!hidden.has("prepared") && (
                 <Area
                   type="monotone"

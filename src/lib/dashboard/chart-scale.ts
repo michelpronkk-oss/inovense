@@ -42,3 +42,23 @@ export function formatTooltipDate(day: string): string {
   if (!Number.isFinite(date.getTime())) return day;
   return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
 }
+
+export function formatActivityTick(value: string, granularity: "hour" | "day", narrow: boolean): string {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  if (granularity === "hour") {
+    return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: false, timeZone: "UTC" });
+  }
+  return date.toLocaleDateString("en-US", { month: narrow ? "numeric" : "short", day: "numeric", timeZone: "UTC" });
+}
+
+export function formatActivityTooltip(start: string, end: string, granularity: "hour" | "day"): string {
+  const from = new Date(start);
+  const to = new Date(end);
+  if (!Number.isFinite(from.getTime()) || !Number.isFinite(to.getTime())) return start;
+  if (granularity === "hour") {
+    const time = (date: Date) => date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: false, timeZone: "UTC" });
+    return `${time(from)}–${time(to)} UTC`;
+  }
+  return from.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+}

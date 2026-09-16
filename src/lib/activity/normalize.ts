@@ -23,7 +23,7 @@ function actionState(row: Row) {
 export function normalizeWorkforceActivity(input: { approvals: Row[]; runs: Row[]; logs: Row[]; workflows?: Row[]; outcomes?: Row[]; rangeStart: string; rangeEnd?: string; limit?: number; partialHistory?: boolean }): WorkforceActivityPage {
   const start = new Date(input.rangeStart).getTime();
   const end = input.rangeEnd ? new Date(input.rangeEnd).getTime() : Date.now();
-  const within = (value: string | null) => value !== null && Number.isFinite(new Date(value).getTime()) && new Date(value).getTime() >= start && new Date(value).getTime() <= end;
+  const within = (value: string | null) => value !== null && Number.isFinite(new Date(value).getTime()) && new Date(value).getTime() >= start && new Date(value).getTime() < end;
   const items: WorkforceActivityItem[] = [];
 
   for (const row of input.workflows ?? []) {

@@ -24,7 +24,7 @@ import { getEntitlements, type Entitlements } from "@/lib/os/entitlements";
 import { reportLegacyMigrationEvent } from "@/lib/migration-telemetry";
 import { getConnectorDefinition } from "@/lib/connectors/registry";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { acceptWorkspaceRealtimeRevision, WORKSPACE_REALTIME_EVENT, WORKSPACE_REALTIME_STATUS_EVENT, parseWorkspaceRealtimeInvalidation } from "@/lib/os/workspace-realtime";
+import { acceptWorkspaceRealtimeRevision, publishWorkspaceRealtimeStatus, WORKSPACE_REALTIME_EVENT, WORKSPACE_REALTIME_RECONNECTED_EVENT, parseWorkspaceRealtimeInvalidation } from "@/lib/os/workspace-realtime";
 
 const STORAGE_KEY = "auterim-os-state-v7";
 const LEGACY_STORAGE_KEYS = ["inovense-os-state-v7", "inovense-os-state-v1"];
@@ -537,14 +537,12 @@ export function AppProvider({ children, initialContext }: { children: React.Reac
   // published row contains a surface revision, never source record content.
   useEffect(() => {
     if (!initialContext?.workspaceId) return;
-    const publishStatus = (status: "connecting" | "connected" | "disconnected" | "error") => {
-      window.dispatchEvent(new CustomEvent(WORKSPACE_REALTIME_STATUS_EVENT, {
-        detail: { workspaceId: initialContext.workspaceId, status, updatedAt: new Date().toISOString() },
-      }));
-    };
+    let hasConnected = false;
+    let disposed = false;
+    const publishStatus = (status: "connecting" | "connected" | "reconnecting" | "disconnected" | "stale") => publishWorkspaceRealtimeStatus({ workspaceId: initialContext.workspaceId, status });
     publishStatus("connecting");
     let client: ReturnType<typeof createSupabaseBrowserClient>;
-    try { client = createSupabaseBrowserClient(); } catch { publishStatus("error"); return; }
+    try { client = createSupabaseBrowserClient(); } catch { publishStatus("disconnected"); return; }
     const pending = new Map<string, ReturnType<typeof parseWorkspaceRealtimeInvalidation>>();
     const lastRevisions = new Map<"dashboard" | "approvals" | "workflows" | "activity" | "connectors" | "operators" | "memory" | "logs" | "insights", number>();
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -571,13 +569,24 @@ export function AppProvider({ children, initialContext }: { children: React.Reac
           for (const latest of pending.values()) window.dispatchEvent(new CustomEvent(WORKSPACE_REALTIME_EVENT, { detail: latest }));
           pending.clear();
         }, 120);
-      })
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") publishStatus("connected");
-        else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") publishStatus("error");
-        else if (status === "CLOSED") publishStatus("disconnected");
+      });
+    const { data: authState } = client.auth.onAuthStateChange((_event, session) => {
+      if (session?.access_token) void client.realtime.setAuth(session.access_token);
+    });
+    channel.subscribe((status) => {
+        if (disposed) return;
+        if (status === "SUBSCRIBED") {
+          const wasConnected = hasConnected;
+          hasConnected = true;
+          publishStatus("connected");
+          if (wasConnected) window.dispatchEvent(new CustomEvent(WORKSPACE_REALTIME_RECONNECTED_EVENT, { detail: { workspaceId: initialContext.workspaceId, updatedAt: new Date().toISOString() } }));
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          publishStatus(hasConnected ? "reconnecting" : "disconnected");
+        }
       });
     return () => {
+      disposed = true;
+      authState.subscription.unsubscribe();
       if (timer) clearTimeout(timer);
       pending.clear();
       publishStatus("disconnected");

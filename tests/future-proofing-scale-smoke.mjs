@@ -44,7 +44,7 @@ assert.match(provider, /setTimeout\(\(\) =>/);
 // is that a request can never materialize the whole source table.
 const highVolumeRows = Array.from({ length: 1000 }, (_, index) => ({ id: String(index) }));
 assert.equal(highVolumeRows.length, 1000);
-assert.match(activity, /const SOURCE_LIMIT = 250/);
+assert.match(activity, /const SOURCE_LIMIT = 1000/);
 assert.match(logs, /boundedLimit\(input\.limit, 200, 500\)/);
 assert.match(logs, /limit\(limit \+ 1\)/);
 assert.match(approvals, /boundedLimit\(req\.nextUrl\.searchParams\.get\("limit"\), 100, 100\)/);

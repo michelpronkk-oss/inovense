@@ -10,7 +10,9 @@ import type { Workspace } from "@/lib/os/types";
 import { getWorkspaceOperatorProductStates, type OperatorProductStateResult } from "@/lib/operators/product-state";
 import { selectDashboardLifecycleState, type DashboardLifecycleState } from "@/lib/dashboard/lifecycle";
 import { normalizeWorkforceActivity } from "@/lib/activity/normalize";
-import type { WorkforceActivitySummary } from "@/lib/activity/types";
+import { getWorkforceActivityChart } from "@/lib/activity/query";
+import type { WorkforceActivityChartSummary } from "@/lib/dashboard/workforce-activity";
+import { getWorkforceActivityRangeDefinition } from "@/lib/dashboard/workforce-activity-range";
 import {
   asPayload as asApprovalPayload,
   isEmailKind,
@@ -90,7 +92,7 @@ export type DashboardOverview = {
   operators: DashboardOperator[];
   connectors: DashboardConnector[];
   activity: DashboardActivity[];
-  activitySummary: WorkforceActivitySummary;
+  activitySummary: WorkforceActivityChartSummary;
   nextBestActions: DashboardNextAction[];
   /** Real, active (non-terminal) workflow runs - "Work in progress" on the dashboard. */
   workInProgress: DashboardWorkItem[];
@@ -540,7 +542,7 @@ export async function getDashboardOverview(input: {
     .single();
   if (workspace.error || !workspace.data) throw new Error(workspace.error?.message || "Workspace not found.");
 
-  const [truth, policy, workspaceSettings, approvalsRes, runsRes, logsRes, outcomesRes, workflowsRes, operatorProductStates, workflowPresentations] = await Promise.all([
+  const [truth, policy, workspaceSettings, approvalsRes, runsRes, logsRes, outcomesRes, workflowsRes, operatorProductStates, workflowPresentations, activityChart] = await Promise.all([
     getConnectorTruth({ workspaceId: input.workspaceId, supabase }),
     loadPolicyWorkspaceSettings({ supabase, workspaceId: input.workspaceId }),
     loadWorkspacePolicySettings({ supabase, workspaceId: input.workspaceId }),
@@ -555,6 +557,7 @@ export async function getDashboardOverview(input: {
     // Same real, shared workflow presentation the /workflows page uses -
     // "Work in progress" on the dashboard, never a separate derivation.
     getWorkflowPresentations({ workspaceId: input.workspaceId, limit: 20 }),
+    getWorkforceActivityChart({ workspaceId: input.workspaceId, range: "7d", supabase }),
   ]);
 
   if (approvalsRes.error || runsRes.error || logsRes.error || outcomesRes.error || workflowsRes.error) {
@@ -603,14 +606,16 @@ export async function getDashboardOverview(input: {
     connectors,
     operators,
   });
+  const activityWindow = getWorkforceActivityRangeDefinition("7d");
   const activityProjection = normalizeWorkforceActivity({
     approvals,
     runs,
     logs,
     workflows,
     outcomes,
-    rangeStart: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    limit: 80,
+    rangeStart: activityWindow.start,
+    rangeEnd: activityWindow.end,
+    limit: 1000,
   });
   const approvalActivities = approvals.slice(0, 20).map(mapApprovalToActivity);
   const logActivities = logs.slice(0, 30).map(mapRunLogToActivity);
@@ -689,7 +694,7 @@ export async function getDashboardOverview(input: {
     operators,
     connectors,
     activity,
-    activitySummary: activityProjection.summary,
+    activitySummary: activityChart,
     workInProgress: workflowPresentations
       .filter((workflow) => !["completed", "cancelled"].includes(workflow.status))
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())

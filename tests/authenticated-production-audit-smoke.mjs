@@ -17,7 +17,8 @@ for (const surface of ["memory", "logs", "insights"]) {
   assert.match(migration, new RegExp(`'${surface}'`), `${surface} is covered by the unapplied migration`);
 }
 assert.match(provider, /publishStatus\("connected"\)/, "realtime exposes an honest connected state");
-assert.match(provider, /publishStatus\("error"\)/, "realtime exposes an honest error state");
+assert.match(provider, /hasConnected \? "reconnecting"/, "realtime exposes an honest retrying state");
+assert.match(provider, /publishStatus\("disconnected"\)/, "realtime exposes an honest initial failure state");
 assert.match(provider, /if \(IS_PRODUCTION\) return/, "legacy local runtime is fail-closed in production");
 const topbar = read("src/components/dashboard/topbar.tsx");
 assert.match(topbar, /const IS_PRODUCTION/, "global legacy surfaces know the production boundary");

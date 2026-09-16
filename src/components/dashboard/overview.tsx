@@ -11,9 +11,11 @@ import { FreshnessIndicator, MetricStrip, PageHeader } from "@/components/produc
 import { trialDaysRemaining } from "@/lib/os/plans";
 import { ArrowIcon } from "@/components/dashboard/icons";
 import type { WorkflowLoopStage } from "@/lib/workflows/stage";
-import { useWorkspaceRealtimeInvalidation, useWorkspaceRealtimeStatus } from "@/lib/os/workspace-realtime";
+import { useWorkspaceRealtimeInvalidation, useWorkspaceRealtimeReconnection, useWorkspaceRealtimeStatus, type WorkspaceRealtimeStatus } from "@/lib/os/workspace-realtime";
 import { countLiveWorkforce, isLiveWorkforceState } from "@/lib/dashboard/metric-definitions";
 import { WorkforceActivityChart } from "@/components/dashboard/workforce-activity-chart";
+import type { WorkforceActivityRange } from "@/lib/dashboard/workforce-activity-range";
+import type { WorkforceActivityChartSummary } from "@/lib/dashboard/workforce-activity";
 
 type ScanKey = DashboardOperator["key"];
 type OverviewResponse = DashboardOverview & { error?: string; message?: string };
@@ -122,7 +124,7 @@ function DashboardMetrics({ overview }: { overview: DashboardOverview }) {
  * and only shows the brief "just changed" pulse on a genuine state
  * transition, not as a permanent animation.
  */
-function WorkforceLiveState({ realtimeStatus, updatedAt }: { realtimeStatus: "connecting" | "connected" | "disconnected" | "error"; updatedAt: string | null }) {
+function WorkforceLiveState({ realtimeStatus, updatedAt }: { realtimeStatus: WorkspaceRealtimeStatus["status"]; updatedAt: string | null }) {
   const [justChanged, setJustChanged] = useState(false);
   const prevStatus = useRef(realtimeStatus);
 
@@ -134,8 +136,8 @@ function WorkforceLiveState({ realtimeStatus, updatedAt }: { realtimeStatus: "co
     return () => window.clearTimeout(timer);
   }, [realtimeStatus]);
 
-  const state = realtimeStatus === "connected" ? "live" : realtimeStatus === "connecting" ? "reconnecting" : "stale";
-  const label = state === "live" ? "Live" : state === "reconnecting" ? "Reconnecting" : `Updated ${timeAgo(updatedAt)}`;
+  const state = realtimeStatus === "connected" ? "live" : realtimeStatus === "reconnecting" ? "reconnecting" : realtimeStatus === "connecting" ? "connecting" : "stale";
+  const label = state === "live" ? "Live" : state === "reconnecting" ? "Reconnecting" : state === "connecting" ? "Connecting…" : `Updated ${timeAgo(updatedAt)}`;
 
   return (
     <span className="wa-chart-live" data-state={state} data-transition={justChanged || undefined}>
@@ -145,8 +147,49 @@ function WorkforceLiveState({ realtimeStatus, updatedAt }: { realtimeStatus: "co
   );
 }
 
-function WorkforceActivity({ overview, realtimeStatus }: { overview: DashboardOverview; realtimeStatus: "connecting" | "connected" | "disconnected" | "error" }) {
-  const summary = overview.activitySummary;
+function WorkforceActivity({ overview, realtimeStatus, workspaceId }: { overview: DashboardOverview; realtimeStatus: WorkspaceRealtimeStatus["status"]; workspaceId: string }) {
+  const [range, setRange] = useState<WorkforceActivityRange>("7d");
+  const [summary, setSummary] = useState<WorkforceActivityChartSummary>(overview.activitySummary);
+  const [rangeLoading, setRangeLoading] = useState(false);
+  const [rangeError, setRangeError] = useState("");
+  const selectedRange = useRef(range);
+  const requestRef = useRef<AbortController | null>(null);
+
+  useEffect(() => { selectedRange.current = range; }, [range]);
+
+  const loadRange = useCallback(async (requestedRange: WorkforceActivityRange) => {
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
+    setRangeLoading(true);
+    setRangeError("");
+    try {
+      const response = await fetch(`/api/dashboard/activity?range=${requestedRange}`, { cache: "no-store", signal: controller.signal });
+      const json = await response.json().catch(() => ({})) as Partial<WorkforceActivityChartSummary> & { error?: string };
+      if (!response.ok || !Array.isArray(json.buckets)) throw new Error(json.error || "Couldn’t refresh workforce activity.");
+      setSummary(json as WorkforceActivityChartSummary);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setRangeError(error instanceof Error ? error.message : "Couldn’t refresh workforce activity.");
+    } finally {
+      if (!controller.signal.aborted) setRangeLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void loadRange(range); }, 0);
+    return () => {
+      if (timer !== null) window.clearTimeout(timer);
+      requestRef.current?.abort();
+    };
+  }, [loadRange, overview.activitySummary, range]);
+
+  const reloadSelectedRange = useCallback(() => { void loadRange(selectedRange.current); }, [loadRange]);
+  useWorkspaceRealtimeInvalidation(workspaceId, ["dashboard", "activity"], reloadSelectedRange);
+  useWorkspaceRealtimeReconnection(workspaceId, reloadSelectedRange);
+
+  const displayedSummary = range === "7d" && summary.range !== "7d" ? overview.activitySummary : summary;
+  const rangeLabel = range === "24h" ? "Last 24 hours" : range === "30d" ? "Last 30 days" : "Last 7 days";
   return (
     <div className="card" aria-labelledby="workforce-activity-title">
       <div className="card-head wa-chart-head">
@@ -156,11 +199,23 @@ function WorkforceActivity({ overview, realtimeStatus }: { overview: DashboardOv
         </div>
         <div className="wa-chart-head-right">
           <WorkforceLiveState realtimeStatus={realtimeStatus} updatedAt={overview.lastUpdatedAt} />
-          <span className="t-meta wa-chart-range">Last {summary.daily.length} days</span>
+          <div className="wa-chart-range-control" role="group" aria-label="Workforce activity range">
+            {(["24h", "7d", "30d"] as WorkforceActivityRange[]).map((option) => (
+              <button key={option} type="button" className="wa-chart-range-button" aria-pressed={range === option} onClick={() => setRange(option)} disabled={rangeLoading && range === option}>
+                {option.toUpperCase()}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
+      <div className="wa-chart-range-caption" aria-live="polite">
+        <span>{rangeLabel} · UTC</span>
+        {rangeLoading && <span>Refreshing…</span>}
+        {rangeError && <span role="alert">{rangeError}</span>}
+        {displayedSummary.partialHistory && <span>Showing the bounded persisted history returned by the workspace.</span>}
+      </div>
       <div className="card-pad" style={{ paddingTop: 16 }}>
-        <WorkforceActivityChart summary={summary} />
+        <WorkforceActivityChart summary={displayedSummary} />
       </div>
     </div>
   );
@@ -496,7 +551,7 @@ export function OSOverview() {
 
         <div className="sec"><DashboardReadinessSummary overview={overview} trialEligible={trialEligible} /></div>
         <div className="sec"><DashboardMetrics overview={overview} /></div>
-        <div className="sec"><WorkforceActivity overview={overview} realtimeStatus={realtimeStatus} /></div>
+        <div className="sec"><WorkforceActivity overview={overview} workspaceId={state.workspace.id} realtimeStatus={realtimeStatus} /></div>
         <div className="sec split" data-onboarding-priorities={hasOnboardingPriorities || undefined}>
           <WhatAuterimCanDo overview={overview} />
           <div className="stack">
@@ -522,6 +577,7 @@ export function OSOverview() {
         firstName={firstName}
         error={error}
         realtimeStatus={realtimeStatus}
+        workspaceId={state.workspace.id}
       />
     );
   }
@@ -570,7 +626,7 @@ export function OSOverview() {
 
       <div className="sec"><DashboardMetrics overview={overview} /></div>
 
-      <div className="sec"><WorkforceActivity overview={overview} realtimeStatus={realtimeStatus} /></div>
+      <div className="sec"><WorkforceActivity overview={overview} workspaceId={state.workspace.id} realtimeStatus={realtimeStatus} /></div>
 
       {showEligibilityBanner && (
         <div className="sec">
@@ -630,13 +686,15 @@ function LifecyclePreOperationalState({
   firstName,
   error,
   realtimeStatus,
+  workspaceId,
 }: {
   lifecycleState: "B" | "C" | "D" | "F";
   overview: DashboardOverview;
   greet: string;
   firstName: string;
   error: string;
-  realtimeStatus: "connecting" | "connected" | "disconnected" | "error";
+  realtimeStatus: WorkspaceRealtimeStatus["status"];
+  workspaceId: string;
 }) {
   const states = overview.operatorProductStates;
   const attentionStates = states.filter((item) => item.state === "needs_attention" || item.state === "active_limited");
@@ -649,7 +707,7 @@ function LifecyclePreOperationalState({
 
       <div className="sec"><DashboardReadinessSummary overview={overview} /></div>
       <div className="sec"><DashboardMetrics overview={overview} /></div>
-      <div className="sec"><WorkforceActivity overview={overview} realtimeStatus={realtimeStatus} /></div>
+      <div className="sec"><WorkforceActivity overview={overview} workspaceId={workspaceId} realtimeStatus={realtimeStatus} /></div>
 
       {lifecycleState === "F" && attentionStates.length > 0 && (
         <div className="sec">

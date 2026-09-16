@@ -147,6 +147,17 @@ window.fetch = async (input, options) => {
   }
   let data = {};
   if (url.pathname === "/api/dashboard/overview") data = overview;
+  else if (url.pathname === "/api/dashboard/activity") {
+    const requestedRange = url.searchParams.get("range") === "24h" || url.searchParams.get("range") === "30d" ? url.searchParams.get("range") : "7d";
+    const bucketCount = requestedRange === "24h" ? 24 : requestedRange === "30d" ? 30 : 7;
+    const granularity = requestedRange === "24h" ? "hour" : "day";
+    const buckets = Array.from({ length: bucketCount }, (_, index) => ({ start: new Date(Date.now() - (bucketCount - index) * (granularity === "hour" ? 3600000 : 86400000)).toISOString(), end: new Date(Date.now() - (bucketCount - index - 1) * (granularity === "hour" ? 3600000 : 86400000)).toISOString(), count: 0, prepared: 0, executed: 0, held: 0 }));
+    const last = buckets[buckets.length - 1];
+    last.prepared = overview.activitySummary.prepared;
+    last.executed = overview.activitySummary.executed;
+    last.held = overview.activitySummary.held;
+    data = { ...overview.activitySummary, range: requestedRange, windowStart: buckets[0].start, windowEnd: buckets.at(-1).end, granularity, buckets, partialHistory: false };
+  }
   else if (url.pathname === "/api/operators/product-state") data = { states: productStates, state: productStates.find((s) => s.operatorKey === url.searchParams.get("operatorKey")) };
   else if (url.pathname === "/api/operators/readiness") data = { readiness: readiness };
   else if (url.pathname.endsWith("/activate")) data = { state: { activated: lifecycle === "E", activatedAt: null, updatedAt: null } };

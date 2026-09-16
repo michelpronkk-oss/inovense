@@ -31,12 +31,14 @@ export function FreshnessIndicator({
   realtimeStatus,
 }: {
   updatedAt?: string | null;
-  realtimeStatus?: "connecting" | "connected" | "disconnected" | "error";
+  realtimeStatus?: "connecting" | "connected" | "reconnecting" | "disconnected" | "stale";
 }) {
   const liveLabel = realtimeStatus === "connected"
     ? "Live updates connected"
     : realtimeStatus === "connecting"
       ? "Live updates connecting"
+      : realtimeStatus === "reconnecting"
+        ? "Live updates reconnecting"
       : "Live updates unavailable · refreshes on focus";
   return (
     <span className="freshness-indicator" data-state={realtimeStatus ?? "unknown"}>
