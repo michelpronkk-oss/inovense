@@ -14,6 +14,7 @@ const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
 const dashboard = read("src/components/dashboard/overview.tsx");
 const dashboardSource = read("src/lib/dashboard/overview.ts");
+const workforceChart = read("src/components/dashboard/workforce-activity-chart.tsx");
 const approvalsPresentation = read("src/lib/approvals/presentation.ts");
 const approvalsRoute = read("src/app/api/approvals/route.ts");
 const workflowsPresentation = read("src/lib/workflows/presentation.ts");
@@ -22,15 +23,21 @@ const workflowsPage = read("src/app/app/workflows/page.tsx");
 
 // ─────────────────────────────────────────────────────────────────────────
 // A. Workforce activity chart - title, subtitle, legend, real series.
+// Rebuilt as a real Recharts composition (workforce-activity-chart.tsx) in
+// place of the original hand-rolled SVG polyline; these assertions guard
+// the same intent (real data, no fabricated scale/duplicate summary row,
+// honest legend) against the new implementation.
 // ─────────────────────────────────────────────────────────────────────────
 assert.match(dashboard, /Workforce activity<\/div>/, "the chart card title must be exact");
-assert.match(dashboard, /Prepared against executed, last 7 days/, "the chart subtitle must be exact");
-assert.match(dashboard, /<span className="t-meta">Prepared<\/span>/);
-assert.match(dashboard, /<span className="t-meta">Executed<\/span>/);
-assert.match(dashboard, /<span className="t-meta">Held at approval<\/span>/);
-assert.match(dashboard, /const max = Math\.max\(\.\.\.summary\.daily\.flatMap/, "the chart scale must be derived from real activity data, never a fixed/fabricated max");
+assert.match(dashboard, /Prepared work, confirmed execution, and items held for approval\./, "the chart subtitle must be exact and must not repeat the range control's own text");
+assert.match(dashboard, /WorkforceActivityChart/, "the dashboard renders the real chart component");
+assert.match(workforceChart, /label: "Prepared"/);
+assert.match(workforceChart, /label: "Executed"/);
+assert.match(workforceChart, /label: "Held at approval"/);
+assert.match(workforceChart, /Math\.max\(1, \.\.\.data\.flatMap/, "the chart scale must be derived from real activity data, never a fixed/fabricated max");
 assert.doesNotMatch(dashboard, /dashboard-activity-counts/, "the old duplicate numeric summary row above the chart must be removed to match the reference proportions");
-assert.match(dashboard, /item\.held <= 0\) return null/, "held markers must only render on days with real held-at-approval activity, never every day");
+assert.match(workforceChart, /dataKey="held"/, "held is plotted directly from the real per-day bucket, never a fabricated series");
+assert.doesNotMatch(workforceChart, /Math\.random|faker|generateMock/i, "no randomized or fabricated point ever enters the chart");
 
 // ─────────────────────────────────────────────────────────────────────────
 // B. Workforce card - all four canonical operators, real product-state

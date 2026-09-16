@@ -18,6 +18,7 @@ export function DashboardLoadingState() {
       <div className="kpi-row os-loading-kpis" aria-hidden="true">
         {[0, 1, 2, 3].map((item) => <span className="kpi os-loading-tile" key={item} />)}
       </div>
+      <div className="p" aria-hidden="true"><LoadingBar className="panel-title" /><span className="wa-chart-skeleton" style={{ display: "block", marginTop: 14 }} /></div>
       <div className="os-grid-2 os-loading-lower" aria-hidden="true">
         <section className="p"><LoadingBar className="panel-title" /><LoadingBar className="row" /><LoadingBar className="row" /></section>
         <section className="p"><LoadingBar className="panel-title" /><LoadingBar className="row short" /></section>

@@ -113,7 +113,19 @@ export function normalizeWorkforceActivity(input: { approvals: Row[]; runs: Row[
     });
   }
 
-  const sorted = items.sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
+  // Each item id is a stable, source-derived key (`approval:<row.id>`,
+  // `execution:<row.id>`, ...). A replayed provider event or retried
+  // workflow trigger a duplicate source row only in the pathological case
+  // where an upstream query returns the same row twice - guard against that
+  // here so the dashboard chart and summary counts can never double-count.
+  const seenIds = new Set<string>();
+  const deduped = items.filter((item) => {
+    if (seenIds.has(item.id)) return false;
+    seenIds.add(item.id);
+    return true;
+  });
+
+  const sorted = deduped.sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
   const visible = sorted.slice(0, input.limit ?? 40);
   return { items: visible, summary: summarizeWorkforceActivity(sorted, start, end), hasMore: sorted.length > visible.length, partialHistory: input.partialHistory === true };
 }

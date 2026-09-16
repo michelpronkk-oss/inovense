@@ -14,6 +14,7 @@ const normalize = read("src/lib/activity/normalize.ts");
 const page = read("src/app/app/activity/page.tsx");
 const dashboard = read("src/components/dashboard/overview.tsx");
 const dashboardSource = read("src/lib/dashboard/overview.ts");
+const workforceChart = read("src/components/dashboard/workforce-activity-chart.tsx");
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "auterim-activity-"));
 
 try {
@@ -39,8 +40,10 @@ try {
   // Workforce activity / Workforce / Needs your review / Work in progress
   // reference layout); the full activity feed remains reachable at its own
   // real, separate page (asserted above), still linked from the shared nav.
-  assert.match(dashboard, /Prepared/);
-  assert.match(dashboard, /Held at approval/);
+  assert.match(dashboard, /WorkforceActivityChart/, "the dashboard renders the real chart component, not an inline placeholder");
+  assert.match(workforceChart, /label: "Prepared"/);
+  assert.match(workforceChart, /label: "Held at approval"/);
+  assert.match(workforceChart, /label: "Executed"/);
   assert.doesNotMatch(dashboard, /Open logs/);
   assert.match(dashboardSource, /normalizeWorkforceActivity/, "dashboard uses the shared activity definition");
   assert.match(dashboardSource, /activitySummary/);
@@ -70,6 +73,35 @@ try {
   assert.equal(result.items.some((item) => item.category === "outcome"), true, "observed business outcomes remain distinct from execution activity");
   assert.equal(result.items.some((item) => /sent/i.test(item.description)), false, "email content/status detail stays out of the human feed");
   assert.equal(result.summary.daily.length, 7, "seven-day dashboard timeline has one truthful bucket per day");
+
+  // Workforce activity chart: bucket correctness, timezone safety, and dedup.
+  const day1 = "2026-09-01"; const day7 = "2026-09-07";
+  const chart = mod.normalizeWorkforceActivity({
+    rangeStart: `${day1}T00:00:00.000Z`, rangeEnd: `${day7}T23:59:59.000Z`,
+    runs: [],
+    approvals: [
+      // Pending (held) approval created just before midnight UTC - must land
+      // in day1's bucket, not drift into day2 under a non-UTC interpretation.
+      { id: "held-1", agent_id: "revenue", status: "pending", created_at: `${day1}T23:59:00.000Z` },
+      // Approved-and-executed approval just after midnight UTC on day7.
+      { id: "exec-1", agent_id: "support", status: "approved", created_at: `${day7}T00:05:00.000Z`, resolved_at: `${day7}T00:05:00.000Z`, continuation_payload: { executionResult: { gmailStatus: "sent" } } },
+      // The exact same row reference appearing twice, as a defensive
+      // duplicate-provider-event/retry simulation - must not double count.
+      { id: "exec-1", agent_id: "support", status: "approved", created_at: `${day7}T00:05:00.000Z`, resolved_at: `${day7}T00:05:00.000Z`, continuation_payload: { executionResult: { gmailStatus: "sent" } } },
+    ],
+    logs: [], outcomes: [],
+  });
+  assert.equal(chart.summary.daily.length, 7, "missing days in the range still produce zero-filled buckets");
+  assert.equal(chart.summary.daily.filter((day) => day.prepared === 0 && day.executed === 0 && day.held === 0).length, 5, "the five days with no activity are honest zero buckets, not omitted");
+  const bucketDay1 = chart.summary.daily.find((day) => day.day === day1);
+  const bucketDay7 = chart.summary.daily.find((day) => day.day === day7);
+  assert.equal(bucketDay1?.held, 1, "a 23:59 UTC event lands in its own UTC day, not the next one");
+  assert.equal(bucketDay1?.prepared, 1, "a held approval also counts as prepared work");
+  assert.equal(bucketDay7?.executed, 1, "a 00:05 UTC event lands on that day, not the previous one");
+  assert.equal(chart.summary.executed, 1, "a duplicated source row for the same approval id is not double-counted");
+  assert.equal(chart.summary.prepared, 2, "prepared totals reflect each distinct approval once, regardless of a duplicated row");
+  assert.equal(chart.summary.held, 1, "held totals only count approvals still pending, distinct from executed work");
+
   console.log("Activity navigation, workspace safety, normalization, and dashboard contracts passed.");
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });

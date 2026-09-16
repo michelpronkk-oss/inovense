@@ -19,6 +19,7 @@ const css = read("src/app/app/onboarding/styles-onboarding.css");
 const providerLogoSource = read("src/components/connectors/provider-logo.tsx");
 const connectorsPage = read("src/app/app/connectors/page.tsx");
 const overview = read("src/components/dashboard/overview.tsx");
+const workforceChart = read("src/components/dashboard/workforce-activity-chart.tsx");
 const settingsPage = read("src/app/app/settings/page.tsx");
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -74,9 +75,10 @@ assert.match(actions, /noSupportedConnector: data\.no_supported_connector === tr
 // ─────────────────────────────────────────────────────────────────────────
 assert.match(overview, /dashboard-first-run/, "a workspace with zero healthy connectors must show a distinct, truthful first-run state, not a broken populated dashboard");
 assert.match(overview, /message: "Connect a system so Auterim can understand your workspace\."/, "a trialing-but-unconnected workspace must still get a real, honest next step");
-assert.match(overview, /\{!hasActivity && \(/, "activity must have an honest empty branch");
-assert.match(overview, /Activity is still building\./, "no fake activity may be claimed before anything runs");
+assert.match(workforceChart, /hasActivity \? \(/, "activity must have an honest empty branch");
+assert.match(workforceChart, /No workforce activity in this period\./, "no fake activity may be claimed before anything runs");
 assert.doesNotMatch(overview, /Math\.random/, "dashboard state must never be randomly fabricated");
+assert.doesNotMatch(workforceChart, /Math\.random/, "the chart itself must never randomly fabricate activity either");
 
 // ─────────────────────────────────────────────────────────────────────────
 // E. Later connector connection -> readiness updates normally

@@ -18,6 +18,7 @@ import Activity from "../../src/app/app/activity/page";
 import Logs from "../../src/app/app/logs/page";
 import Insights from "../../src/app/app/insights/page";
 import Workflows from "../../src/app/app/workflows/page";
+import { WORKSPACE_REALTIME_STATUS_EVENT } from "../../src/lib/os/workspace-realtime";
 
 const params = new URLSearchParams(location.search);
 const lifecycle = params.get("state") || "E";
@@ -60,6 +61,26 @@ const fixtureActivity = lifecycle === "E" ? [
   { id: "activity-signal", time: new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString(), type: "operator.signal", title: "Client request detected", description: "A client message was identified.", operatorKey: "client_flow", connectorKey: "gmail", severity: "info", href: "/logs" },
 ] : [];
 const connectorPurpose = { gmail: "Email follow-ups", hubspot: "CRM execution", slack: "Team alerts", trello: "Project tasks" };
+
+// Drives the Workforce activity chart's required data states via
+// ?activity=<scenario> - each is still a real, honest daily bucket shape
+// (see WorkforceActivitySummary), just synthesized for isolated visual
+// verification instead of read from Supabase.
+function buildActivitySummary(scenario) {
+  const dayCount = scenario === "dense" ? 30 : 7;
+  const values = Array.from({ length: dayCount }, (_, index) => {
+    if (scenario === "zero") return { prepared: 0, executed: 0, held: 0 };
+    if (scenario === "sparse") return index === dayCount - 2 ? { prepared: 1, executed: 0, held: 0 } : { prepared: 0, executed: 0, held: 0 };
+    if (scenario === "equal") return { prepared: 2, executed: 2, held: index === dayCount - 1 ? 1 : 0 };
+    if (scenario === "held-spike") return index === dayCount - 3 ? { prepared: 5, executed: 1, held: 4 } : { prepared: Math.max(0, (index % 3) - 1), executed: Math.max(0, (index % 2)), held: 0 };
+    if (scenario === "dense") return { prepared: (index % 5), executed: Math.max(0, (index % 4) - 1), held: index % 7 === 0 ? 1 : 0 };
+    // "normal": the same small, realistic 0-3 range as real early-workspace activity.
+    return [{ prepared: 1, executed: 0, held: 1 }, { prepared: 0, executed: 0, held: 0 }, { prepared: 2, executed: 1, held: 0 }, { prepared: 1, executed: 1, held: 0 }, { prepared: 0, executed: 0, held: 0 }, { prepared: 3, executed: 2, held: 1 }, { prepared: 1, executed: 1, held: 0 }][index % 7];
+  });
+  const daily = values.map((value, index) => ({ day: new Date(Date.now() - (dayCount - 1 - index) * 86400000).toISOString().slice(0, 10), count: value.prepared + value.executed + value.held, ...value }));
+  const totals = daily.reduce((sum, day) => ({ prepared: sum.prepared + day.prepared, executed: sum.executed + day.executed, held: sum.held + day.held }), { prepared: 0, executed: 0, held: 0 });
+  return { runs: fixtureActivity.filter((item) => item.type === "run.completed").length, approvals: fixtureActivity.filter((item) => item.type === "approval.pending").length, actions: totals.executed, issues: 0, total: totals.prepared + totals.executed + totals.held, ...totals, daily };
+}
 const fixturePendingApproval = {
   id: "fixture-approval", title: "Send a follow-up email", description: "A pricing question came in while the deal is active. Review the prepared reply before it goes out.",
   status: "pending", created_at: new Date().toISOString(), resolved_at: null, approval_type: "email", category: "Email",
@@ -100,7 +121,7 @@ const overview = {
   operators: keys.map((key, index) => ({ key, name: names[index], status: "monitoring", lastRunAt: null, nextRunAt: null, pendingApprovals: 0, signalsToday: 0, actionsToday: 0, href: "/agents/" + key.replace("_", "-") })),
   connectors: state.connectors.filter((c) => Object.hasOwn(connectorPurpose, c.id)).map((c) => ({ key: c.id, name: c.name, connected: c.isConnected, status: c.isConnected ? "connected" : "needs_setup", purpose: connectorPurpose[c.id], href: "/connectors", usedBy: c.id === "hubspot" ? ["Revenue"] : c.id === "trello" ? ["Client Flow", "Operations"] : ["Revenue", "Client Flow"], lastCheckedAt: null })),
   activity: fixtureActivity,
-  activitySummary: { runs: fixtureActivity.filter((item) => item.type === "run.completed").length, approvals: fixtureActivity.filter((item) => item.type === "approval.pending").length, actions: 0, issues: 0, total: fixtureActivity.length, daily: Array.from({ length: 7 }, (_, index) => ({ day: new Date(Date.now() - (6 - index) * 86400000).toISOString().slice(0, 10), count: index === 6 ? fixtureActivity.length : 0 })) },
+  activitySummary: buildActivitySummary(params.get("activity") || "normal"),
   nextBestActions: [], workInProgress: [], lastUpdatedAt: new Date().toISOString(),
 };
 window.fetch = async (input, options) => {
@@ -177,3 +198,19 @@ const fixtureWorkflows = [
 const pages = { dashboard: OSOverview, connectors: Connectors, agents: Agents, revenue: Revenue, "client-flow": ClientFlow, operations: Operations, approvals: Approvals, policies: Policies, settings: Settings, plans: Plans, memory: Memory, activity: Activity, logs: Logs, insights: Insights, workflows: Workflows };
 const Page = pages[params.get("surface")] || OSOverview;
 createRoot(document.getElementById("fixture")).render(<div className="os-root"><AppShell><Page /></AppShell></div>);
+
+// Drives the Workforce activity chart's freshness chip via ?realtime=<state>
+// so the Live/Reconnecting/stale copy can be verified without a real
+// Supabase realtime subscription - dispatched as the exact same
+// WORKSPACE_REALTIME_STATUS_EVENT the real subscriber fires.
+const realtimeParam = params.get("realtime");
+if (realtimeParam) {
+  // Dispatched after a macrotask so the real useWorkspaceRealtimeStatus
+  // effect (which attaches its listener post-mount) is guaranteed to
+  // already be subscribed - a synchronous dispatch would race it.
+  window.setTimeout(() => {
+    window.dispatchEvent(new CustomEvent(WORKSPACE_REALTIME_STATUS_EVENT, {
+      detail: { workspaceId: state.workspace.id, status: realtimeParam, updatedAt: new Date().toISOString() },
+    }));
+  }, 50);
+}

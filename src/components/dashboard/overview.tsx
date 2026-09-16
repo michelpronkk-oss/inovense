@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { StatusBadge } from "@/components/operators/status-badge";
@@ -13,6 +13,7 @@ import { ArrowIcon } from "@/components/dashboard/icons";
 import type { WorkflowLoopStage } from "@/lib/workflows/stage";
 import { useWorkspaceRealtimeInvalidation, useWorkspaceRealtimeStatus } from "@/lib/os/workspace-realtime";
 import { countLiveWorkforce, isLiveWorkforceState } from "@/lib/dashboard/metric-definitions";
+import { WorkforceActivityChart } from "@/components/dashboard/workforce-activity-chart";
 
 type ScanKey = DashboardOperator["key"];
 type OverviewResponse = DashboardOverview & { error?: string; message?: string };
@@ -113,59 +114,53 @@ function DashboardMetrics({ overview }: { overview: DashboardOverview }) {
   return <MetricStrip items={metrics} />;
 }
 
-function WorkforceActivity({ overview }: { overview: DashboardOverview }) {
-  const summary = overview.activitySummary;
-  const hasActivity = summary.prepared > 0 || summary.executed > 0 || summary.held > 0;
-  const max = Math.max(...summary.daily.flatMap((item) => [item.prepared, item.executed, item.held]), 1);
-  const pointString = (key: "prepared" | "executed" | "held") => summary.daily.map((item, index) => {
-    const x = 40 + index * (640 / Math.max(summary.daily.length - 1, 1));
-    const y = 150 - (item[key] / max) * 112;
-    return `${x},${y}`;
-  }).join(" ");
-  const preparedPoints = pointString("prepared");
-  const executedPoints = pointString("executed");
-  // Y-axis: three real ticks (max / half / zero), rounded to whole units -
-  // never a fabricated scale independent of the actual data.
-  const yTicks = [{ y: 38, value: Math.ceil(max) }, { y: 95, value: Math.round(max / 2) }, { y: 152, value: 0 }];
+/**
+ * Compact, truthful freshness chip for the chart card specifically - never
+ * claims "Live" unless `useWorkspaceRealtimeStatus` actually reports an
+ * active Supabase realtime subscription (see workspace-realtime.ts). Falls
+ * back to the last real persisted timestamp when realtime is unavailable,
+ * and only shows the brief "just changed" pulse on a genuine state
+ * transition, not as a permanent animation.
+ */
+function WorkforceLiveState({ realtimeStatus, updatedAt }: { realtimeStatus: "connecting" | "connected" | "disconnected" | "error"; updatedAt: string | null }) {
+  const [justChanged, setJustChanged] = useState(false);
+  const prevStatus = useRef(realtimeStatus);
+
+  useEffect(() => {
+    if (prevStatus.current === realtimeStatus) return;
+    prevStatus.current = realtimeStatus;
+    setJustChanged(true);
+    const timer = window.setTimeout(() => setJustChanged(false), 1500);
+    return () => window.clearTimeout(timer);
+  }, [realtimeStatus]);
+
+  const state = realtimeStatus === "connected" ? "live" : realtimeStatus === "connecting" ? "reconnecting" : "stale";
+  const label = state === "live" ? "Live" : state === "reconnecting" ? "Reconnecting" : `Updated ${timeAgo(updatedAt)}`;
 
   return (
+    <span className="wa-chart-live" data-state={state} data-transition={justChanged || undefined}>
+      <span className="wa-chart-live-dot" aria-hidden="true" />
+      {label}
+    </span>
+  );
+}
+
+function WorkforceActivity({ overview, realtimeStatus }: { overview: DashboardOverview; realtimeStatus: "connecting" | "connected" | "disconnected" | "error" }) {
+  const summary = overview.activitySummary;
+  return (
     <div className="card" aria-labelledby="workforce-activity-title">
-      <div className="card-head">
+      <div className="card-head wa-chart-head">
         <div>
           <div className="t-section" id="workforce-activity-title">Workforce activity</div>
-          <div className="t-meta" style={{ marginTop: 3 }}>Prepared against executed, last 7 days</div>
+          <div className="t-meta" style={{ marginTop: 3 }}>Prepared work, confirmed execution, and items held for approval.</div>
         </div>
-        <div className="inline" style={{ gap: 18 }}>
-          <span className="inline" style={{ gap: 7 }}><span className="dot dot-cyan" /><span className="t-meta">Prepared</span></span>
-          <span className="inline" style={{ gap: 7 }}><span className="dot dot-green" /><span className="t-meta">Executed</span></span>
-          <span className="inline" style={{ gap: 7 }}><span className="dot dot-amber" /><span className="t-meta">Held at approval</span></span>
+        <div className="wa-chart-head-right">
+          <WorkforceLiveState realtimeStatus={realtimeStatus} updatedAt={overview.lastUpdatedAt} />
+          <span className="t-meta wa-chart-range">Last {summary.daily.length} days</span>
         </div>
       </div>
-      <div className="card-pad" style={{ paddingTop: 18 }}>
-        <div className="dashboard-telemetry-frame">
-          <svg viewBox="0 0 720 190" role="img" aria-label={hasActivity ? `${summary.prepared} prepared actions, ${summary.executed} executed actions, and ${summary.held} actions held at approval across seven days.` : "No prepared, executed, or held workforce activity recorded yet"}>
-            {yTicks.map((tick) => <line key={tick.y} x1="40" x2="680" y1={tick.y} y2={tick.y} />)}
-            {hasActivity && yTicks.map((tick) => <text key={tick.y} className="dashboard-telemetry-axis" x="30" y={tick.y + 3} textAnchor="end">{tick.value}</text>)}
-            {summary.daily.map((item, index) => { const x = 40 + index * (640 / Math.max(summary.daily.length - 1, 1)); return <text key={item.day} className="dashboard-telemetry-axis" x={x} y="178" textAnchor={index === 0 ? "start" : index === summary.daily.length - 1 ? "end" : "middle"}>{new Date(`${item.day}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "short" }).toUpperCase()}</text>; })}
-            {hasActivity && <>
-              <polygon points={`40,152 ${preparedPoints} 680,152`} fill="rgba(77,232,225,.10)" />
-              <polyline points={preparedPoints} fill="none" stroke="#4DE8E1" strokeWidth="2" />
-              <polyline points={executedPoints} fill="none" stroke="#51D88A" strokeWidth="1.8" />
-              {summary.daily.map((item, index) => {
-                if (item.held <= 0) return null;
-                const x = 40 + index * (640 / Math.max(summary.daily.length - 1, 1));
-                const y = 150 - (item.prepared / max) * 112;
-                return <circle key={item.day} className="dashboard-telemetry-held" cx={x} cy={y} r="5"><title>{`${item.day}: ${item.held} held at approval`}</title></circle>;
-              })}
-            </>}
-          </svg>
-          {!hasActivity && (
-            <div className="dashboard-telemetry-empty">
-              <strong>Activity is still building.</strong>
-              <span>Prepared, executed, and held work will appear here after operators begin monitoring.</span>
-            </div>
-          )}
-        </div>
+      <div className="card-pad" style={{ paddingTop: 16 }}>
+        <WorkforceActivityChart summary={summary} />
       </div>
     </div>
   );
@@ -501,7 +496,7 @@ export function OSOverview() {
 
         <div className="sec"><DashboardReadinessSummary overview={overview} trialEligible={trialEligible} /></div>
         <div className="sec"><DashboardMetrics overview={overview} /></div>
-        <div className="sec"><WorkforceActivity overview={overview} /></div>
+        <div className="sec"><WorkforceActivity overview={overview} realtimeStatus={realtimeStatus} /></div>
         <div className="sec split" data-onboarding-priorities={hasOnboardingPriorities || undefined}>
           <WhatAuterimCanDo overview={overview} />
           <div className="stack">
@@ -575,7 +570,7 @@ export function OSOverview() {
 
       <div className="sec"><DashboardMetrics overview={overview} /></div>
 
-      <div className="sec"><WorkforceActivity overview={overview} /></div>
+      <div className="sec"><WorkforceActivity overview={overview} realtimeStatus={realtimeStatus} /></div>
 
       {showEligibilityBanner && (
         <div className="sec">
@@ -654,7 +649,7 @@ function LifecyclePreOperationalState({
 
       <div className="sec"><DashboardReadinessSummary overview={overview} /></div>
       <div className="sec"><DashboardMetrics overview={overview} /></div>
-      <div className="sec"><WorkforceActivity overview={overview} /></div>
+      <div className="sec"><WorkforceActivity overview={overview} realtimeStatus={realtimeStatus} /></div>
 
       {lifecycleState === "F" && attentionStates.length > 0 && (
         <div className="sec">

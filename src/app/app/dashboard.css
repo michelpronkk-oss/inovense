@@ -3064,6 +3064,73 @@ select.os-input option {
 .os-root .dashboard-telemetry-empty strong { font-size: 13px; font-weight: 550; }
 .os-root .dashboard-telemetry-empty span { color: var(--text-mute); font-size: 11.5px; }
 
+/* ---------- Workforce activity chart (Recharts, see workforce-activity-chart.tsx) ---------- */
+.os-root .wa-chart-head { align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+.os-root .wa-chart-head-right { display: flex; align-items: center; gap: 12px; flex: none; padding-top: 1px; }
+.os-root .wa-chart-range { white-space: nowrap; }
+
+.os-root .wa-chart-live { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .04em; color: var(--text-mute); white-space: nowrap; }
+.os-root .wa-chart-live-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; background: var(--text-faint); }
+.os-root .wa-chart-live[data-state="live"] { color: var(--green); }
+.os-root .wa-chart-live[data-state="live"] .wa-chart-live-dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.os-root .wa-chart-live[data-state="reconnecting"] { color: var(--amber); }
+.os-root .wa-chart-live[data-state="reconnecting"] .wa-chart-live-dot { background: var(--amber); }
+.os-root .wa-chart-live[data-state="stale"] .wa-chart-live-dot { background: var(--text-faint); }
+/* The dot briefly pulses only on a genuine status transition (see the
+   `justChanged` timeout in WorkforceLiveState) - never a permanent animation. */
+.os-root .wa-chart-live[data-transition] .wa-chart-live-dot { animation: wa-live-pulse 1.5s ease-out 1; }
+@keyframes wa-live-pulse { 0% { box-shadow: 0 0 0 0 currentColor; } 70% { box-shadow: 0 0 0 5px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+
+.os-root .wa-chart { margin-top: 2px; }
+.os-root .wa-chart-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-bottom: 14px; }
+.os-root .wa-chart-legend-item {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 4px 6px; margin: -4px -6px;
+  border: 0; border-radius: var(--r-md); background: none; cursor: pointer; font: inherit; color: inherit;
+  transition: opacity .15s ease;
+}
+.os-root .wa-chart-legend-item:hover { background: rgba(255,255,255,.03); }
+.os-root .wa-chart-legend-item[data-hidden] { opacity: .4; }
+.os-root .wa-chart-legend-dot { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.os-root .wa-chart-legend-dot[data-series="prepared"] { background: var(--cyan); }
+.os-root .wa-chart-legend-dot[data-series="executed"] { background: var(--green); }
+.os-root .wa-chart-legend-dot[data-series="held"] { background: var(--amber); }
+.os-root .wa-chart-legend-label { font-size: 12.5px; color: var(--text-dim); }
+.os-root .wa-chart-legend-value { font-family: var(--font-mono); font-size: 12.5px; font-weight: 600; color: var(--text); }
+
+.os-root .wa-chart-plot { position: relative; }
+.os-root .wa-chart-container { width: 100%; height: 300px; }
+.os-root .wa-chart-container .recharts-cartesian-axis-tick text { font-family: var(--font-mono); }
+
+.os-root .wa-chart-empty {
+  height: 300px; display: grid; place-content: center; gap: 6px; text-align: center; padding: 0 24px;
+  border-radius: var(--r-md); background: rgba(255,255,255,.012); box-shadow: inset 0 0 0 1px var(--line);
+}
+.os-root .wa-chart-empty strong { font-size: 13px; font-weight: 550; color: var(--text-dim); }
+.os-root .wa-chart-empty span { color: var(--text-mute); font-size: 11.5px; max-width: 42ch; }
+
+.os-root .wa-chart-tooltip {
+  min-width: 148px; padding: 9px 11px; border-radius: 8px; background: #0c1218; box-shadow: inset 0 0 0 1px var(--line);
+}
+.os-root .wa-chart-tooltip-date { font-size: 11px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.os-root .wa-chart-tooltip-rows { display: grid; gap: 4px; }
+.os-root .wa-chart-tooltip-row { display: flex; align-items: center; gap: 7px; font-size: 11.5px; }
+.os-root .wa-chart-tooltip-marker { width: 7px; height: 7px; border-radius: 2px; flex: none; }
+.os-root .wa-chart-tooltip-marker[data-series="prepared"] { background: var(--cyan); }
+.os-root .wa-chart-tooltip-marker[data-series="executed"] { background: var(--green); }
+.os-root .wa-chart-tooltip-marker[data-series="held"] { background: var(--amber); }
+.os-root .wa-chart-tooltip-label { color: var(--text-mute); flex: 1; }
+.os-root .wa-chart-tooltip-value { font-family: var(--font-mono); font-weight: 600; color: var(--text); }
+
+.wa-chart-skeleton { height: 300px; border-radius: var(--r-md); background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.006)); }
+
+@media (max-width: 720px) {
+  .os-root .wa-chart-head { flex-direction: column; align-items: flex-start; }
+  .os-root .wa-chart-head-right { width: 100%; justify-content: space-between; padding-top: 4px; }
+  .os-root .wa-chart-legend { gap: 8px 14px; }
+  .os-root .wa-chart-legend-item { min-height: 44px; }
+  .os-root .wa-chart-container, .os-root .wa-chart-empty, .wa-chart-skeleton { height: 236px; }
+}
+
 .os-root .notification-center { position: absolute; top: calc(100% + 8px); right: 0; z-index: 220; width: min(390px, calc(100vw - 24px)); max-height: min(620px, calc(100dvh - 88px)); display: flex; flex-direction: column; overflow: hidden; border-radius: 14px; background: linear-gradient(180deg, #0e1318, #090c10); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08), 0 24px 56px rgba(0,0,0,.65); }
 .os-root .notification-center > header { display: flex; align-items: center; justify-content: space-between; padding: 15px 16px 11px; border-bottom: 1px solid var(--line); }
 .os-root .notification-center > header > div { display: grid; gap: 2px; }
