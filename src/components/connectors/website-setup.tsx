@@ -19,8 +19,29 @@ type WebsiteResponseError = {
   code?: string;
 };
 
+type WebsiteSyncResponse = WebsiteResponseError & {
+  ok?: boolean;
+  runId?: string;
+  reused?: boolean;
+  state?: "queued" | "already_queued";
+  message?: string;
+};
+
 function responseError(json: WebsiteResponseError, fallback: string): Error {
   return new Error(`${json.code ? `${json.code}: ` : ""}${json.error || fallback}`);
+}
+
+export async function requestWebsiteSync(input: { workspaceId: string; sourceId: string; fetchImpl?: typeof fetch }): Promise<WebsiteSyncResponse> {
+  const fetchImpl = input.fetchImpl ?? fetch;
+  const response = await fetchImpl("/api/connectors/website/sync", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ workspaceId: input.workspaceId, sourceId: input.sourceId }),
+  });
+  const json = await response.json().catch(() => ({} as WebsiteSyncResponse));
+  if (!response.ok) throw responseError(json, "Website sync could not be queued.");
+  return json as WebsiteSyncResponse;
 }
 
 function verificationStatusCopy(status: WebsiteSourceSummary["verificationStatus"]): string {
@@ -63,6 +84,8 @@ export function WebsiteSetupPanel({ workspaceId, canManage, compact = false, onS
   const [method, setMethod] = useState<WebsiteVerificationMethod>("dns_txt");
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [token, setToken] = useState("");
+  const [syncPending, setSyncPending] = useState(false);
+  const [syncFeedback, setSyncFeedback] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -141,20 +164,22 @@ export function WebsiteSetupPanel({ workspaceId, canManage, compact = false, onS
   };
 
   const sync = async () => {
-    setWorking(true); setError("");
+    if (!source || source.verificationStatus !== "verified" || syncPending) return;
+    setSyncPending(true); setWorking(true); setError(""); setSyncFeedback("Starting sync…");
     try {
-      const response = await fetch("/api/connectors/website/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspaceId, action: "sync" }) });
-      const json = await response.json().catch(() => ({} as { error?: string }));
-      if (!response.ok && response.status !== 202) throw new Error(json.error || "Website sync could not be queued.");
-      onStatus?.("Website sync queued. New observations will appear in Memory for review.");
-      await load();
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "Website sync could not be queued."); }
-    finally { setWorking(false); }
+      const result = await requestWebsiteSync({ workspaceId, sourceId: source.id });
+      const message = result.message ?? (result.reused ? "Sync already queued." : "Sync queued.");
+      setSyncFeedback(message);
+      onStatus?.(`${message} New observations will appear in Memory for review.`);
+    } catch (caught) {
+      setSyncFeedback("");
+      setError(caught instanceof Error ? caught.message : "Website sync could not be queued.");
+    } finally { setSyncPending(false); setWorking(false); }
   };
 
   const disconnect = async () => {
     if (!source || !window.confirm("Disconnect Website Knowledge Sync? Existing owner-confirmed Memory stays; observed website context will be withdrawn.")) return;
-    setWorking(true); setError("");
+    setWorking(true); setError(""); setSyncFeedback("");
     try {
       const response = await fetch("/api/connectors/website/disconnect", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspaceId, sourceId: source.id, retainObservations: true }) });
       const json = await response.json().catch(() => ({} as { error?: string }));
@@ -200,7 +225,7 @@ export function WebsiteSetupPanel({ workspaceId, canManage, compact = false, onS
       {source && <div style={{ display: "grid", gap: 10, padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}><div><div style={{ fontSize: 12.5, fontWeight: 650 }}>Verification</div><div style={{ color: "var(--text-mute)", fontSize: 11.5 }}>{source.verificationStatus === "verified" ? `Verified ${formatDate(source.verifiedAt)} · expires ${formatDate(source.verificationExpiresAt)}` : verificationStatusCopy(source.verificationStatus)}</div></div><span className={`badge ${source.verificationStatus === "verified" ? "green" : source.verificationStatus === "failed" || source.verificationStatus === "expired" ? "red" : "amber"}`}>{source.verificationStatus}</span></div>
         {source.verificationStatus !== "verified" && <><div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}><select className="os-input" value={method} onChange={(event) => setMethod(event.target.value as WebsiteVerificationMethod)} disabled={working}><option value="dns_txt">DNS TXT</option><option value="html_meta">Homepage meta tag</option><option value="html_file">Well-known HTML file</option></select><button type="button" className="btn btn-ghost btn-sm" onClick={() => void issueChallenge()} disabled={working}>{working ? "Working…" : "Create challenge"}</button></div>{challenge && <div style={{ display: "grid", gap: 6, fontSize: 11.5, color: "var(--text-dim)" }}>{verificationInstruction}<input className="os-input" aria-label="Verification token" placeholder="Paste the token to verify" value={token} onChange={(event) => setToken(event.target.value)} disabled={working} /><button type="button" className="btn btn-primary btn-sm" onClick={() => void verify()} disabled={working || !token.trim()}>Verify domain</button><span style={{ color: "var(--text-mute)" }}>Challenge expires {formatDate(challenge.expiresAt)}. Tokens are stored hashed.</span></div>}</>}
-        {source.verificationStatus === "verified" && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button type="button" className="btn btn-primary btn-sm" onClick={() => void sync()} disabled={working || !source.syncEnabled}>{working ? "Queueing…" : "Sync website now"}</button><button type="button" className="btn btn-danger btn-sm" onClick={() => void disconnect()} disabled={working}>Disconnect</button></div>}
+        {source.verificationStatus === "verified" && <div style={{ display: "grid", gap: 7 }}><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button type="button" className="btn btn-primary btn-sm" onClick={() => void sync()} disabled={working || syncPending}>{syncPending ? "Starting sync…" : "Sync website now"}</button><button type="button" className="btn btn-danger btn-sm" onClick={() => void disconnect()} disabled={working || syncPending}>Disconnect</button></div>{syncFeedback && <div role="status" style={{ color: "var(--cyan)", fontSize: 11.5 }}>{syncFeedback}</div>}</div>}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, fontSize: 11.5, color: "var(--text-mute)" }}><span>Pages checked<strong style={{ display: "block", color: "var(--text-dim)" }}>{source.pagesChecked}</strong></span><span>Changed<strong style={{ display: "block", color: "var(--text-dim)" }}>{source.pagesChanged}</strong></span><span>Pending review<strong style={{ display: "block", color: "var(--cyan)" }}>{source.observationsPending}</strong></span></div>
       </div>}
       {error && <div role="alert" style={{ color: "#ffaaaa", fontSize: 11.5 }}>{error}</div>}
