@@ -12,7 +12,7 @@ import { extractWebsitePage, observationsFromWebsitePage } from "./website-extra
 import { isWebsitePathAllowed, parseRobotsTxt, serializeRobotsRules, type RobotsPolicy } from "./website-robots";
 import { acceptSitemapUrls, parseSitemapXml } from "./website-sitemap";
 import { canonicalizeWebsiteUrl, normalizePathRule, normalizeWebsiteOrigin, websitePathOf, websiteUrlAllowed, type NormalizedWebsiteOrigin } from "./website-url";
-import type { WebsiteHealthStatus, WebsiteObservationReviewStatus, WebsiteSourceSummary, WebsiteVerificationMethod } from "./website-types";
+import { WebsiteVerificationError, type WebsiteHealthStatus, type WebsiteObservationReviewStatus, type WebsiteSourceSummary, type WebsiteVerificationErrorCode, type WebsiteVerificationMethod } from "./website-types";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
@@ -93,6 +93,17 @@ type WebsiteObservationRow = {
   memory_entry_id: string | null;
 };
 
+type WebsiteVerificationChallengeRow = {
+  id: string;
+  workspace_id: string;
+  source_id: string;
+  token_hash: string;
+  method: WebsiteVerificationMethod;
+  status: "pending" | "verified" | "expired" | "failed" | "superseded";
+  expires_at: string;
+  verified_at: string | null;
+};
+
 function stringArray(value: unknown, max: number): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim()).slice(0, max) : [];
 }
@@ -104,6 +115,45 @@ function safeCode(error: unknown): string {
 
 function boundedError(error: unknown): string {
   return safeCode(error);
+}
+
+function verificationDiagnostic(input: {
+  event: string;
+  workspaceId: string;
+  sourceId?: string | null;
+  challengeId?: string | null;
+  status?: string | null;
+  expiresAt?: string | null;
+  dbErrorCode?: string | null;
+}): void {
+  // Deliberately exclude the raw token, token hash, hostname and provider
+  // response. These fields are enough to reconcile a persisted state mismatch
+  // without turning logs into credential material.
+  console.warn("[website-verification]", {
+    event: input.event,
+    workspaceId: input.workspaceId,
+    sourceId: input.sourceId ?? null,
+    challengeId: input.challengeId ?? null,
+    status: input.status ?? null,
+    expiresAt: input.expiresAt ?? null,
+    dbErrorCode: input.dbErrorCode ?? null,
+  });
+}
+
+function verificationFailure(code: WebsiteVerificationErrorCode): WebsiteVerificationError {
+  const messages: Record<WebsiteVerificationErrorCode, string> = {
+    SOURCE_NOT_FOUND: "Website source not found.",
+    CHALLENGE_NOT_FOUND: "Verification challenge is no longer available. Create a new challenge and try again.",
+    CHALLENGE_SUPERSEDED: "This verification challenge was replaced. Create a new challenge.",
+    CHALLENGE_FAILED: "This verification challenge failed. Create a new challenge.",
+    CHALLENGE_EXPIRED: "Verification challenge expired. Create a new challenge.",
+    TOKEN_REQUIRED: "Enter the verification token before trying again.",
+    TOKEN_MISMATCH: "Verification token did not match. Check the token and try again.",
+    DNS_NOT_FOUND: "DNS TXT challenge was not found. The active challenge remains available; check DNS and retry.",
+    HTML_NOT_FOUND: "Verification content was not found. The active challenge remains available; check the public page and retry.",
+    INTERNAL_ERROR: "Website verification is temporarily unavailable. Try again.",
+  };
+  return new WebsiteVerificationError(code, messages[code]);
 }
 
 function hash(value: string): string {
@@ -183,7 +233,10 @@ export async function getWebsiteSource(input: { workspaceId: string; sourceId?: 
   let query = supabase.from("os_website_sources").select("*").eq("workspace_id", input.workspaceId).is("disconnected_at", null);
   if (input.sourceId) query = query.eq("id", input.sourceId);
   const result = await query.order("updated_at", { ascending: false }).limit(1).maybeSingle();
-  if (result.error) throw new Error("Website sync storage is unavailable.");
+  if (result.error) {
+    verificationDiagnostic({ event: "source_lookup_failed", workspaceId: input.workspaceId, sourceId: input.sourceId, dbErrorCode: result.error.code ?? null });
+    throw verificationFailure("INTERNAL_ERROR");
+  }
   return result.data as WebsiteSourceRow | null;
 }
 
@@ -252,17 +305,61 @@ export async function configureWebsiteSource(input: {
   return sourceSummary(saved.data as WebsiteSourceRow);
 }
 
-export async function issueWebsiteVerificationChallenge(input: { workspaceId: string; sourceId: string; method: WebsiteVerificationMethod; supabase?: SupabaseAdmin }): Promise<{ challengeId: string; method: WebsiteVerificationMethod; token: string; dnsRecord: string; htmlMeta: string; htmlFilePath: string; expiresAt: string }> {
+async function setWebsiteSourceVerificationPending(input: { supabase: SupabaseAdmin; workspaceId: string; sourceId: string }): Promise<void> {
+  const result = await input.supabase.from("os_website_sources").update({ verification_status: "pending", verified_at: null, verification_expires_at: null, health_status: "verification_pending", next_sync_at: null }).eq("id", input.sourceId).eq("workspace_id", input.workspaceId);
+  if (result.error) {
+    verificationDiagnostic({ event: "source_pending_update_failed", workspaceId: input.workspaceId, sourceId: input.sourceId, dbErrorCode: result.error.code ?? null });
+    throw verificationFailure("INTERNAL_ERROR");
+  }
+  verificationDiagnostic({ event: "source_pending", workspaceId: input.workspaceId, sourceId: input.sourceId, status: "pending" });
+}
+
+async function setWebsiteChallengeStatus(input: { supabase: SupabaseAdmin; workspaceId: string; sourceId: string; challengeId: string; status: "expired" | "verified"; verifiedAt?: string }): Promise<void> {
+  const result = await input.supabase.from("os_website_verification_challenges").update({ status: input.status, ...(input.status === "verified" ? { verified_at: input.verifiedAt ?? new Date().toISOString() } : {}) }).eq("id", input.challengeId).eq("workspace_id", input.workspaceId).eq("source_id", input.sourceId);
+  if (result.error) {
+    verificationDiagnostic({ event: "challenge_status_update_failed", workspaceId: input.workspaceId, sourceId: input.sourceId, challengeId: input.challengeId, status: input.status, dbErrorCode: result.error.code ?? null });
+    throw verificationFailure("INTERNAL_ERROR");
+  }
+}
+
+async function saveVerifiedWebsiteSource(input: { supabase: SupabaseAdmin; workspaceId: string; source: WebsiteSourceRow; method: WebsiteVerificationMethod; verifiedAt: string; nowMs: number }): Promise<WebsiteSourceSummary> {
+  const verificationExpiresAt = new Date(input.nowMs + 30 * 24 * 60 * 60 * 1_000).toISOString();
+  const saved = await input.supabase.from("os_website_sources").update({ verification_status: "verified", verification_method: input.method, verified_at: input.verifiedAt, verification_expires_at: verificationExpiresAt, health_status: "connected", next_sync_at: input.source.sync_enabled ? nextWebsiteSyncAt(input.source.cadence) : null }).eq("id", input.source.id).eq("workspace_id", input.workspaceId).select("*").single();
+  if (saved.error || !saved.data) {
+    verificationDiagnostic({ event: "source_verified_update_failed", workspaceId: input.workspaceId, sourceId: input.source.id, status: input.source.verification_status, dbErrorCode: saved.error?.code ?? null });
+    throw verificationFailure("INTERNAL_ERROR");
+  }
+  verificationDiagnostic({ event: "source_verified", workspaceId: input.workspaceId, sourceId: input.source.id, status: "verified", expiresAt: verificationExpiresAt });
+  return sourceSummary(saved.data as WebsiteSourceRow);
+}
+
+export async function issueWebsiteVerificationChallenge(input: { workspaceId: string; sourceId: string; method: WebsiteVerificationMethod; supabase?: SupabaseAdmin }): Promise<{ challengeId: string; method: WebsiteVerificationMethod; token: string; dnsRecord: string; htmlMeta: string; htmlFilePath: string; expiresAt: string; status: "pending" }> {
   const supabase = input.supabase ?? createSupabaseAdmin();
   const source = await getWebsiteSource({ workspaceId: input.workspaceId, sourceId: input.sourceId, supabase });
-  if (!source) throw new Error("Website source not found.");
+  if (!source) throw verificationFailure("SOURCE_NOT_FOUND");
   const token = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + WEBSITE_LIMITS.verificationTtlMs).toISOString();
-  await supabase.from("os_website_verification_challenges").update({ status: "superseded" }).eq("source_id", source.id).eq("status", "pending");
-  const created = await supabase.from("os_website_verification_challenges").insert({ workspace_id: input.workspaceId, source_id: source.id, token_hash: verificationHash(token).toString("hex"), method: input.method, expires_at: expiresAt }).select("id").single();
-  if (created.error || !created.data) throw new Error("Verification challenge could not be created.");
+  let tokenHash: string;
+  try {
+    tokenHash = verificationHash(token).toString("hex");
+  } catch {
+    verificationDiagnostic({ event: "verification_secret_unavailable", workspaceId: input.workspaceId, sourceId: source.id });
+    throw verificationFailure("INTERNAL_ERROR");
+  }
+  const superseded = await supabase.from("os_website_verification_challenges").update({ status: "superseded" }).eq("workspace_id", input.workspaceId).eq("source_id", source.id).eq("status", "pending");
+  if (superseded.error) {
+    verificationDiagnostic({ event: "challenge_supersede_failed", workspaceId: input.workspaceId, sourceId: source.id, status: "pending", dbErrorCode: superseded.error.code ?? null });
+    throw verificationFailure("INTERNAL_ERROR");
+  }
+  const created = await supabase.from("os_website_verification_challenges").insert({ workspace_id: input.workspaceId, source_id: source.id, token_hash: tokenHash, method: input.method, expires_at: expiresAt }).select("id").single();
+  if (created.error || !created.data) {
+    verificationDiagnostic({ event: "challenge_create_failed", workspaceId: input.workspaceId, sourceId: source.id, dbErrorCode: created.error?.code ?? null });
+    throw verificationFailure("INTERNAL_ERROR");
+  }
+  verificationDiagnostic({ event: "challenge_created", workspaceId: input.workspaceId, sourceId: source.id, challengeId: String(created.data.id), status: "pending", expiresAt });
+  await setWebsiteSourceVerificationPending({ supabase, workspaceId: input.workspaceId, sourceId: source.id });
   return {
-    challengeId: String(created.data.id), method: input.method, token,
+    challengeId: String(created.data.id), method: input.method, token, status: "pending",
     dnsRecord: `auterim-site-verification=${token}`,
     htmlMeta: `<meta name="auterim-site-verification" content="${token}">`,
     htmlFilePath: "/.well-known/auterim-site-verification.txt",
@@ -270,30 +367,83 @@ export async function issueWebsiteVerificationChallenge(input: { workspaceId: st
   };
 }
 
-export async function verifyWebsiteChallenge(input: { workspaceId: string; sourceId: string; challengeId: string; token: string; supabase?: SupabaseAdmin }): Promise<WebsiteSourceSummary> {
+export async function verifyWebsiteChallenge(input: { workspaceId: string; sourceId: string; challengeId: string; token: string; supabase?: SupabaseAdmin; resolveTxt?: (hostname: string) => Promise<string[][]>; nowMs?: number }): Promise<WebsiteSourceSummary> {
   const supabase = input.supabase ?? createSupabaseAdmin();
   const source = await getWebsiteSource({ workspaceId: input.workspaceId, sourceId: input.sourceId, supabase });
-  if (!source) throw new Error("Website source not found.");
-  const challenge = await supabase.from("os_website_verification_challenges").select("*").eq("workspace_id", input.workspaceId).eq("source_id", source.id).eq("id", input.challengeId).maybeSingle();
-  if (challenge.error || !challenge.data || challenge.data.status !== "pending") throw new Error("Verification challenge is not available.");
-  if (Date.parse(String(challenge.data.expires_at)) <= Date.now()) { await supabase.from("os_website_verification_challenges").update({ status: "expired" }).eq("id", input.challengeId); throw new Error("Verification challenge expired."); }
-  const provided = verificationHash(input.token.trim());
-  const stored = Buffer.from(String(challenge.data.token_hash), "hex");
-  if (!input.token.trim() || !sameSecret(provided, stored)) throw new Error("Verification token did not match.");
+  if (!source) {
+    verificationDiagnostic({ event: "source_not_found", workspaceId: input.workspaceId, sourceId: input.sourceId, challengeId: input.challengeId });
+    throw verificationFailure("SOURCE_NOT_FOUND");
+  }
+  verificationDiagnostic({ event: "source_loaded", workspaceId: input.workspaceId, sourceId: source.id, challengeId: input.challengeId, status: source.verification_status, expiresAt: source.verification_expires_at });
+  const challengeResult = await supabase.from("os_website_verification_challenges").select("*").eq("workspace_id", input.workspaceId).eq("source_id", source.id).eq("id", input.challengeId).maybeSingle();
+  if (challengeResult.error) {
+    verificationDiagnostic({ event: "challenge_lookup_failed", workspaceId: input.workspaceId, sourceId: source.id, challengeId: input.challengeId, dbErrorCode: challengeResult.error.code ?? null });
+    throw verificationFailure("INTERNAL_ERROR");
+  }
+  const challenge = challengeResult.data as WebsiteVerificationChallengeRow | null;
+  if (!challenge) {
+    verificationDiagnostic({ event: "challenge_not_found", workspaceId: input.workspaceId, sourceId: source.id, challengeId: input.challengeId });
+    throw verificationFailure("CHALLENGE_NOT_FOUND");
+  }
+  verificationDiagnostic({ event: "challenge_loaded", workspaceId: input.workspaceId, sourceId: source.id, challengeId: challenge.id, status: challenge.status, expiresAt: challenge.expires_at });
+  if (challenge.status === "verified") {
+    const token = input.token.trim();
+    if (!token) throw verificationFailure("TOKEN_REQUIRED");
+    try {
+      if (!sameSecret(verificationHash(token), Buffer.from(String(challenge.token_hash), "hex"))) {
+        verificationDiagnostic({ event: "token_mismatch", workspaceId: input.workspaceId, sourceId: source.id, challengeId: challenge.id, status: challenge.status, expiresAt: challenge.expires_at });
+        throw verificationFailure("TOKEN_MISMATCH");
+      }
+    } catch (error) {
+      if (error instanceof WebsiteVerificationError) throw error;
+      verificationDiagnostic({ event: "verification_secret_unavailable", workspaceId: input.workspaceId, sourceId: source.id, challengeId: challenge.id, status: challenge.status, expiresAt: challenge.expires_at });
+      throw verificationFailure("INTERNAL_ERROR");
+    }
+    if (source.verification_status === "verified") return sourceSummary(source);
+    return saveVerifiedWebsiteSource({ supabase, workspaceId: input.workspaceId, source, method: challenge.method, verifiedAt: challenge.verified_at ?? new Date(input.nowMs ?? Date.now()).toISOString(), nowMs: input.nowMs ?? Date.now() });
+  }
+  if (challenge.status === "superseded") throw verificationFailure("CHALLENGE_SUPERSEDED");
+  if (challenge.status === "failed") throw verificationFailure("CHALLENGE_FAILED");
+  if (challenge.status === "expired") throw verificationFailure("CHALLENGE_EXPIRED");
+  const nowMs = input.nowMs ?? Date.now();
+  const expiresAtMs = Date.parse(String(challenge.expires_at));
+  if (!Number.isFinite(expiresAtMs) || expiresAtMs <= nowMs) {
+    await setWebsiteChallengeStatus({ supabase, workspaceId: input.workspaceId, sourceId: source.id, challengeId: challenge.id, status: "expired" });
+    verificationDiagnostic({ event: "challenge_expired", workspaceId: input.workspaceId, sourceId: source.id, challengeId: challenge.id, status: "expired", expiresAt: challenge.expires_at });
+    throw verificationFailure("CHALLENGE_EXPIRED");
+  }
+  const token = input.token.trim();
+  if (!token) throw verificationFailure("TOKEN_REQUIRED");
+  let provided: Buffer;
+  let stored: Buffer;
+  try {
+    provided = verificationHash(token);
+    stored = Buffer.from(String(challenge.token_hash), "hex");
+  } catch {
+    verificationDiagnostic({ event: "verification_secret_unavailable", workspaceId: input.workspaceId, sourceId: source.id, challengeId: challenge.id, status: challenge.status, expiresAt: challenge.expires_at });
+    throw verificationFailure("INTERNAL_ERROR");
+  }
+  if (!sameSecret(provided, stored)) {
+    await setWebsiteSourceVerificationPending({ supabase, workspaceId: input.workspaceId, sourceId: source.id });
+    verificationDiagnostic({ event: "token_mismatch", workspaceId: input.workspaceId, sourceId: source.id, challengeId: challenge.id, status: challenge.status, expiresAt: challenge.expires_at });
+    throw verificationFailure("TOKEN_MISMATCH");
+  }
   const origin = sourceOrigin(source);
   const approved = [source.canonical_origin];
   let verified = false;
-  if (challenge.data.method === "dns_txt") {
+  const resolveTxt = input.resolveTxt ?? dns.resolveTxt;
+  const failureCode: "DNS_NOT_FOUND" | "HTML_NOT_FOUND" = challenge.method === "dns_txt" ? "DNS_NOT_FOUND" : "HTML_NOT_FOUND";
+  if (challenge.method === "dns_txt") {
     try {
-      const records = await dns.resolveTxt(source.hostname);
+      const records = await resolveTxt(source.hostname);
       const expected = `auterim-site-verification=${input.token.trim()}`;
       verified = records.flat().some((value) => sameSecret(Buffer.from(value), Buffer.from(expected)));
     } catch { verified = false; }
   } else {
-    const path = challenge.data.method === "html_file" ? "/.well-known/auterim-site-verification.txt" : "/";
+    const path = challenge.method === "html_file" ? "/.well-known/auterim-site-verification.txt" : "/";
     try {
       const response = await safeWebsiteFetch({ url: `${origin.origin}${path}`, kind: "verification", approvedOrigins: approved, allowedSubdomains: sourceAllowedSubdomains(source) });
-      verified = challenge.data.method === "html_file"
+      verified = challenge.method === "html_file"
         ? response.body.trim() === input.token.trim()
         : Array.from(response.body.matchAll(/<meta\b[^>]*>/gi)).some((match) => {
           const tag = match[0];
@@ -302,16 +452,13 @@ export async function verifyWebsiteChallenge(input: { workspaceId: string; sourc
     } catch { verified = false; }
   }
   if (!verified) {
-    await supabase.from("os_website_verification_challenges").update({ status: "failed" }).eq("id", input.challengeId);
-    await supabase.from("os_website_sources").update({ verification_status: "failed", health_status: "verification_pending" }).eq("id", source.id).eq("workspace_id", input.workspaceId);
-    throw new Error("Auterim could not verify the configured domain.");
+    await setWebsiteSourceVerificationPending({ supabase, workspaceId: input.workspaceId, sourceId: source.id });
+    verificationDiagnostic({ event: "public_proof_not_found", workspaceId: input.workspaceId, sourceId: source.id, challengeId: challenge.id, status: challenge.status, expiresAt: challenge.expires_at });
+    throw verificationFailure(failureCode);
   }
-  const verifiedAt = new Date().toISOString();
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1_000).toISOString();
-  await supabase.from("os_website_verification_challenges").update({ status: "verified", verified_at: verifiedAt }).eq("id", input.challengeId);
-  const saved = await supabase.from("os_website_sources").update({ verification_status: "verified", verification_method: challenge.data.method, verified_at: verifiedAt, verification_expires_at: expiresAt, health_status: source.sync_enabled ? "connected" : "connected", next_sync_at: source.sync_enabled ? nextWebsiteSyncAt(source.cadence) : null }).eq("id", source.id).eq("workspace_id", input.workspaceId).select("*").single();
-  if (saved.error || !saved.data) throw new Error("Verified domain could not be saved.");
-  return sourceSummary(saved.data as WebsiteSourceRow);
+  const verifiedAt = new Date(nowMs).toISOString();
+  await setWebsiteChallengeStatus({ supabase, workspaceId: input.workspaceId, sourceId: source.id, challengeId: challenge.id, status: "verified", verifiedAt });
+  return saveVerifiedWebsiteSource({ supabase, workspaceId: input.workspaceId, source, method: challenge.method, verifiedAt, nowMs });
 }
 
 export async function createWebsiteCrawlRun(input: { workspaceId: string; sourceId: string; triggerType: "manual" | "scheduled" | "reconciliation"; supabase?: SupabaseAdmin }): Promise<{ runId: string; reused: boolean }> {

@@ -2,6 +2,7 @@ import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { AuthorizationError, requireWorkspaceRoleForIdentity } from "@/lib/server/workspace-access";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { readRequestBodyWithinLimit, requestBodyWithinLimit } from "@/lib/server/request-guards";
+import { WebsiteVerificationError } from "./website-types";
 
 export type WebsiteRouteAccess = {
   workspaceId: string;
@@ -32,5 +33,7 @@ export async function websiteAccess(input: { workspaceId?: string; admin: boolea
 export function websiteErrorResponse(error: unknown): Response {
   const status = error instanceof AuthorizationError ? error.status : 400;
   const message = error instanceof AuthorizationError ? error.message : error instanceof Error ? error.message : "Website sync request could not be completed.";
-  return Response.json({ error: message }, { status: Math.min(500, Math.max(400, status)) });
+  const code = error instanceof WebsiteVerificationError ? error.code : error instanceof Error && "code" in error && typeof error.code === "string" ? error.code : undefined;
+  const responseStatus = error instanceof WebsiteVerificationError ? error.status : status;
+  return Response.json({ error: message, ...(code ? { code } : {}) }, { status: Math.min(500, Math.max(400, responseStatus)) });
 }
