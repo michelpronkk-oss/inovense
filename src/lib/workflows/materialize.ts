@@ -5,6 +5,7 @@ import { prepareAction } from "@/lib/actions/execute";
 import type { ActionIntent, PreparedAction } from "@/lib/actions/types";
 import { getStoredAsanaCredential } from "@/lib/connectors/asana";
 import { getStoredJiraCredential, isCreateableJiraIssueType, listJiraIssueTypes, resolveJiraAccessToken } from "@/lib/connectors/jira";
+import { validateTrelloDestination } from "@/lib/operators/executors/trello";
 import { readMicrosoftTeamsSettings } from "@/lib/connectors/microsoft-teams";
 import { getConnectorTruth } from "@/lib/connectors/truth";
 import { prepareRevenueFollowUpEmail } from "@/lib/operators/executors/gmail";
@@ -74,7 +75,7 @@ async function materializeStep(input: { workspaceId: string; workflow: WorkflowR
   const common = {
     workspaceId: input.workspaceId, operatorKey: String(input.workflow.operator_key),
     dedupeKey: `workflow:${input.workflow.id}:${input.step.id}`, source: "workflow",
-    metadata: { workflowId: input.workflow.id, workflowStepId: input.step.id, sourceReference: source.sourceId, payloadIdentity: `${input.workflow.id}:${input.step.id}:${source.sourceId}` },
+    metadata: { workflowId: input.workflow.id, workflowStepId: input.step.id, sourceReference: source.sourceId, payloadIdentity: `${input.workflow.id}:${input.step.id}:${source.sourceId}`, executionId: null as string | null },
   };
   let intent: ActionIntent;
   let continuation: Record<string, unknown>;
@@ -89,6 +90,12 @@ async function materializeStep(input: { workspaceId: string; workflow: WorkflowR
     const boardId = settings.trello.defaultBoardId;
     const listId = settings.trello.defaultListId;
     if (!boardId || !listId) return missing("trello_destination_not_selected", "Select a Trello board and list before Auterim can create this follow-up.", true);
+    try {
+      await validateTrelloDestination(input.workspaceId, boardId, listId);
+    } catch {
+      return missing("trello_destination_invalid", "The selected Trello board or list is no longer accessible. Choose the destination again.", true);
+    }
+    common.metadata.executionId = `trello:${input.workflow.id}:${input.step.id}`;
     intent = { ...common, actionType: "create_task", connectorKey, capability: "pm.tasks.write_after_approval", title: "Create Trello recovery task", summary: `Prepare a follow-up for ${source.objective}.`, input: { boardId, listId, name: source.title, description: source.description }, destinationType: "project_tool", normalizedTarget: listId };
     continuation = { kind: "shared_action.execute_after_approval" };
   } else if (connectorKey === "slack" && actionType === "send_slack_message") {

@@ -176,10 +176,10 @@ export const slackEventProcess = task({
       };
       const result = await ingestSignalBatch({ workspaceId: event.workspace_id, events: [signal], supabase });
       // ingestSignalBatch canonically merges the paired message.channels and
-      // app_mention deliveries. A direct mention acknowledgement is a
-      // separate durable side effect and must remain independent of workflow
-      // materialization or candidate eligibility.
-      if (isMention) {
+      // app_mention deliveries. Internal recommendations own their single
+      // final acknowledgement; the recommendation worker dispatches it only
+      // after artifact persistence. Other mentions retain immediate ack.
+      if (isMention && (result.internalRecommendationWorkflowIds.length === 0 || result.internalRecommendationDispatchFailures > 0)) {
         await dispatchMentionAcknowledgement(event.id);
       }
       if (!await completeProviderEvent({ eventId: event.id, leaseToken, supabase })) throw new Error("provider_event_completion_conflict");

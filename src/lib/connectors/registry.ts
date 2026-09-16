@@ -259,7 +259,7 @@ export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
     letter: "Tr", color: "#0079BF", description: "Read boards and prepare approval-gated card updates.",
     status: "available", capabilities: ["pm.projects.read", "pm.tasks.read", "pm.tasks.write_after_approval", "pm.tasks.update_after_approval", "pm.comments.write_after_approval"], usedByOperators: ["client_flow", "operations", "automation_architect", "revenue"],
     readActions: ["Read boards", "Read lists", "Read cards"], writeActions: ["Create card after approval", "Move card after approval", "Add card comment after approval"], approvalRequiredActions: ["create_card", "move_card", "add_card_comment"],
-    eventTypes: ["trello.card.created", "trello.card.updated", "trello.card.moved", "trello.comment.created"], riskLevel: "medium", setupNotes: "Connects directly with Trello OAuth (read and write scopes, no expiry). Select a default board and list after connecting. Workspaces connected before this change must reconnect once.",
+    eventTypes: ["trello.card.created", "trello.card.updated", "trello.card.moved", "trello.comment.created"], riskLevel: "medium", setupNotes: "Connects directly with Trello OAuth2 + PKCE using board read/write scopes and rotating refresh tokens. Select a default board and list after connecting. Legacy OAuth1/Nango connections must reconnect once.",
   },
   clickup: {
     connectorKey: "clickup", displayName: "ClickUp", category: "project_management", authType: "nango",

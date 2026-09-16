@@ -8,6 +8,7 @@ import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 import { getAppRoute, getAppUrl } from "@/lib/urls";
 import { SlackExecutionError, slackRequest } from "@/lib/operators/executors/slack";
+import { isValidatedTrelloCardUrl } from "@/lib/connectors/trello";
 import {
   composeSlackReply,
   detectSlackMessageLanguage,
@@ -152,6 +153,9 @@ async function loadFacts(input: { eventId: string; updateType: SlackThreadUpdate
   if (approval.error) throw new Error("slack_ack_approval_lookup_failed");
   const approvalStatus = text(approval.data?.status, 80);
   const workflowStatus = text(workflow.status, 80);
+  const trelloAction = (steps.data ?? []).some((step) => ["create_task", "move_task", "add_task_comment"].includes(String(step.action_type)));
+  const trelloExecution = record(record(workflow.result_evidence).trelloExecution);
+  const trelloCardUrl = isValidatedTrelloCardUrl(trelloExecution.cardUrl) ? trelloExecution.cardUrl : null;
 
   // A platform-internal recommendation is a fundamentally different kind of
   // "completed" than a connector-executed action: nothing external ran, so
@@ -190,6 +194,8 @@ async function loadFacts(input: { eventId: string; updateType: SlackThreadUpdate
     confidence: candidate.confidence === "high" || candidate.confidence === "medium" || candidate.confidence === "low" ? candidate.confidence : null,
     workflowUrl,
     approvalUrl,
+    trelloAction,
+    trelloCardUrl,
     recommendedNextStepText: state === "recommendation_ready" ? recommendedNextStepText : null,
   };
   return {
@@ -210,12 +216,13 @@ async function loadFacts(input: { eventId: string; updateType: SlackThreadUpdate
 
 export async function deliverSlackMentionUpdate(input: { eventId: string; updateType?: SlackThreadUpdateType; supabase?: SupabaseAdmin }): Promise<{ status: string; replyTs?: string | null }> {
   const supabase = input.supabase ?? createSupabaseAdmin();
-  const loaded = await loadFacts({ eventId: input.eventId, updateType: input.updateType ?? "acknowledgement", supabase });
+  const updateType = input.updateType ?? "acknowledgement";
+  const loaded = await loadFacts({ eventId: input.eventId, updateType, supabase });
   // Internal recommendations use the acknowledgement claim as their single
   // final Slack reply. The initial acknowledgement task exits without
   // claiming/sending while generation is pending; the generation worker
   // triggers this same update after the validated artifact is persisted.
-  if (input.updateType === "acknowledgement" && loaded.safeMeta.recommendationPending === true) return { status: "deferred" };
+  if (updateType === "acknowledgement" && loaded.safeMeta.recommendationPending === true) return { status: "deferred" };
   const key = slackThreadUpdateKey(loaded.context);
   const claim = await claimSlackThreadUpdate(loaded.context, loaded.safeMeta, supabase);
   if (!claim.claimed) return { status: claim.status, replyTs: claim.replyTs };

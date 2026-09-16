@@ -43,15 +43,12 @@ assert.match(copy, /No external action has been taken/);
 assert.match(copy, /Er is nog geen externe actie uitgevoerd/);
 assert.match(signalEngine, /stripSlackMentionMarkup/);
 
-// Decoupling: acknowledgement dispatch must be unconditional on isMention,
-// not nested inside any workflow/candidate-materialization branch. Assert
-// the dispatch call sits directly in the `if (isMention)` block together
-// with the message-pair correlation update, and never inside a conditional
-// on `result.workflowCandidates`/`candidates.length`/similar.
-const mentionBlockMatch = process.match(/if \(isMention\) \{[\s\S]*?\n {6}\}/);
-assert.ok(mentionBlockMatch, "an unconditional isMention block must exist");
-assert.match(mentionBlockMatch[0], /dispatchMentionAcknowledgement/);
-assert.doesNotMatch(mentionBlockMatch[0], /workflowCandidates|candidatesProduced/, "acknowledgement dispatch must not be gated on workflow/candidate materialization results");
+// A successful internal recommendation owns the single final acknowledgement
+// and suppresses the intermediate reply. Other direct mentions, including
+// failure/recovery paths, retain the existing immediate acknowledgement.
+assert.match(process, /if \(isMention && \(result\.internalRecommendationWorkflowIds\.length === 0 \|\| result\.internalRecommendationDispatchFailures > 0\)\) \{[\s\S]*?dispatchMentionAcknowledgement/);
+assert.match(process, /internalRecommendationWorkflowIds/);
+assert.match(process, /internalRecommendationDispatchFailures/);
 // Only the direct app_mentioned delivery ever calls dispatch - the passive
 // message.channels delivery (isMention === false) never reaches it, so a
 // message.channels + app_mention pair produces exactly one claim.

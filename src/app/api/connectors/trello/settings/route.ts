@@ -3,6 +3,7 @@ import { listTrelloBoards, listTrelloLists, TrelloExecutionError } from "@/lib/o
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { loadWorkspacePolicySettings, saveTrelloProjectSettings, type TrelloProjectSettings } from "@/lib/settings/workspace-policy";
+import { AuthorizationError, requireWorkspaceAdmin } from "@/lib/server/workspace-access";
 
 type PatchBody = Partial<TrelloProjectSettings> & {
   workspaceId?: string;
@@ -12,7 +13,7 @@ type PatchBody = Partial<TrelloProjectSettings> & {
 
 function stringOrNull(value: unknown): string | null | undefined {
   if (value === null) return null;
-  if (typeof value === "string") return value.trim() || null;
+  if (typeof value === "string") return value.trim().slice(0, 240) || null;
   return undefined;
 }
 
@@ -25,6 +26,9 @@ export async function GET(req: NextRequest) {
   const supabase = createSupabaseAdmin();
   const context = await resolveWorkspaceContext({ workspaceId, userId, userEmail, supabase, allowDevFallback: false });
   if (!context.ok) return NextResponse.json({ error: context.error, code: context.code }, { status: context.status });
+  try { await requireWorkspaceAdmin(context.userId, context.workspaceId, supabase); } catch (error) {
+    return NextResponse.json({ error: error instanceof AuthorizationError ? error.message : "Could not verify workspace permissions." }, { status: error instanceof AuthorizationError ? error.status : 500 });
+  }
   const settings = await loadWorkspacePolicySettings({ supabase, workspaceId: context.workspaceId });
   return NextResponse.json({ settings: settings.trello });
 }
@@ -39,6 +43,9 @@ export async function PATCH(req: NextRequest) {
   const supabase = createSupabaseAdmin();
   const context = await resolveWorkspaceContext({ workspaceId, userId, userEmail, supabase, allowDevFallback: false });
   if (!context.ok) return NextResponse.json({ error: context.error, code: context.code }, { status: context.status });
+  try { await requireWorkspaceAdmin(context.userId, context.workspaceId, supabase); } catch (error) {
+    return NextResponse.json({ error: error instanceof AuthorizationError ? error.message : "Could not verify workspace permissions." }, { status: error instanceof AuthorizationError ? error.status : 500 });
+  }
 
   const patch: Partial<TrelloProjectSettings> = {};
   const boardId = stringOrNull(body.defaultBoardId);
@@ -51,17 +58,21 @@ export async function PATCH(req: NextRequest) {
   if (listName !== undefined) patch.defaultListName = listName;
 
   try {
-    if (patch.defaultBoardId) {
+    const current = await loadWorkspacePolicySettings({ supabase, workspaceId: context.workspaceId });
+    const nextBoardId = patch.defaultBoardId !== undefined ? patch.defaultBoardId : current.trello.defaultBoardId;
+    const nextListId = patch.defaultListId !== undefined ? patch.defaultListId : current.trello.defaultListId;
+    if (nextBoardId) {
       const boards = await listTrelloBoards(context.workspaceId);
-      const selectedBoard = boards.find((board) => board.id === patch.defaultBoardId);
+      const selectedBoard = boards.find((board) => board.id === nextBoardId);
       if (!selectedBoard) return NextResponse.json({ error: "trello_board_not_found", message: "Trello board was not found or is not accessible." }, { status: 404 });
-      patch.defaultBoardName = selectedBoard.name;
+      if (patch.defaultBoardId !== undefined) patch.defaultBoardName = selectedBoard.name;
     }
-    if (patch.defaultBoardId && patch.defaultListId) {
-      const lists = await listTrelloLists(context.workspaceId, patch.defaultBoardId);
-      const selectedList = lists.find((list) => list.id === patch.defaultListId);
+    if (nextListId && !nextBoardId) return NextResponse.json({ error: "trello_board_required", message: "Select a Trello board before selecting a list." }, { status: 400 });
+    if (nextBoardId && nextListId) {
+      const lists = await listTrelloLists(context.workspaceId, nextBoardId);
+      const selectedList = lists.find((list) => list.id === nextListId && list.boardId === nextBoardId);
       if (!selectedList) return NextResponse.json({ error: "trello_list_not_found", message: "Trello list was not found or is not accessible." }, { status: 404 });
-      patch.defaultListName = selectedList.name;
+      if (patch.defaultListId !== undefined) patch.defaultListName = selectedList.name;
     }
   } catch (error) {
     if (error instanceof TrelloExecutionError) {

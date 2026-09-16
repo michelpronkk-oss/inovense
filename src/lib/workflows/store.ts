@@ -13,7 +13,7 @@ import { explicitBusinessProblemKey } from "@/lib/workflows/identity";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
-export async function createWorkflowFromSignalCandidate(input: { workspaceId: string; signalId: string; candidate: SignalCandidate; supabase?: SupabaseAdmin }): Promise<{ created: boolean; workflowId?: string; blockedReasons?: string[] }> {
+export async function createWorkflowFromSignalCandidate(input: { workspaceId: string; signalId: string; candidate: SignalCandidate; supabase?: SupabaseAdmin }): Promise<{ created: boolean; workflowId?: string; blockedReasons?: string[]; actionTypes?: string[]; internalRecommendationDispatchFailed?: boolean }> {
   if (input.workspaceId !== input.candidate.workspaceId) throw new Error("Rejected cross-workspace workflow candidate.");
   const supabase = input.supabase ?? createSupabaseAdmin();
   const [connectors, eligibility, activation, jiraCredential] = await Promise.all([
@@ -60,21 +60,31 @@ export async function createWorkflowFromSignalCandidate(input: { workspaceId: st
   }, { onConflict: "workspace_id,dedupe_key", ignoreDuplicates: true });
   if (saved.error) throw new Error(`Workflow persistence failed: ${saved.error.message}`);
   if (workflow.steps.length) {
+    const hasInternalRecommendation = workflow.steps.some((step) => step.actionType === "prepare_internal_recommendation");
     const stepResult = await supabase.from("os_workflow_steps").upsert(workflow.steps.map((step) => ({
       id: `${workflow.id}:${step.id}`.slice(0, 220), workflow_id: workflow.id, workspace_id: workflow.workspaceId, step_order: step.order,
       action_type: step.actionType, connector_key: step.connectorKey, target_ref: step.targetRef, payload_ref: step.payloadRef,
       dependency_step_ids: step.dependencyStepIds, risk_level: step.risk, approval_required: step.approvalRequired, status: step.status,
-    })), { onConflict: "workflow_id,step_order" });
+    })), hasInternalRecommendation ? { onConflict: "workflow_id,step_order", ignoreDuplicates: true } : { onConflict: "workflow_id,step_order" });
     if (stepResult.error) throw new Error(`Workflow step persistence failed: ${stepResult.error.message}`);
     // Only complete, provider-configured PM steps become canonical approvals.
     // Communication and draft-dependent steps stay blocked until their current
     // operator flow supplies an exact target and a reviewed bounded payload.
+    let internalRecommendationDispatchFailed = false;
     await Promise.all(workflow.steps.filter((step) => step.dependencyStepIds.length === 0).map(async (step) => {
       try { await materializeWorkflowStep({ workflowId: workflow.id, stepId: `${workflow.id}:${step.id}`.slice(0, 220), workspaceId: workflow.workspaceId, supabase }); }
-      catch (error) { console.warn("[workflow] materialization skipped", { workflowId: workflow.id, stepId: step.id, error: error instanceof Error ? error.message : "Unknown materialization error" }); }
+      catch (error) {
+        console.warn("[workflow] materialization skipped", { workflowId: workflow.id, stepId: step.id, error: error instanceof Error ? error.message : "Unknown materialization error" });
+        if (step.actionType === "prepare_internal_recommendation") {
+          internalRecommendationDispatchFailed = true;
+          await supabase.from("os_workflow_steps").update({ status: "blocked", block_reason: "recommendation_generation_dispatch_failed" }).eq("id", `${workflow.id}:${step.id}`.slice(0, 220)).eq("workspace_id", workflow.workspaceId);
+          await supabase.from("os_workflow_runs").update({ status: "blocked" }).eq("id", workflow.id).eq("workspace_id", workflow.workspaceId);
+        }
+      }
     }));
+    return { created: true, workflowId: workflow.id, blockedReasons: validation.blockedReasons, actionTypes: workflow.steps.map((step) => step.actionType), internalRecommendationDispatchFailed };
   }
-  return { created: true, workflowId: workflow.id, blockedReasons: validation.blockedReasons };
+  return { created: true, workflowId: workflow.id, blockedReasons: validation.blockedReasons, actionTypes: [] };
 }
 
 /** Outcome persistence requires later provider-state evidence; executing a step is not an outcome. */

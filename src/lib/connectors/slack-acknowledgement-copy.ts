@@ -21,6 +21,8 @@ export type SlackAcknowledgementFacts = {
   confidence?: "low" | "medium" | "high" | null;
   workflowUrl?: string | null;
   approvalUrl?: string | null;
+  trelloAction?: boolean;
+  trelloCardUrl?: string | null;
   /** The already-persisted, language-matched internal recommendation text
    * (os_workflow_runs.result_evidence.internalRecommendation). Required
    * whenever state is "recommendation_ready" - never fabricated at compose
@@ -83,8 +85,8 @@ export function composeSlackReply(facts: SlackAcknowledgementFacts): string {
   }
   if (facts.state === "rejected") {
     return language === "nl"
-      ? "De goedkeuring is afgewezen. Er is niets verzonden of uitgevoerd."
-      : "The approval was rejected. Nothing was sent or executed.";
+      ? facts.trelloAction ? "De voorgestelde Trello-kaart is afgewezen. Er is geen kaart aangemaakt." : "De goedkeuring is afgewezen. Er is niets verzonden of uitgevoerd."
+      : facts.trelloAction ? "The proposed Trello card was rejected. No card was created." : "The approval was rejected. Nothing was sent or executed.";
   }
   if (facts.state === "approved") {
     return language === "nl"
@@ -92,9 +94,13 @@ export function composeSlackReply(facts: SlackAcknowledgementFacts): string {
       : "Approval was recorded. The approved action is being processed.";
   }
   if (facts.state === "execution_succeeded") {
+    if (facts.trelloCardUrl) return language === "nl" ? `Goedgekeurd en voltooid: de Trello-kaart is aangemaakt: ${facts.trelloCardUrl}` : `Approved and completed: the Trello card was created: ${facts.trelloCardUrl}`;
     return language === "nl" ? "De uitvoering is succesvol voltooid." : "Execution completed successfully.";
   }
   if (facts.state === "execution_failed") {
+    if (facts.trelloAction) return language === "nl"
+      ? `De Trello-kaart is niet aangemaakt. Controleer de Trello-configuratie of probeer de goedgekeurde actie opnieuw.${facts.workflowUrl ? ` Bekijk het werkitem: ${facts.workflowUrl}` : ""}`
+      : `The Trello card was not created. Review the Trello setup or retry the approved action.${facts.workflowUrl ? ` Review the work item: ${facts.workflowUrl}` : ""}`;
     return language === "nl"
       ? `De uitvoering kon niet worden voltooid.${facts.workflowUrl ? ` Bekijk het werkitem: ${facts.workflowUrl}` : ""}`
       : `Execution could not be completed.${facts.workflowUrl ? ` Review the work item: ${facts.workflowUrl}` : ""}`;
@@ -114,6 +120,9 @@ export function composeSlackReply(facts: SlackAcknowledgementFacts): string {
       : `Got it. I classified this as ${classified} and routed it to the ${operator}. No external action has been taken.`;
   }
   if (facts.state === "approval_required" || facts.state === "approval_requested") {
+    if (facts.trelloAction) return language === "nl"
+      ? `Begrepen. Ik heb dit doorgestuurd naar de ${operator}. Er staat een Trello-kaart klaar voor goedkeuring. Er is nog geen externe actie uitgevoerd.${facts.approvalUrl ? ` Bekijk de goedkeuring: ${facts.approvalUrl}` : ""}`
+      : `Got it — I routed this to the ${operator}. A Trello card is ready for approval. No external action has been taken.${facts.approvalUrl ? ` Review the approval: ${facts.approvalUrl}` : ""}`;
     return language === "nl"
       ? `Begrepen. Ik heb dit herkend als ${classified} en doorgestuurd naar de ${operator}. De voorgestelde actie wacht op menselijke goedkeuring. Er is nog geen externe actie uitgevoerd.${facts.approvalUrl ? ` Bekijk de goedkeuring: ${facts.approvalUrl}` : ""}`
       : `Got it. I classified this as ${classified} and routed it to the ${operator}. The proposed action is awaiting human approval. No external action has been taken.${facts.approvalUrl ? ` Review the approval: ${facts.approvalUrl}` : ""}`;

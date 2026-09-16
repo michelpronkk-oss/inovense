@@ -2,23 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   TRELLO_OAUTH_COOKIE,
   buildTrelloAuthorizationUrl,
-  createTrelloHandoff,
+  createTrelloOAuthHandoff,
+  createTrelloPkceChallenge,
+  createTrelloPkceVerifier,
   getTrelloConfigStatus,
-  requestTrelloRequestToken,
 } from "@/lib/connectors/trello";
+import { createProviderOAuthState } from "@/lib/connectors/oauth-state";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { requireWorkspaceAdmin, AuthorizationError } from "@/lib/server/workspace-access";
 import { getAppUrl } from "@/lib/urls";
 
 /**
- * Start direct Trello authorization (OAuth 1.0a).
- *
- * Trello's authorization page carries no state parameter, so the workspace
- * binding and the single-use request token secret travel in a short-lived,
- * httpOnly, signed cookie instead. Identity is resolved from the verified
- * session and owner/admin membership is required before any request token is
- * created.
+ * Start Trello's confidential OAuth2 + PKCE authorization. The verifier is
+ * encrypted inside a short-lived, signed, httpOnly cookie and is never sent
+ * to the browser as readable application state.
  */
 export async function GET(req: NextRequest) {
   if (!hasSupabaseAdminConfig()) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
@@ -47,21 +45,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/pricing?gate=connectors&source=trello", getAppUrl()));
   }
 
-  let requestToken: { token: string; tokenSecret: string };
-  try {
-    requestToken = await requestTrelloRequestToken();
-  } catch {
-    return NextResponse.redirect(new URL("/app/connectors?trello=request_token_failed", getAppUrl()));
-  }
-
-  const response = NextResponse.redirect(buildTrelloAuthorizationUrl(requestToken.token));
+  const state = createProviderOAuthState("trello", context.workspaceId, context.userEmail);
+  const codeVerifier = createTrelloPkceVerifier();
+  const response = NextResponse.redirect(buildTrelloAuthorizationUrl({ state, codeChallenge: createTrelloPkceChallenge(codeVerifier) }));
   response.cookies.set({
     name: TRELLO_OAUTH_COOKIE,
-    value: createTrelloHandoff({
+    value: createTrelloOAuthHandoff({
       workspaceId: context.workspaceId,
       userEmail: context.userEmail,
-      requestToken: requestToken.token,
-      requestTokenSecret: requestToken.tokenSecret,
+      state,
+      codeVerifier,
     }),
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

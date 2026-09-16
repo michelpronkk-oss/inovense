@@ -1,0 +1,38 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+
+const read = (path) => fs.readFileSync(path, "utf8");
+const connector = read("src/lib/connectors/trello.ts");
+const executor = read("src/lib/operators/executors/trello.ts");
+const materialize = read("src/lib/workflows/materialize.ts");
+const evidence = read("src/lib/workflows/trello-execution.ts");
+const copy = read("src/lib/connectors/slack-acknowledgement-copy.ts");
+const acknowledgement = read("src/lib/connectors/slack-acknowledgement.ts");
+const approval = read("src/app/api/approvals/[id]/approve/route.ts");
+const settings = read("src/app/api/connectors/trello/settings/route.ts");
+
+assert.match(connector, /auth\.atlassian\.com\/authorize/);
+assert.match(connector, /auth\.atlassian\.com\/oauth\/token/);
+assert.match(connector, /code_challenge_method: "S256"/);
+assert.match(connector, /offline_access/);
+assert.match(connector, /encrypted_refresh_token/);
+assert.doesNotMatch(connector, /TRELLO_API_KEY|TRELLO_API_SECRET|expiration=never/);
+assert.match(executor, /Authorization: `Bearer \$\{connection\.accessToken\}`/);
+assert.match(executor, /resolveAccessTokenWithRefreshLock/);
+assert.match(executor, /credentialRotatedSince/);
+assert.match(executor, /retryAfterMs/);
+assert.match(executor, /findReconciledCard/);
+assert.match(executor, /TRELLO_EXECUTION_MARKER_PREFIX/);
+assert.match(executor, /validateTrelloDestination/);
+assert.match(materialize, /validateTrelloDestination/);
+assert.match(materialize, /executionId = `trello:/);
+assert.match(approval, /persistConfirmedTrelloCardExecution/);
+assert.match(evidence, /result_evidence/);
+assert.match(evidence, /trello_card_created/);
+assert.match(evidence, /externalActionTaken: true/);
+assert.match(copy, /Trello card was created/);
+assert.match(copy, /No card was created/);
+assert.match(acknowledgement, /isValidatedTrelloCardUrl/);
+assert.match(settings, /requireWorkspaceAdmin/);
+assert.match(settings, /list\.boardId === nextBoardId/);
+console.log("Trello production connector contracts passed.");

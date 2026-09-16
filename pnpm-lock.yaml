@@ -36,8 +36,8 @@ importers:
         specifier: ^2.115.0
         version: 2.115.0(@opentelemetry/api@1.9.1)
       '@trigger.dev/sdk':
-        specifier: 4.6.0
-        version: 4.6.0(react@19.2.4)(zod@4.3.6)
+        specifier: 4.6.1
+        version: 4.6.1(react@19.2.4)(zod@4.3.6)
       '@xyflow/react':
         specifier: ^12.11.6
         version: 12.11.6(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -121,8 +121,8 @@ importers:
         specifier: ^4
         version: 4.2.2
       '@trigger.dev/build':
-        specifier: 4.6.0
-        version: 4.6.0(typescript@5.9.3)(zod@4.3.6)
+        specifier: 4.6.1
+        version: 4.6.1(typescript@5.9.3)(zod@4.3.6)
       '@types/node':
         specifier: ^20
         version: 20.19.39
@@ -2240,8 +2240,8 @@ packages:
   '@tailwindcss/postcss@4.2.2':
     resolution: {integrity: sha512-n4goKQbW8RVXIbNKRB/45LzyUqN451deQK0nzIeauVEqjlI49slUlgKYJM2QyUzap/PcpnS7kzSUmPb1sCRvYQ==}
 
-  '@trigger.dev/build@4.6.0':
-    resolution: {integrity: sha512-CzSRfmZitz4gy5+mJTDwS1Ah8CpXliJGa0TtOpK2Q0YRqEfIHrF/7IgN0sJMGUXvZE6xZ2HRvw+2uJLR1dwA2w==}
+  '@trigger.dev/build@4.6.1':
+    resolution: {integrity: sha512-zGqw/VsWDPE/CSzAIdJEnZ+saXAhcFBSydDz3M2bOQcdBjwIZEbHwIMtDDppF4VsJdNcEgr/TxBlXWHtfZ+vLg==}
     engines: {node: '>=18.20.0'}
     peerDependencies:
       '@typescript/typescript6': ^6.0.0
@@ -2252,14 +2252,14 @@ packages:
       typescript:
         optional: true
 
-  '@trigger.dev/core@4.6.0':
-    resolution: {integrity: sha512-uyo23zVwC2fRQmilaNnOdYdQ8YnxYzQCyGBGrrt3eQMhhv0rKfWB9u+PzokS6y3QMZsmbjTauv/31S+OA82BSg==}
+  '@trigger.dev/core@4.6.1':
+    resolution: {integrity: sha512-J1zHgSRUqupS59DzJYQ8Ws9IrP+CX69fQFmBzJeMxcT9rNoqTbUpiDjbVQa1mWO1P9VFJ/1Gpj0PTJNUHSvwKQ==}
     engines: {node: '>=18.20.0'}
     peerDependencies:
       zod: ^3.25.56 || ^4.0.0
 
-  '@trigger.dev/sdk@4.6.0':
-    resolution: {integrity: sha512-67NY7O4nnv0zRYccYeQK75PgT5/qoSPmNFHreRCUuFP7ixjbxEWWAmKUqxEm5bE3zg06OxiTd63nJw61GtBkkg==}
+  '@trigger.dev/sdk@4.6.1':
+    resolution: {integrity: sha512-TwRX0QdQoDH8AbpyEIPf2ODTA7WOtLGZFSkCyJbmbHxexICsdjAP3E2GsKzAqLdDIbTss5QX9ishDaOVHddfaA==}
     engines: {node: '>=18.20.0'}
     peerDependencies:
       '@ai-sdk/otel': '>=1.0.0-0 <2'
@@ -7845,10 +7845,10 @@ snapshots:
       postcss: 8.5.9
       tailwindcss: 4.2.2
 
-  '@trigger.dev/build@4.6.0(typescript@5.9.3)(zod@4.3.6)':
+  '@trigger.dev/build@4.6.1(typescript@5.9.3)(zod@4.3.6)':
     dependencies:
       '@prisma/config': 6.19.3
-      '@trigger.dev/core': 4.6.0(zod@4.3.6)
+      '@trigger.dev/core': 4.6.1(zod@4.3.6)
       mlly: 1.8.2
       pkg-types: 1.3.1
       tinyglobby: 0.2.17
@@ -7862,7 +7862,7 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@trigger.dev/core@4.6.0(zod@4.3.6)':
+  '@trigger.dev/core@4.6.1(zod@4.3.6)':
     dependencies:
       '@bugsnag/cuid': 3.2.2
       '@electric-sql/client': 1.0.14
@@ -7900,11 +7900,11 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@trigger.dev/sdk@4.6.0(react@19.2.4)(zod@4.3.6)':
+  '@trigger.dev/sdk@4.6.1(react@19.2.4)(zod@4.3.6)':
     dependencies:
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/semantic-conventions': 1.41.1
-      '@trigger.dev/core': 4.6.0(zod@4.3.6)
+      '@trigger.dev/core': 4.6.1(zod@4.3.6)
       uncrypto: 0.1.3
       zod: 4.3.6
     optionalDependencies:

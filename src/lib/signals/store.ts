@@ -19,6 +19,8 @@ export type SignalIngestionResult = {
   eventsPersisted: number;
   candidatesProduced: number;
   workflowCandidates: number;
+  internalRecommendationWorkflowIds: string[];
+  internalRecommendationDispatchFailures: number;
   candidatesRouted: number;
   candidatesSuppressed: number;
   routedByOperator: Record<string, number>;
@@ -275,13 +277,16 @@ export async function ingestSignalBatch(input: {
   // intentionally best-effort here: ingestion remains safe even if the
   // workflow migration has not reached a deployment yet. No step executes.
   const shouldMaterializeWorkflows = input.materializeWorkflows !== false;
-  await Promise.all(eligibility.filter((item) => shouldMaterializeWorkflows && item.eligible && candidateCanProposeWorkflow(item.candidate) && (item.candidate.priority ?? 0) >= 65).map(async ({ candidate }) => {
+  const workflowResults = await Promise.all(eligibility.filter((item) => shouldMaterializeWorkflows && item.eligible && candidateCanProposeWorkflow(item.candidate) && (item.candidate.priority ?? 0) >= 65).map(async ({ candidate }) => {
     try {
-      await createWorkflowFromSignalCandidate({ workspaceId: input.workspaceId, signalId: candidate.signalId || "", candidate, supabase });
+      return await createWorkflowFromSignalCandidate({ workspaceId: input.workspaceId, signalId: candidate.signalId || "", candidate, supabase });
     } catch (error) {
       console.warn("[signal-engine] workflow planning skipped", { workspaceId: input.workspaceId, signalId: candidate.signalId, error: error instanceof Error ? error.message : "Unknown workflow planning error" });
+      return { created: false };
     }
   }));
+  const internalRecommendationWorkflowIds = workflowResults.filter((result) => result.created && result.actionTypes?.includes("prepare_internal_recommendation") && result.workflowId).map((result) => result.workflowId as string);
+  const internalRecommendationDispatchFailures = workflowResults.filter((result) => result.internalRecommendationDispatchFailed === true).length;
   const workflowCandidates = shouldMaterializeWorkflows ? eligibility.filter((item) => item.eligible && candidateCanProposeWorkflow(item.candidate) && (item.candidate.priority ?? 0) >= 65).length : 0;
   return {
     received: input.events.length,
@@ -291,6 +296,8 @@ export async function ingestSignalBatch(input: {
     eventsPersisted: events.length,
     candidatesProduced: candidates.length,
     workflowCandidates,
+    internalRecommendationWorkflowIds,
+    internalRecommendationDispatchFailures,
     candidatesRouted: eligibility.filter((item) => item.eligible).length,
     candidatesSuppressed: eligibility.filter((item) => !item.eligible).length,
     routedByOperator,

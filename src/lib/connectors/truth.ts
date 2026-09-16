@@ -15,7 +15,6 @@ import { ZENDESK_READ_SCOPES, ZENDESK_WRITE_SCOPES, ZendeskExecutionError, Zende
 import { INTERCOM_PERMISSIONS, IntercomExecutionError, IntercomReconnectionRequiredError, getIntercomConfigStatus, getStoredIntercomCredential, normalizeIntercomRegion, resolveIntercomAccessToken, verifyIntercomConnection, type IntercomRegion } from "@/lib/connectors/intercom";
 import { getConnectorDefinition, listSupportedNangoConnectors } from "@/lib/connectors/registry";
 import { getLegacyNangoConnection } from "@/lib/connectors/legacy-nango";
-import { decryptToken } from "@/lib/connectors/crypto";
 import {
   SLACK_CONNECTOR_KEY,
   SLACK_READ_SCOPES,
@@ -31,10 +30,10 @@ import {
   TRELLO_CONNECTOR_KEY,
   TRELLO_OAUTH_SCOPES,
   TRELLO_WRITE_SCOPE,
-  getStoredTrelloCredential,
   getTrelloConfigStatus,
-  verifyTrelloConnection,
 } from "@/lib/connectors/trello";
+import { trelloRequest } from "@/lib/operators/executors/trello";
+import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 import { liveOperatorNames } from "@/lib/operators/registry";
 import { getHubSpotConfigStatus, getMissingHubSpotScopes, getStoredHubSpotCredential, HUBSPOT_CONNECTOR_KEY, verifyHubSpotConnection, HubSpotConnectorError, HubSpotReconnectionRequiredError } from "@/lib/connectors/hubspot";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
@@ -521,8 +520,7 @@ export async function getConnectorTruth(input: {
   }
 
   // ── Trello (direct OAuth 1.0a) ────────────────────────────────────────
-  // Same ladder as Slack. Trello tokens are issued with expiration=never, so
-  // there is no expiry rung: a dead token surfaces as a failed provider check.
+  // Trello bearer tokens use the shared distributed refresh lease when they expire.
   const trelloRow = trelloRes.data;
   const trelloScopes = asStringArray(trelloRow?.scopes);
   const trelloConfig = getTrelloConfigStatus();
@@ -538,13 +536,9 @@ export async function getConnectorTruth(input: {
     }
   } else if (trelloRow) {
     try {
-      const credential = await getStoredTrelloCredential(input.workspaceId, supabase);
-      if (!credential) trelloStatus = "not_connected";
-      else {
-        const identity = await verifyTrelloConnection(decryptToken(credential.encrypted_access_token));
-        trelloIdentityEmail = identity.email ?? identity.username ?? trelloIdentityEmail;
-        trelloStatus = "healthy";
-      }
+      const identity = await trelloRequest<Record<string, unknown>>(input.workspaceId, "GET", "/1/members/me?fields=id,username,fullName");
+      trelloIdentityEmail = typeof identity.username === "string" ? identity.username : trelloIdentityEmail;
+      trelloStatus = "healthy";
     } catch {
       trelloStatus = "reconnect_required";
     }
@@ -554,6 +548,7 @@ export async function getConnectorTruth(input: {
   // rows are surfaced only as migration hints on the individual connector
   // truth objects above; they are never verified through a runtime client.
   const nangoTruth: SafeConnectorTruth[] = [];
+  const trelloSettings = await loadWorkspacePolicySettings({ supabase, workspaceId: input.workspaceId });
 
   const rows: SafeConnectorTruth[] = [
     {
@@ -756,11 +751,13 @@ export async function getConnectorTruth(input: {
       scopes: trelloScopes,
       missingScopes: TRELLO_OAUTH_SCOPES.filter((scope) => !trelloScopes.map((item) => item.toLowerCase()).includes(scope)),
       reconnectRequired: trelloStatus === "reconnect_required",
-      executable: trelloStatus === "healthy" && trelloWriteGranted,
+      executable: trelloStatus === "healthy" && trelloWriteGranted && Boolean(trelloSettings.trello.defaultBoardId && trelloSettings.trello.defaultListId),
       legacyNangoConnection: trelloLegacy || undefined,
       statusMessage: trelloStatus === "healthy"
         ? trelloWriteGranted
-          ? "Connected. Board reads are ready and card actions are approval-gated."
+          ? trelloSettings.trello.defaultBoardId && trelloSettings.trello.defaultListId
+            ? "Connected. Selected board and list are ready for approval-gated card actions."
+            : "Connected. Select a board and list before approved card actions can run."
           : "Connected. Reconnect Trello to grant approved write permission."
         : trelloLegacy
           ? "Trello was connected through the previous managed OAuth provider. Reconnect Trello once to move to Auterim's direct authorization."

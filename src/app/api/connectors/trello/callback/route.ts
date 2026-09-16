@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { decryptToken } from "@/lib/connectors/crypto";
 import {
   TRELLO_CONNECTOR_KEY,
   TRELLO_OAUTH_COOKIE,
-  exchangeTrelloAccessToken,
+  exchangeTrelloAuthorizationCode,
   getTrelloConfigStatus,
-  parseTrelloHandoff,
+  parseTrelloOAuthHandoff,
   toStoredTrelloCredential,
   verifyTrelloConnection,
 } from "@/lib/connectors/trello";
+import { parseProviderOAuthState } from "@/lib/connectors/oauth-state";
 import { clearLegacyNangoConnection } from "@/lib/connectors/legacy-nango";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { getAppRoute, getAppUrl } from "@/lib/urls";
@@ -25,23 +25,18 @@ export async function GET(req: NextRequest) {
   if (req.nextUrl.searchParams.get("error") || req.nextUrl.searchParams.get("denied")) return redirect("trello=oauth_denied");
 
   try {
-    const handoff = parseTrelloHandoff(req.cookies.get(TRELLO_OAUTH_COOKIE)?.value);
-    const oauthToken = req.nextUrl.searchParams.get("oauth_token");
-    const verifier = req.nextUrl.searchParams.get("oauth_verifier");
-    if (!oauthToken || !verifier) return redirect("trello=missing_verifier");
-    // The returned request token must be the exact one this browser session
-    // started, so a callback cannot be replayed with someone else's token.
-    if (oauthToken !== handoff.requestToken) return redirect("trello=state_mismatch");
+    const state = req.nextUrl.searchParams.get("state");
+    const code = req.nextUrl.searchParams.get("code");
+    if (!state || !code) return redirect("trello=missing_code");
+    const statePayload = parseProviderOAuthState("trello", state);
+    const handoff = parseTrelloOAuthHandoff(req.cookies.get(TRELLO_OAUTH_COOKIE)?.value);
+    if (handoff.state !== state || handoff.workspaceId !== statePayload.workspaceId || handoff.userEmail !== statePayload.userEmail) return redirect("trello=state_mismatch");
 
-    const { accessToken } = await exchangeTrelloAccessToken({
-      requestToken: handoff.requestToken,
-      requestTokenSecret: decryptToken(handoff.requestTokenSecret),
-      verifier,
-    });
+    const token = await exchangeTrelloAuthorizationCode(code, handoff.codeVerifier);
 
     // Trello is only recorded as connected after a real Trello API call proves
     // the access token works.
-    const identity = await verifyTrelloConnection(accessToken);
+    const identity = await verifyTrelloConnection(token.access_token);
 
     const supabase = createSupabaseAdmin();
     const existing = await supabase
@@ -51,7 +46,7 @@ export async function GET(req: NextRequest) {
       .eq("connector_key", TRELLO_CONNECTOR_KEY)
       .maybeSingle();
 
-    const credential = toStoredTrelloCredential({ workspaceId: handoff.workspaceId, accessToken, identity });
+    const credential = toStoredTrelloCredential({ workspaceId: handoff.workspaceId, token, identity });
     credential.metadata = {
       ...((existing.data?.metadata ?? {}) as Record<string, unknown>),
       ...(credential.metadata ?? {}),
@@ -72,7 +67,7 @@ export async function GET(req: NextRequest) {
       agent_mark: "OS",
       agent_color: "#4DE8E1",
       event: "connector.trello.connected",
-      message: `Connected Trello${identity.username ? ` (${identity.username})` : ""}`,
+      message: "Connected Trello with OAuth2.",
       duration: "-",
       status: "ok",
     });

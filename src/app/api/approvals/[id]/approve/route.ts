@@ -27,6 +27,7 @@ import { AuthorizationError, requireWorkspaceRoleForIdentity } from "@/lib/serve
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { getAppUrl } from "@/lib/urls";
 import { advanceWorkflowForApproval } from "@/lib/workflows/lifecycle";
+import { persistConfirmedTrelloCardExecution } from "@/lib/workflows/trello-execution";
 import { classifyProviderFailure } from "@/lib/runtime/provider-retry";
 
 type ApproveBody = {
@@ -847,6 +848,7 @@ async function executeSharedActionApproval(input: {
       action: input.payload.preparedAction,
       approvalId: input.approvalId,
     });
+    await persistConfirmedTrelloCardExecution({ supabase: input.supabase, workspaceId: input.payload.workspaceId, approvalId: input.approvalId, action: input.payload.preparedAction, result: actionResult.result });
     if (policyDecision?.intentId) {
       await input.supabase.from("os_execution_intents").update({ status: "succeeded" }).eq("id", policyDecision.intentId).eq("workspace_id", input.payload.workspaceId);
     }
@@ -1100,6 +1102,7 @@ async function executeOperationsApproval(input: {
     actionType = input.payload.preparedTrelloAction.actionType;
     try {
       const result = await executePreparedActionAfterApproval({ action: input.payload.preparedTrelloAction, approvalId: input.approvalId });
+      await persistConfirmedTrelloCardExecution({ supabase: input.supabase, workspaceId: input.payload.workspaceId, approvalId: input.approvalId, action: input.payload.preparedTrelloAction, result: result.result });
       trelloStatus = "executed";
       const resultRecord = result.result as Record<string, unknown>;
       cardId = typeof resultRecord.cardId === "string" ? resultRecord.cardId : null;

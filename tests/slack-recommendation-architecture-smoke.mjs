@@ -26,6 +26,8 @@ assert.match(recommendationTask, /maxDuration: 120/, "a tight maxDuration bounds
 // dispatchMentionAcknowledgement.
 const eventProcess = read("src/trigger/slack-event-process.ts");
 assert.doesNotMatch(eventProcess, /openai|OpenAI|generateInternalRecommendation|runInternalRecommendationGeneration/i, "the provider-event processor must never touch generation directly - it must stay fast regardless of OpenAI's availability");
+assert.match(eventProcess, /isMention && \(result\.internalRecommendationWorkflowIds\.length === 0 \|\| result\.internalRecommendationDispatchFailures > 0\)/, "the provider-event processor must skip the intermediate acknowledgement for successful internal recommendation workflows");
+assert.match(eventProcess, /dispatchMentionAcknowledgement\(event\.id\)/, "non-recommendation and dispatch-failure paths retain a truthful immediate acknowledgement");
 
 // 17. Paired message.channels + app_mention deliveries converge on one
 // canonical signal (existing dedupe-key fix in engine.ts) and therefore one
@@ -50,6 +52,7 @@ assert.match(ledger, /unique \(workspace_id, channel_id, source_message_ts, upda
 const ack = read("src/lib/connectors/slack-acknowledgement.ts");
 assert.match(ack, /slackThreadUpdateKey/, "the final acknowledgement uses the durable workspace/channel/message claim key");
 assert.match(ack, /recommendationPending/, "the initial acknowledgement defers without claiming while an internal recommendation is being generated");
+assert.match(ack, /const updateType = input\.updateType \?\? "acknowledgement"/, "the deferral guard must use the normalized default update type");
 
 // 20-24. External action, CRM mutation, email, and PM task creation must be
 // architecturally impossible from this generator - the schema has no such

@@ -222,13 +222,14 @@ export async function executePreparedActionAfterApproval(input: {
     await recordProviderSuccess({ workspaceId: action.workspaceId, connectorKey: action.connectorKey, operation: "write" });
     return result;
   } catch (error) {
-    const detail = (error ?? {}) as { status?: unknown; code?: unknown };
+    const detail = (error ?? {}) as { status?: unknown; code?: unknown; details?: { status?: unknown; code?: unknown } };
+    const nested = detail.details ?? {};
     await recordProviderFailure({
       workspaceId: action.workspaceId,
       connectorKey: action.connectorKey,
       operation: "write",
-      status: typeof detail.status === "number" ? detail.status : null,
-      code: typeof detail.code === "string" ? detail.code : null,
+      status: typeof detail.status === "number" ? detail.status : typeof nested.status === "number" ? nested.status : null,
+      code: typeof detail.code === "string" ? detail.code : typeof nested.code === "string" ? nested.code : null,
     });
     throw error;
   }
