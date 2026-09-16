@@ -17,6 +17,7 @@ import Memory from "../../src/app/app/memory/page";
 import Activity from "../../src/app/app/activity/page";
 import Logs from "../../src/app/app/logs/page";
 import Insights from "../../src/app/app/insights/page";
+import Workflows from "../../src/app/app/workflows/page";
 
 const params = new URLSearchParams(location.search);
 const lifecycle = params.get("state") || "E";
@@ -134,11 +135,45 @@ window.fetch = async (input, options) => {
     const mode = params.get("approval");
     data = { approvals: mode === "queue" ? fixtureApprovalQueue : mode === "pending" ? [fixturePendingApproval] : [] };
   }
+  else if (url.pathname === "/api/workflows") data = { workflows: fixtureWorkflows };
   else if (url.pathname === "/api/operators/runs") data = { runs: [] };
   else if (url.pathname === "/api/connectors/accounts") data = { accounts: [] };
   else if (url.pathname === "/api/activity") data = { items: fixtureActivity.map((item) => ({ id: item.id, occurredAt: item.time, category: item.type === "run.completed" ? "operator_run" : item.type === "approval.pending" ? "approval" : "workflow", title: item.title, description: item.description, operatorKey: item.operatorKey, connectorKey: item.connectorKey, severity: item.severity === "warning" ? "attention" : item.severity === "success" ? "success" : "info", status: "recorded", relatedRoute: item.href, technicalEventId: null })), summary: { runs: 1, approvals: 1, actions: 0, issues: 0, total: fixtureActivity.length, daily: [] }, hasMore: false, partialHistory: false };
   return new Response(JSON.stringify(data), { status: 200, headers: { "Content-Type": "application/json" } });
 };
-const pages = { dashboard: OSOverview, connectors: Connectors, agents: Agents, revenue: Revenue, "client-flow": ClientFlow, operations: Operations, approvals: Approvals, policies: Policies, settings: Settings, plans: Plans, memory: Memory, activity: Activity, logs: Logs, insights: Insights };
+const fixtureWorkflows = [
+  {
+    id: "wf-1", objective: "Prepare the pricing reply for the Northwind renewal",
+    operatorKey: "revenue", operatorName: "Revenue Operator", primaryOwner: "Revenue Operator",
+    supportingOperators: ["Client Flow Operator"], externalCommunicationOwner: "Revenue Operator",
+    dependencyState: "Waiting on approval", workforceState: "Awaiting approval",
+    handoffReason: null, requestedOutcome: "A reviewed reply that keeps the renewal moving",
+    returnedEvidence: {}, supportingWork: [], status: "awaiting_approval", priority: "normal",
+    confidence: "medium", createdAt: new Date(Date.now() - 5400000).toISOString(),
+    updatedAt: new Date(Date.now() - 900000).toISOString(),
+    source: { label: "Gmail", detail: "Pricing question on an open deal" },
+    whyStarted: ["A pricing question arrived on an open renewal", "The deal had no reply for two days"],
+    nextAttention: "A prepared reply is waiting for your approval",
+    steps: [
+      { id: "s1", order: 1, label: "Assemble context", destination: "Gmail, HubSpot", status: "completed", approvalRequired: false, approvalId: null, blocker: null },
+      { id: "s2", order: 2, label: "Prepare customer reply", destination: "Gmail", status: "awaiting_approval", approvalRequired: true, approvalId: "ap-1", blocker: null },
+      { id: "s3", order: 3, label: "Update CRM record", destination: "HubSpot", status: "pending", approvalRequired: true, approvalId: null, blocker: null },
+    ],
+    outcomes: [],
+  },
+  {
+    id: "wf-2", objective: "Follow up on the untouched Contoso deal",
+    operatorKey: "revenue", operatorName: "Revenue Operator", primaryOwner: "Revenue Operator",
+    supportingOperators: [], externalCommunicationOwner: null, dependencyState: null,
+    workforceState: "Preparing", handoffReason: null, requestedOutcome: null, returnedEvidence: {},
+    supportingWork: [], status: "executing", priority: "high", confidence: "high",
+    createdAt: new Date(Date.now() - 86400000).toISOString(), updatedAt: new Date(Date.now() - 3600000).toISOString(),
+    source: { label: "HubSpot", detail: "Deal untouched for eleven days" },
+    whyStarted: ["The deal had no activity for eleven days"], nextAttention: "Auterim is preparing the next step",
+    steps: [{ id: "s4", order: 1, label: "Assemble context", destination: "HubSpot", status: "executing", approvalRequired: false, approvalId: null, blocker: null }],
+    outcomes: [],
+  },
+];
+const pages = { dashboard: OSOverview, connectors: Connectors, agents: Agents, revenue: Revenue, "client-flow": ClientFlow, operations: Operations, approvals: Approvals, policies: Policies, settings: Settings, plans: Plans, memory: Memory, activity: Activity, logs: Logs, insights: Insights, workflows: Workflows };
 const Page = pages[params.get("surface")] || OSOverview;
 createRoot(document.getElementById("fixture")).render(<div className="os-root"><AppShell><Page /></AppShell></div>);

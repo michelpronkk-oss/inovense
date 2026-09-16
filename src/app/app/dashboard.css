@@ -5470,3 +5470,123 @@ select.os-input option {
   .os-root .approval-review { gap: 14px; padding-top: 15px; }
   .os-root .approval-review-title { font-size: 17px; }
 }
+
+/* ============================================================
+   App shell + master-detail layout system
+   ============================================================ */
+
+/* 1. Content width. `.os-page` had no maximum, so on a 1920 display the
+   content stretched the full 1656px and list rows opened an ~800px gap
+   between the title and its status. Cap it and centre it; nothing below
+   this width changes. */
+.os-root .os-page {
+  width: 100%;
+  max-width: 1640px;
+  margin-inline: auto;
+}
+
+/* 2. Master-detail columns. The detail column was `minmax(0, 1fr)`, so it
+   could be compressed without limit; giving it a real floor is what stops
+   its contents from collapsing in the first place. */
+/* Guarded above the existing 1120px stacking breakpoint: this sheet's later
+   cascade position would otherwise re-apply two columns on mobile. */
+@media (min-width: 1121px) {
+  .os-root .split {
+    grid-template-columns: minmax(0, 1.62fr) minmax(360px, 1fr);
+    align-items: start;
+  }
+}
+
+/* 3. Definition grids size against their OWN container, not the viewport.
+   This is the root cause of the reported defect: a fixed 168px label track
+   inside a nested ~245px column left ~41px for values, which wrapped
+   "External communication" and "Revenue Operator only" one character per
+   line. Detail panels and their cards become containers so the grid can
+   stack on actual available width. */
+.os-root .workflow-detail,
+.os-root .workflow-detail .card,
+.os-root .workflow-detail .panel,
+.os-root .approval-detail,
+.os-root .approval-detail .card,
+.os-root .approval-detail .panel {
+  container-type: inline-size;
+}
+
+@container (max-width: 430px) {
+  .os-root .kv {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px 0;
+  }
+  .os-root .kv dd { margin-bottom: 10px; }
+}
+
+/* A detail panel is never wide enough for a second nested split; stacking
+   keeps every label and value on a readable measure. */
+@container (max-width: 660px) {
+  .os-root .workflow-detail .split,
+  .os-root .approval-detail .split { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* 4. Control labels must not break mid-word. The detail panel's Close
+   control was rendering as "Clos / e". */
+.os-root .btn { white-space: nowrap; }
+
+/* 5. The stage rail ran under the panel edge and clipped "Measure".
+   Let it scroll instead of losing the last stage. */
+.os-root .workflow-detail .loop-rail {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.os-root .workflow-detail .loop-rail::-webkit-scrollbar { display: none; }
+
+/* Row trailing block. `.rt` is `flex: none`, so on narrow screens a long
+   status/meta group pushed past the row instead of wrapping with it. Let it
+   shrink and wrap on touch widths; the desktop row is unchanged. */
+@media (max-width: 640px) {
+  .os-root .row .rt {
+    flex: 0 1 auto;
+    min-width: 0;
+    flex-wrap: wrap;
+    margin-left: 0;
+    row-gap: 6px;
+  }
+}
+
+/* Touch targets. On touch-sized viewports the real controls (buttons, filter
+   chips, tabs, the topbar search) take the ~44px minimum. Inline text links
+   inside prose and meta lines are deliberately excluded: boxing them to 44px
+   would break the lines they sit in. */
+@media (max-width: 1024px) {
+  .os-root .os-page .btn,
+  .os-root .os-page .btn-sm,
+  .os-root .os-page .filter,
+  .os-root .os-top .top-search,
+  .os-root .tabs a,
+  .os-root .tabs button {
+    min-height: 44px;
+    /* `.filter` carries a fixed 31px height, which min-height alone cannot
+       raise. */
+    height: auto;
+  }
+  .os-root .os-page .btn,
+  .os-root .os-page .filter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* Approval and segmented controls carry their own 34-36px floors. */
+  .os-root .os-page .appr-btn,
+  .os-root .os-page .seg button,
+  .os-root .os-page .seg a,
+  .os-root .approval-scope-error-actions .btn,
+  .os-root .approval-decision-actions .btn,
+  .os-root .approval-email-head .btn,
+  .os-root .memory-detail-actions .btn,
+  .os-root .os-page-actions .btn,
+  .os-root .activity-page .filter,
+  .os-root .activity-page .seg button {
+    min-height: 44px;
+    height: auto;
+  }
+}
