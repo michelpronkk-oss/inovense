@@ -5,7 +5,9 @@ import Link from "next/link";
 import type { WorkforceActivityItem, WorkforceActivityPage } from "@/lib/activity/types";
 import { EmptyState, MetricStrip } from "@/components/product-ui/page-primitives";
 import { ActivityAvatar } from "@/components/activity/activity-avatar";
-import { operatorDisplayName, withoutLeadingOperatorName } from "@/lib/activity/presentation";
+import { categoryLabel, operatorDisplayName, withoutLeadingOperatorName } from "@/lib/activity/presentation";
+import { ResponsiveOverlay } from "@/components/app-ui/responsive-overlay";
+import { useIsCompactViewport } from "@/components/app-ui/use-compact-viewport";
 import { useOS } from "@/lib/os/app-provider";
 import { useWorkspaceRealtimeInvalidation } from "@/lib/os/workspace-realtime";
 
@@ -29,8 +31,10 @@ export default function ActivityPage() {
   const [data, setData] = useState<WorkforceActivityPage | null>(null);
   const [error, setError] = useState("");
   const [visible, setVisible] = useState(20);
+  const [selectedItem, setSelectedItem] = useState<WorkforceActivityItem | null>(null);
   const filterMenuRef = useRef<HTMLDivElement>(null);
   const refreshRef = useRef<(() => void) | null>(null);
+  const compact = useIsCompactViewport();
 
   useEffect(() => {
     let active = false;
@@ -64,12 +68,17 @@ export default function ActivityPage() {
   useWorkspaceRealtimeInvalidation(state.workspace.id, ["activity", "dashboard"], () => { refreshRef.current?.(); });
 
   useEffect(() => {
+    // The compact filter is a ResponsiveOverlay/Sheet, which already owns its
+    // own outside-click and Escape dismissal (Radix); attaching this
+    // document-level listener too would close it the instant a tap landed
+    // inside the sheet's portal, since that portal sits outside filterMenuRef.
+    if (compact) return;
     const closeOnOutsidePress = (event: MouseEvent) => { if (filterMenuRef.current && !filterMenuRef.current.contains(event.target as Node)) setFilterOpen(false); };
     const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setFilterOpen(false); };
     document.addEventListener("mousedown", closeOnOutsidePress);
     document.addEventListener("keydown", closeOnEscape);
     return () => { document.removeEventListener("mousedown", closeOnOutsidePress); document.removeEventListener("keydown", closeOnEscape); };
-  }, []);
+  }, [compact]);
 
   const items = useMemo(() => (data?.items ?? []).filter((item) => selectedFilters.length === 0 || selectedFilters.some((filter) => filter === "attention" ? item.severity === "attention" : item.category === filter)), [data, selectedFilters]);
   const summary = data?.summary;
@@ -81,7 +90,7 @@ export default function ActivityPage() {
       <div>
         <span className="t-eyebrow" style={{ display: "block", marginBottom: 8 }}>Workforce / activity</span>
         <h1 className="t-title">Activity</h1>
-        <p className="t-sub">A clear history of what Auterim has seen, prepared, approved, and executed.</p>
+        <p className="t-sub">A traceable record of what Auterim observed, prepared, approved, and executed.</p>
       </div>
       <div className="acts">
         <div className="seg">{ranges.map((item) => <button key={item.key} type="button" onClick={() => changeRange(item.key)} className={range === item.key ? "on" : ""}>{item.label}</button>)}</div>
@@ -89,10 +98,25 @@ export default function ActivityPage() {
           <button type="button" className={`filter${filterOpen || selectedFilters.length ? " on" : ""}`} aria-expanded={filterOpen} aria-haspopup="menu" onClick={() => setFilterOpen((open) => !open)}>
             Filter{selectedFilters.length > 0 && <span className="n">{selectedFilters.length}</span>}
           </button>
-          {filterOpen && <div className="os-filter-popover" role="menu" aria-label="Filter activity"><div className="os-filter-popover-head"><span>Event type</span><button type="button" onClick={() => { setSelectedFilters([]); setVisible(20); }}>Clear</button></div>{filters.map((item) => <button type="button" role="menuitemcheckbox" aria-checked={selectedFilters.includes(item.key)} key={item.key} className="os-filter-option" onClick={() => toggleFilter(item.key)}><span className="os-filter-check" aria-hidden="true" />{item.label}</button>)}</div>}
+          {filterOpen && !compact && <div className="os-filter-popover" role="menu" aria-label="Filter activity"><div className="os-filter-popover-head"><span>Event type</span><button type="button" onClick={() => { setSelectedFilters([]); setVisible(20); }}>Clear</button></div>{filters.map((item) => <button type="button" role="menuitemcheckbox" aria-checked={selectedFilters.includes(item.key)} key={item.key} className="os-filter-option" onClick={() => toggleFilter(item.key)}><span className="os-filter-check" aria-hidden="true" />{item.label}</button>)}</div>}
         </div>
       </div>
     </header>
+
+    {filterOpen && compact && (
+      <ResponsiveOverlay
+        open
+        onOpenChange={(next) => { if (!next) setFilterOpen(false); }}
+        eyebrow="Filter activity"
+        title="Event type"
+        footer={<button type="button" className="btn btn-primary btn-sm" onClick={() => setFilterOpen(false)}>Show results</button>}
+      >
+        <div className="activity-filter-sheet" role="menu" aria-label="Filter activity">
+          <div className="os-filter-popover-head"><span>Event type</span><button type="button" onClick={() => { setSelectedFilters([]); setVisible(20); }}>Clear</button></div>
+          {filters.map((item) => <button type="button" role="menuitemcheckbox" aria-checked={selectedFilters.includes(item.key)} key={item.key} className="os-filter-option" onClick={() => toggleFilter(item.key)}><span className="os-filter-check" aria-hidden="true" />{item.label}</button>)}
+        </div>
+      </ResponsiveOverlay>
+    )}
 
     {summary && (
       <div aria-label={`Activity totals for the last ${range}`}>
@@ -133,7 +157,7 @@ export default function ActivityPage() {
             const action = withoutLeadingOperatorName(name, item.title);
             const supporting = withoutLeadingOperatorName(name, item.description);
             return (
-              <div key={item.id} className={`row activity-row${routeText && item.relatedRoute ? " link" : ""}`}>
+              <button type="button" key={item.id} className="row activity-row activity-row-trigger" onClick={() => setSelectedItem(item)}>
                 <time className="activity-row-time t-mono" dateTime={item.occurredAt}>{timeLabel(item.occurredAt)}</time>
                 <ActivityAvatar operatorKey={item.operatorKey} />
                 <span className="grow activity-row-body">
@@ -144,10 +168,10 @@ export default function ActivityPage() {
                   <span className="activity-row-sub">{supporting}</span>
                 </span>
                 <span className="rt activity-row-meta">
-                  <span className={`badge ${item.severity === "failure" ? "red" : item.severity === "attention" ? "amber" : "muted"}`}>{item.category.replace(/_/g, " ")}</span>
-                  {routeText && item.relatedRoute ? <Link className="t-meta" href={item.relatedRoute} aria-label={`${routeText}: ${item.title}`}>{routeText}<span className="os-caret" aria-hidden="true" /></Link> : null}
+                  <span className={`badge ${item.severity === "failure" ? "red" : item.severity === "attention" ? "amber" : "muted"}`}>{categoryLabel(item.category)}</span>
+                  {routeText && item.relatedRoute ? <span className="t-meta activity-row-route">{routeText}<span className="os-caret" aria-hidden="true" /></span> : null}
                 </span>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -155,5 +179,40 @@ export default function ActivityPage() {
       {data && items.length > visible && <div className="card-pad" style={{ paddingTop: 12, paddingBottom: 12, borderTop: "1px solid var(--line)" }}><button type="button" className="btn btn-ghost btn-sm" onClick={() => setVisible((count) => count + 20)}>Show more</button></div>}
       {data?.hasMore && items.length <= visible && <div className="card-pad t-meta" style={{ borderTop: "1px solid var(--line)" }}>Showing the most recent available activity for this window.</div>}
     </section>
+
+    {selectedItem && (() => {
+      const name = operatorDisplayName(selectedItem.operatorKey);
+      const routeText = routeLabel(selectedItem);
+      return (
+        <ResponsiveOverlay
+          open
+          onOpenChange={(next) => { if (!next) setSelectedItem(null); }}
+          eyebrow={categoryLabel(selectedItem.category)}
+          title={withoutLeadingOperatorName(name, selectedItem.title)}
+          context={`${name} · ${timeLabel(selectedItem.occurredAt)}`}
+          size="sm"
+          footer={routeText && selectedItem.relatedRoute ? <Link className="btn btn-primary btn-sm" href={selectedItem.relatedRoute} style={{ textDecoration: "none" }}>{routeText}</Link> : undefined}
+        >
+          <dl className="kv activity-detail-facts">
+            <div><dt>Operator</dt><dd>{name}</dd></div>
+            <div><dt>Event type</dt><dd>{categoryLabel(selectedItem.category)}</dd></div>
+            <div><dt>Status</dt><dd>{selectedItem.status.replace(/_/g, " ")}</dd></div>
+            <div><dt>Occurred</dt><dd>{timeLabel(selectedItem.occurredAt)}</dd></div>
+          </dl>
+          <p className="t-compact activity-detail-description">{withoutLeadingOperatorName(name, selectedItem.description)}</p>
+          {selectedItem.technicalEventId && (
+            <details className="approval-details">
+              <summary><span>Event reference</span></summary>
+              <div className="approval-details-body">
+                <dl className="kv">
+                  <div><dt>Event reference</dt><dd className="t-mono">{selectedItem.technicalEventId}</dd></div>
+                  <div><dt>Category</dt><dd className="t-mono">{selectedItem.category}</dd></div>
+                </dl>
+              </div>
+            </details>
+          )}
+        </ResponsiveOverlay>
+      );
+    })()}
   </div>;
 }

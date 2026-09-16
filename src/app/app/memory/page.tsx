@@ -83,20 +83,31 @@ export default function MemoryPage() {
 
   return (
     <div className="os-page memory-page">
-      <PageHeader eyebrow="Business context" title="Memory" description="What Auterim knows about your business. Operators reference this context before they act." />
-      <p className="memory-enrichment-note">{isPreview ? "Your owner-confirmed brief is ready. Connected systems and approved work can enrich it after activation." : "Connected systems and approved work enrich this context over time."}</p>
+      <PageHeader eyebrow="Business context" title="Memory" description="The trusted context Auterim uses to understand your business and prepare the right work." />
+      <p className="memory-summary-caption">{isPreview ? "Your owner-confirmed brief is ready below. Connected systems and approved work will keep enriching it after activation." : "Connected systems and approved work enrich this context over time."}</p>
 
       <section className="memory-summary-rail" aria-label="Memory summary">
         <div><span>Verified context</span><strong>{summary.verified}</strong><small>Owner-confirmed facts</small></div>
         <div><span>Observed context</span><strong>{summary.observed}</strong><small>Connected-system evidence</small></div>
         <div><span>Derived context</span><strong>{summary.derived}</strong><small>Evidence-backed operator learnings</small></div>
-        <aside><span className="dot" data-tone={summary.attention ? "amber" : "green"} /> <span><strong>{summary.attention}</strong> {summary.attention === 1 ? "item needs" : "items need"} attention through confirmation, freshness, or conflict review.</span></aside>
+        <div className="memory-summary-attention" data-tone={summary.attention ? "amber" : "green"}>
+          <span><span className="dot" aria-hidden="true" />Needs attention</span>
+          <strong>{summary.attention}</strong>
+          <small>{summary.attention ? "Confirmation, freshness, or conflict review" : "Nothing needs review right now"}</small>
+        </div>
       </section>
 
       <section className="sec panel card-pad memory-profile" aria-label="Business profile">
-        <div className="card-head"><div><h3 className="t-section">Business profile</h3><p className="t-meta">The compact owner-confirmed context operators can safely start from.</p></div><span className="badge cyan">{connectedSystems.length} connected</span></div>
+        <div className="card-head"><div><h3 className="t-section">Business profile</h3><p className="t-meta">The stable facts that guide every operator.</p></div><span className="badge cyan">{connectedSystems.length} connected</span></div>
         <dl className="memory-profile-grid">
-          <div><dt>Workspace</dt><dd>{state.workspace.name}</dd></div><div><dt>Industry</dt><dd>{state.onboarding.industry || "Not provided"}</dd></div><div><dt>Team size</dt><dd>{state.onboarding.companySize || "Not provided"}</dd></div><div><dt>Website</dt><dd>{state.onboarding.websiteUrl || "Not provided"}</dd></div><div><dt>First priority</dt><dd>{state.onboarding.preferredOperator || "Not provided"}</dd></div><div><dt>Connected systems</dt><dd>{connectedSystems.length ? connectedSystems.join(", ") : "None connected yet"}</dd></div>
+          {[
+            { label: "Workspace", value: state.workspace.name, provided: true },
+            { label: "Industry", value: state.onboarding.industry || "Not provided", provided: Boolean(state.onboarding.industry) },
+            { label: "Team size", value: state.onboarding.companySize || "Not provided", provided: Boolean(state.onboarding.companySize) },
+            { label: "Website", value: state.onboarding.websiteUrl || "Not provided", provided: Boolean(state.onboarding.websiteUrl) },
+            { label: "First priority", value: state.onboarding.preferredOperator || "Not provided", provided: Boolean(state.onboarding.preferredOperator) },
+            { label: "Connected systems", value: connectedSystems.length ? connectedSystems.join(", ") : "None connected yet", provided: connectedSystems.length > 0 },
+          ].map((field) => <div key={field.label}><dt>{field.label}</dt><dd data-empty={field.provided ? undefined : true}>{field.value}</dd></div>)}
         </dl>
       </section>
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { OSModal } from "@/components/dashboard/modal";
+import { ResponsiveOverlay } from "@/components/app-ui/responsive-overlay";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LinkIcon, SettingsIcon, XIcon } from "@/components/dashboard/icons";
 import type { ConnectedAccount } from "@/app/api/connectors/accounts/route";
@@ -400,17 +400,21 @@ export default function SettingsPage() {
       {error && <p role="alert" className="t-meta" style={{ color: "#ff8f8f" }}>{error}</p>}
 
       {editing && (
-        <OSModal label={`Edit ${editing}`} className="os-modal-backdrop" onClose={() => setEditing(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-head">
-              <div className="tt"><h3>Edit {editing === "workspace" ? "workspace" : "notifications"}</h3></div>
-              <button className="btn-icon" onClick={() => setEditing(null)} aria-label="Close">
-                <XIcon size={13} />
-              </button>
-            </div>
-
+        <ResponsiveOverlay
+          open
+          onOpenChange={(next) => { if (!next) setEditing(null); }}
+          eyebrow="Workspace settings"
+          title={editing === "workspace" ? "Edit workspace" : "Edit notifications"}
+          context={state.workspace.name}
+          size="md"
+          footer={
+            <button className="btn btn-primary" onClick={save} disabled={saving}>
+              {saving ? "Saving…" : "Save changes"}
+            </button>
+          }
+        >
             {editing === "workspace" && (
-              <div className="modal-body stack">
+              <div className="stack">
                 <div className="field">
                   <label className="label">Workspace emblem</label>
                   <div className="inline">
@@ -440,7 +444,7 @@ export default function SettingsPage() {
             )}
 
             {editing === "notifications" && (
-              <div className="modal-body stack">
+              <div className="stack">
                 <div className="attn info" style={{ padding: "12px 14px" }}>
                   <p className="t-meta" style={{ margin: 0 }}>Optional email delivery is sent to <strong className="ink">{state.currentUser.email}</strong>. Billing, security and legal messages remain required when applicable.</p>
                 </div>
@@ -460,13 +464,7 @@ export default function SettingsPage() {
               </div>
             )}
 
-            <div className="modal-foot">
-              <button className="btn btn-primary btn-sm" onClick={save} disabled={saving}>
-                {saving ? "Saving…" : "Save"}
-              </button>
-            </div>
-          </div>
-        </OSModal>
+        </ResponsiveOverlay>
       )}
     </div>
   );

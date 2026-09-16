@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { EmptyState, PageHeader } from "@/components/product-ui/page-primitives";
+import { ConfirmDialog } from "@/components/app-ui/confirm-dialog";
 import { useOS } from "@/lib/os/app-provider";
 import { InboxIcon, CheckIcon } from "@/components/dashboard/icons";
 import type { ApprovalPresentationError, ApprovalRow, ApprovalsResponse, DraftEdit } from "./types";
@@ -32,6 +33,7 @@ export default function ApprovalsPage() {
   const [detailsOpen, setDetailsOpen] = useState<Record<string, boolean>>({});
   const [editingDrafts, setEditingDrafts] = useState<Record<string, DraftEdit>>({});
   const [savingEditId, setSavingEditId] = useState<string | null>(null);
+  const [confirmingApproveAll, setConfirmingApproveAll] = useState(false);
 
   const loadApprovals = useCallback(async (background = false) => {
     if (!state.workspace.id) return;
@@ -203,9 +205,6 @@ export default function ApprovalsPage() {
   };
 
   const approveAll = async () => {
-    if (visible.length === 0) return;
-    const ok = window.confirm(`Approve ${visible.length} pending approval${visible.length === 1 ? "" : "s"}? Email approvals will send after approval.`);
-    if (!ok) return;
     for (const item of visible) {
       await actOnApproval(item, "approve");
     }
@@ -216,30 +215,42 @@ export default function ApprovalsPage() {
       <PageHeader
         eyebrow="Approval inbox"
         title="Approvals"
-        description="Review actions before they run."
+        description="Review consequential actions before they run."
         actions={<>
           <button className="btn btn-ghost btn-sm" onClick={() => router.push("/logs")}>History</button>
           <button
-            className="btn btn-ghost btn-sm approval-bulk-action"
-            onClick={approveAll}
+            className="btn btn-primary btn-sm approval-bulk-action"
+            onClick={() => setConfirmingApproveAll(true)}
             disabled={visible.length === 0 || Boolean(busyId) || Object.keys(editingDrafts).length > 0}
-            style={{ opacity: visible.length === 0 || busyId || Object.keys(editingDrafts).length > 0 ? 0.4 : 1 }}
+            title={visible.length === 0 ? "No pending approvals to approve" : undefined}
           >
-            <CheckIcon size={12} /> Approve all
+            <CheckIcon size={12} /> Approve all{visible.length > 0 ? ` (${visible.length})` : ""}
           </button>
         </>}
       />
 
-      <div className="sec-head">
-        <div className="inline">
-          {FILTER_TABS.map((t) => (
-            <button key={t} aria-pressed={filter === t} onClick={() => { setExpandedApprovalId(null); setFilter(t); }} className={`filter${filter === t ? " on" : ""}`}>
-              {t}
-            </button>
-          ))}
+      <div className="sec-head approvals-toolbar">
+        <div className="inline approvals-filter-tabs" role="group" aria-label="Filter approvals by type">
+          {FILTER_TABS.map((t) => {
+            const count = t === "All" ? pending.length : pending.filter((item) => matchesFilter(item, t)).length;
+            return (
+              <button key={t} aria-pressed={filter === t} onClick={() => { setExpandedApprovalId(null); setFilter(t); }} className={`filter${filter === t ? " on" : ""}`}>
+                {t}{count > 0 ? <span className="n">{count}</span> : null}
+              </button>
+            );
+          })}
         </div>
-        <Link className="btn btn-ghost btn-sm" href="/policies">Manage policies</Link>
+        <Link className="btn btn-ghost btn-sm approvals-manage-link" href="/policies">Manage policies</Link>
       </div>
+
+      <ConfirmDialog
+        open={confirmingApproveAll}
+        onOpenChange={setConfirmingApproveAll}
+        title={`Approve ${visible.length} pending approval${visible.length === 1 ? "" : "s"}?`}
+        description="Email approvals will send immediately after approval. This cannot be undone."
+        confirmLabel="Approve all"
+        onConfirm={() => { setConfirmingApproveAll(false); void approveAll(); }}
+      />
 
       {error && (
         <div role="alert" className="attn crit" style={{ padding: "12px 14px" }}>
@@ -260,9 +271,9 @@ export default function ApprovalsPage() {
         {loading ? (
           <div className="card-pad"><p className="t-meta" style={{ margin: 0 }}>Loading approvals...</p></div>
         ) : visible.length === 0 ? (
-          <div className="card-pad">
-            <EmptyState title="All clear" action={<Link className="btn btn-ghost btn-sm" href="/logs">Recent history</Link>}>
-              {`0 actions waiting${filter !== "All" ? ` in ${filter.toLowerCase()}` : ""}. Consequential work will return here before it runs.`}
+          <div className="card-pad approvals-empty">
+            <EmptyState title="Nothing needs your approval" action={resolved.length === 0 ? <Link className="btn btn-ghost btn-sm" href="/logs">Recent history</Link> : undefined}>
+              {filter === "All" ? "Auterim will hold consequential actions here before execution." : `No pending ${filter.toLowerCase()} approvals right now. Auterim will hold consequential actions here before execution.`}
             </EmptyState>
           </div>
         ) : (
@@ -339,7 +350,10 @@ export default function ApprovalsPage() {
           <div className="rows">
             {resolved.slice(0, 20).map((item) => (
               <div className="row" key={item.id}>
-                <span className="grow"><span className="ttl">{item.title}</span><span className="sub">{item.agent_mark || "Operator"} · {timeAgo(item.resolved_at)}</span></span>
+                <span className="grow">
+                  <span className="ttl">{item.title}</span>
+                  <span className="sub">{item.agent_mark || "Operator"}{item.payload_preview.to ? ` · to ${item.payload_preview.to}` : ""} · {timeAgo(item.resolved_at)}</span>
+                </span>
                 <span className="rt"><span className={`badge ${item.status === "approved" || item.status === "partially_completed" ? "green" : item.status === "superseded" ? "amber" : "red"}`}>{item.status.replace(/_/g, " ")}</span></span>
               </div>
             ))}
@@ -347,8 +361,10 @@ export default function ApprovalsPage() {
         </div>
       )}
 
-      <div className="panel card-pad">
-        <span className="t-meta"><strong className="ink">Protected by default.</strong> Outbound actions require approval. <button className="lnk-open" onClick={() => router.push("/policies")}>Manage policies</button></span>
+      <div className="approvals-policy-note">
+        <span className="dot dot-cyan" aria-hidden="true" />
+        <span className="t-meta"><strong className="ink">Protected by default.</strong> Outbound actions require approval before they run.</span>
+        <button className="lnk-open" onClick={() => router.push("/policies")}>Manage policies</button>
       </div>
     </div>
   );

@@ -316,7 +316,16 @@ export function OSMobileNav() {
             }}
           >
             <div className="os-mobile-menu-handle" aria-hidden="true" />
-            <div className="os-mobile-menu-head"><div><strong>More</strong><span>Workspace navigation</span></div><button type="button" className="os-iconbtn" aria-label="Close" onClick={() => setOpen(false)}><XIcon size={15} /></button></div>
+            <div className="os-mobile-menu-head">
+              <div className="os-mobile-menu-ws">
+                <span className="os-mobile-menu-ws-mark" aria-hidden="true">{state.workspace.name.charAt(0).toUpperCase()}</span>
+                <div>
+                  <strong>{state.workspace.name}</strong>
+                  <span>{state.currentUser.roleLabel}</span>
+                </div>
+              </div>
+              <button type="button" className="os-iconbtn" aria-label="Close navigation" onClick={() => setOpen(false)}><XIcon size={15} /></button>
+            </div>
             <div className="os-mobile-menu-groups">
             {groups.map((group) => (
                 <section key={group.label} className="os-mobile-menu-group" data-nav-section={group.label.toLowerCase()}>
@@ -331,6 +340,14 @@ export function OSMobileNav() {
                   </div>
                 </section>
             ))}
+            </div>
+            <div className="os-mobile-menu-account">
+              <span className="os-mobile-menu-ws-mark" aria-hidden="true">{state.currentUser.name.charAt(0).toUpperCase()}</span>
+              <div>
+                <strong>{state.currentUser.name}</strong>
+                <span>{state.currentUser.email}</span>
+              </div>
+              <Link href="/app/settings" className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>Settings</Link>
             </div>
           </div>
         </OSModal>

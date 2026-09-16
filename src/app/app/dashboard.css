@@ -2891,6 +2891,32 @@ select.os-input option {
 .os-capability-list li { position: relative; padding-left: 16px; color: var(--text-dim); font-size: 12.5px; line-height: 1.45; }
 .os-capability-list li::before { content: ""; position: absolute; left: 0; top: .54em; width: 6px; height: 6px; border-radius: 50%; background: var(--cyan); }
 
+/* ---- Grouped, progressively-disclosed capability overview (Connectors) ----
+   Named groups replace a flat wall of pills: each group states its own
+   count once and previews a few items; expanding never shifts sibling
+   groups, since the preview line is simply swapped for the full list in
+   place rather than pushing the page around. */
+.os-capability-groups { display: grid; }
+.os-capability-group { padding: 14px 18px; }
+.os-capability-group + .os-capability-group { border-top: 1px solid var(--line); }
+.os-capability-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.os-capability-group-heading { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex-wrap: wrap; }
+.os-capability-group-label { color: var(--text); font-size: 13px; font-weight: 600; letter-spacing: -.006em; }
+.os-capability-group-description { color: var(--text-faint); font-size: 11.5px; }
+.os-capability-group-count { flex: none; color: var(--text-mute); font-family: var(--font-mono); font-size: 11.5px; }
+.os-capability-group-preview { margin: 6px 0 0; color: var(--text-dim); font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; }
+.os-capability-group-content { overflow: hidden; }
+.os-capability-group-content[data-state="closed"] { display: none; }
+.os-capability-group-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 6px 16px; margin: 8px 0 0; padding: 0; list-style: none; }
+.os-capability-group-list li { position: relative; padding-left: 14px; color: var(--text-dim); font-size: 12px; line-height: 1.5; }
+.os-capability-group-list li::before { content: ""; position: absolute; left: 0; top: .58em; width: 5px; height: 5px; border-radius: 50%; background: var(--cyan); }
+.os-capability-group-toggle { margin-top: 8px; padding: 0; border: 0; background: transparent; color: var(--cyan); font-size: 11.5px; font-weight: 600; cursor: pointer; }
+.os-capability-group-toggle:hover { color: var(--cyan-bright); text-decoration: underline; }
+.os-capability-group-toggle:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; border-radius: 3px; }
+@media (prefers-reduced-motion: no-preference) {
+  .os-capability-group-content { transition: grid-template-rows .18s ease; }
+}
+
 .ag-card { padding: var(--space-5); border-radius: var(--radius-lg); }
 .ag-card:hover { background: var(--surface-raised); box-shadow: inset 0 0 0 1px var(--line-2); transform: none; }
 .ag-av { border-radius: var(--radius-md); }
@@ -3350,14 +3376,16 @@ select.os-input option {
 /* Memory is a business context index. It deliberately avoids terminal green
    and equal-weight analytics cards. */
 .os-root .memory-page { width: min(100%, 1420px); max-width: none; }
-.os-root .memory-enrichment-note { max-width: 72ch; margin-top: 8px; color: var(--text-mute); font-size: 12.5px; line-height: 1.5; }
-.os-root .memory-summary-rail { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(280px, 1.6fr); gap: 0; border-block: 1px solid var(--line); background: rgba(255,255,255,.01); }
+.os-root .memory-summary-caption { max-width: 72ch; margin: 6px 0 14px; color: var(--text-mute); font-size: 12.5px; line-height: 1.5; }
+.os-root .memory-summary-rail { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-block: 1px solid var(--line); background: rgba(255,255,255,.01); }
 .os-root .memory-summary-rail > div { display: grid; align-content: center; gap: 4px; min-height: 82px; padding: 13px 18px; border-right: 1px solid var(--line); }
-.os-root .memory-summary-rail > div > span { color: var(--text-faint); font-size: 10px; font-weight: 600; letter-spacing: .065em; text-transform: uppercase; }
+.os-root .memory-summary-rail > div:last-child { border-right: 0; }
+.os-root .memory-summary-rail > div > span { display: flex; align-items: center; gap: 6px; color: var(--text-faint); font-size: 10px; font-weight: 600; letter-spacing: .065em; text-transform: uppercase; }
 .os-root .memory-summary-rail strong { color: var(--text); font-size: 20px; font-weight: 580; line-height: 1.1; }
-.os-root .memory-summary-rail small { color: var(--text-mute); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.os-root .memory-summary-rail aside { display: flex; align-items: center; gap: 8px; padding: 13px 18px; color: var(--text-mute); font-size: 11.5px; line-height: 1.45; }
-.os-root .memory-summary-rail aside .dot { flex: none; }
+.os-root .memory-summary-rail small { color: var(--text-mute); font-size: 11px; line-height: 1.4; white-space: normal; }
+.os-root .memory-summary-attention[data-tone="amber"] strong { color: var(--amber); }
+.os-root .memory-summary-attention[data-tone="green"] strong { color: var(--green); }
+.os-root .memory-summary-attention .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 /* Execution logs: an audit console filter bar. Labelled selects keep the
    control row a fixed, scannable height no matter how many event types the
    platform records, and the result count stays anchored to the right. */
@@ -3400,10 +3428,8 @@ select.os-input option {
 
 /* Governed context surface: the row remains compact, while provenance and
    owner controls are available without turning Memory into a document CMS. */
-.os-root .memory-summary-rail { grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; }
+.os-root .memory-summary-rail { border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; }
 .os-root .memory-summary-rail > div { min-width: 0; }
-.os-root .memory-summary-rail aside { min-width: 0; border-right: 0; }
-.os-root .memory-summary-rail aside strong { color: var(--text); font-weight: 650; }
 .os-root .memory-profile { padding: 0; overflow: hidden; }
 .os-root .memory-profile .card-head { padding: 16px 18px 13px; }
 .os-root .memory-profile-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; border-top: 1px solid var(--line); }
@@ -3412,6 +3438,10 @@ select.os-input option {
 .os-root .memory-profile-grid > div:nth-last-child(-n + 3) { border-bottom: 0; }
 .os-root .memory-profile-grid dt, .os-root .memory-definition-grid dt { color: var(--text-faint); font: 9px var(--font-mono); letter-spacing: .07em; text-transform: uppercase; }
 .os-root .memory-profile-grid dd { margin: 6px 0 0; overflow-wrap: anywhere; color: var(--text-dim); font-size: 12px; line-height: 1.45; }
+/* "Not provided" is an intentional, expected gap in a fresh workspace, not a
+   broken value; it reads as quietly pending rather than as regular fact
+   text sharing the same visual weight as a confirmed answer. */
+.os-root .memory-profile-grid dd[data-empty] { color: var(--text-faint); font-style: italic; }
 .os-root .memory-index-head { align-items: flex-start; gap: 16px; padding: 16px 18px 13px; }
 .os-root .memory-controls { display: flex; align-items: center; justify-content: flex-end; gap: 7px; flex-wrap: wrap; min-width: min(100%, 510px); }
 .os-root .memory-controls select { min-height: 38px; max-width: 155px; padding: 0 10px; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: rgba(255,255,255,.025); color: var(--text-dim); font: 12px var(--font-sans); }
@@ -3434,7 +3464,8 @@ select.os-input option {
 .os-root .memory-page .badge { white-space: nowrap; }
 @media (max-width: 760px) {
   .os-root .memory-summary-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .os-root .memory-summary-rail aside { grid-column: 1 / -1; border-top: 1px solid var(--line); }
+  .os-root .memory-summary-rail > div:nth-child(even) { border-right: 0; }
+  .os-root .memory-summary-attention { grid-column: 1 / -1; border-top: 1px solid var(--line); border-right: 0; }
   .os-root .memory-profile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .os-root .memory-profile-grid > div:nth-child(3n) { border-right: 1px solid var(--line); }
   .os-root .memory-profile-grid > div:nth-child(2n) { border-right: 0; }
@@ -3620,7 +3651,7 @@ select.os-input option {
   .os-root .memory-summary-rail { grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
   .os-root .memory-summary-rail > div { min-height: 76px; padding: 12px; border-bottom: 1px solid var(--line); }
   .os-root .memory-summary-rail > div:nth-child(even) { border-right: 0; }
-  .os-root .memory-summary-rail aside { grid-column: 1 / -1; padding: 12px; }
+  .os-root .memory-summary-attention { grid-column: 1 / -1; padding: 12px; border-right: 0; }
   .os-root .os-profile-modal { padding: 16px; }
   .os-root .os-prof-savebar { left: 16px; right: 16px; }
   .os-root .settings-account-skeleton { grid-template-columns: 34px 1fr; padding: 14px; }
@@ -4248,6 +4279,19 @@ select.os-input option {
 .os-root .activity-row-action { color: var(--text-dim); font-size: 13px; font-weight: 400; line-height: 1.45; }
 .os-root .activity-row-sub { display: block; margin-top: 1px; color: var(--text-mute); font-size: 12px; line-height: 1.55; }
 .os-root .activity-row-meta { margin-left: auto; display: flex; align-items: center; gap: 12px; flex: none; padding-top: 2px; }
+/* The row is a <button> that opens the detail overlay, so it needs the
+   native button chrome (border, background, font, alignment) reset back to
+   plain row styling before any of the rules above apply to it. */
+.os-root .activity-row-trigger { width: 100%; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.os-root .activity-row-trigger:hover { background: rgba(255,255,255,.022); }
+.os-root .activity-row-trigger:focus-visible { position: relative; z-index: 1; outline: 2px solid var(--cyan); outline-offset: -2px; }
+.os-root .activity-row-route { display: inline-flex; align-items: center; gap: 2px; }
+.os-root .activity-filter-sheet { display: grid; gap: 2px; }
+.os-root .activity-filter-sheet .os-filter-popover-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 2px 12px; }
+.os-root .activity-filter-sheet .os-filter-option { min-height: 44px; }
+.os-root .activity-detail-facts { margin: 0 0 18px; }
+.os-root .activity-detail-description { margin: 0 0 4px; color: var(--text-dim); line-height: 1.6; }
+.os-root .os-ov-body > .approval-details:last-child { margin-top: 10px; }
 
 /* ---- Metrics ---- */
 .os-root .metrics { display: flex; gap: 0; border-radius: var(--r-lg); background: var(--s1); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
@@ -5029,6 +5073,26 @@ select.os-input option {
   gap: 14px;
   padding: 0;
 }
+/* A composed "nothing pending" state, not an oversized empty rectangle: the
+   card frame itself is already borderless above, so this only needs to stop
+   the shared `.empty` primitive's marketing-page padding from making a
+   one-line message read as a half-empty page. */
+.os-root .approvals-empty { padding: 0; }
+.os-root .approvals-empty .empty { padding: 22px 22px 24px; text-align: left; }
+.os-root .approvals-empty .empty .acts { margin-top: 14px; }
+/* Protected-by-default: a single-line policy callout, not another
+   full-padding content card competing with the queue above it. */
+.os-root .approvals-policy-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: rgba(255,255,255,.012);
+}
+.os-root .approvals-policy-note .t-meta { flex: 1; min-width: 0; }
+.os-root .approvals-policy-note .lnk-open { flex: none; }
 .os-root .approval-review-card--premium {
   overflow: hidden;
   padding: 0 !important;
@@ -5527,18 +5591,84 @@ select.os-input option {
   .os-root .approval-detail .split { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* Row trailing content and title/subtitle truncation were tied to viewport
+   media queries, so a row inside a narrow DETAIL COLUMN on a wide desktop
+   (e.g. the 1440px split view, where the detail pane is ~390px) still
+   truncated titles like "Prepare customer reply" to "Prepare ..." even
+   though there was no actual viewport constraint. Container queries key off
+   the panel's real width instead. */
+@container (max-width: 460px) {
+  .os-root .workflow-detail .row,
+  .os-root .approval-detail .row { align-items: flex-start; flex-wrap: wrap; gap: 8px 12px; }
+  .os-root .workflow-detail .row .ttl,
+  .os-root .workflow-detail .row .sub,
+  .os-root .approval-detail .row .ttl,
+  .os-root .approval-detail .row .sub { white-space: normal; overflow: visible; text-overflow: clip; }
+  /* Forcing .grow to a full-width basis is what actually fixes this: without
+     it, .grow keeps shrinking to share the line with .rt's badge/button
+     until there is less width than a single word, which broke words mid
+     character ("Prepare customer reply" rendered as "Pr/ep/ar/e/..."). A
+     100% basis guarantees the title/subtitle get the whole line and .rt is
+     pushed onto its own line beneath, both fully readable. */
+  .os-root .workflow-detail .row .grow,
+  .os-root .approval-detail .row .grow { flex-basis: 100%; }
+  .os-root .workflow-detail .row .rt,
+  .os-root .approval-detail .row .rt { margin-left: 0; flex: 0 1 auto; flex-wrap: wrap; }
+}
+
+/* ---- Workflow / approval detail: one bordered container, not a stack of
+   nested cards. Sections read as grouped content separated by a rule, the
+   way a single well-typeset document does, instead of a box-in-a-box. ---- */
+.os-root .workflow-detail-block { padding: var(--space-6, 22px) 0; }
+.os-root .workflow-detail-block:first-child { padding-top: 0; }
+.os-root .workflow-detail-block + .workflow-detail-block { border-top: 1px solid var(--line); }
+.os-root .workflow-detail-block-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.os-root .workflow-detail-block-head .t-section { font-size: 13px; }
+.os-root .workflow-detail-block > .rows .row:first-child { padding-top: 0; }
+.os-root .workflow-detail-block > .rows .row:last-child { padding-bottom: 0; }
+.os-root .workflow-detail-reason-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.os-root .workflow-detail-reason-list li { position: relative; padding-left: 16px; color: var(--text-dim); font-size: 12.5px; line-height: 1.55; }
+.os-root .workflow-detail-reason-list li::before { content: ""; position: absolute; left: 2px; top: 8px; width: 4px; height: 4px; border-radius: 50%; background: var(--text-faint); }
+.os-root .workflow-detail-attention { margin: 22px 0; padding: 18px 20px; }
+
+/* New header: status + Close share one top line so Close aligns with a
+   single line of content instead of floating beside a two-line title (the
+   "awkward Close button" defect); the title and meta line follow below with
+   their own breathing room above the divider. */
+.os-root .workflow-detail-header { padding: 18px 20px 20px; border-bottom: 1px solid var(--line); }
+.os-root .workflow-detail-top { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.os-root .workflow-detail-title { margin: 12px 0 0; font-size: 16px; line-height: 1.35; }
+.os-root .workflow-detail-subline { display: block; margin-top: 6px; color: var(--text-faint); font-size: 11.5px; }
+
 /* 4. Control labels must not break mid-word. The detail panel's Close
    control was rendering as "Clos / e". */
 .os-root .btn { white-space: nowrap; }
 
-/* 5. The stage rail ran under the panel edge and clipped "Measure".
-   Let it scroll instead of losing the last stage. */
-.os-root .workflow-detail .loop-rail {
-  max-width: 100%;
-  overflow-x: auto;
-  scrollbar-width: none;
+/* 5. The stage rail needs ~527px for five nowrap labels plus connectors, but
+   the detail body is ~390px at 1440, so the last stage was clipped. Hiding it
+   behind a scroller only moved the problem: the rail is the workflow's state,
+   so it wraps instead and every stage stays visible. */
+.os-root .workflow-detail .loop,
+.os-root .approval-detail .loop {
+  flex-wrap: wrap;
+  justify-content: center;
+  row-gap: 10px;
 }
-.os-root .workflow-detail .loop-rail::-webkit-scrollbar { display: none; }
+/* A connector that would force a wrap collapses instead of stretching. */
+.os-root .workflow-detail .loop .ln,
+.os-root .approval-detail .loop .ln {
+  flex: 1 1 14px;
+  min-width: 10px;
+  margin: 0 6px;
+}
+/* Condensed labels buy back enough width that five stages fit on one line
+   at most detail-panel widths; when they still don't, the centered wrap
+   above keeps the remainder visually balanced instead of stranded left. */
+.os-root .workflow-detail .loop .st span,
+.os-root .approval-detail .loop .st span {
+  font-size: 10px;
+  letter-spacing: .09em;
+}
 
 /* Row trailing block. `.rt` is `flex: none`, so on narrow screens a long
    status/meta group pushed past the row instead of wrapping with it. Let it
@@ -5588,5 +5718,351 @@ select.os-input option {
   .os-root .activity-page .seg button {
     min-height: 44px;
     height: auto;
+  }
+}
+
+/* ============================================================
+   ResponsiveOverlay — one overlay frame for the whole product
+   Radix Dialog provides behaviour; everything here is Auterim's
+   own surface, border, radius and type scale.
+   ============================================================ */
+
+.os-ov-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(3, 5, 8, .72);
+  backdrop-filter: blur(2px);
+}
+
+.os-ov {
+  position: fixed;
+  z-index: 121;
+  display: flex;
+  flex-direction: column;
+  /* Content-driven height with a dvh ceiling: no dead fixed-height region,
+     and the frame never extends under mobile browser chrome. */
+  max-height: min(88dvh, 860px);
+  background: var(--s2);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--line), 0 40px 90px -30px rgba(0, 0, 0, .9);
+}
+
+/* Desktop / laptop: centred dialog, width from the size token. */
+.os-ov[data-variant="dialog"] {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(100vw - 48px, var(--os-ov-w, 680px));
+  border-radius: var(--r-lg);
+}
+.os-ov[data-size="sm"] { --os-ov-w: 480px; }
+.os-ov[data-size="md"] { --os-ov-w: 680px; }
+.os-ov[data-size="lg"] { --os-ov-w: 860px; }
+
+/* Mobile: bottom sheet on the safe area. */
+.os-ov[data-variant="sheet"] {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-height: 92dvh;
+  border-radius: 16px 16px 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ---- Header ---- */
+.os-ov-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex: none;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.os-ov-head-text { min-width: 0; flex: 1; }
+.os-ov-eyebrow {
+  margin: 0 0 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+.os-ov-title {
+  margin: 0;
+  font-size: 16.5px;
+  font-weight: 600;
+  letter-spacing: -.015em;
+  color: var(--text);
+}
+.os-ov-context {
+  margin-top: 5px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-mute);
+}
+
+/* One close control, normal border at rest. The cyan ring appears only on
+   keyboard focus, never as a permanent or doubled outline. */
+.os-ov-close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-mute);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  cursor: pointer;
+  transition: color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+.os-ov-close:hover { color: var(--text); background: rgba(255, 255, 255, .04); }
+.os-ov-close:focus { outline: none; }
+.os-ov-close:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--line-3), 0 0 0 2px rgba(77, 232, 225, .55);
+}
+
+/* ---- Body ---- */
+.os-ov-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 18px 20px 20px;
+}
+
+/* ---- Footer ---- */
+.os-ov-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--line);
+  background: var(--s2);
+}
+
+@media (max-width: 767px) {
+  .os-ov-head { padding: 16px 16px 13px; }
+  .os-ov-body { padding: 16px 16px 18px; }
+  .os-ov-foot { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
+  /* On a phone the primary action spans the row so it clears the safe area. */
+  .os-ov-foot > * { flex: 1 1 auto; justify-content: center; }
+  .os-ov-close { width: 44px; height: 44px; }
+}
+
+/* A confirmation dialog has no scrolling body, just a question and two
+   actions, so the header's bottom border (which exists to separate a title
+   from scrollable content below it) is unnecessary and reads as a stray
+   line right above the footer. */
+.os-ov-confirm .os-ov-head { border-bottom: 0; padding-bottom: 4px; }
+.os-ov-confirm .os-ov-context { margin-top: 8px; color: var(--text-dim); }
+
+@media (prefers-reduced-motion: reduce) {
+  .os-ov, .os-ov-scrim { animation: none !important; transition: none !important; }
+}
+
+/* ============================================================
+   Global search — deliberately different on desktop and mobile
+   ============================================================ */
+
+.os-root .os-command-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 14vh;
+  background: rgba(0, 0, 0, .6);
+  backdrop-filter: blur(6px);
+}
+.os-root .os-command-panel {
+  width: 100%;
+  max-width: 560px;
+  max-height: 68dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #0E1218, #0A0D12);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), 0 40px 80px rgba(0, 0, 0, .7);
+}
+.os-root .os-command-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+/* Results own the remaining height and scroll independently. */
+.os-root .os-command-panel > *:not(.os-command-search) {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Mobile: a full-screen search surface, not a small centred dialog. The
+   input sits at the top so the virtual keyboard never covers the results. */
+@media (max-width: 767px) {
+  .os-root .os-command-backdrop {
+    padding-top: 0;
+    align-items: stretch;
+    backdrop-filter: none;
+    background: rgba(6, 7, 10, .94);
+  }
+  .os-root .os-command-panel {
+    max-width: none;
+    max-height: none;
+    height: 100dvh;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .os-root .os-command-search {
+    padding: 12px 14px;
+    gap: 12px;
+  }
+  .os-root .os-command-search input { min-height: 44px; font-size: 16px; }
+}
+
+/* ============================================================
+   Mobile top bar — a designed mobile header, not a squeezed desktop one
+   ============================================================ */
+@media (max-width: 767px) {
+  .os-root .os-top {
+    min-height: 56px;
+    padding-top: env(safe-area-inset-top);
+    gap: 8px;
+  }
+  /* The breadcrumb trail collapses to the current page only. */
+  .os-root .os-top .crumbs { min-width: 0; font-size: 13px; }
+  .os-root .os-top .crumbs > span:first-child,
+  .os-root .os-top .crumbs .sep { display: none; }
+  .os-root .os-top .crumbs b {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .os-root .os-top .os-env { display: none; }
+
+  /* The search trigger becomes an icon control; the full placeholder is a
+     desktop affordance and read as a broken input on a phone. */
+  .os-root .os-top .top-search {
+    flex: none;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 10px;
+  }
+  .os-root .os-top .top-search .top-search-label { display: none; }
+
+  .os-root .os-top-actions { gap: 4px; }
+  .os-root .os-top-actions .os-iconbtn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* The workflow detail inside the compact sheet: the overlay owns the frame,
+   so the panel contributes content only. */
+.os-root .workflow-detail.is-embedded { background: none; box-shadow: none; border-radius: 0; }
+.os-root .workflow-detail.is-embedded > .card-pad { padding: 0; }
+
+/* When the rail wraps, the flexible connectors become stray marks between
+   rows. Hide them and let the stage dots carry the sequence. */
+@container (max-width: 520px) {
+  .os-root .workflow-detail .loop .ln,
+  .os-root .approval-detail .loop .ln { display: none; }
+  .os-root .workflow-detail .loop,
+  .os-root .approval-detail .loop { gap: 10px 18px; }
+}
+.os-root .os-ov .loop { flex-wrap: wrap; gap: 10px 18px; }
+.os-root .os-ov .loop .ln { display: none; }
+
+/* Mobile navigation sheet: workspace identity and account area. */
+.os-root .os-mobile-menu-ws { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.os-root .os-mobile-menu-ws-mark {
+  flex: none; display: grid; place-items: center;
+  width: 32px; height: 32px; border-radius: 9px;
+  background: var(--s-cyan); color: var(--acc);
+  font-size: 13px; font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(77, 232, 225, .22);
+}
+.os-root .os-mobile-menu-ws > div { min-width: 0; }
+.os-root .os-mobile-menu-ws strong,
+.os-root .os-mobile-menu-account strong {
+  display: block; font-size: 13.5px; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.os-root .os-mobile-menu-ws span:not(.os-mobile-menu-ws-mark),
+.os-root .os-mobile-menu-account span:not(.os-mobile-menu-ws-mark) {
+  display: block; font-size: 11.5px; color: var(--text-mute);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.os-root .os-mobile-menu-account {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 4px; padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+}
+.os-root .os-mobile-menu-account > div { flex: 1; min-width: 0; }
+.os-root .os-mobile-menu-account .btn { flex: none; min-height: 44px; }
+
+/* Final touch-target floor. Element+class raises specificity above the
+   per-context 34/40/42px floors declared earlier in this sheet, without
+   resorting to !important. Inline prose links are excluded by design. */
+@media (max-width: 1024px) {
+  .os-root a.btn,
+  .os-root button.btn,
+  .os-root a.appr-btn,
+  .os-root button.appr-btn,
+  .os-root button.filter,
+  .os-root a.filter {
+    /* min-height is ignored on inline boxes, which is why these stayed 2px
+       short of the target while the declaration was present. */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    height: auto;
+  }
+}
+
+/* Sidebar chrome on touch-sized viewports: the brand link and the account
+   control are navigation, so they take the same floor as page controls. */
+@media (max-width: 1024px) {
+  .os-root a.os-brand,
+  .os-root button.me {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .os-root button.me { width: 100%; }
+}
+
+/* The narrow-phone approvals header compacts its controls to 34px to fit on
+   one scrolling row. Keep the single-row scrolling behaviour but restore the
+   44px touch floor; the row already scrolls horizontally so the extra width
+   costs nothing. */
+@media (max-width: 430px) {
+  .os-root .approvals-page > .page-head .acts > .btn,
+  .os-root .approvals-page > .sec-head > .inline > .filter,
+  .os-root .approvals-page > .sec-head > .btn {
+    min-height: 44px;
   }
 }

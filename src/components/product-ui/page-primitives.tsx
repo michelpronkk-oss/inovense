@@ -1,4 +1,7 @@
-import { Fragment, type ReactNode } from "react";
+"use client";
+
+import { Fragment, useState, type ReactNode } from "react";
+import { Collapsible as CollapsiblePrimitive } from "radix-ui";
 
 type PageHeaderProps = {
   eyebrow?: string;
@@ -105,4 +108,59 @@ export function LoopRail({ stages, current, className = "" }: { stages: Readonly
 /** Compact definition-list pattern for capability-first product surfaces. */
 export function CapabilityDefinitionList({ items }: { items: Array<{ label: string; value: ReactNode }> }) {
   return <dl className="kv os-capability-definition-list">{items.map((item) => <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>;
+}
+
+export type CapabilityGroup = {
+  key: string;
+  label: string;
+  description?: string;
+  items: string[];
+};
+
+/**
+ * Grouped, progressively-disclosed capability overview. Replaces a flat
+ * "wall of pills" with named groups (e.g. Observe / Prepare / Act) that each
+ * show a count and a short preview by default, and expand in place to list
+ * every capability in that group. The total is stated once by the caller
+ * (typically in the section header), not repeated per group.
+ */
+export function CapabilityGroups({ groups, previewCount = 3 }: { groups: CapabilityGroup[]; previewCount?: number }) {
+  return (
+    <div className="os-capability-groups">
+      {groups.map((group) => <CapabilityGroupRow key={group.key} group={group} previewCount={previewCount} />)}
+    </div>
+  );
+}
+
+function CapabilityGroupRow({ group, previewCount }: { group: CapabilityGroup; previewCount: number }) {
+  const [open, setOpen] = useState(false);
+  const hasMore = group.items.length > previewCount;
+  const preview = group.items.slice(0, previewCount);
+  return (
+    <CollapsiblePrimitive.Root open={open} onOpenChange={setOpen} className="os-capability-group" data-open={open || undefined}>
+      <div className="os-capability-group-head">
+        <div className="os-capability-group-heading">
+          <span className="os-capability-group-label">{group.label}</span>
+          {group.description && <span className="os-capability-group-description">{group.description}</span>}
+        </div>
+        <span className="os-capability-group-count">{group.items.length}</span>
+      </div>
+      {!open && (
+        <p className="os-capability-group-preview">
+          {preview.join(" · ")}
+          {hasMore ? ` +${group.items.length - preview.length} more` : ""}
+        </p>
+      )}
+      <CollapsiblePrimitive.Content className="os-capability-group-content">
+        <ul className="os-capability-group-list">
+          {group.items.map((item) => <li key={item}>{item}</li>)}
+        </ul>
+      </CollapsiblePrimitive.Content>
+      {(hasMore || open) && (
+        <CollapsiblePrimitive.Trigger className="os-capability-group-toggle" aria-label={`${open ? "Collapse" : "Expand"} ${group.label} capabilities`}>
+          {open ? "Show less" : "View all"}
+        </CollapsiblePrimitive.Trigger>
+      )}
+    </CollapsiblePrimitive.Root>
+  );
 }

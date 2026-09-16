@@ -396,20 +396,10 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
       role="dialog"
       aria-modal="true"
       aria-label="Search Auterim"
-      style={{
-        position: "fixed", inset: 0, zIndex: 100,
-        background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)",
-        display: "flex", alignItems: "flex-start", justifyContent: "center",
-        paddingTop: "18vh",
-      }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="os-command-panel" style={{
-        background: "linear-gradient(180deg, #0E1218, #0A0D12)",
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08), 0 40px 80px rgba(0,0,0,0.7)",
-        borderRadius: 16, width: "100%", maxWidth: 520, overflow: "hidden",
-      }}>
-        <div className="os-command-search" style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderBottom: "1px solid var(--line)" }}>
+      <div className="os-command-panel">
+        <div className="os-command-search">
           <SearchIcon size={15} style={{ color: "var(--text-mute)", flexShrink: 0 }} />
           <input
             autoFocus

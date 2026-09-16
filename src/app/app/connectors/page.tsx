@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useOS } from "@/lib/os/app-provider";
 import { useWorkspaceRealtimeInvalidation } from "@/lib/os/workspace-realtime";
-import { MetricStrip, PageHeader } from "@/components/product-ui/page-primitives";
+import { CapabilityGroups, MetricStrip, PageHeader, type CapabilityGroup } from "@/components/product-ui/page-primitives";
 import { LinkIcon, PlusIcon, XIcon } from "@/components/dashboard/icons";
 import type { Connector } from "@/lib/os/types";
 import { UsageBanner } from "@/components/upgrade-prompt";
@@ -233,6 +233,32 @@ function orderCapabilitySummary(items: string[]): string[] {
   });
 }
 
+/**
+ * Groups the already-humanized capability/action strings from
+ * capability-labels.ts and action-labels.ts into named coverage areas, purely
+ * for display. This never invents a capability or re-labels one; it only
+ * buckets the exact vocabulary those two files already produce, using the
+ * verbs and nouns they consistently use ("context"/"monitoring"/"visibility"
+ * for read access, "approval-gated"/"approved" for anything gated before it
+ * runs). Replaces a flat pill wall with a small set of scannable groups once
+ * the list is long enough that grouping actually helps.
+ */
+function groupCapabilitySummary(items: string[]): CapabilityGroup[] {
+  const understand: string[] = [];
+  const prepare: string[] = [];
+  const act: string[] = [];
+  for (const item of items) {
+    if (/context|monitoring|visibility|^Monitor\b|^Read\b|^Search\b/i.test(item)) understand.push(item);
+    else if (/approval-gated|approved|^Prepare\b|^Draft\b/i.test(item)) prepare.push(item);
+    else act.push(item);
+  }
+  return [
+    { key: "understand", label: "Understand", description: "Read-only context operators use to decide", items: understand },
+    { key: "prepare", label: "Prepare", description: "Drafted or approval-gated before it runs", items: prepare },
+    { key: "act", label: "Act", description: "Runs without a separate approval step", items: act },
+  ].filter((group) => group.items.length > 0);
+}
+
 export default function ConnectorsPage() {
   const {
     state,
@@ -322,7 +348,6 @@ export default function ConnectorsPage() {
   const [teamsSaving, setTeamsSaving] = useState(false);
   const [teamsSetupError, setTeamsSetupError] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [capabilitiesExpanded, setCapabilitiesExpanded] = useState(false);
   const [operatorReadiness, setOperatorReadiness] = useState<{ operatorKey: string; status: string; canRunManual: boolean; availableActions: string[]; availableBusinessActions?: string[] }[]>([]);
 
   // Real connected means authenticated through a provider's direct OAuth flow.
@@ -535,7 +560,7 @@ export default function ConnectorsPage() {
       .flatMap((r) => r.availableBusinessActions ?? humanizeOperatorActions(r.availableActions ?? []));
     return orderCapabilitySummary(actions);
   }, [operatorReadiness]);
-  const visibleCapabilitySummary = capabilitiesExpanded ? whatAuterimCanDoNow : whatAuterimCanDoNow.slice(0, 5);
+  const capabilityGroups = useMemo(() => groupCapabilitySummary(whatAuterimCanDoNow), [whatAuterimCanDoNow]);
 
   // Real-connector-only workflow suggestions (see getRealWorkspaceSuggestedWorkflows,
   // src/lib/os/workflow-recommendations.ts) - never the mock/demo engine.
@@ -1084,7 +1109,7 @@ export default function ConnectorsPage() {
       <MetricStrip items={[
         { label: "Connected", value: realConnectedCount, detail: connectorLimit !== null ? `of ${connectorLimit} on ${planLabel}` : "systems" },
         { label: "Healthy", value: healthyCount, detail: "of connected systems" },
-        { label: "Live capabilities", value: whatAuterimCanDoNow.length, detail: "things operators can do now" },
+        { label: "Live capabilities", value: whatAuterimCanDoNow.length, detail: "ready to use now" },
         { label: "Suggested workflows", value: suggestedWorkflows.length, detail: "ready to set up" },
       ]} />
 
@@ -1163,24 +1188,10 @@ export default function ConnectorsPage() {
       {whatAuterimCanDoNow.length > 0 && (
         <div className="p connector-capability-summary" style={{ borderRadius: 16, background: "linear-gradient(145deg, rgba(77,232,225,0.045), rgba(255,255,255,0.012))" }}>
           <div className="p-head" style={{ alignItems: "flex-start" }}>
-            <h3>What Auterim can do now</h3>
+            <h3>Capability coverage</h3>
             <div className="p-meta">{whatAuterimCanDoNow.length} live {whatAuterimCanDoNow.length === 1 ? "capability" : "capabilities"}</div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 8, padding: "14px 18px 16px" }}>
-            {visibleCapabilitySummary.map((item) => (
-              <div key={item} style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0, padding: "9px 10px", borderRadius: 9, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)", fontSize: 12, color: "var(--text-dim)" }}>
-                <span style={{ width: 18, height: 18, flex: "0 0 auto", borderRadius: 999, display: "grid", placeItems: "center", color: "var(--cyan)", background: "rgba(77,232,225,0.08)", fontSize: 11 }}>✓</span>
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{item}</span>
-              </div>
-            ))}
-          </div>
-          {whatAuterimCanDoNow.length > 5 && (
-            <div style={{ padding: "0 18px 14px" }}>
-              <button type="button" className="btn btn-ghost btn-sm" style={{ color: "var(--text-mute)", fontSize: 11 }} onClick={() => setCapabilitiesExpanded((expanded) => !expanded)}>
-                {capabilitiesExpanded ? "Show fewer" : `+${whatAuterimCanDoNow.length - 5} more`}
-              </button>
-            </div>
-          )}
+          <CapabilityGroups groups={capabilityGroups} />
         </div>
       )}
 
