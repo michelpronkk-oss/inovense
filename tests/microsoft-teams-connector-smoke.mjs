@@ -31,7 +31,8 @@ const disconnectRoute = read("src/app/api/connectors/disconnect/route.ts");
 const approveRoute = read("src/app/api/approvals/[id]/approve/route.ts");
 const registry = read("src/lib/connectors/registry.ts");
 const actionRegistry = read("src/lib/actions/registry.ts");
-const truth = read("src/lib/connectors/truth.ts");
+const truth = read("src/lib/connectors/truth-server.ts");
+const salesforceTruth = read("src/lib/connectors/salesforce-truth.ts");
 const evaluate = read("src/lib/policies/evaluate.ts");
 const executionPolicy = read("src/lib/policies/execution-policy.ts");
 const workspacePolicy = read("src/lib/policies/workspace-policy.ts");
@@ -240,8 +241,8 @@ check(22, "Teams sends are approval-first and can never auto-execute", () => {
 
 check(23, "An authorized, approved Teams send executes through one audited path", () => {
   assert.match(approveRoute, /await sendTeamsChannelMessageAfterApproval\(/);
-  assert.match(approveRoute, /event: "teams\.message_sent_after_approval"/, "the send must be recorded in execution logs");
-  assert.match(approveRoute, /\/\/ Provider identifiers only - never the message body\.\s*\n\s*message: `Sent approved Microsoft Teams message to channel \$\{sent\.channelId\}`/, "execution logs must never contain the Teams message body");
+  assert.match(approveRoute, /event: "teams\.message_accepted_after_approval"/, "the send must be recorded in execution logs");
+  assert.match(approveRoute, /\/\/ Provider identifiers only - never the message body\.\s*\n\s*message: `Microsoft Graph accepted the approved Teams message for channel \$\{sent\.channelId\}; delivery is not yet confirmed\.`/, "execution logs must never contain the Teams message body");
   assert.match(teamsExecutor, /export async function sendTeamsChannelMessageAfterApproval/);
 });
 
@@ -271,7 +272,8 @@ check(26, "Salesforce read-only truth is unaffected", () => {
   assert.match(salesforceEntry, /writeActions: \[\]/, "Salesforce must still declare zero write actions");
   assert.doesNotMatch(salesforceEntry, /\.write/, "Salesforce must still declare no write capability");
   assert.doesNotMatch(actionRegistry, /"salesforce"/, "Salesforce must still not be a registered write adapter");
-  assert.match(truth, /connectorKey: "salesforce"[\s\S]{0,900}executable: false/, "Salesforce must remain non-executable");
+  assert.match(salesforceTruth, /SALESFORCE_CONNECTOR_KEY = "salesforce"/, "Salesforce truth must retain its canonical connector key");
+  assert.match(salesforceTruth, /executable: false/, "Salesforce must remain non-executable");
 });
 
 check(27, "No provider write bypass exists anywhere", () => {
@@ -312,13 +314,13 @@ check(30, "Teams absence never breaks an operator", () => {
 check(31, "Teams is an optional enhancement, never a hard requirement", () => {
   assert.match(requirements, /operatorKey: "operations",[\s\S]{0,700}required: \["pm\.tasks\.read"\],/, "Operations' hard requirement must stay Trello-shaped");
   assert.match(requirements, /operatorKey: "client_flow",[\s\S]{0,700}required: \["email\.read", "email\.send_after_approval"\],/, "Client Flow's hard requirement must stay email-shaped");
-  assert.match(requirements, /optional: \["chat\.channels\.read", "chat\.messages\.read", "chat\.messages\.send_after_approval", "calendar\.events\.read"/, "Teams capabilities must be declared optional for Operations");
+  assert.match(requirements, /operatorKey: "operations",[\s\S]{0,1200}optional: \[[\s\S]*"chat\.channels\.read", "chat\.messages\.read", "chat\.messages\.send_after_approval"/, "Teams capabilities must be declared optional for Operations");
   assert.doesNotMatch(requirements, /required: \[[^\]]*chat\./, "no operator may hard-require a team-chat capability");
 });
 
 check(32, "Teams capability labels only appear when Teams is genuinely usable", () => {
   assert.match(availableActions, /"teams\.readChannelMessages": "microsoft_teams"/, "Teams actions must require the Teams connector, not merely a chat capability");
-  assert.match(availableActions, /ACTIONS_REQUIRING_EXECUTABLE_CONNECTOR = new Set\(\["teams\.prepareMessage"\]\)/, "a Teams send claim must require an executable Teams connector");
+  assert.match(availableActions, /ACTIONS_REQUIRING_EXECUTABLE_CONNECTOR = new Set\(\[[^\]]*"teams\.prepareMessage"/, "a Teams send claim must require an executable Teams connector");
   assert.match(availableActions, /if \(row\?\.executable !== true\) return false;/);
   assert.match(actionLabels, /"teams\.readChannelMessages": "Monitor Teams channel messages"/);
   assert.match(actionLabels, /"teams\.prepareMessage": "Send approved Teams messages"/);

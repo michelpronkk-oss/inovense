@@ -4,7 +4,7 @@ import { AuthorizationError, requireWorkspaceRoleForIdentity } from "@/lib/serve
 import { loadPolicyWorkspaceSettings, savePolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
 import type { WorkspaceAutonomyMode } from "@/lib/policies/types";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
-import { getConnectorTruth } from "@/lib/connectors/truth";
+import { getConnectorTruth } from "@/lib/connectors/truth-server";
 
 type PatchBody = {
   workspaceId?: string;

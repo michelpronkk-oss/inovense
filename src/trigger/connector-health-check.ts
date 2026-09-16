@@ -1,5 +1,5 @@
 import { task } from "@trigger.dev/sdk/v3";
-import { getConnectorTruth, type SafeConnectorTruth } from "@/lib/connectors/truth";
+import { getConnectorTruth, type SafeConnectorTruth } from "@/lib/connectors/truth-server";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 import { listSlackChannels } from "@/lib/operators/executors/slack";
 import { listTrelloBoards } from "@/lib/operators/executors/trello";

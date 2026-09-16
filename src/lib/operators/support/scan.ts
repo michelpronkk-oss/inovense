@@ -19,7 +19,7 @@ import {
   type SafeMicrosoftMessage,
   type StoredMicrosoftCredential,
 } from "@/lib/connectors/microsoft";
-import { getConnectorTruth } from "@/lib/connectors/truth";
+import { getConnectorTruth } from "@/lib/connectors/truth-server";
 import { getStoredZendeskCredential, listZendeskTickets, normalizeZendeskTicket, resolveZendeskAccessToken } from "@/lib/connectors/zendesk";
 import { getStoredIntercomCredential, listIntercomConversations, normalizeIntercomConversation, resolveIntercomAccessToken } from "@/lib/connectors/intercom";
 import { prepareAction } from "@/lib/actions/execute";

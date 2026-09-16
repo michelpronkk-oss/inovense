@@ -47,7 +47,7 @@ export function answerSupportQuestion(question: string, states: ProductState[], 
   }
   if (normalized.includes("teams")) {
     return {
-      answer: "Microsoft Teams uses the same Microsoft sign-in as Microsoft 365, but it needs its own Teams permissions before it can be used. Until those are granted, Teams shows as needing permission even when Microsoft mail is healthy. When Teams is connected, Auterim can monitor a selected Teams channel and send Teams messages only after approval. Turning Teams off leaves Microsoft 365 mail and calendar access untouched.",
+      answer: "Microsoft Teams uses the same Microsoft sign-in as Outlook Mail, but it needs its own Teams permissions before it can be used. Until those are granted, Teams shows as needing permission even when Microsoft mail is healthy. When Teams is connected, Auterim can monitor a selected Teams channel and send Teams messages only after approval. Turning Teams off leaves Microsoft 365 mail access untouched.",
       action: actionForHelp("connectors"),
     };
   }

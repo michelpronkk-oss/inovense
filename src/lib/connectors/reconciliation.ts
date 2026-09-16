@@ -1,4 +1,4 @@
-import { getConnectorTruth, type SafeConnectorTruth } from "@/lib/connectors/truth";
+import { getConnectorTruth, type SafeConnectorTruth } from "@/lib/connectors/truth-server";
 import { getWorkspaceOperatorReadiness, type OperatorReadiness } from "@/lib/operators/readiness";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 

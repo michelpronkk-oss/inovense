@@ -3,7 +3,7 @@ import { Resend } from "resend";
 import { AUTERIM_EMAILS } from "@/lib/brand";
 import { SUPPORT_FROM } from "@/lib/email/config";
 import { getWorkspaceOperatorProductStates } from "@/lib/operators/product-state";
-import { getConnectorTruth } from "@/lib/connectors/truth";
+import { getConnectorTruth } from "@/lib/connectors/truth-server";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { requestBodyWithinLimit } from "@/lib/server/request-guards";

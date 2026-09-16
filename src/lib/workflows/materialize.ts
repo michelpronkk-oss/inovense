@@ -7,7 +7,7 @@ import { getStoredAsanaCredential } from "@/lib/connectors/asana";
 import { getStoredJiraCredential, isCreateableJiraIssueType, listJiraIssueTypes, resolveJiraAccessToken } from "@/lib/connectors/jira";
 import { validateTrelloDestination } from "@/lib/operators/executors/trello";
 import { readMicrosoftTeamsSettings } from "@/lib/connectors/microsoft-teams";
-import { getConnectorTruth } from "@/lib/connectors/truth";
+import { getConnectorTruth } from "@/lib/connectors/truth-server";
 import { prepareRevenueFollowUpEmail } from "@/lib/operators/executors/gmail";
 import { evaluateExecutionPolicy } from "@/lib/policies/execution-policy";
 import { buildCanonicalApprovalScope } from "@/lib/policies/approval-scope";

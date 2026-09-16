@@ -1,5 +1,5 @@
 import { getConnectorDefinition } from "@/lib/connectors/registry";
-import { getConnectorTruth, type SafeConnectorTruth } from "@/lib/connectors/truth";
+import { getConnectorTruth, type SafeConnectorTruth } from "@/lib/connectors/truth-server";
 import { getOperatorDefinition } from "@/lib/operators/registry";
 import { loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";

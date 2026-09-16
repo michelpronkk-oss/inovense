@@ -49,7 +49,7 @@ export type ConnectorDefinition = {
    * place of CONNECTOR_CATEGORY_LABELS[category] when a connector's real
    * capabilities span more than its single filing category communicates
    * (e.g. Microsoft 365 files under "email" for discovery-filter grouping,
-   * but also reads/writes calendar events). Category itself stays
+   * but also supports shared capability surfaces). Category itself stays
    * unchanged so filter/grouping logic is unaffected -- only the label
    * shown to users differs. Read this via connectorCategoryLabel(), never
    * CONNECTOR_CATEGORY_LABELS[category] directly.
@@ -138,17 +138,25 @@ export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
   },
 
   microsoft: {
-    connectorKey: "microsoft", displayName: "Microsoft 365", category: "email", categoryLabel: "Email & calendar", authType: "direct_oauth",
-    letter: "Ms", color: "#0078D4", description: "Outlook Mail context, approval-gated email send, and Outlook Calendar read/write.",
+    connectorKey: "microsoft", displayName: "Microsoft 365", category: "email", categoryLabel: "Email", authType: "direct_oauth",
+    letter: "Ms", color: "#0078D4", description: "Outlook Mail context with approval-gated email replies and sends.",
     status: "available",
-    capabilities: ["email.read", "email.draft", "email.send_after_approval", "email.thread.read", "calendar.events.read", "calendar.events.write_after_approval"],
+    capabilities: ["email.read", "email.draft", "email.send_after_approval", "email.thread.read"],
     usedByOperators: ["revenue", "client_flow", "operations", "support"],
-    readActions: ["Read recent mail", "Read calendar events"],
-    writeActions: ["Send approved email", "Create or update calendar event after approval"],
-    approvalRequiredActions: ["External email send", "Calendar event create/update/delete"],
-    eventTypes: ["email.received", "email.sent", "calendar.event.created"],
+    readActions: ["Read recent mail"],
+    writeActions: ["Send approved email reply or message"],
+    approvalRequiredActions: ["External email send or reply"],
+    eventTypes: ["email.received", "email.sent"],
     riskLevel: "medium",
-    setupNotes: "Connects directly with Microsoft Entra ID OAuth (multitenant app, delegated permissions: User.Read, Mail.Read, Mail.Send, Calendars.ReadWrite, offline_access, openid, profile). No third-party OAuth broker is involved.",
+    setupNotes: "Connects directly with Microsoft Entra ID OAuth (multitenant app, delegated permissions: User.Read, Mail.Read, Mail.Send, offline_access, openid, profile). No third-party OAuth broker is involved.",
+  },
+  website: {
+    connectorKey: "website", displayName: "Website", category: "docs_knowledge", categoryLabel: "Website and knowledge", authType: "manual",
+    letter: "W", color: "#4DE8E1", description: "Use one verified public company website as bounded, observed business context for Memory.",
+    status: "available", capabilities: ["website.pages.read", "docs.read"], usedByOperators: ["operations", "client_flow"],
+    readActions: ["Verify one public website domain", "Discover sitemap-first pages", "Sync bounded observed business context"], writeActions: [],
+    approvalRequiredActions: ["Confirm website observation as owner context"], eventTypes: [], riskLevel: "low",
+    setupNotes: "Admin-only setup. HTTPS, domain verification, robots rules, sitemap-first discovery, bounded page budgets, and Memory review are required. Auterim never edits or publishes website content.",
   },
 
   // ── Coming soon (clear near-term path) ───────────────────────────────

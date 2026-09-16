@@ -12,6 +12,7 @@ import type { MemoryCategory, MemoryEntry } from "@/lib/os/types";
 import { getRealConnectedConnectors } from "@/lib/os/truth";
 import { useWorkspaceRealtimeInvalidation, useWorkspaceRealtimeStatus } from "@/lib/os/workspace-realtime";
 import { formatRelativeWorkspaceTime } from "@/lib/product/time";
+import { WebsiteMemoryReview } from "@/components/memory/website-review";
 
 const RELIABILITY_TONE: Record<string, string> = { verified: "green", observed: "cyan", derived: "plan", stale: "amber", missing: "muted" };
 const CATEGORY_LABELS: Record<MemoryCategory, string> = { business: "Business", commercial: "Commercial", customers: "Customers", delivery: "Delivery", support: "Support", operating_rules: "Operating rules" };
@@ -112,6 +113,8 @@ export default function MemoryPage() {
           ].map((field) => <div key={field.label}><dt>{field.label}</dt><dd data-empty={field.provided ? undefined : true}>{field.value}</dd></div>)}
         </dl>
       </section>
+
+      <WebsiteMemoryReview workspaceId={state.workspace.id} canManage={canManageContext} />
 
       <section className="sec card memory-index" aria-label="Governed business context">
         <div className="card-head memory-index-head"><div><h3 className="t-section">Governed context</h3><p className="t-meta" style={{ margin: "3px 0 0" }}>{visibleEntries.length} of {filtered.length} entries · {totalFields} structured fields · source, reliability, and freshness stay attached.</p></div><div className="memory-controls"><label className="memory-search"><SearchIcon size={15} aria-hidden="true" /><input value={q} onChange={(event) => { setQ(event.target.value); setVisibleCount(8); }} placeholder="Search context…" aria-label="Search memory" />{q && <button type="button" onClick={() => setQ("")}>Clear</button>}</label><select value={category} onChange={(event) => { setCategory(event.target.value as MemoryCategory | "all"); setVisibleCount(8); }} aria-label="Filter by category"><option value="all">All categories</option>{Object.entries(CATEGORY_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select><select value={reliability} onChange={(event) => { setReliability(event.target.value); setVisibleCount(8); }} aria-label="Filter by reliability"><option value="all">All trust levels</option><option value="verified">Verified</option><option value="observed">Observed</option><option value="derived">Derived</option><option value="stale">Stale</option></select></div></div>

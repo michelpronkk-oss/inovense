@@ -22,34 +22,45 @@ const microsoftExecutor = read("src/lib/operators/executors/microsoft.ts");
 const approveRoute = read("src/app/api/approvals/[id]/approve/route.ts");
 const runOperator = read("src/lib/operators/runOperator.ts");
 const registry = read("src/lib/connectors/registry.ts");
-const truth = read("src/lib/connectors/truth.ts");
+const truth = `${read("src/lib/connectors/truth-server.ts")}\n${read("src/lib/connectors/salesforce-truth.ts")}`;
 const readiness = read("src/lib/operators/readiness.ts");
 const disconnectRoute = read("src/app/api/connectors/disconnect/route.ts");
+const subscriptionStore = read("src/lib/connectors/microsoft-subscriptions.ts");
+const subscriptionTypes = read("src/lib/connectors/microsoft-subscription-types.ts");
+const webhookRoute = read("src/app/api/connectors/microsoft/webhook/route.ts");
+const lifecycleRoute = read("src/app/api/connectors/microsoft/lifecycle/route.ts");
 
 // ── A. Authorization URL contract: client_id, tenant=organizations default,
 //       exact redirect_uri source, exact scopes, state ──────────────────
 assert.match(microsoftConnector, /client_id: clientId/, "authorize URL must include client_id");
 assert.match(microsoftConnector, /required\("MICROSOFT_CLIENT_ID"\)/, "client_id must come from MICROSOFT_CLIENT_ID env var");
-assert.match(microsoftConnector, /return configured \|\| "organizations";/, "tenant segment must default to organizations when MICROSOFT_TENANT is unset");
+assert.match(microsoftConnector, /return "organizations";/, "tenant segment must use the organizations endpoint");
 assert.doesNotMatch(microsoftConnector, /login\.microsoftonline\.com\/common/, "must never hard-code the common endpoint");
 assert.doesNotMatch(microsoftConnector, /login\.microsoftonline\.com\/consumers/, "must never hard-code the consumers endpoint");
 assert.match(microsoftConnector, /MICROSOFT_OAUTH_SCOPES = \[\.\.\.MICROSOFT_OPENID_SCOPES, \.\.\.MICROSOFT_GRAPH_SCOPES\]/, "authorize request must build scopes from the declared scope list");
-for (const scope of ["openid", "profile", "offline_access", "User.Read", "Mail.Read", "Mail.Send", "Calendars.ReadWrite"]) {
+for (const scope of ["openid", "profile", "offline_access", "User.Read", "Mail.Read", "Mail.Send"]) {
   assert.match(microsoftConnector, new RegExp(scope.replace(".", "\\.")), `required scope ${scope} must be requested`);
 }
+assert.doesNotMatch(microsoftConnector, /Calendars\.ReadWrite/, "the Microsoft connector must not request Calendar permission");
+assert.doesNotMatch(registry, /microsoft:[\s\S]{0,1200}calendar\.events/, "the Microsoft catalog entry must not advertise Calendar capabilities");
 // No broader/application-permission scopes.
 for (const forbidden of ["Mail.ReadWrite.All", "Mail.Send.Shared", "Directory.Read.All", "User.ReadWrite.All"]) {
   assert.doesNotMatch(microsoftConnector, new RegExp(forbidden.replace(/\./g, "\\.")), `must never request ${forbidden}`);
 }
 // The authorize/exchange scope param is now built from a named scope profile
-// ("base" = Microsoft 365 mail+calendar, "teams" = base + delegated Teams
+// ("base" = Outlook Mail, "teams" = base + delegated Teams
 // scopes for incremental consent), never a literal string. Both profiles are
 // still derived from the declared scope arrays above.
 assert.match(microsoftConnector, /scope: microsoftScopesForProfile\(profile\)\.join\(" "\)/, "authorize/exchange scope param must be built from the declared scope profile, not a literal string");
 assert.match(microsoftConnector, /export function microsoftScopesForProfile/, "a single scope-profile resolver must exist");
 assert.match(microsoftConnector, /return profile === "teams" \? MICROSOFT_TEAMS_OAUTH_SCOPES : MICROSOFT_OAUTH_SCOPES;/, "the base profile must never include Teams scopes");
 assert.match(microsoftConnector, /MICROSOFT_TEAMS_OAUTH_SCOPES = \[\.\.\.MICROSOFT_OAUTH_SCOPES, \.\.\.MICROSOFT_TEAMS_GRAPH_SCOPES\]/, "the Teams profile must extend, never replace, the base Microsoft scopes");
-assert.match(microsoftConnector, /state,\s*\}\);/, "authorize URL must include the CSRF state parameter");
+assert.match(microsoftConnector, /\n\s+state,\n/, "authorize URL must include the CSRF state parameter");
+assert.match(microsoftConnector, /code_challenge_method: "S256"/, "authorization code flow must use PKCE S256");
+assert.match(authRoute, /createPkceCodeVerifier/);
+assert.match(authRoute, /persistMicrosoftOAuthState/);
+assert.match(callbackRoute, /consumeMicrosoftOAuthState/);
+assert.match(callbackRoute, /codeVerifier/);
 
 // ── B. Callback uses the exact same redirect URI as the authorize step ───
 assert.match(microsoftConnector, /export function getMicrosoftRedirectUri/, "a single redirect URI resolver must exist");
@@ -67,6 +78,8 @@ assert.doesNotMatch(microsoftConnector, /import\s*\{[^}]*getAppUrl/, "redirect U
 assert.match(oauthState, /export function createMicrosoftOAuthState/);
 assert.match(oauthState, /export function parseMicrosoftOAuthState/);
 assert.match(oauthState, /timingSafeEqual/, "OAuth state signatures must be compared in constant time");
+assert.match(oauthState, /export function createPkceCodeChallenge/);
+assert.match(oauthState, /export function hashOAuthState/);
 assert.match(oauthState, /if \(payload\.provider !== "microsoft"\) throw new Error\("OAuth state provider mismatch"\);/, "Microsoft state must reject state minted for a different provider");
 assert.match(oauthState, /if \(Date\.now\(\) > payload\.exp\) throw new Error\("OAuth state expired"\);/);
 assert.match(callbackRoute, /parseMicrosoftOAuthState\(stateRaw\)/, "callback must validate state before any token exchange");
@@ -116,7 +129,6 @@ assert.match(approveRoute, /microsoftPayload\.workspaceId !== context\.workspace
 
 // ── J/L. Read actions require no approval ─────────────────────────────────
 assert.match(microsoftConnector, /export async function listRecentMicrosoftMessages/);
-assert.match(microsoftConnector, /export async function listMicrosoftCalendarEvents/);
 assert.doesNotMatch(microsoftExecutor, /listRecentMicrosoftMessagesForWorkspace[\s\S]{0,400}os_approvals/, "reading recent mail must never create an approval");
 
 // ── K. Mail.Send stays policy/approval controlled ─────────────────────────
@@ -132,24 +144,27 @@ assert.match(runOperator, /createMicrosoftSendApproval/);
 assert.match(approveRoute, /await sendMicrosoftMessageAfterApproval\(/);
 assert.match(approveRoute, /continuationKind === "microsoft\.send_after_approval"/);
 
-// ── M. Calendar writes stay policy/approval controlled ────────────────────
-assert.match(microsoftConnector, /export async function createMicrosoftCalendarEvent/);
-assert.match(microsoftConnector, /export async function updateMicrosoftCalendarEvent/);
-assert.match(microsoftConnector, /export async function deleteMicrosoftCalendarEvent/);
-assert.match(registry, /"Calendar event create\/update\/delete"/, "calendar writes must be declared as approval-required in the connector catalog");
-assert.match(registry, /"calendar\.events\.write_after_approval"/);
-// No operator/executor path may call the calendar write functions without
-// going through the same approval-gated pattern as Mail.Send (today, no
-// production code path invokes them outside of this library at all, which
-// trivially satisfies "never invoked without approval").
-for (const fn of ["createMicrosoftCalendarEvent", "updateMicrosoftCalendarEvent", "deleteMicrosoftCalendarEvent"]) {
-  assert.doesNotMatch(runOperator, new RegExp(fn), `${fn} must never be called directly from an operator run`);
-}
+// ── M. Outlook/Teams subscriptions stay durable and authenticated ─────────
+assert.match(subscriptionStore, /MICROSOFT_OUTLOOK_RESOURCE = "me\/mailFolders\('Inbox'\)\/messages"/);
+assert.match(subscriptionStore, /changeType: MICROSOFT_SUBSCRIPTION_CHANGE_TYPE/);
+assert.match(subscriptionStore, /includeResourceData: false/);
+assert.match(subscriptionStore, /lifecycleNotificationUrl/);
+assert.match(subscriptionStore, /status: "needs_attention"/);
+assert.match(subscriptionStore, /claim_os_microsoft_subscription_lease/);
+assert.match(subscriptionStore, /reauthorize/);
+assert.match(subscriptionTypes, /subscriptionMetadata/);
+assert.match(webhookRoute, /validationToken/);
+assert.match(webhookRoute, /timingSafeEqual|constantTimeClientStateMatches/);
+assert.match(webhookRoute, /ingestProviderEvent/);
+assert.match(webhookRoute, /202/);
+assert.match(lifecycleRoute, /reauthorizationRequired/);
+assert.match(lifecycleRoute, /subscriptionRemoved/);
+assert.match(lifecycleRoute, /missed/);
 
 // ── N. Disconnect/reconnect ────────────────────────────────────────────────
 assert.match(disconnectRoute, /connectorKey === "microsoft"/, "disconnect route must support the microsoft connector key");
 assert.match(disconnectRoute, /\.eq\("connector_key", "microsoft"\)/);
-assert.match(authRoute, /buildMicrosoftAuthUrl\(state, scopeProfile\)/, "reconnect re-initiates the same OAuth flow with the same scope profile");
+assert.match(authRoute, /buildMicrosoftAuthUrl\(state, scopeProfile, codeChallenge\)/, "reconnect re-initiates the same OAuth flow with the same scope profile and PKCE");
 assert.match(callbackRoute, /onConflict: "workspace_id,connector_key"/, "reconnect must upsert (replace) the existing credential, not duplicate it");
 
 // ── Registry / readiness / truth wiring ───────────────────────────────────

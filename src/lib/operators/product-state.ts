@@ -16,9 +16,11 @@
 // pages) must go through one of these two functions - never re-derive a
 // competing "configured/available/ready" vocabulary locally.
 
+import "server-only";
+
 import { getOperatorActivationState, type OperatorActivationState } from "@/lib/operators/activation";
 import { getWorkspaceOperatorReadiness, type OperatorReadiness } from "@/lib/operators/readiness";
-import { getConnectorTruth, type SafeConnectorTruth } from "@/lib/connectors/truth";
+import { getConnectorTruth, type SafeConnectorTruth } from "@/lib/connectors/truth-server";
 import {
   getOperatorConnectorReadiness,
   getConnectedRequiredConnectorKeys,
@@ -27,6 +29,8 @@ import {
   type RequiredCapabilityHealth,
 } from "@/lib/operators/connector-requirements";
 import { getOperatorDefinition, type OperatorKey } from "@/lib/operators/registry";
+import { REAL_OPERATOR_KEYS } from "@/lib/operators/product-state-types";
+export { REAL_OPERATOR_KEYS } from "@/lib/operators/product-state-types";
 import { getConnectorDefinition } from "@/lib/connectors/registry";
 import { humanizeOperatorActions } from "@/lib/operators/action-labels";
 import { humanizeCapabilities } from "@/lib/operators/capability-labels";
@@ -34,9 +38,6 @@ import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
-
-/** The live operators with shared product state. Other registry entries remain previews/planned. */
-export const REAL_OPERATOR_KEYS: OperatorKey[] = ["revenue", "client_flow", "operations", "support"];
 
 export type OperatorProductState =
   | "needs_setup"

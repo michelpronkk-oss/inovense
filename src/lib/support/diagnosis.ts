@@ -11,7 +11,7 @@ import "server-only";
 // subject, a ticket body, a recipient, a provider payload, or a stack trace -
 // only counts, codes, and copy a customer can act on.
 
-import { getConnectorTruth, type SafeConnectorTruth } from "@/lib/connectors/truth";
+import { getConnectorTruth, type SafeConnectorTruth } from "@/lib/connectors/truth-server";
 import { getOperatorActivationState } from "@/lib/operators/activation";
 import { getWorkspaceExecutionEligibility } from "@/lib/os/execution-eligibility";
 import { loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";

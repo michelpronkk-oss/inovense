@@ -13,7 +13,7 @@ import {
   type SafeMicrosoftMessage,
   type StoredMicrosoftCredential,
 } from "@/lib/connectors/microsoft";
-import { getConnectorTruth } from "@/lib/connectors/truth";
+import { getConnectorTruth } from "@/lib/connectors/truth-server";
 import { createGmailSendApproval } from "@/lib/operators/executors/gmail";
 import { createMicrosoftSendApproval } from "@/lib/operators/executors/microsoft";
 import {
@@ -1747,6 +1747,7 @@ async function scanRevenueOpportunitiesInternal(input: {
       let sourceMetadata: Record<string, unknown> = {
         gmailMessageId: opportunity.message.id,
         gmailThreadId: opportunity.message.threadId,
+        ...(emailConnector === "microsoft" ? { microsoftMessageId: opportunity.message.id, microsoftConversationId: opportunity.message.threadId } : {}),
         dedupeKey: dedupe.dedupeKey,
         normalizedSubject: dedupe.normalizedSubject,
         sourceProvider: dedupe.sourceProvider,

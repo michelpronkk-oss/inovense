@@ -104,6 +104,32 @@ export function createMicrosoftOAuthState(workspaceId: string, userEmail: string
   return `${encoded}.${sig}`;
 }
 
+export function createPkceCodeVerifier(): string {
+  return crypto.randomBytes(32).toString("base64url");
+}
+
+export function createPkceCodeChallenge(codeVerifier: string): string {
+  return crypto.createHash("sha256").update(codeVerifier, "ascii").digest("base64url");
+}
+
+export function hashOAuthState(value: string): string {
+  return crypto.createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+export function oauthStateNonce(value: string): string {
+  const encoded = value.split(".")[0];
+  if (!encoded) throw new Error("Invalid OAuth state format");
+  const payload = JSON.parse(fromBase64Url(encoded)) as { nonce?: unknown };
+  if (typeof payload.nonce !== "string" || !payload.nonce) throw new Error("Invalid OAuth state nonce");
+  return payload.nonce;
+}
+
+export function microsoftOAuthCookieName(): string {
+  // __Host- cookies must always be Secure. Keep local HTTP development usable
+  // without weakening the production cookie contract.
+  return process.env.NODE_ENV === "production" ? "__Host-auterim-microsoft-oauth" : "auterim-microsoft-oauth";
+}
+
 export function parseMicrosoftOAuthState(value: string | null): MicrosoftOAuthStatePayload {
   const payload = parseProviderOAuthState("microsoft", value) as MicrosoftOAuthStatePayload;
   // Explicitly retained at the provider wrapper as an extra regression guard.

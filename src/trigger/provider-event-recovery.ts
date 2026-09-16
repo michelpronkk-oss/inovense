@@ -4,6 +4,7 @@ import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { gmailPushProcess } from "@/trigger/gmail-push-process";
 import { hubspotWebhookProcess } from "@/trigger/hubspot-webhook-process";
 import { slackEventProcess } from "@/trigger/slack-event-process";
+import { microsoftEventProcess } from "@/trigger/microsoft-event-process";
 import { withTaskHeartbeat } from "@/lib/runtime/task-heartbeat";
 
 const RECOVERY_BATCH_SIZE = 200;
@@ -24,7 +25,8 @@ export const providerEventRecovery = schedules.task({
       const isGmail = event.provider === "gmail" && event.event_type === "gmail.history.changed";
       const isHubSpot = event.provider === "hubspot" && event.connector_key === "hubspot" && event.source_mode === "webhook" && event.event_type.startsWith("hubspot.");
       const isSlack = event.provider === "slack" && event.connector_key === "slack" && event.source_mode === "webhook" && event.event_type.startsWith("slack.");
-      if (!isGmail && !isHubSpot && !isSlack) {
+      const isMicrosoft = event.provider === "microsoft" && ["microsoft", "microsoft_teams"].includes(event.connector_key) && ["webhook", "reconciliation"].includes(event.source_mode) && event.event_type.startsWith("microsoft.");
+      if (!isGmail && !isHubSpot && !isSlack && !isMicrosoft) {
         unsupported += 1;
         continue;
       }
@@ -36,8 +38,10 @@ export const providerEventRecovery = schedules.task({
         await gmailPushProcess.trigger({ providerEventId: event.id }, { idempotencyKey, idempotencyKeyTTL: "30d", concurrencyKey: event.connector_id });
       } else if (isHubSpot) {
         await hubspotWebhookProcess.trigger({ providerEventId: event.id }, { idempotencyKey, idempotencyKeyTTL: "30d", concurrencyKey: event.connector_id });
-      } else {
+      } else if (isSlack) {
         await slackEventProcess.trigger({ providerEventId: event.id }, { idempotencyKey, idempotencyKeyTTL: "30d", concurrencyKey: event.connector_id });
+      } else {
+        await microsoftEventProcess.trigger({ providerEventId: event.id }, { idempotencyKey, idempotencyKeyTTL: "30d", concurrencyKey: event.connector_id });
       }
       enqueued += 1;
     }

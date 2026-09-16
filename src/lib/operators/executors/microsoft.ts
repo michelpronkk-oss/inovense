@@ -15,6 +15,7 @@ import {
   MicrosoftGraphError,
   MicrosoftReauthRequiredError,
   resolveMicrosoftAccessToken,
+  replyMicrosoftMail,
   sendMicrosoftMail,
   type StoredMicrosoftCredential,
 } from "@/lib/connectors/microsoft";
@@ -76,6 +77,8 @@ export type PreparedMicrosoftFollowUp = {
   to: string;
   subject: string;
   body: string;
+  sourceMessageId?: string | null;
+  conversationId?: string | null;
 };
 
 export async function createMicrosoftSendApproval(input: {
@@ -85,6 +88,8 @@ export async function createMicrosoftSendApproval(input: {
   to: string;
   subject: string;
   body: string;
+  sourceMessageId?: string | null;
+  conversationId?: string | null;
   policyReason: string;
   dedupeKey?: string;
   dedupeMetadata?: Record<string, unknown>;
@@ -143,6 +148,8 @@ export async function createMicrosoftSendApproval(input: {
       to: input.to,
       subject: input.subject,
       body: input.body,
+      sourceMessageId: input.sourceMessageId ?? (typeof input.sourceMetadata?.microsoftMessageId === "string" ? input.sourceMetadata.microsoftMessageId : null),
+      conversationId: input.conversationId ?? (typeof input.sourceMetadata?.microsoftConversationId === "string" ? input.sourceMetadata.microsoftConversationId : null),
       draftSubject: input.subject,
       draftBody: input.body,
       originalDraftSubject: input.subject,
@@ -188,8 +195,9 @@ export async function createMicrosoftSendApproval(input: {
 }
 
 export type MicrosoftSendResult = {
-  status: "sent";
-  sendEndpoint: "me/sendMail";
+  status: "accepted_pending_delivery";
+  sendEndpoint: string;
+  deliveryConfirmed: false;
 };
 
 /**
@@ -202,6 +210,7 @@ export async function sendMicrosoftMessageAfterApproval(input: {
   to: string;
   subject: string;
   body: string;
+  sourceMessageId?: string | null;
   supabase?: SupabaseAdmin;
 }): Promise<MicrosoftSendResult> {
   const supabase = input.supabase ?? createSupabaseAdmin();
@@ -216,8 +225,15 @@ export async function sendMicrosoftMessageAfterApproval(input: {
 
   try {
     const accessToken = await resolveMicrosoftAccessToken({ workspaceId: input.workspaceId, credential, supabase });
-    await sendMicrosoftMail(accessToken, { to: input.to, subject: input.subject, body: input.body });
-    return { status: "sent", sendEndpoint: "me/sendMail" };
+    const refresh = async () => {
+      const latest = await getMicrosoftCredential(input.workspaceId, supabase);
+      if (!latest) throw new MicrosoftReauthRequiredError();
+      return resolveMicrosoftAccessToken({ workspaceId: input.workspaceId, credential: latest, supabase, forceRefresh: true });
+    };
+    const sent = input.sourceMessageId
+      ? await replyMicrosoftMail(accessToken, input.sourceMessageId, input.body, { refresh })
+      : await sendMicrosoftMail(accessToken, { to: input.to, subject: input.subject, body: input.body }, { refresh });
+    return { status: sent.status, sendEndpoint: sent.endpoint, deliveryConfirmed: false };
   } catch (error) {
     throw toExecutionError(error, "microsoft.message.send");
   }

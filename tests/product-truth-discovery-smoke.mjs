@@ -198,7 +198,7 @@ async function main() {
       assert.equal(result[0].connectorKey, "salesforce");
       assert.equal(result[0].status, "available");
     });
-    await check(23, "Finder contains exactly the eleven live providers", () => assert.deepEqual(live.map((item) => item.displayName).sort(), ["Asana", "Gmail", "Google Drive", "HubSpot", "Jira", "Microsoft 365", "Microsoft Teams", "Salesforce", "Slack", "Trello", "Zendesk"]));
+    await check(23, "Finder contains exactly the twelve live providers", () => assert.deepEqual(live.map((item) => item.displayName).sort(), ["Asana", "Gmail", "Google Drive", "HubSpot", "Jira", "Microsoft 365", "Microsoft Teams", "Salesforce", "Slack", "Trello", "Website", "Zendesk"]));
     await check(24, "Dashboard uses one finder action instead of provider shortlist", () => {
       const source = read("src/components/dashboard/overview.tsx");
       const unlock = source.slice(source.indexOf("function UnlockMore"), source.indexOf("export function OSOverview"));

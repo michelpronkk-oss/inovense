@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getConnectorTruth, type ConnectorTruthStatus } from "@/lib/connectors/truth";
+import { getConnectorTruth, type ConnectorTruthStatus } from "@/lib/connectors/truth-server";
 import { getConnectorDefinition } from "@/lib/connectors/registry";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
@@ -63,8 +63,8 @@ export async function GET(req: NextRequest) {
       ? [
         connector.scopes.some((scope) => scope.toLowerCase() === "mail.read") ? "Mail read access" : "Mail read access missing",
         connector.scopes.some((scope) => scope.toLowerCase() === "mail.send") ? "Mail send access" : "Mail send access missing",
-        connector.scopes.some((scope) => scope.toLowerCase() === "calendars.readwrite") ? "Calendar access" : "Calendar access missing",
-        "Approval required for external email and calendar writes",
+        "Inbox notifications enabled when Microsoft subscription is healthy",
+        "Approval required for external email replies and sends",
       ]
       : connector.connectorKey === "salesforce"
       ? ["OAuth connection only", "Revenue CRM reads and writes are not enabled yet", "Future CRM writes require approval"]

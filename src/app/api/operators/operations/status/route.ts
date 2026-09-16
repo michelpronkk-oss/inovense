@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getConnectorTruth } from "@/lib/connectors/truth";
+import { getConnectorTruth } from "@/lib/connectors/truth-server";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { loadWorkspacePolicySettings } from "@/lib/settings/workspace-policy";
 import { getOperatorReadiness } from "@/lib/operators/readiness";

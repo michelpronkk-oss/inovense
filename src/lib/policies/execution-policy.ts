@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { getActionDefinition } from "@/lib/actions/registry";
 import { businessContextFingerprint } from "@/lib/policies/context";
 import type { ActionType } from "@/lib/actions/types";
-import { getConnectorTruth } from "@/lib/connectors/truth";
+import { getConnectorTruth } from "@/lib/connectors/truth-server";
 import { getOperatorDefinition } from "@/lib/operators/registry";
 import { getWorkspaceExecutionEligibility } from "@/lib/os/execution-eligibility";
 import { evaluatePolicy } from "@/lib/policies/evaluate";

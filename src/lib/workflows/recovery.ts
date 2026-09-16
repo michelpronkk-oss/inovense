@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getConnectorTruth, type SafeConnectorTruth } from "@/lib/connectors/truth";
+import { getConnectorTruth, type SafeConnectorTruth } from "@/lib/connectors/truth-server";
 import { getWorkspaceExecutionEligibility } from "@/lib/os/execution-eligibility";
 import { loadPolicyWorkspaceSettings } from "@/lib/policies/workspace-policy";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";

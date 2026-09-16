@@ -9,6 +9,7 @@ import { listWorkspaceTeamChannels, listWorkspaceTeams } from "@/lib/operators/e
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { AuthorizationError, requireWorkspaceRoleForIdentity } from "@/lib/server/workspace-access";
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
+import { ensureMicrosoftSubscriptions } from "@/lib/connectors/microsoft-subscriptions";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
@@ -25,7 +26,7 @@ type PatchBody = {
  * Microsoft Teams connector settings.
  *
  * Teams settings live on the shared "microsoft" credential row's metadata, so
- * enabling/disabling Teams never touches the Microsoft 365 mail and calendar
+ * enabling/disabling Teams never touches the Microsoft 365 mail
  * access that credential also provides. Reading is member-level; changing what
  * Auterim may do with a connected account is owner/admin only.
  */
@@ -122,7 +123,7 @@ export async function PATCH(req: NextRequest) {
   }
   if (body.enabled === false) {
     // Disabling Teams is a capability change only. The shared Microsoft
-    // credential (and therefore Microsoft 365 mail and calendar) is never
+    // credential (and therefore Microsoft 365 mail) is never
     // deleted here.
     patch.enabled = false;
     patch.defaultTeamId = null;
@@ -204,11 +205,17 @@ export async function PATCH(req: NextRequest) {
     agent_color: "#4DE8E1",
     event: body.enabled === false ? "connector.microsoft_teams.disabled" : "connector.microsoft_teams.settings_updated",
     message: body.enabled === false
-      ? "Microsoft Teams capability disabled. Microsoft 365 mail and calendar access was not changed."
+      ? "Microsoft Teams capability disabled. Microsoft 365 mail access was not changed."
       : "Microsoft Teams destination settings updated.",
     duration: "-",
     status: "ok",
   });
 
-  return NextResponse.json({ settings: publicSettings({ scopes: row.scopes, metadata }) });
+  let subscriptionSetup = "ready";
+  try {
+    await ensureMicrosoftSubscriptions(context.workspaceId, supabase);
+  } catch {
+    subscriptionSetup = "needs_attention";
+  }
+  return NextResponse.json({ settings: publicSettings({ scopes: row.scopes, metadata }), subscriptionSetup });
 }

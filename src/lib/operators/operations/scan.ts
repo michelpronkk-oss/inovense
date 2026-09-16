@@ -1,4 +1,4 @@
-import { getConnectorTruth } from "@/lib/connectors/truth";
+import { getConnectorTruth } from "@/lib/connectors/truth-server";
 import { getStoredAsanaCredential, listAsanaTasks, resolveAsanaAccessToken, type AsanaTask } from "@/lib/connectors/asana";
 import { getJiraProject, getStoredJiraCredential, resolveJiraAccessToken, searchJiraIssues } from "@/lib/connectors/jira";
 import { getStoredZendeskCredential, listZendeskTickets, normalizeZendeskTicket, resolveZendeskAccessToken } from "@/lib/connectors/zendesk";

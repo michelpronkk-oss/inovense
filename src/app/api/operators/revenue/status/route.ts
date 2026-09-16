@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GMAIL_READONLY_SCOPE } from "@/lib/connectors/gmail";
-import { getConnectorTruth } from "@/lib/connectors/truth";
+import { getConnectorTruth } from "@/lib/connectors/truth-server";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { getHubSpotDealPipelineMapping, getHubSpotPropertyReadiness } from "@/lib/operators/executors/hubspot";
 import { getOperatorReadiness } from "@/lib/operators/readiness";

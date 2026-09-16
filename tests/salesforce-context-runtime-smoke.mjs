@@ -44,30 +44,70 @@ async function bundleModule(relSourcePath) {
     target: "node18",
     alias: { "@": path.join(root, "src") },
     external: ["@supabase/supabase-js", "@anthropic-ai/sdk"],
+    // Next.js resolves `server-only` as a framework boundary marker. The
+    // standalone esbuild harness only needs the real runtime behavior, so
+    // provide an empty module for that marker without changing the bundled
+    // Salesforce implementation under test.
+    plugins: [{
+      name: "server-only-test-stub",
+      setup(build) {
+        build.onResolve({ filter: /^server-only$/ }, () => ({ path: "server-only", namespace: "server-only-test" }));
+        build.onLoad({ filter: /.*/, namespace: "server-only-test" }, () => ({ contents: "", loader: "js" }));
+      },
+    }],
     logLevel: "silent",
   });
   return import(pathToFileURL(outfile).href + `?t=${Date.now()}`);
 }
 
-function makeMockSupabase() {
+function makeMockSupabase(initialCredential = null) {
   const updates = [];
+  const credential = initialCredential ? {
+    ...initialCredential,
+    credential_version: initialCredential.credential_version ?? 1,
+  } : null;
   return {
     updates,
+    rpc(name) {
+      if (name === "claim_os_connector_refresh_lock") return Promise.resolve({ data: true, error: null });
+      if (name === "release_os_connector_refresh_lock") return Promise.resolve({ data: true, error: null });
+      return Promise.resolve({ data: null, error: null });
+    },
     from(table) {
-      return {
-        update(fields) {
-          return {
-            eq(col1, val1) {
-              return {
-                eq(col2, val2) {
-                  updates.push({ table, fields, col1, val1, col2, val2 });
-                  return Promise.resolve({ error: null });
-                },
-              };
-            },
-          };
+      let fields = null;
+      let selected = false;
+      const finish = () => {
+        if (fields) {
+          updates.push({ table, fields });
+          if (table === "os_connector_credentials" && credential) Object.assign(credential, fields);
+        }
+        return {
+          error: null,
+          data: selected
+            ? table === "os_connector_credentials" ? credential : null
+            : null,
+        };
+      };
+      const chain = {
+        update(nextFields) {
+          fields = nextFields;
+          return chain;
+        },
+        select() {
+          selected = true;
+          return chain;
+        },
+        eq() {
+          return chain;
+        },
+        maybeSingle() {
+          return Promise.resolve(finish());
+        },
+        then(resolve, reject) {
+          return Promise.resolve(finish()).then(resolve, reject);
         },
       };
+      return chain;
     },
   };
 }
@@ -254,7 +294,8 @@ async function main() {
 
   // 9. A 401/expired-session response triggers exactly one refresh-and-retry, then succeeds.
   {
-    const supabase = makeMockSupabase();
+    const credential = buildCredential();
+    const supabase = makeMockSupabase(credential);
     let queryCalls = 0;
     let tokenCalls = 0;
     const { restore } = mockFetch((url) => {
@@ -270,7 +311,7 @@ async function main() {
       throw new Error(`Unexpected fetch: ${url}`);
     });
     try {
-      const result = await findSalesforcePersonByEmail({ workspaceId: "ws-1", credential: buildCredential(), email: "jane@example.com", supabase });
+      const result = await findSalesforcePersonByEmail({ workspaceId: "ws-1", credential, email: "jane@example.com", supabase });
       assert.equal(result.status, "matched", "a single retry after refresh must succeed");
       assert.equal(queryCalls, 2, "exactly one retry - not zero, not more");
       assert.equal(tokenCalls, 1, "exactly one refresh call");
@@ -282,14 +323,15 @@ async function main() {
 
   // 10. A genuine refresh failure marks the credential needs_attention.
   {
-    const supabase = makeMockSupabase();
+    const credential = buildCredential();
+    const supabase = makeMockSupabase(credential);
     const { restore } = mockFetch((url) => {
       if (isTokenEndpoint(url)) return jsonResponse({ error: "invalid_grant", error_description: "expired access/refresh token" }, 400);
       if (isQueryEndpoint(url)) return jsonResponse([{ message: "Session expired or invalid", errorCode: "INVALID_SESSION_ID" }], 401);
       throw new Error(`Unexpected fetch: ${url}`);
     });
     try {
-      const result = await findSalesforcePersonByEmail({ workspaceId: "ws-1", credential: buildCredential(), email: "jane@example.com", supabase });
+      const result = await findSalesforcePersonByEmail({ workspaceId: "ws-1", credential, email: "jane@example.com", supabase });
       assert.equal(result.status, "error", "a genuine refresh failure must be a safe error result, not a thrown exception out of the adapter boundary");
       assert.ok(supabase.updates.some((u) => u.fields.status === "needs_attention"), "a genuine refresh failure must mark the credential needs_attention");
     } finally {

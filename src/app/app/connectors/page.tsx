@@ -13,6 +13,7 @@ import { getEntitlements } from "@/lib/os/entitlements";
 import { getPlanLabel, isRealConnectedConnector } from "@/lib/os/truth";
 import { clearOnboardingReturn, hasPendingOnboardingReturn, isOnboardingLaunch } from "@/lib/onboarding/return-contract";
 import { ProviderLogo } from "@/components/connectors/provider-logo";
+import { WebsiteSetupPanel } from "@/components/connectors/website-setup";
 import {
   isConnectorAvailableForAuth,
   getConnectorDefinition,
@@ -153,7 +154,7 @@ function connectorDiscoveryState(connector: Connector): { status: string; action
 
 function connectorSafetyNotes(connectorId: string): string[] {
   if (connectorId === "gmail") return ["External customer emails require approval before sending.", "Auterim never sends from Gmail without a reviewed approval."];
-  if (connectorId === "microsoft") return ["External customer emails require approval before sending.", "Calendar event creation, updates and deletion require approval.", "Auterim never sends from Outlook or changes your calendar without a reviewed approval."];
+  if (connectorId === "microsoft") return ["External customer emails require approval before sending.", "Auterim can monitor Inbox messages and reply in the existing Outlook conversation.", "Auterim never sends from Outlook without a reviewed approval."];
   if (connectorId === "salesforce") return ["Salesforce CRM actions are not enabled yet.", "Future record changes will require approval."];
   if (connectorId === "hubspot") return ["CRM changes require approval.", "Customer records are updated only through approved actions."];
   if (connectorId === "slack") return ["Slack alerts are internal.", "Customer-facing Slack messages are not sent automatically."];
@@ -161,7 +162,7 @@ function connectorSafetyNotes(connectorId: string): string[] {
     "Microsoft Teams uses the same Microsoft sign-in as Microsoft 365, with separate Teams permissions.",
     "Auterim reads only the team and channel you select, and never stores full message history.",
     "Every Teams message requires approval before it is sent, including messages to internal channels.",
-    "Turning Teams off leaves your Microsoft 365 mail and calendar access untouched.",
+    "Turning Teams off leaves your Microsoft 365 mail access untouched.",
   ];
   if (connectorId === "trello") return ["Trello task changes require approval.", "Cards, moves and comments execute only after review."];
   if (connectorId === "asana") return ["Asana task creation, updates and comments require approval.", "Auterim writes only inside the selected project scope."];
@@ -1381,7 +1382,9 @@ export default function ConnectorsPage() {
                   <button className="btn btn-ghost btn-sm" onClick={() => selectSetupConnector(null)}>Back</button>
                 </div>
                 <div className="modal-body">
-                <ConnectorSetupView connector={setupConnector} isRealConnected={false} isPreview={isPreview} trialEligible={trialEligible} />
+                {setupConnector.id === "website" ? (
+                  <WebsiteSetupPanel workspaceId={state.workspace.id} canManage={/owner|admin/i.test(state.currentUser.roleLabel)} onStatus={setFeedback} />
+                ) : <ConnectorSetupView connector={setupConnector} isRealConnected={false} isPreview={isPreview} trialEligible={trialEligible} />}
                 {setupConnector.id === "gmail" && (
                   <div style={{ fontSize: 11.5, color: "#9DEFEA" }}>Connect securely with Google</div>
                 )}
@@ -1404,7 +1407,9 @@ export default function ConnectorsPage() {
                 </div>
                 <div className="modal-foot">
                   <button className="btn btn-ghost btn-sm" onClick={() => selectSetupConnector(null)}>Cancel</button>
-                  {isConnectorAvailableForAuth(normalizeConnectorKey(setupConnector.id)) ? (
+                  {setupConnector.id === "website" ? (
+                    <button className="btn btn-ghost btn-sm" onClick={() => selectSetupConnector(null)}>Website controls above</button>
+                  ) : isConnectorAvailableForAuth(normalizeConnectorKey(setupConnector.id)) ? (
                     <button className="btn btn-primary btn-sm" onClick={() => {
                       if (isPreview || atConnectorLimit) {
                         setUpgradeOpen(true);
@@ -1450,6 +1455,9 @@ export default function ConnectorsPage() {
                 jiraReady: drawerJiraReady,
               })}
             />
+            {drawerConnector.id === "website" && (
+              <WebsiteSetupPanel workspaceId={state.workspace.id} canManage={/owner|admin/i.test(state.currentUser.roleLabel)} compact onStatus={setFeedback} />
+            )}
             {drawerConnector.id === "gmail" && drawerConnector.isConnected && (drawerConnector.health !== "healthy" || drawerConnector.records.includes("Reconnect required")) && (
               <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "rgba(245,194,107,0.08)", boxShadow: "inset 0 0 0 1px rgba(245,194,107,0.2)", fontSize: 12, color: "var(--amber)" }}>
                 {drawerConnector.records.includes("opportunity scanning")
@@ -1816,7 +1824,7 @@ export default function ConnectorsPage() {
                   </>
                 )}
               </div>
-              {drawerConnector.id !== "google_drive" && isRealConnectedConnector(drawerConnector) && (
+              {drawerConnector.id !== "google_drive" && drawerConnector.id !== "website" && isRealConnectedConnector(drawerConnector) && (
                 <button className="btn btn-danger btn-sm" disabled={disconnectingConnectorId === drawerConnector.id} onClick={() => void disconnectRealConnector(drawerConnector)}>
                   {disconnectingConnectorId === drawerConnector.id ? "Disconnecting…" : "Disconnect"}
                 </button>

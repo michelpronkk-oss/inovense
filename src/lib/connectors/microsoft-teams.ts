@@ -30,7 +30,7 @@ import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
-/** Catalog key. Kept distinct from "microsoft" (Microsoft 365 mail/calendar). */
+/** Catalog key. Kept distinct from "microsoft" (Microsoft 365 Outlook Mail). */
 export const MICROSOFT_TEAMS_CONNECTOR_KEY = "microsoft_teams";
 
 const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
@@ -76,7 +76,7 @@ export function getMicrosoftTeamsScopeState(scopes: string[] | null | undefined)
 // Teams settings live inside the existing os_connector_credentials.metadata
 // jsonb of the shared "microsoft" row. That keeps a single Microsoft identity
 // and makes "disable Teams" a metadata change rather than a destructive
-// delete of the credential mail/calendar also depends on.
+// delete of the shared Outlook Mail credential also depends on.
 
 export type MicrosoftTeamsCursor = {
   lastSyncedAt: string | null;
@@ -353,7 +353,7 @@ function requestContext(connection: MicrosoftTeamsConnection): GraphRequestConte
     refresh: async () => {
       const fresh = await getMicrosoftCredential(connection.workspaceId, connection.supabase);
       if (!fresh) throw new MicrosoftReauthRequiredError();
-      return resolveMicrosoftAccessToken({ workspaceId: connection.workspaceId, credential: fresh, supabase: connection.supabase });
+      return resolveMicrosoftAccessToken({ workspaceId: connection.workspaceId, credential: fresh, supabase: connection.supabase, forceRefresh: true });
     },
   };
 }
@@ -576,10 +576,11 @@ export async function listRecentChannelMessages(input: {
 // ── Write operation (approval-gated by the caller, never by this file) ───
 
 export type TeamsSendResult = {
-  status: "sent";
+  status: "accepted_pending_delivery";
   teamId: string;
   channelId: string;
   messageId: string | null;
+  deliveryConfirmed: false;
 };
 
 /**
@@ -620,7 +621,26 @@ export async function sendTeamsChannelMessage(input: {
     { body: { contentType: "text", content: text } },
   );
 
-  return { status: "sent", teamId, channelId, messageId: asText(asRecord(created).id) };
+  return { status: "accepted_pending_delivery" as const, teamId, channelId, messageId: asText(asRecord(created).id), deliveryConfirmed: false as const };
+}
+
+/** Fetch exactly one channel message after a webhook notification. */
+export async function getTeamsChannelMessage(input: {
+  connection: MicrosoftTeamsConnection;
+  teamId: string;
+  channelId: string;
+  messageId: string;
+}): Promise<SafeTeamsMessage | null> {
+  const teamId = input.teamId.trim();
+  const channelId = input.channelId.trim();
+  const messageId = input.messageId.trim();
+  if (!teamId || !channelId || !messageId) return null;
+  const raw = await teamsGraphRequest<Record<string, unknown>>(
+    requestContext(input.connection),
+    "GET",
+    `/teams/${encodeURIComponent(teamId)}/channels/${encodeURIComponent(channelId)}/messages/${encodeURIComponent(messageId)}`,
+  );
+  return toSafeMessage(teamId, channelId, raw);
 }
 
 // ── Cursor persistence ──────────────────────────────────────────────────

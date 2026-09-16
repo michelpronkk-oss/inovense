@@ -8,8 +8,8 @@
 //
 // SECURITY NOTES
 // - This app is registered as a MULTITENANT Microsoft Entra application.
-//   MICROSOFT_TENANT must be "organizations" (never a single home tenant id)
-//   so any Microsoft 365 organization can consent. The actual customer
+//   The authorize/token tenant segment is always "organizations" (never a
+//   single home tenant id) so any Microsoft 365 organization can consent. The actual customer
 //   tenant id is captured per-connection from the returned id_token "tid"
 //   claim (or refreshed via re-auth), never assumed to be Auterim's tenant.
 // - MICROSOFT_REDIRECT_URI is the single source of truth for the OAuth
@@ -32,12 +32,11 @@ type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 // Delegated scopes only. Never request application permissions or anything
 // broader than what the Entra app registration was configured with.
 export const MICROSOFT_OPENID_SCOPES = ["openid", "profile", "offline_access"];
-export const MICROSOFT_GRAPH_SCOPES = ["User.Read", "Mail.Read", "Mail.Send", "Calendars.ReadWrite"];
+export const MICROSOFT_GRAPH_SCOPES = ["User.Read", "Mail.Read", "Mail.Send"];
 export const MICROSOFT_OAUTH_SCOPES = [...MICROSOFT_OPENID_SCOPES, ...MICROSOFT_GRAPH_SCOPES];
 export const MICROSOFT_READ_REQUIRED_SCOPES = ["User.Read", "Mail.Read"];
 export const MICROSOFT_SEND_REQUIRED_SCOPES = ["Mail.Send"];
-export const MICROSOFT_CALENDAR_REQUIRED_SCOPES = ["Calendars.ReadWrite"];
-export const MICROSOFT_REQUIRED_SCOPES = [...MICROSOFT_READ_REQUIRED_SCOPES, ...MICROSOFT_SEND_REQUIRED_SCOPES, ...MICROSOFT_CALENDAR_REQUIRED_SCOPES];
+export const MICROSOFT_REQUIRED_SCOPES = [...MICROSOFT_READ_REQUIRED_SCOPES, ...MICROSOFT_SEND_REQUIRED_SCOPES];
 
 // ── Microsoft Teams (same Entra app, same Graph resource, extra delegated
 //    scopes granted through incremental consent) ─────────────────────────
@@ -45,7 +44,7 @@ export const MICROSOFT_REQUIRED_SCOPES = [...MICROSOFT_READ_REQUIRED_SCOPES, ...
 // Teams intentionally reuses this one Microsoft connection instead of
 // creating a second Microsoft account/credential. The scope profile below is
 // only requested when a workspace explicitly asks to enable Teams, so a
-// Microsoft 365 (mail/calendar) connection never silently gains Teams access
+// Microsoft 365 (Outlook Mail) connection never silently gains Teams access
 // and never claims Teams capability it was not consented for.
 //
 // Delegated permissions only - no application permissions, so Auterim can
@@ -60,9 +59,9 @@ export const MICROSOFT_TEAMS_OAUTH_SCOPES = [...MICROSOFT_OAUTH_SCOPES, ...MICRO
 
 /**
  * Which consent surface an authorization/refresh request is for. "base" is the
- * original Microsoft 365 mail+calendar profile; "teams" adds the Teams
+ * original Microsoft 365 Outlook mail profile; "teams" adds the Teams
  * delegated scopes on top (incremental consent - Microsoft keeps previously
- * granted consent, so this never downgrades mail/calendar access).
+ * granted consent, so this never downgrades Outlook Mail access).
  */
 export type MicrosoftScopeProfile = "base" | "teams";
 
@@ -103,7 +102,7 @@ export type MicrosoftConfigStatus = {
 
 /** Safe (no secret values) check used to render a clear UI/server error when Azure env vars are absent. */
 export function getMicrosoftConfigStatus(): MicrosoftConfigStatus {
-  const required = ["MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET", "MICROSOFT_TENANT", "MICROSOFT_REDIRECT_URI"];
+  const required = ["MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET", "MICROSOFT_REDIRECT_URI"];
   const missing = required.filter((name) => !process.env[name]?.trim());
   return { configured: missing.length === 0, missing };
 }
@@ -116,14 +115,12 @@ function required(name: string): string {
 
 /**
  * The tenant segment of the Microsoft identity platform endpoint. This app is
- * multitenant ("All tenants allowed"), so this must resolve to "organizations"
- * in production - never a single directory/tenant id, and never the Entra
- * Object ID. Built from MICROSOFT_TENANT so the value lives in one place
- * instead of being hard-coded into multiple URL strings.
+ * multitenant ("All tenants allowed"), so this always resolves to
+ * "organizations" - never a single directory/tenant id and never the Entra
+ * Object ID.
  */
 export function getMicrosoftTenantSegment(): string {
-  const configured = process.env.MICROSOFT_TENANT?.trim();
-  return configured || "organizations";
+  return "organizations";
 }
 
 function authorizeEndpoint(): string {
@@ -164,7 +161,7 @@ export function getMicrosoftRedirectUri(): string {
   }
 }
 
-export function buildMicrosoftAuthUrl(state: string, profile: MicrosoftScopeProfile = "base"): string {
+export function buildMicrosoftAuthUrl(state: string, profile: MicrosoftScopeProfile = "base", codeChallenge?: string): string {
   const clientId = required("MICROSOFT_CLIENT_ID");
   const redirectUri = getMicrosoftRedirectUri();
   const params = new URLSearchParams({
@@ -174,6 +171,7 @@ export function buildMicrosoftAuthUrl(state: string, profile: MicrosoftScopeProf
     response_mode: "query",
     scope: microsoftScopesForProfile(profile).join(" "),
     state,
+    ...(codeChallenge ? { code_challenge: codeChallenge, code_challenge_method: "S256" } : {}),
   });
   return `${authorizeEndpoint()}?${params.toString()}`;
 }
@@ -201,7 +199,7 @@ export class MicrosoftOAuthError extends Error {
   }
 }
 
-export async function exchangeCodeForTokens(code: string, profile: MicrosoftScopeProfile = "base"): Promise<TokenExchangeResult> {
+export async function exchangeCodeForTokens(code: string, profile: MicrosoftScopeProfile = "base", codeVerifier?: string): Promise<TokenExchangeResult> {
   const clientId = required("MICROSOFT_CLIENT_ID");
   const clientSecret = required("MICROSOFT_CLIENT_SECRET");
   const redirectUri = getMicrosoftRedirectUri();
@@ -215,6 +213,7 @@ export async function exchangeCodeForTokens(code: string, profile: MicrosoftScop
       redirect_uri: redirectUri,
       grant_type: "authorization_code",
       scope: microsoftScopesForProfile(profile).join(" "),
+      ...(codeVerifier ? { code_verifier: codeVerifier } : {}),
     }),
     cache: "no-store",
   });
@@ -344,6 +343,9 @@ export function mergeMicrosoftScopes(granted: string | string[] | null | undefin
   for (const scope of [...(existing ?? []), ...grantedList]) {
     const trimmed = scope?.trim();
     if (!trimmed) continue;
+    // Calendar was part of an earlier prototype. Do not retain or advertise
+    // that permission in the current Outlook connector contract.
+    if (trimmed.toLowerCase() === "calendars.readwrite") continue;
     merged.set(trimmed.toLowerCase(), trimmed);
   }
   return Array.from(merged.values());
@@ -362,6 +364,8 @@ export function toStoredMicrosoftCredential(input: {
   existingScopes?: string[] | null;
   /** Existing credential metadata (Teams settings/cursors) to preserve across reconnects. */
   existingMetadata?: Record<string, unknown> | null;
+  /** Preserve a still-valid refresh token when Entra omits it on reconnect. */
+  existingEncryptedRefreshToken?: string | null;
 }): StoredMicrosoftCredential {
   const expiresAt = input.expiresIn ? new Date(Date.now() + input.expiresIn * 1000).toISOString() : null;
   const scopes = input.scopes || (input.existingScopes?.length ?? 0) > 0
@@ -373,7 +377,7 @@ export function toStoredMicrosoftCredential(input: {
     provider_account_id: input.providerAccountId ?? null,
     provider_email: input.providerEmail ?? null,
     encrypted_access_token: encryptToken(input.accessToken),
-    encrypted_refresh_token: input.refreshToken ? encryptToken(input.refreshToken) : null,
+    encrypted_refresh_token: input.refreshToken ? encryptToken(input.refreshToken) : input.existingEncryptedRefreshToken ?? null,
     token_expires_at: expiresAt,
     scopes,
     status: "connected",
@@ -393,10 +397,6 @@ export function getMissingMicrosoftScopes(scopes: string[] | null | undefined, r
 
 export function hasMicrosoftSendScope(scopes: string[] | null | undefined): boolean {
   return getMissingMicrosoftScopes(scopes, MICROSOFT_SEND_REQUIRED_SCOPES).length === 0;
-}
-
-export function hasMicrosoftCalendarScope(scopes: string[] | null | undefined): boolean {
-  return getMissingMicrosoftScopes(scopes, MICROSOFT_CALENDAR_REQUIRED_SCOPES).length === 0;
 }
 
 export class MicrosoftReauthRequiredError extends Error {
@@ -435,9 +435,10 @@ export async function resolveMicrosoftAccessToken(input: {
   workspaceId: string;
   credential: StoredMicrosoftCredential;
   supabase?: SupabaseAdmin;
+  forceRefresh?: boolean;
 }): Promise<string> {
   const { workspaceId, credential } = input;
-  if (microsoftAccessTokenIsFresh(credential)) return decryptToken(credential.encrypted_access_token);
+  if (!input.forceRefresh && microsoftAccessTokenIsFresh(credential)) return decryptToken(credential.encrypted_access_token);
   if (!credential.encrypted_refresh_token) {
     throw new MicrosoftReauthRequiredError("Microsoft 365 access token expired and no refresh token is stored.");
   }
@@ -455,6 +456,7 @@ export async function resolveMicrosoftAccessToken(input: {
         supabase,
         credential,
         isFresh: microsoftAccessTokenIsFresh,
+        forceRefresh: input.forceRefresh,
         refresh: async (latest) => {
           if (!latest.encrypted_refresh_token) {
             throw new MicrosoftReauthRequiredError("Microsoft 365 access token expired and no refresh token is stored.");
@@ -522,7 +524,7 @@ export async function getMicrosoftCredential(workspaceId: string, supabase: Supa
   return (res.data as StoredMicrosoftCredential | null) ?? null;
 }
 
-// ── Microsoft Graph API (mail + calendar) ───────────────────────────────
+// ── Microsoft Graph API (Outlook Mail) ─────────────────────────────────
 
 export class MicrosoftGraphError extends Error {
   details: {
@@ -547,14 +549,22 @@ function graphMessageFromBody(body: unknown, fallback: string): string {
   return fallback;
 }
 
-async function graphRequest<T = unknown>(accessToken: string, method: string, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${GRAPH_BASE}${path}`, {
+export type MicrosoftGraphRequestOptions = {
+  /** A single forced refresh callback. Never retry a request more than once. */
+  refresh?: () => Promise<string>;
+};
+
+export async function microsoftGraphRequest<T = unknown>(accessToken: string, method: string, path: string, body?: unknown, options?: MicrosoftGraphRequestOptions): Promise<T> {
+  let token = accessToken;
+  let retried401 = false;
+  for (;;) {
+    const res = await fetch(`${GRAPH_BASE}${path}`, {
     method,
     headers: {
-      Authorization: `Bearer ${accessToken}`,
-      ...(body ? { "Content-Type": "application/json" } : {}),
+      Authorization: `Bearer ${token}`,
+      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
     },
-    body: body ? JSON.stringify(body) : undefined,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
     cache: "no-store",
   });
   const text = await res.text();
@@ -569,6 +579,11 @@ async function graphRequest<T = unknown>(accessToken: string, method: string, pa
       json = null;
     }
   }
+  if (res.status === 401 && !retried401 && options?.refresh) {
+    retried401 = true;
+    token = await options.refresh();
+    continue;
+  }
   if (!res.ok) {
     throw new MicrosoftGraphError(graphMessageFromBody(json, `Microsoft Graph ${method} ${path} failed`), {
       step: `graph.${method.toLowerCase()}`,
@@ -578,7 +593,10 @@ async function graphRequest<T = unknown>(accessToken: string, method: string, pa
     });
   }
   return json as T;
+  }
 }
+
+const graphRequest = microsoftGraphRequest;
 
 export type SafeMicrosoftMessage = {
   id: string;
@@ -589,9 +607,17 @@ export type SafeMicrosoftMessage = {
   receivedAt: string | null;
   bodyPreview: string | null;
   bodyText: string | null;
+  internetMessageId: string | null;
+  toRecipients: string[];
+  ccRecipients: string[];
+  hasAttachments: boolean;
+  isDraft: boolean;
+  isDeliveryReceipt: boolean;
+  webUrl: string | null;
 };
 
 type GraphMessageFrom = { emailAddress?: { address?: string; name?: string } };
+type GraphMessageRecipient = { emailAddress?: { address?: string } };
 
 type GraphMessageBody = { contentType?: string; content?: string };
 
@@ -603,6 +629,13 @@ type GraphMessageShape = {
   receivedDateTime?: string;
   bodyPreview?: string;
   body?: GraphMessageBody;
+  internetMessageId?: string;
+  toRecipients?: GraphMessageRecipient[];
+  ccRecipients?: GraphMessageRecipient[];
+  hasAttachments?: boolean;
+  isDraft?: boolean;
+  isDeliveryReceipt?: boolean;
+  webLink?: string;
 };
 
 type GraphMessageListResult = {
@@ -648,16 +681,25 @@ function toSafeMicrosoftMessage(message: GraphMessageShape, fallbackId: string):
     receivedAt: message.receivedDateTime ?? null,
     bodyPreview: message.bodyPreview ?? null,
     bodyText: extractMicrosoftBodyText(message.body),
+    internetMessageId: message.internetMessageId ?? null,
+    toRecipients: (message.toRecipients ?? []).flatMap((recipient) => typeof recipient.emailAddress?.address === "string" ? [recipient.emailAddress.address.toLowerCase().slice(0, 254)] : []).slice(0, 20),
+    ccRecipients: (message.ccRecipients ?? []).flatMap((recipient) => typeof recipient.emailAddress?.address === "string" ? [recipient.emailAddress.address.toLowerCase().slice(0, 254)] : []).slice(0, 20),
+    hasAttachments: message.hasAttachments === true,
+    isDraft: message.isDraft === true,
+    isDeliveryReceipt: message.isDeliveryReceipt === true,
+    webUrl: typeof message.webLink === "string" && message.webLink.startsWith("https://") ? message.webLink.slice(0, 1000) : null,
   };
 }
 
 /** Mail.Read - read-only, no approval required. */
-export async function listRecentMicrosoftMessages(accessToken: string, limit = 20): Promise<SafeMicrosoftMessage[]> {
+export async function listRecentMicrosoftMessages(accessToken: string, limit = 20, options?: MicrosoftGraphRequestOptions): Promise<SafeMicrosoftMessage[]> {
   const top = Math.max(1, Math.min(limit, 50));
   const data = await graphRequest<GraphMessageListResult>(
     accessToken,
     "GET",
-    `/me/messages?$top=${top}&$select=id,subject,from,receivedDateTime,bodyPreview,conversationId&$orderby=receivedDateTime desc`,
+    `/me/mailFolders('Inbox')/messages?$top=${top}&$select=id,subject,from,receivedDateTime,bodyPreview,conversationId,internetMessageId,toRecipients,ccRecipients,hasAttachments,isDraft,isDeliveryReceipt,webLink&$orderby=receivedDateTime desc`,
+    undefined,
+    options,
   );
   return (data.value ?? [])
     .filter((message): message is GraphMessageShape & { id: string } => typeof message.id === "string")
@@ -665,11 +707,13 @@ export async function listRecentMicrosoftMessages(accessToken: string, limit = 2
 }
 
 /** Mail.Read - read-only, no approval required. */
-export async function getMicrosoftMessage(accessToken: string, messageId: string): Promise<SafeMicrosoftMessage> {
+export async function getMicrosoftMessage(accessToken: string, messageId: string, options?: MicrosoftGraphRequestOptions): Promise<SafeMicrosoftMessage> {
   const message = await graphRequest<GraphMessageShape>(
     accessToken,
     "GET",
-    `/me/messages/${encodeURIComponent(messageId)}?$select=id,subject,from,receivedDateTime,bodyPreview,conversationId,body`,
+    `/me/messages/${encodeURIComponent(messageId)}?$select=id,subject,from,receivedDateTime,bodyPreview,conversationId,body,internetMessageId,toRecipients,ccRecipients,hasAttachments,isDraft,isDeliveryReceipt,webLink`,
+    undefined,
+    options,
   );
   return toSafeMicrosoftMessage(message, messageId);
 }
@@ -680,7 +724,13 @@ export async function getMicrosoftMessage(accessToken: string, messageId: string
  * approval logic itself, matching how sendGmailMessage() is also just the
  * raw provider call.
  */
-export async function sendMicrosoftMail(accessToken: string, payload: { to: string; subject: string; body: string }): Promise<void> {
+export type MicrosoftAcceptedWrite = {
+  status: "accepted_pending_delivery";
+  endpoint: string;
+  deliveryConfirmed: false;
+};
+
+export async function sendMicrosoftMail(accessToken: string, payload: { to: string; subject: string; body: string }, options?: MicrosoftGraphRequestOptions): Promise<MicrosoftAcceptedWrite> {
   await graphRequest(accessToken, "POST", "/me/sendMail", {
     message: {
       subject: payload.subject,
@@ -688,78 +738,13 @@ export async function sendMicrosoftMail(accessToken: string, payload: { to: stri
       toRecipients: [{ emailAddress: { address: payload.to } }],
     },
     saveToSentItems: true,
-  });
+  }, options);
+  return { status: "accepted_pending_delivery", endpoint: "/me/sendMail", deliveryConfirmed: false };
 }
 
-export type SafeMicrosoftEvent = {
-  id: string;
-  subject: string | null;
-  start: string | null;
-  end: string | null;
-  organizer: string | null;
-};
-
-type GraphEventListResult = {
-  value?: Array<{
-    id?: string;
-    subject?: string;
-    start?: { dateTime?: string };
-    end?: { dateTime?: string };
-    organizer?: { emailAddress?: { address?: string } };
-  }>;
-};
-
-/** Calendars.ReadWrite (read half) - read-only, no approval required. */
-export async function listMicrosoftCalendarEvents(accessToken: string, limit = 20): Promise<SafeMicrosoftEvent[]> {
-  const top = Math.max(1, Math.min(limit, 50));
-  const data = await graphRequest<GraphEventListResult>(
-    accessToken,
-    "GET",
-    `/me/events?$top=${top}&$select=id,subject,start,end,organizer&$orderby=start/dateTime desc`,
-  );
-  return (data.value ?? [])
-    .filter((event): event is Required<Pick<typeof event, "id">> & typeof event => typeof event.id === "string")
-    .map((event) => ({
-      id: event.id as string,
-      subject: event.subject ?? null,
-      start: event.start?.dateTime ?? null,
-      end: event.end?.dateTime ?? null,
-      organizer: event.organizer?.emailAddress?.address ?? null,
-    }));
-}
-
-export type PreparedMicrosoftEvent = {
-  subject: string;
-  startIso: string;
-  endIso: string;
-  attendeeEmails?: string[];
-  bodyText?: string;
-};
-
-/** Calendars.ReadWrite (write half) - policy/approval controlled. */
-export async function createMicrosoftCalendarEvent(accessToken: string, event: PreparedMicrosoftEvent): Promise<{ id: string }> {
-  const created = await graphRequest<{ id?: string }>(accessToken, "POST", "/me/events", {
-    subject: event.subject,
-    start: { dateTime: event.startIso, timeZone: "UTC" },
-    end: { dateTime: event.endIso, timeZone: "UTC" },
-    body: event.bodyText ? { contentType: "Text", content: event.bodyText } : undefined,
-    attendees: (event.attendeeEmails ?? []).map((email) => ({ emailAddress: { address: email }, type: "required" })),
-  });
-  if (!created.id) throw new MicrosoftGraphError("Microsoft Graph did not return an event id.", { step: "graph.calendar.create", status: 502, statusText: "Missing event id", responseBody: created });
-  return { id: created.id };
-}
-
-/** Calendars.ReadWrite (write half) - policy/approval controlled. */
-export async function updateMicrosoftCalendarEvent(accessToken: string, eventId: string, patch: Partial<PreparedMicrosoftEvent>): Promise<void> {
-  await graphRequest(accessToken, "PATCH", `/me/events/${encodeURIComponent(eventId)}`, {
-    ...(patch.subject ? { subject: patch.subject } : {}),
-    ...(patch.startIso ? { start: { dateTime: patch.startIso, timeZone: "UTC" } } : {}),
-    ...(patch.endIso ? { end: { dateTime: patch.endIso, timeZone: "UTC" } } : {}),
-    ...(patch.bodyText ? { body: { contentType: "Text", content: patch.bodyText } } : {}),
-  });
-}
-
-/** Calendars.ReadWrite (write half) - policy/approval controlled. */
-export async function deleteMicrosoftCalendarEvent(accessToken: string, eventId: string): Promise<void> {
-  await graphRequest(accessToken, "DELETE", `/me/events/${encodeURIComponent(eventId)}`);
+export async function replyMicrosoftMail(accessToken: string, messageId: string, body: string, options?: MicrosoftGraphRequestOptions): Promise<MicrosoftAcceptedWrite> {
+  await graphRequest(accessToken, "POST", `/me/messages/${encodeURIComponent(messageId)}/reply`, {
+    comment: body,
+  }, options);
+  return { status: "accepted_pending_delivery", endpoint: `/me/messages/{id}/reply`, deliveryConfirmed: false };
 }

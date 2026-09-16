@@ -1,3 +1,5 @@
+import "server-only";
+
 import { decryptToken, encryptToken } from "@/lib/connectors/crypto";
 import { credentialRotatedSince, resolveAccessTokenWithRefreshLock } from "@/lib/connectors/refresh-lock";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";

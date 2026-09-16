@@ -88,7 +88,7 @@ const resolveMicrosoftAccessToken = async () => "test-token";`,
     // ── Scope truth ─────────────────────────────────────────────────────
 
     check(1, "Microsoft 365 mail scopes alone never grant Teams", () => {
-      const state = teams.getMicrosoftTeamsScopeState(["User.Read", "Mail.Read", "Mail.Send", "Calendars.ReadWrite"]);
+      const state = teams.getMicrosoftTeamsScopeState(["User.Read", "Mail.Read", "Mail.Send"]);
       assert.equal(state.readGranted, false);
       assert.equal(state.sendGranted, false);
       assert.equal(state.missingScopes.length, 4);

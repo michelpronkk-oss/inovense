@@ -6,7 +6,7 @@ import Image from "next/image";
 import { StatusBadge } from "@/components/operators/status-badge";
 import { useOS } from "@/lib/os/app-provider";
 import { OPERATOR_REGISTRY, isLiveOperator, type OperatorKey } from "@/lib/operators/registry";
-import { REAL_OPERATOR_KEYS } from "@/lib/operators/product-state";
+import { REAL_OPERATOR_KEYS } from "@/lib/operators/product-state-types";
 import { operatorAvatarPath } from "@/lib/operator-assets";
 import { getOperatorCapabilityCopy } from "@/lib/operators/capability-presentation";
 import { getLiveOperatorCardPresentation, ROADMAP_OPERATOR_PRESENTATION } from "@/lib/operators/index-card-presentation";

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
-import { getConnectorTruth } from "@/lib/connectors/truth";
+import { getConnectorTruth } from "@/lib/connectors/truth-server";
 
 export type WorkspaceNotification = { id: string; type: string; title: string; description: string; severity: "info" | "attention" | "critical"; status: "open" | "resolved"; createdAt: string; readAt: string | null; dismissedAt: string | null; relatedRoute: string | null };
 type Candidate = Omit<WorkspaceNotification, "id" | "status" | "createdAt" | "readAt" | "dismissedAt"> & { dedupeKey: string; sourceType: string; sourceId: string };

@@ -10,6 +10,8 @@ import { requireWorkspaceAdmin, AuthorizationError } from "@/lib/server/workspac
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { writeGoogleDriveSettings } from "@/lib/connectors/google-drive";
 import { reconcileConnectorState } from "@/lib/connectors/reconciliation";
+import { ensureMicrosoftSubscriptions } from "@/lib/connectors/microsoft-subscriptions";
+import { deleteMicrosoftSubscription } from "@/lib/connectors/microsoft-subscriptions";
 
 type DisconnectBody = {
   workspaceId?: string;
@@ -91,6 +93,13 @@ export async function POST(req: NextRequest) {
     // (/me/revokeSignInSessions revokes ALL of a user's app sessions
     // platform-wide, which is out of scope and not something Auterim should
     // do on a workspace's behalf.)
+    const subscriptions = await supabase.from("os_microsoft_subscriptions").select("id,provider_subscription_id,workspace_id,connector_key,capability,resource,change_type,notification_url,lifecycle_notification_url,expiration_at,client_state_ref,status,last_notification_at,last_lifecycle_event,last_error_code,failure_count,lease_token,lease_until,metadata").eq("workspace_id", workspaceId);
+    if (subscriptions.error) return NextResponse.json({ error: subscriptions.error.message }, { status: 500 });
+    for (const row of subscriptions.data ?? []) {
+      await deleteMicrosoftSubscription(row, supabase).catch(async () => {
+        await supabase.from("os_microsoft_subscriptions").update({ status: "removed", lease_token: null, lease_until: null }).eq("id", row.id);
+      });
+    }
     const removed = await supabase
       .from("os_connector_credentials")
       .delete()
@@ -127,6 +136,13 @@ export async function POST(req: NextRequest) {
         .eq("workspace_id", workspaceId)
         .eq("connector_key", "microsoft");
       if (updated.error) return NextResponse.json({ error: updated.error.message }, { status: 500 });
+      await ensureMicrosoftSubscriptions(workspaceId, supabase).catch(() => undefined);
+    }
+    if (!credential.data) {
+      const subscriptions = await supabase.from("os_microsoft_subscriptions").select("id").eq("workspace_id", workspaceId).eq("capability", "teams_channel_messages");
+      if (!subscriptions.error) {
+        for (const row of subscriptions.data ?? []) await supabase.from("os_microsoft_subscriptions").update({ status: "removed", lease_token: null, lease_until: null }).eq("id", row.id);
+      }
     }
   } else if (connectorKey === "salesforce") {
     // Salesforce-side token revocation is not implemented yet. Removing this

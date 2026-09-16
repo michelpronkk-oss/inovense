@@ -22,7 +22,7 @@ import {
   type SafeMicrosoftMessage,
   type StoredMicrosoftCredential,
 } from "@/lib/connectors/microsoft";
-import { getConnectorTruth } from "@/lib/connectors/truth";
+import { getConnectorTruth } from "@/lib/connectors/truth-server";
 import { EMPTY_TEAMS_OPERATOR_SIGNALS, getTeamsOperatorSignals, type TeamsOperatorSignals } from "@/lib/operators/executors/microsoft-teams";
 import { prepareAction } from "@/lib/actions/execute";
 import type { PreparedAction } from "@/lib/actions/types";

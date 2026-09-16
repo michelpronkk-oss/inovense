@@ -39,7 +39,7 @@ function testSharedModelExistsAndIsPure() {
   // below to be meaningful.
   assert.match(source, /import \{ getOperatorActivationState, type OperatorActivationState \} from "@\/lib\/operators\/activation";/);
   assert.match(source, /import \{ getWorkspaceOperatorReadiness, type OperatorReadiness \} from "@\/lib\/operators\/readiness";/);
-  assert.match(source, /import \{ getConnectorTruth, type SafeConnectorTruth \} from "@\/lib\/connectors\/truth";/);
+  assert.match(source, /import \{ getConnectorTruth, type SafeConnectorTruth \} from "@\/lib\/connectors\/truth-server";/);
 }
 
 function testPrecedenceOrderInSource() {
@@ -117,8 +117,16 @@ async function loadComputeOperatorProductState() {
       throwingReplacement("getWorkspaceOperatorReadiness"),
     ],
     [
-      'import { getConnectorTruth, type SafeConnectorTruth } from "@/lib/connectors/truth";',
+      'import { getConnectorTruth, type SafeConnectorTruth } from "@/lib/connectors/truth-server";',
       throwingReplacement("getConnectorTruth"),
+    ],
+    [
+      'import "server-only";',
+      "",
+    ],
+    [
+      'export { REAL_OPERATOR_KEYS } from "@/lib/operators/product-state-types";',
+      'const REAL_OPERATOR_KEYS = ["revenue", "client_flow", "operations", "support"];',
     ],
     [
       `import {

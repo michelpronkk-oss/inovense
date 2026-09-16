@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { applyConnectorTruthToState, getConnectorTruth } from "@/lib/connectors/truth";
+import { applyConnectorTruthToState } from "@/lib/connectors/truth";
+import { getConnectorTruth } from "@/lib/connectors/truth-server";
 import { isSupportedNangoConnector } from "@/lib/connectors/registry";
 import { buildSeedState, reconcileConnectorsWithRegistry } from "@/lib/os/seed";
 import type { OSState } from "@/lib/os/types";
@@ -9,6 +10,7 @@ import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supaba
 import { roleLabel } from "@/lib/workspace-permissions";
 import { normalizeMemoryRow, resolveMemoryEntries, type MemoryRow } from "@/lib/memory/model";
 import { normalizeWorkspacePlanTier } from "@/lib/plan-identity";
+import { getWebsiteConnectorTruth } from "@/lib/connectors/website-truth";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -208,6 +210,7 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
     memberResult,
     teamResult,
     connectorTruth,
+    websiteTruth,
   ] = await Promise.all([
     supabase.from("os_workspaces").select("*").eq("id", workspaceId).single(),
     supabase.from("os_state_snapshots").select("state").eq("workspace_id", workspaceId).maybeSingle(),
@@ -217,6 +220,7 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
     memberQuery.maybeSingle(),
     supabase.from("os_workspace_members").select("id,user_id,email,full_name,role,role_key,access,status,active").eq("workspace_id", workspaceId).order("created_at", { ascending: true }).limit(200),
     getConnectorTruth({ workspaceId, supabase }),
+    getWebsiteConnectorTruth({ workspaceId, supabase }),
   ]);
 
   if (workspaceResult.error || !workspaceResult.data) {
@@ -423,7 +427,7 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
   }
 
   state = { ...state, connectors: reconcileConnectorsWithRegistry(state.connectors) };
-  state = applyConnectorTruthToState(state, connectorTruth);
+  state = applyConnectorTruthToState(state, [...connectorTruth, websiteTruth]);
 
   return { workspaceId, state, context };
 }

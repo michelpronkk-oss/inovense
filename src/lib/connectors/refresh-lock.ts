@@ -154,8 +154,10 @@ export async function resolveAccessTokenWithRefreshLock(input: {
   lockSeconds?: number;
   waitBudgetMs?: number;
   sleep?: (ms: number) => Promise<void>;
+  /** Used for the single provider-401 recovery attempt. */
+  forceRefresh?: boolean;
 }): Promise<RefreshLockOutcome> {
-  if (input.isFresh(input.credential)) {
+  if (!input.forceRefresh && input.isFresh(input.credential)) {
     return { accessToken: decryptToken(input.credential.encrypted_access_token), refreshed: false, reusedNewerToken: false };
   }
 
@@ -175,7 +177,7 @@ export async function resolveAccessTokenWithRefreshLock(input: {
     // Someone else holds the lease. They may already have persisted a newer
     // token, in which case there is nothing left to do.
     const latest = await readCredential({ supabase, workspaceId, connectorKey });
-    if (latest && input.isFresh(latest)) {
+    if (latest && input.isFresh(latest) && (!input.forceRefresh || latest.encrypted_access_token !== input.credential.encrypted_access_token)) {
       return { accessToken: decryptToken(latest.encrypted_access_token), refreshed: false, reusedNewerToken: true };
     }
     if (Date.now() >= deadline) throw new RefreshLockUnavailableError();
@@ -185,7 +187,7 @@ export async function resolveAccessTokenWithRefreshLock(input: {
   try {
     const latest = await readCredential({ supabase, workspaceId, connectorKey });
     if (!latest) throw new Error("Connector credential no longer exists.");
-    if (input.isFresh(latest)) {
+    if (input.isFresh(latest) && (!input.forceRefresh || latest.encrypted_access_token !== input.credential.encrypted_access_token)) {
       return { accessToken: decryptToken(latest.encrypted_access_token), refreshed: false, reusedNewerToken: true };
     }
 

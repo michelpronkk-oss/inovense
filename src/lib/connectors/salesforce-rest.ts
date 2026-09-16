@@ -9,6 +9,8 @@
  * Read-only. This module never creates, updates, or deletes any Salesforce
  * record - it only issues SELECT queries via the REST Query resource.
  */
+import "server-only";
+
 import {
   forceRefreshSalesforceAccessToken,
   normalizeSalesforceInstanceUrl,

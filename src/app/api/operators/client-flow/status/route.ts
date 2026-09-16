@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GMAIL_READONLY_SCOPE } from "@/lib/connectors/gmail";
 import { MICROSOFT_READ_REQUIRED_SCOPES, MICROSOFT_SEND_REQUIRED_SCOPES } from "@/lib/connectors/microsoft";
-import { getConnectorTruth } from "@/lib/connectors/truth";
+import { getConnectorTruth } from "@/lib/connectors/truth-server";
 import { resolveWorkspaceContext } from "@/lib/os/workspace";
 import { getOperatorReadiness } from "@/lib/operators/readiness";
 import { getOptionalUpsellConnectors } from "@/lib/operators/connector-requirements";

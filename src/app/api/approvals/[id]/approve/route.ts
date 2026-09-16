@@ -29,6 +29,7 @@ import { getAppUrl } from "@/lib/urls";
 import { advanceWorkflowForApproval } from "@/lib/workflows/lifecycle";
 import { persistConfirmedTrelloCardExecution } from "@/lib/workflows/trello-execution";
 import { classifyProviderFailure } from "@/lib/runtime/provider-retry";
+import { persistAcceptedMicrosoftExecution } from "@/lib/workflows/microsoft-execution";
 
 type ApproveBody = {
   workspaceId?: string;
@@ -1394,8 +1395,9 @@ async function executeTeamsApproval(input: {
       approvalId: input.approvalId,
       supabase: input.supabase,
     });
-    const executionResult = {
-      teamsStatus: "sent",
+     const executionResult = {
+       teamsStatus: sent.status,
+       deliveryConfirmed: sent.deliveryConfirmed,
       teamId: sent.teamId,
       channelId: sent.channelId,
       messageId: sent.messageId,
@@ -1408,9 +1410,24 @@ async function executeTeamsApproval(input: {
       resolved_by: input.resolvedBy,
       continuation_payload: { ...continuation, executionResult },
     }).eq("id", input.approvalId).eq("workspace_id", input.payload.workspaceId);
-    if (approvalUpdate.error) {
+     if (approvalUpdate.error) {
       return NextResponse.json({ error: "approval_update_failed", message: approvalUpdate.error.message }, { status: 500 });
-    }
+     }
+     try {
+       await persistAcceptedMicrosoftExecution({
+         supabase: input.supabase,
+         workspaceId: input.payload.workspaceId,
+         approvalId: input.approvalId,
+         provider: "microsoft_teams",
+         actionType: "teams.channel_message",
+         endpoint: "teams/{teamId}/channels/{channelId}/messages",
+         providerMessageId: sent.messageId,
+         teamId: sent.teamId,
+         channelId: sent.channelId,
+       });
+     } catch (evidenceError) {
+       console.warn(JSON.stringify({ event: "microsoft_teams_execution_evidence_deferred", approvalId: input.approvalId, error: evidenceError instanceof Error ? evidenceError.message : "unknown" }));
+     }
     await advanceWorkflowForApproval({ approvalId: input.approvalId, workspaceId: input.payload.workspaceId, supabase: input.supabase });
 
     await optionalStep([], "os_execution_logs.insert", () => input.supabase.from("os_execution_logs").insert({
@@ -1420,9 +1437,9 @@ async function executeTeamsApproval(input: {
       agent_id: input.approvalRow.agent_id || "system",
       agent_mark: input.approvalRow.agent_mark || "OS",
       agent_color: input.approvalRow.agent_color || "#4DE8E1",
-      event: "teams.message_sent_after_approval",
+       event: "teams.message_accepted_after_approval",
       // Provider identifiers only - never the message body.
-      message: `Sent approved Microsoft Teams message to channel ${sent.channelId}`,
+       message: `Microsoft Graph accepted the approved Teams message for channel ${sent.channelId}; delivery is not yet confirmed.`,
       duration: "-",
       status: "ok",
     }).then((res) => {
@@ -1430,7 +1447,7 @@ async function executeTeamsApproval(input: {
       return res;
     }));
 
-    return NextResponse.json({ ok: true, teamsStatus: "sent", executionResult });
+     return NextResponse.json({ ok: true, teamsStatus: sent.status, deliveryConfirmed: sent.deliveryConfirmed, executionResult });
   } catch (error) {
     const errorPayload = error instanceof MicrosoftTeamsExecutionError
       ? { message: error.message, details: error.details }
@@ -1445,7 +1462,7 @@ async function executeTeamsApproval(input: {
   }
 }
 
-type MicrosoftContinuationPayload = Omit<GmailContinuationPayload, "kind"> & { kind: "microsoft.send_after_approval" };
+type MicrosoftContinuationPayload = Omit<GmailContinuationPayload, "kind"> & { kind: "microsoft.send_after_approval"; sourceMessageId?: string | null; conversationId?: string | null };
 
 function validateMicrosoftPayload(value: unknown): { ok: true; payload: MicrosoftContinuationPayload } | { ok: false; details: InvalidPayloadDetail[] } {
   const details: InvalidPayloadDetail[] = [];
@@ -1476,7 +1493,9 @@ function validateMicrosoftPayload(value: unknown): { ok: true; payload: Microsof
       workflowStepOrder: typeof rec.workflowStepOrder === "number" ? rec.workflowStepOrder : null,
       to: String(rec.to).trim().toLowerCase(),
       subject: String(rec.subject).trim(),
-      body: String(rec.body).trim(),
+       body: String(rec.body).trim(),
+       sourceMessageId: typeof rec.sourceMessageId === "string" ? rec.sourceMessageId.trim() : null,
+       conversationId: typeof rec.conversationId === "string" ? rec.conversationId.trim() : null,
       draftSubject: typeof rec.draftSubject === "string" ? rec.draftSubject.trim() : undefined,
       draftBody: typeof rec.draftBody === "string" ? rec.draftBody.trim() : undefined,
       originalDraftSubject: typeof rec.originalDraftSubject === "string" ? rec.originalDraftSubject.trim() : undefined,
@@ -1732,8 +1751,9 @@ async function executeMicrosoftApproval(input: {
     operatorKey: payload.operatorKey,
   });
 
+  let microsoftSendResult: Awaited<ReturnType<typeof sendMicrosoftMessageAfterApproval>>;
   try {
-    await sendMicrosoftMessageAfterApproval({ workspaceId: payload.workspaceId, to: payload.to, subject: finalDraft.subject, body: finalDraft.body, supabase });
+    microsoftSendResult = await sendMicrosoftMessageAfterApproval({ workspaceId: payload.workspaceId, to: payload.to, subject: finalDraft.subject, body: finalDraft.body, sourceMessageId: payload.sourceMessageId, supabase });
   } catch (error) {
     const errorPayload = error instanceof MicrosoftExecutionError
       ? { message: error.message, details: error.details }
@@ -1830,13 +1850,13 @@ async function executeMicrosoftApproval(input: {
   const hubspotFailed = hubspotResult?.status === "failed";
   const finalStatus = hubspotFailed ? "partially_completed" : "approved";
   const executionResult = {
-    microsoftStatus: "sent",
+     microsoftStatus: microsoftSendResult.status,
     hubspotStatus: hubspotResult?.status ?? "not_applicable",
     hubspotContactId: hubspotResult?.contactId ?? null,
     hubspotDealId: hubspotResult?.dealId ?? null,
     clientFlowTrello,
     policyDecision,
-    microsoft: { to: payload.to, subject: finalDraft.subject, sendEndpoint: "me/sendMail" },
+     microsoft: { to: payload.to, subject: finalDraft.subject, sendEndpoint: microsoftSendResult.sendEndpoint, sourceMessageId: payload.sourceMessageId ?? null, deliveryConfirmed: microsoftSendResult.deliveryConfirmed },
     usedEditedDraft: finalDraft.usedEditedDraft,
     finalSubject: finalDraft.subject,
     finalBodyPreview: finalDraft.bodyPreview,
@@ -1853,6 +1873,22 @@ async function executeMicrosoftApproval(input: {
   if (approvalUpdate.error) {
     return NextResponse.json({ error: "approval_update_failed", message: approvalUpdate.error.message }, { status: 500 });
   }
+  try {
+    await persistAcceptedMicrosoftExecution({
+      supabase,
+      workspaceId: payload.workspaceId,
+      approvalId,
+      workflowId: payload.workflowId,
+      workflowStepId: payload.workflowStepId,
+      provider: "microsoft",
+      actionType: "email.reply_or_send",
+      endpoint: microsoftSendResult.sendEndpoint,
+      sourceMessageId: payload.sourceMessageId,
+    });
+  } catch (evidenceError) {
+    warnings.push("microsoft_execution_evidence_deferred");
+    console.warn(JSON.stringify({ event: "microsoft_execution_evidence_deferred", approvalId, error: evidenceError instanceof Error ? evidenceError.message : "unknown" }));
+  }
   await advanceWorkflowForApproval({ approvalId, workspaceId: payload.workspaceId, supabase });
   logRevenueLifecycle("execution_completed", {
     workspaceId: payload.workspaceId,
@@ -1863,7 +1899,7 @@ async function executeMicrosoftApproval(input: {
     workflowId: payload.workflowId ?? undefined,
     actionId: payload.workflowStepId ?? undefined,
     approvalId,
-    state: "sent",
+     state: "accepted_pending_delivery",
     operatorKey: payload.operatorKey,
   });
 
@@ -1875,8 +1911,8 @@ async function executeMicrosoftApproval(input: {
       agent_id: approvalRow.agent_id || "system",
       agent_mark: approvalRow.agent_mark || "OS",
       agent_color: approvalRow.agent_color || "#4DE8E1",
-      event: "microsoft.message_sent",
-      message: `Sent approved Microsoft 365 message to ${payload.to}`,
+       event: "microsoft.message_accepted_after_approval",
+       message: `Microsoft Graph accepted the approved Outlook message for ${payload.to}; delivery is not yet confirmed.`,
       duration: "-",
       status: "ok",
     },
@@ -1888,7 +1924,7 @@ async function executeMicrosoftApproval(input: {
       agent_mark: approvalRow.agent_mark || "OS",
       agent_color: approvalRow.agent_color || "#4DE8E1",
       event: "approval.approved",
-      message: hubspotFailed ? "Approval approved, Microsoft 365 send completed, HubSpot execution failed" : "Approval approved and Microsoft 365 send completed",
+       message: hubspotFailed ? "Approval approved, Microsoft Graph accepted the Outlook send, but HubSpot execution failed" : "Approval approved and Microsoft Graph accepted the Outlook send; delivery is not yet confirmed",
       duration: "-",
       status: hubspotFailed ? "warn" : "ok",
     },
@@ -1899,8 +1935,8 @@ async function executeMicrosoftApproval(input: {
 
   if (runId) {
     await optionalStep(warnings, "os_operator_runs.update", () => supabase.from("os_operator_runs").update({
-      status: hubspotFailed ? "partially_completed" : "completed",
-      completed_at: new Date().toISOString(),
+       status: hubspotFailed ? "partially_completed" : "executing",
+       completed_at: hubspotFailed ? new Date().toISOString() : null,
       output: {
         microsoft: executionResult.microsoft,
         hubspot: hubspotResult,
@@ -1910,7 +1946,7 @@ async function executeMicrosoftApproval(input: {
         preparedHubSpotActions: payload.preparedHubSpotActions ?? null,
         preparedActions: payload.preparedActions ?? ["send_microsoft_follow_up"],
       },
-      error: hubspotFailed ? "HubSpot execution failed after Microsoft 365 send." : null,
+       error: hubspotFailed ? "HubSpot execution failed after Microsoft Graph accepted the Outlook send." : null,
     }).eq("id", runId).eq("workspace_id", payload.workspaceId).eq("approval_id", approvalId).then((res) => {
       if (res.error) throw new Error(res.error.message);
       return res;
@@ -1919,10 +1955,10 @@ async function executeMicrosoftApproval(input: {
       supabase,
       workspaceId: payload.workspaceId,
       runId,
-      eventType: hubspotFailed ? "approval.partially_completed" : "microsoft.send.completed",
+       eventType: hubspotFailed ? "approval.partially_completed" : "microsoft.send.accepted_pending_delivery",
       message: hubspotFailed
-        ? `Microsoft 365 message sent to ${payload.to}, but HubSpot execution failed.`
-        : `Approved Microsoft 365 message sent to ${payload.to}.`,
+         ? `Microsoft Graph accepted the Outlook message to ${payload.to}, but HubSpot execution failed.`
+         : `Microsoft Graph accepted the approved Outlook message to ${payload.to}; delivery is not yet confirmed.`,
       metadata: { executionResult },
     }));
     if (hubspotResult) {
@@ -1932,7 +1968,7 @@ async function executeMicrosoftApproval(input: {
         runId,
         eventType: hubspotFailed ? "hubspot.execution.failed" : `hubspot.execution.${hubspotResult.status}`,
         message: hubspotFailed
-          ? "HubSpot contact/deal execution failed after Microsoft 365 send."
+          ? "HubSpot contact/deal execution failed after Microsoft Graph accepted the Outlook send."
           : `HubSpot execution status: ${hubspotResult.status}.`,
         metadata: hubspotResult,
       }));
@@ -1953,7 +1989,7 @@ async function executeMicrosoftApproval(input: {
         workspaceId: payload.workspaceId,
         runId,
         eventType: "client_flow_email_sent_after_approval",
-        message: `Client reply sent after approval to ${payload.to}.`,
+       message: `Microsoft Graph accepted the approved client reply to ${payload.to}; delivery is not yet confirmed.`,
         metadata: { approvalId, to: payload.to, subject: finalDraft.subject, clientFlowTrello },
       }));
       if (clientFlowTrello?.status === "executed") {
@@ -1972,7 +2008,7 @@ async function executeMicrosoftApproval(input: {
           runId,
           level: "warn",
           eventType: "client_flow_execution_failed",
-          message: "Client Flow Trello task execution failed after the client reply was sent.",
+           message: "Client Flow Trello task execution failed after Microsoft Graph accepted the client reply.",
           metadata: { approvalId, clientFlowTrello },
         }));
       }
@@ -1988,8 +2024,8 @@ async function executeMicrosoftApproval(input: {
     operatorKey: payload.operatorKey || "revenue",
     title: hubspotFailed ? "Execution failed." : "Approval approved.",
     summary: hubspotFailed
-      ? "Microsoft 365 was sent, but HubSpot execution failed. Review the approval logs in Auterim."
-      : "Revenue Operator sent the email and updated the run.",
+       ? "Microsoft Graph accepted the Outlook message, but HubSpot execution failed. Review the approval logs in Auterim."
+       : "Revenue Operator approved the email and Microsoft Graph accepted it; delivery confirmation is still pending.",
     approvalUrl: `${getAppUrl()}/app/approvals`,
     metadata: { to: payload.to, hubspotStatus: hubspotResult?.status ?? null },
   }));
@@ -1997,7 +2033,7 @@ async function executeMicrosoftApproval(input: {
   return NextResponse.json({
     ok: true,
     messageId: null,
-    sendEndpoint: "me/sendMail",
+     sendEndpoint: microsoftSendResult.sendEndpoint,
     warnings,
     crmPreparationStatus: payload.crmPreparationStatus ?? null,
     microsoftStatus: executionResult.microsoftStatus,

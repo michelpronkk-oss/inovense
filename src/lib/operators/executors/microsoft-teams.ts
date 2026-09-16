@@ -371,10 +371,11 @@ export async function createTeamsSendApproval(input: {
 // ── Provider write (approval execution path only) ───────────────────────
 
 export type TeamsSendAfterApprovalResult = {
-  status: "sent";
+  status: "accepted_pending_delivery";
   teamId: string;
   channelId: string;
   messageId: string | null;
+  deliveryConfirmed: false;
 };
 
 /**
@@ -415,7 +416,7 @@ export async function sendTeamsChannelMessageAfterApproval(input: {
       channelId: input.channelId,
       text: input.text,
     });
-    return { status: "sent", teamId: sent.teamId, channelId: sent.channelId, messageId: sent.messageId };
+    return { status: sent.status, teamId: sent.teamId, channelId: sent.channelId, messageId: sent.messageId, deliveryConfirmed: false };
   } catch (error) {
     throw toExecutionError("teams.send", error);
   }

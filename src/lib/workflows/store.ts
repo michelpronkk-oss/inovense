@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getConnectorTruth } from "@/lib/connectors/truth";
+import { getConnectorTruth } from "@/lib/connectors/truth-server";
 import { getStoredJiraCredential } from "@/lib/connectors/jira";
 import { getOperatorActivationState } from "@/lib/operators/activation";
 import { getWorkspaceExecutionEligibility } from "@/lib/os/execution-eligibility";

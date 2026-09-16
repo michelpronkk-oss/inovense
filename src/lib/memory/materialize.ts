@@ -40,6 +40,7 @@ export type MemoryVersionInput = {
   sourceConnector?: string | null;
   sourceEntityId?: string | null;
   evidence?: string[];
+  metadata?: Record<string, unknown>;
   observedAt?: string;
   staleAfter?: string | null;
   lastConfirmedAt?: string | null;
@@ -85,7 +86,7 @@ export async function appendMemoryVersion(input: { supabase: SupabaseAdmin; memo
   const sourceConnector = clean(memory.sourceConnector, 80);
   const sourceEntityId = clean(memory.sourceEntityId, 180);
   const existing = await input.supabase.from("os_memory_entries")
-    .select("id,content,source_type,source_connector,source_entity_id,canonical_key,operator_relevance,updated_at")
+    .select("id,content,source_type,source_connector,source_entity_id,canonical_key,operator_relevance,metadata,updated_at")
     .eq("workspace_id", memory.workspaceId)
     .eq("canonical_key", memory.canonicalKey)
     .eq("source_type", memory.sourceType)
@@ -102,6 +103,10 @@ export async function appendMemoryVersion(input: { supabase: SupabaseAdmin; memo
       last_observed_at: observedAt,
       stale_after: staleAfter,
       evidence: list(memory.evidence, 10, 240),
+      metadata: {
+        ...(same.metadata && typeof same.metadata === "object" && !Array.isArray(same.metadata) ? same.metadata as Record<string, unknown> : {}),
+        ...(memory.metadata ?? {}),
+      },
       operator_relevance: list(Array.from(new Set([...existingOperators, ...(memory.operatorRelevance ?? [])])), 6, 40),
       updated_at: observedAt,
     }).eq("id", same.id).eq("workspace_id", memory.workspaceId);
@@ -136,6 +141,10 @@ export async function appendMemoryVersion(input: { supabase: SupabaseAdmin; memo
     operator_relevance: list(memory.operatorRelevance, 6, 40),
     policy_relevant: memory.policyRelevant === true,
     evidence: list(memory.evidence, 10, 240),
+    metadata: {
+      ...(memory.metadata ?? {}),
+      ...(memory.sourceType === "connector_observed" ? { sourceTrust: "observed" } : {}),
+    },
     supersedes_id: memory.supersedesId ?? previous?.id ?? null,
     updated_at: observedAt,
   };

@@ -1,5 +1,5 @@
 import { connectorHasCapability, getConnectorsForCapability, type Capability } from "@/lib/connectors/capabilities";
-import { getConnectorTruth, type SafeConnectorTruth } from "@/lib/connectors/truth";
+import { getConnectorTruth, type SafeConnectorTruth } from "@/lib/connectors/truth-server";
 import { getOperatorConnectorReadiness, type OperatorConnectorReadiness } from "@/lib/operators/connector-requirements";
 import { getEntitlements, type Entitlements, type PlanTier } from "@/lib/os/entitlements";
 import { getWorkspaceExecutionEligibilityFromWorkspace, type WorkspaceExecutionEligibility } from "@/lib/os/execution-eligibility";
