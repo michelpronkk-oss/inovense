@@ -165,6 +165,12 @@ const CONNECTORS: { name: string; color?: string; icon: ReactNode; pulse?: strin
   },
 ];
 
+const STACK_STEPS: { key: string; text: string; gate?: boolean }[] = [
+  { key: "Signal", text: "Something changes in a connected system." },
+  { key: "Joined context", text: "History and ownership are joined to the signal." },
+  { key: "Operator-ready", text: "A prepared next move is held at your approval boundary.", gate: true },
+];
+
 export function ConnectorsVisual() {
   return (
     <div className="hv-stk">
@@ -198,6 +204,36 @@ export function ConnectorsVisual() {
           </div>
         </div>
       </div>
+
+      <div className="hv-stk-mobile">
+        <div className="hv-stk-m-top">
+          <MarkBadge size={36} radius={11} icon={17} />
+          <span className="hv-lab hv-st"><span className="hv-dot hv-dot-cy hv-pulse" />Reading connected systems</span>
+        </div>
+        <h3 className="hv-stk-h">Your systems stay the source of truth.</h3>
+        <p className="hv-stk-sub">Auterim joins the context and hands the right operator work that is already prepared.</p>
+        <div className="hv-steps">
+          {STACK_STEPS.map((step, i) => (
+            <div className={`hv-sp hv-sp${i + 1}${step.gate ? " hv-gate" : ""}`} key={step.key}>
+              <span className="hv-sp-n"><span className="hv-dot" aria-hidden="true" /></span>
+              <span><span className="hv-sp-k">{step.key}</span><span className="hv-sp-t">{step.text}</span></span>
+            </div>
+          ))}
+        </div>
+        <div className="hv-stk-m-div" aria-hidden="true" />
+        <div className="hv-stk-m-row"><span className="hv-lab">Connects to</span><span className="hv-lab hv-stk-count">9 systems</span></div>
+        <div className="hv-stk-m-cn-wrap">
+          {CONNECTORS.map((c) => (
+            <span className="hv-stk-m-cn" key={c.name}>
+              <span className="hv-chip hv-cn-ic" style={{ "--hv-chip-size": "22px", "--hv-chip-radius": "7px", ...(c.color ? { color: c.color } : {}) } as CSSProperties}>{c.icon}</span>
+              <span className="hv-cn-nm">{c.name}</span>
+              {c.pulse !== undefined && <span className={`hv-dot hv-dot-cy hv-pulse ${c.pulse}`} aria-hidden="true" />}
+            </span>
+          ))}
+        </div>
+        <Link href="/connectors" className="hv-cn-more">See supported connectors <span aria-hidden="true">{ARROW}</span></Link>
+      </div>
+
       <PanelGrain grainFilter="stkN" />
     </div>
   );
@@ -235,6 +271,9 @@ const CONTROL_STAGES: { key: string; title: string; desc: string; gate?: boolean
   { key: "Outcome", title: "Recorded in full", desc: "What was detected, prepared, approved and run." },
 ];
 
+const GX_CHECK_ICON = <svg viewBox="0 0 24 24" fill="none" aria-hidden><path d="M5 12.5 9.5 17 19 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+const GX_LOCK_ICON = <svg viewBox="0 0 24 24" fill="none" aria-hidden><rect x="5" y="10.5" width="14" height="9.5" rx="2" stroke="currentColor" strokeWidth="1.8" /><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>;
+
 export function ControlVisual() {
   return (
     <div className="hv-gx" role="img" aria-label="Governed execution. Context: scoped access, only the systems and permissions you connect. Policy: your rules applied, what an operator may prepare, route or send. Approval: the human gate, sensitive actions wait for a named approver. Execute: inside the boundary, nothing runs outside what was approved. Outcome: recorded in full, what was detected, prepared, approved and run. Every stage logged. Approval required by default.">
@@ -253,9 +292,25 @@ export function ControlVisual() {
           </div>
         ))}
       </div>
+      <div className="hv-gx-rail-mobile" aria-hidden="true">
+        {CONTROL_STAGES.map((stage, i) => (
+          <div key={stage.key} className={`hv-gx-ms hv-gx-ms${i + 1}${stage.gate ? " hv-gx-gate-m" : ""}`}>
+            <div className="hv-gx-spine"><span className="hv-dot" /></div>
+            <div className="hv-gx-mcard">
+              <div className="hv-gx-k">{stage.key}</div>
+              <div className="hv-gx-t">{stage.title}</div>
+              <div className="hv-gx-x">{stage.desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
       <div className="hv-gx-foot" aria-hidden="true">
         <div className="hv-gx-pill">Every stage logged</div>
         <div className="hv-gx-pill hv-am">Approval required by default</div>
+      </div>
+      <div className="hv-gx-foot-mobile" aria-hidden="true">
+        <div className="hv-gx-foot-row"><span className="hv-gx-foot-ic">{GX_CHECK_ICON}</span><span>Every stage logged</span></div>
+        <div className="hv-gx-foot-row hv-am"><span className="hv-gx-foot-ic">{GX_LOCK_ICON}</span><span>Approval required by default</span></div>
       </div>
       <PanelGrain grainFilter="gxN" />
     </div>
