@@ -24,7 +24,7 @@ import { getEntitlements, type Entitlements } from "@/lib/os/entitlements";
 import { reportLegacyMigrationEvent } from "@/lib/migration-telemetry";
 import { getConnectorDefinition } from "@/lib/connectors/registry";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { WORKSPACE_REALTIME_EVENT, parseWorkspaceRealtimeInvalidation } from "@/lib/os/workspace-realtime";
+import { acceptWorkspaceRealtimeRevision, WORKSPACE_REALTIME_EVENT, WORKSPACE_REALTIME_STATUS_EVENT, parseWorkspaceRealtimeInvalidation } from "@/lib/os/workspace-realtime";
 
 const STORAGE_KEY = "auterim-os-state-v7";
 const LEGACY_STORAGE_KEYS = ["inovense-os-state-v7", "inovense-os-state-v1"];
@@ -537,9 +537,16 @@ export function AppProvider({ children, initialContext }: { children: React.Reac
   // published row contains a surface revision, never source record content.
   useEffect(() => {
     if (!initialContext?.workspaceId) return;
+    const publishStatus = (status: "connecting" | "connected" | "disconnected" | "error") => {
+      window.dispatchEvent(new CustomEvent(WORKSPACE_REALTIME_STATUS_EVENT, {
+        detail: { workspaceId: initialContext.workspaceId, status, updatedAt: new Date().toISOString() },
+      }));
+    };
+    publishStatus("connecting");
     let client: ReturnType<typeof createSupabaseBrowserClient>;
-    try { client = createSupabaseBrowserClient(); } catch { return; }
+    try { client = createSupabaseBrowserClient(); } catch { publishStatus("error"); return; }
     const pending = new Map<string, ReturnType<typeof parseWorkspaceRealtimeInvalidation>>();
+    const lastRevisions = new Map<"dashboard" | "approvals" | "workflows" | "activity" | "connectors" | "operators" | "memory" | "logs" | "insights", number>();
     let timer: ReturnType<typeof setTimeout> | null = null;
     const channel = client.channel(`workspace-state:${initialContext.workspaceId}`)
       .on("postgres_changes", {
@@ -554,6 +561,10 @@ export function AppProvider({ children, initialContext }: { children: React.Reac
           updatedAt: row.updated_at,
         });
         if (!invalidation || invalidation.workspaceId !== initialContext.workspaceId) return;
+        if (!acceptWorkspaceRealtimeRevision(lastRevisions, invalidation)) return;
+        lastRevisions.set(invalidation.surface, invalidation.revision);
+        const current = pending.get(invalidation.surface);
+        if (current && current.revision >= invalidation.revision) return;
         pending.set(invalidation.surface, invalidation);
         if (!timer) timer = setTimeout(() => {
           timer = null;
@@ -561,10 +572,15 @@ export function AppProvider({ children, initialContext }: { children: React.Reac
           pending.clear();
         }, 120);
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") publishStatus("connected");
+        else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") publishStatus("error");
+        else if (status === "CLOSED") publishStatus("disconnected");
+      });
     return () => {
       if (timer) clearTimeout(timer);
       pending.clear();
+      publishStatus("disconnected");
       void client.removeChannel(channel);
     };
   }, [initialContext?.workspaceId]);
@@ -621,7 +637,7 @@ export function AppProvider({ children, initialContext }: { children: React.Reac
 
   useEffect(() => {
     if (IS_PRODUCTION) {
-      if (!initialContext) setClientHydrated(true);
+      if (!initialContext) queueMicrotask(() => setClientHydrated(true));
       return;
     }
     try {
@@ -861,6 +877,7 @@ export function AppProvider({ children, initialContext }: { children: React.Reac
   }, [state.currentUser, state.workspace]);
 
   const runAgent = useCallback((agentId: string) => {
+    if (IS_PRODUCTION) return;
     const agent = state.agents.find((a) => a.id === agentId);
     if (!agent) return;
     if (!getEntitlements(state.workspace).canRunRealActions) {
@@ -880,6 +897,7 @@ export function AppProvider({ children, initialContext }: { children: React.Reac
   }, [state]);
 
   const runWorkflow = useCallback((workflowId: string) => {
+    if (IS_PRODUCTION) return;
     const workflow = state.workflows.find((w) => w.id === workflowId);
     if (!workflow) return;
     const agent = state.agents.find((a) => a.id === workflow.agentId);
@@ -904,6 +922,7 @@ export function AppProvider({ children, initialContext }: { children: React.Reac
   }, [state]);
 
   const approveItem = useCallback(async (approvalId: string, runId?: string, agentId?: string) => {
+    if (IS_PRODUCTION) return;
     const approval = state.approvals.find((a) => a.id === approvalId);
     const continuation = approval?.continuationPayload as { kind?: string } | undefined;
     if (
@@ -942,6 +961,7 @@ export function AppProvider({ children, initialContext }: { children: React.Reac
   }, [state]);
 
   const skipItem = useCallback((approvalId: string, runId?: string, agentId?: string) => {
+    if (IS_PRODUCTION) return;
     const approval = state.approvals.find((a) => a.id === approvalId);
     if (approval) {
       const continuation = continueRunAfterApproval(state, approval, false);

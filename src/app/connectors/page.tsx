@@ -5,6 +5,7 @@ import { PublicHero, PublicCta } from "@/components/home-v3/public-page-componen
 import { ConnectionLayer, StorySection } from "@/components/home-v3/public-story-components";
 import { ProviderLogo } from "@/components/connectors/provider-logo";
 import { CONNECTOR_CATALOG, connectorCategoryLabel } from "@/lib/connectors/registry";
+import RevealMount from "@/components/home-v3/reveal-mount";
 import { staticOgImage } from "@/lib/static-og";
 
 const title = "Auterim Connectors";
@@ -35,7 +36,7 @@ export default function ConnectorsPage() {
         const count = available.filter((connector) => connector.category === category).length;
         return <a href={`#category-${category}`} key={category}><span>{connectorCategoryLabel({ category })}</span><small>{String(count).padStart(2, "0")}</small></a>;
       })}</nav>
-      <div className="connector-categories">{categories.map((category) => <section className="connector-category" id={`category-${category}`} key={category}>
+      <div className="connector-categories rv">{categories.map((category) => <section className="connector-category" id={`category-${category}`} key={category}>
         <div className="connector-category-heading"><div><span className="connector-category-index">{String(categories.indexOf(category) + 1).padStart(2, "0")} / SYSTEM GROUP</span><h3>{connectorCategoryLabel({ category })}</h3></div><span className="connector-category-count">{String(available.filter((connector) => connector.category === category).length).padStart(2, "0")} available</span></div>
         <div className="connector-marketplace">{available.filter((connector) => connector.category === category).map((connector) => {
           const operators = connector.usedByOperators.map((key) => liveOperatorLabels[key]).filter(Boolean);
@@ -54,6 +55,7 @@ export default function ConnectorsPage() {
         })}</div>
       </section>)}</div>
     </StorySection>
-    <PublicCta title="Start with the systems behind one delayed workflow." description="Tell us which tools hold the context and where the next action should land." />
+    <div className="rv"><PublicCta title="Start with the systems behind one delayed workflow." description="Tell us which tools hold the context and where the next action should land." /></div>
+    <RevealMount />
   </PublicSiteFrame>;
 }

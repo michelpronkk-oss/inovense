@@ -14,9 +14,9 @@ export type GovernedMemoryContext = {
 };
 
 async function readRows(supabase: SupabaseAdmin, workspaceId: string): Promise<MemoryRow[]> {
-  const extended = await supabase.from("os_memory_entries").select(EXTENDED_SELECT).eq("workspace_id", workspaceId).order("updated_at", { ascending: false });
+  const extended = await supabase.from("os_memory_entries").select(EXTENDED_SELECT).eq("workspace_id", workspaceId).order("updated_at", { ascending: false }).limit(200);
   if (!extended.error) return (extended.data ?? []) as MemoryRow[];
-  const legacy = await supabase.from("os_memory_entries").select("id,type,label,summary,content,tags,agent_scope,field_count,updated_at").eq("workspace_id", workspaceId).order("updated_at", { ascending: false });
+  const legacy = await supabase.from("os_memory_entries").select("id,type,label,summary,content,tags,agent_scope,field_count,updated_at").eq("workspace_id", workspaceId).order("updated_at", { ascending: false }).limit(200);
   return (legacy.data ?? []) as MemoryRow[];
 }
 

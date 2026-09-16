@@ -123,26 +123,28 @@ export function PublicPricing({ plans }: { plans: PricingPlan[] }) {
   return (
     <section className="sec public-content public-pricing-section">
       <div className="wrap">
-        <div className="public-pricing-intro">
+        <div className="public-pricing-intro rv">
           <div className="public-pricing-intro-title">
-            <span className="public-pricing-overline"><i aria-hidden="true" />Plans · Monthly</span>
+            <span className="public-pricing-overline"><i aria-hidden="true" /><i className="public-pricing-overline-dot" aria-hidden="true" />Plans · Monthly</span>
             <h2 className="public-pricing-heading">Monthly plans</h2>
           </div>
           <p>Compare operator, connected system, and controlled run capacity for your team.</p>
         </div>
-        <div className="public-pricing">
+        <div className="public-pricing rv">
           {plans.map((plan) => <article className={`public-plan${plan.featured ? " public-plan-featured" : ""}`} key={plan.plan_tier}>
             <div className="public-plan-heading-row">
               <h3 className="public-plan-name">{plan.plan_name}</h3>
-              {plan.badge && <span className="public-plan-badge">{plan.badge}</span>}
+              {plan.badge && <span className="public-plan-badge"><i aria-hidden="true" />{plan.badge}</span>}
             </div>
             <p className="public-plan-price">{plan.price}<small>{plan.period}</small></p>
             <p className="public-plan-tagline">{publicPlanDescriptions[plan.plan_tier]}</p>
+            <span className="public-plan-divider" aria-hidden="true" />
             <ul>{plan.features.filter((feature) => !feature.includes("3 days free")).map((feature) => <li key={feature}>{feature}</li>)}</ul>
+            <span className="public-plan-spacer" aria-hidden="true" />
             <RequestEarlyAccessButton className="btn btn-a" plan={plan.plan_tier} />
           </article>)}
         </div>
-        <aside className="public-pricing-note" aria-label="Early Access trial and billing terms">
+        <aside className="public-pricing-note rv" aria-label="Early Access trial and billing terms">
           <div className="public-pricing-note-title">
             <span className="public-pricing-note-mark" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M12 3.5 19 6v5.4c0 4.1-2.8 7.3-7 9.1-4.2-1.8-7-5-7-9.1V6l7-2.5Z" stroke="currentColor" strokeWidth="1.25"/><path d="m9.3 12.1 1.8 1.8 3.8-4" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round"/></svg>

@@ -12,15 +12,12 @@ import { useIsCompactViewport } from "@/components/app-ui/use-compact-viewport";
 import { useOS } from "@/lib/os/app-provider";
 import { getRealConnectedConnectors } from "@/lib/os/truth";
 import { useWorkspaceRealtimeInvalidation } from "@/lib/os/workspace-realtime";
+import { formatRelativeWorkspaceTime } from "@/lib/product/time";
 
 const LOOP_STAGES = [["Detect", "Meaningful change found"], ["Prepare", "Response assembled"], ["Approve", "Human review"], ["Execute", "Action taken"], ["Measure", "Outcome observed"]] as const;
 
 function relativeTime(value: string) {
-  const minutes = Math.floor(Math.max(0, Date.now() - new Date(value).getTime()) / 60000);
-  if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  if (minutes < 1440) return `${Math.floor(minutes / 60)}h ago`;
-  return `${Math.floor(minutes / 1440)}d ago`;
+  return formatRelativeWorkspaceTime(value);
 }
 function label(value: string) { return value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }
 function badgeTone(status: string): "green" | "red" | "amber" | "cyan" | "muted" {

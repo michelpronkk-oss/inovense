@@ -7,11 +7,12 @@ import { StatusBadge } from "@/components/operators/status-badge";
 import { useOS } from "@/lib/os/app-provider";
 import type { DashboardOverview, DashboardOperator } from "@/lib/dashboard/overview";
 import { DashboardLoadingState } from "@/components/dashboard/loading-state";
-import { MetricStrip, PageHeader } from "@/components/product-ui/page-primitives";
+import { FreshnessIndicator, MetricStrip, PageHeader } from "@/components/product-ui/page-primitives";
 import { trialDaysRemaining } from "@/lib/os/plans";
 import { ArrowIcon } from "@/components/dashboard/icons";
 import type { WorkflowLoopStage } from "@/lib/workflows/stage";
-import { useWorkspaceRealtimeInvalidation } from "@/lib/os/workspace-realtime";
+import { useWorkspaceRealtimeInvalidation, useWorkspaceRealtimeStatus } from "@/lib/os/workspace-realtime";
+import { countLiveWorkforce, isLiveWorkforceState } from "@/lib/dashboard/metric-definitions";
 
 type ScanKey = DashboardOperator["key"];
 type OverviewResponse = DashboardOverview & { error?: string; message?: string };
@@ -51,7 +52,7 @@ function titleCase(value: string | null | undefined): string {
 }
 
 function timeAgo(value: string | null | undefined): string {
-  if (!value) return "not yet";
+  if (!value) return "no persisted activity yet";
   const ts = new Date(value).getTime();
   if (!Number.isFinite(ts)) return "unknown";
   const mins = Math.max(0, Math.floor((Date.now() - ts) / 60000));
@@ -65,7 +66,7 @@ function dashboardCounts(overview: DashboardOverview) {
   return {
     connected: overview.connectors.filter((connector) => connector.connected).length,
     ready: overview.operatorProductStates.filter((operator) => operator.state === "ready_to_activate").length,
-    active: overview.operatorProductStates.filter((operator) => operator.state === "active" || operator.state === "active_limited" || operator.state === "enhanced").length,
+    active: countLiveWorkforce(overview.operatorProductStates),
     attention: overview.operatorProductStates.filter((operator) => operator.state === "needs_attention" || operator.state === "active_limited").length,
   };
 }
@@ -78,7 +79,7 @@ function DashboardMetrics({ overview }: { overview: DashboardOverview }) {
   const oldestApproval = overview.approvals.latest[0];
   const attentionConnectors = overview.connectors.length - counts.connected;
   const activeOperatorNames = overview.operatorProductStates
-    .filter((operator) => operator.state === "active" || operator.state === "active_limited" || operator.state === "enhanced")
+    .filter((operator) => isLiveWorkforceState(operator.state))
     .map((operator) => operator.operatorName);
   // The dashboard can intentionally focus its detail list on the workspace's
   // first operator. Never let that filtered list produce an impossible value
@@ -391,6 +392,7 @@ function UnlockMore({ overview }: { overview: DashboardOverview }) {
 
 export function OSOverview() {
   const { state } = useOS();
+  const realtimeStatus = useWorkspaceRealtimeStatus(state.workspace.id);
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -493,7 +495,7 @@ export function OSOverview() {
     const hasOnboardingPriorities = overview.workspace.onboardingSystems.length > 0;
     return (
       <div className="os-page dashboard-overview dashboard-first-run">
-        <PageHeader eyebrow="Auterim workspace" title={`${greet}, ${firstName}.`} description="See what Auterim understands, what is ready, and what happens next." />
+        <PageHeader eyebrow="Auterim workspace" title={`${greet}, ${firstName}.`} description="See what Auterim understands, what is ready, and what happens next." meta={<FreshnessIndicator updatedAt={overview.lastUpdatedAt} realtimeStatus={realtimeStatus} />} />
 
         {error && <section className="attn crit"><div className="card-pad" style={{ padding: "10px 14px", fontSize: 12.5 }}>{error}</div></section>}
 
@@ -524,6 +526,7 @@ export function OSOverview() {
         greet={greet}
         firstName={firstName}
         error={error}
+        realtimeStatus={realtimeStatus}
       />
     );
   }
@@ -549,6 +552,7 @@ export function OSOverview() {
         eyebrow={`${overview.systemStatus.label} · updated ${timeAgo(overview.lastUpdatedAt)}`}
         title={`${greet}, ${firstName}.`}
         description={pending > 0 ? `${pending} action${pending === 1 ? "" : "s"} need${pending === 1 ? "s" : ""} your review. Everything else is running inside policy.` : "See what Auterim understands, what is ready, and what happens next."}
+        meta={<FreshnessIndicator updatedAt={overview.lastUpdatedAt} realtimeStatus={realtimeStatus} />}
         actions={headerActions}
       />
 
@@ -630,19 +634,21 @@ function LifecyclePreOperationalState({
   greet,
   firstName,
   error,
+  realtimeStatus,
 }: {
   lifecycleState: "B" | "C" | "D" | "F";
   overview: DashboardOverview;
   greet: string;
   firstName: string;
   error: string;
+  realtimeStatus: "connecting" | "connected" | "disconnected" | "error";
 }) {
   const states = overview.operatorProductStates;
   const attentionStates = states.filter((item) => item.state === "needs_attention" || item.state === "active_limited");
 
   return (
     <div className="os-page dashboard-overview">
-      <PageHeader eyebrow="Auterim workspace" title={`${greet}, ${firstName}.`} description="See what Auterim understands, what is ready, and what happens next." />
+      <PageHeader eyebrow="Auterim workspace" title={`${greet}, ${firstName}.`} description="See what Auterim understands, what is ready, and what happens next." meta={<FreshnessIndicator updatedAt={overview.lastUpdatedAt} realtimeStatus={realtimeStatus} />} />
 
       {error && <section className="attn crit"><div className="card-pad" style={{ padding: "10px 14px", fontSize: 12.5 }}>{error}</div></section>}
 

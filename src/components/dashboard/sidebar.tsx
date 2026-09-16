@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { OSModal } from "@/components/dashboard/modal";
+import { FeedbackDialog, openFeedback } from "@/components/dashboard/feedback-dialog";
+import { SupportDialog, openSupport } from "@/components/dashboard/support-dialog";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -255,6 +257,8 @@ export function OSSidebar() {
           </div>
         </OSModal>
       )}
+      <FeedbackDialog />
+      <SupportDialog />
     </aside>
   );
 }
@@ -283,6 +287,7 @@ export function OSMobileNav() {
   }, [open]);
 
   return (
+    <>
     <nav className={`os-mobile-nav${open ? " is-menu-open" : ""}`} aria-label="Primary navigation">
       {primary.map((item) => {
         const Icon = NAVIGATION_ICONS[item.icon];
@@ -335,6 +340,8 @@ export function OSMobileNav() {
                       const Icon = NAVIGATION_ICONS[item.icon];
                       const active = Boolean(item.href && isAppNavigationActive(pathname, item.href));
                       const content = <><span><Icon size={17} /></span><strong>{item.label}</strong><i aria-hidden="true">›</i></>;
+                      if (item.id === "support") return <button key={item.id} type="button" className="os-mobile-menu-feedback" data-nav-item={item.id} onClick={() => { setOpen(false); openSupport(); }}>{content}</button>;
+                      if (item.id === "feedback") return <button key={item.id} type="button" className="os-mobile-menu-feedback" data-nav-item={item.id} onClick={() => { setOpen(false); openFeedback(); }}>{content}</button>;
                       return <Link key={item.id} href={item.href} data-nav-item={item.id} className={active ? "active" : ""} aria-current={active ? "page" : undefined} onClick={() => setOpen(false)}>{content}</Link>;
                     })}
                   </div>
@@ -353,5 +360,6 @@ export function OSMobileNav() {
         </OSModal>
       )}
     </nav>
+    </>
   );
 }

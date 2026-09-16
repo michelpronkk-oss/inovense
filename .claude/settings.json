@@ -27,5 +27,8 @@
       "Bash(taskkill //PID 36336 //F)",
       "Bash(git checkout *)"
     ]
+  },
+  "enabledPlugins": {
+    "example-skills@anthropic-agent-skills": true
   }
 }

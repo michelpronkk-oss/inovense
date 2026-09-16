@@ -8,19 +8,44 @@ type PageHeaderProps = {
   title: string;
   description: string;
   actions?: ReactNode;
+  meta?: ReactNode;
 };
 
 /** Shared hierarchy for authenticated product pages. */
-export function PageHeader({ eyebrow, title, description, actions }: PageHeaderProps) {
+export function PageHeader({ eyebrow, title, description, actions, meta }: PageHeaderProps) {
   return (
     <header className="page-head product-page-header">
       <div>
         {eyebrow && <span className="t-eyebrow" style={{ display: "block", marginBottom: 8 }}>{eyebrow}</span>}
         <h1 className="t-title">{title}</h1>
         <p className="t-sub">{description}</p>
+        {meta && <div className="product-page-header-meta">{meta}</div>}
       </div>
       {actions && <div className="acts product-page-actions">{actions}</div>}
     </header>
+  );
+}
+
+export function FreshnessIndicator({
+  updatedAt,
+  realtimeStatus,
+}: {
+  updatedAt?: string | null;
+  realtimeStatus?: "connecting" | "connected" | "disconnected" | "error";
+}) {
+  const liveLabel = realtimeStatus === "connected"
+    ? "Live updates connected"
+    : realtimeStatus === "connecting"
+      ? "Live updates connecting"
+      : "Live updates unavailable · refreshes on focus";
+  return (
+    <span className="freshness-indicator" data-state={realtimeStatus ?? "unknown"}>
+      <span className="dot" aria-hidden="true" />
+      <span>{updatedAt ? "Persisted workspace data" : "No persisted activity yet"}</span>
+      <span aria-hidden="true">·</span>
+      <span>{liveLabel}</span>
+      {updatedAt && <time className="sr-only" dateTime={updatedAt}>Data timestamp {updatedAt}</time>}
+    </span>
   );
 }
 

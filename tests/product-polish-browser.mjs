@@ -49,7 +49,16 @@ page.on("console", (message) => {
 const base = `http://127.0.0.1:${server.address().port}`;
 const findings = [];
 try {
-  const sizes = [[390,844],[1440,900]];
+  const sizes = [
+    [1920, 1080],
+    [1440, 900],
+    [1280, 800],
+    [1024, 1366],
+    [834, 1194],
+    [430, 932],
+    [390, 844],
+    [360, 800],
+  ];
   for (const [width,height] of sizes) {
     await page.setViewportSize({ width, height });
     for (const surface of ["dashboard","connectors","agents","revenue","client-flow","operations","approvals","policies","settings","plans"]) {

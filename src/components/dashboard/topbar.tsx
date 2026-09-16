@@ -9,6 +9,8 @@ import type { DeployConfig } from "@/lib/os/types";
 import { SearchIcon, SparkIcon, BellIcon, MessageIcon, PlusIcon, XIcon, ArrowIcon, CpuIcon, FlowIcon, DocIcon, DatabaseIcon } from "@/components/dashboard/icons";
 import { NotificationCenter } from "@/components/dashboard/notification-center";
 
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+
 const PAGE_LABELS: Record<string, string> = {
   "/": "Dashboard",
   "/agents": "Operators",
@@ -335,35 +337,33 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
   ];
 
   const items = [
-    ...state.agents.map((a) => ({
+    ...(!IS_PRODUCTION ? state.agents.map((a) => ({
       icon: CpuIcon,
       label: a.name,
       sub: `${a.status} - ${a.stats.metricValue} ${a.stats.metricLabel}`,
       href: "/agents",
-    })),
-    ...state.workflows.map((w) => ({
+    })) : []),
+    ...(!IS_PRODUCTION ? state.workflows.map((w) => ({
       icon: FlowIcon,
       label: w.name,
       sub: `${w.trigger} - ${w.totalRuns.toLocaleString()} runs`,
       href: "/workflows",
-    })),
-    ...state.approvals.filter((a) => a.status === "pending").map((a) => ({
+    })) : []),
+    ...(!IS_PRODUCTION ? state.approvals.filter((a) => a.status === "pending").map((a) => ({
       icon: DocIcon,
       label: a.title,
       sub: `${a.type} - pending approval`,
       href: "/approvals",
-    })),
-    ...state.memory.map((m) => ({
+    })) : []),
+    ...(!IS_PRODUCTION ? state.memory.map((m) => ({
       icon: DatabaseIcon,
       label: m.label,
       sub: `${m.type} - ${m.fieldCount} fields`,
       href: "/memory",
-    })),
+    })) : []),
   ];
 
-  const searchableItems = q.trim()
-    ? Array.from(new Map([...productDestinations, ...items].map((item) => [`${item.label}:${item.href}`, item])).values())
-    : items;
+  const searchableItems = Array.from(new Map([...productDestinations, ...items].map((item) => [`${item.label}:${item.href}`, item])).values());
   const filtered = searchableItems.filter(
     (it) => !q || it.label.toLowerCase().includes(q.toLowerCase()) || it.sub.toLowerCase().includes(q.toLowerCase())
   );
@@ -720,6 +720,7 @@ function HelpPanel({ onClose }: { onClose: () => void }) {
 
 export function OSTopbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { state } = useOS();
   const [deployOpen, setDeployOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -729,7 +730,7 @@ export function OSTopbar() {
   const [helpOpen, setHelpOpen] = useState(false);
 
   const pageName = PAGE_LABELS[pathname] ?? "Overview";
-  const contextualAction = pathname === "/agents" || pathname === "/app/agents"
+  const contextualAction = !IS_PRODUCTION && (pathname === "/agents" || pathname === "/app/agents")
     ? { label: "Deploy operator", icon: true, onClick: () => setDeployOpen(true) }
     : null;
 
@@ -737,7 +738,7 @@ export function OSTopbar() {
   useEffect(() => {
     const handle = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setPaletteOpen(true); }
-      if ((e.metaKey || e.ctrlKey) && e.key === "d") { e.preventDefault(); setDeployOpen(true); }
+      if (!IS_PRODUCTION && (e.metaKey || e.ctrlKey) && e.key === "d") { e.preventDefault(); setDeployOpen(true); }
     };
     window.addEventListener("keydown", handle);
     return () => window.removeEventListener("keydown", handle);
@@ -756,7 +757,7 @@ export function OSTopbar() {
   }, []);
 
   useEffect(() => {
-    const openDeploy = () => setDeployOpen(true);
+    const openDeploy = () => { if (!IS_PRODUCTION) setDeployOpen(true); };
     const openPalette = () => setPaletteOpen(true);
     window.addEventListener("os:open-deploy", openDeploy);
     window.addEventListener("os:open-palette", openPalette);
@@ -860,7 +861,7 @@ export function OSTopbar() {
             onClick={() => {
               closeAll();
               fetch("/api/auth/logout", { method: "POST" }).finally(() => {
-                window.location.href = "/login";
+                router.push("/login");
               });
             }}
           >
@@ -870,7 +871,7 @@ export function OSTopbar() {
       </div>
 
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
-      {deployOpen && <DeployModal onClose={() => setDeployOpen(false)} />}
+      {!IS_PRODUCTION && deployOpen && <DeployModal onClose={() => setDeployOpen(false)} />}
     </>
   );
 }

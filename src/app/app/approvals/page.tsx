@@ -52,14 +52,14 @@ export default function ApprovalsPage() {
       const json = await res.json().catch(() => ({})) as ApprovalsResponse;
       if (!res.ok) {
         setError(json.error || "Could not load approvals.");
-        setApprovals([]);
+        if (!background) setApprovals([]);
         return;
       }
       setApprovalPresentationError(null);
       setApprovals(Array.isArray(json.approvals) ? json.approvals : []);
     } catch {
       setError("Could not load approvals.");
-      setApprovals([]);
+      if (!background) setApprovals([]);
     } finally {
       if (!background) setLoading(false);
     }

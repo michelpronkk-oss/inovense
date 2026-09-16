@@ -6,17 +6,22 @@ import type { WorkforceActivityPage } from "@/lib/activity/types";
 
 type Range = "24h" | "7d" | "30d";
 const hoursFor: Record<Range, number> = { "24h": 24, "7d": 24 * 7, "30d": 24 * 30 };
+const SOURCE_LIMIT = 250;
 
 export async function getWorkforceActivity(input: { workspaceId: string; range: Range; limit?: number }): Promise<WorkforceActivityPage> {
   const supabase = createSupabaseAdmin();
   const start = new Date(Date.now() - hoursFor[input.range] * 60 * 60 * 1000).toISOString();
   const [approvals, runs, logs, workflows, outcomes] = await Promise.all([
-    supabase.from("os_approvals").select("id,status,created_at,resolved_at,agent_id,continuation_payload").eq("workspace_id", input.workspaceId).gte("created_at", start).order("created_at", { ascending: false }).limit(250),
-    supabase.from("os_operator_runs").select("id,operator_key,status,created_at,completed_at").eq("workspace_id", input.workspaceId).gte("created_at", start).order("created_at", { ascending: false }).limit(250),
-    supabase.from("os_operator_run_logs").select("id,event_type,created_at,metadata").eq("workspace_id", input.workspaceId).gte("created_at", start).order("created_at", { ascending: false }).limit(250),
-    supabase.from("os_workflow_runs").select("id,operator_key,objective,status,created_at,parent_workflow_id,supporting_operators,dependency_state").eq("workspace_id", input.workspaceId).gte("created_at", start).order("created_at", { ascending: false }).limit(250),
-    supabase.from("os_workflow_outcomes").select("id,operator_key,workflow_id,outcome_type,attribution_level,confidence,evidence_refs,observed_at").eq("workspace_id", input.workspaceId).gte("observed_at", start).order("observed_at", { ascending: false }).limit(250),
+    supabase.from("os_approvals").select("id,status,created_at,resolved_at,agent_id,continuation_payload").eq("workspace_id", input.workspaceId).gte("created_at", start).order("created_at", { ascending: false }).limit(SOURCE_LIMIT),
+    supabase.from("os_operator_runs").select("id,operator_key,status,created_at,completed_at").eq("workspace_id", input.workspaceId).gte("created_at", start).order("created_at", { ascending: false }).limit(SOURCE_LIMIT),
+    supabase.from("os_operator_run_logs").select("id,event_type,created_at,metadata").eq("workspace_id", input.workspaceId).gte("created_at", start).order("created_at", { ascending: false }).limit(SOURCE_LIMIT),
+    supabase.from("os_workflow_runs").select("id,operator_key,objective,status,created_at,parent_workflow_id,supporting_operators,dependency_state").eq("workspace_id", input.workspaceId).gte("created_at", start).order("created_at", { ascending: false }).limit(SOURCE_LIMIT),
+    supabase.from("os_workflow_outcomes").select("id,operator_key,workflow_id,outcome_type,attribution_level,confidence,evidence_refs,observed_at").eq("workspace_id", input.workspaceId).gte("observed_at", start).order("observed_at", { ascending: false }).limit(SOURCE_LIMIT),
   ]);
   if (approvals.error || runs.error || logs.error || workflows.error || outcomes.error) throw new Error("Workforce activity is temporarily unavailable.");
-  return normalizeWorkforceActivity({ approvals: approvals.data ?? [], runs: runs.data ?? [], logs: logs.data ?? [], workflows: workflows.data ?? [], outcomes: outcomes.data ?? [], rangeStart: start, limit: input.limit });
+  return normalizeWorkforceActivity({
+    approvals: approvals.data ?? [], runs: runs.data ?? [], logs: logs.data ?? [], workflows: workflows.data ?? [], outcomes: outcomes.data ?? [],
+    rangeStart: start, limit: input.limit,
+    partialHistory: [approvals.data, runs.data, logs.data, workflows.data, outcomes.data].some((rows) => (rows?.length ?? 0) >= SOURCE_LIMIT),
+  });
 }

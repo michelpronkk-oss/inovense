@@ -13,6 +13,7 @@ import { getLiveOperatorCardPresentation, ROADMAP_OPERATOR_PRESENTATION } from "
 import { GLYPHS, OPERATORS, type Operator } from "@/data/operators";
 import { PageHeader } from "@/components/product-ui/page-primitives";
 import { useWorkspaceRealtimeInvalidation } from "@/lib/os/workspace-realtime";
+import { isLiveWorkforceState } from "@/lib/dashboard/metric-definitions";
 
 // Mirrors OperatorProductStateResult (src/lib/operators/product-state.ts) -
 // the ONE shared server-computed state for the four live operators. This
@@ -37,8 +38,6 @@ const HREF_BY_KEY: Record<string, string> = {
   operations: "/agents/operations",
   support: "/agents/support",
 };
-
-const ACTIVE_STATES = new Set(["active", "active_limited", "enhanced"]);
 
 function Arrow() {
   return (
@@ -113,7 +112,7 @@ function footerStatusText(productState: ProductState | undefined, operatorKey: s
 
 function footerTone(state: ProductState["state"] | undefined): "on" | "warn" | "" {
   if (!state) return "";
-  if (ACTIVE_STATES.has(state)) return "on";
+  if (isLiveWorkforceState(state)) return "on";
   if (state === "needs_attention" || state === "plan_required" || state === "billing_attention" || state === "suspended" || state === "paused") return "warn";
   return "";
 }
@@ -201,7 +200,7 @@ export default function AgentsRegistryPage() {
     return { key, op, productState: productStateByKey.get(key) };
   }).filter((entry): entry is { key: OperatorKey; op: Operator; productState: ProductState | undefined } => Boolean(entry)), [productStateByKey]);
 
-  const activeCount = useMemo(() => liveCards.filter((card) => card.productState && ACTIVE_STATES.has(card.productState.state)).length, [liveCards]);
+  const activeCount = useMemo(() => liveCards.filter((card) => card.productState && isLiveWorkforceState(card.productState.state)).length, [liveCards]);
 
   return (
     <div className="os-page agents-page">

@@ -16,6 +16,7 @@ import { addZendeskInternalNote, replyZendeskTicket, updateZendeskTicket } from 
 import { replyToIntercomConversation, updateIntercomConversation } from "@/lib/connectors/intercom";
 import { operatorRuntimeId } from "@/lib/operators/logging";
 import { recordProviderFailure, recordProviderSuccess } from "@/lib/runtime/provider-health";
+import { sharedActionForActionType } from "@/lib/actions/action-contract";
 
 function buildPolicyInput(intent: ActionIntent, prepared: Omit<PreparedAction, "policyInput" | "policyDecision">): PolicyInput {
   const rawInput = intent.input ?? {};
@@ -50,6 +51,7 @@ export function prepareAction(intent: ActionIntent, workspacePolicy: WorkspaceAc
     workspaceId: intent.workspaceId,
     operatorKey: intent.operatorKey,
     actionType: intent.actionType,
+    sharedAction: sharedActionForActionType(intent.actionType, intent.input),
     connectorKey: intent.connectorKey || def.defaultConnectorKey,
     capability: intent.capability || def.capability,
     connectorCategory: def.connectorCategory,

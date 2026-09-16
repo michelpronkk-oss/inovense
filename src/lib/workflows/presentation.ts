@@ -4,19 +4,11 @@ import { getOperatorDefinition } from "@/lib/operators/registry";
 import { getConnectorDefinition } from "@/lib/connectors/registry";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { workforceState } from "@/lib/workforce/ownership";
+import type { WorkflowDetail } from "@/lib/product/presentation-models";
 
 type Row = Record<string, unknown>;
 
-export type WorkflowStepPresentation = {
-  id: string;
-  order: number;
-  label: string;
-  destination: string;
-  status: string;
-  approvalRequired: boolean;
-  approvalId: string | null;
-  blocker: string | null;
-};
+export type WorkflowStepPresentation = WorkflowDetail["steps"][number];
 
 export type WorkflowOutcomePresentation = {
   id: string;
@@ -37,13 +29,9 @@ export type SupportingWorkflowPresentation = {
   resultEvidence: Record<string, unknown>;
 };
 
-export type WorkflowPresentation = {
-  id: string;
-  objective: string;
-  operatorKey: string;
+export type WorkflowPresentation = WorkflowDetail & {
   operatorName: string;
   primaryOwner: string;
-  supportingOperators: string[];
   externalCommunicationOwner: string | null;
   dependencyState: string | null;
   workforceState: string;
@@ -51,11 +39,6 @@ export type WorkflowPresentation = {
   requestedOutcome: string | null;
   returnedEvidence: Record<string, unknown>;
   supportingWork: SupportingWorkflowPresentation[];
-  status: string;
-  priority: "low" | "normal" | "high";
-  confidence: "low" | "medium" | "high";
-  createdAt: string;
-  updatedAt: string;
   source: { label: string; detail: string | null } | null;
   whyStarted: string[];
   nextAttention: string;
@@ -117,6 +100,8 @@ function nextAttention(steps: WorkflowStepPresentation[], status: string): strin
 
 export async function getWorkflowPresentations(input: { workspaceId: string; workflowId?: string | null; operatorKey?: string | null; limit?: number }) {
   const supabase = createSupabaseAdmin();
+  const requestedLimit = Math.min(Math.max(input.limit ?? 80, 1), 80);
+  const detailLimit = Math.min(Math.max(requestedLimit * 4, 40), 320);
   let runsQuery = supabase
     .from("os_workflow_runs")
     .select("id,operator_key,primary_owner,supporting_operators,external_communication_owner,dependency_state,handoff_reason,requested_outcome,relevant_context,result_evidence,originating_signal_id,objective,priority,confidence,status,created_at,updated_at,parent_workflow_id")
@@ -125,22 +110,22 @@ export async function getWorkflowPresentations(input: { workspaceId: string; wor
     // changed work must rise above older workflows created more recently.
     .order("updated_at", { ascending: false })
     .order("created_at", { ascending: false })
-    .limit(input.limit ?? 80);
+    .limit(requestedLimit + 1);
   if (input.workflowId) runsQuery = runsQuery.eq("id", input.workflowId);
   if (input.operatorKey) runsQuery = runsQuery.eq("operator_key", input.operatorKey);
   if (!input.workflowId) runsQuery = runsQuery.is("parent_workflow_id", null);
   const { data: runs, error: runsError } = await runsQuery;
   if (runsError) throw new Error("Workflow records are temporarily unavailable.");
-  const workflowRows = records(runs);
+  const workflowRows = records(runs).slice(0, requestedLimit);
   if (!workflowRows.length) return [] as WorkflowPresentation[];
   const workflowIds = workflowRows.map((row) => String(row.id));
   const signalIds = workflowRows.map((row) => text(row.originating_signal_id)).filter((id): id is string => Boolean(id));
   const [stepsResult, outcomesResult, signalsResult, candidatesResult, childrenResult] = await Promise.all([
-    supabase.from("os_workflow_steps").select("id,workflow_id,step_order,action_type,connector_key,approval_required,status,approval_id,block_reason").eq("workspace_id", input.workspaceId).in("workflow_id", workflowIds).order("step_order", { ascending: true }),
-    supabase.from("os_workflow_outcomes").select("id,workflow_id,outcome_type,attribution_level,observed_at").eq("workspace_id", input.workspaceId).in("workflow_id", workflowIds).order("observed_at", { ascending: false }),
+    supabase.from("os_workflow_steps").select("id,workflow_id,step_order,action_type,connector_key,approval_required,status,approval_id,block_reason").eq("workspace_id", input.workspaceId).in("workflow_id", workflowIds).order("step_order", { ascending: true }).limit(detailLimit),
+    supabase.from("os_workflow_outcomes").select("id,workflow_id,outcome_type,attribution_level,observed_at").eq("workspace_id", input.workspaceId).in("workflow_id", workflowIds).order("observed_at", { ascending: false }).limit(detailLimit),
     signalIds.length ? supabase.from("os_signal_events").select("id,connector_key,source_type,source_id").eq("workspace_id", input.workspaceId).in("id", signalIds) : Promise.resolve({ data: [], error: null }),
     signalIds.length ? supabase.from("os_signal_candidates").select("signal_id,reason_codes").eq("workspace_id", input.workspaceId).in("signal_id", signalIds) : Promise.resolve({ data: [], error: null }),
-    supabase.from("os_workflow_runs").select("id,parent_workflow_id,operator_key,status,handoff_reason,requested_outcome,dependency_state,external_communication_allowed,result_evidence").eq("workspace_id", input.workspaceId).in("parent_workflow_id", workflowIds).order("created_at", { ascending: true }),
+    supabase.from("os_workflow_runs").select("id,parent_workflow_id,operator_key,status,handoff_reason,requested_outcome,dependency_state,external_communication_allowed,result_evidence").eq("workspace_id", input.workspaceId).in("parent_workflow_id", workflowIds).order("created_at", { ascending: true }).limit(detailLimit),
   ]);
   if (stepsResult.error || outcomesResult.error || signalsResult.error || candidatesResult.error || childrenResult.error) throw new Error("Workflow detail is temporarily unavailable.");
   const stepsByWorkflow = new Map<string, WorkflowStepPresentation[]>();
@@ -206,7 +191,7 @@ export async function getWorkflowPresentations(input: { workspaceId: string; wor
       confidence: text(row.confidence) === "high" || text(row.confidence) === "low" ? text(row.confidence) as "high" | "low" : "medium",
       createdAt: String(row.created_at), updatedAt: text(row.updated_at) ?? String(row.created_at), source: sourceLabel(signalId ? signalById.get(signalId) : undefined),
       whyStarted: signalId ? (reasonsBySignal.get(signalId) ?? []) : [], nextAttention: nextAttention(steps, String(row.status)), steps,
-      outcomes: outcomesByWorkflow.get(id) ?? [],
+      outcomes: outcomesByWorkflow.get(id) ?? [], outcomeCount: (outcomesByWorkflow.get(id) ?? []).length,
     };
   });
 }

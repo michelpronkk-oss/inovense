@@ -1,6 +1,7 @@
 import type { Capability } from "@/lib/connectors/capabilities";
 import type { ConnectorCategory, ConnectorRiskLevel } from "@/lib/connectors/registry";
 import type { PolicyDecision, PolicyEvaluationEntitlements, PolicyInput, PolicyWorkspaceSettings } from "@/lib/policies/types";
+import type { SharedAction } from "@/lib/actions/action-contract";
 
 export type ActionType =
   | "send_email"
@@ -62,6 +63,7 @@ export type PreparedAction = {
   workspaceId: string;
   operatorKey: string;
   actionType: ActionType;
+  sharedAction?: SharedAction | null;
   connectorKey: string;
   capability: Capability;
   connectorCategory: ConnectorCategory;

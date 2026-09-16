@@ -104,7 +104,9 @@ export type DashboardOverview = {
   operatorProductStates: OperatorProductStateResult[];
   /** Precomputed via selectDashboardLifecycleState so the client component never re-derives the precedence itself. */
   lifecycleState: DashboardLifecycleState;
-  lastUpdatedAt: string;
+  /** Latest timestamp returned by a persisted workspace record. Null means
+   * there is no recorded workspace activity to use as a freshness claim. */
+  lastUpdatedAt: string | null;
 };
 
 export type DashboardApproval = {
@@ -187,6 +189,15 @@ function stringValue(value: unknown): string | null {
 
 function numberValue(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function latestPersistedTimestamp(rows: Row[], fields: string[]): string | null {
+  const timestamps = rows
+    .flatMap((row) => fields.map((field) => stringValue(row[field])))
+    .filter((value): value is string => Boolean(value))
+    .filter((value) => Number.isFinite(Date.parse(value)))
+    .sort((a, b) => Date.parse(b) - Date.parse(a));
+  return timestamps[0] ?? null;
 }
 
 function timeValue(row: Row): string | null {
@@ -524,7 +535,7 @@ export async function getDashboardOverview(input: {
   const supabase = input.supabase ?? createSupabaseAdmin();
   const workspace = await supabase
     .from("os_workspaces")
-    .select("id,name,environment,region,plan,plan_tier,billing_status,trial_ends_at,onboarding_data")
+    .select("id,name,environment,region,plan,plan_tier,billing_status,trial_ends_at,onboarding_data,updated_at")
     .eq("id", input.workspaceId)
     .single();
   if (workspace.error || !workspace.data) throw new Error(workspace.error?.message || "Workspace not found.");
@@ -543,14 +554,19 @@ export async function getDashboardOverview(input: {
     getWorkspaceOperatorProductStates({ workspaceId: input.workspaceId, supabase }),
     // Same real, shared workflow presentation the /workflows page uses -
     // "Work in progress" on the dashboard, never a separate derivation.
-    getWorkflowPresentations({ workspaceId: input.workspaceId, limit: 20 }).catch(() => []),
+    getWorkflowPresentations({ workspaceId: input.workspaceId, limit: 20 }),
   ]);
 
-  const approvals = approvalsRes.error ? [] : (approvalsRes.data ?? []).map((row) => row as Row);
-  const runs = runsRes.error ? [] : (runsRes.data ?? []).map((row) => row as Row);
-  const logs = logsRes.error ? [] : (logsRes.data ?? []).map((row) => row as Row);
-  const outcomes = outcomesRes.error ? [] : (outcomesRes.data ?? []).map((row) => row as Row);
-  const workflows = workflowsRes.error ? [] : (workflowsRes.data ?? []).map((row) => row as Row);
+  if (approvalsRes.error || runsRes.error || logsRes.error || outcomesRes.error || workflowsRes.error) {
+    // An unavailable source must not be rendered as an empty, healthy
+    // workspace. The route converts this into a bounded retry message.
+    throw new Error("Dashboard data is temporarily unavailable.");
+  }
+  const approvals = (approvalsRes.data ?? []).map((row) => row as Row);
+  const runs = (runsRes.data ?? []).map((row) => row as Row);
+  const logs = (logsRes.data ?? []).map((row) => row as Row);
+  const outcomes = (outcomesRes.data ?? []).map((row) => row as Row);
+  const workflows = (workflowsRes.data ?? []).map((row) => row as Row);
   const connectors = buildConnectors({ truth });
   const trelloDestinationSet = Boolean(workspaceSettings.trello.defaultBoardId && workspaceSettings.trello.defaultListId);
   const slackChannelSelected = Boolean(workspaceSettings.slack.slackDefaultChannelId);
@@ -696,6 +712,13 @@ export async function getDashboardOverview(input: {
       trelloDestinationSet,
       runsCount: runs.length,
     }),
-    lastUpdatedAt: new Date().toISOString(),
+    lastUpdatedAt: latestPersistedTimestamp([
+      workspace.data as Row,
+      ...approvals,
+      ...runs,
+      ...logs,
+      ...outcomes,
+      ...workflows,
+    ], ["updated_at", "created_at", "completed_at", "resolved_at", "observed_at"]),
   };
 }

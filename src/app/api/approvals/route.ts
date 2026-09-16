@@ -16,6 +16,7 @@ import {
   expectedOutcome,
   afterApprovalText,
 } from "@/lib/approvals/presentation";
+import { boundedLimit, decodePageCursor, encodePageCursor } from "@/lib/server/pagination";
 
 function mapApproval(row: Record<string, unknown>, livePolicy: PolicyWorkspaceSettings) {
   const continuation = asPayload(row.continuation_payload);
@@ -144,6 +145,8 @@ export async function GET(req: NextRequest) {
   const userId = (req.nextUrl.searchParams.get("userId") || "").trim();
   const userEmail = (req.nextUrl.searchParams.get("userEmail") || "").trim().toLowerCase();
   const status = (req.nextUrl.searchParams.get("status") || "").trim();
+  const limit = boundedLimit(req.nextUrl.searchParams.get("limit"), 100, 100);
+  const cursor = decodePageCursor(req.nextUrl.searchParams.get("cursor"));
 
   if (!workspaceId) {
     return NextResponse.json({ error: "workspaceId is required." }, { status: 400 });
@@ -160,7 +163,12 @@ export async function GET(req: NextRequest) {
     .select("id,workspace_id,type,title,body,agent_id,agent_mark,agent_color,run_id,status,created_at,resolved_at,resolved_by,continuation_payload,policy_reason,approval_scope,policy_evidence")
     .eq("workspace_id", context.workspaceId)
     .order("created_at", { ascending: false })
-    .limit(100);
+    .order("id", { ascending: false })
+    .limit(limit + 1);
+
+  if (cursor) query = cursor.id
+    ? query.or(`created_at.lt.${cursor.at},and(created_at.eq.${cursor.at},id.lt.${cursor.id})`)
+    : query.lt("created_at", cursor.at);
 
   if (status) {
     query = query.eq("status", status);
@@ -172,7 +180,10 @@ export async function GET(req: NextRequest) {
   }
 
   const livePolicy = await loadPolicyWorkspaceSettings({ supabase, workspaceId: context.workspaceId });
-  const data = (approvals.data ?? []).map((row) => mapApproval(row as Record<string, unknown>, livePolicy));
+  const rows = approvals.data ?? [];
+  const hasMore = rows.length > limit;
+  const data = rows.slice(0, limit).map((row) => mapApproval(row as Record<string, unknown>, livePolicy));
+  const last = data.at(-1);
   const now = new Date();
   const todayKey = now.toISOString().slice(0, 10);
   const stats = {
@@ -182,5 +193,5 @@ export async function GET(req: NextRequest) {
     total: data.length,
   };
 
-  return NextResponse.json({ approvals: data, stats });
+  return NextResponse.json({ approvals: data, stats, hasMore, nextCursor: hasMore && last?.created_at ? encodePageCursor({ at: last.created_at, id: last.id }) : null });
 }

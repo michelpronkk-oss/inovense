@@ -243,11 +243,15 @@
   }
   .hv-stk-m-row { display: flex; align-items: center; gap: 12px; min-height: 22px; }
   .hv-stk-m-cn-wrap {
-    margin-top: 16px; display: flex; flex-wrap: nowrap; gap: 9px; overflow-x: auto; padding-bottom: 4px;
-    scrollbar-width: none; -webkit-overflow-scrolling: touch;
-    mask-image: linear-gradient(90deg, #000 88%, transparent 100%);
+    margin-top: 16px; overflow: hidden; padding-bottom: 4px;
+    mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
   }
-  .hv-stk-m-cn-wrap::-webkit-scrollbar { display: none; }
+  .hv-stk-m-cn-track {
+    display: flex; flex-wrap: nowrap; gap: 9px; width: max-content;
+    animation: hv-stk-marquee 24s linear infinite;
+  }
+  .hv-stk-m-cn-wrap:hover .hv-stk-m-cn-track, .hv-stk-m-cn-wrap:active .hv-stk-m-cn-track { animation-play-state: paused; }
   .hv-stk-m-cn {
     flex: none; display: flex; align-items: center; gap: 8px; padding: 9px 13px 9px 9px; border-radius: 999px;
     background: linear-gradient(160deg, rgba(255,255,255,.03), rgba(255,255,255,.006));
@@ -257,6 +261,7 @@
   .hv-stk-m-cn .hv-dot { margin-left: 2px; }
   .hv-stk-mobile .hv-cn-more { margin-top: 16px; font-size: 12.5px; }
 }
+@keyframes hv-stk-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
 /* ---------- 03 Outcomes ---------- */
 .hv-ov {

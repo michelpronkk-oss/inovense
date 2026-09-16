@@ -20,7 +20,7 @@ function actionState(row: Row) {
 }
 
 /** A read-time projection: no payload fields that can contain customer content are serialized. */
-export function normalizeWorkforceActivity(input: { approvals: Row[]; runs: Row[]; logs: Row[]; workflows?: Row[]; outcomes?: Row[]; rangeStart: string; rangeEnd?: string; limit?: number }): WorkforceActivityPage {
+export function normalizeWorkforceActivity(input: { approvals: Row[]; runs: Row[]; logs: Row[]; workflows?: Row[]; outcomes?: Row[]; rangeStart: string; rangeEnd?: string; limit?: number; partialHistory?: boolean }): WorkforceActivityPage {
   const start = new Date(input.rangeStart).getTime();
   const end = input.rangeEnd ? new Date(input.rangeEnd).getTime() : Date.now();
   const within = (value: string | null) => value !== null && Number.isFinite(new Date(value).getTime()) && new Date(value).getTime() >= start && new Date(value).getTime() <= end;
@@ -115,7 +115,7 @@ export function normalizeWorkforceActivity(input: { approvals: Row[]; runs: Row[
 
   const sorted = items.sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
   const visible = sorted.slice(0, input.limit ?? 40);
-  return { items: visible, summary: summarizeWorkforceActivity(sorted, start, end), hasMore: sorted.length > visible.length, partialHistory: false };
+  return { items: visible, summary: summarizeWorkforceActivity(sorted, start, end), hasMore: sorted.length > visible.length, partialHistory: input.partialHistory === true };
 }
 
 export function summarizeWorkforceActivity(items: WorkforceActivityItem[], start: number, end: number): WorkforceActivitySummary {

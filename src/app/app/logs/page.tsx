@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { useOS } from "@/lib/os/app-provider";
 import type { Agent, CurrentUser, ExecutionLog } from "@/lib/os/types";
 import { FilterIcon } from "@/components/dashboard/icons";
-import { EmptyState, PageHeader } from "@/components/product-ui/page-primitives";
+import { EmptyState, FreshnessIndicator, PageHeader } from "@/components/product-ui/page-primitives";
+import { useWorkspaceRealtimeInvalidation, useWorkspaceRealtimeStatus } from "@/lib/os/workspace-realtime";
+
+type LogView = ExecutionLog & { eventLabel?: string; operatorKey?: string | null };
 
 const STATUS_TONE: Record<string, string> = { ok: "green", warn: "amber", waiting: "cyan", error: "red" };
 
@@ -75,22 +78,59 @@ function actorFor(log: ExecutionLog, agents: Agent[], currentUser: CurrentUser):
 
 export default function LogsPage() {
   const { state } = useOS();
+  const [logs, setLogs] = useState<LogView[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
   const [agentFilter, setAgentFilter] = useState("All agents");
   const [eventFilter, setEventFilter] = useState("All events");
   const [visibleCount, setVisibleCount] = useState(10);
+  const realtimeStatus = useWorkspaceRealtimeStatus(state.workspace.id);
+
+  const loadLogs = useCallback(async (background = false) => {
+    if (!background) { setLoading(true); setError(""); }
+    try {
+      const response = await fetch("/api/logs", { cache: "no-store" });
+      const body = await response.json().catch(() => ({})) as { logs?: LogView[]; lastUpdatedAt?: string | null; error?: string };
+      if (!response.ok) throw new Error(body.error || "Execution logs are temporarily unavailable.");
+      setLogs(Array.isArray(body.logs) ? body.logs : []);
+      setLastUpdatedAt(body.lastUpdatedAt ?? null);
+      setError("");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Execution logs are temporarily unavailable.");
+    } finally {
+      if (!background) setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const kickoff = window.setTimeout(() => { void loadLogs(); }, 0);
+    const refresh = () => { if (document.visibilityState === "visible") void loadLogs(true); };
+    const timer = window.setInterval(refresh, 30_000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearTimeout(kickoff);
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [loadLogs]);
+  useWorkspaceRealtimeInvalidation(state.workspace.id, ["logs", "activity"], () => { void loadLogs(true); });
 
 
   const agentMarks = useMemo(() => {
-    const marks = Array.from(new Set(state.logs.map((l) => l.agentMark)));
+    const marks = Array.from(new Set(logs.map((l) => l.agentMark)));
     return ["All agents", ...marks];
-  }, [state.logs]);
+  }, [logs]);
 
   const eventTypes = useMemo(() => {
-    const types = Array.from(new Set(state.logs.map((l) => l.event)));
+    const types = Array.from(new Set(logs.map((l) => l.event)));
     return ["All events", ...types];
-  }, [state.logs]);
+  }, [logs]);
+  const eventLabels = useMemo(() => new Map(logs.map((log) => [log.event, log.eventLabel ?? formatEventKey(log.event)])), [logs]);
 
-  const filtered = state.logs.filter((l) =>
+  const filtered = logs.filter((l) =>
     (agentFilter === "All agents" || l.agentMark === agentFilter) &&
     (eventFilter === "All events" || l.event === eventFilter)
   );
@@ -103,6 +143,7 @@ export default function LogsPage() {
         eyebrow="Execution layer · live"
         title="Execution logs"
         description="A searchable record of operator actions, tool calls, and outcomes in this workspace."
+        meta={<FreshnessIndicator updatedAt={lastUpdatedAt} realtimeStatus={realtimeStatus} />}
         actions={<>
           <button className="btn btn-ghost btn-sm" disabled aria-disabled="true" title="Export is coming soon"><FilterIcon size={12} /> Export</button>
         </>}
@@ -122,12 +163,12 @@ export default function LogsPage() {
           <label className="field">
             <span className="label">Event</span>
             <select className="select" value={eventFilter} onChange={(event) => { setEventFilter(event.target.value); setVisibleCount(10); }}>
-              {eventTypes.map((e) => <option key={e} value={e}>{e === "All events" ? e : formatEventKey(e)}</option>)}
+              {eventTypes.map((e) => <option key={e} value={e}>{e === "All events" ? e : eventLabels.get(e) ?? formatEventKey(e)}</option>)}
             </select>
           </label>
         </div>
         <div className="inline">
-          <span className="t-meta">{filtered.length} of {state.logs.length} entries</span>
+          <span className="t-meta">{filtered.length} of {logs.length} entries</span>
           {hasActiveFilter && (
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setAgentFilter("All agents"); setEventFilter("All events"); setVisibleCount(10); }}>Clear filters</button>
           )}
@@ -139,8 +180,12 @@ export default function LogsPage() {
           <h3 className="t-section">Log stream</h3>
           <p className="t-meta"><span className="dot dot-cyan pulsing" /> {visibleLogs.length} of {filtered.length} events</p>
         </div>
-        {filtered.length === 0 ? (
-          <div className="card-pad"><EmptyState title="No log entries match these filters.">Change a filter to inspect another part of the workspace activity.</EmptyState></div>
+        {loading && logs.length === 0 ? (
+          <div className="card-pad t-compact dim">Loading persisted execution logs…</div>
+        ) : error ? (
+          <div className="card-pad"><EmptyState title="Execution logs could not be loaded." action={<button className="btn btn-ghost btn-sm" type="button" onClick={() => void loadLogs()}>Retry</button>}>{error}</EmptyState></div>
+        ) : filtered.length === 0 ? (
+          <div className="card-pad"><EmptyState title={logs.length === 0 ? "No execution events recorded yet." : "No log entries match these filters."}>{logs.length === 0 ? "Persisted operator run events will appear here after a real check or approved action." : "Change a filter to inspect another part of the workspace activity."}</EmptyState></div>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table className="tbl">
@@ -159,7 +204,7 @@ export default function LogsPage() {
                           <span className="ink">{actor.label}</span>
                         </span>
                       </td>
-                      <td className="mono">{formatEventKey(l.event)}</td>
+                      <td className="mono">{l.eventLabel ?? formatEventKey(l.event)}</td>
                       <td title={`${l.message} (${l.id})`}>{l.message}</td>
                       <td className="right"><span className={`badge ${STATUS_TONE[l.status] ?? "muted"}`}>{l.status}</span></td>
                     </tr>

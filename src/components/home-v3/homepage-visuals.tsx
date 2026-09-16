@@ -223,13 +223,15 @@ export function ConnectorsVisual() {
         <div className="hv-stk-m-div" aria-hidden="true" />
         <div className="hv-stk-m-row"><span className="hv-lab">Connects to</span><span className="hv-lab hv-stk-count">9 systems</span></div>
         <div className="hv-stk-m-cn-wrap">
-          {CONNECTORS.map((c) => (
-            <span className="hv-stk-m-cn" key={c.name}>
-              <span className="hv-chip hv-cn-ic" style={{ "--hv-chip-size": "22px", "--hv-chip-radius": "7px", ...(c.color ? { color: c.color } : {}) } as CSSProperties}>{c.icon}</span>
-              <span className="hv-cn-nm">{c.name}</span>
-              {c.pulse !== undefined && <span className={`hv-dot hv-dot-cy hv-pulse ${c.pulse}`} aria-hidden="true" />}
-            </span>
-          ))}
+          <div className="hv-stk-m-cn-track">
+            {[...CONNECTORS, ...CONNECTORS].map((c, i) => (
+              <span className="hv-stk-m-cn" key={`${c.name}-${i}`} aria-hidden={i >= CONNECTORS.length || undefined}>
+                <span className="hv-chip hv-cn-ic" style={{ "--hv-chip-size": "22px", "--hv-chip-radius": "7px", ...(c.color ? { color: c.color } : {}) } as CSSProperties}>{c.icon}</span>
+                <span className="hv-cn-nm">{c.name}</span>
+                {c.pulse !== undefined && <span className={`hv-dot hv-dot-cy hv-pulse ${c.pulse}`} aria-hidden="true" />}
+              </span>
+            ))}
+          </div>
         </div>
         <Link href="/connectors" className="hv-cn-more">See supported connectors <span aria-hidden="true">{ARROW}</span></Link>
       </div>

@@ -5,10 +5,13 @@ import { useRouter } from "next/navigation";
 import { useOS } from "@/lib/os/app-provider";
 import { SearchIcon } from "@/components/dashboard/icons";
 import { getEntitlements } from "@/lib/os/entitlements";
-import { PageHeader } from "@/components/product-ui/page-primitives";
+import { FreshnessIndicator, PageHeader } from "@/components/product-ui/page-primitives";
 import { confirmMemoryEntryAction, correctMemoryEntryAction, markMemoryOutdatedAction } from "@/app/app/memory/actions";
 import { memorySummary, resolveMemoryFacts } from "@/lib/memory/model";
 import type { MemoryCategory, MemoryEntry } from "@/lib/os/types";
+import { getRealConnectedConnectors } from "@/lib/os/truth";
+import { useWorkspaceRealtimeInvalidation, useWorkspaceRealtimeStatus } from "@/lib/os/workspace-realtime";
+import { formatRelativeWorkspaceTime } from "@/lib/product/time";
 
 const RELIABILITY_TONE: Record<string, string> = { verified: "green", observed: "cyan", derived: "plan", stale: "amber", missing: "muted" };
 const CATEGORY_LABELS: Record<MemoryCategory, string> = { business: "Business", commercial: "Commercial", customers: "Customers", delivery: "Delivery", support: "Support", operating_rules: "Operating rules" };
@@ -23,14 +26,7 @@ function contextFields(content: string): Array<{ label: string; value: string }>
 }
 
 function relativeTime(iso: string): string {
-  const diff = Math.max(0, Date.now() - new Date(iso).getTime());
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return `${Math.floor(days / 7)}w ago`;
+  return formatRelativeWorkspaceTime(iso);
 }
 
 function reliabilityLabel(entry: MemoryEntry) {
@@ -44,6 +40,7 @@ function sourceLabel(entry: MemoryEntry) {
 
 export default function MemoryPage() {
   const { state, refreshWorkspace } = useOS();
+  const realtimeStatus = useWorkspaceRealtimeStatus(state.workspace.id);
   const router = useRouter();
   const entitlements = getEntitlements(state.workspace);
   const isPreview = entitlements.billingStatus === "preview";
@@ -58,7 +55,7 @@ export default function MemoryPage() {
   const resolvedFacts = useMemo(() => resolveMemoryFacts(allEntries), [allEntries]);
   const entries = useMemo(() => resolvedFacts.flatMap((fact) => fact.effective ? [fact.effective] : []), [resolvedFacts]);
   const summary = memorySummary(entries);
-  const connectedSystems = state.connectors.filter((connector) => connector.isConnected).map((connector) => connector.name);
+  const connectedSystems = getRealConnectedConnectors(state.connectors).map((connector) => connector.name);
   const canManageContext = /owner|admin/i.test(state.currentUser.roleLabel);
   const normalizedQuery = q.trim().toLowerCase();
   const filtered = entries.filter((entry) => {
@@ -70,6 +67,11 @@ export default function MemoryPage() {
   const expandedHistory = expandedEntry ? resolvedFacts.find((fact) => fact.canonicalKey === (expandedEntry.canonicalKey ?? expandedEntry.id))?.alternates.filter((entry) => entry.id !== expandedEntry.id).slice(0, 4) ?? [] : [];
   const expandedFields = expandedEntry ? contextFields(expandedEntry.content) : [];
   const totalFields = entries.reduce((sum, entry) => sum + entry.fieldCount, 0);
+  const lastUpdatedAt = entries.map((entry) => entry.updatedAt).filter((value) => Number.isFinite(Date.parse(value))).sort((a, b) => Date.parse(b) - Date.parse(a))[0] ?? null;
+
+  useWorkspaceRealtimeInvalidation(state.workspace.id, ["memory", "connectors"], () => {
+    void refreshWorkspace().catch(() => setNotice("Context refresh is temporarily unavailable. The visible data remains the last persisted workspace snapshot."));
+  });
 
   const mutate = (action: "confirm" | "stale" | "correct", id: string) => {
     startTransition(async () => {
@@ -83,7 +85,7 @@ export default function MemoryPage() {
 
   return (
     <div className="os-page memory-page">
-      <PageHeader eyebrow="Business context" title="Memory" description="The trusted context Auterim uses to understand your business and prepare the right work." />
+      <PageHeader eyebrow="Business context" title="Memory" description="The trusted context Auterim uses to understand your business and prepare the right work." meta={<FreshnessIndicator updatedAt={lastUpdatedAt} realtimeStatus={realtimeStatus} />} />
       <p className="memory-summary-caption">{isPreview ? "Your owner-confirmed brief is ready below. Connected systems and approved work will keep enriching it after activation." : "Connected systems and approved work enrich this context over time."}</p>
 
       <section className="memory-summary-rail" aria-label="Memory summary">

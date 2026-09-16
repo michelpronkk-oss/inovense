@@ -18,6 +18,7 @@ import {
   getConnectorDefinition,
 } from "@/lib/connectors/registry";
 import { getAvailableConnectors } from "@/lib/connectors/capabilities";
+import { getCapabilityDefinition } from "@/lib/connectors/capability-registry";
 import { CONNECTOR_CATEGORY_LABELS, connectorCategoryLabel } from "@/lib/connectors/registry";
 import { connectorDefinitionToSeedConnector } from "@/lib/os/seed";
 import { getUnconnectedOnboardingSystems, unlockMessageForConnector } from "@/lib/operators/unlock-copy";
@@ -26,6 +27,7 @@ import { humanizeCapabilities } from "@/lib/operators/capability-labels";
 import { getWorkspaceConnectorImpact } from "@/lib/operators/connector-requirements";
 import { getOperatorDefinition } from "@/lib/operators/registry";
 import { getRealWorkspaceSuggestedWorkflows } from "@/lib/os/workflow-recommendations";
+import { formatWorkspaceDateTime } from "@/lib/product/time";
 import {
   CONNECTOR_DISCOVERY_CATEGORIES,
   filterConnectorDiscovery,
@@ -130,7 +132,7 @@ function normalizeConnectorKey(id: string): string {
 
 function connectorCapabilities(connectorId: string): string[] {
   const def = getConnectorDefinition(connectorId);
-  return def ? humanizeCapabilities(def.capabilities) : ["Connect account"];
+  return def ? def.capabilities.map((capability) => getCapabilityDefinition(capability)?.label ?? humanizeCapabilities([capability])[0] ?? capability) : ["Connect account"];
 }
 
 function connectorOperatorNames(connectorId: string): string[] {
@@ -1189,7 +1191,10 @@ export default function ConnectorsPage() {
         <div className="p connector-capability-summary" style={{ borderRadius: 16, background: "linear-gradient(145deg, rgba(77,232,225,0.045), rgba(255,255,255,0.012))" }}>
           <div className="p-head" style={{ alignItems: "flex-start" }}>
             <h3>Capability coverage</h3>
-            <div className="p-meta">{whatAuterimCanDoNow.length} live {whatAuterimCanDoNow.length === 1 ? "capability" : "capabilities"}</div>
+            <div className="p-meta" style={{ maxWidth: "34ch", textAlign: "right" }}>
+              {whatAuterimCanDoNow.slice(0, 5).join(" · ")}
+              {whatAuterimCanDoNow.length > 5 && ` +${whatAuterimCanDoNow.length - 5} more`}
+            </div>
           </div>
           <CapabilityGroups groups={capabilityGroups} />
         </div>
@@ -1852,7 +1857,9 @@ function ConnectorSetupView({
   const setupMessage = getConnectorSetupMessage({ isPreview, isConnected: isRealConnected, trialEligible });
   const status = statusMeta ?? connectorStatusLabel({ connector, isRealConnected });
   const def = getConnectorDefinition(connector.id);
-  const lastChecked = connector.lastSynced ? new Date(connector.lastSynced).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Just now";
+  const lastChecked = connector.lastSynced
+    ? formatWorkspaceDateTime(connector.lastSynced)
+    : "Not verified yet";
 
   return (
     <div style={{ display: "grid", gap: 14 }}>

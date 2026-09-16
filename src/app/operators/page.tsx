@@ -6,6 +6,7 @@ import { OperatorsHeroVisual } from "@/components/home-v3/page-specific-hero-vis
 import { OperatorProfileGrid } from "@/components/home-v3/public-story-components";
 import { operatorAvatarPath } from "@/lib/operator-assets";
 import { ROADMAP_OPERATOR_PRESENTATION } from "@/lib/operators/index-card-presentation";
+import RevealMount from "@/components/home-v3/reveal-mount";
 import { staticOgImage } from "@/lib/static-og";
 
 const title = "Auterim AI Operators for Business";
@@ -79,13 +80,13 @@ export default function OperatorsPage() {
     <PublicHero action label="The AI workforce" title="Operators are roles, not chatbots." description="Purpose-built roles monitor approved context, prepare useful work, and move it forward inside your rules." secondary={{ label: "See how they work", href: "/how-it-works" }} visual={<OperatorsHeroVisual operators={currentOperators} />} />
     <section className="public-story operator-collection"><div className="wrap">
       <div className="public-story-heading"><span className="lbl">Available today</span><h2>Four roles. Four kinds of work.</h2><p>Each Operator has a clear responsibility and an approval boundary shaped by connected systems, granted scopes, and workspace policy.</p></div>
-      <OperatorProfileGrid operators={currentOperators} />
+      <div className="rv"><OperatorProfileGrid operators={currentOperators} /></div>
     </div></section>
     <section className="public-story operator-behavior"><div className="wrap">
       <div className="public-story-heading"><span className="lbl">How Operators work</span><h2>Context first. Action inside policy.</h2></div>
-      <div className="operator-behavior-grid"><article><span>01</span><h3>Approved context</h3><p>Operators work from the systems and information a workspace connects.</p></article><article><span>02</span><h3>A prepared next step</h3><p>Each role turns a signal into a specific piece of work for its owner.</p></article><article><span>03</span><h3>A visible boundary</h3><p>Allowed actions proceed. Gated actions pause. Blocked actions stop.</p></article></div>
+      <div className="operator-behavior-grid rv"><article><span>01</span><h3>Approved context</h3><p>Operators work from the systems and information a workspace connects.</p></article><article><span>02</span><h3>A prepared next step</h3><p>Each role turns a signal into a specific piece of work for its owner.</p></article><article><span>03</span><h3>A visible boundary</h3><p>Allowed actions proceed. Gated actions pause. Blocked actions stop.</p></article></div>
     </div></section>
-    <div className="wrap"><aside className="operator-roadmap" aria-labelledby="operator-roadmap-title">
+    <div className="wrap"><aside className="operator-roadmap rv" aria-labelledby="operator-roadmap-title">
       <div className="operator-roadmap-heading"><div><span className="lbl">Roadmap · coming later</span><h2 id="operator-roadmap-title">More areas of work, over time.</h2></div><span className="operator-roadmap-count">{ROADMAP_OPERATOR_PRESENTATION.length} planned roles</span></div>
       <div className="operator-roadmap-grid">{ROADMAP_OPERATOR_PRESENTATION.map((role) => <article className="operator-roadmap-card" key={role.name}>
         <Image className="operator-roadmap-avatar" src={operatorAvatarPath(role.avatarKey)} alt="" width={40} height={40} aria-hidden />
@@ -93,6 +94,7 @@ export default function OperatorsPage() {
         <span className="operator-roadmap-state">Planned</span>
       </article>)}</div>
     </aside></div>
-    <PublicCta title="Start with one responsibility that already has an owner." description="Tell us which work loop you want an Operator to support. Early Access requests are reviewed before workspace invitations are sent." />
+    <div className="rv"><PublicCta title="Start with one responsibility that already has an owner." description="Tell us which work loop you want an Operator to support. Early Access requests are reviewed before workspace invitations are sent." /></div>
+    <RevealMount />
   </PublicSiteFrame>;
 }

@@ -107,7 +107,8 @@ async function loadWorkspaceMemory(supabase: ReturnType<typeof createSupabaseAdm
     .from("os_memory_entries")
     .select("id,type,category,canonical_key,label,summary,content,tags,agent_scope,field_count,source_type,source_label,source_ref,source_connector,source_entity_id,reliability,confidence,first_observed_at,last_observed_at,last_confirmed_at,stale_after,operator_relevance,policy_relevant,evidence,supersedes_id,updated_at")
     .eq("workspace_id", workspaceId)
-    .order("updated_at", { ascending: false });
+    .order("updated_at", { ascending: false })
+    .limit(200);
   if (!extended.error) return { data: (extended.data ?? []) as MemoryRow[], error: null };
 
   // Keep rollout safe when the application is deployed before the additive
@@ -117,7 +118,8 @@ async function loadWorkspaceMemory(supabase: ReturnType<typeof createSupabaseAdm
     .from("os_memory_entries")
     .select("id,type,label,summary,content,tags,agent_scope,field_count,updated_at")
     .eq("workspace_id", workspaceId)
-    .order("updated_at", { ascending: false });
+    .order("updated_at", { ascending: false })
+    .limit(200);
   return { data: (legacy.data ?? []) as MemoryRow[], error: legacy.error ?? extended.error };
 }
 
@@ -143,7 +145,7 @@ async function buildStateFromDatabase(workspaceId: string, supabase: ReturnType<
     records: "Not connected",
     source: undefined,
   }));
-  const agents = await supabase.from("os_agents").select("*").eq("workspace_id", workspaceId);
+  const agents = await supabase.from("os_agents").select("id,name,mark,color,template_id,status,workspace_id,current_task,deployed_at,config,stats").eq("workspace_id", workspaceId).limit(200);
 
   if (!agents.error && agents.data?.length) {
     seeded.agents = agents.data.map((agent) => ({
@@ -213,7 +215,7 @@ async function loadWorkspaceState(input: { workspaceId?: string; userId?: string
     loadWorkspaceMemory(supabase, workspaceId),
     supabase.from("os_operator_memory").select("id,operator_key,memory_type,title,content,metadata,source_run_id,created_at,updated_at").eq("workspace_id", workspaceId).eq("approval_status", "approved").order("updated_at", { ascending: false }).limit(100),
     memberQuery.maybeSingle(),
-    supabase.from("os_workspace_members").select("id,user_id,email,full_name,role,role_key,access,status,active").eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
+    supabase.from("os_workspace_members").select("id,user_id,email,full_name,role,role_key,access,status,active").eq("workspace_id", workspaceId).order("created_at", { ascending: true }).limit(200),
     getConnectorTruth({ workspaceId, supabase }),
   ]);
 

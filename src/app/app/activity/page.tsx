@@ -10,6 +10,7 @@ import { ResponsiveOverlay } from "@/components/app-ui/responsive-overlay";
 import { useIsCompactViewport } from "@/components/app-ui/use-compact-viewport";
 import { useOS } from "@/lib/os/app-provider";
 import { useWorkspaceRealtimeInvalidation } from "@/lib/os/workspace-realtime";
+import { formatWorkspaceDateTime } from "@/lib/product/time";
 
 type Range = "24h" | "7d" | "30d";
 type Filter = "workflow" | "operator_run" | "approval" | "execution" | "outcome" | "attention" | "failure";
@@ -20,7 +21,7 @@ const filters: Array<{ key: Filter; label: string }> = [
 ];
 const ranges: Array<{ key: Range; label: string }> = [{ key: "24h", label: "24H" }, { key: "7d", label: "7D" }, { key: "30d", label: "30D" }];
 
-function timeLabel(value: string) { return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(value)); }
+function timeLabel(value: string) { return formatWorkspaceDateTime(value); }
 function routeLabel(item: WorkforceActivityItem) { return item.relatedRoute === "/approvals" ? "View approval" : item.relatedRoute === "/agents" ? "View operator" : item.relatedRoute?.startsWith("/workflows") ? "View workflow" : item.relatedRoute === "/connectors" ? "View connector" : item.relatedRoute === "/logs" ? "Technical details" : null; }
 
 export default function ActivityPage() {
@@ -136,6 +137,7 @@ export default function ActivityPage() {
           <p className="t-meta" style={{ margin: "3px 0 0" }}>{data ? data.summary.total === 0 ? "No events recorded in this window" : `${data.summary.total} event${data.summary.total === 1 ? "" : "s"} recorded in this window` : "Loading activity"}</p>
         </div>
       </div>
+      {data?.partialHistory && <div className="card-pad t-meta" role="status" style={{ borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)" }}>This is a bounded recent view. Narrow the time range to inspect older activity safely.</div>}
       {error ? (
         <div className="card-pad"><EmptyState title="Activity could not be loaded.">{error}</EmptyState></div>
       ) : !data ? (
