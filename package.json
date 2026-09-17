@@ -15,6 +15,7 @@
     "test:website-knowledge": "node tests/website-knowledge-runtime-smoke.mjs && node tests/website-knowledge-migration-smoke.mjs && node tests/website-knowledge-sync-smoke.mjs && node tests/website-verification-route-smoke.mjs && node tests/website-sync-dispatch-smoke.mjs",
     "test:website-verification": "node tests/website-verification-route-smoke.mjs",
     "test:website-sync-dispatch": "node tests/website-sync-dispatch-smoke.mjs",
+    "test:growth-operator": "node tests/growth-operator-smoke.mjs",
     "test:gmail-push": "node tests/gmail-push-monitoring-smoke.mjs",
     "test:hubspot-webhook": "node tests/hubspot-webhook-smoke.mjs",
     "test:provider-events": "node tests/provider-events-smoke.mjs",

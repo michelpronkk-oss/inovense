@@ -172,6 +172,7 @@ const STATE_LABEL: Record<OperatorProductState, string> = {
 };
 
 function coreResponsibility(operatorKey: OperatorKey): string {
+  if (operatorKey === "growth") return "Governed campaign preparation and outcome learning";
   if (operatorKey === "revenue") return "Revenue monitoring and approval-gated follow-up";
   if (operatorKey === "client_flow") return "Customer email monitoring and approval-gated replies";
   if (operatorKey === "support") return "Support request monitoring and approval-gated responses";
@@ -217,6 +218,8 @@ function nextActionFor(state: OperatorProductState, operatorHref: string, remedi
     case "needs_setup":
       return operatorKey === "operations"
         ? { label: "Choose a project system", href: "/connectors?discover=1&category=project_management" }
+        : operatorKey === "growth"
+          ? { label: "Verify a website", href: "/connectors?setup=website" }
         : operatorKey === "support"
           ? { label: "Add customer support", href: "/connectors?discover=1&category=support" }
         : { label: "Add customer communication", href: "/connectors?discover=1&category=email_calendar" };

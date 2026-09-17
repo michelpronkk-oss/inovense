@@ -21,6 +21,7 @@ type ScanKey = DashboardOperator["key"];
 type OverviewResponse = DashboardOverview & { error?: string; message?: string };
 
 const operatorMeta: Record<ScanKey, { mark: string; color: string; tag: string; avatar: string }> = {
+  growth: { mark: "GR", color: "#A78BFA", tag: "Signals and campaigns", avatar: "/operators/marketing-operator.png" },
   revenue: { mark: "RV", color: "#4DE8E1", tag: "Pipeline and renewals", avatar: "/operators/revenue-operator.png" },
   client_flow: { mark: "CF", color: "#5B8DEF", tag: "Onboarding and delivery", avatar: "/operators/client-flow-operator.png" },
   operations: { mark: "OP", color: "#51D88A", tag: "Delivery and project health", avatar: "/operators/operations-operator.png" },
@@ -221,7 +222,7 @@ function WorkforceActivity({ overview, realtimeStatus, workspaceId }: { overview
   );
 }
 
-const WORKFORCE_ORDER: ScanKey[] = ["revenue", "client_flow", "operations", "support"];
+const WORKFORCE_ORDER: ScanKey[] = ["growth", "revenue", "client_flow", "operations", "support"];
 
 /**
  * "Workforce" card: every canonical operator, always - never filtered down

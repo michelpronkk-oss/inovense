@@ -33,6 +33,7 @@ type ProductState = {
 };
 
 const HREF_BY_KEY: Record<string, string> = {
+  growth: "/agents/growth",
   revenue: "/agents/revenue",
   client_flow: "/agents/client-flow",
   operations: "/agents/operations",

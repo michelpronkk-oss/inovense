@@ -39,6 +39,18 @@ function PreparedActionSummary({ item, presentation }: { item: ApprovalRow; pres
     );
   }
 
+  if (preview.growthContent) {
+    const channels = preview.growthContent.channels ?? {};
+    return (
+      <section className="approval-prepared" aria-label="Growth campaign drafts">
+        <div className="approval-prepared-head"><span className="t-eyebrow">Growth campaign drafts</span><span className="badge cyan">Export only</span></div>
+        {preview.growthContent.objective && <p className="approval-prepared-body"><strong>Objective:</strong> {preview.growthContent.objective}</p>}
+        {Object.entries(channels).map(([channel, draft]) => <div key={channel} style={{ marginTop: 12 }}><p className="approval-prepared-title">{channel.replace(/_/g, " ")}</p><p className="approval-prepared-body">{draft.subject ? `${draft.subject}\n` : ""}{draft.body ?? draft.text ?? "Draft unavailable"}</p></div>)}
+        <p className="approval-prepared-body">Website material is observed evidence only. Review the evidence and claims before exporting; Auterim will not publish this content.</p>
+      </section>
+    );
+  }
+
   const preparedActions = preview.preparedActions ?? [];
   if (preparedActions.length > 0 || preview.body || preview.crmPreparation?.summary) {
     return (

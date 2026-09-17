@@ -218,13 +218,15 @@ async function hasWorkspaceScopedLogs(workspaceId: string, supabase: SupabaseAdm
 }
 
 async function getWorkspaceRuntimeSignals(workspaceId: string, supabase: SupabaseAdmin) {
-  const [hasApprovalActivity, workspaceScopedLogs] = await Promise.all([
+  const [hasApprovalActivity, workspaceScopedLogs, verifiedWebsite] = await Promise.all([
     hasWorkspaceApprovalActivity(workspaceId, supabase),
     hasWorkspaceScopedLogs(workspaceId, supabase),
+    supabase.from("os_website_sources").select("id").eq("workspace_id", workspaceId).eq("verification_status", "verified").is("disconnected_at", null).limit(1),
   ]);
   return {
     hasApprovalActivity,
     hasWorkspaceScopedLogs: workspaceScopedLogs,
+    hasVerifiedWebsite: !verifiedWebsite.error && Boolean(verifiedWebsite.data?.length),
   };
 }
 
@@ -233,7 +235,7 @@ function evaluateOperator(input: {
   truth: SafeConnectorTruth[];
   entitlements: Entitlements;
   executionEligibility: WorkspaceExecutionEligibility;
-  runtimeSignals: { hasApprovalActivity: boolean; hasWorkspaceScopedLogs: boolean };
+  runtimeSignals: { hasApprovalActivity: boolean; hasWorkspaceScopedLogs: boolean; hasVerifiedWebsite: boolean };
 }): OperatorReadiness {
   const { operator, truth, entitlements, executionEligibility, runtimeSignals } = input;
   const connectedRequired = getConnectedRequiredConnectors(operator, truth);
@@ -361,6 +363,32 @@ function evaluateOperator(input: {
       executionEligibility,
       reason: `${emailConnectors[0] === "microsoft" ? "Microsoft 365" : "Gmail"} is connected. Drive/Notion context is not available yet, so readiness is limited to draft preparation.`,
       nextSetupStep: "Connect Drive or Notion when those connector truth checks are available.",
+      canRunManual: true,
+    });
+  }
+
+  if (operator.key === "growth") {
+    if (!runtimeSignals.hasVerifiedWebsite) {
+      return baseResult({
+        operator,
+        status: "missing_connector",
+        connectedRequired,
+        missingRequired: [],
+        entitlements,
+        executionEligibility,
+        reason: "Growth requires a verified Website Knowledge source before it can detect opportunities.",
+        nextSetupStep: "Verify a Website source in Connectors.",
+      });
+    }
+    return baseResult({
+      operator,
+      status: "ready",
+      connectedRequired: [],
+      missingRequired: [],
+      entitlements,
+      executionEligibility,
+      reason: "A verified Website Knowledge source is available. Drafts remain approval-gated and publishing is export-only.",
+      nextSetupStep: "Run a governed Growth scan.",
       canRunManual: true,
     });
   }

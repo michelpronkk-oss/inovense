@@ -2,6 +2,7 @@ import type { PlanTier } from "@/lib/os/entitlements";
 
 export type OperatorKey =
   | "revenue"
+  | "growth"
   | "client_flow"
   | "operations"
   | "marketing"
@@ -50,6 +51,22 @@ export type OperatorDefinition = {
 };
 
 export const OPERATOR_REGISTRY: OperatorDefinition[] = [
+  {
+    key: "growth",
+    name: "Growth Operator",
+    category: "marketing",
+    businessOutcome: "Turn governed business signals into reviewable campaign work and measurable learning.",
+    description: "Detects bounded growth opportunities, prepares channel drafts, routes them through approval, and records outcomes without publishing autonomously.",
+    requiredConnectors: [],
+    optionalConnectors: [],
+    capabilities: ["Website Knowledge opportunity detection", "Campaign draft preparation", "Approval and evidence lineage", "Outcome attribution", "Derived learning capture"],
+    allowedActions: ["website.readObservedKnowledge", "memory.readOwnerConfirmed", "campaign.prepareDraft", "campaign.exportAfterApproval", "outcome.record", "log.write"],
+    approvalRequiredActions: ["campaign.export", "external.publish"],
+    blockedActions: ["external.publishWithoutApproval", "website.publishChange", "adSpend.changeBudget", "policy.change"],
+    supportedModes: ["draft", "approval_gated", "read_only"],
+    planAvailability: ["workforce", "scale", "operator", "enterprise"],
+    currentReleaseStatus: "ready",
+  },
   {
     key: "revenue",
     name: "Revenue Operator",
@@ -314,7 +331,7 @@ export function getOperatorDefinition(operatorKey: string): OperatorDefinition |
  * operators" style badge derives its list from here rather than from a
  * hardcoded string array.
  */
-export const LIVE_OPERATOR_KEYS: OperatorKey[] = ["revenue", "client_flow", "operations", "support"];
+export const LIVE_OPERATOR_KEYS: OperatorKey[] = ["growth", "revenue", "client_flow", "operations", "support"];
 
 export function isLiveOperator(operatorKey: string): operatorKey is OperatorKey {
   return (LIVE_OPERATOR_KEYS as string[]).includes(operatorKey);

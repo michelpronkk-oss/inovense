@@ -153,7 +153,7 @@ export const CONNECTOR_CATALOG: Record<string, ConnectorDefinition> = {
   website: {
     connectorKey: "website", displayName: "Website", category: "docs_knowledge", categoryLabel: "Website and knowledge", authType: "manual",
     letter: "W", color: "#4DE8E1", description: "Use one verified public company website as bounded, observed business context for Memory.",
-    status: "available", capabilities: ["website.pages.read", "docs.read"], usedByOperators: ["operations", "client_flow"],
+    status: "available", capabilities: ["website.pages.read", "docs.read"], usedByOperators: ["growth", "operations", "client_flow"],
     readActions: ["Verify one public website domain", "Discover sitemap-first pages", "Sync bounded observed business context"], writeActions: [],
     approvalRequiredActions: ["Confirm website observation as owner context"], eventTypes: [], riskLevel: "low",
     setupNotes: "Admin-only setup. HTTPS, domain verification, robots rules, sitemap-first discovery, bounded page budgets, and Memory review are required. Auterim never edits or publishes website content.",

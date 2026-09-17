@@ -138,7 +138,7 @@ export type DashboardWorkItem = {
 };
 
 export type DashboardOperator = {
-  key: "revenue" | "client_flow" | "operations" | "support";
+  key: "growth" | "revenue" | "client_flow" | "operations" | "support";
   name: string;
   status: "ready" | "needs_setup" | "monitoring" | "disabled";
   lastRunAt: string | null;
@@ -405,6 +405,7 @@ function latestRunAt(operatorKey: string, runs: Row[]): string | null {
 
 function buildOperators(input: { approvals: Row[]; runs: Row[]; productStates: OperatorProductStateResult[]; operatorKeys?: DashboardOperator["key"][] }): DashboardOperator[] {
   const specs = [
+    { key: "growth" as const, description: "Turns governed Website Knowledge signals into approval-gated campaign drafts and measurable learning." },
     { key: "revenue" as const, description: "Monitors customer communication for revenue opportunities and prepares approval-gated follow-up." },
     { key: "client_flow" as const, description: "Monitors customer communication, drafts replies, and uses optional project context when available." },
     { key: "operations" as const, description: "Monitors configured project work and prepares approval-gated operational updates." },

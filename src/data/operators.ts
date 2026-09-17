@@ -35,6 +35,17 @@ export const GLYPHS: Record<string, string> = {
 
 export const OPERATORS: Operator[] = [
   {
+    name: "Growth Operator", tag: "Signals · Campaigns", color: "#A78BFA", glyph: "mega",
+    mission: "Turns real business signals into governed campaign work that can be reviewed, exported, and measured.",
+    loop: [
+      { k: "Detect", t: "Fresh Website Knowledge, owner-confirmed Memory, product activity and approved outcomes." },
+      { k: "Prepare", t: "Evidence-linked drafts for X, LinkedIn, founder updates, newsletters and reusable announcements." },
+      { k: "Approve", t: "Immutable content revisions, source trust and publication intent." },
+      { k: "Execute", t: "Exports approved content for owner-confirmed external publishing; no fake provider publish." },
+      { k: "Log", t: "Records attribution, outcomes and derived learning without promoting it to owner truth." },
+    ],
+  },
+  {
     name: "Revenue Operator", tag: "Sales · Pipeline", color: "#4DE8E1", glyph: "trend",
     mission: "Makes sure no lead, deal or follow-up ever slips through.",
     loop: [

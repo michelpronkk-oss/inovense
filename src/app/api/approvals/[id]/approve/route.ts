@@ -30,6 +30,7 @@ import { advanceWorkflowForApproval } from "@/lib/workflows/lifecycle";
 import { persistConfirmedTrelloCardExecution } from "@/lib/workflows/trello-execution";
 import { classifyProviderFailure } from "@/lib/runtime/provider-retry";
 import { persistAcceptedMicrosoftExecution } from "@/lib/workflows/microsoft-execution";
+import { approveGrowthContentReview } from "@/lib/operators/growth/runtime";
 
 type ApproveBody = {
   workspaceId?: string;
@@ -2113,6 +2114,20 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const continuationKind = continuation && typeof continuation === "object"
     ? (continuation as Record<string, unknown>).kind
     : null;
+
+  if (continuationKind === "growth.content_review") {
+    try {
+      const result = await approveGrowthContentReview({
+        supabase,
+        workspaceId: context.workspaceId,
+        approvalId: id,
+        resolvedBy: context.userEmail || context.userId || userEmail || userId,
+      });
+      return NextResponse.json(result);
+    } catch (error) {
+      return NextResponse.json({ error: "growth_approval_failed", message: error instanceof Error ? error.message : "Growth content could not be approved." }, { status: 409 });
+    }
+  }
 
   if (continuationKind === "operations.execute_after_approval") {
     const payloadValidation = validateOperationsPayload(continuation);

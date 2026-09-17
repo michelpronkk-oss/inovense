@@ -7,6 +7,7 @@ import { AuthorizationError, requireWorkspaceRoleForIdentity } from "@/lib/serve
 import { createSupabaseAdmin, hasSupabaseAdminConfig } from "@/lib/server/supabase-admin";
 import { getAppUrl } from "@/lib/urls";
 import { advanceWorkflowForApproval } from "@/lib/workflows/lifecycle";
+import { rejectGrowthContentReview } from "@/lib/operators/growth/runtime";
 
 type RejectBody = {
   workspaceId?: string;
@@ -115,6 +116,23 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   await optionalLearningStep("workflow.advance_after_rejection", () => advanceWorkflowForApproval({ approvalId: id, workspaceId: context.workspaceId, supabase }));
 
   const continuation = asContinuationPayload(approval.data.continuation_payload);
+  const rawContinuation = approval.data.continuation_payload && typeof approval.data.continuation_payload === "object"
+    ? approval.data.continuation_payload as Record<string, unknown>
+    : {};
+  if (rawContinuation.kind === "growth.content_review") {
+    try {
+      const result = await rejectGrowthContentReview({
+        supabase,
+        workspaceId: context.workspaceId,
+        approvalId: id,
+        reason: rejectionReason,
+        resolvedBy,
+      });
+      return NextResponse.json(result);
+    } catch (error) {
+      return NextResponse.json({ error: "growth_rejection_failed", message: error instanceof Error ? error.message : "Growth content could not be rejected." }, { status: 409 });
+    }
+  }
   const operatorRunId = continuation?.operatorRunId || approval.data.run_id;
   if (operatorRunId) {
     const sourceMetadata = continuation.sourceMetadata ?? {};

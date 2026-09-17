@@ -1,6 +1,6 @@
 import type { OperatorKey } from "@/lib/operators/registry";
 
-type LiveOperatorKey = Extract<OperatorKey, "revenue" | "client_flow" | "operations" | "support">;
+type LiveOperatorKey = Extract<OperatorKey, "growth" | "revenue" | "client_flow" | "operations" | "support">;
 
 export type LiveOperatorCardPresentation = {
   descriptor: string;
@@ -13,6 +13,14 @@ export type LiveOperatorCardPresentation = {
 
 /** Presentation-only copy for the authenticated operator index. */
 const LIVE_OPERATOR_CARD_PRESENTATION: Record<LiveOperatorKey, LiveOperatorCardPresentation> = {
+  growth: {
+    descriptor: "Signals and campaigns",
+    mission: "Turn governed evidence into reviewable campaign work and measurable learning.",
+    providedBy: "Verified Website Knowledge",
+    optionalContext: "Owner-confirmed Memory, Product Activity, approved outcomes",
+    control: "Approval-first · export only",
+    cadence: "Manual scan by default",
+  },
   revenue: {
     descriptor: "Pipeline and renewals",
     mission: "Keep pipeline moving and surface revenue risk before it costs a renewal.",

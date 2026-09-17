@@ -66,6 +66,12 @@ export type ApprovalContinuationPayload = {
   policyEvidence?: Record<string, unknown> | null;
   operations?: Record<string, unknown> | null;
   policy?: Record<string, unknown> | null;
+  growthContent?: {
+    objective?: string;
+    channels?: Record<string, Record<string, string>>;
+    evidenceRefs?: Array<{ source?: string; ref?: string; trust?: string }>;
+    governance?: Record<string, unknown>;
+  } | null;
   preparedAction?: {
     id?: string;
     actionType?: string;

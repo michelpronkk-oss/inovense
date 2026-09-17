@@ -24,6 +24,11 @@ export type OperatorConnectorRequirement = {
 };
 
 export const OPERATOR_CONNECTOR_REQUIREMENTS: Record<OperatorKey, OperatorConnectorRequirement> = {
+  growth: {
+    operatorKey: "growth",
+    required: [],
+    optional: [],
+  },
   revenue: {
     operatorKey: "revenue",
     required: ["email.read", "email.send_after_approval"],

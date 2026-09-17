@@ -2,6 +2,7 @@ import type { OperatorKey } from "@/lib/operators/registry";
 
 /** Canonical public avatar paths for the operator registry. */
 export const OPERATOR_ASSETS: Record<OperatorKey, { avatar: string }> = {
+  growth: { avatar: "/operators/marketing-operator.png" },
   revenue: { avatar: "/operators/revenue-operator.png" },
   client_flow: { avatar: "/operators/client-flow-operator.png" },
   operations: { avatar: "/operators/operations-operator.png" },

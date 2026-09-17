@@ -109,6 +109,7 @@ function mapApproval(row: Record<string, unknown>, livePolicy: PolicyWorkspaceSe
       preparedAction: continuation.preparedAction ?? null,
       preparedSlackAction: continuation.preparedSlackAction ?? null,
       preparedTrelloAction: continuation.preparedTrelloAction ?? null,
+      growthContent: continuation.growthContent ?? null,
       operations: continuation.operations ?? null,
       operationsPolicy: continuation.policy ?? null,
       livePolicyDecision,

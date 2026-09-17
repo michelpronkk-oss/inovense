@@ -40,10 +40,10 @@ assert.match(workforceChart, /dataKey="held"/, "held is plotted directly from th
 assert.doesNotMatch(workforceChart, /Math\.random|faker|generateMock/i, "no randomized or fabricated point ever enters the chart");
 
 // ─────────────────────────────────────────────────────────────────────────
-// B. Workforce card - all four canonical operators, real product-state
+// B. Workforce card - all five canonical operators, real product-state
 // labels, never filtered down to only the active/selected subset.
 // ─────────────────────────────────────────────────────────────────────────
-assert.match(dashboard, /const WORKFORCE_ORDER: ScanKey\[\] = \["revenue", "client_flow", "operations", "support"\]/, "the Workforce card must always show all four canonical operators");
+assert.match(dashboard, /const WORKFORCE_ORDER: ScanKey\[\] = \["growth", "revenue", "client_flow", "operations", "support"\]/, "the Workforce card must always show all five canonical operators");
 assert.match(dashboard, /<div className="t-section" id="workforce-card-title">Workforce<\/div><Link className="btn btn-sm btn-ghost" href="\/agents">Manage<\/Link>/, "the Workforce card header must match the reference exactly");
 assert.match(dashboard, /operatorMeta\[key\]\?\.tag \?\? item\.label/, "the operator descriptor must be a stable real capability tagline, not a live 'N pending · checked Xm ago' status line");
 assert.match(dashboard, /<StatusBadge state={item\.state}>{item\.label}<\/StatusBadge>/, "the status pill must use the same canonical operatorProductState label everywhere else in the app, never re-derived");

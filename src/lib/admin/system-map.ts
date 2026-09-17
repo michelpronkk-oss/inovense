@@ -96,9 +96,10 @@ export const SYSTEM_MAP_BRANCHES: SystemMapBranch[] = [
   { id: "infrastructure", label: "Infrastructure", description: "The vendors Auterim itself runs on." },
 ];
 
-const LIVE_OPERATOR_KEYS: OperatorKey[] = ["revenue", "client_flow", "operations", "support"];
+const LIVE_OPERATOR_KEYS: OperatorKey[] = ["growth", "revenue", "client_flow", "operations", "support"];
 
 const OPERATOR_ADMIN_NOTES: Record<string, string> = {
+  growth: "Turns verified Website Knowledge and governed workspace signals into reviewable campaign drafts, exports, and attributed learning without autonomous publishing.",
   revenue: "Qualifies inbound demand, drafts follow-ups, and keeps CRM next steps current across Gmail/Microsoft 365, HubSpot, and Salesforce context.",
   client_flow: "Drafts client updates and onboarding messages without losing approval control, using Gmail/Microsoft 365, Trello, and Microsoft Teams channel context.",
   operations: "Monitors Trello boards, Slack, and Microsoft Teams channels for stalled or blocked work and prepares approval-gated follow-through.",

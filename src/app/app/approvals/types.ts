@@ -126,6 +126,12 @@ export type ApprovalRow = {
     livePolicyDecision?: { decision: string; reason: string; riskLevel: string; matchedRuleId: string; userFacingLabel: string; requiresHumanReview: boolean } | null;
     preparedSlackAction?: { input?: Record<string, unknown> } | null;
     preparedTrelloAction?: { actionType?: string; title?: string; preview?: { label?: string; fields?: Array<{ label: string; value: string }>; bodyPreview?: string | null } } | null;
+    growthContent?: {
+      objective?: string;
+      channels?: Record<string, Record<string, string>>;
+      evidenceRefs?: Array<{ source?: string; ref?: string; trust?: string }>;
+      governance?: Record<string, unknown>;
+    } | null;
     customerEmailPolicy?: {
       mode?: string;
       customerEmail?: string;
