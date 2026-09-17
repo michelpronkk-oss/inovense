@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { websiteAccess, websiteErrorResponse, readWebsiteJson } from "@/lib/connectors/website-route-auth";
 import { configureWebsiteSource, createWebsiteCrawlRun, getWebsiteSummary } from "@/lib/connectors/website-sync";
-import { websiteSyncRun } from "@/trigger/website-sync-run";
+import { dispatchWebsiteCrawlRun } from "@/lib/connectors/website-dispatch";
 import { allowRateLimit, clientAddress } from "@/lib/server/request-guards";
 
 export const runtime = "nodejs";
@@ -25,9 +25,9 @@ export async function POST(request: NextRequest) {
       const source = await getWebsiteSummary({ workspaceId: access.workspaceId, supabase: access.supabase });
       if (!source.source) return NextResponse.json({ error: "Configure and verify a website before synchronizing it." }, { status: 400 });
       const run = await createWebsiteCrawlRun({ workspaceId: access.workspaceId, sourceId: source.source.id, triggerType: "manual", supabase: access.supabase });
-      try { await websiteSyncRun.trigger({ runId: run.runId }, { idempotencyKey: `website-manual:${run.runId}`, idempotencyKeyTTL: "7d", concurrencyKey: access.workspaceId }); }
-      catch { return NextResponse.json({ error: "The sync was queued but the worker could not be reached. The scheduler will recover it." }, { status: 202 }); }
-      return NextResponse.json({ ok: true, runId: run.runId, reused: run.reused }, { status: 202 });
+      const dispatched = await dispatchWebsiteCrawlRun({ runId: run.runId, force: true, supabase: access.supabase });
+      if (!dispatched.accepted) return NextResponse.json({ error: "The sync request could not be accepted by the worker. It will be retried automatically.", runId: run.runId, state: dispatched.dispatchStatus, retryable: true }, { status: 503 });
+      return NextResponse.json({ ok: true, runId: run.runId, reused: run.reused, state: dispatched.dispatchStatus }, { status: 202 });
     }
     if (action !== "configure") return NextResponse.json({ error: "Unsupported website settings action." }, { status: 400 });
     if (typeof body.origin !== "string") return NextResponse.json({ error: "A canonical website origin is required." }, { status: 400 });

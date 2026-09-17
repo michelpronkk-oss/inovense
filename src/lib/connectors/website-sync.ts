@@ -13,6 +13,8 @@ import { isWebsitePathAllowed, parseRobotsTxt, serializeRobotsRules, type Robots
 import { acceptSitemapUrls, parseSitemapXml } from "./website-sitemap";
 import { canonicalizeWebsiteUrl, normalizePathRule, normalizeWebsiteOrigin, websitePathOf, websiteUrlAllowed, type NormalizedWebsiteOrigin } from "./website-url";
 import { WebsiteVerificationError, type WebsiteHealthStatus, type WebsiteObservationReviewStatus, type WebsiteSourceSummary, type WebsiteVerificationErrorCode, type WebsiteVerificationMethod } from "./website-types";
+import { queueGrowthScanForWebsiteRun } from "@/lib/operators/growth/runtime";
+import { shouldRecoverDispatch } from "@/lib/runtime/orchestration-state";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
@@ -249,7 +251,7 @@ export async function getWebsiteSummary(input: { workspaceId: string; supabase?:
       supabase.from("os_website_observations").select("id", { count: "exact", head: true }).eq("workspace_id", input.workspaceId).eq("source_id", source.id).eq("review_status", "pending"),
       supabase.from("os_website_observations").select("id", { count: "exact", head: true }).eq("workspace_id", input.workspaceId).eq("source_id", source.id).eq("conflict_status", "conflict").eq("review_status", "pending"),
       supabase.from("os_website_observations").select("id", { count: "exact", head: true }).eq("workspace_id", input.workspaceId).eq("source_id", source.id).in("freshness_status", ["stale", "withdrawn", "unsupported"]),
-      supabase.from("os_website_crawl_runs").select("id,state,trigger_type,created_at,completed_at,discovered_count,checked_count,changed_count,skipped_count,failed_count,observation_count,conflict_count,error_code").eq("workspace_id", input.workspaceId).eq("source_id", source.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      supabase.from("os_website_crawl_runs").select("id,state,dispatch_status,provider_run_id,trigger_type,created_at,completed_at,discovered_count,checked_count,changed_count,skipped_count,failed_count,observation_count,conflict_count,error_code,dispatch_error").eq("workspace_id", input.workspaceId).eq("source_id", source.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     ]);
     return {
       source: { ...sourceSummary(source), observationsPending: pending.count ?? source.observations_pending, conflictsPending: conflicts.count ?? source.conflicts_pending },
@@ -461,7 +463,35 @@ export async function verifyWebsiteChallenge(input: { workspaceId: string; sourc
   return saveVerifiedWebsiteSource({ supabase, workspaceId: input.workspaceId, source, method: challenge.method, verifiedAt, nowMs });
 }
 
-export async function createWebsiteCrawlRun(input: { workspaceId: string; sourceId: string; triggerType: "manual" | "scheduled" | "reconciliation"; supabase?: SupabaseAdmin }): Promise<{ runId: string; reused: boolean }> {
+const WEBSITE_DISPATCH_STALE_MS = 30 * 60 * 1_000;
+const WEBSITE_WORKER_STALE_MS = 45 * 60 * 1_000;
+
+export async function reconcileStaleWebsiteRuns(input: { workspaceId?: string; sourceId?: string; supabase?: SupabaseAdmin; now?: Date }): Promise<number> {
+  const supabase = input.supabase ?? createSupabaseAdmin();
+  const now = input.now ?? new Date();
+  let query = supabase.from("os_website_crawl_runs")
+    .select("id,workspace_id,source_id,state,dispatch_status,dispatch_started_at,dispatched_at,last_heartbeat_at,updated_at")
+    .in("dispatch_status", ["dispatching", "dispatched", "running"])
+    .limit(100);
+  if (input.workspaceId) query = query.eq("workspace_id", input.workspaceId);
+  if (input.sourceId) query = query.eq("source_id", input.sourceId);
+  const result = await query;
+  if (result.error) return 0;
+  let recovered = 0;
+  for (const row of result.data ?? []) {
+    const item = row as { id: string; workspace_id: string; source_id: string; state: string; dispatch_status: string; dispatch_started_at?: string | null; dispatched_at?: string | null; last_heartbeat_at?: string | null; updated_at?: string | null };
+    const reference = item.dispatch_status === "running"
+      ? item.last_heartbeat_at ?? item.updated_at
+      : item.dispatch_started_at ?? item.dispatched_at ?? item.updated_at;
+    const staleAfter = item.dispatch_status === "running" ? WEBSITE_WORKER_STALE_MS : WEBSITE_DISPATCH_STALE_MS;
+    if (!shouldRecoverDispatch({ status: item.dispatch_status, referenceAt: reference, nowMs: now.getTime(), staleAfterMs: staleAfter })) continue;
+    const updated = await supabase.from("os_website_crawl_runs").update({ state: "queued", dispatch_status: "recoverable", dispatch_error: "stale_run", next_retry_at: now.toISOString(), lease_token: null, lease_until: null }).eq("id", item.id).in("dispatch_status", ["dispatching", "dispatched", "running"]).select("id").maybeSingle();
+    if (!updated.error && updated.data) recovered += 1;
+  }
+  return recovered;
+}
+
+export async function createWebsiteCrawlRun(input: { workspaceId: string; sourceId: string; triggerType: "manual" | "scheduled" | "reconciliation"; supabase?: SupabaseAdmin }): Promise<{ runId: string; reused: boolean; dispatchStatus: string }> {
   const supabase = input.supabase ?? createSupabaseAdmin();
   const source = await getWebsiteSource({ workspaceId: input.workspaceId, sourceId: input.sourceId, supabase });
   if (!source || source.verification_status !== "verified") throw new Error("Verify the website domain before synchronizing it.");
@@ -469,13 +499,15 @@ export async function createWebsiteCrawlRun(input: { workspaceId: string; source
     await supabase.from("os_website_sources").update({ verification_status: "expired", health_status: "reconnect_required", sync_enabled: false, next_sync_at: null }).eq("id", source.id).eq("workspace_id", input.workspaceId);
     throw new Error("Website verification has expired. Reverify the domain before synchronizing it.");
   }
-  const active = await supabase.from("os_website_crawl_runs").select("id").eq("workspace_id", input.workspaceId).eq("source_id", source.id).in("state", ["queued", "claimed", "verifying", "discovering", "fetching", "extracting", "review_ready"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
-  if (active.data?.id) return { runId: String(active.data.id), reused: true };
+  await reconcileStaleWebsiteRuns({ workspaceId: input.workspaceId, sourceId: source.id, supabase });
   const slot = input.triggerType === "manual" ? `manual:${Math.floor(Date.now() / (5 * 60 * 1_000))}` : `${input.triggerType}:${Math.floor(Date.now() / cadenceMs(source.cadence))}`;
-  const created = await supabase.from("os_website_crawl_runs").insert({ workspace_id: input.workspaceId, source_id: source.id, trigger_type: input.triggerType, scheduled_slot: slot, state: "queued" }).select("id").single();
-  if (!created.error && created.data?.id) return { runId: String(created.data.id), reused: false };
-  const duplicate = await supabase.from("os_website_crawl_runs").select("id").eq("source_id", source.id).eq("scheduled_slot", slot).maybeSingle();
-  if (duplicate.data?.id) return { runId: String(duplicate.data.id), reused: true };
+  const active = await supabase.from("os_website_crawl_runs").select("id,dispatch_status").eq("workspace_id", input.workspaceId).eq("source_id", source.id).in("dispatch_status", ["requested", "dispatching", "dispatched", "running", "dispatch_failed", "recoverable"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (active.data?.id) return { runId: String(active.data.id), reused: true, dispatchStatus: String(active.data.dispatch_status ?? "requested") };
+  const idempotencyKey = `website:${source.id}:${slot}`;
+  const created = await supabase.from("os_website_crawl_runs").insert({ workspace_id: input.workspaceId, source_id: source.id, trigger_type: input.triggerType, scheduled_slot: slot, idempotency_key: idempotencyKey, state: "queued", dispatch_status: "requested" }).select("id,dispatch_status").single();
+  if (!created.error && created.data?.id) return { runId: String(created.data.id), reused: false, dispatchStatus: String(created.data.dispatch_status ?? "requested") };
+  const duplicate = await supabase.from("os_website_crawl_runs").select("id,dispatch_status").eq("workspace_id", input.workspaceId).eq("source_id", source.id).eq("scheduled_slot", slot).maybeSingle();
+  if (duplicate.data?.id) return { runId: String(duplicate.data.id), reused: true, dispatchStatus: String(duplicate.data.dispatch_status ?? "requested") };
   throw new Error("Website sync could not be queued.");
 }
 
@@ -503,7 +535,7 @@ function retryAt(error: unknown): string | null {
 }
 
 async function updateRun(supabase: SupabaseAdmin, runId: string, values: Record<string, unknown>): Promise<void> {
-  await supabase.from("os_website_crawl_runs").update(values).eq("id", runId);
+  await supabase.from("os_website_crawl_runs").update({ ...values, last_heartbeat_at: new Date().toISOString() }).eq("id", runId);
 }
 
 async function pageByCanonical(supabase: SupabaseAdmin, sourceId: string, canonicalUrl: string): Promise<WebsitePageRow | null> {
@@ -728,7 +760,18 @@ export async function runWebsiteSync(input: { runId: string; supabase?: Supabase
     await updateRun(supabase, input.runId, { state: finalState, discovered_count: discovered.length, checked_count: counters.checked, changed_count: counters.changed, skipped_count: counters.skipped, failed_count: counters.failed, observation_count: counters.observations, conflict_count: counters.conflicts, completed_at: new Date().toISOString(), heartbeat_at: new Date().toISOString() });
     await supabase.from("os_website_sources").update({ health_status: health, last_run_id: input.runId, last_successful_sync_at: counters.failed < pages.length ? new Date().toISOString() : source.last_successful_sync_at, next_sync_at: nextWebsiteSyncAt(source.cadence), pages_discovered: discovered.length, pages_checked: counters.checked, pages_changed: counters.changed, pages_skipped: counters.skipped, pages_failed: counters.failed, observations_pending: pending.count ?? 0, conflicts_pending: conflicts.count ?? 0 }).eq("id", source.id).eq("workspace_id", source.workspace_id);
     await supabase.rpc("release_os_website_crawl_run", { p_run_id: input.runId, p_lease_token: leaseToken, p_state: finalState, p_error_code: counters.failed > 0 ? "page_failures" : null });
-    return { runId: input.runId, status: finalState, discovered: discovered.length, ...counters, pendingObservations: pending.count ?? 0, conflicts: conflicts.count ?? 0 };
+    let growthHandoff: Record<string, unknown> = { requested: false, reason: counters.observations > 0 ? "not_activated_or_no_request" : "no_meaningful_new_evidence" };
+    if (counters.observations > 0) {
+      try {
+        const handoff = await queueGrowthScanForWebsiteRun({ workspaceId: source.workspace_id, sourceId: source.id, websiteRunId: input.runId, observationCount: counters.observations, supabase });
+        growthHandoff = { requested: handoff.requested, reused: handoff.reused, runId: handoff.runId ?? null, reason: handoff.reason ?? null };
+      } catch (error) {
+        const errorCode = error instanceof Error ? (error.name || "handoff_failed").toLowerCase().replace(/[^a-z0-9_.-]+/g, "_").slice(0, 80) : "handoff_failed";
+        console.warn("[website-sync] Growth handoff failed", { workspaceId: source.workspace_id, sourceId: source.id, websiteRunId: input.runId, errorCode });
+        growthHandoff = { requested: false, reason: "handoff_failed", errorCode };
+      }
+    }
+    return { runId: input.runId, status: finalState, discovered: discovered.length, ...counters, growthHandoff, pendingObservations: pending.count ?? 0, conflicts: conflicts.count ?? 0 };
   } catch (error) {
     await updateRun(supabase, input.runId, { state: "failed", error_code: boundedError(error), error_detail: null, completed_at: new Date().toISOString(), ...counters });
     await supabase.from("os_website_sources").update({ health_status: "failed", last_run_id: input.runId, pages_failed: counters.failed + 1 }).eq("id", source.id).eq("workspace_id", source.workspace_id);

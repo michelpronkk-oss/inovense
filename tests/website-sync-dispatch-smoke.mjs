@@ -11,7 +11,8 @@ fs.mkdirSync(tmpDir, { recursive: true });
 async function bundleRoute() {
   const outfile = path.join(tmpDir, "sync-route.mjs");
   await esbuild.build({
-    entryPoints: [path.join(root, "src/app/api/connectors/website/sync/route.ts")],
+    absWorkingDir: root,
+    entryPoints: ["./src/app/api/connectors/website/sync/route.ts"],
     outfile,
     bundle: true,
     platform: "node",
@@ -43,6 +44,13 @@ async function bundleRoute() {
             return globalThis.__websiteRun;
           }
         `, loader: "js" }));
+        build.onResolve({ filter: /^@\/lib\/connectors\/website-dispatch$/ }, () => ({ path: "website-dispatch", namespace: "website-test" }));
+        build.onLoad({ filter: /^website-dispatch$/, namespace: "website-test" }, () => ({ contents: `
+          export async function dispatchWebsiteCrawlRun(input) {
+            globalThis.__websiteDispatchCalls.push(input);
+            return { runId: input.runId, accepted: true, reused: Boolean(globalThis.__websiteRun.reused), dispatchStatus: "dispatched", providerRunId: "provider-1" };
+          }
+        `, loader: "js" }));
         build.onResolve({ filter: /^@\/trigger\/website-sync-run$/ }, () => ({ path: "website-sync-run", namespace: "website-test" }));
         build.onLoad({ filter: /^website-sync-run$/, namespace: "website-test" }, () => ({ contents: "export const websiteSyncRun = { trigger: async (...args) => { globalThis.__websiteTriggerCalls.push(args); } };", loader: "js" }));
         build.onResolve({ filter: /^@\/lib\/server\/request-guards$/ }, () => ({ path: "request-guards", namespace: "website-test" }));
@@ -57,7 +65,8 @@ async function bundleRoute() {
 async function bundleClientHelper() {
   const outfile = path.join(tmpDir, "website-setup.mjs");
   await esbuild.build({
-    entryPoints: [path.join(root, "src/components/connectors/website-setup.tsx")],
+    absWorkingDir: root,
+    entryPoints: ["./src/components/connectors/website-setup.tsx"],
     outfile,
     bundle: true,
     platform: "node",
@@ -79,6 +88,7 @@ function setup(source = { id: "source-1", verification_status: "verified" }, run
   globalThis.__websiteAuthCalls = [];
   globalThis.__websiteSourceLookups = [];
   globalThis.__websiteRunCalls = [];
+  globalThis.__websiteDispatchCalls = [];
   globalThis.__websiteTriggerCalls = [];
 }
 
@@ -90,14 +100,13 @@ async function post(body) {
 setup();
 const first = await post({ workspaceId: "workspace-1", sourceId: "source-1" });
 assert.equal(first.response.status, 202);
-assert.equal(first.json.state, "queued");
+assert.equal(first.json.state, "dispatched");
 assert.equal(globalThis.__websiteAuthCalls.length, 1);
 assert.equal(globalThis.__websiteAuthCalls[0].admin, true);
 assert.equal(globalThis.__websiteRunCalls.length, 1);
 assert.deepEqual(globalThis.__websiteRunCalls[0], { workspaceId: "workspace-1", sourceId: "source-1", triggerType: "manual", supabase: globalThis.__websiteSupabase });
-assert.equal(globalThis.__websiteTriggerCalls.length, 1);
-assert.deepEqual(globalThis.__websiteTriggerCalls[0][0], { runId: "run-1" });
-assert.equal(globalThis.__websiteTriggerCalls[0][1].concurrencyKey, "workspace-1");
+assert.equal(globalThis.__websiteDispatchCalls.length, 1);
+assert.deepEqual(globalThis.__websiteDispatchCalls[0], { runId: "run-1", force: true, supabase: globalThis.__websiteSupabase });
 
 setup();
 const fetchCalls = [];
@@ -111,14 +120,14 @@ assert.match(syncModuleSource, /disabled=\{working \|\| syncPending\}/);
 assert.doesNotMatch(syncModuleSource, /body: JSON\.stringify\(\{ workspaceId, action: "sync" \}\)/);
 assert.match(syncModuleSource, /Sync website now/);
 assert.match(syncModuleSource, /Starting sync…/);
-assert.match(syncModuleSource, /Sync queued\./);
+assert.match(syncModuleSource, /Sync accepted by the worker queue\./);
 assert.match(syncModuleSource, /role="status"/);
 assert.match(syncModuleSource, /source\.verificationStatus === "verified"/);
 assert.doesNotMatch(syncModuleSource, /disabled=\{working \|\| !source\.syncEnabled\}/, "manual sync must not depend on the periodic sync toggle");
 assert.match(syncModuleSource, /type="button" className=\"btn btn-danger btn-sm\"/);
 assert.doesNotMatch(syncModuleSource, /<form/);
 const syncBlock = syncModuleSource.match(/const sync = async \(\) => \{([\s\S]*?)\n  \};/)?.[1] ?? "";
-assert.doesNotMatch(syncBlock, /await load\(\)/, "successful sync must not reload or close the connector modal");
+assert.doesNotMatch(syncBlock, /window\.location\.reload|router\.(refresh|replace)|setOpen\(false\)/, "successful sync must not reload the page or close the connector modal");
 const { requestWebsiteSync } = await bundleClientHelper();
 const success = await requestWebsiteSync({ workspaceId: "workspace-1", sourceId: "source-1", fetchImpl: async (url, init) => {
   fetchCalls.push({ url, init });
@@ -140,6 +149,6 @@ assert.equal(globalThis.__websiteTriggerCalls.length, 0, "an unverified source m
 setup({ id: "source-1", verification_status: "verified" }, { runId: "run-2", reused: true });
 const reused = await post({ workspaceId: "workspace-1", sourceId: "source-1" });
 assert.equal(reused.response.status, 202);
-assert.equal(reused.json.state, "already_queued");
+assert.equal(reused.json.state, "dispatched");
 
 console.log("Website sync dispatch contracts passed: canonical source-scoped route, admin authorization, run reuse, Trigger dispatch, and client wiring safeguards.");

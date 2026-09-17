@@ -16,6 +16,7 @@
     "test:website-verification": "node tests/website-verification-route-smoke.mjs",
     "test:website-sync-dispatch": "node tests/website-sync-dispatch-smoke.mjs",
     "test:growth-operator": "node tests/growth-operator-smoke.mjs",
+    "test:autonomous-orchestration": "node tests/autonomous-orchestration-smoke.mjs && node tests/orchestration-concurrency-smoke.mjs",
     "test:gmail-push": "node tests/gmail-push-monitoring-smoke.mjs",
     "test:hubspot-webhook": "node tests/hubspot-webhook-smoke.mjs",
     "test:provider-events": "node tests/provider-events-smoke.mjs",

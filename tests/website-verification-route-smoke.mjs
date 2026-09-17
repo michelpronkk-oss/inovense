@@ -12,7 +12,8 @@ process.env.WEBSITE_SYNC_VERIFICATION_SECRET = "website-verification-test-secret
 async function bundleRoute() {
   const outfile = path.join(tmpDir, "verification-route.mjs");
   await esbuild.build({
-    entryPoints: [path.join(root, "src/app/api/connectors/website/verification/route.ts")],
+    absWorkingDir: root,
+    entryPoints: ["./src/app/api/connectors/website/verification/route.ts"],
     outfile,
     bundle: true,
     platform: "node",
@@ -42,6 +43,10 @@ async function bundleRoute() {
         build.onLoad({ filter: /^supabase-admin$/, namespace: "website-test" }, () => ({ contents: "export function createSupabaseAdmin() { return globalThis.__websiteSupabase; }", loader: "js" }));
         build.onResolve({ filter: /^@\/lib\/memory\/materialize$/ }, () => ({ path: "memory-materialize", namespace: "website-test" }));
         build.onLoad({ filter: /^memory-materialize$/, namespace: "website-test" }, () => ({ contents: "export async function appendMemoryVersion() { return { id: 'memory-test' }; }", loader: "js" }));
+        build.onResolve({ filter: /^@\/lib\/operators\/growth\/runtime$/ }, () => ({ path: "growth-runtime", namespace: "website-test" }));
+        build.onLoad({ filter: /^growth-runtime$/, namespace: "website-test" }, () => ({ contents: "export async function queueGrowthScanForWebsiteRun() { return { requested: false, reused: false, reason: 'test' }; }", loader: "js" }));
+        build.onResolve({ filter: /^@\/lib\/runtime\/orchestration-state$/ }, () => ({ path: "orchestration-state", namespace: "website-test" }));
+        build.onLoad({ filter: /^orchestration-state$/, namespace: "website-test" }, () => ({ contents: "export function shouldRecoverDispatch() { return false; }", loader: "js" }));
         build.onResolve({ filter: /^@\// }, (args) => ({ path: `${path.join(root, "src", args.path.slice(2))}.ts` }));
       },
     }],

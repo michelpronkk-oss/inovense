@@ -1,0 +1,63 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+
+const migration = readFileSync("supabase/migrations/20260918_autonomous_orchestration.sql", "utf8");
+const reconciliation = readFileSync("src/lib/runtime/autonomous-reconciliation.ts", "utf8");
+const websiteSync = readFileSync("src/lib/connectors/website-sync.ts", "utf8");
+const websiteDispatch = readFileSync("src/lib/connectors/website-dispatch.ts", "utf8");
+const growthRuntime = readFileSync("src/lib/operators/growth/runtime.ts", "utf8");
+const growthDispatch = readFileSync("src/lib/operators/growth/dispatch.ts", "utf8");
+const scheduler = readFileSync("src/trigger/website-sync-scheduler.ts", "utf8");
+const cleanup = readFileSync("src/trigger/website-sync-cleanup.ts", "utf8");
+const triggerConfig = readFileSync("trigger.config.ts", "utf8");
+
+assert.match(migration, /begin;[\s\S]*commit;/i);
+assert.match(migration, /dispatch_status text/);
+assert.match(migration, /provider_run_id text/);
+assert.match(migration, /idempotency_key text/);
+assert.match(migration, /os_website_crawl_runs_workspace_idempotency_idx/);
+assert.match(migration, /os_operator_runs_workspace_operator_idempotency_idx/);
+assert.match(migration, /dispatch_failed/);
+assert.match(migration, /recoverable/);
+assert.match(migration, /claim_os_website_crawl_run[\s\S]*dispatch_status = 'running'/);
+assert.match(migration, /release_os_website_crawl_run[\s\S]*dispatch_status = dispatch_state/);
+assert.match(reconciliation, /runAutonomousReconciliation/);
+assert.match(reconciliation, /os_operator_triggers[\s\S]*operator_activation[\s\S]*enabled/);
+assert.match(reconciliation, /queueGrowthScanForWebsiteRun/);
+assert.match(reconciliation, /dispatchGrowthRun/);
+assert.match(reconciliation, /dispatchWebsiteCrawlRun/);
+assert.match(websiteSync, /reconcileStaleWebsiteRuns/);
+assert.match(websiteSync, /queueGrowthScanForWebsiteRun/);
+assert.match(websiteSync, /growthHandoff/);
+assert.match(websiteDispatch, /provider_run_id/);
+assert.match(websiteDispatch, /dispatch_failed/);
+assert.match(growthRuntime, /queueGrowthScanForWebsiteRun/);
+assert.match(growthRuntime, /idempotencyKey = `growth:website:\$\{input\.websiteRunId\}`/);
+assert.match(growthRuntime, /dispatch_status: "completed"/);
+assert.match(growthDispatch, /growthOperatorScan\.trigger/);
+assert.match(growthDispatch, /providerRunId/);
+assert.match(scheduler, /runAutonomousReconciliation/);
+assert.match(cleanup, /reconcileStaleWebsiteRuns/);
+assert.match(cleanup, /reconcileStaleGrowthRuns/);
+assert.match(triggerConfig, /dirs: \["\.\/src\/trigger"\]/);
+
+const probe = `
+import assert from "node:assert/strict";
+import { isDispatchRetryable, isProviderAccepted, isTerminalDispatchStatus, shouldRecoverDispatch } from "./src/lib/runtime/orchestration-state.ts";
+assert.equal(isDispatchRetryable("requested"), true);
+assert.equal(isDispatchRetryable("dispatch_failed"), true);
+assert.equal(isProviderAccepted("dispatched"), true);
+assert.equal(isProviderAccepted("running"), true);
+assert.equal(isTerminalDispatchStatus("completed"), true);
+assert.equal(isTerminalDispatchStatus("requested"), false);
+assert.equal(shouldRecoverDispatch({ status: "dispatched", referenceAt: "2026-09-17T00:00:00.000Z", nowMs: Date.parse("2026-09-17T01:00:00.000Z"), staleAfterMs: 30 * 60 * 1000 }), true);
+assert.equal(shouldRecoverDispatch({ status: "dispatched", referenceAt: "2026-09-17T00:45:00.000Z", nowMs: Date.parse("2026-09-17T01:00:00.000Z"), staleAfterMs: 30 * 60 * 1000 }), false);
+assert.equal(shouldRecoverDispatch({ status: "completed", referenceAt: "2026-09-17T00:00:00.000Z", nowMs: Date.parse("2026-09-17T01:00:00.000Z"), staleAfterMs: 30 * 60 * 1000 }), false);
+console.log("orchestration-state: PASS");
+`;
+const result = spawnSync(process.execPath, ["--experimental-strip-types", "--input-type=module", "--eval", probe], { cwd: process.cwd(), encoding: "utf8" });
+assert.equal(result.status, 0, result.stderr || result.stdout || "orchestration state probe failed");
+assert.match(result.stdout, /orchestration-state: PASS/);
+
+console.log("autonomous-orchestration-smoke: PASS");

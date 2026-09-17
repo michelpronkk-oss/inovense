@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { WebsiteSourceSummary, WebsiteVerificationMethod } from "@/lib/connectors/website-types";
 
 type Challenge = {
@@ -23,7 +23,7 @@ type WebsiteSyncResponse = WebsiteResponseError & {
   ok?: boolean;
   runId?: string;
   reused?: boolean;
-  state?: "queued" | "already_queued";
+  state?: string;
   message?: string;
 };
 
@@ -70,6 +70,7 @@ function formatDate(value: string | null | undefined): string {
 
 export function WebsiteSetupPanel({ workspaceId, canManage, compact = false, onStatus }: WebsiteSetupProps) {
   const [source, setSource] = useState<WebsiteSourceSummary | null>(null);
+  const [latestRun, setLatestRun] = useState<{ id?: string; state?: string; dispatch_status?: string; error_code?: string | null; completed_at?: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [working, setWorking] = useState(false);
@@ -87,15 +88,16 @@ export function WebsiteSetupPanel({ workspaceId, canManage, compact = false, onS
   const [syncPending, setSyncPending] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState("");
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
       const response = await fetch(`/api/connectors/website/settings?workspaceId=${encodeURIComponent(workspaceId)}`, { cache: "no-store" });
-      const json = await response.json().catch(() => ({} as { error?: string; source?: WebsiteSourceSummary | null }));
+      const json = await response.json().catch(() => ({} as { error?: string; source?: WebsiteSourceSummary | null; latestRun?: typeof latestRun }));
       if (!response.ok) throw new Error(json.error || "Website settings could not be loaded.");
       const next = json.source ?? null;
       setSource(next);
+      setLatestRun(json.latestRun ?? null);
       if (next) {
         setOrigin(next.canonicalOrigin);
         setAllowedSubdomains(next.allowedSubdomains.join("\n"));
@@ -110,14 +112,18 @@ export function WebsiteSetupPanel({ workspaceId, canManage, compact = false, onS
     } finally {
       setLoading(false);
     }
-  };
+  }, [workspaceId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 0);
     return () => window.clearTimeout(timer);
-  // The loader is intentionally scoped to the workspace; its identity is not a fetch key.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspaceId]);
+  }, [load]);
+
+  useEffect(() => {
+    if (!latestRun || ["completed", "partial", "review_ready", "failed", "cancelled"].includes(String(latestRun.state))) return;
+    const timer = window.setInterval(() => { void load(); }, 5_000);
+    return () => window.clearInterval(timer);
+  }, [latestRun, load]);
 
   const save = async () => {
     setSaving(true); setError("");
@@ -168,8 +174,9 @@ export function WebsiteSetupPanel({ workspaceId, canManage, compact = false, onS
     setSyncPending(true); setWorking(true); setError(""); setSyncFeedback("Starting sync…");
     try {
       const result = await requestWebsiteSync({ workspaceId, sourceId: source.id });
-      const message = result.message ?? (result.reused ? "Sync already queued." : "Sync queued.");
+      const message = result.message ?? (result.reused ? "Sync is already active." : "Sync accepted by the worker queue.");
       setSyncFeedback(message);
+      await load();
       onStatus?.(`${message} New observations will appear in Memory for review.`);
     } catch (caught) {
       setSyncFeedback("");
@@ -195,6 +202,14 @@ export function WebsiteSetupPanel({ workspaceId, canManage, compact = false, onS
     if (challenge.method === "html_file") return <><strong>HTML file</strong><code>{challenge.htmlFilePath}</code><code>{challenge.token}</code><span>Serve the token as a plain-text file at the path above.</span></>;
     return <><strong>HTML meta tag</strong><code>{challenge.htmlMeta}</code><span>Place this tag in the public homepage head.</span></>;
   }, [challenge]);
+
+  const displayedSyncFeedback = latestRun?.state === "completed"
+    ? "Sync completed."
+    : latestRun?.state === "partial" || latestRun?.state === "review_ready"
+      ? "Sync finished with partial results."
+      : latestRun?.state === "failed"
+        ? "Sync failed. Retry is available; review the sanitized run error."
+        : syncFeedback;
 
   if (loading) return <div style={{ color: "var(--text-mute)", fontSize: 12 }}>Loading website controls…</div>;
   if (!canManage) return <div style={{ padding: 12, borderRadius: 10, background: "rgba(245,194,107,0.08)", color: "var(--amber)", fontSize: 12 }}>Website setup and verification are limited to workspace owners and admins. Review-only website observations appear in Memory.</div>;
@@ -225,7 +240,7 @@ export function WebsiteSetupPanel({ workspaceId, canManage, compact = false, onS
       {source && <div style={{ display: "grid", gap: 10, padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}><div><div style={{ fontSize: 12.5, fontWeight: 650 }}>Verification</div><div style={{ color: "var(--text-mute)", fontSize: 11.5 }}>{source.verificationStatus === "verified" ? `Verified ${formatDate(source.verifiedAt)} · expires ${formatDate(source.verificationExpiresAt)}` : verificationStatusCopy(source.verificationStatus)}</div></div><span className={`badge ${source.verificationStatus === "verified" ? "green" : source.verificationStatus === "failed" || source.verificationStatus === "expired" ? "red" : "amber"}`}>{source.verificationStatus}</span></div>
         {source.verificationStatus !== "verified" && <><div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}><select className="os-input" value={method} onChange={(event) => setMethod(event.target.value as WebsiteVerificationMethod)} disabled={working}><option value="dns_txt">DNS TXT</option><option value="html_meta">Homepage meta tag</option><option value="html_file">Well-known HTML file</option></select><button type="button" className="btn btn-ghost btn-sm" onClick={() => void issueChallenge()} disabled={working}>{working ? "Working…" : "Create challenge"}</button></div>{challenge && <div style={{ display: "grid", gap: 6, fontSize: 11.5, color: "var(--text-dim)" }}>{verificationInstruction}<input className="os-input" aria-label="Verification token" placeholder="Paste the token to verify" value={token} onChange={(event) => setToken(event.target.value)} disabled={working} /><button type="button" className="btn btn-primary btn-sm" onClick={() => void verify()} disabled={working || !token.trim()}>Verify domain</button><span style={{ color: "var(--text-mute)" }}>Challenge expires {formatDate(challenge.expiresAt)}. Tokens are stored hashed.</span></div>}</>}
-        {source.verificationStatus === "verified" && <div style={{ display: "grid", gap: 7 }}><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button type="button" className="btn btn-primary btn-sm" onClick={() => void sync()} disabled={working || syncPending}>{syncPending ? "Starting sync…" : "Sync website now"}</button><button type="button" className="btn btn-danger btn-sm" onClick={() => void disconnect()} disabled={working || syncPending}>Disconnect</button></div>{syncFeedback && <div role="status" style={{ color: "var(--cyan)", fontSize: 11.5 }}>{syncFeedback}</div>}</div>}
+        {source.verificationStatus === "verified" && <div style={{ display: "grid", gap: 7 }}><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button type="button" className="btn btn-primary btn-sm" onClick={() => void sync()} disabled={working || syncPending}>{syncPending ? "Starting sync…" : "Sync website now"}</button><button type="button" className="btn btn-danger btn-sm" onClick={() => void disconnect()} disabled={working || syncPending}>Disconnect</button></div>{displayedSyncFeedback && <div role="status" style={{ color: "var(--cyan)", fontSize: 11.5 }}>{displayedSyncFeedback}</div>}</div>}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, fontSize: 11.5, color: "var(--text-mute)" }}><span>Pages checked<strong style={{ display: "block", color: "var(--text-dim)" }}>{source.pagesChecked}</strong></span><span>Changed<strong style={{ display: "block", color: "var(--text-dim)" }}>{source.pagesChanged}</strong></span><span>Pending review<strong style={{ display: "block", color: "var(--cyan)" }}>{source.observationsPending}</strong></span></div>
       </div>}
       {error && <div role="alert" style={{ color: "#ffaaaa", fontSize: 11.5 }}>{error}</div>}

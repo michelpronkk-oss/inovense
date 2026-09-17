@@ -8,6 +8,7 @@ const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 const migration = read("supabase/migrations/20260917_growth_operator.sql");
 const runtime = read("src/lib/operators/growth/runtime.ts");
 const scanRoute = read("src/app/api/operators/growth/scan/route.ts");
+const dispatch = read("src/lib/operators/growth/dispatch.ts");
 const approval = read("src/app/api/approvals/[id]/approve/route.ts");
 const reject = read("src/app/api/approvals/[id]/reject/route.ts");
 const page = read("src/app/app/agents/growth/page.tsx");
@@ -35,7 +36,8 @@ assert.match(runtime, /publication: "manual_export_only"/, "no fake external pub
 assert.match(runtime, /approvalId.*contentHash/, "approval records carry revision/hash lineage");
 assert.match(runtime, /trust_level: "derived"[\s\S]*approval_status: "pending"[\s\S]*applied_to_memory: false/, "learning remains derived and unapplied");
 assert.match(runtime, /status: "pending"/, "scan runs are durable before Trigger dispatch");
-assert.match(scanRoute, /growthOperatorScan\.trigger/, "manual scan dispatches through Trigger.dev");
+assert.match(scanRoute, /dispatchGrowthRun/, "manual scan uses the canonical server dispatch boundary");
+assert.match(dispatch, /growthOperatorScan\.trigger/, "the canonical Growth dispatch boundary reaches Trigger.dev");
 assert.match(scanRoute, /admin: true/, "manual Growth actions are admin-gated server-side");
 assert.match(approval, /continuationKind === "growth\.content_review"[\s\S]*approveGrowthContentReview/, "canonical approval route handles Growth reviews");
 assert.match(reject, /rawContinuation\.kind === "growth\.content_review"[\s\S]*rejectGrowthContentReview/, "rejections remain visible and governed");

@@ -5,12 +5,13 @@ import { PageHeader } from "@/components/product-ui/page-primitives";
 import { useOS } from "@/lib/os/app-provider";
 
 type GrowthState = {
-  runs: Array<{ id: string; status: string; created_at: string; output?: { opportunitiesCreated?: number } }>;
+  runs: Array<{ id: string; status: string; dispatch_status?: string; created_at: string; completed_at?: string | null; dispatch_error?: string | null; output?: { opportunitiesCreated?: number } }>;
   opportunities: Array<{ id: string; title: string; summary: string; trust_level: string; freshness_status: string; score: number; status: string; source_type: string }>;
   campaigns: Array<{ id: string; opportunity_id: string; objective: string; status: string }>;
   approvals: Array<{ id: string; title: string; status: string }>;
   outcomes: Array<{ id: string; campaign_id: string; channel: string; outcome_type: string; attribution_level: string }>;
   learnings: Array<{ id: string; statement: string; trust_level: string; approval_status: string }>;
+  activation?: { activated: boolean; attentionRequired?: boolean; lastScanAt?: string | null; nextEligibleScanAt?: string | null; lastSuccessfulCompletion?: string | null; lastError?: string | null } | null;
 };
 
 export default function GrowthOperatorPage() {
@@ -34,6 +35,14 @@ export default function GrowthOperatorPage() {
     const timer = window.setTimeout(() => { void load().catch((err) => setError(err instanceof Error ? err.message : "Could not load Growth state.")); }, 0);
     return () => window.clearTimeout(timer);
   }, [load]);
+
+  useEffect(() => {
+    const latest = data?.runs[0];
+    const active = latest && ["pending", "running"].includes(latest.status) && !["completed", "failed", "cancelled", "superseded"].includes(latest.dispatch_status ?? "");
+    if (!active) return;
+    const timer = window.setInterval(() => { void load().catch(() => undefined); }, 5_000);
+    return () => window.clearInterval(timer);
+  }, [data?.runs, load]);
 
   const scan = async () => {
     if (busy) return;
@@ -71,7 +80,8 @@ export default function GrowthOperatorPage() {
       <section className="os-card" style={{ padding: 20, marginBottom: 16 }}>
         <div className="t-eyebrow">Control loop</div>
         <p style={{ margin: "10px 0 0", color: "var(--muted)", lineHeight: 1.6 }}>Detect → Research → Prepare → Approve → Export → Measure → Learn. Website text is observed evidence only; it cannot change policy, execute tools, or become trusted Memory automatically.</p>
-        <p style={{ margin: "10px 0 0", color: "var(--muted)", fontSize: 12 }}>Latest run: {latestRun ? `${latestRun.status} · ${new Date(latestRun.created_at).toLocaleString()}` : "No scan yet"} · Pending approvals: {data?.approvals.filter((item) => item.status === "pending").length ?? 0}</p>
+        <p style={{ margin: "10px 0 0", color: "var(--muted)", fontSize: 12 }}>Monitoring: {data?.activation?.activated ? "active" : "inactive"}{data?.activation?.attentionRequired ? " · attention required" : ""} · Latest run: {latestRun ? `${latestRun.status} / ${latestRun.dispatch_status ?? "requested"} · ${new Date(latestRun.created_at).toLocaleString()}` : "No scan yet"} · Pending approvals: {data?.approvals.filter((item) => item.status === "pending").length ?? 0}</p>
+        {data?.activation?.lastError && <p role="status" style={{ margin: "8px 0 0", color: "#ffcf9a", fontSize: 12 }}>Last run needs attention: {data.activation.lastError}</p>}
       </section>
       <section>
         <div className="ag-sec-head"><h2>Fresh opportunities</h2><span className="count">{fresh.length}</span><span className="rule" /></div>

@@ -35,24 +35,43 @@ function activationTriggerId(workspaceId: string, operatorKey: OperatorKey): str
 export type OperatorActivationState = {
   operatorKey: OperatorKey;
   activated: boolean;
+  attentionRequired: boolean;
   activatedAt: string | null;
   deactivatedAt: string | null;
   activatedBy: string | null;
   updatedAt: string | null;
+  lastScanAt: string | null;
+  nextEligibleScanAt: string | null;
+  lastSuccessfulCompletion: string | null;
+  lastError: string | null;
 };
 
-function stateFromRow(operatorKey: OperatorKey, row: { enabled: boolean; config: unknown; updated_at?: string | null } | null): OperatorActivationState {
+function nextEligibleRunAt(run: { status?: string | null; updated_at?: string | null; next_retry_at?: string | null } | null | undefined): string | null {
+  if (!run) return null;
+  if (run.next_retry_at) return run.next_retry_at;
+  if (!run.updated_at || !["pending", "running"].includes(String(run.status))) return null;
+  const updated = Date.parse(run.updated_at);
+  return Number.isFinite(updated) ? new Date(updated + 15 * 60 * 1_000).toISOString() : null;
+}
+
+function stateFromRow(operatorKey: OperatorKey, row: { enabled: boolean; config: unknown; updated_at?: string | null } | null, run?: { status?: string | null; dispatch_status?: string | null; error?: string | null; dispatch_error?: string | null; created_at?: string | null; completed_at?: string | null; next_retry_at?: string | null; updated_at?: string | null } | null): OperatorActivationState {
   if (!row) {
-    return { operatorKey, activated: false, activatedAt: null, deactivatedAt: null, activatedBy: null, updatedAt: null };
+    return { operatorKey, activated: false, attentionRequired: false, activatedAt: null, deactivatedAt: null, activatedBy: null, updatedAt: null, lastScanAt: run?.created_at ?? null, nextEligibleScanAt: nextEligibleRunAt(run), lastSuccessfulCompletion: run?.status === "completed" ? run.completed_at ?? null : null, lastError: run?.error ?? run?.dispatch_error ?? null };
   }
   const config = (row.config ?? {}) as Record<string, unknown>;
+  const attentionRequired = ["failed", "dispatch_failed", "recoverable", "blocked"].includes(String(run?.dispatch_status ?? run?.status ?? ""));
   return {
     operatorKey,
     activated: row.enabled === true,
+    attentionRequired,
     activatedAt: typeof config.activatedAt === "string" ? config.activatedAt : null,
     deactivatedAt: typeof config.deactivatedAt === "string" ? config.deactivatedAt : null,
     activatedBy: typeof config.activatedBy === "string" ? config.activatedBy : null,
     updatedAt: row.updated_at ?? null,
+    lastScanAt: run?.created_at ?? null,
+    nextEligibleScanAt: nextEligibleRunAt(run),
+    lastSuccessfulCompletion: run?.status === "completed" ? run.completed_at ?? null : null,
+    lastError: run?.error ?? run?.dispatch_error ?? null,
   };
 }
 
@@ -71,19 +90,25 @@ export async function getOperatorActivationState(input: {
   if (!operator) return null;
   const supabase = input.supabase ?? createSupabaseAdmin();
 
-  const row = await supabase
+  const [row, latestRun] = await Promise.all([supabase
     .from("os_operator_triggers")
     .select("enabled,config,updated_at")
     .eq("workspace_id", input.workspaceId)
     .eq("operator_key", operator.key)
     .eq("trigger_type", ACTIVATION_TRIGGER_TYPE)
-    .maybeSingle();
+    .maybeSingle(), supabase.from("os_operator_runs")
+    .select("status,dispatch_status,error,dispatch_error,created_at,completed_at,next_retry_at,updated_at")
+    .eq("workspace_id", input.workspaceId)
+    .eq("operator_key", operator.key)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()]);
 
   if (row.error || !row.data) {
-    return stateFromRow(operator.key, null);
+    return stateFromRow(operator.key, null, latestRun.data as { status?: string | null; dispatch_status?: string | null; error?: string | null; dispatch_error?: string | null; created_at?: string | null; completed_at?: string | null; next_retry_at?: string | null; updated_at?: string | null } | null);
   }
 
-  return stateFromRow(operator.key, row.data as { enabled: boolean; config: unknown; updated_at?: string | null });
+  return stateFromRow(operator.key, row.data as { enabled: boolean; config: unknown; updated_at?: string | null }, latestRun.data as { status?: string | null; dispatch_status?: string | null; error?: string | null; dispatch_error?: string | null; created_at?: string | null; completed_at?: string | null; next_retry_at?: string | null; updated_at?: string | null } | null);
 }
 
 /**
@@ -139,10 +164,15 @@ export async function setOperatorActivationState(input: {
     state: {
       operatorKey: operator.key,
       activated: input.activated,
+      attentionRequired: false,
       activatedAt: config.activatedAt,
       deactivatedAt: config.deactivatedAt,
       activatedBy: config.activatedBy,
       updatedAt: now,
+      lastScanAt: null,
+      nextEligibleScanAt: null,
+      lastSuccessfulCompletion: null,
+      lastError: null,
     },
   };
 }

@@ -3,6 +3,8 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { logOperatorEvent, operatorRuntimeId } from "@/lib/operators/logging";
+import { getOperatorActivationState } from "@/lib/operators/activation";
+import { shouldRecoverDispatch } from "@/lib/runtime/orchestration-state";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
@@ -129,7 +131,20 @@ async function loadOwnerMemory(supabase: SupabaseAdmin, workspaceId: string): Pr
 export async function runGrowthOperatorScan(input: { workspaceId: string; runId: string; supabase?: SupabaseAdmin }) {
   const supabase = input.supabase ?? createSupabaseAdmin();
   const startedAt = new Date().toISOString();
-  await supabase.from("os_operator_runs").update({ status: "running", started_at: startedAt, error: null }).eq("id", input.runId).eq("workspace_id", input.workspaceId).eq("operator_key", GROWTH_OPERATOR_KEY);
+  // Atomic worker claim: only a run still in "pending" can transition to
+  // "running". This is the same compare-and-swap pattern as
+  // claim_os_website_crawl_run - it is what makes an at-least-once provider
+  // dispatch (retry with a rotated idempotency key, a Trigger.dev-level task
+  // retry, or a genuine duplicate .trigger() call) safe: at most one
+  // concurrent invocation can ever pass this gate and do real work. Every
+  // other concurrent invocation for the same run id no-ops here.
+  const claim = await supabase.from("os_operator_runs")
+    .update({ status: "running", dispatch_status: "running", worker_started_at: startedAt, last_heartbeat_at: startedAt, started_at: startedAt, error: null })
+    .eq("id", input.runId).eq("workspace_id", input.workspaceId).eq("operator_key", GROWTH_OPERATOR_KEY)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+  if (claim.error || !claim.data) return { runId: input.runId, status: "already_claimed" };
 
   try {
     const observations = await supabase.from("os_website_observations")
@@ -164,52 +179,116 @@ export async function runGrowthOperatorScan(input: { workspaceId: string; runId:
           dedupe_key: candidate.dedupeKey, observed_at: candidate.observedAt, last_seen_at: new Date().toISOString(),
           metadata: { governance: "website_content_is_observed_untrusted_evidence_only", ownerMemoryIds: ownerMemory.map((item) => item.id).slice(0, 10) },
         }).select("id").single();
+        if (insert.error?.code === "23505") {
+          // A second, independently-activated growth run for the same
+          // workspace (manual scan racing a website-completion handoff; the
+          // handoff path has no single-active-run guard) can lose this race
+          // against the unique(workspace_id, fingerprint) constraint. The
+          // other run's row already exists - treat it as a refresh rather
+          // than failing this run.
+          const concurrent = await supabase.from("os_growth_opportunities").select("id").eq("workspace_id", input.workspaceId).eq("fingerprint", candidate.fingerprint).maybeSingle();
+          if (!concurrent.data) throw new Error("Growth opportunity creation failed.");
+          const update = await supabase.from("os_growth_opportunities").update({ last_seen_at: new Date().toISOString(), freshness_status: candidate.freshnessStatus, evidence: candidate.evidence }).eq("id", concurrent.data.id).eq("workspace_id", input.workspaceId);
+          if (update.error) throw new Error("Growth opportunity refresh failed.");
+          refreshed += 1;
+          opportunityIds.push(String(concurrent.data.id));
+          continue;
+        }
         if (insert.error || !insert.data) throw new Error("Growth opportunity creation failed.");
         created += 1;
         opportunityIds.push(String(insert.data.id));
       }
     }
 
-    const output = { type: "growth_scan_summary", status: "completed", sourceMode: "manual", observationsRead: sourceRows.length, opportunitiesCreated: created, opportunitiesRefreshed: refreshed, opportunityIds, ownerMemoryContextCount: ownerMemory.length, governance: { websiteContent: "observed_untrusted", executableInstructions: false, policyChanges: false, publishing: "manual_export_or_owner_confirmed_external_publish_only" }, completedAt: new Date().toISOString() };
-    await supabase.from("os_operator_runs").update({ status: "completed", output, completed_at: output.completedAt }).eq("id", input.runId).eq("workspace_id", input.workspaceId);
+    const runRow = await supabase.from("os_operator_runs").select("input").eq("id", input.runId).eq("workspace_id", input.workspaceId).maybeSingle();
+    const runInput = runRow.data?.input && typeof runRow.data.input === "object" ? runRow.data.input as Record<string, unknown> : {};
+    const sourceMode = runInput.sourceMode === "scheduled" ? "scheduled" : runInput.sourceMode === "website_completion" ? "website_completion" : "manual";
+    const output = { type: "growth_scan_summary", status: "completed", sourceMode, observationsRead: sourceRows.length, opportunitiesCreated: created, opportunitiesRefreshed: refreshed, opportunityIds, ownerMemoryContextCount: ownerMemory.length, governance: { websiteContent: "observed_untrusted", executableInstructions: false, policyChanges: false, publishing: "manual_export_or_owner_confirmed_external_publish_only" }, completedAt: new Date().toISOString() };
+    await supabase.from("os_operator_runs").update({ status: "completed", dispatch_status: "completed", output, completed_at: output.completedAt, last_heartbeat_at: output.completedAt }).eq("id", input.runId).eq("workspace_id", input.workspaceId);
     await logOperatorEvent({ supabase, workspaceId: input.workspaceId, runId: input.runId, eventType: "growth.scan.completed", message: "Growth scanned governed Website Knowledge and workspace context.", metadata: { observationsRead: sourceRows.length, opportunitiesCreated: created, opportunitiesRefreshed: refreshed, ownerMemoryContextCount: ownerMemory.length } });
     return output;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Growth scan failed.";
-    await supabase.from("os_operator_runs").update({ status: "failed", error: message, completed_at: new Date().toISOString() }).eq("id", input.runId).eq("workspace_id", input.workspaceId);
-    await logOperatorEvent({ supabase, workspaceId: input.workspaceId, runId: input.runId, level: "error", eventType: "growth.scan.failed", message: "Growth scan failed safely.", metadata: { error: message } });
+    const safeError = message.toLowerCase().replace(/[^a-z0-9_.-]+/g, "_").slice(0, 120) || "growth_scan_failed";
+    await supabase.from("os_operator_runs").update({ status: "failed", dispatch_status: "failed", error: safeError, completed_at: new Date().toISOString() }).eq("id", input.runId).eq("workspace_id", input.workspaceId);
+    await logOperatorEvent({ supabase, workspaceId: input.workspaceId, runId: input.runId, level: "error", eventType: "growth.scan.failed", message: "Growth scan failed safely.", metadata: { errorCode: safeError } });
     throw error;
   }
 }
 
 export async function queueGrowthScan(input: { workspaceId: string; actor: string; supabase?: SupabaseAdmin }) {
   const supabase = input.supabase ?? createSupabaseAdmin();
-  const existing = await supabase.from("os_operator_runs").select("id,status,created_at")
+  const existing = await supabase.from("os_operator_runs").select("id,status,dispatch_status,created_at")
     .eq("workspace_id", input.workspaceId).eq("operator_key", GROWTH_OPERATOR_KEY)
-    .in("status", ["pending", "running"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    .in("status", ["pending", "running"]).in("dispatch_status", ["requested", "dispatching", "dispatched", "running", "dispatch_failed", "recoverable"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (existing.error) throw new Error("Growth run state is temporarily unavailable.");
-  if (existing.data) return { runId: String(existing.data.id), reused: true, state: String(existing.data.status) };
+  if (existing.data) return { runId: String(existing.data.id), reused: true, state: String(existing.data.status), dispatchStatus: String(existing.data.dispatch_status ?? "requested") };
   const runId = operatorRuntimeId("growth-run");
+  const idempotencyKey = `growth:manual:${input.workspaceId}:${Math.floor(Date.now() / (5 * 60 * 1_000))}`;
   const created = await supabase.from("os_operator_runs").insert({
     id: runId, workspace_id: input.workspaceId, operator_key: GROWTH_OPERATOR_KEY, trigger_type: "manual",
-    status: "pending", input: { sourceMode: "manual", actor: input.actor }, output: {}, readiness: { governed: true }, risk_level: "medium",
+    status: "pending", dispatch_status: "requested", idempotency_key: idempotencyKey, input: { sourceMode: "manual", actor: input.actor }, output: {}, readiness: { governed: true }, risk_level: "medium",
   });
-  if (created.error) throw new Error("Growth scan could not be queued.");
-  return { runId, reused: false, state: "pending" };
+  if (created.error) {
+    const duplicate = await supabase.from("os_operator_runs").select("id,status,dispatch_status").eq("workspace_id", input.workspaceId).eq("operator_key", GROWTH_OPERATOR_KEY).eq("idempotency_key", idempotencyKey).maybeSingle();
+    if (duplicate.data) return { runId: String(duplicate.data.id), reused: true, state: String(duplicate.data.status), dispatchStatus: String(duplicate.data.dispatch_status ?? "requested") };
+    throw new Error("Growth scan could not be queued.");
+  }
+  return { runId, reused: false, state: "pending", dispatchStatus: "requested" };
+}
+
+export async function queueGrowthScanForWebsiteRun(input: { workspaceId: string; sourceId: string; websiteRunId: string; observationCount: number; supabase?: SupabaseAdmin }): Promise<{ requested: boolean; reused: boolean; runId?: string; reason?: string }> {
+  if (input.observationCount < 1) return { requested: false, reused: false, reason: "no_meaningful_new_evidence" };
+  const supabase = input.supabase ?? createSupabaseAdmin();
+  const activation = await getOperatorActivationState({ workspaceId: input.workspaceId, operatorKey: GROWTH_OPERATOR_KEY, supabase });
+  if (!activation?.activated) return { requested: false, reused: false, reason: "growth_not_activated" };
+  const idempotencyKey = `growth:website:${input.websiteRunId}`;
+  const existing = await supabase.from("os_operator_runs").select("id,status,dispatch_status").eq("workspace_id", input.workspaceId).eq("operator_key", GROWTH_OPERATOR_KEY).eq("idempotency_key", idempotencyKey).maybeSingle();
+  if (existing.error) throw new Error("Growth handoff state is temporarily unavailable.");
+  if (existing.data) return { requested: true, reused: true, runId: String(existing.data.id) };
+  const runId = operatorRuntimeId("growth-website");
+  const created = await supabase.from("os_operator_runs").insert({
+    id: runId, workspace_id: input.workspaceId, operator_key: GROWTH_OPERATOR_KEY, trigger_type: "website_completion",
+    status: "pending", dispatch_status: "requested", idempotency_key: idempotencyKey,
+    input: { sourceMode: "website_completion", websiteRunId: input.websiteRunId, sourceId: input.sourceId, observationCount: input.observationCount }, output: {}, readiness: { governed: true }, risk_level: "medium",
+  });
+  if (!created.error) return { requested: true, reused: false, runId };
+  const duplicate = await supabase.from("os_operator_runs").select("id").eq("workspace_id", input.workspaceId).eq("operator_key", GROWTH_OPERATOR_KEY).eq("idempotency_key", idempotencyKey).maybeSingle();
+  if (duplicate.data) return { requested: true, reused: true, runId: String(duplicate.data.id) };
+  throw new Error("Growth handoff could not be persisted.");
+}
+
+export async function reconcileStaleGrowthRuns(input: { supabase?: SupabaseAdmin; now?: Date; workspaceId?: string }): Promise<number> {
+  const supabase = input.supabase ?? createSupabaseAdmin();
+  const now = input.now ?? new Date();
+  let query = supabase.from("os_operator_runs").select("id,workspace_id,dispatch_status,dispatch_started_at,dispatched_at,last_heartbeat_at,updated_at").eq("operator_key", GROWTH_OPERATOR_KEY).in("dispatch_status", ["dispatching", "dispatched", "running"]).limit(100);
+  if (input.workspaceId) query = query.eq("workspace_id", input.workspaceId);
+  const result = await query;
+  if (result.error) return 0;
+  let recovered = 0;
+  for (const row of result.data ?? []) {
+    const item = row as { id: string; dispatch_status: string; dispatch_started_at?: string | null; dispatched_at?: string | null; last_heartbeat_at?: string | null; updated_at?: string | null };
+    const reference = item.dispatch_status === "running" ? item.last_heartbeat_at ?? item.updated_at : item.dispatch_started_at ?? item.dispatched_at ?? item.updated_at;
+    if (!shouldRecoverDispatch({ status: item.dispatch_status, referenceAt: reference, nowMs: now.getTime(), staleAfterMs: 30 * 60 * 1_000 })) continue;
+    const updated = await supabase.from("os_operator_runs").update({ status: "pending", dispatch_status: "recoverable", dispatch_error: "stale_run", next_retry_at: now.toISOString(), worker_started_at: null }).eq("id", item.id).in("dispatch_status", ["dispatching", "dispatched", "running"]).select("id").maybeSingle();
+    if (!updated.error && updated.data) recovered += 1;
+  }
+  return recovered;
 }
 
 export async function listGrowthStatus(input: { workspaceId: string; supabase?: SupabaseAdmin }) {
   const supabase = input.supabase ?? createSupabaseAdmin();
-  const [runs, opportunities, campaigns, approvals, outcomes, learnings] = await Promise.all([
-    supabase.from("os_operator_runs").select("id,status,output,error,created_at,started_at,completed_at").eq("workspace_id", input.workspaceId).eq("operator_key", GROWTH_OPERATOR_KEY).order("created_at", { ascending: false }).limit(20),
+  const [runs, opportunities, campaigns, approvals, outcomes, learnings, activation] = await Promise.all([
+    supabase.from("os_operator_runs").select("id,status,dispatch_status,provider_run_id,output,error,dispatch_error,created_at,started_at,completed_at,dispatched_at").eq("workspace_id", input.workspaceId).eq("operator_key", GROWTH_OPERATOR_KEY).order("created_at", { ascending: false }).limit(20),
     supabase.from("os_growth_opportunities").select("id,title,summary,evidence,trust_level,freshness_status,score,status,source_type,source_ref,updated_at").eq("workspace_id", input.workspaceId).order("updated_at", { ascending: false }).limit(50),
     supabase.from("os_growth_campaigns").select("id,opportunity_id,objective,status,created_at,updated_at,approved_at,exported_at,measured_at").eq("workspace_id", input.workspaceId).order("updated_at", { ascending: false }).limit(30),
     supabase.from("os_approvals").select("id,title,body,status,created_at,resolved_at,continuation_payload").eq("workspace_id", input.workspaceId).eq("agent_id", GROWTH_OPERATOR_KEY).order("created_at", { ascending: false }).limit(30),
     supabase.from("os_growth_outcomes").select("id,campaign_id,channel,outcome_type,value,attribution_level,attribution_source,observed_at").eq("workspace_id", input.workspaceId).order("observed_at", { ascending: false }).limit(30),
     supabase.from("os_growth_learnings").select("id,campaign_id,outcome_id,statement,evidence,trust_level,approval_status,applied_to_memory,created_at").eq("workspace_id", input.workspaceId).order("created_at", { ascending: false }).limit(30),
+    getOperatorActivationState({ workspaceId: input.workspaceId, operatorKey: GROWTH_OPERATOR_KEY, supabase }),
   ]);
   if ([runs, opportunities, campaigns, approvals, outcomes, learnings].some((result) => result.error)) throw new Error("Growth workspace state is temporarily unavailable.");
-  return { runs: runs.data ?? [], opportunities: opportunities.data ?? [], campaigns: campaigns.data ?? [], approvals: approvals.data ?? [], outcomes: outcomes.data ?? [], learnings: learnings.data ?? [] };
+  return { runs: runs.data ?? [], opportunities: opportunities.data ?? [], campaigns: campaigns.data ?? [], approvals: approvals.data ?? [], outcomes: outcomes.data ?? [], learnings: learnings.data ?? [], activation };
 }
 
 export async function getGrowthOpportunity(input: { workspaceId: string; opportunityId: string; supabase?: SupabaseAdmin }): Promise<Opportunity | null> {
