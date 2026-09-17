@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 const operatorImages = {
+  growth: "/operators/marketing-operator.png",
   revenue: "/operators/revenue-operator.png",
   client_flow: "/operators/client-flow-operator.png",
   operations: "/operators/operations-operator.png",
@@ -8,6 +9,7 @@ const operatorImages = {
 } as const;
 
 const operatorNames = {
+  growth: "Growth Operator",
   revenue: "Revenue Operator",
   client_flow: "Client Flow Operator",
   operations: "Operations Operator",

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { StatusBadge } from "@/components/operators/status-badge";
 import { useOS } from "@/lib/os/app-provider";
 import { OPERATOR_REGISTRY, isLiveOperator, type OperatorKey } from "@/lib/operators/registry";
@@ -14,6 +15,7 @@ import { GLYPHS, OPERATORS, type Operator } from "@/data/operators";
 import { PageHeader } from "@/components/product-ui/page-primitives";
 import { useWorkspaceRealtimeInvalidation } from "@/lib/os/workspace-realtime";
 import { isLiveWorkforceState } from "@/lib/dashboard/metric-definitions";
+import { activateOperatorAndNavigate } from "@/lib/operators/activation-client";
 
 // Mirrors OperatorProductStateResult (src/lib/operators/product-state.ts) -
 // the ONE shared server-computed state for the four live operators. This
@@ -119,12 +121,36 @@ function footerTone(state: ProductState["state"] | undefined): "on" | "warn" | "
 }
 
 function LiveOperatorCard({ opKey, op, productState }: { opKey: OperatorKey; op: Operator; productState: ProductState | undefined }) {
+  const router = useRouter();
+  const { state } = useOS();
   const href = HREF_BY_KEY[opKey] ?? "/agents";
   const presentation = getLiveOperatorCardPresentation(opKey);
   const capabilityCopy = getOperatorCapabilityCopy(opKey);
   const action = primaryAction(productState, href);
   const stateKey = productState?.state ?? "needs_setup";
   const statusLabel = productState?.label ?? "Available to unlock";
+  const [activating, setActivating] = useState(false);
+  const [activationError, setActivationError] = useState("");
+
+  const onActivate = useCallback(async () => {
+    if (activating) return; // duplicate-click guard: one mutation per card at a time
+    setActivating(true);
+    setActivationError("");
+    // Navigation happens only after the server confirms the activation is
+    // persisted (activateOperatorAndNavigate) - the runtime page's own
+    // load() then reads that same authoritative state fresh, so no
+    // client-authoritative state is ever passed across the navigation.
+    const result = await activateOperatorAndNavigate({
+      operatorKey: opKey,
+      identity: { workspaceId: state.workspace.id, userId: state.currentUser.id, userEmail: state.currentUser.email },
+      href,
+      navigate: (target) => router.push(target),
+    });
+    if (!result.ok) {
+      setActivationError(result.error);
+      setActivating(false);
+    }
+  }, [activating, href, opKey, router, state.currentUser.email, state.currentUser.id, state.workspace.id]);
 
   return (
     <div className="ag-card" style={{ "--c": op.color } as CSSProperties}>
@@ -152,12 +178,15 @@ function LiveOperatorCard({ opKey, op, productState }: { opKey: OperatorKey; op:
           {action.kind === "open" ? (
             <Link className="ag-open" href={action.href}>{action.label} <Arrow /></Link>
           ) : action.kind === "activate" ? (
-            <Link className="btn btn-primary btn-sm" href={action.href}>{action.label}</Link>
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => void onActivate()} disabled={activating} aria-busy={activating}>
+              {activating ? "Activating…" : action.label}
+            </button>
           ) : (
             <Link className="btn btn-ghost btn-sm" href={action.href}>{action.label}</Link>
           )}
         </div>
       </div>
+      {activationError && <div role="alert" className="ag-activation-error">{activationError}</div>}
     </div>
   );
 }

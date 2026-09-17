@@ -21,6 +21,7 @@ export type OperatorBriefingState = {
 };
 
 const responsibility: Record<string, string[]> = {
+  growth: ["Monitor verified Website Knowledge and approved business context", "Detect bounded growth opportunities", "Prepare governed campaign drafts for approval"],
   revenue: ["Spot meaningful commercial conversations", "Prepare thoughtful follow-up work", "Keep proposed external actions under approval"],
   client_flow: ["Notice customer requests and stalled handoffs", "Prepare a clear next response", "Coordinate safe follow-through across connected context"],
   operations: ["Surface blocked or stale delivery work", "Prepare recovery steps for review", "Keep internal follow-through visible"],
@@ -32,7 +33,7 @@ export function OperatorWorkforceBriefing({
   onStateChange,
   runtime,
 }: {
-  operatorKey: "revenue" | "client_flow" | "operations" | "support";
+  operatorKey: "growth" | "revenue" | "client_flow" | "operations" | "support";
   onStateChange?: (state: OperatorBriefingState | null) => void;
   runtime?: {
     pendingApprovals: number;
@@ -71,10 +72,11 @@ export function OperatorWorkforceBriefing({
   const capabilityCopy = getOperatorCapabilityCopy(operatorKey);
   const remediation = product?.requiredActions[0] ?? null;
 
+  const displayName = operatorKey === "client_flow" ? "Client Flow" : operatorKey === "revenue" ? "Revenue" : operatorKey === "support" ? "Support" : operatorKey === "growth" ? "Growth" : "Operations";
   const calmSummary = active
     ? product?.state === "active_limited"
       ? "Core work continues while optional context is restored."
-      : `Everything needed for ${operatorKey === "client_flow" ? "Client Flow" : operatorKey === "revenue" ? "Revenue" : operatorKey === "support" ? "Support" : "Operations"} is available.`
+      : `Everything needed for ${displayName} is available.`
     : product?.description ?? "Auterim is checking this operator’s real state.";
   const primaryProvider = product?.connectedCoreSystems[0] ?? null;
 
